@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreateClientModal from "@/components/CreateClientModal";
-import { Plus, Edit2, Trash2, Link2, Unlink, TrendingUp, Search, Users } from "lucide-react";
+import { Plus, Edit2, Trash2, Link2, Search, Users, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,12 +17,10 @@ export default function AdminClients() {
   const [user, setUser] = useState(null);
   const [clients, setClients] = useState([]);
   const [partners, setPartners] = useState([]);
-  const [bonds, setBonds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [linkingClient, setLinkingClient] = useState(null);
-  const [allocatingClient, setAllocatingClient] = useState(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -46,15 +44,13 @@ export default function AdminClients() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       
-      const [clientsRes, partnersRes, bondsRes] = await Promise.all([
+      const [clientsRes, partnersRes] = await Promise.all([
         axios.get(`${API}/clients`, { headers }),
-        axios.get(`${API}/partners`, { headers }),
-        axios.get(`${API}/bonds`, { headers })
+        axios.get(`${API}/partners`, { headers })
       ]);
       
       setClients(clientsRes.data);
       setPartners(partnersRes.data);
-      setBonds(bondsRes.data);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -102,27 +98,6 @@ export default function AdminClients() {
     }
   };
 
-  const handleAllocateBond = async (clientId, bondId, unitsBlocked) => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.post(`${API}/clients/${clientId}/allocate-bond`, {
-        bond_id: bondId,
-        units_blocked: parseInt(unitsBlocked),
-        units_paid: 0,
-        status: "blocked"
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      toast.success("Bond allocated to client");
-      setAllocatingClient(null);
-      fetchData();
-    } catch (error) {
-      console.error("Error allocating bond:", error);
-      toast.error(error.response?.data?.detail || "Failed to allocate bond");
-    }
-  };
-
   const filteredClients = clients.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.pan_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -146,7 +121,7 @@ export default function AdminClients() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-800" data-testid="admin-clients-title">Admin - Clients</h1>
-              <p className="text-sm text-gray-500 mt-1">Manage client accounts and bond allocations</p>
+              <p className="text-sm text-gray-500 mt-1">Manage client accounts and link to sub-brokers</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -197,7 +172,7 @@ export default function AdminClients() {
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">PAN</th>
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Contact</th>
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Linked Sub-Broker</th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Bond Allocations</th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Documents</th>
                     <th className="text-right py-4 px-6 text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -205,7 +180,7 @@ export default function AdminClients() {
                   {filteredClients.map((client) => {
                     const initials = client.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                     const linkedSubbroker = getSubbrokerName(client.linked_subbroker_id);
-                    const allocations = client.bond_allocations || [];
+                    const hasDocuments = client.pan_document || client.aadhar_document || client.bank_cheque_document || client.cnl_document;
 
                     return (
                       <tr key={client.id} className="border-t border-gray-100 hover:bg-gray-50" data-testid={`client-row-${client.id}`}>
@@ -273,39 +248,17 @@ export default function AdminClients() {
                           )}
                         </td>
                         <td className="py-4 px-6">
-                          {allocations.length > 0 ? (
-                            <div className="space-y-1">
-                              {allocations.slice(0, 2).map((alloc, idx) => (
-                                <div key={idx} className="text-xs">
-                                  <span className="font-medium">{alloc.bond_name?.slice(0, 20)}...</span>
-                                  <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
-                                    alloc.status === 'fully_paid' ? 'bg-green-100 text-green-700' :
-                                    alloc.status === 'partial_paid' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-gray-100 text-gray-700'
-                                  }`}>
-                                    {alloc.units_paid}/{alloc.units_blocked} paid
-                                  </span>
-                                </div>
-                              ))}
-                              {allocations.length > 2 && (
-                                <span className="text-xs text-gray-400">+{allocations.length - 2} more</span>
-                              )}
+                          {hasDocuments ? (
+                            <div className="flex items-center gap-1">
+                              <FileText className="h-4 w-4 text-green-600" />
+                              <span className="text-xs text-green-600">Uploaded</span>
                             </div>
                           ) : (
-                            <span className="text-xs text-gray-400">No allocations</span>
+                            <span className="text-xs text-gray-400">None</span>
                           )}
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setAllocatingClient(client)}
-                              title="Allocate bond"
-                              data-testid={`allocate-bond-${client.id}`}
-                            >
-                              <TrendingUp className="h-4 w-4 text-green-600" />
-                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -348,111 +301,6 @@ export default function AdminClients() {
           subbrokers={partners}
         />
       )}
-
-      {/* Allocate Bond Modal */}
-      {allocatingClient && (
-        <AllocateBondModal
-          client={allocatingClient}
-          bonds={bonds}
-          onClose={() => setAllocatingClient(null)}
-          onAllocate={handleAllocateBond}
-        />
-      )}
-    </div>
-  );
-}
-
-
-// Allocate Bond Modal Component
-function AllocateBondModal({ client, bonds, onClose, onAllocate }) {
-  const [selectedBond, setSelectedBond] = useState("");
-  const [unitsBlocked, setUnitsBlocked] = useState(1);
-
-  const selectedBondData = bonds.find(b => b.id === selectedBond);
-  const unitsAvailable = selectedBondData 
-    ? (selectedBondData.total_units || 1) - (selectedBondData.units_sold || 0)
-    : 0;
-
-  const handleSubmit = () => {
-    if (!selectedBond) {
-      toast.error("Please select a bond");
-      return;
-    }
-    if (unitsBlocked < 1 || unitsBlocked > unitsAvailable) {
-      toast.error(`Units must be between 1 and ${unitsAvailable}`);
-      return;
-    }
-    onAllocate(client.id, selectedBond, unitsBlocked);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-800">Allocate Bond to {client.name}</h2>
-        </div>
-        
-        <div className="p-6 space-y-4">
-          <div className="space-y-2">
-            <label className="text-xs text-gray-500 uppercase">Select Bond</label>
-            <Select value={selectedBond} onValueChange={setSelectedBond}>
-              <SelectTrigger data-testid="select-bond-allocation">
-                <SelectValue placeholder="Choose a bond..." />
-              </SelectTrigger>
-              <SelectContent>
-                {bonds.filter(b => ((b.total_units || 1) - (b.units_sold || 0)) > 0).map(bond => (
-                  <SelectItem key={bond.id} value={bond.id}>
-                    {bond.name} ({(bond.total_units || 1) - (bond.units_sold || 0)} units available)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {selectedBondData && (
-            <>
-              <div className="bg-gray-50 p-4 rounded-lg text-sm">
-                <div className="flex justify-between mb-2">
-                  <span className="text-gray-600">Principal:</span>
-                  <span className="font-mono">₹{selectedBondData.principal_amount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-gray-600">IRR:</span>
-                  <span className="font-mono text-amber-600">{selectedBondData.secondary_irr}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Available:</span>
-                  <span className="font-mono">{unitsAvailable} units</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500 uppercase">Units to Block</label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={unitsAvailable}
-                  value={unitsBlocked}
-                  onChange={(e) => setUnitsBlocked(parseInt(e.target.value) || 1)}
-                  data-testid="units-blocked-input"
-                />
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button 
-            onClick={handleSubmit}
-            disabled={!selectedBond}
-            className="bg-amber-700 hover:bg-amber-800"
-            data-testid="confirm-allocation-btn"
-          >
-            Allocate Bond
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
