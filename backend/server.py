@@ -127,6 +127,10 @@ async def login_step2(login: LoginStep2):
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     
+    # Check if user is active (for clients, they must verify profile first)
+    if user.get('is_active') == False:
+        raise HTTPException(status_code=403, detail="Account not activated. Please verify your profile first.")
+    
     # Verify PIN
     if not verify_password(login.pin, user['pin_hash']):
         raise HTTPException(status_code=401, detail="Invalid PIN")
@@ -136,16 +140,22 @@ async def login_step2(login: LoginStep2):
         data={"user_id": user['id'], "role": user['role']}
     )
     
+    # Add client_id for client users
+    user_response = {
+        "id": user['id'],
+        "pan": user['pan'],
+        "name": user['name'],
+        "email": user['email'],
+        "phone": user['phone'],
+        "role": user['role']
+    }
+    
+    if user['role'] == 'client' and user.get('client_id'):
+        user_response['client_id'] = user['client_id']
+    
     return {
         "token": access_token,
-        "user": {
-            "id": user['id'],
-            "pan": user['pan'],
-            "name": user['name'],
-            "email": user['email'],
-            "phone": user['phone'],
-            "role": user['role']
-        }
+        "user": user_response
     }
 
 
