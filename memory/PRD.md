@@ -303,6 +303,9 @@ Sub-broker View:
 
 ## Backlog / Future Enhancements
 
+### P0 - Critical
+- [ ] Email integration for auto-marking repayments (read emails with specific subject line)
+
 ### P1 - High Priority
 - [ ] Client edit page with full details view
 - [ ] Sub-broker trade history view
