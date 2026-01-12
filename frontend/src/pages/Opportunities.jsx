@@ -23,7 +23,7 @@ export default function Opportunities() {
     
     const parsedUser = JSON.parse(userData);
     if (parsedUser.role !== "broker") {
-      navigate("/sub-broker/dashboard");
+      navigate("/sub-broker/opportunities");
       return;
     }
     
