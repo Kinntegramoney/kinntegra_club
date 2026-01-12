@@ -462,9 +462,14 @@ export default function BondDetails() {
             </div>
           ) : (
           <div className="lg:col-span-3 metric-card rounded-md bg-surface">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="h-6 w-6 text-accent" />
-              <h2 className="text-xl font-semibold">Secondary Market Calculator</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-6 w-6 text-accent" />
+                <h2 className="text-xl font-semibold">Secondary Market Calculator</h2>
+              </div>
+              <span className="text-sm font-medium px-3 py-1 bg-green-100 text-green-700 rounded-full">
+                {unitsAvailable} of {totalUnits} units available
+              </span>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
