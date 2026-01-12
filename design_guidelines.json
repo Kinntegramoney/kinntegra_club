@@ -1,0 +1,165 @@
+{
+  "design_system": {
+    "identity": {
+      "name": "BondFlow Pro",
+      "archetype": "The Performance Pro",
+      "vibe": "Institutional, Precise, Mathematical, Trustworthy",
+      "principles": [
+        "Density is Clarity: Financial pros need data, not fluff.",
+        "Color is Signal: Use color only to indicate status (Profit/Loss/Active).",
+        "Typography is Interface: The numbers are the UI.",
+        "Grid is Law: Everything aligns perfectly."
+      ]
+    },
+    "typography": {
+      "font_family": {
+        "headings": "Manrope, sans-serif",
+        "body": "Public Sans, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "usage": {
+        "headings": "Use Manrope for all section titles. Weight: 700 or 800. Tracking: tight.",
+        "body": "Use Public Sans for labels, instructions, and general text. Weight: 400/500.",
+        "data": "CRITICAL: Use JetBrains Mono for ALL financial figures, dates, and percentages. This ensures tabular alignment."
+      },
+      "scale": {
+        "h1": "text-3xl md:text-4xl font-bold tracking-tight",
+        "h2": "text-2xl font-semibold tracking-tight",
+        "h3": "text-xl font-medium",
+        "body": "text-sm leading-relaxed",
+        "small": "text-xs text-muted-foreground",
+        "mono_lg": "text-lg font-mono tracking-tight",
+        "mono_base": "text-sm font-mono"
+      }
+    },
+    "colors": {
+      "palette": {
+        "primary": {
+          "DEFAULT": "#0F172A",
+          "foreground": "#F8FAFC"
+        },
+        "secondary": {
+          "DEFAULT": "#F1F5F9",
+          "foreground": "#0F172A"
+        },
+        "accent": {
+          "DEFAULT": "#2563EB",
+          "foreground": "#FFFFFF"
+        },
+        "success": {
+          "DEFAULT": "#10B981",
+          "foreground": "#FFFFFF"
+        },
+        "destructive": {
+          "DEFAULT": "#EF4444",
+          "foreground": "#FFFFFF"
+        },
+        "background": "#FFFFFF",
+        "surface": "#F8F9FA",
+        "border": "#E2E8F0"
+      },
+      "usage_rules": {
+        "primary": "Main navigation, active states, primary buttons.",
+        "accent": "Call to actions, active links, focus rings.",
+        "success": "Positive values (IRR, Profit), success toasts.",
+        "destructive": "Negative values (Loss), delete actions.",
+        "surface": "Backgrounds for sidebars or secondary panels."
+      }
+    },
+    "layout": {
+      "grid_system": "Mode B: High Density Grid",
+      "spacing": {
+        "container_padding": "p-6 md:p-8",
+        "gap": "gap-4 md:gap-6",
+        "internal_padding": "p-4"
+      },
+      "structure": {
+        "dashboard": "grid grid-cols-12 gap-6",
+        "sidebar": "col-span-12 md:col-span-3 lg:col-span-2",
+        "main_content": "col-span-12 md:col-span-9 lg:col-span-10",
+        "card_grid": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+      }
+    },
+    "components": {
+      "style_guide": {
+        "radius": "rounded-md",
+        "shadows": "shadow-none",
+        "borders": "border border-border",
+        "inputs": "h-10 bg-white border-input focus:ring-2 focus:ring-accent focus:border-accent transition-all font-mono text-sm",
+        "buttons": "h-10 px-4 font-medium transition-all active:scale-95"
+      },
+      "custom_components": [
+        {
+          "name": "MetricCard",
+          "description": "A dense card for displaying a single key metric (e.g., IRR, Price).",
+          "style": "bg-white border border-border p-4 flex flex-col gap-1 hover:border-accent/50 transition-colors"
+        },
+        {
+          "name": "DataGrid",
+          "description": "A tight table for schedules.",
+          "style": "w-full text-sm text-left [&_th]:font-medium [&_th]:text-muted-foreground [&_td]:font-mono [&_td]:py-2 [&_tr]:border-b [&_tr:last-child]:border-0"
+        },
+        {
+          "name": "InputGroup",
+          "description": "Label + Input wrapper.",
+          "style": "flex flex-col gap-1.5"
+        }
+      ]
+    },
+    "visual_enhancers": {
+      "surface_strategy": "Grid Borders",
+      "textures": "Subtle noise overlay on the sidebar only.",
+      "motion": {
+        "hover": "transition-colors duration-200",
+        "enter": "animate-in fade-in slide-in-from-bottom-2 duration-300"
+      }
+    },
+    "assets": {
+      "images": {
+        "user_avatar": "https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg",
+        "logo_placeholder": "https://images.unsplash.com/photo-1731311979344-a6f3c3435429?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwdGVjaCUyMGNvbXBhbnklMjBsb2dvJTIwdmVjdG9yfGVufDB8fHx8MTc2ODE4NzMzNHww&ixlib=rb-4.1.0&q=85"
+      },
+      "icons": "Use lucide-react. Preferred icons: Calculator, TrendingUp, DollarSign, Calendar, PieChart, Activity."
+    },
+    "libraries": {
+      "charts": "recharts",
+      "dates": "date-fns",
+      "forms": "react-hook-form + zod",
+      "ui": "shadcn/ui (radix-ui)"
+    }
+  },
+  "instructions_to_main_agent": {
+    "general": "You are building a high-precision financial tool. Accuracy and clarity are paramount. Do not use 'cute' UI. Make it look like a modern Bloomberg terminal.",
+    "layout_rules": [
+      "Always use a sidebar layout for the main dashboard.",
+      "The 'Bond Creation' form should be a multi-step process or a clean, segmented single page.",
+      "The 'Cashflow Timeline' must be a visual chart (Bar/Line) AND a detailed table below it.",
+      "Use 'sonner' for all notifications (e.g., 'Bond Created', 'Calculation Updated')."
+    ],
+    "component_overrides": {
+      "Card": "Remove shadows. Use 1px borders. Add 'hover:border-gray-400' for interactivity.",
+      "Button": "Use 'default' variant for primary actions (Save, Calculate). Use 'outline' for secondary. Avoid 'ghost' unless in a menu.",
+      "Input": "Ensure inputs are large enough for easy clicking but text is 'text-sm'. Use 'font-mono' for all numeric inputs."
+    },
+    "universal_guidelines": [
+      "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+      "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+      "Create depth through layered design elements with z-index hierarchy",
+      "Use glass-morphism effects with backdrop filters (12-24px blur)",
+      "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+      "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text",
+      "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+      "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
+      "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+      "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+      "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+      "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN",
+      "Prioritize using pre-existing components from src/components/ui when applicable",
+      "Create new components that match the style and conventions of existing components when needed",
+      "Examine existing components to understand the project's component patterns before creating new ones",
+      "Components MUST use named exports (export const ComponentName = ...)",
+      "Pages MUST use default exports (export default function PageName() {...})",
+      "Use sonner for toasts. Sonner component are located in /app/src/components/ui/sonner.tsx"
+    ]
+  }
+}
