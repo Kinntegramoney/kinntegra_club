@@ -155,47 +155,26 @@ export default function TradeVerification() {
     }));
   };
 
-  // Group reinvestment data by client
-  const getGroupedByClient = () => {
+  // Get all entries separated by tagged status (per-entry, not per-client)
+  const getEntriesByTagStatus = () => {
     if (!reinvestmentData) return { tagged: [], untagged: [] };
     
-    const clientMap = {};
-    
+    const allEntries = [];
     reinvestmentData.months.forEach(month => {
       month.items.forEach(item => {
-        if (!clientMap[item.client_id]) {
-          clientMap[item.client_id] = {
-            client_id: item.client_id,
-            client_name: item.client_name,
-            client_pan: item.client_pan,
-            cashflows: [],
-            total_principal: 0,
-            total_interest: 0,
-            total_net: 0
-          };
-        }
-        clientMap[item.client_id].cashflows.push(item);
-        clientMap[item.client_id].total_principal += item.principal_net;
-        clientMap[item.client_id].total_interest += item.interest_net;
-        clientMap[item.client_id].total_net += item.net_amount;
+        allEntries.push(item);
       });
     });
     
-    const clients = Object.values(clientMap);
-    
-    // Separate tagged and untagged based on individual cashflow tags
-    // Tagged: Clients where ALL cashflows have been tagged (not 'not_tagged')
-    // Untagged: Clients where ANY cashflow is still 'not_tagged'
-    const tagged = clients.filter(c => {
-      // A client is "tagged" if ALL their cashflows have a tag other than 'not_tagged'
-      const currentTags = c.cashflows.map(cf => localTags[cf.cashflow_id] || cf.reinvestment_tag || 'not_tagged');
-      return currentTags.every(tag => tag && tag !== 'not_tagged');
+    // Separate by tag status
+    const tagged = allEntries.filter(item => {
+      const tag = localTags[item.cashflow_id] || item.reinvestment_tag || 'not_tagged';
+      return tag && tag !== 'not_tagged';
     });
     
-    const untagged = clients.filter(c => {
-      // A client is "untagged" if ANY of their cashflows is 'not_tagged'
-      const currentTags = c.cashflows.map(cf => localTags[cf.cashflow_id] || cf.reinvestment_tag || 'not_tagged');
-      return currentTags.some(tag => !tag || tag === 'not_tagged');
+    const untagged = allEntries.filter(item => {
+      const tag = localTags[item.cashflow_id] || item.reinvestment_tag || 'not_tagged';
+      return !tag || tag === 'not_tagged';
     });
     
     return { tagged, untagged };
