@@ -996,6 +996,315 @@ async def cancel_trade(trade_id: str, current_user: dict = Depends(get_current_u
 
 
 # ==================== END TRADE MANAGEMENT ====================
+
+
+# ==================== HOLDINGS MANAGEMENT ====================
+
+class RepaymentUpdate(BaseModel):
+    is_repaid: bool
+    repaid_date: Optional[str] = None
+    repaid_amount: Optional[float] = None
+    notes: Optional[str] = None
+
+
+def generate_client_cashflows(trade: dict, bond: dict) -> List[dict]:
+    """
+    Generate cashflow schedule for a client based on their trade and bond details.
+    Returns list of cashflow entries with repayment status.
+    """
+    investment_date = datetime.fromisoformat(trade['investment_date'])
+    units = trade['units']
+    cashflows = []
+    
+    # Get remaining interest payments after investment date
+    for ip in bond.get('interest_payments', []):
+        ip_date = datetime.fromisoformat(ip['date'])
+        if ip_date > investment_date:
+            gross_interest = ip['amount'] * units
+            tds = gross_interest * 0.10  # 10% TDS
+            net_interest = gross_interest - tds
+            
+            cashflows.append({
+                "id": str(uuid.uuid4()),
+                "trade_id": trade['id'],
+                "type": "interest",
+                "date": ip['date'],
+                "gross_amount": round(gross_interest, 2),
+                "tds_amount": round(tds, 2),
+                "net_amount": round(net_interest, 2),
+                "principal_component": 0,
+                "interest_component": round(gross_interest, 2),
+                "is_repaid": False,
+                "repaid_date": None,
+                "repaid_actual_amount": None,
+                "notes": None
+            })
+    
+    # Get remaining principal payments after investment date
+    for pp in bond.get('principal_payments', []):
+        pp_date = datetime.fromisoformat(pp['date'])
+        if pp_date > investment_date:
+            principal_amount = (bond['principal_amount'] * pp['percentage'] / 100) * units
+            
+            # Check if there's already a cashflow on this date (combine with interest)
+            existing = next((cf for cf in cashflows if cf['date'] == pp['date']), None)
+            if existing:
+                existing['principal_component'] = round(principal_amount, 2)
+                existing['gross_amount'] = round(existing['gross_amount'] + principal_amount, 2)
+                existing['net_amount'] = round(existing['net_amount'] + principal_amount, 2)
+            else:
+                cashflows.append({
+                    "id": str(uuid.uuid4()),
+                    "trade_id": trade['id'],
+                    "type": "principal",
+                    "date": pp['date'],
+                    "gross_amount": round(principal_amount, 2),
+                    "tds_amount": 0,
+                    "net_amount": round(principal_amount, 2),
+                    "principal_component": round(principal_amount, 2),
+                    "interest_component": 0,
+                    "is_repaid": False,
+                    "repaid_date": None,
+                    "repaid_actual_amount": None,
+                    "notes": None
+                })
+    
+    # Sort by date
+    cashflows.sort(key=lambda x: x['date'])
+    return cashflows
+
+
+@api_router.get("/holdings/clients")
+async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
+    """Get list of clients with their holding summaries for the Holdings page"""
+    
+    # Get clients based on role
+    if current_user['role'] == 'broker':
+        clients = await db.clients.find({"created_by": current_user['id']}, {"_id": 0}).to_list(1000)
+    else:
+        # Sub-brokers see only linked clients
+        clients = await db.clients.find({"linked_subbroker_id": current_user['id']}, {"_id": 0}).to_list(1000)
+    
+    # Get approved trades for each client
+    client_summaries = []
+    for client in clients:
+        trades = await db.trades.find({
+            "client_id": client['id'],
+            "status": "approved"
+        }, {"_id": 0}).to_list(100)
+        
+        total_investment = sum(t.get('total_amount', 0) for t in trades)
+        
+        client_summaries.append({
+            "id": client['id'],
+            "name": client['name'],
+            "pan_number": client['pan_number'],
+            "total_investment": round(total_investment, 2),
+            "trade_count": len(trades),
+            "is_active": client.get('is_active', True)
+        })
+    
+    return client_summaries
+
+
+@api_router.get("/holdings/client/{client_id}")
+async def get_client_holdings(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Get detailed holdings for a specific client"""
+    
+    # Verify client access
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Check access
+    if current_user['role'] == 'broker':
+        if client.get('created_by') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    else:
+        if client.get('linked_subbroker_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get approved trades for this client
+    trades = await db.trades.find({
+        "client_id": client_id,
+        "status": "approved"
+    }, {"_id": 0}).to_list(100)
+    
+    holdings = []
+    total_investment = 0
+    total_repaid = 0
+    total_upcoming = 0
+    
+    for trade in trades:
+        # Get bond details
+        bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
+        if not bond:
+            continue
+        
+        # Check if we have stored cashflows, otherwise generate them
+        stored_cashflows = await db.holding_cashflows.find({
+            "trade_id": trade['id']
+        }, {"_id": 0}).to_list(100)
+        
+        if not stored_cashflows:
+            # Generate and store cashflows
+            cashflows = generate_client_cashflows(trade, bond)
+            if cashflows:
+                for cf in cashflows:
+                    cf['client_id'] = client_id
+                    cf['bond_id'] = trade['bond_id']
+                    cf['bond_name'] = trade['bond_name']
+                await db.holding_cashflows.insert_many(cashflows)
+                stored_cashflows = cashflows
+        
+        # Calculate totals for this holding
+        investment_amount = trade.get('total_amount', 0)
+        repaid_amount = sum(cf.get('repaid_actual_amount', 0) or cf.get('net_amount', 0) 
+                          for cf in stored_cashflows if cf.get('is_repaid'))
+        upcoming_amount = sum(cf.get('net_amount', 0) 
+                            for cf in stored_cashflows if not cf.get('is_repaid'))
+        
+        # Calculate principal and interest components
+        total_principal = sum(cf.get('principal_component', 0) for cf in stored_cashflows)
+        total_interest_gross = sum(cf.get('interest_component', 0) for cf in stored_cashflows)
+        total_tds = sum(cf.get('tds_amount', 0) for cf in stored_cashflows)
+        total_net_interest = total_interest_gross - total_tds
+        
+        # Repaid components
+        repaid_principal = sum(cf.get('principal_component', 0) for cf in stored_cashflows if cf.get('is_repaid'))
+        repaid_interest = sum(cf.get('interest_component', 0) for cf in stored_cashflows if cf.get('is_repaid'))
+        repaid_tds = sum(cf.get('tds_amount', 0) for cf in stored_cashflows if cf.get('is_repaid'))
+        
+        holdings.append({
+            "trade_id": trade['id'],
+            "bond_id": trade['bond_id'],
+            "bond_name": trade['bond_name'],
+            "units": trade['units'],
+            "investment_date": trade['investment_date'],
+            "invested_amount": round(investment_amount, 2),
+            "total_principal": round(total_principal, 2),
+            "total_interest_gross": round(total_interest_gross, 2),
+            "total_tds": round(total_tds, 2),
+            "total_net_expected": round(total_principal + total_net_interest, 2),
+            "repaid_principal": round(repaid_principal, 2),
+            "repaid_interest": round(repaid_interest, 2),
+            "repaid_tds": round(repaid_tds, 2),
+            "net_repaid": round(repaid_amount, 2),
+            "upcoming_expected": round(upcoming_amount, 2),
+            "cashflows": stored_cashflows,
+            "status": "active" if upcoming_amount > 0 else "fully_repaid"
+        })
+        
+        total_investment += investment_amount
+        total_repaid += repaid_amount
+        total_upcoming += upcoming_amount
+    
+    return {
+        "client": {
+            "id": client['id'],
+            "name": client['name'],
+            "pan_number": client['pan_number'],
+            "email": client.get('email'),
+            "mobile": client.get('mobile')
+        },
+        "summary": {
+            "total_investment": round(total_investment, 2),
+            "total_repaid": round(total_repaid, 2),
+            "total_upcoming": round(total_upcoming, 2),
+            "total_expected": round(total_repaid + total_upcoming, 2)
+        },
+        "holdings": holdings
+    }
+
+
+@api_router.put("/holdings/cashflow/{cashflow_id}/mark-repaid")
+async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, current_user: dict = Depends(get_current_user)):
+    """Mark a cashflow entry as repaid (broker or sub-broker can do this)"""
+    
+    # Find the cashflow
+    cashflow = await db.holding_cashflows.find_one({"id": cashflow_id})
+    if not cashflow:
+        raise HTTPException(status_code=404, detail="Cashflow entry not found")
+    
+    # Verify access to the client
+    client = await db.clients.find_one({"id": cashflow['client_id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if current_user['role'] == 'broker':
+        if client.get('created_by') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    else:
+        if client.get('linked_subbroker_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Update cashflow
+    update_data = {
+        "is_repaid": update.is_repaid,
+        "repaid_date": update.repaid_date or datetime.now(timezone.utc).isoformat(),
+        "repaid_actual_amount": update.repaid_amount,
+        "notes": update.notes,
+        "marked_by": current_user['id'],
+        "marked_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if not update.is_repaid:
+        update_data["repaid_date"] = None
+        update_data["repaid_actual_amount"] = None
+    
+    await db.holding_cashflows.update_one(
+        {"id": cashflow_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Cashflow updated successfully", "is_repaid": update.is_repaid}
+
+
+@api_router.get("/holdings/client/{client_id}/download")
+async def download_client_holdings(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Generate CSV data for client holdings download"""
+    
+    # Get client holdings
+    holdings_data = await get_client_holdings(client_id, current_user)
+    
+    csv_rows = []
+    csv_rows.append(f"Holdings Report - {holdings_data['client']['name']}")
+    csv_rows.append(f"PAN: {holdings_data['client']['pan_number']}")
+    csv_rows.append(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    csv_rows.append("")
+    csv_rows.append("SUMMARY")
+    csv_rows.append(f"Total Investment,{holdings_data['summary']['total_investment']}")
+    csv_rows.append(f"Total Repaid (Net),{holdings_data['summary']['total_repaid']}")
+    csv_rows.append(f"Upcoming Expected,{holdings_data['summary']['total_upcoming']}")
+    csv_rows.append(f"Total Expected,{holdings_data['summary']['total_expected']}")
+    csv_rows.append("")
+    
+    for holding in holdings_data['holdings']:
+        csv_rows.append(f"SCHEME: {holding['bond_name']}")
+        csv_rows.append(f"Units: {holding['units']}, Investment Date: {holding['investment_date']}")
+        csv_rows.append(f"Invested Amount: {holding['invested_amount']}")
+        csv_rows.append("")
+        csv_rows.append("Date,Type,Principal,Interest (Gross),TDS,Net Amount,Status,Repaid Date")
+        
+        for cf in holding['cashflows']:
+            status = "Repaid" if cf.get('is_repaid') else "Pending"
+            repaid_date = cf.get('repaid_date', '-') if cf.get('is_repaid') else '-'
+            csv_rows.append(f"{cf['date']},{cf['type']},{cf['principal_component']},{cf['interest_component']},{cf['tds_amount']},{cf['net_amount']},{status},{repaid_date}")
+        
+        csv_rows.append("")
+        csv_rows.append(f"Total Principal,{holding['total_principal']}")
+        csv_rows.append(f"Total Interest (Gross),{holding['total_interest_gross']}")
+        csv_rows.append(f"Total TDS,{holding['total_tds']}")
+        csv_rows.append(f"Net Repaid,{holding['net_repaid']}")
+        csv_rows.append(f"Upcoming Expected,{holding['upcoming_expected']}")
+        csv_rows.append("")
+    
+    return {"csv_content": "\n".join(csv_rows), "filename": f"holdings_{holdings_data['client']['pan_number']}_{datetime.now().strftime('%Y%m%d')}.csv"}
+
+
+# ==================== END HOLDINGS MANAGEMENT ====================
+
+
 def calculate_xirr(dates, cashflows, guess=0.1):
     """
     Calculate XIRR (Extended Internal Rate of Return)
