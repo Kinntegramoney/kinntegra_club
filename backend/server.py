@@ -1193,7 +1193,12 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
     if current_user['role'] == 'broker':
         if client.get('created_by') != current_user['id']:
             raise HTTPException(status_code=403, detail="Access denied")
+    elif current_user['role'] == 'client':
+        # Client can only access their own holdings
+        if client.get('user_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
     else:
+        # Sub-broker
         if client.get('linked_subbroker_id') != current_user['id']:
             raise HTTPException(status_code=403, detail="Access denied")
     
