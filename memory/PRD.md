@@ -299,14 +299,15 @@ Sub-broker View:
 - [x] Popup modal with Summary by Date tab and individual transaction tabs
 
 ### Phase 9: Reinvestment Tagging (January 12, 2026)
-- [x] New "Reinvestment Tagging" menu item in sidebar for both broker and sub-broker
-- [x] Month-wise tabs for next 6 months
-- [x] Table showing: Investor, Opportunity, Amount Invested, Expected Date, Principal Net, Interest Net, Net Amount
-- [x] Reinvestment Tag dropdown (Not Tagged, Principal, Interest, Net Amount)
-- [x] Save button for each entry
-- [x] Summary footer with Total Principal, Total Interest, Total Net
-- [x] Backend API for fetching upcoming repayments and saving tags
-- [x] Sub-broker access limited to their linked clients only
+- [x] Reinvestment Tagging as a tab within Trade Verification page (refactored from standalone page)
+- [x] "Untagged" and "Tagged" sub-sections for better organization
+- [x] Entries grouped by client (expandable client cards)
+- [x] Table columns: Opportunity, Expected Date, Principal Net, Interest Net, Net Amount, Reinvestment Tag
+- [x] Reinvestment Tag dropdown with options: Not Tagged, Principal, Interest, Net Amount, **Not Invest**
+- [x] Client summary: Total Principal, Total Interest, Total Net with "Save Tags" button
+- [x] Backend API: `GET /api/reinvestment/upcoming`, `PUT /api/reinvestment/tag/{cashflow_id}`
+- [x] Refresh button to reload data
+- [x] Removed obsolete standalone reinvestment routes from App.js
 
 ## Testing Status
 - Backend: 62/62 tests passing (100%) - includes 20 new trade workflow tests
