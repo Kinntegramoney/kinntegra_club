@@ -146,7 +146,7 @@ export default function TradeVerification() {
         </div>
 
         {/* Trades List */}
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           {loading ? (
             <p className="text-center text-gray-500 py-12">Loading...</p>
           ) : displayTrades.length === 0 ? (
@@ -161,52 +161,61 @@ export default function TradeVerification() {
               {displayTrades.map((trade) => (
                 <div 
                   key={trade.id} 
-                  className="bg-white rounded-lg border border-gray-200 p-6"
+                  className="bg-white rounded-lg border border-gray-200 p-4 md:p-6"
                   data-testid={`trade-card-${trade.id}`}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="font-semibold text-lg">{trade.bond_name}</h3>
-                      <p className="text-sm text-gray-500">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-4">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-base md:text-lg truncate">{trade.bond_name}</h3>
+                      <p className="text-xs md:text-sm text-gray-500">
                         Created by {trade.created_by_name} ({trade.created_by_role === 'sub_broker' ? 'Sub-Broker' : 'Broker'})
                       </p>
                     </div>
                     {getStatusBadge(trade.status)}
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-4">
                     <div>
                       <p className="text-xs text-gray-500 uppercase">Client</p>
-                      <p className="font-medium">{trade.client_name}</p>
+                      <p className="font-medium text-sm md:text-base truncate">{trade.client_name}</p>
                       <p className="text-xs text-gray-500 font-mono">{trade.client_pan}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 uppercase">Units</p>
-                      <p className="font-mono font-bold text-lg">{trade.units}</p>
+                      <p className="font-mono font-bold text-base md:text-lg">{trade.units}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 uppercase">Price/Unit</p>
-                      <p className="font-mono">₹{trade.calculated_price?.toLocaleString('en-IN')}</p>
+                      <p className="font-mono text-sm">₹{trade.calculated_price?.toLocaleString('en-IN')}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Total Amount</p>
-                      <p className="font-mono font-bold text-amber-600">₹{trade.total_amount?.toLocaleString('en-IN')}</p>
+                      <p className="text-xs text-gray-500 uppercase">Total</p>
+                      <p className="font-mono font-bold text-amber-600 text-sm md:text-base">₹{trade.total_amount?.toLocaleString('en-IN')}</p>
                     </div>
-                    <div>
+                    <div className="col-span-2 md:col-span-1">
                       <p className="text-xs text-gray-500 uppercase">Investment Date</p>
-                      <p className="font-mono">{format(new Date(trade.investment_date), "MMM dd, yyyy")}</p>
+                      <p className="font-mono text-sm">{format(new Date(trade.investment_date), "MMM dd, yyyy")}</p>
                     </div>
                   </div>
 
-                  {(trade.payment_reference || trade.payment_notes) && (
+                  {(trade.payment_reference || trade.payment_notes || trade.payment_proof_filename) && (
                     <div className="bg-gray-50 p-3 rounded-md mb-4">
-                      <p className="text-xs text-gray-500 uppercase mb-1">Payment Details</p>
-                      {trade.payment_reference && (
-                        <p className="text-sm"><span className="text-gray-500">Reference:</span> {trade.payment_reference}</p>
-                      )}
-                      {trade.payment_notes && (
-                        <p className="text-sm"><span className="text-gray-500">Notes:</span> {trade.payment_notes}</p>
-                      )}
+                      <p className="text-xs text-gray-500 uppercase mb-2 font-medium">Payment Details</p>
+                      <div className="space-y-1 text-sm">
+                        {trade.payment_reference && (
+                          <p><span className="text-gray-500">Reference:</span> <span className="font-mono">{trade.payment_reference}</span></p>
+                        )}
+                        {trade.payment_proof_filename && (
+                          <p className="flex items-center gap-2">
+                            <FileImage className="h-4 w-4 text-green-600" />
+                            <span className="text-gray-500">Proof:</span> 
+                            <span className="text-green-700 truncate max-w-[200px]">{trade.payment_proof_filename}</span>
+                          </p>
+                        )}
+                        {trade.payment_notes && (
+                          <p><span className="text-gray-500">Notes:</span> {trade.payment_notes}</p>
+                        )}
+                      </div>
                     </div>
                   )}
 
