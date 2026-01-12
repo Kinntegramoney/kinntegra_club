@@ -173,6 +173,46 @@ Sub-broker View:
 }
 ```
 
+### clients
+```json
+{
+  "id": "uuid",
+  "name": "string",
+  "pan_number": "string (uppercase)",
+  "occupation": "string",
+  "date_of_birth": "YYYY-MM-DD",
+  "father_husband_name": "string",
+  "demat_account_no": "string",
+  "email": "string",
+  "mobile": "string",
+  "address_line1": "string",
+  "address_line2": "string",
+  "city": "string",
+  "state": "string",
+  "country": "string",
+  "pincode": "string",
+  "bank_name": "string",
+  "account_number": "string",
+  "branch": "string",
+  "ifsc_code": "string",
+  "nominee_name": "string",
+  "nominee_dob": "YYYY-MM-DD",
+  "nominee_mobile": "string",
+  "nominee_relationship": "string",
+  "linked_subbroker_id": "uuid | null",
+  "bond_allocations": [{
+    "bond_id": "uuid",
+    "bond_name": "string",
+    "units_blocked": "int",
+    "units_paid": "int",
+    "status": "blocked | partial_paid | fully_paid",
+    "allocated_at": "ISO datetime"
+  }],
+  "created_by": "broker user id",
+  "created_at": "ISO datetime"
+}
+```
+
 ## Test Credentials
 - **Broker**: PAN: `ABCDE1234F`, Password: `broker123`, PIN: `1234`
 - **Sub-broker**: PAN: `FGHIJ5678K`, Password: `subbroker123`, PIN: `5678`
