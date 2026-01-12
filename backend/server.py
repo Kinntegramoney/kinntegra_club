@@ -1400,21 +1400,83 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    if current_user['role'] != 'broker':
+    # Check if already approved by client - cannot modify
+    if cashflow.get('client_approved') and current_user['role'] != 'client':
+        raise HTTPException(status_code=400, detail="Cannot modify client-approved tags")
+    
+    if current_user['role'] == 'client':
+        # Client can only modify their own cashflows
+        if client.get('user_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    elif current_user['role'] != 'broker':
         if client.get('linked_subbroker_id') != current_user['id']:
             raise HTTPException(status_code=403, detail="Access denied")
     
-    # Update tag
+    # Update tag - reset approval status if broker/sub-broker modifies
+    update_data = {
+        "reinvestment_tag": update.reinvestment_tag,
+        "tagged_by": current_user['id'],
+        "tagged_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # If broker/sub-broker is tagging, set pending approval
+    if current_user['role'] in ['broker', 'sub_broker'] and update.reinvestment_tag not in ['not_tagged']:
+        update_data['client_approved'] = False
+        update_data['approval_status'] = 'pending'
+    
     await db.holding_cashflows.update_one(
         {"id": cashflow_id},
-        {"$set": {
-            "reinvestment_tag": update.reinvestment_tag,
-            "tagged_by": current_user['id'],
-            "tagged_at": datetime.now(timezone.utc).isoformat()
-        }}
+        {"$set": update_data}
     )
     
     return {"message": "Tag updated successfully", "reinvestment_tag": update.reinvestment_tag}
+
+
+@api_router.put("/reinvestment/approve/{cashflow_id}")
+async def approve_reinvestment_tag(cashflow_id: str, approval: ReinvestmentApproval, current_user: dict = Depends(get_current_user)):
+    """Client approves or rejects reinvestment tag"""
+    
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can approve reinvestment tags")
+    
+    # Find the cashflow
+    cashflow = await db.holding_cashflows.find_one({"id": cashflow_id})
+    if not cashflow:
+        raise HTTPException(status_code=404, detail="Cashflow not found")
+    
+    # Verify this is client's own cashflow
+    client = await db.clients.find_one({"id": cashflow['client_id']})
+    if not client or client.get('user_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Update approval status
+    await db.holding_cashflows.update_one(
+        {"id": cashflow_id},
+        {"$set": {
+            "client_approved": approval.approved,
+            "approval_status": "approved" if approval.approved else "rejected",
+            "approval_notes": approval.notes,
+            "approved_by": current_user['id'],
+            "approved_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Create notification for broker/sub-broker
+    notification = {
+        "id": str(uuid.uuid4()),
+        "type": "reinvestment_approval",
+        "client_id": client['id'],
+        "client_name": client['name'],
+        "cashflow_id": cashflow_id,
+        "approved": approval.approved,
+        "notes": approval.notes,
+        "for_user_id": client.get('linked_subbroker_id') or client.get('created_by'),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "read": False
+    }
+    await db.notifications.insert_one(notification)
+    
+    return {"message": f"Tag {'approved' if approval.approved else 'rejected'} successfully"}
 
 
 # ==================== END REINVESTMENT TAGGING ====================
