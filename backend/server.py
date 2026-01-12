@@ -141,13 +141,38 @@ class SecondaryMarketCalculation(BaseModel):
 
 class SecondaryMarketResult(BaseModel):
     investment_date: str
-    price_to_pay: float
+    units_requested: int
+    price_per_unit: float
+    total_price: float
     remaining_principal: float
     remaining_interest: float
     total_inflows: float
     secondary_buyer_irr: float
     days_to_maturity: int
     units_available: int
+    tds_rate: float = 10.0  # TDS percentage on interest
+
+
+class CashflowItem(BaseModel):
+    date: str
+    month: str
+    principal_payment: float
+    interest_payment: float
+    tds_deducted: float
+    net_interest: float
+    total_net_payment: float
+
+
+class CashflowDownload(BaseModel):
+    bond_name: str
+    investment_date: str
+    units: int
+    price_paid: float
+    cashflows: List[CashflowItem]
+    total_principal: float
+    total_interest: float
+    total_tds: float
+    total_net_received: float
 
 
 class BondWithCalculations(BaseModel):
