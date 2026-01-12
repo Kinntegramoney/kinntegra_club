@@ -1288,6 +1288,133 @@ async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, curren
     return {"message": "Cashflow updated successfully", "is_repaid": update.is_repaid}
 
 
+# ==================== REINVESTMENT TAGGING ====================
+
+class ReinvestmentTagUpdate(BaseModel):
+    reinvestment_tag: str  # "not_tagged", "principal", "interest", "net_amount"
+
+
+@api_router.get("/reinvestment/upcoming")
+async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_user)):
+    """Get upcoming repayments for the next 6 months for reinvestment tagging"""
+    
+    # Get all cashflows that are not repaid and in the next 6 months
+    today = datetime.now(timezone.utc).date()
+    six_months_later = today + timedelta(days=180)
+    
+    # Get all holding cashflows
+    cashflows = await db.holding_cashflows.find({
+        "is_repaid": {"$ne": True}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Filter by date and group by month
+    upcoming = []
+    for cf in cashflows:
+        try:
+            cf_date = datetime.fromisoformat(cf['date']).date()
+            if today <= cf_date <= six_months_later:
+                # Get client details
+                client = await db.clients.find_one({"id": cf['client_id']}, {"_id": 0, "name": 1, "pan_number": 1})
+                
+                # Get trade details
+                trade = await db.trades.find_one({"id": cf['trade_id']}, {"_id": 0})
+                
+                # Check access based on role
+                if current_user['role'] == 'broker':
+                    if client and trade:
+                        pass  # Brokers can see all
+                else:
+                    # Sub-broker can only see their linked clients
+                    if not client or client.get('linked_subbroker_id') != current_user['id']:
+                        continue
+                
+                upcoming.append({
+                    "cashflow_id": cf['id'],
+                    "client_id": cf['client_id'],
+                    "client_name": client['name'] if client else 'Unknown',
+                    "client_pan": client.get('pan_number', '') if client else '',
+                    "bond_id": cf['bond_id'],
+                    "bond_name": cf.get('bond_name', ''),
+                    "trade_id": cf['trade_id'],
+                    "amount_invested": trade.get('total_amount', 0) if trade else 0,
+                    "units": trade.get('units', 0) if trade else 0,
+                    "expected_date": cf['date'],
+                    "principal_net": cf.get('principal_component', 0),
+                    "interest_net": cf.get('interest_component', 0) - cf.get('tds_amount', 0),
+                    "net_amount": cf.get('net_amount', 0),
+                    "reinvestment_tag": cf.get('reinvestment_tag', 'not_tagged'),
+                    "month": cf_date.strftime("%B %Y")
+                })
+        except (ValueError, TypeError):
+            continue
+    
+    # Sort by date
+    upcoming.sort(key=lambda x: x['expected_date'])
+    
+    # Group by month
+    months = {}
+    for item in upcoming:
+        month = item['month']
+        if month not in months:
+            months[month] = []
+        months[month].append(item)
+    
+    # Generate next 6 months list
+    month_list = []
+    current_date = today.replace(day=1)
+    for i in range(6):
+        month_name = current_date.strftime("%B %Y")
+        month_list.append({
+            "name": month_name,
+            "items": months.get(month_name, []),
+            "count": len(months.get(month_name, []))
+        })
+        # Move to next month
+        if current_date.month == 12:
+            current_date = current_date.replace(year=current_date.year + 1, month=1)
+        else:
+            current_date = current_date.replace(month=current_date.month + 1)
+    
+    return {
+        "months": month_list,
+        "total_upcoming": len(upcoming)
+    }
+
+
+@api_router.put("/reinvestment/tag/{cashflow_id}")
+async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdate, current_user: dict = Depends(get_current_user)):
+    """Update reinvestment tag for a cashflow"""
+    
+    # Find the cashflow
+    cashflow = await db.holding_cashflows.find_one({"id": cashflow_id})
+    if not cashflow:
+        raise HTTPException(status_code=404, detail="Cashflow not found")
+    
+    # Verify access
+    client = await db.clients.find_one({"id": cashflow['client_id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if current_user['role'] != 'broker':
+        if client.get('linked_subbroker_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Update tag
+    await db.holding_cashflows.update_one(
+        {"id": cashflow_id},
+        {"$set": {
+            "reinvestment_tag": update.reinvestment_tag,
+            "tagged_by": current_user['id'],
+            "tagged_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Tag updated successfully", "reinvestment_tag": update.reinvestment_tag}
+
+
+# ==================== END REINVESTMENT TAGGING ====================
+
+
 @api_router.get("/holdings/client/{client_id}/download")
 async def download_client_holdings(client_id: str, current_user: dict = Depends(get_current_user)):
     """Generate Excel file for client holdings download with multiple sheets"""
