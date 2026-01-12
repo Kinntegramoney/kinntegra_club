@@ -159,7 +159,7 @@ export default function BondDetails() {
       });
       
       toast.success("Bond deleted successfully");
-      navigate("/broker/dashboard");
+      navigate("/broker/admin/bonds");
     } catch (error) {
       console.error("Error deleting bond:", error);
       toast.error(error.response?.data?.detail || "Failed to delete bond");
