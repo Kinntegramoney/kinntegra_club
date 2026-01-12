@@ -225,18 +225,37 @@ export default function BondDetails() {
       {/* Header */}
       <div className="border-b border-border bg-primary text-primary-foreground">
         <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center gap-3">
-            <Button
-              data-testid="back-to-dashboard-from-details"
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/")}
-              className="text-primary-foreground hover:bg-primary-foreground/10"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <Calculator className="h-8 w-8" />
-            <h1 className="text-2xl font-bold tracking-tight" data-testid="bond-details-title">{bondData.name}</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                data-testid="back-to-dashboard-from-details"
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="text-primary-foreground hover:bg-primary-foreground/10"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Calculator className="h-8 w-8" />
+              <h1 className="text-2xl font-bold tracking-tight" data-testid="bond-details-title">{bondData.name}</h1>
+            </div>
+            {/* Check if current user is a broker */}
+            {(() => {
+              const user = localStorage.getItem("user");
+              const userData = user ? JSON.parse(user) : null;
+              return userData?.role === "broker" && (
+                <Button
+                  data-testid="delete-bond-btn"
+                  onClick={handleDeleteBond}
+                  disabled={deleting}
+                  variant="destructive"
+                  size="sm"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleting ? "Deleting..." : "Delete Bond"}
+                </Button>
+              );
+            })()}
           </div>
         </div>
       </div>
