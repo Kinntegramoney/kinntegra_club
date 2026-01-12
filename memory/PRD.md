@@ -100,6 +100,19 @@ Sub-broker View:
 - `POST /api/partners` - Create partner (broker only)
 - `GET /api/partners` - List partners (broker only)
 - `DELETE /api/partners/{id}` - Delete partner (broker only)
+- `PUT /api/partners/{id}` - Update partner (broker only)
+
+### Clients
+- `POST /api/clients` - Create client (broker only)
+- `GET /api/clients` - List clients (broker sees all, sub-broker sees linked only)
+- `GET /api/clients/{id}` - Get client details
+- `PUT /api/clients/{id}` - Update client (broker only)
+- `DELETE /api/clients/{id}` - Delete client (broker only)
+- `POST /api/clients/{id}/link-subbroker` - Link client to sub-broker
+- `POST /api/clients/{id}/unlink-subbroker` - Unlink client from sub-broker
+- `POST /api/clients/{id}/allocate-bond` - Allocate bond to client (units blocked/paid)
+- `PUT /api/clients/{id}/allocations/{bond_id}` - Update allocation (units paid)
+- `DELETE /api/clients/{id}/allocations/{bond_id}` - Remove allocation
 
 ## Database Schema
 
