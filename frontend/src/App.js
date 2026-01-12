@@ -83,6 +83,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/broker/trades" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <TradeVerification />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Sub-Broker Routes */}
           <Route 
