@@ -71,6 +71,28 @@ export default function BondDetails() {
     }
   };
 
+  const recordSale = async () => {
+    if (saleUnits < 1) {
+      toast.error("Please enter a valid number of units");
+      return;
+    }
+
+    setRecordingSale(true);
+    try {
+      const response = await axios.post(`${API}/bonds/${id}/record-sale`, {
+        units: saleUnits
+      });
+      toast.success(response.data.message);
+      fetchBond(); // Refresh bond data
+      setSaleUnits(1);
+    } catch (error) {
+      console.error("Error recording sale:", error);
+      toast.error(error.response?.data?.detail || "Failed to record sale");
+    } finally {
+      setRecordingSale(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center" data-testid="loading-bond-details">
