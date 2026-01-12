@@ -1082,6 +1082,33 @@ class BondCreate(BaseModel):
         return v
 
 
+def calculate_bond_status(bond: dict) -> str:
+    """
+    Calculate bond status dynamically based on units sold and end date.
+    Returns: 'available', 'funded', or 'closed'
+    """
+    total_units = bond.get('total_units', 1)
+    units_sold = bond.get('units_sold', 0)
+    end_date_str = bond.get('end_date')
+    
+    # Check if bond has passed its end date -> Closed
+    if end_date_str:
+        try:
+            end_date = datetime.fromisoformat(end_date_str).date()
+            today = datetime.now(timezone.utc).date()
+            if today > end_date:
+                return 'closed'
+        except (ValueError, TypeError):
+            pass
+    
+    # Check if all units are sold -> Funded
+    if units_sold >= total_units:
+        return 'funded'
+    
+    # Otherwise -> Available
+    return 'available'
+
+
 class Bond(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
