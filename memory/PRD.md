@@ -284,6 +284,18 @@ Sub-broker View:
 - [x] Frontend updated to use backend status
 - [x] Obsolete files cleanup (BrokerDashboard.jsx, SubBrokerDashboard.jsx, Partners.jsx)
 
+### Phase 8: Holdings Module (January 12, 2026)
+- [x] New "Holdings" menu item in sidebar for both broker and sub-broker
+- [x] Client list panel with search functionality
+- [x] Holdings overview showing Investment, Repaid (Net), and Upcoming (Expected)
+- [x] Investment by Asset Class donut chart (Corporate Debt)
+- [x] Holding Report table with scheme details, invested amount, principal, interest, TDS, net repaid, status
+- [x] Cashflow schedule generated from trade's investment date
+- [x] Future repayments captured for each client based on bond payment schedules
+- [x] Manual "Mark Repaid" / "Undo" functionality for both broker and sub-broker
+- [x] CSV download for client holdings report
+- [x] Status filters (All, Active, Fully repaid)
+
 ## Testing Status
 - Backend: 62/62 tests passing (100%) - includes 20 new trade workflow tests
 - Frontend: All UI flows verified
