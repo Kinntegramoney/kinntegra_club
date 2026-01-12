@@ -145,9 +145,8 @@ class SecondaryMarketResult(BaseModel):
     remaining_interest: float
     total_inflows: float
     secondary_buyer_irr: float
-    broker_margin: float
     days_to_maturity: int
-    primary_buyer_proceeds: float
+    units_available: int
 
 
 class BondWithCalculations(BaseModel):
