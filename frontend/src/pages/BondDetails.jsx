@@ -327,12 +327,12 @@ export default function BondDetails() {
               <Calculator className="h-8 w-8" />
               <h1 className="text-2xl font-bold tracking-tight" data-testid="bond-details-title">{bondData.name}</h1>
             </div>
-            {/* Check if current user is a broker and bond is not funded */}
+            {/* Check if current user is a broker and bond is not funded or closed */}
             {(() => {
               const user = localStorage.getItem("user");
               const userData = user ? JSON.parse(user) : null;
-              // Don't show delete button if bond is fully funded
-              if (isFullyFunded) return null;
+              // Don't show delete button if bond is fully funded or closed
+              if (isCalculatorDisabled) return null;
               return userData?.role === "broker" && (
                 <Button
                   data-testid="delete-bond-btn"
