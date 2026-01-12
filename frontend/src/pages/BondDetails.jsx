@@ -441,20 +441,20 @@ export default function BondDetails() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Remaining Principal</p>
-                    <p className="text-lg font-mono font-medium">₹{calculation.remaining_principal.toLocaleString('en-IN')}</p>
+                    <p className="text-lg font-mono font-medium">₹{(calculation.remaining_principal * calculation.units_requested).toLocaleString('en-IN')}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Remaining Interest</p>
-                    <p className="text-lg font-mono font-medium">₹{calculation.remaining_interest.toLocaleString('en-IN')}</p>
+                    <p className="text-lg font-mono font-medium">₹{(calculation.remaining_interest * calculation.units_requested).toLocaleString('en-IN')}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">TDS @ {calculation.tds_rate}%</p>
-                    <p className="text-lg font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.tds_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-lg font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.units_requested * calculation.tds_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Net Receivable</p>
                     <p className="text-lg font-mono font-medium text-success">
-                      ₹{(calculation.remaining_principal + calculation.remaining_interest * (1 - calculation.tds_rate / 100)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ₹{((calculation.remaining_principal * calculation.units_requested) + (calculation.remaining_interest * calculation.units_requested * (1 - calculation.tds_rate / 100))).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
@@ -466,9 +466,9 @@ export default function BondDetails() {
                   </h3>
                   <div className="space-y-1 text-sm">
                     <p>Total investment: <span className="font-mono font-medium text-accent">₹{calculation.total_price.toLocaleString('en-IN')}</span> for <span className="font-mono font-medium">{calculation.units_requested}</span> unit(s) on {format(new Date(calculation.investment_date), "MMM dd, yyyy")}</p>
-                    <p>Total future inflows: <span className="font-mono font-medium">₹{calculation.total_inflows.toLocaleString('en-IN')}</span> (before TDS)</p>
-                    <p>TDS deduction: <span className="font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.tds_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> (10% on interest)</p>
-                    <p>Net amount receivable: <span className="font-mono font-medium text-success">₹{(calculation.remaining_principal + calculation.remaining_interest * (1 - calculation.tds_rate / 100)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+                    <p>Total future inflows: <span className="font-mono font-medium">₹{(calculation.total_inflows * calculation.units_requested).toLocaleString('en-IN')}</span> (before TDS)</p>
+                    <p>TDS deduction: <span className="font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.units_requested * calculation.tds_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> (10% on interest)</p>
+                    <p>Net amount receivable: <span className="font-mono font-medium text-success">₹{((calculation.remaining_principal * calculation.units_requested) + (calculation.remaining_interest * calculation.units_requested * (1 - calculation.tds_rate / 100))).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
                     <p>Guaranteed return: <span className="font-mono font-medium text-accent">{calculation.secondary_buyer_irr}%</span> IRR</p>
                   </div>
                   <div className="mt-4">
