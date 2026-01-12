@@ -377,12 +377,12 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
                 <Users className="h-5 w-5 text-amber-600" />
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Link to Sub-Broker (Optional)</h3>
               </div>
-              <Select value={formData.linked_subbroker_id} onValueChange={(v) => updateField('linked_subbroker_id', v)}>
+              <Select value={formData.linked_subbroker_id || "none"} onValueChange={(v) => updateField('linked_subbroker_id', v === "none" ? "" : v)}>
                 <SelectTrigger data-testid="client-subbroker-link">
                   <SelectValue placeholder="Select Sub-Broker (Optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {subbrokers.map(sb => (
                     <SelectItem key={sb.id} value={sb.id}>{sb.name} ({sb.partner_code})</SelectItem>
                   ))}
