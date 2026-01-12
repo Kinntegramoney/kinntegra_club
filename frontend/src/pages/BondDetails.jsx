@@ -23,6 +23,7 @@ export default function BondDetails() {
   const [approximateAmount, setApproximateAmount] = useState("");
   const [selectedUnits, setSelectedUnits] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchBond();
