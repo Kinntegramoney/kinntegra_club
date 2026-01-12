@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "@/pages/Login";
 import BrokerDashboard from "@/pages/BrokerDashboard";
 import SubBrokerDashboard from "@/pages/SubBrokerDashboard";
+import Partners from "@/pages/Partners";
 import CreateBond from "@/pages/CreateBond";
 import BondDetails from "@/pages/BondDetails";
 import { Toaster } from "@/components/ui/sonner";
@@ -38,6 +39,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
                 <BrokerDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/partners" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <Partners />
               </ProtectedRoute>
             } 
           />
