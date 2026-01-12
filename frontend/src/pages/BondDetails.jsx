@@ -600,17 +600,18 @@ export default function BondDetails() {
                 </div>
 
                 {/* Book Units Section */}
-                <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <div className="mt-6 p-4 md:p-6 bg-amber-50 border border-amber-200 rounded-md">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2 text-base md:text-lg">
                     <ShoppingCart className="h-5 w-5 text-amber-600" />
                     Book Units for Client
                   </h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-4">
+                    {/* Client Selection */}
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Select Client *</Label>
                       <Select value={selectedClient} onValueChange={setSelectedClient}>
-                        <SelectTrigger data-testid="select-client-booking">
+                        <SelectTrigger data-testid="select-client-booking" className="w-full">
                           <SelectValue placeholder="Choose a client..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -626,9 +627,10 @@ export default function BondDetails() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
+                    {/* Payment Reference */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Payment Reference</Label>
+                      <Label className="text-sm font-medium">Payment Reference / UTR</Label>
                       <Input
                         value={paymentReference}
                         onChange={(e) => setPaymentReference(e.target.value)}
@@ -636,57 +638,102 @@ export default function BondDetails() {
                         data-testid="payment-reference-input"
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-2 mb-4">
-                    <Label className="text-sm font-medium">Payment Notes</Label>
-                    <Textarea
-                      value={paymentNotes}
-                      onChange={(e) => setPaymentNotes(e.target.value)}
-                      placeholder="Any additional notes about the payment..."
-                      rows={2}
-                      data-testid="payment-notes-input"
-                    />
-                  </div>
-
-                  <div className="bg-white p-3 rounded-md mb-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <p className="text-gray-500">Units</p>
-                        <p className="font-mono font-bold">{selectedUnits}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Price/Unit</p>
-                        <p className="font-mono font-bold">₹{calculation.price_per_unit.toLocaleString('en-IN')}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Total Amount</p>
-                        <p className="font-mono font-bold text-amber-600">₹{calculation.total_price.toLocaleString('en-IN')}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Status</p>
-                        <p className="font-medium text-amber-600">
-                          {user?.role === 'broker' ? 'Auto-Approved' : 'Pending Approval'}
-                        </p>
+                    {/* Payment Proof Upload */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Payment Proof (Screenshot)</Label>
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => setPaymentProof(e.target.files?.[0] || null)}
+                          className="hidden"
+                          id="payment-proof-upload"
+                          data-testid="payment-proof-upload"
+                        />
+                        <label 
+                          htmlFor="payment-proof-upload" 
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-amber-300 rounded-lg cursor-pointer hover:border-amber-500 hover:bg-amber-100/50 transition-colors"
+                        >
+                          {paymentProof ? (
+                            <>
+                              <FileCheck className="h-5 w-5 text-green-600" />
+                              <span className="text-sm text-green-700 truncate max-w-[200px]">{paymentProof.name}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-5 w-5 text-amber-500" />
+                              <span className="text-sm text-amber-700">Upload payment screenshot</span>
+                            </>
+                          )}
+                        </label>
+                        {paymentProof && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setPaymentProof(null)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </Button>
+                        )}
                       </div>
                     </div>
-                  </div>
 
-                  <Button
-                    onClick={bookUnits}
-                    disabled={bookingUnits || !selectedClient || clients.length === 0}
-                    className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-                    data-testid="book-units-btn"
-                  >
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    {bookingUnits ? "Booking..." : user?.role === 'broker' ? "Book & Approve Units" : "Submit for Approval"}
-                  </Button>
-                  
-                  {user?.role !== 'broker' && (
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      Trade will be submitted for broker verification before units are allocated
-                    </p>
-                  )}
+                    {/* Payment Notes */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Payment Notes</Label>
+                      <Textarea
+                        value={paymentNotes}
+                        onChange={(e) => setPaymentNotes(e.target.value)}
+                        placeholder="Any additional notes about the payment..."
+                        rows={2}
+                        data-testid="payment-notes-input"
+                      />
+                    </div>
+
+                    {/* Order Summary */}
+                    <div className="bg-white p-3 md:p-4 rounded-md border border-amber-200">
+                      <p className="text-xs text-gray-500 uppercase mb-2 font-medium">Order Summary</p>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-gray-500 text-xs">Units</p>
+                          <p className="font-mono font-bold text-lg">{selectedUnits}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs">Price/Unit</p>
+                          <p className="font-mono font-bold text-sm md:text-base">₹{calculation.price_per_unit.toLocaleString('en-IN')}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs">Total Amount</p>
+                          <p className="font-mono font-bold text-amber-600 text-lg">₹{calculation.total_price.toLocaleString('en-IN')}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs">Status</p>
+                          <p className={`font-medium text-sm ${user?.role === 'broker' ? 'text-green-600' : 'text-amber-600'}`}>
+                            {user?.role === 'broker' ? 'Auto-Approved' : 'Pending Approval'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <Button
+                      onClick={bookUnits}
+                      disabled={bookingUnits || !selectedClient || clients.length === 0}
+                      className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3"
+                      data-testid="book-units-btn"
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      {bookingUnits ? "Booking..." : user?.role === 'broker' ? "Book & Approve Units" : "Submit for Approval"}
+                    </Button>
+                    
+                    {user?.role !== 'broker' && (
+                      <p className="text-xs text-gray-500 text-center">
+                        Trade will be submitted for broker verification before units are allocated
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
