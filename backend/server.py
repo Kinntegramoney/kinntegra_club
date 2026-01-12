@@ -1125,6 +1125,7 @@ class Bond(BaseModel):
     interest_payments: List[InterestPayment]
     total_units: int = 1
     units_sold: int = 0
+    status: Optional[str] = None  # Computed: 'available', 'funded', 'closed'
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
