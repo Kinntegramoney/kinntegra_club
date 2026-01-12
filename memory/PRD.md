@@ -240,19 +240,29 @@ Sub-broker View:
 - [x] Admin Sub Brokers page
 - [x] Sub-broker dedicated view
 - [x] Delete partner API endpoint
+- [x] Bond edit functionality
+- [x] Sub-broker edit functionality
+
+### Phase 4: Client Management Module
+- [x] Client CRUD (Create, Read, Update, Delete)
+- [x] Client form with all sections (Personal, Address, Bank, Nominee)
+- [x] Link/Unlink clients to sub-brokers
+- [x] Bond allocation to clients (units blocked/paid)
+- [x] Allocation status tracking (blocked → partial_paid → fully_paid)
+- [x] Search clients functionality
+- [x] Admin > Create Client menu in sidebar
 
 ## Testing Status
-- Backend: 25/25 tests passing (100%)
+- Backend: 42/42 tests passing (100%)
 - Frontend: All UI flows verified
-- Test file: `/app/tests/test_ncd_cashflow.py`
+- Test files: `/app/tests/test_ncd_cashflow.py`, `/app/tests/test_client_management.py`
 
 ## Backlog / Future Enhancements
 
 ### P1 - High Priority
-- [ ] Bond edit functionality in Admin Bonds
-- [ ] Sub-broker edit functionality
 - [ ] Bond status field in database (explicit status vs calculated)
-- [ ] Partner/Sub-broker profile page
+- [ ] Client edit page with full details view
+- [ ] Sub-broker sees their linked clients' allocations
 
 ### P2 - Medium Priority
 - [ ] Email notifications for new bonds
