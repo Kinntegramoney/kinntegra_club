@@ -323,7 +323,7 @@ export default function BondDetails() {
               <h2 className="text-xl font-semibold">Secondary Market Calculator</h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="space-y-2">
                 <Label htmlFor="investment_date">Investment Date</Label>
                 <Input
@@ -331,71 +331,88 @@ export default function BondDetails() {
                   id="investment_date"
                   type="date"
                   value={investmentDate}
-                  onChange={(e) => setInvestmentDate(e.target.value)}
+                  onChange={(e) => {
+                    setInvestmentDate(e.target.value);
+                    setCalculation(null);
+                    setSelectedUnits(null);
+                  }}
                   min={bondData.start_date}
                   max={bondData.end_date}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="purchase_units">Units to Purchase</Label>
-                <Input
-                  data-testid="purchase-units-input"
-                  id="purchase_units"
-                  type="number"
-                  min="1"
-                  max={bondData.total_units - bondData.units_sold}
-                  value={purchaseUnits}
-                  onChange={(e) => setPurchaseUnits(parseInt(e.target.value) || 1)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="approximate_amount">Approximate Amount (₹)</Label>
+                <Label htmlFor="approximate_amount">Approximate Investment (₹)</Label>
                 <Input
                   data-testid="approximate-amount-input"
                   id="approximate_amount"
                   type="number"
                   value={approximateAmount}
-                  onChange={(e) => handleApproximateAmountChange(e.target.value)}
+                  onChange={(e) => setApproximateAmount(e.target.value)}
                   placeholder="e.g., 1000000"
                 />
               </div>
               <div className="flex items-end">
                 <Button
-                  data-testid="calculate-price-btn"
-                  onClick={calculatePrice}
-                  disabled={calculating}
+                  data-testid="check-bounds-btn"
+                  onClick={() => calculatePrice(1)}
+                  disabled={calculating || !approximateAmount || !investmentDate}
                   className="btn-scale w-full bg-accent text-white hover:bg-accent/90"
                 >
                   <Calculator className="h-4 w-4 mr-2" />
-                  {calculating ? "Calculating..." : "Calculate"}
+                  {calculating ? "Calculating..." : "Check Bounds"}
                 </Button>
               </div>
             </div>
 
-            {/* Unit bounds display */}
+            {/* Unit bounds display with selection */}
             {approximateAmount && calculation && calculation.price_per_unit > 0 && (
-              <div className="mb-4 p-3 bg-white border border-border rounded-md">
-                <p className="text-sm text-muted-foreground mb-2">For ₹{parseFloat(approximateAmount).toLocaleString()}</p>
-                <div className="flex gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Lower Bound: </span>
-                    <span className="font-mono font-medium" data-testid="lower-bound-units">
-                      {Math.floor(parseFloat(approximateAmount) / calculation.price_per_unit)} units
-                    </span>
-                    <span className="text-muted-foreground ml-1">
-                      (₹{(Math.floor(parseFloat(approximateAmount) / calculation.price_per_unit) * calculation.price_per_unit).toLocaleString()})
-                    </span>
+              <div className="mb-4 p-4 bg-white border border-border rounded-md">
+                <p className="text-sm font-medium mb-3">For approximate amount of ₹{parseFloat(approximateAmount).toLocaleString('en-IN')}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="p-3 border border-border rounded-md hover:border-accent transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-muted-foreground">Lower Bound</span>
+                      <Button
+                        data-testid="select-lower-bound-btn"
+                        size="sm"
+                        onClick={() => calculatePrice(getLowerBoundUnits())}
+                        disabled={calculating || getLowerBoundUnits() < 1 || getLowerBoundUnits() > calculation.units_available}
+                        className="btn-scale"
+                      >
+                        Select
+                      </Button>
+                    </div>
+                    <p className="text-lg font-mono font-bold" data-testid="lower-bound-units">
+                      {getLowerBoundUnits()} unit{getLowerBoundUnits() !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-sm text-muted-foreground font-mono">
+                      ₹{(getLowerBoundUnits() * calculation.price_per_unit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Upper Bound: </span>
-                    <span className="font-mono font-medium" data-testid="upper-bound-units">
-                      {Math.ceil(parseFloat(approximateAmount) / calculation.price_per_unit)} units
-                    </span>
-                    <span className="text-muted-foreground ml-1">
-                      (₹{(Math.ceil(parseFloat(approximateAmount) / calculation.price_per_unit) * calculation.price_per_unit).toLocaleString()})
-                    </span>
+                  <div className="p-3 border border-border rounded-md hover:border-accent transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-muted-foreground">Upper Bound</span>
+                      <Button
+                        data-testid="select-upper-bound-btn"
+                        size="sm"
+                        onClick={() => calculatePrice(getUpperBoundUnits())}
+                        disabled={calculating || getUpperBoundUnits() < 1 || getUpperBoundUnits() > calculation.units_available}
+                        className="btn-scale"
+                      >
+                        Select
+                      </Button>
+                    </div>
+                    <p className="text-lg font-mono font-bold" data-testid="upper-bound-units">
+                      {getUpperBoundUnits()} unit{getUpperBoundUnits() !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-sm text-muted-foreground font-mono">
+                      ₹{(getUpperBoundUnits() * calculation.price_per_unit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Select lower or upper bound to calculate exact price and cashflow
+                </p>
               </div>
             )}
 
