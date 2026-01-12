@@ -352,6 +352,9 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
     remaining_principal = bond['principal_amount'] * remaining_principal_pct / 100
     remaining_interest = total_inflows - remaining_principal
     
+    # Calculate units available
+    units_available = bond.get('total_units', 1) - bond.get('units_sold', 0)
+    
     return {
         "investment_date": calculation.investment_date,
         "price_to_pay": round(price_to_pay, 2),
@@ -359,9 +362,8 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
         "remaining_interest": round(remaining_interest, 2),
         "total_inflows": round(total_inflows, 2),
         "secondary_buyer_irr": bond['secondary_irr'],
-        "broker_margin": round(broker_margin, 2),
         "days_to_maturity": days_to_maturity,
-        "primary_buyer_proceeds": round(primary_sale_price, 2)
+        "units_available": units_available
     }
 
 
