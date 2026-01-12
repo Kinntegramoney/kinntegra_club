@@ -64,24 +64,10 @@ export default function SubBrokerOpportunities() {
     }
   };
 
-  // Categorize bonds
-  const availableBonds = bonds.filter(b => {
-    const unitsSold = b.units_sold || 0;
-    const totalUnits = b.total_units || 1;
-    return unitsSold < totalUnits;
-  });
-
-  const fundedBonds = bonds.filter(b => {
-    const unitsSold = b.units_sold || 0;
-    const totalUnits = b.total_units || 1;
-    return unitsSold >= totalUnits && new Date(b.end_date) > new Date();
-  });
-
-  const closedBonds = bonds.filter(b => {
-    const unitsSold = b.units_sold || 0;
-    const totalUnits = b.total_units || 1;
-    return unitsSold >= totalUnits && new Date(b.end_date) <= new Date();
-  });
+  // Categorize bonds using backend-calculated status
+  const availableBonds = bonds.filter(b => b.status === 'available');
+  const fundedBonds = bonds.filter(b => b.status === 'funded');
+  const closedBonds = bonds.filter(b => b.status === 'closed');
 
   const BondCard = ({ bond, status }) => {
     const unitsAvailable = (bond.total_units || 1) - (bond.units_sold || 0);
