@@ -262,6 +262,12 @@ export default function BondDetails() {
   }
 
   const { bond: bondData, total_cashflows_primary, calculated_primary_irr } = bond;
+  
+  // Calculate if bond is fully funded
+  const totalUnits = bondData.total_units || 1;
+  const unitsSold = bondData.units_sold || 0;
+  const unitsAvailable = totalUnits - unitsSold;
+  const isFullyFunded = unitsAvailable <= 0;
 
   // Prepare chart data
   const chartData = [];
