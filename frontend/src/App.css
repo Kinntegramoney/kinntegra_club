@@ -1,34 +1,85 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Public+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+* {
+  font-family: 'Public Sans', sans-serif;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Manrope', sans-serif;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.font-mono {
+  font-family: 'JetBrains Mono', monospace !important;
 }
 
-.App-link {
-    color: #61dafb;
+.metric-card {
+  background: white;
+  border: 1px solid #E2E8F0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  transition: border-color 0.2s;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.metric-card:hover {
+  border-color: rgba(37, 99, 235, 0.5);
+}
+
+.data-grid th {
+  font-weight: 500;
+  color: #64748b;
+  text-align: left;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.data-grid td {
+  font-family: 'JetBrains Mono', monospace;
+  padding: 0.5rem;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.data-grid tr:last-child td {
+  border-bottom: none;
+}
+
+.sidebar {
+  background: #F8F9FA;
+  min-height: 100vh;
+  border-right: 1px solid #E2E8F0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  border-radius: 0.375rem;
+}
+
+.nav-item:hover {
+  background-color: #E2E8F0;
+}
+
+.nav-item.active {
+  background-color: #0F172A;
+  color: white;
+}
+
+input[type="number"],
+input[type="date"],
+input[type="text"],
+select {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.btn-scale {
+  transition: transform 0.15s, background-color 0.2s;
+}
+
+.btn-scale:active {
+  transform: scale(0.95);
 }
