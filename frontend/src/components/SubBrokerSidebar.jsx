@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { TrendingUp, LogOut, Menu, X } from "lucide-react";
+import { TrendingUp, LogOut, Menu, X, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function SubBrokerSidebar({ user }) {
@@ -49,6 +49,19 @@ export default function SubBrokerSidebar({ user }) {
         >
           <TrendingUp className="h-5 w-5 flex-shrink-0" />
           <span className="font-medium text-sm md:text-base">Opportunities</span>
+        </button>
+        
+        <button
+          onClick={() => navigate("/sub-broker/holdings")}
+          className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
+            isActive("/sub-broker/holdings")
+              ? 'bg-amber-50 text-amber-700'
+              : 'text-gray-700 hover:bg-gray-50'
+          }`}
+          data-testid="nav-holdings"
+        >
+          <Wallet className="h-5 w-5 flex-shrink-0" />
+          <span className="font-medium text-sm md:text-base">Holdings</span>
         </button>
       </nav>
 
