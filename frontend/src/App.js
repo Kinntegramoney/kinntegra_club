@@ -6,6 +6,7 @@ import Opportunities from "@/pages/Opportunities";
 import AdminBonds from "@/pages/AdminBonds";
 import AdminSubBrokers from "@/pages/AdminSubBrokers";
 import AdminClients from "@/pages/AdminClients";
+import TradeVerification from "@/pages/TradeVerification";
 import SubBrokerOpportunities from "@/pages/SubBrokerOpportunities";
 import CreateBond from "@/pages/CreateBond";
 import BondDetails from "@/pages/BondDetails";
