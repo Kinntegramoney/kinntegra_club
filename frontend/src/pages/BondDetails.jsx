@@ -20,10 +20,8 @@ export default function BondDetails() {
   const [investmentDate, setInvestmentDate] = useState("");
   const [calculation, setCalculation] = useState(null);
   const [calculating, setCalculating] = useState(false);
-  const [saleUnits, setSaleUnits] = useState(1);
-  const [recordingSale, setRecordingSale] = useState(false);
-  const [purchaseUnits, setPurchaseUnits] = useState(1);
   const [approximateAmount, setApproximateAmount] = useState("");
+  const [selectedUnits, setSelectedUnits] = useState(null);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
