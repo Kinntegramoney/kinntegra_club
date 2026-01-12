@@ -116,9 +116,6 @@ export default function BondDetails() {
         // Redirect to sub-broker opportunities
         navigate("/sub-broker/opportunities");
       }
-      
-      // Refresh bond data to update available units
-      fetchBond();
     } catch (error) {
       console.error("Error booking units:", error);
       toast.error(error.response?.data?.detail || "Failed to book units");
