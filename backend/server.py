@@ -483,18 +483,56 @@ async def create_client(client_data: ClientCreate, current_user: dict = Depends(
     if existing:
         raise HTTPException(status_code=400, detail="Client with this PAN already exists")
     
+    # Check if user with same PAN already exists
+    existing_user = await db.users.find_one({"pan": client_data.pan_number.upper()})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User with this PAN already exists")
+    
     client_dict = client_data.model_dump()
-    client_dict['id'] = str(uuid.uuid4())
+    client_id = str(uuid.uuid4())
+    client_dict['id'] = client_id
     client_dict['pan_number'] = client_dict['pan_number'].upper()
     client_dict['created_by'] = current_user['id']
     client_dict['created_at'] = datetime.now(timezone.utc).isoformat()
-    client_dict['bond_allocations'] = []  # Track bonds allocated to this client
+    client_dict['bond_allocations'] = []
+    client_dict['verification_status'] = 'pending'  # pending, verified
+    client_dict['verification_token'] = str(uuid.uuid4())
     
+    # Generate default credentials (client will change on first login)
+    default_password = client_data.pan_number.upper()[-4:] + "1234"  # Last 4 chars of PAN + 1234
+    default_pin = "1234"
+    
+    # Create user account for client
+    user_id = str(uuid.uuid4())
+    user_data = {
+        "id": user_id,
+        "pan": client_data.pan_number.upper(),
+        "name": client_data.name,
+        "email": client_data.email,
+        "phone": client_data.mobile,
+        "password_hash": get_password_hash(default_password),
+        "pin_hash": get_password_hash(default_pin),
+        "role": "client",
+        "is_active": False,  # Activated after client verifies profile
+        "client_id": client_id,
+        "broker_id": current_user['id'],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Link user to client
+    client_dict['user_id'] = user_id
+    
+    await db.users.insert_one(user_data)
     await db.clients.insert_one(client_dict)
     
     # Return without _id
     if '_id' in client_dict:
         del client_dict['_id']
+    
+    # Include default credentials in response (for display to broker)
+    client_dict['default_password'] = default_password
+    client_dict['default_pin'] = default_pin
+    
     return client_dict
 
 
