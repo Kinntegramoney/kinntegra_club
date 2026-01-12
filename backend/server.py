@@ -363,7 +363,350 @@ async def update_partner(partner_id: str, partner_update: PartnerUpdate, current
     return updated_partner
 
 
-# Helper function for XIRR calculation
+# ==================== CLIENT MANAGEMENT ====================
+
+class ClientCreate(BaseModel):
+    # Personal Details
+    name: str
+    pan_number: str
+    occupation: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    father_husband_name: Optional[str] = None
+    demat_account_no: Optional[str] = None
+    email: str
+    mobile: str
+    
+    # Address Details
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: str = "India"
+    pincode: Optional[str] = None
+    
+    # Bank Details
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    branch: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    
+    # Nominee Details
+    nominee_name: Optional[str] = None
+    nominee_dob: Optional[str] = None
+    nominee_mobile: Optional[str] = None
+    nominee_relationship: Optional[str] = None
+    
+    # Linked Sub-broker (optional at creation)
+    linked_subbroker_id: Optional[str] = None
+
+
+class ClientUpdate(BaseModel):
+    name: Optional[str] = None
+    occupation: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    father_husband_name: Optional[str] = None
+    demat_account_no: Optional[str] = None
+    email: Optional[str] = None
+    mobile: Optional[str] = None
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    pincode: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    branch: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    nominee_name: Optional[str] = None
+    nominee_dob: Optional[str] = None
+    nominee_mobile: Optional[str] = None
+    nominee_relationship: Optional[str] = None
+    linked_subbroker_id: Optional[str] = None
+
+
+class ClientBondAllocation(BaseModel):
+    bond_id: str
+    units_blocked: int
+    units_paid: int = 0
+    status: str = "blocked"  # blocked, partial_paid, fully_paid
+
+
+@api_router.post("/clients")
+async def create_client(client_data: ClientCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new client (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can create clients")
+    
+    # Check if client with same PAN already exists
+    existing = await db.clients.find_one({"pan_number": client_data.pan_number.upper()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Client with this PAN already exists")
+    
+    client_dict = client_data.model_dump()
+    client_dict['id'] = str(uuid.uuid4())
+    client_dict['pan_number'] = client_dict['pan_number'].upper()
+    client_dict['created_by'] = current_user['id']
+    client_dict['created_at'] = datetime.now(timezone.utc).isoformat()
+    client_dict['bond_allocations'] = []  # Track bonds allocated to this client
+    
+    await db.clients.insert_one(client_dict)
+    
+    # Return without _id
+    del client_dict['_id'] if '_id' in client_dict else None
+    return client_dict
+
+
+@api_router.get("/clients")
+async def get_clients(current_user: dict = Depends(get_current_user)):
+    """Get all clients (brokers see all, sub-brokers see only linked clients)"""
+    if current_user['role'] == 'broker':
+        clients = await db.clients.find({"created_by": current_user['id']}, {"_id": 0}).to_list(1000)
+    else:
+        # Sub-brokers see only clients linked to them
+        clients = await db.clients.find({"linked_subbroker_id": current_user['id']}, {"_id": 0}).to_list(1000)
+    
+    return clients
+
+
+@api_router.get("/clients/{client_id}")
+async def get_client(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a specific client"""
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Check access
+    if current_user['role'] == 'broker':
+        if client.get('created_by') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    else:
+        if client.get('linked_subbroker_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    return client
+
+
+@api_router.put("/clients/{client_id}")
+async def update_client(client_id: str, client_update: ClientUpdate, current_user: dict = Depends(get_current_user)):
+    """Update a client (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can update clients")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    update_data = {k: v for k, v in client_update.model_dump().items() if v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    await db.clients.update_one({"id": client_id}, {"$set": update_data})
+    
+    updated_client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    return updated_client
+
+
+@api_router.delete("/clients/{client_id}")
+async def delete_client(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a client (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can delete clients")
+    
+    result = await db.clients.delete_one({"id": client_id, "created_by": current_user['id']})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    return {"message": "Client deleted successfully"}
+
+
+@api_router.post("/clients/{client_id}/link-subbroker")
+async def link_client_to_subbroker(client_id: str, subbroker_id: str, current_user: dict = Depends(get_current_user)):
+    """Link a client to a sub-broker (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can link clients")
+    
+    # Verify client exists and belongs to broker
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Verify sub-broker exists and belongs to broker
+    partner = await db.partners.find_one({"id": subbroker_id, "created_by": current_user['id']})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Sub-broker not found")
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"linked_subbroker_id": subbroker_id}}
+    )
+    
+    return {"message": f"Client linked to {partner['name']}"}
+
+
+@api_router.post("/clients/{client_id}/unlink-subbroker")
+async def unlink_client_from_subbroker(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Unlink a client from their sub-broker (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can unlink clients")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"linked_subbroker_id": None}}
+    )
+    
+    return {"message": "Client unlinked from sub-broker"}
+
+
+@api_router.post("/clients/{client_id}/allocate-bond")
+async def allocate_bond_to_client(client_id: str, allocation: ClientBondAllocation, current_user: dict = Depends(get_current_user)):
+    """Allocate a bond to a client with units blocked/paid"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can allocate bonds")
+    
+    # Verify client
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Verify bond and check available units
+    bond = await db.bonds.find_one({"id": allocation.bond_id})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    total_units = bond.get('total_units', 1)
+    units_sold = bond.get('units_sold', 0)
+    units_available = total_units - units_sold
+    
+    if allocation.units_blocked > units_available:
+        raise HTTPException(status_code=400, detail=f"Only {units_available} units available")
+    
+    # Check if client already has allocation for this bond
+    existing_allocations = client.get('bond_allocations', [])
+    for i, alloc in enumerate(existing_allocations):
+        if alloc['bond_id'] == allocation.bond_id:
+            # Update existing allocation
+            existing_allocations[i] = {
+                "bond_id": allocation.bond_id,
+                "bond_name": bond['name'],
+                "units_blocked": allocation.units_blocked,
+                "units_paid": allocation.units_paid,
+                "status": allocation.status,
+                "allocated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.clients.update_one(
+                {"id": client_id},
+                {"$set": {"bond_allocations": existing_allocations}}
+            )
+            return {"message": "Bond allocation updated"}
+    
+    # Add new allocation
+    new_allocation = {
+        "bond_id": allocation.bond_id,
+        "bond_name": bond['name'],
+        "units_blocked": allocation.units_blocked,
+        "units_paid": allocation.units_paid,
+        "status": allocation.status,
+        "allocated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$push": {"bond_allocations": new_allocation}}
+    )
+    
+    # Update bond's units_sold if units are paid
+    if allocation.units_paid > 0:
+        await db.bonds.update_one(
+            {"id": allocation.bond_id},
+            {"$inc": {"units_sold": allocation.units_paid}}
+        )
+    
+    return {"message": "Bond allocated to client", "allocation": new_allocation}
+
+
+@api_router.put("/clients/{client_id}/allocations/{bond_id}")
+async def update_bond_allocation(client_id: str, bond_id: str, units_paid: int, current_user: dict = Depends(get_current_user)):
+    """Update the paid units for a client's bond allocation"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can update allocations")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    allocations = client.get('bond_allocations', [])
+    found = False
+    old_units_paid = 0
+    
+    for i, alloc in enumerate(allocations):
+        if alloc['bond_id'] == bond_id:
+            old_units_paid = alloc.get('units_paid', 0)
+            allocations[i]['units_paid'] = units_paid
+            allocations[i]['status'] = 'fully_paid' if units_paid >= alloc['units_blocked'] else ('partial_paid' if units_paid > 0 else 'blocked')
+            found = True
+            break
+    
+    if not found:
+        raise HTTPException(status_code=404, detail="Bond allocation not found")
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"bond_allocations": allocations}}
+    )
+    
+    # Update bond's units_sold with the difference
+    units_diff = units_paid - old_units_paid
+    if units_diff != 0:
+        await db.bonds.update_one(
+            {"id": bond_id},
+            {"$inc": {"units_sold": units_diff}}
+        )
+    
+    return {"message": "Allocation updated", "units_paid": units_paid}
+
+
+@api_router.delete("/clients/{client_id}/allocations/{bond_id}")
+async def remove_bond_allocation(client_id: str, bond_id: str, current_user: dict = Depends(get_current_user)):
+    """Remove a bond allocation from a client"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can remove allocations")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    allocations = client.get('bond_allocations', [])
+    units_paid_to_return = 0
+    
+    for alloc in allocations:
+        if alloc['bond_id'] == bond_id:
+            units_paid_to_return = alloc.get('units_paid', 0)
+            break
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$pull": {"bond_allocations": {"bond_id": bond_id}}}
+    )
+    
+    # Return paid units to bond's available pool
+    if units_paid_to_return > 0:
+        await db.bonds.update_one(
+            {"id": bond_id},
+            {"$inc": {"units_sold": -units_paid_to_return}}
+        )
+    
+    return {"message": "Bond allocation removed"}
+
+
+# ==================== END CLIENT MANAGEMENT ====================
 def calculate_xirr(dates, cashflows, guess=0.1):
     """
     Calculate XIRR (Extended Internal Rate of Return)
