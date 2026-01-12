@@ -377,6 +377,39 @@ async def delete_bond(bond_id: str):
     return {"message": "Bond deleted successfully"}
 
 
+class RecordSale(BaseModel):
+    units: int = 1
+
+
+@api_router.post("/bonds/{bond_id}/record-sale")
+async def record_sale(bond_id: str, sale: RecordSale):
+    """Record a sale and update units sold"""
+    bond = await db.bonds.find_one({"id": bond_id})
+    
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    total_units = bond.get('total_units', 1)
+    units_sold = bond.get('units_sold', 0)
+    units_available = total_units - units_sold
+    
+    if sale.units > units_available:
+        raise HTTPException(status_code=400, detail=f"Only {units_available} units available")
+    
+    # Update units sold
+    new_units_sold = units_sold + sale.units
+    await db.bonds.update_one(
+        {"id": bond_id},
+        {"$set": {"units_sold": new_units_sold}}
+    )
+    
+    return {
+        "message": f"Recorded sale of {sale.units} unit(s)",
+        "units_sold": new_units_sold,
+        "units_available": total_units - new_units_sold
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
