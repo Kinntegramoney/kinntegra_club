@@ -245,49 +245,63 @@ export default function AdminClients() {
                               <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
                                 {linkedSubbroker}
                               </span>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => setLinkingClient(client.id)}
-                                title="Change link"
-                              >
-                                <Link2 className="h-3 w-3" />
-                              </Button>
+                              {!isInactive && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => setLinkingClient(client.id)}
+                                  title="Change link"
+                                >
+                                  <Link2 className="h-3 w-3" />
+                                </Button>
+                              )}
                             </div>
                           ) : (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => setLinkingClient(client.id)}
-                              data-testid={`link-subbroker-${client.id}`}
-                            >
-                              <Link2 className="h-3 w-3 mr-1" />
-                              Link
-                            </Button>
+                            !isInactive && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setLinkingClient(client.id)}
+                                data-testid={`link-subbroker-${client.id}`}
+                              >
+                                <Link2 className="h-3 w-3 mr-1" />
+                                Link
+                              </Button>
+                            )
                           )}
                         </td>
                         <td className="py-4 px-6">
-                          {hasDocuments ? (
-                            <div className="flex items-center gap-1">
-                              <FileText className="h-4 w-4 text-green-600" />
-                              <span className="text-xs text-green-600">Uploaded</span>
-                            </div>
+                          {isInactive ? (
+                            <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">Inactive</span>
                           ) : (
-                            <span className="text-xs text-gray-400">None</span>
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Active</span>
                           )}
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/broker/admin/clients/${client.id}`)}
-                              title="View/Edit client"
-                              data-testid={`view-client-${client.id}`}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
+                            {isInactive ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleReactivate(client.id)}
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                title="Reactivate client"
+                                data-testid={`reactivate-client-${client.id}`}
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigate(`/broker/admin/clients/${client.id}`)}
+                                  title="View/Edit client"
+                                  data-testid={`view-client-${client.id}`}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(client.id, client.name)}
