@@ -137,8 +137,42 @@ function App() {
           <Route 
             path="/bonds/:id" 
             element={
-              <ProtectedRoute allowedRoles={["broker", "sub_broker"]}>
+              <ProtectedRoute allowedRoles={["broker", "sub_broker", "client"]}>
                 <BondDetails />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Client Routes */}
+          <Route 
+            path="/client/opportunities" 
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ClientOpportunities />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/client/holdings" 
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ClientHoldings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/client/trades" 
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ClientTradeVerification />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/client/profile" 
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ClientProfile />
               </ProtectedRoute>
             } 
           />
