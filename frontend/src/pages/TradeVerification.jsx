@@ -203,15 +203,45 @@ export default function TradeVerification() {
     }
   };
 
+  const getTagLabel = (tag) => {
+    const labels = {
+      'principal': 'Principal',
+      'interest': 'Interest',
+      'net_amount': 'Net Amount',
+      'not_invest': 'Not Invest',
+      'not_tagged': 'Not Tagged'
+    };
+    return labels[tag] || tag;
+  };
+
   const formatINR = (amount) => {
     return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
+  // Save a single entry's tag
+  const handleSaveEntryTag = async (cashflowId) => {
+    setSavingClient(cashflowId);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API}/reinvestment/tag/${cashflowId}`, 
+        { reinvestment_tag: localTags[cashflowId] },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      toast.success("Tag saved successfully");
+      fetchReinvestmentData();
+    } catch (error) {
+      console.error("Error saving tag:", error);
+      toast.error("Failed to save tag");
+    } finally {
+      setSavingClient(null);
+    }
   };
 
   if (!user) return null;
 
   const displayTrades = activeTab === 'pending' ? pendingTrades : allTrades;
-  const { tagged, untagged } = getGroupedByClient();
-  const displayClients = reinvestmentSection === 'tagged' ? tagged : untagged;
+  const { tagged, untagged } = getEntriesByTagStatus();
+  const displayEntries = reinvestmentSection === 'tagged' ? tagged : untagged;
 
   return (
     <div className="flex h-screen bg-gray-50">
