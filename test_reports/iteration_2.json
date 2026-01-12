@@ -1,0 +1,75 @@
+{
+  "summary": "Completed comprehensive testing of NCD Cashflow Calculator B2B platform. All backend APIs (25/25 tests passed - 100%) and frontend UI flows are working correctly. Two-factor authentication, role-based access control, bond management, secondary market calculator, and partner management all functioning as expected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Opportunities page",
+        "issues": ["TEST_Bond_API_Test shows '-12 days' for maturity - this is a test bond with past end date, not a bug but should be cleaned up"]
+      }
+    ]
+  },
+  "passed_tests": [
+    "API health check - /api/ returns 200",
+    "Broker login step 1 - PAN + Password verification",
+    "Broker login step 2 - PIN verification and token generation",
+    "Sub-broker login - full two-factor authentication flow",
+    "Invalid PAN rejection - returns 401",
+    "Invalid password rejection - returns 401",
+    "Invalid PIN rejection - returns 401",
+    "Bond creation with validation",
+    "Bond listing for broker",
+    "Bond listing for sub-broker",
+    "Bond details retrieval with calculated IRR",
+    "Bond deletion by broker",
+    "Sub-broker forbidden from deleting bonds - returns 403",
+    "Secondary market price calculation",
+    "Cashflow download endpoint",
+    "Partner listing for broker",
+    "Sub-broker forbidden from viewing partners - returns 403",
+    "Partner creation by broker",
+    "Partner deletion by broker",
+    "Sub-broker forbidden from creating partners - returns 403",
+    "Role-based access - broker can access bonds",
+    "Role-based access - sub-broker can access bonds",
+    "Role-based access - broker can access partners",
+    "Role-based access - sub-broker cannot access partners",
+    "Unauthenticated user denied access",
+    "UI - Broker login flow with two-factor auth",
+    "UI - Broker dashboard with stats cards",
+    "UI - Opportunities page with Available/Funded/Closed tabs",
+    "UI - Bond details page with cashflow timeline chart",
+    "UI - Admin Bonds page with table and actions",
+    "UI - Admin Sub Brokers page with create modal",
+    "UI - Sub-broker login and redirect to opportunities",
+    "UI - Sub-broker role-based access (redirected from admin routes)",
+    "UI - Secondary market calculator with bounds selection",
+    "UI - CSV download button visible"
+  ],
+  "test_report_links": [
+    "/app/tests/test_ncd_cashflow.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/tests/test_ncd_cashflow.py"
+  ],
+  "success_rate": {
+    "backend": "100% (25/25 tests passed)",
+    "frontend": "100% (all UI flows working)"
+  },
+  "test_credentials": {
+    "broker": {"pan": "ABCDE1234F", "password": "broker123", "pin": "1234"},
+    "sub_broker": {"pan": "FGHIJ5678K", "password": "subbroker123", "pin": "5678"}
+  },
+  "seed_data_creation": "Test bonds and partners created during API testing (prefixed with TEST_)",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All features tested and working. The application has two-factor authentication (PAN+Password then PIN), role-based access (broker vs sub_broker), bond CRUD, secondary market calculator with IRR-based pricing, and partner management. Test credentials are seeded from seed_users.py. Backend tests are in /app/tests/test_ncd_cashflow.py."
+}
