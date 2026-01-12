@@ -269,11 +269,13 @@ export default function BondDetails() {
 
   const { bond: bondData, total_cashflows_primary, calculated_primary_irr } = bond;
   
-  // Calculate if bond is fully funded
+  // Calculate if bond is fully funded or closed
   const totalUnits = bondData.total_units || 1;
   const unitsSold = bondData.units_sold || 0;
   const unitsAvailable = totalUnits - unitsSold;
   const isFullyFunded = unitsAvailable <= 0;
+  const isClosed = bondData.status === 'closed';
+  const isCalculatorDisabled = isFullyFunded || isClosed;
 
   // Prepare chart data
   const chartData = [];
