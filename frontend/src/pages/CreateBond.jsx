@@ -422,7 +422,12 @@ export default function CreateBond() {
           {/* Interest Payment Schedule */}
           <div className="metric-card rounded-md">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Interest Payment Schedule</h2>
+              <div>
+                <h2 className="text-xl font-semibold">Interest Payment Schedule</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Interest calculated on outstanding principal balance
+                </p>
+              </div>
               <div className="flex gap-2">
                 <Button
                   data-testid="generate-interest-schedule"
