@@ -289,50 +289,70 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
     
     # Get remaining cashflows after investment date
     remaining_dates = []
-    remaining_cashflows = []
+    remaining_cashflows_net = []  # Net cashflows after TDS
     
-    # Add remaining interest payments
+    remaining_principal_pct = 0
+    remaining_interest_gross = 0
+    
+    # Separate principal and interest payments
+    principal_dates = []
+    principal_amounts = []
+    interest_dates = []
+    interest_amounts = []
+    
+    # Collect interest payments (subject to TDS)
     for ip in bond['interest_payments']:
         ip_date = datetime.fromisoformat(ip['date'])
         if ip_date > investment_date:
-            remaining_dates.append(ip_date)
-            remaining_cashflows.append(ip['amount'])
+            interest_dates.append(ip_date)
+            interest_amounts.append(ip['amount'])
+            remaining_interest_gross += ip['amount']
     
-    # Add remaining principal payments
-    remaining_principal_pct = 0
+    # Collect principal payments (not subject to TDS)
     for pp in bond['principal_payments']:
         pp_date = datetime.fromisoformat(pp['date'])
         if pp_date > investment_date:
-            remaining_dates.append(pp_date)
-            remaining_cashflows.append(bond['principal_amount'] * pp['percentage'] / 100)
+            principal_amount = bond['principal_amount'] * pp['percentage'] / 100
+            principal_dates.append(pp_date)
+            principal_amounts.append(principal_amount)
             remaining_principal_pct += pp['percentage']
     
-    # Combine cashflows on same date
+    # Build net cashflow map (principal + interest after TDS)
     date_cashflow_map = {}
-    for d, cf in zip(remaining_dates, remaining_cashflows):
+    
+    # Add interest payments with TDS deduction (10%)
+    for d, interest in zip(interest_dates, interest_amounts):
+        net_interest = interest * 0.90  # After 10% TDS
         if d in date_cashflow_map:
-            date_cashflow_map[d] += cf
+            date_cashflow_map[d] += net_interest
         else:
-            date_cashflow_map[d] = cf
+            date_cashflow_map[d] = net_interest
+    
+    # Add principal payments (no TDS)
+    for d, principal in zip(principal_dates, principal_amounts):
+        if d in date_cashflow_map:
+            date_cashflow_map[d] += principal
+        else:
+            date_cashflow_map[d] = principal
     
     remaining_dates = sorted(date_cashflow_map.keys())
-    remaining_cashflows = [date_cashflow_map[d] for d in remaining_dates]
+    remaining_cashflows_net = [date_cashflow_map[d] for d in remaining_dates]
     
     if len(remaining_dates) == 0:
         raise HTTPException(status_code=400, detail="No remaining cashflows after investment date")
     
-    # Calculate price per unit for secondary buyer to achieve target IRR
+    # Calculate price per unit using NET cashflows to achieve target GROSS IRR
+    # The target secondary_irr is GROSS, but we calculate with net cashflows
     secondary_irr_decimal = bond['secondary_irr'] / 100
-    price_per_unit = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows, investment_date)
+    price_per_unit = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows_net, investment_date)
     
     # Calculate total price for requested units
     total_price = price_per_unit * calculation.units
     
     days_to_maturity = (end_date - investment_date).days
     
-    total_inflows = sum(remaining_cashflows)
+    total_inflows_gross = sum(interest_amounts) + sum(principal_amounts)
     remaining_principal = bond['principal_amount'] * remaining_principal_pct / 100
-    remaining_interest = total_inflows - remaining_principal
     
     # Calculate units available
     units_available = bond.get('total_units', 1) - bond.get('units_sold', 0)
@@ -343,8 +363,8 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
         "price_per_unit": round(price_per_unit, 2),
         "total_price": round(total_price, 2),
         "remaining_principal": round(remaining_principal, 2),
-        "remaining_interest": round(remaining_interest, 2),
-        "total_inflows": round(total_inflows, 2),
+        "remaining_interest": round(remaining_interest_gross, 2),
+        "total_inflows": round(total_inflows_gross, 2),
         "secondary_buyer_irr": bond['secondary_irr'],
         "days_to_maturity": days_to_maturity,
         "units_available": units_available,
