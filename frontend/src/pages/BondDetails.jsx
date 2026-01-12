@@ -600,6 +600,96 @@ export default function BondDetails() {
                     </Button>
                   </div>
                 </div>
+
+                {/* Book Units Section */}
+                <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5 text-amber-600" />
+                    Book Units for Client
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Select Client *</Label>
+                      <Select value={selectedClient} onValueChange={setSelectedClient}>
+                        <SelectTrigger data-testid="select-client-booking">
+                          <SelectValue placeholder="Choose a client..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients.length === 0 ? (
+                            <SelectItem value="none" disabled>No clients available</SelectItem>
+                          ) : (
+                            clients.map(client => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.name} ({client.pan_number})
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Payment Reference</Label>
+                      <Input
+                        value={paymentReference}
+                        onChange={(e) => setPaymentReference(e.target.value)}
+                        placeholder="Transaction ID / UTR Number"
+                        data-testid="payment-reference-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <Label className="text-sm font-medium">Payment Notes</Label>
+                    <Textarea
+                      value={paymentNotes}
+                      onChange={(e) => setPaymentNotes(e.target.value)}
+                      placeholder="Any additional notes about the payment..."
+                      rows={2}
+                      data-testid="payment-notes-input"
+                    />
+                  </div>
+
+                  <div className="bg-white p-3 rounded-md mb-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      <div>
+                        <p className="text-gray-500">Units</p>
+                        <p className="font-mono font-bold">{selectedUnits}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Price/Unit</p>
+                        <p className="font-mono font-bold">₹{calculation.price_per_unit.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Total Amount</p>
+                        <p className="font-mono font-bold text-amber-600">₹{calculation.total_price.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Status</p>
+                        <p className="font-medium text-amber-600">
+                          {user?.role === 'broker' ? 'Auto-Approved' : 'Pending Approval'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={bookUnits}
+                    disabled={bookingUnits || !selectedClient || clients.length === 0}
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                    data-testid="book-units-btn"
+                  >
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    {bookingUnits ? "Booking..." : user?.role === 'broker' ? "Book & Approve Units" : "Submit for Approval"}
+                  </Button>
+                  
+                  {user?.role !== 'broker' && (
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      Trade will be submitted for broker verification before units are allocated
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
