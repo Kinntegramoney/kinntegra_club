@@ -1,185 +1,135 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Calculator, TrendingUp, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import Sidebar from "@/components/Sidebar";
+import { TrendingUp, DollarSign, Users, Package } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [bonds, setBonds] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [stats, setStats] = useState({
+    totalBonds: 0,
+    availableBonds: 0,
+    fundedBonds: 0,
+    closedBonds: 0,
+    totalPartners: 0,
+    activeUnits: 0
+  });
 
   useEffect(() => {
-    fetchBonds();
-  }, []);
-
-  const fetchBonds = async () => {
-    try {
-      const response = await axios.get(`${API}/bonds`);
-      setBonds(response.data);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching bonds:", error);
-      toast.error("Failed to load bonds");
-      setLoading(false);
+    const userData = localStorage.getItem("user");
+    if (!userData) {
+      navigate("/login");
+      return;
     }
-  };
-
-  const deleteBond = async (bondId, bondName) => {
-    if (!window.confirm(`Delete bond "${bondName}"?`)) return;
     
+    const parsedUser = JSON.parse(userData);
+    if (parsedUser.role !== "broker") {
+      navigate("/sub-broker/dashboard");
+      return;
+    }
+    
+    setUser(parsedUser);
+    fetchStats();
+  }, [navigate]);
+
+  const fetchStats = async () => {
     try {
-      await axios.delete(`${API}/bonds/${bondId}`);
-      toast.success("Bond deleted successfully");
-      fetchBonds();
+      const token = localStorage.getItem("token");
+      const [bondsRes, partnersRes] = await Promise.all([
+        axios.get(`${API}/bonds`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/partners`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+
+      const bonds = bondsRes.data;
+      const availableBonds = bonds.filter(b => (b.units_sold || 0) < (b.total_units || 1));
+      const fundedBonds = bonds.filter(b => (b.units_sold || 0) >= (b.total_units || 1));
+      
+      setStats({
+        totalBonds: bonds.length,
+        availableBonds: availableBonds.length,
+        fundedBonds: fundedBonds.length,
+        closedBonds: 0, // TODO: Implement closed logic
+        totalPartners: partnersRes.data.length,
+        activeUnits: bonds.reduce((sum, b) => sum + ((b.total_units || 1) - (b.units_sold || 0)), 0)
+      });
     } catch (error) {
-      console.error("Error deleting bond:", error);
-      toast.error("Failed to delete bond");
+      console.error("Error fetching stats:", error);
     }
   };
+
+  if (!user) return null;
+
+  const statCards = [
+    { label: "Total Bonds", value: stats.totalBonds, icon: Package, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Available", value: stats.availableBonds, icon: TrendingUp, color: "text-green-600", bg: "bg-green-50" },
+    { label: "Funded", value: stats.fundedBonds, icon: DollarSign, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Partners", value: stats.totalPartners, icon: Users, color: "text-purple-600", bg: "bg-purple-50" },
+  ];
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="border-b border-border bg-primary text-primary-foreground">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Calculator className="h-8 w-8" />
-              <h1 className="text-2xl font-bold tracking-tight" data-testid="dashboard-title">BondFlow Pro</h1>
-            </div>
-            <Button
-              data-testid="create-bond-btn"
-              onClick={() => navigate("/bonds/create")}
-              className="btn-scale bg-accent text-white hover:bg-accent/90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Bond
-            </Button>
-          </div>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar user={user} />
+      
+      <div className="flex-1 overflow-auto">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-8 py-6">
+          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">Welcome back, {user.name}</p>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-6 py-8">
-        {loading ? (
-          <div className="flex items-center justify-center h-64" data-testid="loading-state">
-            <p className="text-muted-foreground">Loading bonds...</p>
-          </div>
-        ) : bonds.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-4" data-testid="empty-state">
-            <TrendingUp className="h-16 w-16 text-muted-foreground" />
-            <h2 className="text-xl font-semibold">No bonds yet</h2>
-            <p className="text-muted-foreground">Create your first bond to get started</p>
-            <Button
-              data-testid="empty-create-bond-btn"
-              onClick={() => navigate("/bonds/create")}
-              className="btn-scale mt-4 bg-accent text-white hover:bg-accent/90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Bond
-            </Button>
-          </div>
-        ) : (
-          <div>
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold tracking-tight">Your Bonds</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage and calculate secondary market prices
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {bonds.map((bond) => {
-                const startDate = new Date(bond.start_date);
-                const endDate = new Date(bond.end_date);
-                const daysToMaturity = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
-                const isActive = new Date() >= startDate && new Date() <= endDate;
-
-                return (
-                  <div
-                    key={bond.id}
-                    className="metric-card rounded-md cursor-pointer"
-                    data-testid={`bond-card-${bond.id}`}
-                    onClick={() => navigate(`/bonds/${bond.id}`)}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold" data-testid={`bond-name-${bond.id}`}>{bond.name}</h3>
-                      <button
-                        data-testid={`delete-bond-${bond.id}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteBond(bond.id, bond.name);
-                        }}
-                        className="text-destructive hover:text-destructive/80 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+        {/* Stats Grid */}
+        <div className="p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {statCards.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className="bg-white rounded-lg border border-gray-200 p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">{stat.label}</p>
+                      <p className="text-3xl font-bold text-gray-800 mt-2">{stat.value}</p>
                     </div>
-
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Principal:</span>
-                        <span className="font-mono font-medium" data-testid={`bond-principal-${bond.id}`}>
-                          ₹{bond.principal_amount.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Coupon Rate:</span>
-                        <span className="font-mono font-medium">{bond.coupon_rate}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Primary IRR:</span>
-                        <span className="font-mono font-medium text-success">{bond.primary_irr}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Secondary IRR:</span>
-                        <span className="font-mono font-medium text-accent">{bond.secondary_irr}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status:</span>
-                        <span className={`font-medium ${isActive ? 'text-success' : 'text-muted-foreground'}`}>
-                          {isActive ? 'Active' : daysToMaturity > 0 ? 'Upcoming' : 'Matured'}
-                        </span>
-                      </div>
-                      {isActive && daysToMaturity > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Days to Maturity:</span>
-                          <span className="font-mono font-medium">{daysToMaturity}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Units:</span>
-                        <span className="font-mono font-medium">
-                          {(bond.total_units || 1) - (bond.units_sold || 0)}/{bond.total_units || 1}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-border">
-                      <Button
-                        data-testid={`view-bond-${bond.id}`}
-                        variant="outline"
-                        size="sm"
-                        className="w-full btn-scale"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/bonds/${bond.id}`);
-                        }}
-                      >
-                        View & Calculate
-                      </Button>
+                    <div className={`w-12 h-12 ${stat.bg} rounded-lg flex items-center justify-center`}>
+                      <Icon className={`h-6 w-6 ${stat.color}`} />
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mt-8 bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button
+                onClick={() => navigate("/broker/admin/bonds")}
+                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-amber-500 hover:bg-amber-50 transition-colors text-center"
+              >
+                <Package className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <p className="font-medium text-gray-700">Add New Bond</p>
+              </button>
+              <button
+                onClick={() => navigate("/broker/admin/sub-brokers")}
+                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-center"
+              >
+                <Users className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <p className="font-medium text-gray-700">Create Sub Broker</p>
+              </button>
+              <button
+                onClick={() => navigate("/broker/opportunities")}
+                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-center"
+              >
+                <TrendingUp className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <p className="font-medium text-gray-700">View Opportunities</p>
+              </button>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
