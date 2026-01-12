@@ -196,6 +196,8 @@ export default function CreateBond() {
         coupon_rate: parseFloat(formData.coupon_rate),
         primary_irr: parseFloat(formData.primary_irr),
         secondary_irr: parseFloat(formData.secondary_irr),
+        total_units: parseInt(formData.total_units),
+        units_sold: 0,
         principal_payments: principalPayments.map(p => ({
           date: p.date,
           percentage: parseFloat(p.percentage)
