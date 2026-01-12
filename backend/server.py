@@ -770,6 +770,7 @@ async def create_trade(trade_data: TradeCreate, current_user: dict = Depends(get
         "total_amount": trade_data.calculated_price * trade_data.units,
         "payment_reference": trade_data.payment_reference,
         "payment_notes": trade_data.payment_notes,
+        "payment_proof_filename": trade_data.payment_proof_filename,
         "status": status,
         "created_by": current_user['id'],
         "created_by_name": current_user.get('name', 'Unknown'),
