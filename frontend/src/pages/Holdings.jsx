@@ -724,6 +724,8 @@ export default function Holdings() {
                   )}
                 </div>
               </div>
+              </>
+              )}
             </div>
           ) : null}
         </div>
