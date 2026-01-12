@@ -1290,44 +1290,209 @@ async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, curren
 
 @api_router.get("/holdings/client/{client_id}/download")
 async def download_client_holdings(client_id: str, current_user: dict = Depends(get_current_user)):
-    """Generate CSV data for client holdings download"""
+    """Generate Excel file for client holdings download with multiple sheets"""
     
     # Get client holdings
     holdings_data = await get_client_holdings(client_id, current_user)
     
-    csv_rows = []
-    csv_rows.append(f"Holdings Report - {holdings_data['client']['name']}")
-    csv_rows.append(f"PAN: {holdings_data['client']['pan_number']}")
-    csv_rows.append(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC")
-    csv_rows.append("")
-    csv_rows.append("SUMMARY")
-    csv_rows.append(f"Total Investment,{holdings_data['summary']['total_investment']}")
-    csv_rows.append(f"Total Repaid (Net),{holdings_data['summary']['total_repaid']}")
-    csv_rows.append(f"Upcoming Expected,{holdings_data['summary']['total_upcoming']}")
-    csv_rows.append(f"Total Expected,{holdings_data['summary']['total_expected']}")
-    csv_rows.append("")
+    # Create workbook
+    wb = Workbook()
     
+    # Styles
+    header_font = Font(bold=True, size=12, color="FFFFFF")
+    header_fill = PatternFill(start_color="92400E", end_color="92400E", fill_type="solid")
+    title_font = Font(bold=True, size=14)
+    money_font = Font(name="Consolas", size=11)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # ========== SUMMARY SHEET ==========
+    ws_summary = wb.active
+    ws_summary.title = "Summary"
+    
+    # Title
+    ws_summary['A1'] = f"Holdings Report - {holdings_data['client']['name']}"
+    ws_summary['A1'].font = title_font
+    ws_summary.merge_cells('A1:G1')
+    
+    ws_summary['A2'] = f"PAN: {holdings_data['client']['pan_number']}"
+    ws_summary['A3'] = f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+    
+    # Summary stats
+    ws_summary['A5'] = "SUMMARY"
+    ws_summary['A5'].font = Font(bold=True, size=12)
+    
+    summary_data = [
+        ("Total Investment", holdings_data['summary']['total_investment']),
+        ("Total Repaid (Net)", holdings_data['summary']['total_repaid']),
+        ("Upcoming Expected", holdings_data['summary']['total_upcoming']),
+        ("Total Expected", holdings_data['summary']['total_expected'])
+    ]
+    
+    for i, (label, value) in enumerate(summary_data):
+        ws_summary[f'A{6+i}'] = label
+        ws_summary[f'B{6+i}'] = value
+        ws_summary[f'B{6+i}'].font = money_font
+        ws_summary[f'B{6+i}'].number_format = '₹ #,##0.00'
+    
+    # Consolidated by date
+    ws_summary['A12'] = "CASHFLOWS BY DATE (ALL TRANSACTIONS)"
+    ws_summary['A12'].font = Font(bold=True, size=12)
+    
+    # Headers
+    headers = ["Date", "Transactions", "Principal", "Interest", "TDS", "Net Amount", "Status"]
+    for col, header in enumerate(headers, 1):
+        cell = ws_summary.cell(row=13, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal='center')
+    
+    # Consolidate cashflows by date
+    cashflows_by_date = {}
     for holding in holdings_data['holdings']:
-        csv_rows.append(f"SCHEME: {holding['bond_name']}")
-        csv_rows.append(f"Units: {holding['units']}, Investment Date: {holding['investment_date']}")
-        csv_rows.append(f"Invested Amount: {holding['invested_amount']}")
-        csv_rows.append("")
-        csv_rows.append("Date,Type,Principal,Interest (Gross),TDS,Net Amount,Status,Repaid Date")
-        
         for cf in holding['cashflows']:
-            status = "Repaid" if cf.get('is_repaid') else "Pending"
-            repaid_date = cf.get('repaid_date', '-') if cf.get('is_repaid') else '-'
-            csv_rows.append(f"{cf['date']},{cf['type']},{cf['principal_component']},{cf['interest_component']},{cf['tds_amount']},{cf['net_amount']},{status},{repaid_date}")
-        
-        csv_rows.append("")
-        csv_rows.append(f"Total Principal,{holding['total_principal']}")
-        csv_rows.append(f"Total Interest (Gross),{holding['total_interest_gross']}")
-        csv_rows.append(f"Total TDS,{holding['total_tds']}")
-        csv_rows.append(f"Net Repaid,{holding['net_repaid']}")
-        csv_rows.append(f"Upcoming Expected,{holding['upcoming_expected']}")
-        csv_rows.append("")
+            date = cf['date']
+            if date not in cashflows_by_date:
+                cashflows_by_date[date] = {
+                    'principal': 0, 'interest': 0, 'tds': 0, 'net': 0, 
+                    'transactions': 0, 'all_repaid': True
+                }
+            cashflows_by_date[date]['principal'] += cf['principal_component']
+            cashflows_by_date[date]['interest'] += cf['interest_component']
+            cashflows_by_date[date]['tds'] += cf['tds_amount']
+            cashflows_by_date[date]['net'] += cf['net_amount']
+            cashflows_by_date[date]['transactions'] += 1
+            if not cf.get('is_repaid'):
+                cashflows_by_date[date]['all_repaid'] = False
     
-    return {"csv_content": "\n".join(csv_rows), "filename": f"holdings_{holdings_data['client']['pan_number']}_{datetime.now().strftime('%Y%m%d')}.csv"}
+    row = 14
+    for date in sorted(cashflows_by_date.keys()):
+        cf = cashflows_by_date[date]
+        ws_summary.cell(row=row, column=1, value=date).border = border
+        ws_summary.cell(row=row, column=2, value=cf['transactions']).border = border
+        ws_summary.cell(row=row, column=3, value=cf['principal']).border = border
+        ws_summary.cell(row=row, column=3).font = money_font
+        ws_summary.cell(row=row, column=3).number_format = '₹ #,##0.00'
+        ws_summary.cell(row=row, column=4, value=cf['interest']).border = border
+        ws_summary.cell(row=row, column=4).font = money_font
+        ws_summary.cell(row=row, column=4).number_format = '₹ #,##0.00'
+        ws_summary.cell(row=row, column=5, value=cf['tds']).border = border
+        ws_summary.cell(row=row, column=5).font = money_font
+        ws_summary.cell(row=row, column=5).number_format = '₹ #,##0.00'
+        ws_summary.cell(row=row, column=6, value=cf['net']).border = border
+        ws_summary.cell(row=row, column=6).font = money_font
+        ws_summary.cell(row=row, column=6).number_format = '₹ #,##0.00'
+        ws_summary.cell(row=row, column=7, value="All Repaid" if cf['all_repaid'] else "Pending").border = border
+        row += 1
+    
+    # Adjust column widths
+    ws_summary.column_dimensions['A'].width = 20
+    ws_summary.column_dimensions['B'].width = 18
+    ws_summary.column_dimensions['C'].width = 15
+    ws_summary.column_dimensions['D'].width = 15
+    ws_summary.column_dimensions['E'].width = 12
+    ws_summary.column_dimensions['F'].width = 15
+    ws_summary.column_dimensions['G'].width = 12
+    
+    # ========== INDIVIDUAL TRANSACTION SHEETS ==========
+    for holding in holdings_data['holdings']:
+        # Create sheet name from date (max 31 chars)
+        inv_date = holding['investment_date'][:10]
+        sheet_name = f"{inv_date} ({holding['units']}u)"[:31]
+        
+        # Ensure unique sheet name
+        existing_names = [ws.title for ws in wb.worksheets]
+        if sheet_name in existing_names:
+            counter = 1
+            while f"{sheet_name[:28]}_{counter}" in existing_names:
+                counter += 1
+            sheet_name = f"{sheet_name[:28]}_{counter}"
+        
+        ws = wb.create_sheet(title=sheet_name)
+        
+        # Transaction header
+        ws['A1'] = holding['bond_name']
+        ws['A1'].font = title_font
+        ws.merge_cells('A1:H1')
+        
+        ws['A3'] = "Investment Date:"
+        ws['B3'] = holding['investment_date'][:10]
+        ws['C3'] = "Units:"
+        ws['D3'] = holding['units']
+        ws['E3'] = "Invested:"
+        ws['F3'] = holding['invested_amount']
+        ws['F3'].font = money_font
+        ws['F3'].number_format = '₹ #,##0.00'
+        
+        # Cashflow headers
+        cf_headers = ["Date", "Type", "Principal", "Interest", "TDS", "Net Amount", "Status", "Repaid Date"]
+        for col, header in enumerate(cf_headers, 1):
+            cell = ws.cell(row=5, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = border
+            cell.alignment = Alignment(horizontal='center')
+        
+        # Cashflow data
+        row = 6
+        for cf in holding['cashflows']:
+            ws.cell(row=row, column=1, value=cf['date']).border = border
+            ws.cell(row=row, column=2, value=cf['type'].capitalize()).border = border
+            ws.cell(row=row, column=3, value=cf['principal_component']).border = border
+            ws.cell(row=row, column=3).font = money_font
+            ws.cell(row=row, column=3).number_format = '₹ #,##0.00'
+            ws.cell(row=row, column=4, value=cf['interest_component']).border = border
+            ws.cell(row=row, column=4).font = money_font
+            ws.cell(row=row, column=4).number_format = '₹ #,##0.00'
+            ws.cell(row=row, column=5, value=cf['tds_amount']).border = border
+            ws.cell(row=row, column=5).font = money_font
+            ws.cell(row=row, column=5).number_format = '₹ #,##0.00'
+            ws.cell(row=row, column=6, value=cf['net_amount']).border = border
+            ws.cell(row=row, column=6).font = money_font
+            ws.cell(row=row, column=6).number_format = '₹ #,##0.00'
+            ws.cell(row=row, column=7, value="Repaid" if cf.get('is_repaid') else "Pending").border = border
+            ws.cell(row=row, column=8, value=cf.get('repaid_date', '-') if cf.get('is_repaid') else '-').border = border
+            row += 1
+        
+        # Totals
+        row += 1
+        ws.cell(row=row, column=1, value="TOTALS").font = Font(bold=True)
+        ws.cell(row=row, column=3, value=holding['total_principal']).font = Font(bold=True, name="Consolas")
+        ws.cell(row=row, column=3).number_format = '₹ #,##0.00'
+        ws.cell(row=row, column=4, value=holding['total_interest_gross']).font = Font(bold=True, name="Consolas")
+        ws.cell(row=row, column=4).number_format = '₹ #,##0.00'
+        ws.cell(row=row, column=5, value=holding['total_tds']).font = Font(bold=True, name="Consolas")
+        ws.cell(row=row, column=5).number_format = '₹ #,##0.00'
+        ws.cell(row=row, column=6, value=holding['total_principal'] + holding['total_interest_gross'] - holding['total_tds']).font = Font(bold=True, name="Consolas")
+        ws.cell(row=row, column=6).number_format = '₹ #,##0.00'
+        
+        # Adjust column widths
+        ws.column_dimensions['A'].width = 15
+        ws.column_dimensions['B'].width = 12
+        ws.column_dimensions['C'].width = 15
+        ws.column_dimensions['D'].width = 15
+        ws.column_dimensions['E'].width = 12
+        ws.column_dimensions['F'].width = 15
+        ws.column_dimensions['G'].width = 10
+        ws.column_dimensions['H'].width = 15
+    
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"holdings_{holdings_data['client']['pan_number']}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 # ==================== END HOLDINGS MANAGEMENT ====================
