@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, Calculator, TrendingUp, DollarSign, Trash2, Users, Upload, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Calculator, TrendingUp, DollarSign, Trash2, Upload, ShoppingCart, FileCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ export default function BondDetails() {
   const [selectedClient, setSelectedClient] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
+  const [paymentProof, setPaymentProof] = useState(null);
   const [bookingUnits, setBookingUnits] = useState(false);
 
   useEffect(() => {
