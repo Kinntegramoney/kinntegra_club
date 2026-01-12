@@ -109,20 +109,23 @@ export default function Holdings() {
     }
   };
 
-  const handleDownloadCSV = async () => {
+  const handleDownloadExcel = async () => {
     if (!selectedClient) return;
     
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(`${API}/holdings/client/${selectedClient.id}/download`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
       });
       
-      const blob = new Blob([response.data.csv_content], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([response.data], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = response.data.filename;
+      a.download = `holdings_${selectedClient.pan_number}_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
