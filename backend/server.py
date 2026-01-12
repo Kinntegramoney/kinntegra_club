@@ -129,6 +129,8 @@ class Bond(BaseModel):
     principal_payments: List[PrincipalPayment]
     interest_payment_frequency: str
     interest_payments: List[InterestPayment]
+    total_units: int = 1
+    units_sold: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
