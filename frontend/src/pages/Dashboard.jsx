@@ -76,25 +76,25 @@ export default function Dashboard() {
       
       <div className="flex-1 overflow-auto">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-8 py-6">
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-4 md:py-6">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-1">Welcome back, {user.name}</p>
         </div>
 
         {/* Stats Grid */}
-        <div className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="p-4 md:p-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
             {statCards.map((stat) => {
               const Icon = stat.icon;
               return (
-                <div key={stat.label} className="bg-white rounded-lg border border-gray-200 p-6">
+                <div key={stat.label} className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">{stat.label}</p>
-                      <p className="text-3xl font-bold text-gray-800 mt-2">{stat.value}</p>
+                      <p className="text-xs md:text-sm text-gray-600">{stat.label}</p>
+                      <p className="text-xl md:text-3xl font-bold text-gray-800 mt-1 md:mt-2">{stat.value}</p>
                     </div>
-                    <div className={`w-12 h-12 ${stat.bg} rounded-lg flex items-center justify-center`}>
-                      <Icon className={`h-6 w-6 ${stat.color}`} />
+                    <div className={`w-8 h-8 md:w-12 md:h-12 ${stat.bg} rounded-lg flex items-center justify-center`}>
+                      <Icon className={`h-4 w-4 md:h-6 md:w-6 ${stat.color}`} />
                     </div>
                   </div>
                 </div>
@@ -103,29 +103,29 @@ export default function Dashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="mt-8 bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="mt-6 md:mt-8 bg-white rounded-lg border border-gray-200 p-4 md:p-6">
+            <h2 className="text-base md:text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
               <button
                 onClick={() => navigate("/broker/admin/bonds")}
-                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-amber-500 hover:bg-amber-50 transition-colors text-center"
+                className="p-3 md:p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-amber-500 hover:bg-amber-50 transition-colors text-center"
               >
-                <Package className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p className="font-medium text-gray-700">Add New Bond</p>
+                <Package className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 text-gray-400" />
+                <p className="font-medium text-gray-700 text-sm md:text-base">Add New Bond</p>
               </button>
               <button
                 onClick={() => navigate("/broker/admin/sub-brokers")}
-                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-center"
+                className="p-3 md:p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-center"
               >
-                <Users className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p className="font-medium text-gray-700">Create Sub Broker</p>
+                <Users className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 text-gray-400" />
+                <p className="font-medium text-gray-700 text-sm md:text-base">Create Sub Broker</p>
               </button>
               <button
                 onClick={() => navigate("/broker/opportunities")}
-                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-center"
+                className="p-3 md:p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-center"
               >
-                <TrendingUp className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p className="font-medium text-gray-700">View Opportunities</p>
+                <TrendingUp className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 text-gray-400" />
+                <p className="font-medium text-gray-700 text-sm md:text-base">View Opportunities</p>
               </button>
             </div>
           </div>
