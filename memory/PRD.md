@@ -266,6 +266,15 @@ Sub-broker View:
 - [x] Pending/All Trades tabs
 - [x] Approve/Reject functionality with broker notes
 - [x] Units deducted from bond only after approval
+- [x] Payment proof upload field in Book Units section
+- [x] Payment proof filename stored in trade record
+
+### Phase 6: Mobile Responsiveness
+- [x] Responsive Sidebar with hamburger menu on mobile
+- [x] Dashboard responsive grid (2x2 stats on mobile)
+- [x] Trade Verification responsive cards
+- [x] Book Units section responsive layout
+- [x] All pages tested on 375px mobile viewport
 
 ## Testing Status
 - Backend: 62/62 tests passing (100%) - includes 20 new trade workflow tests
