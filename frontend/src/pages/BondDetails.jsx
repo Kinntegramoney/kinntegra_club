@@ -171,7 +171,7 @@ export default function BondDetails() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Bond Summary */}
           <div className="lg:col-span-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="metric-card rounded-md">
                 <p className="text-xs text-muted-foreground mb-1">Principal Amount</p>
                 <p className="text-2xl font-mono font-bold" data-testid="bond-principal-display">₹{bondData.principal_amount.toLocaleString()}</p>
@@ -192,6 +192,15 @@ export default function BondDetails() {
               <div className="metric-card rounded-md">
                 <p className="text-xs text-muted-foreground mb-1">Secondary IRR</p>
                 <p className="text-2xl font-mono font-bold text-accent">{bondData.secondary_irr}%</p>
+              </div>
+              <div className="metric-card rounded-md">
+                <p className="text-xs text-muted-foreground mb-1">Units Available</p>
+                <p className="text-2xl font-mono font-bold" data-testid="units-available">
+                  {(bondData.total_units || 1) - (bondData.units_sold || 0)}/{bondData.total_units || 1}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sold: {bondData.units_sold || 0}
+                </p>
               </div>
             </div>
           </div>
