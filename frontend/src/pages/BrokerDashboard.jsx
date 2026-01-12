@@ -72,6 +72,14 @@ export default function BrokerDashboard() {
             </div>
             <div className="flex items-center gap-3">
               <Button
+                data-testid="partners-btn"
+                onClick={() => navigate("/broker/partners")}
+                variant="outline"
+                className="border-purple-600 text-purple-600 hover:bg-purple-50"
+              >
+                Partners
+              </Button>
+              <Button
                 data-testid="create-bond-broker-btn"
                 onClick={() => navigate("/bonds/create")}
                 className="bg-orange-500 hover:bg-orange-600 text-white"
