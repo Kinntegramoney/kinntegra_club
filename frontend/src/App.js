@@ -11,6 +11,10 @@ import Holdings from "@/pages/Holdings";
 import SubBrokerOpportunities from "@/pages/SubBrokerOpportunities";
 import CreateBond from "@/pages/CreateBond";
 import BondDetails from "@/pages/BondDetails";
+import ClientOpportunities from "@/pages/ClientOpportunities";
+import ClientHoldings from "@/pages/ClientHoldings";
+import ClientTradeVerification from "@/pages/ClientTradeVerification";
+import ClientProfile from "@/pages/ClientProfile";
 import { Toaster } from "@/components/ui/sonner";
 
 // Protected Route Component
@@ -27,6 +31,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     // Redirect to appropriate dashboard based on role
     if (parsedUser.role === "broker") {
       return <Navigate to="/broker/dashboard" replace />;
+    } else if (parsedUser.role === "client") {
+      return <Navigate to="/client/opportunities" replace />;
     } else {
       return <Navigate to="/sub-broker/opportunities" replace />;
     }
