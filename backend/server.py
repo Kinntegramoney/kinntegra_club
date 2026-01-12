@@ -1302,6 +1302,11 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
     if not bond:
         raise HTTPException(status_code=404, detail="Bond not found")
     
+    # Check if bond is closed
+    status = calculate_bond_status(bond)
+    if status == 'closed':
+        raise HTTPException(status_code=400, detail="Cannot calculate price for a closed bond")
+    
     investment_date = datetime.fromisoformat(calculation.investment_date)
     start_date = datetime.fromisoformat(bond['start_date'])
     end_date = datetime.fromisoformat(bond['end_date'])
