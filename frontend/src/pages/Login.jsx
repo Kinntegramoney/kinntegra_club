@@ -72,7 +72,7 @@ export default function Login() {
       if (response.data.user.role === "broker") {
         navigate("/broker/dashboard");
       } else {
-        navigate("/sub-broker/dashboard");
+        navigate("/sub-broker/opportunities");
       }
     } catch (error) {
       console.error("PIN error:", error);
