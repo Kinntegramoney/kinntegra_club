@@ -110,9 +110,14 @@ Sub-broker View:
 - `DELETE /api/clients/{id}` - Delete client (broker only)
 - `POST /api/clients/{id}/link-subbroker` - Link client to sub-broker
 - `POST /api/clients/{id}/unlink-subbroker` - Unlink client from sub-broker
-- `POST /api/clients/{id}/allocate-bond` - Allocate bond to client (units blocked/paid)
-- `PUT /api/clients/{id}/allocations/{bond_id}` - Update allocation (units paid)
-- `DELETE /api/clients/{id}/allocations/{bond_id}` - Remove allocation
+
+### Trades (Unit Booking)
+- `POST /api/trades` - Create trade (broker: auto-approved, sub-broker: pending)
+- `GET /api/trades` - List trades (broker sees all, sub-broker sees own)
+- `GET /api/trades/pending` - List pending trades for broker verification
+- `GET /api/trades/{id}` - Get trade details
+- `PUT /api/trades/{id}/verify` - Approve/reject trade (broker only)
+- `DELETE /api/trades/{id}` - Cancel pending trade
 
 ## Database Schema
 
