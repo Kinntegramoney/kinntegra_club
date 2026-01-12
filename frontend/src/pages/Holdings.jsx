@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Search, Download, Mail, Check, X, FileText, Users, TrendingUp, DollarSign, MoreVertical, Eye, Calendar } from "lucide-react";
+import { Search, Download, Mail, Check, X, FileText, Users, TrendingUp, DollarSign, MoreVertical, Eye, Calendar, User, MapPin, Building2, CreditCard, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ export default function Holdings() {
   const [user, setUser] = useState(null);
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
+  const [clientDetails, setClientDetails] = useState(null); // Full client KYC details
   const [clientHoldings, setClientHoldings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingHoldings, setLoadingHoldings] = useState(false);
@@ -25,6 +26,7 @@ export default function Holdings() {
   const [openMenu, setOpenMenu] = useState(null);
   const [modalData, setModalData] = useState(null);
   const [activeTab, setActiveTab] = useState("summary"); // "summary" or trade index
+  const [mainTab, setMainTab] = useState("holdings"); // "holdings" or "profile"
   const menuRef = useRef(null);
 
   useEffect(() => {
