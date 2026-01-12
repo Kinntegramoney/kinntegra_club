@@ -293,8 +293,20 @@ Sub-broker View:
 - [x] Cashflow schedule generated from trade's investment date
 - [x] Future repayments captured for each client based on bond payment schedules
 - [x] Manual "Mark Repaid" / "Undo" functionality for both broker and sub-broker
-- [x] CSV download for client holdings report
+- [x] Excel download with multiple sheets (Summary + individual transactions)
 - [x] Status filters (All, Active, Fully repaid)
+- [x] Profile tab showing client KYC information
+- [x] Popup modal with Summary by Date tab and individual transaction tabs
+
+### Phase 9: Reinvestment Tagging (January 12, 2026)
+- [x] New "Reinvestment Tagging" menu item in sidebar for both broker and sub-broker
+- [x] Month-wise tabs for next 6 months
+- [x] Table showing: Investor, Opportunity, Amount Invested, Expected Date, Principal Net, Interest Net, Net Amount
+- [x] Reinvestment Tag dropdown (Not Tagged, Principal, Interest, Net Amount)
+- [x] Save button for each entry
+- [x] Summary footer with Total Principal, Total Interest, Total Net
+- [x] Backend API for fetching upcoming repayments and saving tags
+- [x] Sub-broker access limited to their linked clients only
 
 ## Testing Status
 - Backend: 62/62 tests passing (100%) - includes 20 new trade workflow tests
