@@ -391,6 +391,104 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
             </div>
           </div>
 
+          {/* Document Upload */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="h-5 w-5 text-amber-600" />
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Document Upload</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-500 uppercase">PAN Upload</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('pan', e.target.files?.[0])}
+                    className="hidden"
+                    id="pan-upload"
+                    data-testid="client-pan-upload"
+                  />
+                  <label 
+                    htmlFor="pan-upload" 
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-amber-500 hover:bg-amber-50 transition-colors"
+                  >
+                    <Upload className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-600">
+                      {documents.pan ? documents.pan.name : "Choose file"}
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-500 uppercase">Aadhar Upload</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('aadhar', e.target.files?.[0])}
+                    className="hidden"
+                    id="aadhar-upload"
+                    data-testid="client-aadhar-upload"
+                  />
+                  <label 
+                    htmlFor="aadhar-upload" 
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-amber-500 hover:bg-amber-50 transition-colors"
+                  >
+                    <Upload className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-600">
+                      {documents.aadhar ? documents.aadhar.name : "Choose file"}
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-500 uppercase">Bank Cheque Upload</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('bank_cheque', e.target.files?.[0])}
+                    className="hidden"
+                    id="bank-cheque-upload"
+                    data-testid="client-bank-cheque-upload"
+                  />
+                  <label 
+                    htmlFor="bank-cheque-upload" 
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-amber-500 hover:bg-amber-50 transition-colors"
+                  >
+                    <Upload className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-600">
+                      {documents.bank_cheque ? documents.bank_cheque.name : "Choose file"}
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-500 uppercase">CNL Upload</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('cnl', e.target.files?.[0])}
+                    className="hidden"
+                    id="cnl-upload"
+                    data-testid="client-cnl-upload"
+                  />
+                  <label 
+                    htmlFor="cnl-upload" 
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-amber-500 hover:bg-amber-50 transition-colors"
+                  >
+                    <Upload className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-600">
+                      {documents.cnl ? documents.cnl.name : "Choose file"}
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Link to Sub-broker */}
           {subbrokers.length > 0 && (
             <div>
