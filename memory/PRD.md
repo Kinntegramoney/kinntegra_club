@@ -52,7 +52,8 @@ Broker View:
 │   └── Closed (matured bonds)
 └── Admin
     ├── Add Bond (bond creation/management)
-    └── Create Sub Broker (partner management)
+    ├── Create Sub Broker (partner management)
+    └── Create Client (client management with bond allocations)
 
 Sub-broker View:
 └── Opportunities
@@ -67,6 +68,7 @@ Sub-broker View:
 - `/broker/opportunities` - Bond listings with tabs
 - `/broker/admin/bonds` - Bond management
 - `/broker/admin/sub-brokers` - Partner management
+- `/broker/admin/clients` - Client management
 - `/sub-broker/opportunities` - Sub-broker view
 - `/bonds/create` - Create new bond
 - `/bonds/:id` - Bond details and calculator
