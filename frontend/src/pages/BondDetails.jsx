@@ -300,24 +300,18 @@ export default function BondDetails() {
 
             {calculation && (
               <div className="mt-6 pt-6 border-t border-border">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Price to Pay</p>
                     <p className="text-2xl font-mono font-bold text-accent" data-testid="calculated-price">₹{calculation.price_to_pay.toLocaleString()}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Primary Buyer Gets</p>
-                    <p className="text-2xl font-mono font-bold" data-testid="primary-buyer-proceeds">₹{calculation.primary_buyer_proceeds.toLocaleString()}</p>
-                  </div>
-                  <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Broker Margin</p>
-                    <p className={`text-2xl font-mono font-bold ${calculation.broker_margin >= 0 ? 'text-success' : 'text-destructive'}`} data-testid="broker-margin">
-                      ₹{calculation.broker_margin.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Days to Maturity</p>
                     <p className="text-2xl font-mono font-bold">{calculation.days_to_maturity}</p>
+                  </div>
+                  <div className="metric-card rounded-md bg-white">
+                    <p className="text-xs text-muted-foreground mb-1">Units Available</p>
+                    <p className="text-2xl font-mono font-bold text-success" data-testid="calc-units-available">{calculation.units_available}</p>
                   </div>
                 </div>
 
@@ -339,15 +333,46 @@ export default function BondDetails() {
                 <div className="mt-6 p-4 bg-white border border-border rounded-md">
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
                     <DollarSign className="h-5 w-5 text-success" />
-                    Transaction Summary
+                    Investment Summary
                   </h3>
                   <div className="space-y-1 text-sm">
-                    <p>Secondary buyer pays <span className="font-mono font-medium text-accent">₹{calculation.price_to_pay.toLocaleString()}</span> on {format(new Date(calculation.investment_date), "MMM dd, yyyy")}</p>
-                    <p>Primary buyer receives <span className="font-mono font-medium">₹{calculation.primary_buyer_proceeds.toLocaleString()}</span> achieving their {bondData.primary_irr}% IRR</p>
-                    <p>Broker earns <span className={`font-mono font-medium ${calculation.broker_margin >= 0 ? 'text-success' : 'text-destructive'}`}>₹{calculation.broker_margin.toLocaleString()}</span> as margin</p>
-                    <p>Secondary buyer will earn <span className="font-mono font-medium text-accent">{calculation.secondary_buyer_irr}%</span> IRR guaranteed</p>
+                    <p>Secondary buyer invests <span className="font-mono font-medium text-accent">₹{calculation.price_to_pay.toLocaleString()}</span> on {format(new Date(calculation.investment_date), "MMM dd, yyyy")}</p>
+                    <p>Will receive <span className="font-mono font-medium">₹{calculation.total_inflows.toLocaleString()}</span> in future cashflows</p>
+                    <p>Guaranteed return: <span className="font-mono font-medium text-accent">{calculation.secondary_buyer_irr}%</span> IRR</p>
                   </div>
                 </div>
+
+                {/* Record Sale Section */}
+                {calculation.units_available > 0 && (
+                  <div className="mt-6 p-4 bg-surface border border-border rounded-md">
+                    <h3 className="font-semibold mb-3">Record Sale</h3>
+                    <div className="flex gap-3 items-end">
+                      <div className="flex-1 space-y-2">
+                        <Label htmlFor="sale_units">Number of Units to Sell</Label>
+                        <Input
+                          data-testid="sale-units-input"
+                          id="sale_units"
+                          type="number"
+                          min="1"
+                          max={calculation.units_available}
+                          value={saleUnits}
+                          onChange={(e) => setSaleUnits(parseInt(e.target.value) || 1)}
+                        />
+                      </div>
+                      <Button
+                        data-testid="record-sale-btn"
+                        onClick={recordSale}
+                        disabled={recordingSale || saleUnits < 1 || saleUnits > calculation.units_available}
+                        className="btn-scale bg-success text-white hover:bg-success/90"
+                      >
+                        {recordingSale ? "Recording..." : "Record Sale"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Recording a sale will update the units available count
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
