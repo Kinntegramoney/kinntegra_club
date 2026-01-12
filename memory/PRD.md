@@ -315,24 +315,58 @@ Sub-broker View:
 - [x] Refresh button to reload data
 - [x] Removed obsolete standalone reinvestment routes from App.js
 
+### Phase 10: Client Portal (January 12, 2026)
+- [x] **Client Role**: New "client" role in authentication system
+- [x] **Auto User Creation**: When broker creates a client, a user account is automatically created with default credentials
+- [x] **Profile Verification**: Clients must verify their profile before first login (verification endpoint)
+- [x] **Client Login**: Same 2FA as brokers (PAN + Password → PIN)
+- [x] **Client Sidebar**: Teal/green color scheme with Opportunities, Holdings, Trade Verification, Profile menus
+- [x] **Client Opportunities**: View available bonds and book units for themselves
+- [x] **Client Holdings**: View portfolio, cashflows, download Excel report
+- [x] **Client Trade Verification**: View own trades + approve/reject reinvestment tags from broker
+- [x] **Client Profile**: View personal details, broker & sub-broker information
+- [x] **Client Trade Creation**: Client can book units, trade requires approval (notifies sub-broker)
+- [x] **Notifications**: In-app notifications for sub-broker when client books units
+- [x] **Reinvestment Approval**: Client can approve/reject tagged reinvestments, broker notified
+
+**API Endpoints Added:**
+- `GET /api/client/verify/{token}` - Get verification details
+- `POST /api/client/verify/{token}` - Verify client profile
+- `GET /api/client/profile` - Get client's own profile with broker details
+- `GET /api/client/opportunities` - Get available bonds
+- `GET /api/client/holdings` - Get client's holdings
+- `GET /api/client/trades` - Get client's trades
+- `GET /api/client/reinvestment` - Get reinvestment tags (pending/approved/rejected)
+- `POST /api/client/trades` - Client books units for themselves
+- `PUT /api/reinvestment/approve/{cashflow_id}` - Client approves/rejects reinvestment tag
+- `GET /api/notifications` - Get notifications
+- `PUT /api/notifications/{id}/read` - Mark notification as read
+- `GET /api/notifications/unread-count` - Get unread notification count
+
 ## Testing Status
-- Backend: 62/62 tests passing (100%) - includes 20 new trade workflow tests
+- Backend: 84/84 tests passing (100%) - includes 22 new client portal tests
 - Frontend: All UI flows verified
-- Test files: `/app/tests/test_ncd_cashflow.py`, `/app/tests/test_client_management.py`, `/app/tests/test_trade_workflow.py`
+- Test files: `/app/tests/test_ncd_cashflow.py`, `/app/tests/test_client_management.py`, `/app/tests/test_trade_workflow.py`, `/app/tests/test_client_portal.py`
+
+## Test Credentials
+- **Broker**: PAN: `ABCDE1234F`, Password: `broker123`, PIN: `1234`
+- **Sub-broker**: PAN: `FGHIJ5678K`, Password: `subbroker123`, PIN: `5678`
+- **Client**: PAN: `TESTCP1234`, Password: `12341234`, PIN: `1234`
 
 ## Backlog / Future Enhancements
 
 ### P0 - Critical
 - [ ] Email integration for auto-marking repayments (read emails with specific subject line)
+- [ ] Email integration for client verification (send verification link)
+- [ ] Email notifications when client books units
 
 ### P1 - High Priority
-- [ ] Client edit page with full details view
-- [ ] Sub-broker trade history view
+- [ ] Dashboard charts and analytics
+- [ ] Export all bonds to Excel
 
 ### P2 - Medium Priority
 - [ ] Email notifications for new bonds
-- [ ] Dashboard charts and analytics
-- [ ] Export all bonds to Excel
+- [ ] Sub-broker trade history view
 - [ ] Audit log for transactions
 
 ### P3 - Low Priority
