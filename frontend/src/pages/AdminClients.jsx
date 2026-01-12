@@ -191,7 +191,7 @@ export default function AdminClients() {
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">PAN</th>
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Contact</th>
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Linked Sub-Broker</th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Documents</th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="text-right py-4 px-6 text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -199,14 +199,14 @@ export default function AdminClients() {
                   {filteredClients.map((client) => {
                     const initials = client.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                     const linkedSubbroker = getSubbrokerName(client.linked_subbroker_id);
-                    const hasDocuments = client.pan_document || client.aadhar_document || client.bank_cheque_document || client.cnl_document;
+                    const isInactive = client.is_active === false;
 
                     return (
-                      <tr key={client.id} className="border-t border-gray-100 hover:bg-gray-50" data-testid={`client-row-${client.id}`}>
+                      <tr key={client.id} className={`border-t border-gray-100 hover:bg-gray-50 ${isInactive ? 'opacity-60 bg-gray-50' : ''}`} data-testid={`client-row-${client.id}`}>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-medium text-sm">
-                              {initials}
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium text-sm ${isInactive ? 'bg-gray-200 text-gray-500' : 'bg-amber-100 text-amber-700'}`}>
+                              {isInactive ? <UserX className="h-5 w-5" /> : initials}
                             </div>
                             <div>
                               <span className="font-medium block">{client.name}</span>
