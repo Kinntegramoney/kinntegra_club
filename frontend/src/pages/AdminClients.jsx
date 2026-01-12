@@ -59,18 +59,37 @@ export default function AdminClients() {
   };
 
   const handleDelete = async (clientId, clientName) => {
-    if (!window.confirm(`Delete client "${clientName}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete/Deactivate client "${clientName}"? Clients with confirmed trades will be marked as inactive instead.`)) return;
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API}/clients/${clientId}`, {
+      const response = await axios.delete(`${API}/clients/${clientId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success("Client deleted successfully");
+      
+      if (response.data.soft_delete) {
+        toast.success("Client marked as inactive (has confirmed trades)");
+      } else {
+        toast.success("Client deleted successfully");
+      }
       fetchData();
     } catch (error) {
       console.error("Error deleting client:", error);
       toast.error("Failed to delete client");
+    }
+  };
+
+  const handleReactivate = async (clientId) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/clients/${clientId}/reactivate`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Client reactivated successfully");
+      fetchData();
+    } catch (error) {
+      console.error("Error reactivating client:", error);
+      toast.error("Failed to reactivate client");
     }
   };
 
