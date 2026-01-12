@@ -404,6 +404,7 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
         raise HTTPException(status_code=404, detail="Bond not found")
     
     investment_date = datetime.fromisoformat(calculation.investment_date)
+    units = calculation.units
     
     # Calculate price per unit
     secondary_irr_decimal = bond['secondary_irr'] / 100
@@ -435,9 +436,9 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
     remaining_cashflows = [date_cashflow_map[d] for d in remaining_dates]
     
     price_per_unit = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows, investment_date)
-    total_price = price_per_unit * calculation.units
+    total_price = price_per_unit * units
     
-    # Build cashflow schedule
+    # Build cashflow schedule - MULTIPLY BY UNITS
     cashflows = []
     total_principal = 0
     total_interest = 0
@@ -452,13 +453,13 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
         for pp in bond['principal_payments']:
             pp_date = datetime.fromisoformat(pp['date'])
             if pp_date == payment_date and pp_date > investment_date:
-                principal_payment += bond['principal_amount'] * pp['percentage'] / 100
+                principal_payment += (bond['principal_amount'] * pp['percentage'] / 100) * units  # MULTIPLY BY UNITS
         
         # Check interest payments
         for ip in bond['interest_payments']:
             ip_date = datetime.fromisoformat(ip['date'])
             if ip_date == payment_date and ip_date > investment_date:
-                interest_payment += ip['amount']
+                interest_payment += ip['amount'] * units  # MULTIPLY BY UNITS
         
         # Calculate TDS on interest
         tds_deducted = interest_payment * 0.10
@@ -482,7 +483,7 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
     return {
         "bond_name": bond['name'],
         "investment_date": calculation.investment_date,
-        "units": calculation.units,
+        "units": units,
         "price_paid": round(total_price, 2),
         "cashflows": cashflows,
         "total_principal": round(total_principal, 2),
