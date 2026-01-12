@@ -1155,7 +1155,10 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                     cf['bond_id'] = trade['bond_id']
                     cf['bond_name'] = trade['bond_name']
                 await db.holding_cashflows.insert_many(cashflows)
-                stored_cashflows = cashflows
+                # Refetch to ensure we don't have _id in response
+                stored_cashflows = await db.holding_cashflows.find({
+                    "trade_id": trade['id']
+                }, {"_id": 0}).to_list(100)
         
         # Calculate totals for this holding
         investment_amount = trade.get('total_amount', 0)
