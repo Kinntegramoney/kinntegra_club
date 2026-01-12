@@ -771,17 +771,22 @@ export default function BondDetails() {
                     {/* Submit Button */}
                     <Button
                       onClick={bookUnits}
-                      disabled={bookingUnits || !selectedClient || clients.length === 0}
+                      disabled={bookingUnits || (user?.role !== 'client' && (!selectedClient || clients.length === 0))}
                       className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3"
                       data-testid="book-units-btn"
                     >
                       <ShoppingCart className="h-4 w-4 mr-2" />
-                      {bookingUnits ? "Booking..." : user?.role === 'broker' ? "Book & Approve Units" : "Submit for Approval"}
+                      {bookingUnits ? "Booking..." : 
+                        user?.role === 'broker' ? "Book & Approve Units" : 
+                        user?.role === 'client' ? "Submit Investment Request" : 
+                        "Submit for Approval"}
                     </Button>
                     
                     {user?.role !== 'broker' && (
                       <p className="text-xs text-gray-500 text-center">
-                        Trade will be submitted for broker verification before units are allocated
+                        {user?.role === 'client' 
+                          ? "Your investment request will be sent to your sub-broker for processing"
+                          : "Trade will be submitted for broker verification before units are allocated"}
                       </p>
                     )}
                   </div>
