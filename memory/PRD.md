@@ -42,7 +42,7 @@ Build a cashflow calculator for Non-Convertible Debentures (NCDs) that:
 
 ## Application Architecture
 
-### Navigation Structure (NEW)
+### Navigation Structure (Updated January 2026)
 ```
 Broker View:
 ├── Dashboard (overview stats, quick actions)
@@ -50,16 +50,22 @@ Broker View:
 │   ├── Available (bonds with units remaining)
 │   ├── Funded (all units sold, not matured)
 │   └── Closed (matured bonds)
+├── Trade Verification
+│   ├── Pending (trades awaiting approval)
+│   ├── All Trades (complete trade history)
+│   └── Reinvestment Tagging (upcoming repayments with tagging)
+├── Holdings (client portfolios, cashflows, Excel export)
 └── Admin
     ├── Add Bond (bond creation/management)
     ├── Create Sub Broker (partner management)
     └── Create Client (client management with bond allocations)
 
 Sub-broker View:
-└── Opportunities
-    ├── Available
-    ├── Funded
-    └── Closed
+├── Opportunities
+│   ├── Available
+│   ├── Funded
+│   └── Closed
+└── Holdings (linked client portfolios)
 ```
 
 ### Routes
