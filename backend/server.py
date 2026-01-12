@@ -292,7 +292,7 @@ async def get_partners(current_user: dict = Depends(get_current_user)):
 
 @api_router.delete("/partners/{partner_id}")
 async def delete_partner(partner_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a sub-broker partner (brokers only)"""
+    """Soft delete a sub-broker partner (brokers only) - marks as inactive if has trades"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can delete partners")
     
@@ -301,13 +301,48 @@ async def delete_partner(partner_id: str, current_user: dict = Depends(get_curre
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
     
-    # Delete the partner record
-    await db.partners.delete_one({"id": partner_id})
+    # Check if sub-broker has any confirmed trades or linked clients with trades
+    trades = await db.trades.find({"created_by": partner_id, "status": "approved"}).to_list(1)
+    linked_clients = await db.clients.find({"linked_subbroker_id": partner_id}).to_list(1)
     
-    # Delete the associated user account
-    await db.users.delete_one({"id": partner_id})
+    if trades or linked_clients:
+        # Soft delete - mark as inactive
+        await db.partners.update_one(
+            {"id": partner_id},
+            {"$set": {"is_active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        await db.users.update_one(
+            {"id": partner_id},
+            {"$set": {"is_active": False}}
+        )
+        return {"message": "Sub-broker marked as inactive (has trades or linked clients)", "soft_delete": True}
+    else:
+        # Hard delete - no trades or linked clients
+        await db.partners.delete_one({"id": partner_id})
+        await db.users.delete_one({"id": partner_id})
+        return {"message": "Sub-broker deleted successfully", "soft_delete": False}
+
+
+@api_router.post("/partners/{partner_id}/reactivate")
+async def reactivate_partner(partner_id: str, current_user: dict = Depends(get_current_user)):
+    """Reactivate an inactive sub-broker (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can reactivate partners")
     
-    return {"message": "Sub-broker deleted successfully"}
+    partner = await db.partners.find_one({"id": partner_id, "created_by": current_user['id']})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    
+    await db.partners.update_one(
+        {"id": partner_id},
+        {"$set": {"is_active": True}, "$unset": {"deactivated_at": ""}}
+    )
+    await db.users.update_one(
+        {"id": partner_id},
+        {"$set": {"is_active": True}}
+    )
+    
+    return {"message": "Sub-broker reactivated successfully"}
 
 
 class PartnerUpdate(BaseModel):
