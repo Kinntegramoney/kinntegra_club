@@ -1520,6 +1520,366 @@ async def approve_reinvestment_tag(cashflow_id: str, approval: ReinvestmentAppro
 # ==================== END REINVESTMENT TAGGING ====================
 
 
+# ==================== CLIENT PORTAL ====================
+
+class ClientVerifyProfile(BaseModel):
+    verified: bool
+
+
+class ClientChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+    new_pin: str
+
+
+@api_router.get("/client/verify/{token}")
+async def get_client_verification_details(token: str):
+    """Get client details for verification (no auth required)"""
+    
+    client = await db.clients.find_one({"verification_token": token}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Invalid verification token")
+    
+    if client.get('verification_status') == 'verified':
+        raise HTTPException(status_code=400, detail="Profile already verified")
+    
+    # Get broker details
+    broker = await db.users.find_one({"id": client['created_by']}, {"_id": 0, "password_hash": 0, "pin_hash": 0})
+    
+    # Get sub-broker details if linked
+    subbroker = None
+    if client.get('linked_subbroker_id'):
+        subbroker = await db.users.find_one({"id": client['linked_subbroker_id']}, {"_id": 0, "password_hash": 0, "pin_hash": 0})
+    
+    return {
+        "client": client,
+        "broker": broker,
+        "subbroker": subbroker
+    }
+
+
+@api_router.post("/client/verify/{token}")
+async def verify_client_profile(token: str, verify: ClientVerifyProfile):
+    """Client verifies their profile details"""
+    
+    client = await db.clients.find_one({"verification_token": token})
+    if not client:
+        raise HTTPException(status_code=404, detail="Invalid verification token")
+    
+    if client.get('verification_status') == 'verified':
+        raise HTTPException(status_code=400, detail="Profile already verified")
+    
+    if not verify.verified:
+        # Client rejected - notify broker
+        notification = {
+            "id": str(uuid.uuid4()),
+            "type": "client_verification_rejected",
+            "client_id": client['id'],
+            "client_name": client['name'],
+            "for_user_id": client['created_by'],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "read": False
+        }
+        await db.notifications.insert_one(notification)
+        return {"message": "Verification rejected. Broker has been notified."}
+    
+    # Activate the user account
+    await db.users.update_one(
+        {"id": client['user_id']},
+        {"$set": {"is_active": True}}
+    )
+    
+    # Update client verification status
+    await db.clients.update_one(
+        {"id": client['id']},
+        {"$set": {
+            "verification_status": "verified",
+            "verified_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Get default credentials
+    default_password = client['pan_number'][-4:] + "1234"
+    
+    return {
+        "message": "Profile verified successfully",
+        "credentials": {
+            "pan": client['pan_number'],
+            "default_password": default_password,
+            "default_pin": "1234",
+            "note": "Please change your password and PIN after first login"
+        }
+    }
+
+
+@api_router.get("/client/profile")
+async def get_client_profile(current_user: dict = Depends(get_current_user)):
+    """Get client's own profile with broker/sub-broker details"""
+    
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Get client record
+    client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client record not found")
+    
+    # Get broker details
+    broker = await db.users.find_one({"id": client['created_by']}, {"_id": 0, "password_hash": 0, "pin_hash": 0})
+    
+    # Get sub-broker details if linked
+    subbroker = None
+    if client.get('linked_subbroker_id'):
+        subbroker = await db.users.find_one({"id": client['linked_subbroker_id']}, {"_id": 0, "password_hash": 0, "pin_hash": 0})
+        # Also get partner record for more details
+        partner = await db.partners.find_one({"id": client['linked_subbroker_id']}, {"_id": 0})
+        if partner and subbroker:
+            subbroker['partner_details'] = partner
+    
+    return {
+        "client": client,
+        "broker": broker,
+        "subbroker": subbroker
+    }
+
+
+@api_router.get("/client/opportunities")
+async def get_client_opportunities(current_user: dict = Depends(get_current_user)):
+    """Get available bonds for client"""
+    
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Get all available bonds
+    bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
+    
+    # Calculate status for each bond
+    today = datetime.now(timezone.utc).date()
+    available_bonds = []
+    
+    for bond in bonds:
+        try:
+            end_date = datetime.strptime(bond.get('end_date', ''), '%Y-%m-%d').date()
+            units_remaining = bond.get('total_units', 0) - bond.get('units_sold', 0)
+            
+            if end_date > today and units_remaining > 0:
+                bond['status'] = 'available'
+                bond['units_remaining'] = units_remaining
+                available_bonds.append(bond)
+        except (ValueError, TypeError):
+            continue
+    
+    return available_bonds
+
+
+@api_router.get("/client/holdings")
+async def get_client_own_holdings(current_user: dict = Depends(get_current_user)):
+    """Get client's own holdings"""
+    
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Get client record
+    client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client record not found")
+    
+    # Reuse existing holdings endpoint logic
+    return await get_client_holdings(client['id'], current_user)
+
+
+@api_router.get("/client/trades")
+async def get_client_trades(current_user: dict = Depends(get_current_user)):
+    """Get client's own trades"""
+    
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Get client record
+    client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client record not found")
+    
+    # Get trades for this client
+    trades = await db.trades.find({"client_id": client['id']}, {"_id": 0}).to_list(1000)
+    
+    # Enrich with bond details
+    for trade in trades:
+        bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0, "name": 1})
+        trade['bond_name'] = bond['name'] if bond else 'Unknown'
+    
+    return trades
+
+
+@api_router.get("/client/reinvestment")
+async def get_client_reinvestment_tags(current_user: dict = Depends(get_current_user)):
+    """Get reinvestment tags pending client approval"""
+    
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Get client record
+    client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client record not found")
+    
+    # Get pending approvals
+    pending = await db.holding_cashflows.find({
+        "client_id": client['id'],
+        "reinvestment_tag": {"$nin": ["not_tagged", None]},
+        "approval_status": "pending"
+    }, {"_id": 0}).to_list(1000)
+    
+    # Get approved
+    approved = await db.holding_cashflows.find({
+        "client_id": client['id'],
+        "approval_status": "approved"
+    }, {"_id": 0}).to_list(1000)
+    
+    # Get rejected
+    rejected = await db.holding_cashflows.find({
+        "client_id": client['id'],
+        "approval_status": "rejected"
+    }, {"_id": 0}).to_list(1000)
+    
+    # Enrich with bond details
+    for items in [pending, approved, rejected]:
+        for cf in items:
+            bond = await db.bonds.find_one({"id": cf['bond_id']}, {"_id": 0, "name": 1})
+            cf['bond_name'] = bond['name'] if bond else 'Unknown'
+    
+    return {
+        "pending": pending,
+        "approved": approved,
+        "rejected": rejected
+    }
+
+
+@api_router.post("/client/trades")
+async def create_client_trade(trade_data: TradeCreate, current_user: dict = Depends(get_current_user)):
+    """Client books units for themselves"""
+    
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can use this endpoint")
+    
+    # Get client record
+    client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client record not found")
+    
+    # Override client_id with the actual client's ID
+    trade_data_dict = trade_data.model_dump()
+    trade_data_dict['client_id'] = client['id']
+    
+    # Get bond
+    bond = await db.bonds.find_one({"id": trade_data.bond_id})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Check bond status
+    today = datetime.now(timezone.utc).date()
+    try:
+        end_date = datetime.strptime(bond.get('end_date', ''), '%Y-%m-%d').date()
+        units_remaining = bond.get('total_units', 0) - bond.get('units_sold', 0)
+        
+        if end_date <= today:
+            raise HTTPException(status_code=400, detail="Bond has matured")
+        if units_remaining <= 0:
+            raise HTTPException(status_code=400, detail="No units available")
+        if trade_data.units > units_remaining:
+            raise HTTPException(status_code=400, detail=f"Only {units_remaining} units available")
+    except (ValueError, TypeError):
+        pass
+    
+    # Create trade (pending approval like sub-broker trades)
+    trade_id = str(uuid.uuid4())
+    trade = {
+        "id": trade_id,
+        "bond_id": trade_data.bond_id,
+        "bond_name": bond['name'],
+        "client_id": client['id'],
+        "client_name": client['name'],
+        "client_pan": client['pan_number'],
+        "units": trade_data.units,
+        "calculated_price": trade_data.calculated_price,
+        "total_amount": trade_data.total_amount,
+        "investment_date": trade_data.investment_date,
+        "payment_reference": trade_data.payment_reference,
+        "payment_notes": trade_data.payment_notes,
+        "payment_proof_filename": trade_data.payment_proof_filename,
+        "status": "pending",  # Client trades require approval
+        "created_by": current_user['id'],
+        "created_by_name": client['name'],
+        "created_by_role": "client",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.trades.insert_one(trade)
+    
+    # Notify sub-broker (or broker if no sub-broker)
+    notify_user_id = client.get('linked_subbroker_id') or client.get('created_by')
+    notification = {
+        "id": str(uuid.uuid4()),
+        "type": "client_trade_created",
+        "trade_id": trade_id,
+        "client_id": client['id'],
+        "client_name": client['name'],
+        "bond_name": bond['name'],
+        "units": trade_data.units,
+        "total_amount": trade_data.total_amount,
+        "for_user_id": notify_user_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "read": False
+    }
+    await db.notifications.insert_one(notification)
+    
+    if '_id' in trade:
+        del trade['_id']
+    return trade
+
+
+@api_router.get("/notifications")
+async def get_notifications(current_user: dict = Depends(get_current_user)):
+    """Get notifications for current user"""
+    
+    notifications = await db.notifications.find(
+        {"for_user_id": current_user['id']},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return notifications
+
+
+@api_router.put("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, current_user: dict = Depends(get_current_user)):
+    """Mark notification as read"""
+    
+    result = await db.notifications.update_one(
+        {"id": notification_id, "for_user_id": current_user['id']},
+        {"$set": {"read": True}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    return {"message": "Notification marked as read"}
+
+
+@api_router.get("/notifications/unread-count")
+async def get_unread_notification_count(current_user: dict = Depends(get_current_user)):
+    """Get count of unread notifications"""
+    
+    count = await db.notifications.count_documents({
+        "for_user_id": current_user['id'],
+        "read": False
+    })
+    
+    return {"count": count}
+
+
+# ==================== END CLIENT PORTAL ====================
+
+
 @api_router.get("/holdings/client/{client_id}/download")
 async def download_client_holdings(client_id: str, current_user: dict = Depends(get_current_user)):
     """Generate Excel file for client holdings download with multiple sheets"""
