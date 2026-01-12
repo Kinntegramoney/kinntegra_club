@@ -251,23 +251,33 @@ Sub-broker View:
 ### Phase 4: Client Management Module
 - [x] Client CRUD (Create, Read, Update, Delete)
 - [x] Client form with all sections (Personal, Address, Bank, Nominee)
+- [x] Document Upload section (PAN, Aadhar, Bank Cheque, CNL)
 - [x] Link/Unlink clients to sub-brokers
-- [x] Bond allocation to clients (units blocked/paid)
-- [x] Allocation status tracking (blocked → partial_paid → fully_paid)
 - [x] Search clients functionality
 - [x] Admin > Create Client menu in sidebar
 
+### Phase 5: Trade Workflow System
+- [x] Removed bond allocation from Client module
+- [x] "Book Units for Client" section in Bond Details page (below calculator)
+- [x] Trade creation from Opportunities > Bond > Calculate > Book Units
+- [x] Broker trades are auto-approved
+- [x] Sub-broker trades require broker verification
+- [x] Trade Verification page at /broker/trades
+- [x] Pending/All Trades tabs
+- [x] Approve/Reject functionality with broker notes
+- [x] Units deducted from bond only after approval
+
 ## Testing Status
-- Backend: 42/42 tests passing (100%)
+- Backend: 62/62 tests passing (100%) - includes 20 new trade workflow tests
 - Frontend: All UI flows verified
-- Test files: `/app/tests/test_ncd_cashflow.py`, `/app/tests/test_client_management.py`
+- Test files: `/app/tests/test_ncd_cashflow.py`, `/app/tests/test_client_management.py`, `/app/tests/test_trade_workflow.py`
 
 ## Backlog / Future Enhancements
 
 ### P1 - High Priority
 - [ ] Bond status field in database (explicit status vs calculated)
 - [ ] Client edit page with full details view
-- [ ] Sub-broker sees their linked clients' allocations
+- [ ] Sub-broker trade history view
 
 ### P2 - Medium Priority
 - [ ] Email notifications for new bonds
