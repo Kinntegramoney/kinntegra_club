@@ -339,14 +339,218 @@ export default function Holdings() {
             <div className="p-6">
               {/* Header Tabs */}
               <div className="flex items-center gap-6 mb-6 border-b border-gray-200">
-                <button className="pb-3 border-b-2 border-amber-600 text-amber-700 font-medium">
+                <button 
+                  onClick={() => setMainTab("holdings")}
+                  className={`pb-3 border-b-2 font-medium transition-colors ${
+                    mainTab === "holdings" 
+                      ? "border-amber-600 text-amber-700" 
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
                   Holdings
                 </button>
-                <button className="pb-3 text-gray-500 hover:text-gray-700">
+                <button 
+                  onClick={() => setMainTab("profile")}
+                  className={`pb-3 border-b-2 font-medium transition-colors ${
+                    mainTab === "profile" 
+                      ? "border-amber-600 text-amber-700" 
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
                   Profile
                 </button>
               </div>
               
+              {/* Profile Tab Content */}
+              {mainTab === "profile" && clientDetails && (
+                <div className="space-y-6">
+                  {/* Personal Details */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-5">
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                      <User className="h-5 w-5 text-amber-600" />
+                      <h3 className="font-semibold text-gray-800">Personal Details</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Full Name</p>
+                        <p className="font-medium text-gray-800">{clientDetails.name || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">PAN Number</p>
+                        <p className="font-mono font-medium text-gray-800">{clientDetails.pan_number || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Date of Birth</p>
+                        <p className="font-medium text-gray-800">
+                          {clientDetails.date_of_birth ? format(new Date(clientDetails.date_of_birth), "MMM dd, yyyy") : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Father/Husband Name</p>
+                        <p className="font-medium text-gray-800">{clientDetails.father_husband_name || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Occupation</p>
+                        <p className="font-medium text-gray-800">{clientDetails.occupation || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Demat Account No.</p>
+                        <p className="font-mono font-medium text-gray-800">{clientDetails.demat_account_no || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Email</p>
+                        <p className="font-medium text-gray-800">{clientDetails.email || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Mobile</p>
+                        <p className="font-medium text-gray-800">{clientDetails.mobile || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Address Details */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-5">
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                      <MapPin className="h-5 w-5 text-amber-600" />
+                      <h3 className="font-semibold text-gray-800">Address Details</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="lg:col-span-2">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Address Line 1</p>
+                        <p className="font-medium text-gray-800">{clientDetails.address_line1 || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Address Line 2</p>
+                        <p className="font-medium text-gray-800">{clientDetails.address_line2 || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">City</p>
+                        <p className="font-medium text-gray-800">{clientDetails.city || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">State</p>
+                        <p className="font-medium text-gray-800">{clientDetails.state || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Pincode</p>
+                        <p className="font-mono font-medium text-gray-800">{clientDetails.pincode || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Country</p>
+                        <p className="font-medium text-gray-800">{clientDetails.country || 'India'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Bank Details */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-5">
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                      <Building2 className="h-5 w-5 text-amber-600" />
+                      <h3 className="font-semibold text-gray-800">Bank Details</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Name</p>
+                        <p className="font-medium text-gray-800">{clientDetails.bank_name || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Account Number</p>
+                        <p className="font-mono font-medium text-gray-800">{clientDetails.account_number || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Branch</p>
+                        <p className="font-medium text-gray-800">{clientDetails.branch || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">IFSC Code</p>
+                        <p className="font-mono font-medium text-gray-800">{clientDetails.ifsc_code || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Nominee Details */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-5">
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                      <UserCheck className="h-5 w-5 text-amber-600" />
+                      <h3 className="font-semibold text-gray-800">Nominee Details</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Nominee Name</p>
+                        <p className="font-medium text-gray-800">{clientDetails.nominee_name || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Relationship</p>
+                        <p className="font-medium text-gray-800">{clientDetails.nominee_relationship || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Date of Birth</p>
+                        <p className="font-medium text-gray-800">
+                          {clientDetails.nominee_dob ? format(new Date(clientDetails.nominee_dob), "MMM dd, yyyy") : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Mobile</p>
+                        <p className="font-medium text-gray-800">{clientDetails.nominee_mobile || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Documents */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-5">
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                      <CreditCard className="h-5 w-5 text-amber-600" />
+                      <h3 className="font-semibold text-gray-800">KYC Documents</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">PAN Card</p>
+                        {clientDetails.pan_document ? (
+                          <p className="text-sm text-green-600 font-medium flex items-center gap-1">
+                            <Check className="h-4 w-4" /> Uploaded
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-400">Not uploaded</p>
+                        )}
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Aadhar Card</p>
+                        {clientDetails.aadhar_document ? (
+                          <p className="text-sm text-green-600 font-medium flex items-center gap-1">
+                            <Check className="h-4 w-4" /> Uploaded
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-400">Not uploaded</p>
+                        )}
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Bank Cheque</p>
+                        {clientDetails.bank_cheque_document ? (
+                          <p className="text-sm text-green-600 font-medium flex items-center gap-1">
+                            <Check className="h-4 w-4" /> Uploaded
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-400">Not uploaded</p>
+                        )}
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">CNL Document</p>
+                        {clientDetails.cnl_document ? (
+                          <p className="text-sm text-green-600 font-medium flex items-center gap-1">
+                            <Check className="h-4 w-4" /> Uploaded
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-400">Not uploaded</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Holdings Tab Content */}
+              {mainTab === "holdings" && (
+              <>
               {/* Overview Section */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <div className="bg-white rounded-lg border border-gray-200 p-5">
