@@ -1,9 +1,11 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "@/pages/Login";
-import BrokerDashboard from "@/pages/BrokerDashboard";
-import SubBrokerDashboard from "@/pages/SubBrokerDashboard";
-import Partners from "@/pages/Partners";
+import Dashboard from "@/pages/Dashboard";
+import Opportunities from "@/pages/Opportunities";
+import AdminBonds from "@/pages/AdminBonds";
+import AdminSubBrokers from "@/pages/AdminSubBrokers";
+import SubBrokerOpportunities from "@/pages/SubBrokerOpportunities";
 import CreateBond from "@/pages/CreateBond";
 import BondDetails from "@/pages/BondDetails";
 import { Toaster } from "@/components/ui/sonner";
@@ -19,7 +21,12 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   
   const parsedUser = JSON.parse(user);
   if (allowedRoles && !allowedRoles.includes(parsedUser.role)) {
-    return <Navigate to="/login" replace />;
+    // Redirect to appropriate dashboard based on role
+    if (parsedUser.role === "broker") {
+      return <Navigate to="/broker/dashboard" replace />;
+    } else {
+      return <Navigate to="/sub-broker/opportunities" replace />;
+    }
   }
   
   return children;
@@ -38,25 +45,41 @@ function App() {
             path="/broker/dashboard" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
-                <BrokerDashboard />
+                <Dashboard />
               </ProtectedRoute>
             } 
           />
           <Route 
-            path="/broker/partners" 
+            path="/broker/opportunities" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
-                <Partners />
+                <Opportunities />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/admin/bonds" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <AdminBonds />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/admin/sub-brokers" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <AdminSubBrokers />
               </ProtectedRoute>
             } 
           />
           
           {/* Sub-Broker Routes */}
           <Route 
-            path="/sub-broker/dashboard" 
+            path="/sub-broker/opportunities" 
             element={
               <ProtectedRoute allowedRoles={["sub_broker"]}>
-                <SubBrokerDashboard />
+                <SubBrokerOpportunities />
               </ProtectedRoute>
             } 
           />
