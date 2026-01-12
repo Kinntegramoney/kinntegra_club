@@ -59,10 +59,16 @@ export default function BondDetails() {
       return;
     }
 
+    if (purchaseUnits < 1) {
+      toast.error("Please enter valid number of units");
+      return;
+    }
+
     setCalculating(true);
     try {
       const response = await axios.post(`${API}/bonds/${id}/calculate`, {
-        investment_date: investmentDate
+        investment_date: investmentDate,
+        units: purchaseUnits
       });
       setCalculation(response.data);
       toast.success("Price calculated successfully!");
@@ -71,6 +77,69 @@ export default function BondDetails() {
       toast.error(error.response?.data?.detail || "Failed to calculate price");
     } finally {
       setCalculating(false);
+    }
+  };
+
+  const downloadCashflow = async () => {
+    if (!calculation) {
+      toast.error("Please calculate price first");
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const response = await axios.post(`${API}/bonds/${id}/download-cashflow`, {
+        investment_date: investmentDate,
+        units: purchaseUnits
+      });
+      
+      // Create CSV content
+      const data = response.data;
+      let csv = `Bond Name:,${data.bond_name}\n`;
+      csv += `Investment Date:,${format(new Date(data.investment_date), "MMM dd, yyyy")}\n`;
+      csv += `Units:,${data.units}\n`;
+      csv += `Price Paid:,₹${data.price_paid.toLocaleString()}\n\n`;
+      csv += `Date,Month,Principal Payment,Interest Payment,TDS Deducted (10%),Net Interest,Total Net Payment\n`;
+      
+      data.cashflows.forEach(cf => {
+        csv += `${format(new Date(cf.date), "dd-MMM-yyyy")},${cf.month},₹${cf.principal_payment.toLocaleString()},₹${cf.interest_payment.toLocaleString()},₹${cf.tds_deducted.toLocaleString()},₹${cf.net_interest.toLocaleString()},₹${cf.total_net_payment.toLocaleString()}\n`;
+      });
+      
+      csv += `\nTotals,,,,,\n`;
+      csv += `Total Principal:,₹${data.total_principal.toLocaleString()}\n`;
+      csv += `Total Interest:,₹${data.total_interest.toLocaleString()}\n`;
+      csv += `Total TDS:,₹${data.total_tds.toLocaleString()}\n`;
+      csv += `Total Net Received:,₹${data.total_net_received.toLocaleString()}\n`;
+      
+      // Download CSV
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cashflow_${bondData.name}_${format(new Date(investmentDate), "yyyy-MM-dd")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Cashflow downloaded successfully!");
+    } catch (error) {
+      console.error("Error downloading cashflow:", error);
+      toast.error("Failed to download cashflow");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleApproximateAmountChange = (value) => {
+    setApproximateAmount(value);
+    if (value && calculation && calculation.price_per_unit > 0) {
+      const amount = parseFloat(value);
+      const estimatedUnits = Math.floor(amount / calculation.price_per_unit);
+      // Auto-update purchase units if reasonable
+      if (estimatedUnits > 0 && estimatedUnits <= calculation.units_available) {
+        setPurchaseUnits(estimatedUnits);
+      }
     }
   };
 
