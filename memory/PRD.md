@@ -292,7 +292,6 @@ Sub-broker View:
 ## Backlog / Future Enhancements
 
 ### P1 - High Priority
-- [ ] Bond status field in database (explicit status vs calculated)
 - [ ] Client edit page with full details view
 - [ ] Sub-broker trade history view
 
@@ -305,5 +304,4 @@ Sub-broker View:
 ### P3 - Low Priority
 - [ ] Multi-language support
 - [ ] Dark mode theme
-- [ ] Mobile responsive improvements
 - [ ] Performance optimization for large datasets
