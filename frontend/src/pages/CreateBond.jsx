@@ -356,6 +356,19 @@ export default function CreateBond() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="total_units">Total Units Available</Label>
+                <Input
+                  data-testid="total-units-input"
+                  id="total_units"
+                  name="total_units"
+                  type="number"
+                  value={formData.total_units}
+                  onChange={handleInputChange}
+                  placeholder="1"
+                  required
+                />
+              </div>
             </div>
           </div>
 
