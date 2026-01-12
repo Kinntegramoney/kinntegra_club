@@ -1241,6 +1241,12 @@ async def get_bond(bond_id: str):
     if isinstance(bond['created_at'], str):
         bond['created_at'] = datetime.fromisoformat(bond['created_at'])
     
+    # Calculate and add status
+    bond['status'] = calculate_bond_status(bond)
+    
+    if isinstance(bond['created_at'], str):
+        bond['created_at'] = datetime.fromisoformat(bond['created_at'])
+    
     # Calculate total cashflows for primary buyer
     total_cashflows = sum([ip.get('amount', 0) for ip in bond['interest_payments']])
     total_cashflows += bond['principal_amount']  # Principal returned
