@@ -229,14 +229,14 @@ export default function AdminClients() {
                           {linkingClient === client.id ? (
                             <div className="flex items-center gap-2">
                               <Select 
-                                defaultValue={client.linked_subbroker_id || ""} 
-                                onValueChange={(v) => handleLinkSubbroker(client.id, v)}
+                                defaultValue={client.linked_subbroker_id || "none"} 
+                                onValueChange={(v) => handleLinkSubbroker(client.id, v === "none" ? "" : v)}
                               >
                                 <SelectTrigger className="w-40">
                                   <SelectValue placeholder="Select..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">Unlink</SelectItem>
+                                  <SelectItem value="none">Unlink</SelectItem>
                                   {partners.map(p => (
                                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                                   ))}
