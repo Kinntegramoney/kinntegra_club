@@ -45,14 +45,16 @@ export default function Dashboard() {
       ]);
 
       const bonds = bondsRes.data;
-      const availableBonds = bonds.filter(b => (b.units_sold || 0) < (b.total_units || 1));
-      const fundedBonds = bonds.filter(b => (b.units_sold || 0) >= (b.total_units || 1));
+      // Use backend-calculated status
+      const availableBonds = bonds.filter(b => b.status === 'available');
+      const fundedBonds = bonds.filter(b => b.status === 'funded');
+      const closedBonds = bonds.filter(b => b.status === 'closed');
       
       setStats({
         totalBonds: bonds.length,
         availableBonds: availableBonds.length,
         fundedBonds: fundedBonds.length,
-        closedBonds: 0, // TODO: Implement closed logic
+        closedBonds: closedBonds.length,
         totalPartners: partnersRes.data.length,
         activeUnits: bonds.reduce((sum, b) => sum + ((b.total_units || 1) - (b.units_sold || 0)), 0)
       });
