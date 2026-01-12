@@ -276,6 +276,14 @@ Sub-broker View:
 - [x] Book Units section responsive layout
 - [x] All pages tested on 375px mobile viewport
 
+### Phase 7: Bond Status & Business Rules (January 12, 2026)
+- [x] Dynamic bond status calculation (`available`, `funded`, `closed`)
+- [x] Status calculated based on units_sold and end_date
+- [x] Delete prevention for funded and closed bonds
+- [x] Calculator disabled for closed bonds
+- [x] Frontend updated to use backend status
+- [x] Obsolete files cleanup (BrokerDashboard.jsx, SubBrokerDashboard.jsx, Partners.jsx)
+
 ## Testing Status
 - Backend: 62/62 tests passing (100%) - includes 20 new trade workflow tests
 - Frontend: All UI flows verified
