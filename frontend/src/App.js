@@ -92,6 +92,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/broker/holdings" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <Holdings />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Sub-Broker Routes */}
           <Route 
@@ -99,6 +107,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["sub_broker"]}>
                 <SubBrokerOpportunities />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/sub-broker/holdings" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <Holdings />
               </ProtectedRoute>
             } 
           />
