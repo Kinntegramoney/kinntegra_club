@@ -422,22 +422,26 @@ export default function BondDetails() {
 
             {calculation && (
               <div className="mt-6 pt-6 border-t border-border">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Price to Pay</p>
-                    <p className="text-2xl font-mono font-bold text-accent" data-testid="calculated-price">₹{calculation.price_to_pay.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mb-1">Units</p>
+                    <p className="text-2xl font-mono font-bold">{calculation.units_requested}</p>
+                  </div>
+                  <div className="metric-card rounded-md bg-white">
+                    <p className="text-xs text-muted-foreground mb-1">Price per Unit</p>
+                    <p className="text-2xl font-mono font-bold text-accent" data-testid="price-per-unit">₹{calculation.price_per_unit.toLocaleString()}</p>
+                  </div>
+                  <div className="metric-card rounded-md bg-white">
+                    <p className="text-xs text-muted-foreground mb-1">Total Price</p>
+                    <p className="text-2xl font-mono font-bold text-accent" data-testid="total-price">₹{calculation.total_price.toLocaleString()}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Days to Maturity</p>
                     <p className="text-2xl font-mono font-bold">{calculation.days_to_maturity}</p>
                   </div>
-                  <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Units Available</p>
-                    <p className="text-2xl font-mono font-bold text-success" data-testid="calc-units-available">{calculation.units_available}</p>
-                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Remaining Principal</p>
                     <p className="text-lg font-mono font-medium">₹{calculation.remaining_principal.toLocaleString()}</p>
@@ -447,8 +451,14 @@ export default function BondDetails() {
                     <p className="text-lg font-mono font-medium">₹{calculation.remaining_interest.toLocaleString()}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Total Future Inflows</p>
-                    <p className="text-lg font-mono font-medium">₹{calculation.total_inflows.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mb-1">TDS @ {calculation.tds_rate}%</p>
+                    <p className="text-lg font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.tds_rate / 100).toLocaleString()}</p>
+                  </div>
+                  <div className="metric-card rounded-md bg-white">
+                    <p className="text-xs text-muted-foreground mb-1">Net Amount (After TDS)</p>
+                    <p className="text-lg font-mono font-medium text-success">
+                      ₹{(calculation.remaining_principal + calculation.remaining_interest * (1 - calculation.tds_rate / 100)).toLocaleString()}
+                    </p>
                   </div>
                 </div>
 
@@ -458,9 +468,22 @@ export default function BondDetails() {
                     Investment Summary
                   </h3>
                   <div className="space-y-1 text-sm">
-                    <p>Secondary buyer invests <span className="font-mono font-medium text-accent">₹{calculation.price_to_pay.toLocaleString()}</span> on {format(new Date(calculation.investment_date), "MMM dd, yyyy")}</p>
-                    <p>Will receive <span className="font-mono font-medium">₹{calculation.total_inflows.toLocaleString()}</span> in future cashflows</p>
+                    <p>Invest <span className="font-mono font-medium text-accent">₹{calculation.total_price.toLocaleString()}</span> for <span className="font-mono font-medium">{calculation.units_requested}</span> unit(s) on {format(new Date(calculation.investment_date), "MMM dd, yyyy")}</p>
+                    <p>Total future inflows: <span className="font-mono font-medium">₹{calculation.total_inflows.toLocaleString()}</span></p>
+                    <p>TDS deduction: <span className="font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.tds_rate / 100).toLocaleString()}</span> (10% on interest)</p>
+                    <p>Net amount receivable: <span className="font-mono font-medium text-success">₹{(calculation.remaining_principal + calculation.remaining_interest * (1 - calculation.tds_rate / 100)).toLocaleString()}</span></p>
                     <p>Guaranteed return: <span className="font-mono font-medium text-accent">{calculation.secondary_buyer_irr}%</span> IRR</p>
+                  </div>
+                  <div className="mt-4 flex gap-3">
+                    <Button
+                      data-testid="download-cashflow-btn"
+                      onClick={downloadCashflow}
+                      disabled={downloading}
+                      variant="outline"
+                      className="btn-scale"
+                    >
+                      {downloading ? "Downloading..." : "Download Cashflow (CSV)"}
+                    </Button>
                   </div>
                 </div>
 
