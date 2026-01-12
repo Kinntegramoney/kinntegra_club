@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
-import { Check, X, Clock, FileText, FileImage } from "lucide-react";
+import { Check, X, Clock, FileText, FileImage, Tag, ChevronDown, ChevronUp, Save, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -21,6 +21,14 @@ export default function TradeVerification() {
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "all");
   const [processingTrade, setProcessingTrade] = useState(null);
   const [brokerNotes, setBrokerNotes] = useState("");
+  
+  // Reinvestment state
+  const [reinvestmentData, setReinvestmentData] = useState(null);
+  const [loadingReinvestment, setLoadingReinvestment] = useState(false);
+  const [reinvestmentSection, setReinvestmentSection] = useState("untagged"); // "untagged" or "tagged"
+  const [expandedClients, setExpandedClients] = useState({});
+  const [localTags, setLocalTags] = useState({});
+  const [savingClient, setSavingClient] = useState(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -39,6 +47,12 @@ export default function TradeVerification() {
     fetchTrades();
   }, [navigate]);
 
+  useEffect(() => {
+    if (activeTab === "reinvestment" && !reinvestmentData) {
+      fetchReinvestmentData();
+    }
+  }, [activeTab]);
+
   const fetchTrades = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -55,6 +69,31 @@ export default function TradeVerification() {
     } catch (error) {
       console.error("Error fetching trades:", error);
       setLoading(false);
+    }
+  };
+
+  const fetchReinvestmentData = async () => {
+    setLoadingReinvestment(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/reinvestment/upcoming`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setReinvestmentData(response.data);
+      
+      // Initialize local tags
+      const tags = {};
+      response.data.months.forEach(month => {
+        month.items.forEach(item => {
+          tags[item.cashflow_id] = item.reinvestment_tag || 'not_tagged';
+        });
+      });
+      setLocalTags(tags);
+    } catch (error) {
+      console.error("Error fetching reinvestment data:", error);
+      toast.error("Failed to load reinvestment data");
+    } finally {
+      setLoadingReinvestment(false);
     }
   };
 
@@ -80,6 +119,81 @@ export default function TradeVerification() {
     }
   };
 
+  const handleTagChange = (cashflowId, tag) => {
+    setLocalTags(prev => ({ ...prev, [cashflowId]: tag }));
+  };
+
+  const handleSaveClientTags = async (clientId, cashflowIds) => {
+    setSavingClient(clientId);
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Save all tags for this client
+      await Promise.all(
+        cashflowIds.map(cfId => 
+          axios.put(`${API}/reinvestment/tag/${cfId}`, 
+            { reinvestment_tag: localTags[cfId] },
+            { headers: { Authorization: `Bearer ${token}` }}
+          )
+        )
+      );
+      
+      toast.success("Tags saved successfully");
+      fetchReinvestmentData(); // Refresh data
+    } catch (error) {
+      console.error("Error saving tags:", error);
+      toast.error("Failed to save tags");
+    } finally {
+      setSavingClient(null);
+    }
+  };
+
+  const toggleClientExpand = (clientId) => {
+    setExpandedClients(prev => ({
+      ...prev,
+      [clientId]: !prev[clientId]
+    }));
+  };
+
+  // Group reinvestment data by client
+  const getGroupedByClient = () => {
+    if (!reinvestmentData) return { tagged: [], untagged: [] };
+    
+    const clientMap = {};
+    
+    reinvestmentData.months.forEach(month => {
+      month.items.forEach(item => {
+        if (!clientMap[item.client_id]) {
+          clientMap[item.client_id] = {
+            client_id: item.client_id,
+            client_name: item.client_name,
+            client_pan: item.client_pan,
+            cashflows: [],
+            total_principal: 0,
+            total_interest: 0,
+            total_net: 0
+          };
+        }
+        clientMap[item.client_id].cashflows.push(item);
+        clientMap[item.client_id].total_principal += item.principal_net;
+        clientMap[item.client_id].total_interest += item.interest_net;
+        clientMap[item.client_id].total_net += item.net_amount;
+      });
+    });
+    
+    const clients = Object.values(clientMap);
+    
+    // Separate tagged and untagged
+    const tagged = clients.filter(c => 
+      c.cashflows.every(cf => localTags[cf.cashflow_id] && localTags[cf.cashflow_id] !== 'not_tagged')
+    );
+    const untagged = clients.filter(c => 
+      c.cashflows.some(cf => !localTags[cf.cashflow_id] || localTags[cf.cashflow_id] === 'not_tagged')
+    );
+    
+    return { tagged, untagged };
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'pending':
@@ -93,9 +207,25 @@ export default function TradeVerification() {
     }
   };
 
+  const getTagColor = (tag) => {
+    switch(tag) {
+      case 'principal': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'interest': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'net_amount': return 'bg-green-100 text-green-700 border-green-200';
+      case 'not_invest': return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-gray-100 text-gray-600 border-gray-200';
+    }
+  };
+
+  const formatINR = (amount) => {
+    return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
   if (!user) return null;
 
   const displayTrades = activeTab === 'pending' ? pendingTrades : allTrades;
+  const { tagged, untagged } = getGroupedByClient();
+  const displayClients = reinvestmentSection === 'tagged' ? tagged : untagged;
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -142,136 +272,324 @@ export default function TradeVerification() {
             >
               All Trades ({allTrades.length})
             </button>
+            <button
+              onClick={() => setActiveTab("reinvestment")}
+              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === "reinvestment" 
+                  ? "border-amber-600 text-amber-600" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+              data-testid="tab-reinvestment"
+            >
+              <Tag className="h-4 w-4" />
+              Reinvestment Tagging
+            </button>
           </div>
         </div>
 
-        {/* Trades List */}
+        {/* Content */}
         <div className="p-4 md:p-8">
-          {loading ? (
-            <p className="text-center text-gray-500 py-12">Loading...</p>
-          ) : displayTrades.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">
-                {activeTab === 'pending' ? "No pending trades to verify" : "No trades found"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {displayTrades.map((trade) => (
-                <div 
-                  key={trade.id} 
-                  className="bg-white rounded-lg border border-gray-200 p-4 md:p-6"
-                  data-testid={`trade-card-${trade.id}`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-4">
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-base md:text-lg truncate">{trade.bond_name}</h3>
-                      <p className="text-xs md:text-sm text-gray-500">
-                        Created by {trade.created_by_name} ({trade.created_by_role === 'sub_broker' ? 'Sub-Broker' : 'Broker'})
-                      </p>
-                    </div>
-                    {getStatusBadge(trade.status)}
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-4">
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase">Client</p>
-                      <p className="font-medium text-sm md:text-base truncate">{trade.client_name}</p>
-                      <p className="text-xs text-gray-500 font-mono">{trade.client_pan}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase">Units</p>
-                      <p className="font-mono font-bold text-base md:text-lg">{trade.units}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase">Price/Unit</p>
-                      <p className="font-mono text-sm">₹{trade.calculated_price?.toLocaleString('en-IN')}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase">Total</p>
-                      <p className="font-mono font-bold text-amber-600 text-sm md:text-base">₹{trade.total_amount?.toLocaleString('en-IN')}</p>
-                    </div>
-                    <div className="col-span-2 md:col-span-1">
-                      <p className="text-xs text-gray-500 uppercase">Investment Date</p>
-                      <p className="font-mono text-sm">{format(new Date(trade.investment_date), "MMM dd, yyyy")}</p>
-                    </div>
-                  </div>
-
-                  {(trade.payment_reference || trade.payment_notes || trade.payment_proof_filename) && (
-                    <div className="bg-gray-50 p-3 rounded-md mb-4">
-                      <p className="text-xs text-gray-500 uppercase mb-2 font-medium">Payment Details</p>
-                      <div className="space-y-1 text-sm">
-                        {trade.payment_reference && (
-                          <p><span className="text-gray-500">Reference:</span> <span className="font-mono">{trade.payment_reference}</span></p>
-                        )}
-                        {trade.payment_proof_filename && (
-                          <p className="flex items-center gap-2">
-                            <FileImage className="h-4 w-4 text-green-600" />
-                            <span className="text-gray-500">Proof:</span> 
-                            <span className="text-green-700 truncate max-w-[200px]">{trade.payment_proof_filename}</span>
-                          </p>
-                        )}
-                        {trade.payment_notes && (
-                          <p><span className="text-gray-500">Notes:</span> {trade.payment_notes}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {trade.broker_notes && (
-                    <div className="bg-blue-50 p-3 rounded-md mb-4">
-                      <p className="text-xs text-blue-600 uppercase mb-1">Broker Notes</p>
-                      <p className="text-sm">{trade.broker_notes}</p>
-                    </div>
-                  )}
-
-                  {trade.status === 'pending' && (
-                    <div className="border-t border-gray-200 pt-4 mt-4">
-                      <div className="mb-3">
-                        <label className="text-xs text-gray-500 uppercase block mb-1">Add Notes (Optional)</label>
-                        <Textarea
-                          value={processingTrade === trade.id ? brokerNotes : ""}
-                          onChange={(e) => {
-                            setProcessingTrade(trade.id);
-                            setBrokerNotes(e.target.value);
-                          }}
-                          placeholder="Add verification notes..."
-                          rows={2}
-                          data-testid={`broker-notes-${trade.id}`}
-                        />
-                      </div>
-                      <div className="flex gap-3">
-                        <Button
-                          onClick={() => handleVerify(trade.id, 'approved')}
-                          disabled={processingTrade === trade.id}
-                          className="flex-1 bg-green-600 hover:bg-green-700"
-                          data-testid={`approve-trade-${trade.id}`}
-                        >
-                          <Check className="h-4 w-4 mr-2" />
-                          Approve
-                        </Button>
-                        <Button
-                          onClick={() => handleVerify(trade.id, 'rejected')}
-                          disabled={processingTrade === trade.id}
-                          variant="destructive"
-                          className="flex-1"
-                          data-testid={`reject-trade-${trade.id}`}
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Reject
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {trade.approved_at && (
-                    <div className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-200">
-                      {trade.status === 'approved' ? 'Approved' : 'Rejected'} on {format(new Date(trade.approved_at), "MMM dd, yyyy 'at' HH:mm")}
-                    </div>
-                  )}
+          {/* Trades Content */}
+          {(activeTab === "pending" || activeTab === "all") && (
+            <>
+              {loading ? (
+                <p className="text-center text-gray-500 py-12">Loading...</p>
+              ) : displayTrades.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">
+                    {activeTab === 'pending' ? "No pending trades to verify" : "No trades found"}
+                  </p>
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-4">
+                  {displayTrades.map((trade) => (
+                    <div 
+                      key={trade.id} 
+                      className="bg-white rounded-lg border border-gray-200 p-4 md:p-6"
+                      data-testid={`trade-card-${trade.id}`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-4">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-base md:text-lg truncate">{trade.bond_name}</h3>
+                          <p className="text-xs md:text-sm text-gray-500">
+                            Created by {trade.created_by_name} ({trade.created_by_role === 'sub_broker' ? 'Sub-Broker' : 'Broker'})
+                          </p>
+                        </div>
+                        {getStatusBadge(trade.status)}
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Client</p>
+                          <p className="font-medium text-sm md:text-base truncate">{trade.client_name}</p>
+                          <p className="text-xs text-gray-500 font-mono">{trade.client_pan}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Units</p>
+                          <p className="font-mono font-bold text-base md:text-lg">{trade.units}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Price/Unit</p>
+                          <p className="font-mono text-sm">₹{trade.calculated_price?.toLocaleString('en-IN')}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Total</p>
+                          <p className="font-mono font-bold text-amber-600 text-sm md:text-base">₹{trade.total_amount?.toLocaleString('en-IN')}</p>
+                        </div>
+                        <div className="col-span-2 md:col-span-1">
+                          <p className="text-xs text-gray-500 uppercase">Investment Date</p>
+                          <p className="font-mono text-sm">{format(new Date(trade.investment_date), "MMM dd, yyyy")}</p>
+                        </div>
+                      </div>
+
+                      {(trade.payment_reference || trade.payment_notes || trade.payment_proof_filename) && (
+                        <div className="bg-gray-50 p-3 rounded-md mb-4">
+                          <p className="text-xs text-gray-500 uppercase mb-2 font-medium">Payment Details</p>
+                          <div className="space-y-1 text-sm">
+                            {trade.payment_reference && (
+                              <p><span className="text-gray-500">Reference:</span> <span className="font-mono">{trade.payment_reference}</span></p>
+                            )}
+                            {trade.payment_proof_filename && (
+                              <p className="flex items-center gap-2">
+                                <FileImage className="h-4 w-4 text-green-600" />
+                                <span className="text-gray-500">Proof:</span> 
+                                <span className="text-green-700 truncate max-w-[200px]">{trade.payment_proof_filename}</span>
+                              </p>
+                            )}
+                            {trade.payment_notes && (
+                              <p><span className="text-gray-500">Notes:</span> {trade.payment_notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {trade.broker_notes && (
+                        <div className="bg-blue-50 p-3 rounded-md mb-4">
+                          <p className="text-xs text-blue-600 uppercase mb-1">Broker Notes</p>
+                          <p className="text-sm">{trade.broker_notes}</p>
+                        </div>
+                      )}
+
+                      {trade.status === 'pending' && (
+                        <div className="border-t border-gray-200 pt-4 mt-4">
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-500 uppercase block mb-1">Add Notes (Optional)</label>
+                            <Textarea
+                              value={processingTrade === trade.id ? brokerNotes : ""}
+                              onChange={(e) => {
+                                setProcessingTrade(trade.id);
+                                setBrokerNotes(e.target.value);
+                              }}
+                              placeholder="Add verification notes..."
+                              rows={2}
+                              data-testid={`broker-notes-${trade.id}`}
+                            />
+                          </div>
+                          <div className="flex gap-3">
+                            <Button
+                              onClick={() => handleVerify(trade.id, 'approved')}
+                              disabled={processingTrade === trade.id}
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                              data-testid={`approve-trade-${trade.id}`}
+                            >
+                              <Check className="h-4 w-4 mr-2" />
+                              Approve
+                            </Button>
+                            <Button
+                              onClick={() => handleVerify(trade.id, 'rejected')}
+                              disabled={processingTrade === trade.id}
+                              variant="destructive"
+                              className="flex-1"
+                              data-testid={`reject-trade-${trade.id}`}
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {trade.approved_at && (
+                        <div className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-200">
+                          {trade.status === 'approved' ? 'Approved' : 'Rejected'} on {format(new Date(trade.approved_at), "MMM dd, yyyy 'at' HH:mm")}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Reinvestment Tagging Content */}
+          {activeTab === "reinvestment" && (
+            <div>
+              {/* Sub-tabs: Untagged / Tagged */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+                  <button
+                    onClick={() => setReinvestmentSection("untagged")}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                      reinvestmentSection === "untagged"
+                        ? "bg-white text-amber-700 shadow-sm"
+                        : "text-gray-600 hover:text-gray-800"
+                    }`}
+                  >
+                    Untagged ({untagged.length})
+                  </button>
+                  <button
+                    onClick={() => setReinvestmentSection("tagged")}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                      reinvestmentSection === "tagged"
+                        ? "bg-white text-amber-700 shadow-sm"
+                        : "text-gray-600 hover:text-gray-800"
+                    }`}
+                  >
+                    Tagged ({tagged.length})
+                  </button>
+                </div>
+                <Button variant="outline" size="sm" onClick={fetchReinvestmentData} className="gap-2">
+                  <RefreshCw className={`h-4 w-4 ${loadingReinvestment ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+
+              {loadingReinvestment ? (
+                <div className="text-center py-12 text-gray-500">Loading reinvestment data...</div>
+              ) : displayClients.length === 0 ? (
+                <div className="text-center py-12">
+                  <Tag className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">
+                    {reinvestmentSection === "untagged" 
+                      ? "No untagged clients found" 
+                      : "No tagged clients found"}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {displayClients.map((client) => (
+                    <div 
+                      key={client.client_id} 
+                      className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+                    >
+                      {/* Client Header */}
+                      <div 
+                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+                        onClick={() => toggleClientExpand(client.client_id)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                            <span className="text-amber-700 font-semibold">
+                              {client.client_name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-800">{client.client_name}</p>
+                            <p className="text-xs text-gray-500 font-mono">{client.client_pan}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <p className="text-xs text-gray-500">Upcoming Repayments</p>
+                            <p className="font-mono font-semibold text-green-600">{formatINR(client.total_net)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-500">Entries</p>
+                            <p className="font-semibold">{client.cashflows.length}</p>
+                          </div>
+                          {expandedClients[client.client_id] ? (
+                            <ChevronUp className="h-5 w-5 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Expanded Content */}
+                      {expandedClients[client.client_id] && (
+                        <div className="border-t border-gray-200">
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
+                                  <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Expected Date</th>
+                                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal Net</th>
+                                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest Net</th>
+                                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
+                                  <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Reinvestment Tag</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {client.cashflows.map((cf) => (
+                                  <tr key={cf.cashflow_id} className="border-b border-gray-100">
+                                    <td className="py-3 px-4">
+                                      <span className="text-sm font-medium text-gray-800">
+                                        {cf.bond_name?.slice(0, 25) || 'N/A'}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                      <span className="text-sm font-mono">{format(new Date(cf.expected_date), "dd-MMM-yyyy")}</span>
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.principal_net)}</td>
+                                    <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.interest_net)}</td>
+                                    <td className="py-3 px-4 text-right font-mono text-sm font-medium">{formatINR(cf.net_amount)}</td>
+                                    <td className="py-3 px-4 text-center">
+                                      <select
+                                        value={localTags[cf.cashflow_id] || 'not_tagged'}
+                                        onChange={(e) => handleTagChange(cf.cashflow_id, e.target.value)}
+                                        className={`px-3 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getTagColor(localTags[cf.cashflow_id])}`}
+                                      >
+                                        <option value="not_tagged">Not Tagged</option>
+                                        <option value="principal">Principal</option>
+                                        <option value="interest">Interest</option>
+                                        <option value="net_amount">Net Amount</option>
+                                        <option value="not_invest">Not Invest</option>
+                                      </select>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          
+                          {/* Client Summary & Save */}
+                          <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                            <div className="flex gap-6 text-sm">
+                              <div>
+                                <span className="text-gray-500">Total Principal:</span>
+                                <span className="font-mono font-medium ml-2">{formatINR(client.total_principal)}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Total Interest:</span>
+                                <span className="font-mono font-medium ml-2">{formatINR(client.total_interest)}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Total Net:</span>
+                                <span className="font-mono font-medium ml-2 text-green-600">{formatINR(client.total_net)}</span>
+                              </div>
+                            </div>
+                            <Button
+                              onClick={() => handleSaveClientTags(client.client_id, client.cashflows.map(cf => cf.cashflow_id))}
+                              disabled={savingClient === client.client_id}
+                              className="bg-amber-700 hover:bg-amber-800"
+                            >
+                              {savingClient === client.client_id ? (
+                                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                              ) : (
+                                <Save className="h-4 w-4 mr-2" />
+                              )}
+                              Save Tags
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
