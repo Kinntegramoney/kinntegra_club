@@ -1214,16 +1214,18 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
     # Get all bonds where units_sold < total_units
     bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
     
-    # Filter bonds with available units
+    # Filter bonds with available units and not closed
     available_bonds = []
     for bond in bonds:
         if isinstance(bond['created_at'], str):
             bond['created_at'] = datetime.fromisoformat(bond['created_at'])
         
-        total_units = bond.get('total_units', 1)
-        units_sold = bond.get('units_sold', 0)
+        # Calculate status
+        status = calculate_bond_status(bond)
+        bond['status'] = status
         
-        if units_sold < total_units:
+        # Only include bonds that are 'available' (not funded or closed)
+        if status == 'available':
             available_bonds.append(bond)
     
     return available_bonds
