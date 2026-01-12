@@ -1291,7 +1291,12 @@ async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, curren
 # ==================== REINVESTMENT TAGGING ====================
 
 class ReinvestmentTagUpdate(BaseModel):
-    reinvestment_tag: str  # "not_tagged", "principal", "interest", "net_amount"
+    reinvestment_tag: str  # "not_tagged", "principal", "interest", "net_amount", "not_invest"
+
+
+class ReinvestmentApproval(BaseModel):
+    approved: bool
+    notes: Optional[str] = None
 
 
 @api_router.get("/reinvestment/upcoming")
