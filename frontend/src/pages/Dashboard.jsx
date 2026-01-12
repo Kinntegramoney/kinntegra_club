@@ -152,6 +152,12 @@ export default function Dashboard() {
                           <span className="font-mono font-medium">{daysToMaturity}</span>
                         </div>
                       )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Units:</span>
+                        <span className="font-mono font-medium">
+                          {(bond.total_units || 1) - (bond.units_sold || 0)}/{bond.total_units || 1}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-border">
