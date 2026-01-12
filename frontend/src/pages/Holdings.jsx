@@ -661,7 +661,7 @@ export default function Holdings() {
                     <h3 className="font-semibold text-gray-800">Holding Report</h3>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="sm" onClick={handleDownloadCSV} className="text-amber-700 hover:text-amber-800" data-testid="download-holdings-btn">
+                    <Button variant="ghost" size="sm" onClick={handleDownloadExcel} className="text-amber-700 hover:text-amber-800" data-testid="download-holdings-btn">
                       <Download className="h-4 w-4 mr-2" />
                       DOWNLOAD
                     </Button>
