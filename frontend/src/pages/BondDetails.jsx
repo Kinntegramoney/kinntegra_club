@@ -466,10 +466,10 @@ export default function BondDetails() {
                   </h3>
                   <div className="space-y-1 text-sm">
                     <p>Total investment: <span className="font-mono font-medium text-accent">₹{calculation.total_price.toLocaleString('en-IN')}</span> for <span className="font-mono font-medium">{calculation.units_requested}</span> unit(s) on {format(new Date(calculation.investment_date), "MMM dd, yyyy")}</p>
-                    <p>Total future inflows: <span className="font-mono font-medium">₹{(calculation.total_inflows * calculation.units_requested).toLocaleString('en-IN')}</span> (before TDS)</p>
-                    <p>TDS deduction: <span className="font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.units_requested * calculation.tds_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> (10% on interest)</p>
-                    <p>Net amount receivable: <span className="font-mono font-medium text-success">₹{((calculation.remaining_principal * calculation.units_requested) + (calculation.remaining_interest * calculation.units_requested * (1 - calculation.tds_rate / 100))).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
-                    <p>Guaranteed return: <span className="font-mono font-medium text-accent">{calculation.secondary_buyer_irr}%</span> IRR</p>
+                    <p>Gross future inflows: <span className="font-mono font-medium">₹{(calculation.total_inflows * calculation.units_requested).toLocaleString('en-IN')}</span></p>
+                    <p>Less: TDS deduction: <span className="font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.units_requested * calculation.tds_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> (10% on interest)</p>
+                    <p>Net amount in hand: <span className="font-mono font-medium text-success">₹{((calculation.remaining_principal * calculation.units_requested) + (calculation.remaining_interest * calculation.units_requested * (1 - calculation.tds_rate / 100))).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+                    <p className="pt-2 border-t border-border mt-2">Gross IRR: <span className="font-mono font-medium text-accent">{calculation.secondary_buyer_irr}%</span> (before TDS)</p>
                   </div>
                   <div className="mt-4">
                     <Button
