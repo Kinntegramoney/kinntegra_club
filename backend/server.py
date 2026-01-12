@@ -453,7 +453,8 @@ async def create_client(client_data: ClientCreate, current_user: dict = Depends(
     await db.clients.insert_one(client_dict)
     
     # Return without _id
-    del client_dict['_id'] if '_id' in client_dict else None
+    if '_id' in client_dict:
+        del client_dict['_id']
     return client_dict
 
 
