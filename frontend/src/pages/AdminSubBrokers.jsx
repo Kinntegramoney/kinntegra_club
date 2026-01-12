@@ -4,7 +4,7 @@ import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreatePartnerModal from "@/components/CreatePartnerModal";
 import EditPartnerModal from "@/components/EditPartnerModal";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, RefreshCw, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -51,18 +51,37 @@ export default function AdminSubBrokers() {
   };
 
   const handleDelete = async (partnerId, partnerName) => {
-    if (!window.confirm(`Delete sub-broker "${partnerName}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete/Deactivate sub-broker "${partnerName}"? Sub-brokers with trades or linked clients will be marked as inactive instead.`)) return;
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API}/partners/${partnerId}`, {
+      const response = await axios.delete(`${API}/partners/${partnerId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success("Sub-broker deleted successfully");
+      
+      if (response.data.soft_delete) {
+        toast.success("Sub-broker marked as inactive (has trades or linked clients)");
+      } else {
+        toast.success("Sub-broker deleted successfully");
+      }
       fetchPartners();
     } catch (error) {
       console.error("Error deleting partner:", error);
       toast.error("Failed to delete sub-broker");
+    }
+  };
+
+  const handleReactivate = async (partnerId) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/partners/${partnerId}/reactivate`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Sub-broker reactivated successfully");
+      fetchPartners();
+    } catch (error) {
+      console.error("Error reactivating partner:", error);
+      toast.error("Failed to reactivate sub-broker");
     }
   };
 
@@ -74,10 +93,10 @@ export default function AdminSubBrokers() {
       
       <div className="flex-1 overflow-auto">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-8 py-6">
-          <div className="flex items-center justify-between">
+        <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-4 md:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800" data-testid="admin-subbrokers-title">Admin - Sub Brokers</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800" data-testid="admin-subbrokers-title">Admin - Sub Brokers</h1>
               <p className="text-sm text-gray-500 mt-1">Manage all sub-broker partners</p>
             </div>
             <Button
@@ -92,7 +111,7 @@ export default function AdminSubBrokers() {
         </div>
 
         {/* Partners Table */}
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           {loading ? (
             <p className="text-center text-gray-500 py-12">Loading...</p>
           ) : partners.length === 0 ? (
@@ -104,60 +123,85 @@ export default function AdminSubBrokers() {
               </Button>
             </div>
           ) : (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <table className="w-full">
+            <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+              <table className="w-full min-w-[600px]">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Partner Name</th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Code</th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Mobile</th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Location</th>
-                    <th className="text-right py-4 px-6 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase">Partner Name</th>
+                    <th className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase">Code</th>
+                    <th className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Email</th>
+                    <th className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Mobile</th>
+                    <th className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="text-right py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {partners.map((partner) => {
                     const initials = partner.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                    const isInactive = partner.is_active === false;
 
                     return (
-                      <tr key={partner.id} className="border-t border-gray-100 hover:bg-gray-50" data-testid={`partner-row-${partner.id}`}>
-                        <td className="py-4 px-6">
+                      <tr key={partner.id} className={`border-t border-gray-100 hover:bg-gray-50 ${isInactive ? 'opacity-60 bg-gray-50' : ''}`} data-testid={`partner-row-${partner.id}`}>
+                        <td className="py-4 px-4 md:px-6">
                           <div className="flex items-center gap-3">
                             <div 
-                              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium text-sm"
-                              style={{ backgroundColor: partner.color || '#78716C' }}
+                              className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium text-sm ${isInactive ? 'bg-gray-400' : ''}`}
+                              style={{ backgroundColor: isInactive ? undefined : (partner.color || '#78716C') }}
                             >
-                              {initials}
+                              {isInactive ? <UserX className="h-5 w-5" /> : initials}
                             </div>
-                            <span className="font-medium">{partner.name}</span>
+                            <div className="min-w-0">
+                              <span className="font-medium block truncate">{partner.name}</span>
+                              <span className="text-xs text-gray-500 md:hidden">{partner.email}</span>
+                            </div>
                           </div>
                         </td>
-                        <td className="py-4 px-6 font-mono text-sm">{partner.partner_code}</td>
-                        <td className="py-4 px-6 text-sm">{partner.email}</td>
-                        <td className="py-4 px-6 text-sm font-mono">{partner.mobile}</td>
-                        <td className="py-4 px-6 text-sm">{partner.city}, {partner.state}</td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingPartner(partner)}
-                              data-testid={`edit-partner-${partner.id}`}
-                              title="Edit sub-broker"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(partner.id, partner.name)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              data-testid={`delete-partner-${partner.id}`}
-                              title="Delete sub-broker"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                        <td className="py-4 px-4 md:px-6 font-mono text-sm">{partner.partner_code}</td>
+                        <td className="py-4 px-4 md:px-6 text-sm hidden md:table-cell truncate max-w-[200px]">{partner.email}</td>
+                        <td className="py-4 px-4 md:px-6 text-sm font-mono hidden md:table-cell">{partner.mobile}</td>
+                        <td className="py-4 px-4 md:px-6">
+                          {isInactive ? (
+                            <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">Inactive</span>
+                          ) : (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Active</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 md:px-6">
+                          <div className="flex items-center justify-end gap-1">
+                            {isInactive ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleReactivate(partner.id)}
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                title="Reactivate sub-broker"
+                                data-testid={`reactivate-partner-${partner.id}`}
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditingPartner(partner)}
+                                  data-testid={`edit-partner-${partner.id}`}
+                                  title="Edit sub-broker"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(partner.id, partner.name)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  data-testid={`delete-partner-${partner.id}`}
+                                  title="Delete/Deactivate sub-broker"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
