@@ -137,6 +137,12 @@ export default function BondDetails() {
       return;
     }
 
+    // Check if requested units exceed available units
+    if (units > unitsAvailable) {
+      toast.error(`Only ${unitsAvailable} units available. You requested ${units} units.`);
+      return;
+    }
+
     setCalculating(true);
     setSelectedUnits(units);
     try {
