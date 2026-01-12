@@ -290,6 +290,26 @@ async def get_partners(current_user: dict = Depends(get_current_user)):
     return partners
 
 
+@api_router.delete("/partners/{partner_id}")
+async def delete_partner(partner_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a sub-broker partner (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can delete partners")
+    
+    # Check if partner exists and belongs to this broker
+    partner = await db.partners.find_one({"id": partner_id, "created_by": current_user['id']})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    
+    # Delete the partner record
+    await db.partners.delete_one({"id": partner_id})
+    
+    # Delete the associated user account
+    await db.users.delete_one({"id": partner_id})
+    
+    return {"message": "Sub-broker deleted successfully"}
+
+
 # Helper function for XIRR calculation
 def calculate_xirr(dates, cashflows, guess=0.1):
     """
