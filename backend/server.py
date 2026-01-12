@@ -351,7 +351,8 @@ async def create_bond(bond_input: BondCreate):
 
 
 @api_router.get("/bonds", response_model=List[Bond])
-async def get_bonds():
+async def get_bonds(current_user: dict = Depends(get_current_user)):
+    """Get all bonds (brokers only see their own)"""
     bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
     
     for bond in bonds:
@@ -359,6 +360,27 @@ async def get_bonds():
             bond['created_at'] = datetime.fromisoformat(bond['created_at'])
     
     return bonds
+
+
+@api_router.get("/bonds/available", response_model=List[Bond])
+async def get_available_bonds(current_user: dict = Depends(get_current_user)):
+    """Get bonds with available units (for sub-brokers)"""
+    # Get all bonds where units_sold < total_units
+    bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
+    
+    # Filter bonds with available units
+    available_bonds = []
+    for bond in bonds:
+        if isinstance(bond['created_at'], str):
+            bond['created_at'] = datetime.fromisoformat(bond['created_at'])
+        
+        total_units = bond.get('total_units', 1)
+        units_sold = bond.get('units_sold', 0)
+        
+        if units_sold < total_units:
+            available_bonds.append(bond)
+    
+    return available_bonds
 
 
 @api_router.get("/bonds/{bond_id}", response_model=BondWithCalculations)
