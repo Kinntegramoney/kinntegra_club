@@ -67,6 +67,67 @@ export default function BondDetails() {
     }
   };
 
+  const fetchClients = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      
+      const response = await axios.get(`${API}/clients`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setClients(response.data);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+    }
+  };
+
+  const bookUnits = async () => {
+    if (!selectedClient) {
+      toast.error("Please select a client");
+      return;
+    }
+    if (!calculation || !selectedUnits) {
+      toast.error("Please calculate price first");
+      return;
+    }
+
+    setBookingUnits(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/trades`, {
+        bond_id: id,
+        client_id: selectedClient,
+        units: selectedUnits,
+        investment_date: investmentDate,
+        calculated_price: calculation.price_per_unit,
+        payment_reference: paymentReference,
+        payment_notes: paymentNotes
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const isBroker = user?.role === 'broker';
+      if (isBroker) {
+        toast.success("Trade booked and approved successfully!");
+      } else {
+        toast.success("Trade request submitted for broker approval!");
+      }
+
+      // Reset form
+      setSelectedClient("");
+      setPaymentReference("");
+      setPaymentNotes("");
+      
+      // Refresh bond data to update available units
+      fetchBond();
+    } catch (error) {
+      console.error("Error booking units:", error);
+      toast.error(error.response?.data?.detail || "Failed to book units");
+    } finally {
+      setBookingUnits(false);
+    }
+  };
+
   const calculatePrice = async (units) => {
     if (!investmentDate) {
       toast.error("Please select an investment date");
