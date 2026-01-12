@@ -1202,6 +1202,8 @@ async def get_bonds(current_user: dict = Depends(get_current_user)):
     for bond in bonds:
         if isinstance(bond['created_at'], str):
             bond['created_at'] = datetime.fromisoformat(bond['created_at'])
+        # Calculate and add status dynamically
+        bond['status'] = calculate_bond_status(bond)
     
     return bonds
 
