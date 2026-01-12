@@ -146,6 +146,28 @@ export default function BondDetails() {
     return Math.ceil(parseFloat(approximateAmount) / calculation.price_per_unit);
   };
 
+  const handleDeleteBond = async () => {
+    if (!window.confirm(`Are you sure you want to delete "${bondData.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API}/bonds/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success("Bond deleted successfully");
+      navigate("/broker/dashboard");
+    } catch (error) {
+      console.error("Error deleting bond:", error);
+      toast.error(error.response?.data?.detail || "Failed to delete bond");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center" data-testid="loading-bond-details">
