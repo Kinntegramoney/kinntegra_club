@@ -637,7 +637,11 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
 
 
 @api_router.delete("/bonds/{bond_id}")
-async def delete_bond(bond_id: str):
+async def delete_bond(bond_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a bond (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can delete bonds")
+    
     result = await db.bonds.delete_one({"id": bond_id})
     
     if result.deleted_count == 0:
