@@ -772,6 +772,26 @@ async def remove_bond_allocation(client_id: str, bond_id: str, current_user: dic
     return {"message": "Bond allocation removed"}
 
 
+@api_router.get("/clients/{client_id}")
+async def get_client_details(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Get detailed client information including KYC details"""
+    
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Check access based on role
+    if current_user['role'] == 'broker':
+        if client.get('created_by') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    else:
+        # Sub-broker can only access linked clients
+        if client.get('linked_subbroker_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    return client
+
+
 # ==================== END CLIENT MANAGEMENT ====================
 
 
