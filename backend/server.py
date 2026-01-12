@@ -282,6 +282,11 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
     if investment_date < start_date or investment_date > end_date:
         raise HTTPException(status_code=400, detail="Investment date must be between start and end date")
     
+    # Check units availability
+    units_available = bond.get('total_units', 1) - bond.get('units_sold', 0)
+    if calculation.units > units_available:
+        raise HTTPException(status_code=400, detail=f"Only {units_available} units available")
+    
     # Get remaining cashflows after investment date
     remaining_dates = []
     remaining_cashflows = []
@@ -316,61 +321,12 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
     if len(remaining_dates) == 0:
         raise HTTPException(status_code=400, detail="No remaining cashflows after investment date")
     
-    # Calculate price for secondary buyer to achieve target IRR
+    # Calculate price per unit for secondary buyer to achieve target IRR
     secondary_irr_decimal = bond['secondary_irr'] / 100
-    price_to_pay = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows, investment_date)
+    price_per_unit = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows, investment_date)
     
-    # Calculate what primary buyer would receive
-    # Primary buyer sells at a price that gives them their target IRR from start to investment date
-    primary_irr_decimal = bond['primary_irr'] / 100
-    
-    # Primary buyer's cashflows: initial investment + interest received + sale price
-    primary_dates = [start_date]
-    primary_cashflows = [-bond['principal_amount']]
-    
-    # Add interest payments received before sale
-    for ip in bond['interest_payments']:
-        ip_date = datetime.fromisoformat(ip['date'])
-        if ip_date <= investment_date:
-            primary_dates.append(ip_date)
-            primary_cashflows.append(ip['amount'])
-    
-    # Add principal payments received before sale
-    for pp in bond['principal_payments']:
-        pp_date = datetime.fromisoformat(pp['date'])
-        if pp_date <= investment_date:
-            primary_dates.append(pp_date)
-            primary_cashflows.append(bond['principal_amount'] * pp['percentage'] / 100)
-    
-    # Add sale proceeds at investment date
-    primary_dates.append(investment_date)
-    # Primary buyer expects to achieve their target IRR, so calculate their required sale price
-    
-    # Combine cashflows before calculating primary sale price
-    date_cashflow_map = {}
-    for d, cf in zip(primary_dates, primary_cashflows):
-        if d in date_cashflow_map:
-            date_cashflow_map[d] += cf
-        else:
-            date_cashflow_map[d] = cf
-    
-    # Calculate remaining value needed to achieve primary IRR
-    # NPV of all cashflows + sale price should equal 0 at primary IRR
-    days_from_start = [(d - start_date).days for d in date_cashflow_map.keys()]
-    cashflows_before_sale = list(date_cashflow_map.values())
-    
-    # Calculate PV of cashflows before sale
-    pv_before_sale = sum([cf / ((1 + primary_irr_decimal) ** (day / 365.0)) for cf, day in zip(cashflows_before_sale, days_from_start)])
-    
-    # Calculate required sale price to achieve target IRR
-    days_to_investment = (investment_date - start_date).days
-    discount_factor = (1 + primary_irr_decimal) ** (days_to_investment / 365.0)
-    
-    # Solve: pv_before_sale + (sale_price / discount_factor) = 0
-    primary_sale_price = -pv_before_sale * discount_factor
-    
-    # Broker margin is the difference
-    broker_margin = primary_sale_price - price_to_pay
+    # Calculate total price for requested units
+    total_price = price_per_unit * calculation.units
     
     days_to_maturity = (end_date - investment_date).days
     
@@ -383,13 +339,16 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
     
     return {
         "investment_date": calculation.investment_date,
-        "price_to_pay": round(price_to_pay, 2),
+        "units_requested": calculation.units,
+        "price_per_unit": round(price_per_unit, 2),
+        "total_price": round(total_price, 2),
         "remaining_principal": round(remaining_principal, 2),
         "remaining_interest": round(remaining_interest, 2),
         "total_inflows": round(total_inflows, 2),
         "secondary_buyer_irr": bond['secondary_irr'],
         "days_to_maturity": days_to_maturity,
-        "units_available": units_available
+        "units_available": units_available,
+        "tds_rate": 10.0
     }
 
 
