@@ -720,6 +720,7 @@ class TradeCreate(BaseModel):
     calculated_price: float
     payment_reference: Optional[str] = None
     payment_notes: Optional[str] = None
+    payment_proof_filename: Optional[str] = None
 
 
 class TradeUpdate(BaseModel):
