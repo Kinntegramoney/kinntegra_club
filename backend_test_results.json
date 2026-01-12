@@ -1,0 +1,47 @@
+{
+  "total_tests": 8,
+  "passed_tests": 8,
+  "success_rate": 100.0,
+  "test_results": [
+    {
+      "test": "API Health Check",
+      "success": true,
+      "details": "Status: 200, Message: BondFlow Pro API"
+    },
+    {
+      "test": "Create Bond",
+      "success": true,
+      "details": "Bond ID: bd3ead13-1a8b-47e2-8070-3cb8d7e9ab7e"
+    },
+    {
+      "test": "Get All Bonds",
+      "success": true,
+      "details": "Found 1 bonds, Test bond found: True"
+    },
+    {
+      "test": "Get Bond Details",
+      "success": true,
+      "details": "Bond: Test NCD Bond 2025, Calculated IRR: 8.77872408750571"
+    },
+    {
+      "test": "Secondary Market Calculation",
+      "success": true,
+      "details": "Price: \u20b91,009,233.14, Broker Margin: \u20b9-2,124.90"
+    },
+    {
+      "test": "Validation Error Handling",
+      "success": true,
+      "details": "Status: 422 (expected 422 for validation error)"
+    },
+    {
+      "test": "XIRR Calculation Accuracy",
+      "success": true,
+      "details": "Calculated IRR: 10.03% (expected ~10%)"
+    },
+    {
+      "test": "Delete Bond",
+      "success": true,
+      "details": "Bond deleted successfully, Deletion verified"
+    }
+  ]
+}
