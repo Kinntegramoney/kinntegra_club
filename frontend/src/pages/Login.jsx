@@ -64,13 +64,11 @@ export default function Login() {
         pin: formData.pin
       });
       
-      // Store auth token and user info
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
       
       toast.success(`Welcome, ${response.data.user.name}!`);
       
-      // Navigate based on role
       if (response.data.user.role === "broker") {
         navigate("/broker/dashboard");
       } else {
@@ -86,47 +84,77 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
-         style={{ background: "linear-gradient(135deg, #2d1b4e 0%, #1a1126 100%)" }}>
+         style={{ 
+           background: '#2B1B3D',
+           position: 'relative'
+         }}>
       
-      {/* Abstract background patterns */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-20 left-20 w-96 h-96 rounded-full"
-             style={{ background: "radial-gradient(circle, #f59e0b 0%, transparent 70%)" }}></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 rounded-full"
-             style={{ background: "radial-gradient(circle, #8b5cf6 0%, transparent 70%)" }}></div>
-      </div>
+      {/* Abstract background shapes */}
+      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.08 }}>
+        <defs>
+          <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: '#f59e0b', stopOpacity: 0.3 }} />
+            <stop offset="100%" style={{ stopColor: '#8b5cf6', stopOpacity: 0.3 }} />
+          </linearGradient>
+        </defs>
+        <path d="M 0,400 Q 400,200 800,400 T 1600,400 L 1600,0 L 0,0 Z" fill="url(#grad1)" />
+        <ellipse cx="20%" cy="60%" rx="400" ry="300" fill="url(#grad1)" opacity="0.3" />
+        <ellipse cx="80%" cy="30%" rx="350" ry="250" fill="url(#grad1)" opacity="0.3" />
+      </svg>
 
       {/* Login Card */}
-      <div className="relative z-10 bg-white rounded-lg shadow-2xl p-8 w-full max-w-md mx-4"
+      <div className="relative z-10 bg-white rounded-xl shadow-2xl w-full max-w-md mx-4"
+           style={{ 
+             padding: '3rem 2.5rem',
+             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+           }}
            data-testid="login-card">
         
         {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg">
-            <span className="text-white text-3xl font-bold">K</span>
+        <div className="flex justify-center mb-10">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center"
+                 style={{
+                   background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                   boxShadow: '0 10px 25px rgba(245, 158, 11, 0.3)'
+                 }}>
+              <span className="text-white text-4xl font-bold" style={{ fontFamily: 'serif' }}>K</span>
+            </div>
           </div>
         </div>
 
         {step === 1 ? (
           <form onSubmit={handleStep1Submit} data-testid="step1-form">
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="pan" className="text-gray-600 text-sm font-medium uppercase">PAN NO</Label>
+                <Label htmlFor="pan" 
+                       className="text-xs font-medium tracking-wider"
+                       style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  PAN NO
+                </Label>
                 <Input
                   data-testid="pan-input"
                   id="pan"
                   type="text"
                   value={formData.pan}
                   onChange={(e) => setFormData({...formData, pan: e.target.value.toUpperCase()})}
-                  placeholder="Enter your PAN Number"
                   maxLength={10}
-                  className="h-12 font-mono"
+                  className="h-12 font-mono text-base"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    borderRadius: '0.5rem',
+                    fontSize: '15px'
+                  }}
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-600 text-sm font-medium uppercase">Password</Label>
+                <Label htmlFor="password" 
+                       className="text-xs font-medium tracking-wider"
+                       style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Password
+                </Label>
                 <div className="relative">
                   <Input
                     data-testid="password-input"
@@ -134,14 +162,19 @@ export default function Login() {
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
-                    placeholder="Enter your Password"
-                    className="h-12 pr-10"
+                    className="h-12 pr-12 text-base"
+                    style={{
+                      borderColor: '#E5E7EB',
+                      borderRadius: '0.5rem',
+                      fontSize: '15px'
+                    }}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 -translate-y-1/2"
+                    style={{ color: '#9CA3AF' }}
                     data-testid="toggle-password"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -153,15 +186,24 @@ export default function Login() {
                 data-testid="next-button"
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-800 hover:to-orange-800 text-white font-medium text-base"
+                className="w-full h-12 font-medium text-base"
+                style={{
+                  background: '#78716C',
+                  color: 'white',
+                  borderRadius: '0.5rem',
+                  marginTop: '2rem',
+                  fontWeight: 500,
+                  letterSpacing: '0.05em'
+                }}
               >
-                {loading ? "Verifying..." : "NEXT"}
+                {loading ? "VERIFYING..." : "SIGN IN"}
               </Button>
 
-              <div className="text-center">
+              <div className="text-center mt-4">
                 <button
                   type="button"
-                  className="text-sm text-gray-500 hover:text-gray-700"
+                  className="text-sm hover:underline"
+                  style={{ color: '#9CA3AF' }}
                   onClick={() => toast.info("Please contact administrator")}
                 >
                   Forgot Password?
@@ -171,9 +213,13 @@ export default function Login() {
           </form>
         ) : (
           <form onSubmit={handleStep2Submit} data-testid="step2-form">
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="pin" className="text-gray-600 text-sm font-medium uppercase">PIN</Label>
+                <Label htmlFor="pin" 
+                       className="text-xs font-medium tracking-wider"
+                       style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  PIN
+                </Label>
                 <div className="relative">
                   <Input
                     data-testid="pin-input"
@@ -184,15 +230,19 @@ export default function Login() {
                       const value = e.target.value.replace(/\D/g, '').slice(0, 4);
                       setFormData({...formData, pin: value});
                     }}
-                    placeholder="Enter 4-digit PIN"
                     maxLength={4}
-                    className="h-12 pr-10 font-mono text-center text-2xl tracking-widest"
+                    className="h-12 pr-12 font-mono text-center text-xl tracking-widest"
+                    style={{
+                      borderColor: '#E5E7EB',
+                      borderRadius: '0.5rem'
+                    }}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPin(!showPin)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 -translate-y-1/2"
+                    style={{ color: '#9CA3AF' }}
                     data-testid="toggle-pin"
                   >
                     {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -204,22 +254,31 @@ export default function Login() {
                 data-testid="signin-button"
                 type="submit"
                 disabled={loading || formData.pin.length !== 4}
-                className="w-full h-12 bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-800 hover:to-orange-800 text-white font-medium text-base"
+                className="w-full h-12 font-medium text-base"
+                style={{
+                  background: '#78716C',
+                  color: 'white',
+                  borderRadius: '0.5rem',
+                  marginTop: '2rem',
+                  fontWeight: 500,
+                  letterSpacing: '0.05em'
+                }}
               >
-                {loading ? "Signing In..." : "SIGN IN"}
+                {loading ? "SIGNING IN..." : "SIGN IN"}
               </Button>
 
-              <div className="text-center">
+              <div className="text-center mt-4">
                 <button
                   type="button"
-                  className="text-sm text-gray-500 hover:text-gray-700"
+                  className="text-sm hover:underline"
+                  style={{ color: '#9CA3AF' }}
                   onClick={() => toast.info("Please contact administrator")}
                 >
                   Forgot PIN?
                 </button>
               </div>
 
-              <div className="text-center mt-4">
+              <div className="text-center mt-6">
                 <button
                   type="button"
                   onClick={() => {
@@ -227,7 +286,8 @@ export default function Login() {
                     setFormData({...formData, pin: ""});
                     setTempToken("");
                   }}
-                  className="text-sm text-blue-600 hover:text-blue-700"
+                  className="text-sm hover:underline"
+                  style={{ color: '#3B82F6' }}
                 >
                   ← Back to login
                 </button>
@@ -237,10 +297,16 @@ export default function Login() {
         )}
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
-          <p className="font-medium">Kinntegraa LLC-FZ</p>
+        <div className="mt-10 pt-8 border-t text-center"
+             style={{ 
+               borderColor: '#E5E7EB',
+               fontSize: '11px',
+               lineHeight: '1.6',
+               color: '#6B7280'
+             }}>
+          <p className="font-semibold" style={{ color: '#374151' }}>Kinntegraa LLC-FZ</p>
           <p className="mt-1">License No: 1922240.01</p>
-          <p className="mt-1">Business Center, Sharjah Publishing City Free Zone, Sharjah, UAE</p>
+          <p className="mt-1">Business Center, Sharjah Publishing City Free Zone,<br />Sharjah, UAE</p>
         </div>
       </div>
     </div>
