@@ -22,7 +22,9 @@ export default function CreateBond() {
     coupon_rate: "",
     primary_irr: "",
     secondary_irr: "",
-    interest_payment_frequency: "quarterly"
+    interest_payment_frequency: "quarterly",
+    total_units: "1",
+    units_sold: "0"
   });
 
   const [principalPayments, setPrincipalPayments] = useState([{ date: "", percentage: "" }]);
