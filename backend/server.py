@@ -512,16 +512,46 @@ async def update_client(client_id: str, client_update: ClientUpdate, current_use
 
 @api_router.delete("/clients/{client_id}")
 async def delete_client(client_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a client (brokers only)"""
+    """Soft delete a client (brokers only) - marks as inactive if has trades"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can delete clients")
     
-    result = await db.clients.delete_one({"id": client_id, "created_by": current_user['id']})
-    
-    if result.deleted_count == 0:
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    return {"message": "Client deleted successfully"}
+    # Check if client has any confirmed trades
+    trades = await db.trades.find({"client_id": client_id, "status": "approved"}).to_list(1)
+    
+    if trades:
+        # Soft delete - mark as inactive
+        await db.clients.update_one(
+            {"id": client_id},
+            {"$set": {"is_active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        return {"message": "Client marked as inactive (has confirmed trades)", "soft_delete": True}
+    else:
+        # Hard delete - no confirmed trades
+        await db.clients.delete_one({"id": client_id})
+        return {"message": "Client deleted successfully", "soft_delete": False}
+
+
+@api_router.post("/clients/{client_id}/reactivate")
+async def reactivate_client(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Reactivate an inactive client (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can reactivate clients")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"is_active": True}, "$unset": {"deactivated_at": ""}}
+    )
+    
+    return {"message": "Client reactivated successfully"}
 
 
 @api_router.post("/clients/{client_id}/link-subbroker")
