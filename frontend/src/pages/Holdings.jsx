@@ -534,18 +534,18 @@ export default function Holdings() {
             </div>
             
             {/* Tabs: Summary + Individual Transactions */}
-            <div className="flex border-b border-gray-200 bg-gray-50 px-4 overflow-x-auto">
+            <div className="flex border-b border-gray-200 bg-gray-50 px-4 overflow-x-auto min-h-[72px]">
               {/* Summary Tab */}
               <button
                 onClick={() => setActiveTab("summary")}
-                className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                className={`px-5 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
                   activeTab === "summary" 
                     ? 'border-amber-600 text-amber-700 bg-white' 
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
                 data-testid="tab-summary"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mb-1">
                   <Calendar className="h-4 w-4" />
                   <span>Summary by Date</span>
                 </div>
@@ -557,15 +557,15 @@ export default function Holdings() {
                 <button
                   key={trade.trade_id}
                   onClick={() => setActiveTab(index)}
-                  className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  className={`px-5 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
                     activeTab === index 
                       ? 'border-amber-600 text-amber-700 bg-white' 
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                   data-testid={`trade-tab-${index}`}
                 >
-                  <span className="block">{format(new Date(trade.investment_date), "MMM dd, yyyy")}</span>
-                  <span className="text-xs text-gray-400">{trade.units} units</span>
+                  <span className="block mb-1">{format(new Date(trade.investment_date), "MMM dd, yyyy")}</span>
+                  <span className="text-xs text-gray-400 block">{trade.units} units</span>
                 </button>
               ))}
             </div>
