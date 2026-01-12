@@ -416,20 +416,20 @@ export default function BondDetails() {
               </div>
             )}
 
-            {calculation && (
+            {calculation && selectedUnits && (
               <div className="mt-6 pt-6 border-t border-border">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Units</p>
+                    <p className="text-xs text-muted-foreground mb-1">Units Selected</p>
                     <p className="text-2xl font-mono font-bold">{calculation.units_requested}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Price per Unit</p>
-                    <p className="text-2xl font-mono font-bold text-accent" data-testid="price-per-unit">₹{calculation.price_per_unit.toLocaleString()}</p>
+                    <p className="text-2xl font-mono font-bold text-accent" data-testid="price-per-unit">₹{calculation.price_per_unit.toLocaleString('en-IN')}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Total Price</p>
-                    <p className="text-2xl font-mono font-bold text-accent" data-testid="total-price">₹{calculation.total_price.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mb-1">Total Investment</p>
+                    <p className="text-2xl font-mono font-bold text-accent" data-testid="total-price">₹{calculation.total_price.toLocaleString('en-IN')}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Days to Maturity</p>
@@ -440,20 +440,20 @@ export default function BondDetails() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Remaining Principal</p>
-                    <p className="text-lg font-mono font-medium">₹{calculation.remaining_principal.toLocaleString()}</p>
+                    <p className="text-lg font-mono font-medium">₹{calculation.remaining_principal.toLocaleString('en-IN')}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">Remaining Interest</p>
-                    <p className="text-lg font-mono font-medium">₹{calculation.remaining_interest.toLocaleString()}</p>
+                    <p className="text-lg font-mono font-medium">₹{calculation.remaining_interest.toLocaleString('en-IN')}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
                     <p className="text-xs text-muted-foreground mb-1">TDS @ {calculation.tds_rate}%</p>
-                    <p className="text-lg font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.tds_rate / 100).toLocaleString()}</p>
+                    <p className="text-lg font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.tds_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Net Amount (After TDS)</p>
+                    <p className="text-xs text-muted-foreground mb-1">Net Receivable</p>
                     <p className="text-lg font-mono font-medium text-success">
-                      ₹{(calculation.remaining_principal + calculation.remaining_interest * (1 - calculation.tds_rate / 100)).toLocaleString()}
+                      ₹{(calculation.remaining_principal + calculation.remaining_interest * (1 - calculation.tds_rate / 100)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
@@ -464,56 +464,23 @@ export default function BondDetails() {
                     Investment Summary
                   </h3>
                   <div className="space-y-1 text-sm">
-                    <p>Invest <span className="font-mono font-medium text-accent">₹{calculation.total_price.toLocaleString()}</span> for <span className="font-mono font-medium">{calculation.units_requested}</span> unit(s) on {format(new Date(calculation.investment_date), "MMM dd, yyyy")}</p>
-                    <p>Total future inflows: <span className="font-mono font-medium">₹{calculation.total_inflows.toLocaleString()}</span></p>
-                    <p>TDS deduction: <span className="font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.tds_rate / 100).toLocaleString()}</span> (10% on interest)</p>
-                    <p>Net amount receivable: <span className="font-mono font-medium text-success">₹{(calculation.remaining_principal + calculation.remaining_interest * (1 - calculation.tds_rate / 100)).toLocaleString()}</span></p>
+                    <p>Total investment: <span className="font-mono font-medium text-accent">₹{calculation.total_price.toLocaleString('en-IN')}</span> for <span className="font-mono font-medium">{calculation.units_requested}</span> unit(s) on {format(new Date(calculation.investment_date), "MMM dd, yyyy")}</p>
+                    <p>Total future inflows: <span className="font-mono font-medium">₹{calculation.total_inflows.toLocaleString('en-IN')}</span> (before TDS)</p>
+                    <p>TDS deduction: <span className="font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.tds_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> (10% on interest)</p>
+                    <p>Net amount receivable: <span className="font-mono font-medium text-success">₹{(calculation.remaining_principal + calculation.remaining_interest * (1 - calculation.tds_rate / 100)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
                     <p>Guaranteed return: <span className="font-mono font-medium text-accent">{calculation.secondary_buyer_irr}%</span> IRR</p>
                   </div>
-                  <div className="mt-4 flex gap-3">
+                  <div className="mt-4">
                     <Button
                       data-testid="download-cashflow-btn"
                       onClick={downloadCashflow}
                       disabled={downloading}
-                      variant="outline"
-                      className="btn-scale"
+                      className="btn-scale bg-primary text-primary-foreground"
                     >
-                      {downloading ? "Downloading..." : "Download Cashflow (CSV)"}
+                      {downloading ? "Downloading..." : "Download Monthly Cashflow (CSV)"}
                     </Button>
                   </div>
                 </div>
-
-                {/* Record Sale Section */}
-                {calculation.units_available > 0 && (
-                  <div className="mt-6 p-4 bg-surface border border-border rounded-md">
-                    <h3 className="font-semibold mb-3">Record Sale</h3>
-                    <div className="flex gap-3 items-end">
-                      <div className="flex-1 space-y-2">
-                        <Label htmlFor="sale_units">Number of Units to Sell</Label>
-                        <Input
-                          data-testid="sale-units-input"
-                          id="sale_units"
-                          type="number"
-                          min="1"
-                          max={calculation.units_available}
-                          value={saleUnits}
-                          onChange={(e) => setSaleUnits(parseInt(e.target.value) || 1)}
-                        />
-                      </div>
-                      <Button
-                        data-testid="record-sale-btn"
-                        onClick={recordSale}
-                        disabled={recordingSale || saleUnits < 1 || saleUnits > calculation.units_available}
-                        className="btn-scale bg-success text-white hover:bg-success/90"
-                      >
-                        {recordingSale ? "Recording..." : "Record Sale"}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Recording a sale will update the units available count
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </div>
