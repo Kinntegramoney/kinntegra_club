@@ -83,7 +83,8 @@ export default function BondDetails() {
   };
 
   const bookUnits = async () => {
-    if (!selectedClient) {
+    // For clients, they don't need to select a client (they're booking for themselves)
+    if (user?.role !== 'client' && !selectedClient) {
       toast.error("Please select a client");
       return;
     }
@@ -95,12 +96,17 @@ export default function BondDetails() {
     setBookingUnits(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${API}/trades`, {
+      
+      // Different endpoint for clients
+      const endpoint = user?.role === 'client' ? `${API}/client/trades` : `${API}/trades`;
+      
+      await axios.post(endpoint, {
         bond_id: id,
-        client_id: selectedClient,
+        client_id: selectedClient || null, // null for clients (backend will use their client_id)
         units: selectedUnits,
         investment_date: investmentDate,
         calculated_price: calculation.price_per_unit,
+        total_amount: calculation.total_price,
         payment_reference: paymentReference,
         payment_notes: paymentNotes,
         payment_proof_filename: paymentProof?.name || null
@@ -108,14 +114,14 @@ export default function BondDetails() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      const isBroker = user?.role === 'broker';
-      if (isBroker) {
+      if (user?.role === 'broker') {
         toast.success("Trade booked and approved successfully!");
-        // Redirect to Trade Verification > All Trades
         navigate("/broker/trades");
+      } else if (user?.role === 'client') {
+        toast.success("Trade request submitted! Your sub-broker has been notified.");
+        navigate("/client/trades");
       } else {
         toast.success("Trade request submitted for broker approval!");
-        // Redirect to sub-broker opportunities
         navigate("/sub-broker/opportunities");
       }
     } catch (error) {
