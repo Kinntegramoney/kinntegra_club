@@ -652,30 +652,32 @@ export default function BondDetails() {
                 <div className="mt-6 p-4 md:p-6 bg-amber-50 border border-amber-200 rounded-md">
                   <h3 className="font-semibold mb-4 flex items-center gap-2 text-base md:text-lg">
                     <ShoppingCart className="h-5 w-5 text-amber-600" />
-                    Book Units for Client
+                    {user?.role === 'client' ? 'Book Units' : 'Book Units for Client'}
                   </h3>
                   
                   <div className="space-y-4">
-                    {/* Client Selection */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Select Client *</Label>
-                      <Select value={selectedClient} onValueChange={setSelectedClient}>
-                        <SelectTrigger data-testid="select-client-booking" className="w-full">
-                          <SelectValue placeholder="Choose a client..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {clients.length === 0 ? (
-                            <SelectItem value="none" disabled>No clients available</SelectItem>
-                          ) : (
-                            clients.map(client => (
-                              <SelectItem key={client.id} value={client.id}>
-                                {client.name} ({client.pan_number})
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Client Selection - Only for broker/sub-broker */}
+                    {user?.role !== 'client' && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Select Client *</Label>
+                        <Select value={selectedClient} onValueChange={setSelectedClient}>
+                          <SelectTrigger data-testid="select-client-booking" className="w-full">
+                            <SelectValue placeholder="Choose a client..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clients.length === 0 ? (
+                              <SelectItem value="none" disabled>No clients available</SelectItem>
+                            ) : (
+                              clients.map(client => (
+                                <SelectItem key={client.id} value={client.id}>
+                                  {client.name} ({client.pan_number})
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
                     {/* Payment Reference */}
                     <div className="space-y-2">
