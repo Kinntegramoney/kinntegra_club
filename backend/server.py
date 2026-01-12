@@ -29,6 +29,155 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Security
+security = HTTPBearer()
+
+# Auth Models
+class LoginStep1(BaseModel):
+    pan: str
+    password: str
+
+class LoginStep2(BaseModel):
+    temp_token: str
+    pin: str
+
+class UserCreate(BaseModel):
+    pan: str
+    name: str
+    email: str
+    phone: str
+    password: str
+    pin: str
+    role: str  # "broker" or "sub_broker"
+
+class User(BaseModel):
+    id: str
+    pan: str
+    name: str
+    email: str
+    phone: str
+    role: str
+    created_at: datetime
+
+class UserInDB(User):
+    password_hash: str
+    pin_hash: str
+
+
+# Auth Helper Functions
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current authenticated user from JWT token"""
+    token = credentials.credentials
+    payload = verify_token(token)
+    
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0, "pin_hash": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return user
+
+
+# Auth Routes
+@api_router.post("/auth/login-step1")
+async def login_step1(login: LoginStep1):
+    """Step 1: Verify PAN and Password, return temp token"""
+    # Find user by PAN
+    user = await db.users.find_one({"pan": login.pan.upper()})
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid PAN or Password")
+    
+    # Verify password
+    if not verify_password(login.password, user['password_hash']):
+        raise HTTPException(status_code=401, detail="Invalid PAN or Password")
+    
+    # Create temporary token (expires in 5 minutes)
+    temp_token = create_access_token(
+        data={"user_id": user['id'], "step": 1},
+        expires_delta=timedelta(minutes=5)
+    )
+    
+    return {"temp_token": temp_token}
+
+
+@api_router.post("/auth/login-step2")
+async def login_step2(login: LoginStep2):
+    """Step 2: Verify PIN and return full access token"""
+    # Verify temp token
+    payload = verify_token(login.temp_token)
+    
+    if not payload or payload.get("step") != 1:
+        raise HTTPException(status_code=401, detail="Invalid or expired temporary token")
+    
+    user_id = payload.get("user_id")
+    user = await db.users.find_one({"id": user_id})
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    # Verify PIN
+    if not verify_password(login.pin, user['pin_hash']):
+        raise HTTPException(status_code=401, detail="Invalid PIN")
+    
+    # Create full access token
+    access_token = create_access_token(
+        data={"user_id": user['id'], "role": user['role']}
+    )
+    
+    return {
+        "token": access_token,
+        "user": {
+            "id": user['id'],
+            "pan": user['pan'],
+            "name": user['name'],
+            "email": user['email'],
+            "phone": user['phone'],
+            "role": user['role']
+        }
+    }
+
+
+@api_router.post("/auth/register")
+async def register_user(user_data: UserCreate):
+    """Register a new user (broker or sub-broker)"""
+    # Check if PAN already exists
+    existing = await db.users.find_one({"pan": user_data.pan.upper()})
+    if existing:
+        raise HTTPException(status_code=400, detail="PAN already registered")
+    
+    # Validate role
+    if user_data.role not in ["broker", "sub_broker"]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    
+    # Create user
+    user = {
+        "id": str(uuid.uuid4()),
+        "pan": user_data.pan.upper(),
+        "name": user_data.name,
+        "email": user_data.email,
+        "phone": user_data.phone,
+        "password_hash": get_password_hash(user_data.password),
+        "pin_hash": get_password_hash(user_data.pin),
+        "role": user_data.role,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(user)
+    
+    return {
+        "id": user['id'],
+        "pan": user['pan'],
+        "name": user['name'],
+        "role": user['role']
+    }
+
 
 # Helper function for XIRR calculation
 def calculate_xirr(dates, cashflows, guess=0.1):
