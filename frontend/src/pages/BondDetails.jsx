@@ -449,16 +449,25 @@ export default function BondDetails() {
             </div>
           </div>
 
-          {/* Secondary Market Calculator - Only show if bond is not fully funded */}
-          {isFullyFunded ? (
+          {/* Secondary Market Calculator - Only show if bond is not fully funded or closed */}
+          {isCalculatorDisabled ? (
             <div className="lg:col-span-3 metric-card rounded-md bg-amber-50 border-amber-200">
               <div className="flex items-center gap-3 text-amber-700">
                 <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
                   <TrendingUp className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Bond Fully Funded</h2>
-                  <p className="text-sm text-amber-600">All {totalUnits} units have been sold. No more investments can be made.</p>
+                  {isClosed ? (
+                    <>
+                      <h2 className="text-xl font-semibold">Bond Closed</h2>
+                      <p className="text-sm text-amber-600">This bond has matured (end date: {format(new Date(bondData.end_date), "MMM dd, yyyy")}). No more investments can be made.</p>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-xl font-semibold">Bond Fully Funded</h2>
+                      <p className="text-sm text-amber-600">All {totalUnits} units have been sold. No more investments can be made.</p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
