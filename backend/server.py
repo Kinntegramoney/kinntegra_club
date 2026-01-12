@@ -708,6 +708,227 @@ async def remove_bond_allocation(client_id: str, bond_id: str, current_user: dic
 
 
 # ==================== END CLIENT MANAGEMENT ====================
+
+
+# ==================== TRADE MANAGEMENT ====================
+
+class TradeCreate(BaseModel):
+    bond_id: str
+    client_id: str
+    units: int
+    investment_date: str
+    calculated_price: float
+    payment_reference: Optional[str] = None
+    payment_notes: Optional[str] = None
+
+
+class TradeUpdate(BaseModel):
+    status: str  # approved, rejected
+    broker_notes: Optional[str] = None
+
+
+@api_router.post("/trades")
+async def create_trade(trade_data: TradeCreate, current_user: dict = Depends(get_current_user)):
+    """Create a trade request (broker or sub-broker can create)"""
+    
+    # Verify bond exists and has available units
+    bond = await db.bonds.find_one({"id": trade_data.bond_id})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    total_units = bond.get('total_units', 1)
+    units_sold = bond.get('units_sold', 0)
+    units_available = total_units - units_sold
+    
+    if trade_data.units > units_available:
+        raise HTTPException(status_code=400, detail=f"Only {units_available} units available")
+    
+    # Verify client exists
+    client = await db.clients.find_one({"id": trade_data.client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Check access to client
+    if current_user['role'] == 'sub_broker':
+        if client.get('linked_subbroker_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="You can only create trades for your linked clients")
+    
+    # Determine if auto-approve (broker creates) or pending (sub-broker creates)
+    status = "approved" if current_user['role'] == 'broker' else "pending"
+    
+    trade_dict = {
+        "id": str(uuid.uuid4()),
+        "bond_id": trade_data.bond_id,
+        "bond_name": bond['name'],
+        "client_id": trade_data.client_id,
+        "client_name": client['name'],
+        "client_pan": client['pan_number'],
+        "units": trade_data.units,
+        "investment_date": trade_data.investment_date,
+        "calculated_price": trade_data.calculated_price,
+        "total_amount": trade_data.calculated_price * trade_data.units,
+        "payment_reference": trade_data.payment_reference,
+        "payment_notes": trade_data.payment_notes,
+        "status": status,
+        "created_by": current_user['id'],
+        "created_by_name": current_user.get('name', 'Unknown'),
+        "created_by_role": current_user['role'],
+        "broker_notes": None,
+        "approved_by": current_user['id'] if status == "approved" else None,
+        "approved_at": datetime.now(timezone.utc).isoformat() if status == "approved" else None,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.trades.insert_one(trade_dict)
+    
+    # If auto-approved (broker created), update bond units
+    if status == "approved":
+        await db.bonds.update_one(
+            {"id": trade_data.bond_id},
+            {"$inc": {"units_sold": trade_data.units}}
+        )
+        
+        # Also add to client's bond allocations
+        allocation = {
+            "bond_id": trade_data.bond_id,
+            "bond_name": bond['name'],
+            "units_blocked": trade_data.units,
+            "units_paid": trade_data.units,
+            "status": "fully_paid",
+            "trade_id": trade_dict['id'],
+            "allocated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.clients.update_one(
+            {"id": trade_data.client_id},
+            {"$push": {"bond_allocations": allocation}}
+        )
+    
+    if '_id' in trade_dict:
+        del trade_dict['_id']
+    
+    return trade_dict
+
+
+@api_router.get("/trades")
+async def get_trades(status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Get trades - brokers see all, sub-brokers see only their own"""
+    
+    query = {}
+    
+    if current_user['role'] == 'broker':
+        # Brokers see all trades
+        pass
+    else:
+        # Sub-brokers see only trades they created
+        query["created_by"] = current_user['id']
+    
+    if status:
+        query["status"] = status
+    
+    trades = await db.trades.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return trades
+
+
+@api_router.get("/trades/pending")
+async def get_pending_trades(current_user: dict = Depends(get_current_user)):
+    """Get pending trades for broker verification"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can view pending trades")
+    
+    trades = await db.trades.find({"status": "pending"}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return trades
+
+
+@api_router.get("/trades/{trade_id}")
+async def get_trade(trade_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a specific trade"""
+    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+    
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    # Check access
+    if current_user['role'] != 'broker' and trade['created_by'] != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return trade
+
+
+@api_router.put("/trades/{trade_id}/verify")
+async def verify_trade(trade_id: str, update: TradeUpdate, current_user: dict = Depends(get_current_user)):
+    """Approve or reject a trade (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can verify trades")
+    
+    trade = await db.trades.find_one({"id": trade_id})
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    if trade['status'] != 'pending':
+        raise HTTPException(status_code=400, detail="Trade is not pending verification")
+    
+    if update.status not in ['approved', 'rejected']:
+        raise HTTPException(status_code=400, detail="Status must be 'approved' or 'rejected'")
+    
+    # Update trade status
+    await db.trades.update_one(
+        {"id": trade_id},
+        {"$set": {
+            "status": update.status,
+            "broker_notes": update.broker_notes,
+            "approved_by": current_user['id'],
+            "approved_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # If approved, update bond units and client allocation
+    if update.status == 'approved':
+        # Update bond units sold
+        await db.bonds.update_one(
+            {"id": trade['bond_id']},
+            {"$inc": {"units_sold": trade['units']}}
+        )
+        
+        # Add to client's bond allocations
+        bond = await db.bonds.find_one({"id": trade['bond_id']})
+        allocation = {
+            "bond_id": trade['bond_id'],
+            "bond_name": trade['bond_name'],
+            "units_blocked": trade['units'],
+            "units_paid": trade['units'],
+            "status": "fully_paid",
+            "trade_id": trade_id,
+            "allocated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.clients.update_one(
+            {"id": trade['client_id']},
+            {"$push": {"bond_allocations": allocation}}
+        )
+    
+    return {"message": f"Trade {update.status}", "trade_id": trade_id}
+
+
+@api_router.delete("/trades/{trade_id}")
+async def cancel_trade(trade_id: str, current_user: dict = Depends(get_current_user)):
+    """Cancel a pending trade"""
+    trade = await db.trades.find_one({"id": trade_id})
+    
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    # Only creator or broker can cancel
+    if current_user['role'] != 'broker' and trade['created_by'] != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    if trade['status'] != 'pending':
+        raise HTTPException(status_code=400, detail="Only pending trades can be cancelled")
+    
+    await db.trades.delete_one({"id": trade_id})
+    
+    return {"message": "Trade cancelled"}
+
+
+# ==================== END TRADE MANAGEMENT ====================
 def calculate_xirr(dates, cashflows, guess=0.1):
     """
     Calculate XIRR (Extended Internal Rate of Return)
