@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
+import EditBondModal from "@/components/EditBondModal";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ export default function AdminBonds() {
   const [user, setUser] = useState(null);
   const [bonds, setBonds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingBond, setEditingBond] = useState(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -73,12 +75,13 @@ export default function AdminBonds() {
         <div className="bg-white border-b border-gray-200 px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800\">Admin - Bonds</h1>
+              <h1 className="text-2xl font-bold text-gray-800" data-testid="admin-bonds-title">Admin - Bonds</h1>
               <p className="text-sm text-gray-500 mt-1">Manage all bond listings</p>
             </div>
             <Button
               onClick={() => navigate("/bonds/create")}
               className="bg-amber-700 hover:bg-amber-800"
+              data-testid="add-bond-btn"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Bond
@@ -103,12 +106,12 @@ export default function AdminBonds() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase\">Bond Name</th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase\">Principal</th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase\">IRR</th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase\">Units</th>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase\">Status</th>
-                    <th className="text-right py-4 px-6 text-xs font-medium text-gray-500 uppercase\">Actions</th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Bond Name</th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Principal</th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">IRR</th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Units</th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="text-right py-4 px-6 text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -117,16 +120,16 @@ export default function AdminBonds() {
                     const isFullyFunded = unitsAvailable === 0;
 
                     return (
-                      <tr key={bond.id} className="border-t border-gray-100 hover:bg-gray-50">
+                      <tr key={bond.id} className="border-t border-gray-100 hover:bg-gray-50" data-testid={`bond-row-${bond.id}`}>
                         <td className="py-4 px-6 font-medium">{bond.name}</td>
                         <td className="py-4 px-6 font-mono">₹{bond.principal_amount.toLocaleString()}</td>
                         <td className="py-4 px-6 font-mono text-amber-600">{bond.secondary_irr}%</td>
-                        <td className="py-4 px-6 font-mono\">{unitsAvailable}/{bond.total_units || 1}</td>
+                        <td className="py-4 px-6 font-mono">{unitsAvailable}/{bond.total_units || 1}</td>
                         <td className="py-4 px-6">
                           {isFullyFunded ? (
-                            <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full\">Funded</span>
+                            <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full">Funded</span>
                           ) : (
-                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full\">Available</span>
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Available</span>
                           )}
                         </td>
                         <td className="py-4 px-6">
@@ -134,7 +137,9 @@ export default function AdminBonds() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/bonds/${bond.id}`)}
+                              onClick={() => setEditingBond(bond)}
+                              data-testid={`edit-bond-${bond.id}`}
+                              title="Edit bond"
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
@@ -143,6 +148,8 @@ export default function AdminBonds() {
                               size="sm"
                               onClick={() => handleDelete(bond.id, bond.name)}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              data-testid={`delete-bond-${bond.id}`}
+                              title="Delete bond"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -157,6 +164,18 @@ export default function AdminBonds() {
           )}
         </div>
       </div>
+
+      {/* Edit Bond Modal */}
+      {editingBond && (
+        <EditBondModal
+          bond={editingBond}
+          onClose={() => setEditingBond(null)}
+          onSuccess={() => {
+            setEditingBond(null);
+            fetchBonds();
+          }}
+        />
+      )}
     </div>
   );
 }

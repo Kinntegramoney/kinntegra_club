@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreatePartnerModal from "@/components/CreatePartnerModal";
+import EditPartnerModal from "@/components/EditPartnerModal";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ export default function AdminSubBrokers() {
   const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingPartner, setEditingPartner] = useState(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -75,12 +77,13 @@ export default function AdminSubBrokers() {
         <div className="bg-white border-b border-gray-200 px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Admin - Sub Brokers</h1>
+              <h1 className="text-2xl font-bold text-gray-800" data-testid="admin-subbrokers-title">Admin - Sub Brokers</h1>
               <p className="text-sm text-gray-500 mt-1">Manage all sub-broker partners</p>
             </div>
             <Button
               onClick={() => setShowCreateModal(true)}
               className="bg-amber-700 hover:bg-amber-800"
+              data-testid="create-subbroker-btn"
             >
               <Plus className="h-4 w-4 mr-2" />
               Create Sub Broker
@@ -118,7 +121,7 @@ export default function AdminSubBrokers() {
                     const initials = partner.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
                     return (
-                      <tr key={partner.id} className="border-t border-gray-100 hover:bg-gray-50">
+                      <tr key={partner.id} className="border-t border-gray-100 hover:bg-gray-50" data-testid={`partner-row-${partner.id}`}>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
                             <div 
@@ -139,7 +142,9 @@ export default function AdminSubBrokers() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => toast.info("Edit feature coming soon")}
+                              onClick={() => setEditingPartner(partner)}
+                              data-testid={`edit-partner-${partner.id}`}
+                              title="Edit sub-broker"
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
@@ -148,6 +153,8 @@ export default function AdminSubBrokers() {
                               size="sm"
                               onClick={() => handleDelete(partner.id, partner.name)}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              data-testid={`delete-partner-${partner.id}`}
+                              title="Delete sub-broker"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -169,6 +176,18 @@ export default function AdminSubBrokers() {
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false);
+            fetchPartners();
+          }}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingPartner && (
+        <EditPartnerModal
+          partner={editingPartner}
+          onClose={() => setEditingPartner(null)}
+          onSuccess={() => {
+            setEditingPartner(null);
             fetchPartners();
           }}
         />
