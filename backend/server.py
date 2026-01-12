@@ -104,6 +104,8 @@ class BondCreate(BaseModel):
     principal_payments: List[PrincipalPayment]
     interest_payment_frequency: str  # "monthly", "quarterly", "semi-annual", "annual", "custom"
     interest_payments: List[InterestPayment]  # For custom frequency
+    total_units: int = 1  # Total number of units available for sale
+    units_sold: int = 0  # Number of units already sold
 
     @field_validator('principal_payments')
     def validate_principal_total(cls, v):
