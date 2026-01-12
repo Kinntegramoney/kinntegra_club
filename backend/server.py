@@ -395,6 +395,103 @@ async def record_sale(bond_id: str, sale: RecordSale):
     }
 
 
+@api_router.post("/bonds/{bond_id}/download-cashflow", response_model=CashflowDownload)
+async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculation):
+    """Generate month-wise cashflow with TDS calculation"""
+    bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
+    
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    investment_date = datetime.fromisoformat(calculation.investment_date)
+    
+    # Calculate price per unit
+    secondary_irr_decimal = bond['secondary_irr'] / 100
+    
+    # Get remaining cashflows
+    remaining_dates = []
+    remaining_cashflows = []
+    
+    for ip in bond['interest_payments']:
+        ip_date = datetime.fromisoformat(ip['date'])
+        if ip_date > investment_date:
+            remaining_dates.append(ip_date)
+            remaining_cashflows.append(ip['amount'])
+    
+    for pp in bond['principal_payments']:
+        pp_date = datetime.fromisoformat(pp['date'])
+        if pp_date > investment_date:
+            remaining_dates.append(pp_date)
+            remaining_cashflows.append(bond['principal_amount'] * pp['percentage'] / 100)
+    
+    date_cashflow_map = {}
+    for d, cf in zip(remaining_dates, remaining_cashflows):
+        if d in date_cashflow_map:
+            date_cashflow_map[d] += cf
+        else:
+            date_cashflow_map[d] = cf
+    
+    remaining_dates = sorted(date_cashflow_map.keys())
+    remaining_cashflows = [date_cashflow_map[d] for d in remaining_dates]
+    
+    price_per_unit = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows, investment_date)
+    total_price = price_per_unit * calculation.units
+    
+    # Build cashflow schedule
+    cashflows = []
+    total_principal = 0
+    total_interest = 0
+    total_tds = 0
+    
+    for payment_date in sorted(date_cashflow_map.keys()):
+        # Separate principal and interest for this date
+        principal_payment = 0
+        interest_payment = 0
+        
+        # Check principal payments
+        for pp in bond['principal_payments']:
+            pp_date = datetime.fromisoformat(pp['date'])
+            if pp_date == payment_date and pp_date > investment_date:
+                principal_payment += bond['principal_amount'] * pp['percentage'] / 100
+        
+        # Check interest payments
+        for ip in bond['interest_payments']:
+            ip_date = datetime.fromisoformat(ip['date'])
+            if ip_date == payment_date and ip_date > investment_date:
+                interest_payment += ip['amount']
+        
+        # Calculate TDS on interest
+        tds_deducted = interest_payment * 0.10
+        net_interest = interest_payment - tds_deducted
+        total_net_payment = principal_payment + net_interest
+        
+        total_principal += principal_payment
+        total_interest += interest_payment
+        total_tds += tds_deducted
+        
+        cashflows.append({
+            "date": payment_date.isoformat(),
+            "month": payment_date.strftime("%B %Y"),
+            "principal_payment": round(principal_payment, 2),
+            "interest_payment": round(interest_payment, 2),
+            "tds_deducted": round(tds_deducted, 2),
+            "net_interest": round(net_interest, 2),
+            "total_net_payment": round(total_net_payment, 2)
+        })
+    
+    return {
+        "bond_name": bond['name'],
+        "investment_date": calculation.investment_date,
+        "units": calculation.units,
+        "price_paid": round(total_price, 2),
+        "cashflows": cashflows,
+        "total_principal": round(total_principal, 2),
+        "total_interest": round(total_interest, 2),
+        "total_tds": round(total_tds, 2),
+        "total_net_received": round(total_principal + total_interest - total_tds, 2)
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
