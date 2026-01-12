@@ -136,6 +136,7 @@ class Bond(BaseModel):
 
 class SecondaryMarketCalculation(BaseModel):
     investment_date: str  # ISO format date
+    units: int = 1  # Number of units to purchase
 
 
 class SecondaryMarketResult(BaseModel):
