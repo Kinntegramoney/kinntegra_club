@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import { Check, X, Clock, Eye, FileText } from "lucide-react";
@@ -13,11 +13,12 @@ const API = `${BACKEND_URL}/api`;
 
 export default function TradeVerification() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [user, setUser] = useState(null);
   const [pendingTrades, setPendingTrades] = useState([]);
   const [allTrades, setAllTrades] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("pending");
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "all");
   const [processingTrade, setProcessingTrade] = useState(null);
   const [brokerNotes, setBrokerNotes] = useState("");
 
