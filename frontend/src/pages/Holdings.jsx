@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Search, Download, Mail, Check, X, FileText, Users, TrendingUp, DollarSign } from "lucide-react";
+import { Search, Download, Mail, Check, X, FileText, Users, TrendingUp, DollarSign, MoreVertical, ChevronDown, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -22,6 +22,9 @@ export default function Holdings() {
   const [loadingHoldings, setLoadingHoldings] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [expandedBond, setExpandedBond] = useState(null);
+  const [openMenu, setOpenMenu] = useState(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -32,6 +35,17 @@ export default function Holdings() {
     setUser(JSON.parse(userData));
     fetchClients();
   }, [navigate]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenu(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchClients = async () => {
     try {
@@ -50,6 +64,7 @@ export default function Holdings() {
 
   const fetchClientHoldings = async (clientId) => {
     setLoadingHoldings(true);
+    setExpandedBond(null);
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(`${API}/holdings/client/${clientId}`, {
@@ -77,7 +92,6 @@ export default function Holdings() {
         { headers: { Authorization: `Bearer ${token}` }}
       );
       toast.success(isRepaid ? "Marked as repaid" : "Marked as pending");
-      // Refresh holdings
       if (selectedClient) {
         fetchClientHoldings(selectedClient.id);
       }
@@ -113,9 +127,69 @@ export default function Holdings() {
     }
   };
 
+  // Consolidate holdings by bond_id
+  const getConsolidatedHoldings = () => {
+    if (!clientHoldings?.holdings) return [];
+    
+    const consolidated = {};
+    
+    clientHoldings.holdings.forEach(holding => {
+      const bondId = holding.bond_id;
+      
+      if (!consolidated[bondId]) {
+        consolidated[bondId] = {
+          bond_id: bondId,
+          bond_name: holding.bond_name,
+          total_units: 0,
+          invested_amount: 0,
+          total_principal: 0,
+          total_interest_gross: 0,
+          total_tds: 0,
+          repaid_principal: 0,
+          repaid_interest: 0,
+          repaid_tds: 0,
+          net_repaid: 0,
+          upcoming_expected: 0,
+          trades: [],
+          cashflows: []
+        };
+      }
+      
+      consolidated[bondId].total_units += holding.units;
+      consolidated[bondId].invested_amount += holding.invested_amount;
+      consolidated[bondId].total_principal += holding.total_principal;
+      consolidated[bondId].total_interest_gross += holding.total_interest_gross;
+      consolidated[bondId].total_tds += holding.total_tds;
+      consolidated[bondId].repaid_principal += holding.repaid_principal;
+      consolidated[bondId].repaid_interest += holding.repaid_interest;
+      consolidated[bondId].repaid_tds += holding.repaid_tds;
+      consolidated[bondId].net_repaid += holding.net_repaid;
+      consolidated[bondId].upcoming_expected += holding.upcoming_expected;
+      consolidated[bondId].trades.push({
+        trade_id: holding.trade_id,
+        units: holding.units,
+        investment_date: holding.investment_date
+      });
+      consolidated[bondId].cashflows.push(...holding.cashflows);
+    });
+    
+    // Sort cashflows by date and determine status
+    Object.values(consolidated).forEach(bond => {
+      bond.cashflows.sort((a, b) => new Date(a.date) - new Date(b.date));
+      bond.status = bond.upcoming_expected > 0 ? 'active' : 'fully_repaid';
+    });
+    
+    return Object.values(consolidated);
+  };
+
   const filteredClients = clients.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.pan_number.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const consolidatedHoldings = getConsolidatedHoldings();
+  const filteredHoldings = consolidatedHoldings.filter(h => 
+    statusFilter === 'all' || h.status === statusFilter
   );
 
   const formatINR = (amount) => {
@@ -138,7 +212,6 @@ export default function Holdings() {
       <div className="flex-1 flex overflow-hidden">
         {/* Client List Panel */}
         <div className="w-72 bg-white border-r border-gray-200 flex flex-col">
-          {/* Search */}
           <div className="p-4 border-b border-gray-200">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -152,7 +225,6 @@ export default function Holdings() {
             </div>
           </div>
           
-          {/* Client List */}
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="p-4 text-center text-gray-500">Loading...</div>
@@ -267,7 +339,6 @@ export default function Holdings() {
                   </div>
                   
                   <div className="flex items-center gap-8">
-                    {/* Donut Chart */}
                     <div className="relative w-32 h-32">
                       <svg viewBox="0 0 36 36" className="w-32 h-32 transform -rotate-90">
                         <circle cx="18" cy="18" r="15.5" fill="none" stroke="#f3f4f6" strokeWidth="3" />
@@ -279,7 +350,6 @@ export default function Holdings() {
                       </svg>
                     </div>
                     
-                    {/* Legend */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 rounded-full bg-amber-700"></div>
@@ -374,100 +444,163 @@ export default function Holdings() {
                         <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">TDS Amount</th>
                         <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Repaid</th>
                         <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase w-12"></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {clientHoldings.holdings
-                        .filter(h => statusFilter === 'all' || h.status === statusFilter)
-                        .map((holding) => (
-                        <tr key={holding.trade_id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-4">
-                            <p className="font-medium text-gray-800">{holding.bond_name}</p>
-                            <p className="text-xs text-gray-500">{holding.units} units • {format(new Date(holding.investment_date), "MMM dd, yyyy")}</p>
-                          </td>
-                          <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.invested_amount)}</td>
-                          <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_principal)}</td>
-                          <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_interest)}</td>
-                          <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_tds)}</td>
-                          <td className="py-4 px-4 text-right font-mono text-sm text-green-600">{formatINR(holding.net_repaid)}</td>
-                          <td className="py-4 px-4 text-center">
-                            <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${
-                              holding.status === 'fully_repaid' 
-                                ? 'bg-green-100 text-green-700' 
-                                : 'bg-amber-100 text-amber-700'
-                            }`}>
-                              {holding.status === 'fully_repaid' ? 'Fully Repaid' : 'Active'}
-                            </span>
-                          </td>
-                        </tr>
+                      {filteredHoldings.map((holding) => (
+                        <>
+                          <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-4 px-4">
+                              <p className="font-medium text-gray-800">{holding.bond_name}</p>
+                              <p className="text-xs text-gray-500">{holding.total_units} units</p>
+                            </td>
+                            <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.invested_amount)}</td>
+                            <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_principal)}</td>
+                            <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_interest)}</td>
+                            <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_tds)}</td>
+                            <td className="py-4 px-4 text-right font-mono text-sm text-green-600">{formatINR(holding.net_repaid)}</td>
+                            <td className="py-4 px-4 text-center">
+                              <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${
+                                holding.status === 'fully_repaid' 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-amber-100 text-amber-700'
+                              }`}>
+                                {holding.status === 'fully_repaid' ? 'Fully Repaid' : 'Active'}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 text-center relative" ref={openMenu === holding.bond_id ? menuRef : null}>
+                              <button
+                                onClick={() => setOpenMenu(openMenu === holding.bond_id ? null : holding.bond_id)}
+                                className="p-1 hover:bg-gray-100 rounded"
+                                data-testid={`menu-btn-${holding.bond_id}`}
+                              >
+                                <MoreVertical className="h-5 w-5 text-gray-500" />
+                              </button>
+                              
+                              {/* Dropdown Menu */}
+                              {openMenu === holding.bond_id && (
+                                <div className="absolute right-4 top-12 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                                  <button
+                                    onClick={() => {
+                                      setExpandedBond(expandedBond === holding.bond_id ? null : holding.bond_id);
+                                      setOpenMenu(null);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    data-testid={`view-cashflows-${holding.bond_id}`}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    View Future Cashflows
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                          
+                          {/* Expanded Cashflow Section */}
+                          {expandedBond === holding.bond_id && (
+                            <tr>
+                              <td colSpan={8} className="bg-gray-50 p-4">
+                                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                                  <div className="flex items-center justify-between mb-4">
+                                    <h4 className="font-medium text-gray-700">
+                                      Future Cashflows - {holding.bond_name}
+                                    </h4>
+                                    <button 
+                                      onClick={() => setExpandedBond(null)}
+                                      className="text-gray-400 hover:text-gray-600"
+                                    >
+                                      <X className="h-5 w-5" />
+                                    </button>
+                                  </div>
+                                  
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                      <thead className="bg-gray-50">
+                                        <tr>
+                                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-500">Date</th>
+                                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-500">Type</th>
+                                          <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">Principal</th>
+                                          <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">Interest</th>
+                                          <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">TDS</th>
+                                          <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">Net Amount</th>
+                                          <th className="text-center py-2 px-3 text-xs font-medium text-gray-500">Status</th>
+                                          <th className="text-center py-2 px-3 text-xs font-medium text-gray-500">Action</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {holding.cashflows.map((cf) => (
+                                          <tr key={cf.id} className={`border-b border-gray-50 ${cf.is_repaid ? 'bg-green-50' : ''}`}>
+                                            <td className="py-2 px-3 font-mono">{format(new Date(cf.date), "MMM dd, yyyy")}</td>
+                                            <td className="py-2 px-3 capitalize">{cf.type}</td>
+                                            <td className="py-2 px-3 text-right font-mono">{formatINR(cf.principal_component)}</td>
+                                            <td className="py-2 px-3 text-right font-mono">{formatINR(cf.interest_component)}</td>
+                                            <td className="py-2 px-3 text-right font-mono text-red-600">{formatINR(cf.tds_amount)}</td>
+                                            <td className="py-2 px-3 text-right font-mono font-medium">{formatINR(cf.net_amount)}</td>
+                                            <td className="py-2 px-3 text-center">
+                                              {cf.is_repaid ? (
+                                                <span className="inline-flex items-center gap-1 text-green-600 text-xs">
+                                                  <Check className="h-3 w-3" /> Repaid
+                                                </span>
+                                              ) : (
+                                                <span className="text-amber-600 text-xs">Pending</span>
+                                              )}
+                                            </td>
+                                            <td className="py-2 px-3 text-center">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleMarkRepaid(cf.id, !cf.is_repaid)}
+                                                className={`text-xs ${cf.is_repaid ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}`}
+                                                data-testid={`mark-repaid-${cf.id}`}
+                                              >
+                                                {cf.is_repaid ? (
+                                                  <><X className="h-3 w-3 mr-1" /> Undo</>
+                                                ) : (
+                                                  <><Check className="h-3 w-3 mr-1" /> Mark Repaid</>
+                                                )}
+                                              </Button>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                  
+                                  {/* Summary Row */}
+                                  <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end gap-8 text-sm">
+                                    <div>
+                                      <span className="text-gray-500">Total Principal:</span>
+                                      <span className="font-mono font-medium ml-2">{formatINR(holding.total_principal)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500">Total Interest:</span>
+                                      <span className="font-mono font-medium ml-2">{formatINR(holding.total_interest_gross)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500">Total TDS:</span>
+                                      <span className="font-mono font-medium ml-2 text-red-600">{formatINR(holding.total_tds)}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500">Upcoming:</span>
+                                      <span className="font-mono font-medium ml-2 text-blue-600">{formatINR(holding.upcoming_expected)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
                       ))}
                     </tbody>
                   </table>
+                  
+                  {filteredHoldings.length === 0 && (
+                    <div className="p-8 text-center text-gray-500">
+                      No holdings found for selected filter
+                    </div>
+                  )}
                 </div>
-                
-                {/* Expanded Cashflow Details */}
-                {clientHoldings.holdings.length > 0 && (
-                  <div className="p-4 border-t border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-4">Cashflow Schedule</h4>
-                    {clientHoldings.holdings.map((holding) => (
-                      <div key={holding.trade_id} className="mb-6 last:mb-0">
-                        <p className="text-sm font-medium text-gray-600 mb-2">{holding.bond_name}</p>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="text-left py-2 px-3 text-xs font-medium text-gray-500">Date</th>
-                                <th className="text-left py-2 px-3 text-xs font-medium text-gray-500">Type</th>
-                                <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">Principal</th>
-                                <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">Interest</th>
-                                <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">TDS</th>
-                                <th className="text-right py-2 px-3 text-xs font-medium text-gray-500">Net Amount</th>
-                                <th className="text-center py-2 px-3 text-xs font-medium text-gray-500">Status</th>
-                                <th className="text-center py-2 px-3 text-xs font-medium text-gray-500">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {holding.cashflows.map((cf) => (
-                                <tr key={cf.id} className={`border-b border-gray-50 ${cf.is_repaid ? 'bg-green-50' : ''}`}>
-                                  <td className="py-2 px-3 font-mono">{format(new Date(cf.date), "MMM dd, yyyy")}</td>
-                                  <td className="py-2 px-3 capitalize">{cf.type}</td>
-                                  <td className="py-2 px-3 text-right font-mono">{formatINR(cf.principal_component)}</td>
-                                  <td className="py-2 px-3 text-right font-mono">{formatINR(cf.interest_component)}</td>
-                                  <td className="py-2 px-3 text-right font-mono text-red-600">{formatINR(cf.tds_amount)}</td>
-                                  <td className="py-2 px-3 text-right font-mono font-medium">{formatINR(cf.net_amount)}</td>
-                                  <td className="py-2 px-3 text-center">
-                                    {cf.is_repaid ? (
-                                      <span className="inline-flex items-center gap-1 text-green-600">
-                                        <Check className="h-3 w-3" /> Repaid
-                                      </span>
-                                    ) : (
-                                      <span className="text-amber-600">Pending</span>
-                                    )}
-                                  </td>
-                                  <td className="py-2 px-3 text-center">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleMarkRepaid(cf.id, !cf.is_repaid)}
-                                      className={cf.is_repaid ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
-                                      data-testid={`mark-repaid-${cf.id}`}
-                                    >
-                                      {cf.is_repaid ? (
-                                        <><X className="h-3 w-3 mr-1" /> Undo</>
-                                      ) : (
-                                        <><Check className="h-3 w-3 mr-1" /> Mark Repaid</>
-                                      )}
-                                    </Button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           ) : null}
