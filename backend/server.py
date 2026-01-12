@@ -179,6 +179,117 @@ async def register_user(user_data: UserCreate):
     }
 
 
+# Partner Models and Routes
+class PartnerCreate(BaseModel):
+    name: str
+    pan: str
+    partner_code: str
+    email: str
+    mobile: str
+    color: str
+    address_line1: str
+    address_line2: str
+    city: str
+    country: str
+    state: str
+    pincode: str
+    password: str
+    pin: str
+
+
+class Partner(BaseModel):
+    id: str
+    name: str
+    pan: str
+    partner_code: str
+    email: str
+    mobile: str
+    color: str
+    address_line1: str
+    address_line2: str
+    city: str
+    country: str
+    state: str
+    pincode: str
+    created_by: str
+    last_log: Optional[str] = None
+    created_at: datetime
+
+
+@api_router.post("/partners")
+async def create_partner(partner_data: PartnerCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new sub-broker partner (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can create partners")
+    
+    # Check if PAN already exists
+    existing_user = await db.users.find_one({"pan": partner_data.pan.upper()})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="PAN already registered")
+    
+    # Check if partner code already exists
+    existing_partner = await db.partners.find_one({"partner_code": partner_data.partner_code})
+    if existing_partner:
+        raise HTTPException(status_code=400, detail="Partner code already exists")
+    
+    # Create user account for the partner
+    user = {
+        "id": str(uuid.uuid4()),
+        "pan": partner_data.pan.upper(),
+        "name": partner_data.name,
+        "email": partner_data.email,
+        "phone": partner_data.mobile,
+        "password_hash": get_password_hash(partner_data.password),
+        "pin_hash": get_password_hash(partner_data.pin),
+        "role": "sub_broker",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.users.insert_one(user)
+    
+    # Create partner record
+    partner = {
+        "id": user['id'],
+        "name": partner_data.name,
+        "pan": partner_data.pan.upper(),
+        "partner_code": partner_data.partner_code,
+        "email": partner_data.email,
+        "mobile": partner_data.mobile,
+        "color": partner_data.color,
+        "address_line1": partner_data.address_line1,
+        "address_line2": partner_data.address_line2,
+        "city": partner_data.city,
+        "country": partner_data.country,
+        "state": partner_data.state,
+        "pincode": partner_data.pincode,
+        "created_by": current_user['id'],
+        "last_log": None,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.partners.insert_one(partner)
+    
+    return {
+        "id": partner['id'],
+        "name": partner['name'],
+        "partner_code": partner['partner_code'],
+        "email": partner['email']
+    }
+
+
+@api_router.get("/partners")
+async def get_partners(current_user: dict = Depends(get_current_user)):
+    """Get all partners created by the broker"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can view partners")
+    
+    partners = await db.partners.find({"created_by": current_user['id']}, {"_id": 0}).to_list(1000)
+    
+    for partner in partners:
+        if isinstance(partner.get('created_at'), str):
+            partner['created_at'] = datetime.fromisoformat(partner['created_at'])
+    
+    return partners
+
+
 # Helper function for XIRR calculation
 def calculate_xirr(dates, cashflows, guess=0.1):
     """
