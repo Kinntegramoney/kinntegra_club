@@ -104,40 +104,42 @@ export default function CreateBond() {
       .filter(p => p.date && p.percentage)
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Generate interest payment dates
+    // Generate interest payment dates and calculate interest on reducing balance
     const schedule = [];
     let currentDate = new Date(start);
-    let outstandingPrincipal = principal;
-    let principalPaidPercentage = 0;
     let lastDate = start;
+    let principalPaidSoFar = 0;
 
     while (currentDate < end) {
-      currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + intervalMonths));
+      // Move to next payment date
+      currentDate = new Date(currentDate);
+      currentDate.setMonth(currentDate.getMonth() + intervalMonths);
+      
       if (currentDate > end) break;
 
-      // Check if any principal payments occurred before this interest payment
-      sortedPrincipalPayments.forEach(pp => {
-        const ppDate = new Date(pp.date);
-        if (ppDate > lastDate && ppDate <= currentDate) {
-          principalPaidPercentage += parseFloat(pp.percentage);
-        }
-      });
-
-      // Calculate outstanding principal
-      outstandingPrincipal = principal * (1 - principalPaidPercentage / 100);
-
+      // Calculate outstanding principal at the START of this period
+      const outstandingAtPeriodStart = principal * (1 - principalPaidSoFar / 100);
+      
       // Calculate days in this period
       const daysDiff = Math.ceil((currentDate - lastDate) / (1000 * 60 * 60 * 24));
       
-      // Calculate interest on outstanding principal for this period
-      const interestAmount = (outstandingPrincipal * couponRate * daysDiff) / 365;
+      // Calculate interest on the outstanding balance for this period
+      const interestAmount = (outstandingAtPeriodStart * couponRate * daysDiff) / 365;
       
       schedule.push({
         date: format(currentDate, "yyyy-MM-dd"),
-        amount: interestAmount.toFixed(2)
+        amount: interestAmount > 0 ? interestAmount.toFixed(2) : "0.00"
       });
 
-      lastDate = currentDate;
+      // Update principal paid for NEXT period (check what was paid UP TO current date)
+      sortedPrincipalPayments.forEach(pp => {
+        const ppDate = new Date(pp.date);
+        if (ppDate > lastDate && ppDate <= currentDate) {
+          principalPaidSoFar += parseFloat(pp.percentage);
+        }
+      });
+
+      lastDate = new Date(currentDate);
     }
 
     setInterestPayments(schedule);
