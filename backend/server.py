@@ -287,72 +287,52 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
     if calculation.units > units_available:
         raise HTTPException(status_code=400, detail=f"Only {units_available} units available")
     
-    # Get remaining cashflows after investment date
+    # Get remaining GROSS cashflows after investment date (for price calculation)
     remaining_dates = []
-    remaining_cashflows_net = []  # Net cashflows after TDS
+    remaining_cashflows_gross = []
     
-    remaining_principal_pct = 0
-    remaining_interest_gross = 0
-    
-    # Separate principal and interest payments
-    principal_dates = []
-    principal_amounts = []
-    interest_dates = []
-    interest_amounts = []
-    
-    # Collect interest payments (subject to TDS)
+    # Add remaining interest payments (GROSS)
     for ip in bond['interest_payments']:
         ip_date = datetime.fromisoformat(ip['date'])
         if ip_date > investment_date:
-            interest_dates.append(ip_date)
-            interest_amounts.append(ip['amount'])
-            remaining_interest_gross += ip['amount']
+            remaining_dates.append(ip_date)
+            remaining_cashflows_gross.append(ip['amount'])
     
-    # Collect principal payments (not subject to TDS)
+    # Add remaining principal payments
+    remaining_principal_pct = 0
     for pp in bond['principal_payments']:
         pp_date = datetime.fromisoformat(pp['date'])
         if pp_date > investment_date:
-            principal_amount = bond['principal_amount'] * pp['percentage'] / 100
-            principal_dates.append(pp_date)
-            principal_amounts.append(principal_amount)
+            remaining_dates.append(pp_date)
+            remaining_cashflows_gross.append(bond['principal_amount'] * pp['percentage'] / 100)
             remaining_principal_pct += pp['percentage']
     
-    # Build net cashflow map (principal + interest after TDS)
+    # Combine cashflows on same date (GROSS amounts)
     date_cashflow_map = {}
-    
-    # Add interest payments with TDS deduction (10%)
-    for d, interest in zip(interest_dates, interest_amounts):
-        net_interest = interest * 0.90  # After 10% TDS
+    for d, cf in zip(remaining_dates, remaining_cashflows_gross):
         if d in date_cashflow_map:
-            date_cashflow_map[d] += net_interest
+            date_cashflow_map[d] += cf
         else:
-            date_cashflow_map[d] = net_interest
-    
-    # Add principal payments (no TDS)
-    for d, principal in zip(principal_dates, principal_amounts):
-        if d in date_cashflow_map:
-            date_cashflow_map[d] += principal
-        else:
-            date_cashflow_map[d] = principal
+            date_cashflow_map[d] = cf
     
     remaining_dates = sorted(date_cashflow_map.keys())
-    remaining_cashflows_net = [date_cashflow_map[d] for d in remaining_dates]
+    remaining_cashflows_gross = [date_cashflow_map[d] for d in remaining_dates]
     
     if len(remaining_dates) == 0:
         raise HTTPException(status_code=400, detail="No remaining cashflows after investment date")
     
-    # Calculate price per unit using NET cashflows to achieve target GROSS IRR
-    # The target secondary_irr is GROSS, but we calculate with net cashflows
+    # Calculate price per unit using GROSS IRR and GROSS cashflows
     secondary_irr_decimal = bond['secondary_irr'] / 100
-    price_per_unit = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows_net, investment_date)
+    price_per_unit = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows_gross, investment_date)
     
     # Calculate total price for requested units
     total_price = price_per_unit * calculation.units
     
     days_to_maturity = (end_date - investment_date).days
     
-    total_inflows_gross = sum(interest_amounts) + sum(principal_amounts)
+    total_inflows_gross = sum(remaining_cashflows_gross)
     remaining_principal = bond['principal_amount'] * remaining_principal_pct / 100
+    remaining_interest_gross = total_inflows_gross - remaining_principal
     
     # Calculate units available
     units_available = bond.get('total_units', 1) - bond.get('units_sold', 0)
