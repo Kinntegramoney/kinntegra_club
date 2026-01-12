@@ -852,10 +852,11 @@ async def get_client_details(client_id: str, current_user: dict = Depends(get_cu
 
 class TradeCreate(BaseModel):
     bond_id: str
-    client_id: str
+    client_id: Optional[str] = None  # Optional for clients (backend uses their client_id)
     units: int
     investment_date: str
     calculated_price: float
+    total_amount: Optional[float] = None
     payment_reference: Optional[str] = None
     payment_notes: Optional[str] = None
     payment_proof_filename: Optional[str] = None
