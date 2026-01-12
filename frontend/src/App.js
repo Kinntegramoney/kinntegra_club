@@ -8,6 +8,7 @@ import AdminSubBrokers from "@/pages/AdminSubBrokers";
 import AdminClients from "@/pages/AdminClients";
 import TradeVerification from "@/pages/TradeVerification";
 import Holdings from "@/pages/Holdings";
+import ReinvestmentTagging from "@/pages/ReinvestmentTagging";
 import SubBrokerOpportunities from "@/pages/SubBrokerOpportunities";
 import CreateBond from "@/pages/CreateBond";
 import BondDetails from "@/pages/BondDetails";
