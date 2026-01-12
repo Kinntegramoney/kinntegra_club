@@ -68,14 +68,16 @@ export default function CreateBond() {
       return;
     }
 
+    if (principalPayments.length === 0 || principalPayments.some(p => !p.date || !p.percentage)) {
+      toast.error("Please add principal payment schedule first");
+      return;
+    }
+
     const start = new Date(formData.start_date);
     const end = new Date(formData.end_date);
     const principal = parseFloat(formData.principal_amount);
     const couponRate = parseFloat(formData.coupon_rate) / 100;
     const frequency = formData.interest_payment_frequency;
-
-    const schedule = [];
-    let currentDate = new Date(start);
 
     // Determine payment interval in months
     let intervalMonths;
@@ -97,21 +99,49 @@ export default function CreateBond() {
         return;
     }
 
-    // Generate payment dates
+    // Sort principal payments by date
+    const sortedPrincipalPayments = [...principalPayments]
+      .filter(p => p.date && p.percentage)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Generate interest payment dates
+    const schedule = [];
+    let currentDate = new Date(start);
+    let outstandingPrincipal = principal;
+    let principalPaidPercentage = 0;
+    let lastDate = start;
+
     while (currentDate < end) {
       currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + intervalMonths));
-      if (currentDate <= end) {
-        const daysInPeriod = intervalMonths * 30.42; // Average days
-        const interestAmount = (principal * couponRate * daysInPeriod) / 365;
-        schedule.push({
-          date: format(currentDate, "yyyy-MM-dd"),
-          amount: interestAmount.toFixed(2)
-        });
-      }
+      if (currentDate > end) break;
+
+      // Check if any principal payments occurred before this interest payment
+      sortedPrincipalPayments.forEach(pp => {
+        const ppDate = new Date(pp.date);
+        if (ppDate > lastDate && ppDate <= currentDate) {
+          principalPaidPercentage += parseFloat(pp.percentage);
+        }
+      });
+
+      // Calculate outstanding principal
+      outstandingPrincipal = principal * (1 - principalPaidPercentage / 100);
+
+      // Calculate days in this period
+      const daysDiff = Math.ceil((currentDate - lastDate) / (1000 * 60 * 60 * 24));
+      
+      // Calculate interest on outstanding principal for this period
+      const interestAmount = (outstandingPrincipal * couponRate * daysDiff) / 365;
+      
+      schedule.push({
+        date: format(currentDate, "yyyy-MM-dd"),
+        amount: interestAmount.toFixed(2)
+      });
+
+      lastDate = currentDate;
     }
 
     setInterestPayments(schedule);
-    toast.success(`Generated ${schedule.length} interest payments`);
+    toast.success(`Generated ${schedule.length} interest payments based on outstanding principal`);
   };
 
   const validateForm = () => {
