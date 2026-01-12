@@ -478,132 +478,102 @@ export default function TradeVerification() {
                   <Tag className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">
                     {reinvestmentSection === "untagged" 
-                      ? "No untagged clients found" 
-                      : "No tagged clients found"}
+                      ? "No untagged entries found" 
+                      : "No tagged entries found"}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {displayClients.map((client) => (
-                    <div 
-                      key={client.client_id} 
-                      className="bg-white rounded-lg border border-gray-200 overflow-hidden"
-                    >
-                      {/* Client Header */}
-                      <div 
-                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
-                        onClick={() => toggleClientExpand(client.client_id)}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                            <span className="text-amber-700 font-semibold">
-                              {client.client_name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-800">{client.client_name}</p>
-                            <p className="text-xs text-gray-500 font-mono">{client.client_pan}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-6">
-                          <div className="text-right">
-                            <p className="text-xs text-gray-500">Upcoming Repayments</p>
-                            <p className="font-mono font-semibold text-green-600">{formatINR(client.total_net)}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-500">Entries</p>
-                            <p className="font-semibold">{client.cashflows.length}</p>
-                          </div>
-                          {expandedClients[client.client_id] ? (
-                            <ChevronUp className="h-5 w-5 text-gray-400" />
-                          ) : (
-                            <ChevronDown className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Client</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Expected Date</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal Net</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest Net</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayEntries.map((entry) => (
+                          <tr key={entry.cashflow_id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-amber-700 font-semibold text-sm">
+                                    {entry.client_name?.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-800 text-sm truncate">{entry.client_name}</p>
+                                  <p className="text-xs text-gray-500 font-mono">{entry.client_pan}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="text-sm font-medium text-gray-800">
+                                {entry.bond_name?.slice(0, 20) || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <span className="text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yyyy")}</span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(entry.principal_net)}</td>
+                            <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(entry.interest_net)}</td>
+                            <td className="py-3 px-4 text-right font-mono text-sm font-medium text-green-600">{formatINR(entry.net_amount)}</td>
+                            <td className="py-3 px-4 text-center">
+                              <select
+                                value={localTags[entry.cashflow_id] || 'not_tagged'}
+                                onChange={(e) => handleTagChange(entry.cashflow_id, e.target.value)}
+                                className={`px-2 py-1 text-xs rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getTagColor(localTags[entry.cashflow_id])}`}
+                              >
+                                <option value="not_tagged">Not Tagged</option>
+                                <option value="principal">Principal</option>
+                                <option value="interest">Interest</option>
+                                <option value="net_amount">Net Amount</option>
+                                <option value="not_invest">Not Invest</option>
+                              </select>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSaveEntryTag(entry.cashflow_id)}
+                                disabled={savingClient === entry.cashflow_id}
+                                className="h-8 px-3"
+                              >
+                                {savingClient === entry.cashflow_id ? (
+                                  <RefreshCw className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Save className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Summary Footer */}
+                  <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-500">
+                        Showing {displayEntries.length} {reinvestmentSection} entries
+                      </span>
+                      <div className="flex gap-4">
+                        <span className="text-gray-500">
+                          Total: <span className="font-mono font-medium text-green-600">
+                            {formatINR(displayEntries.reduce((sum, e) => sum + e.net_amount, 0))}
+                          </span>
+                        </span>
                       </div>
-                      
-                      {/* Expanded Content */}
-                      {expandedClients[client.client_id] && (
-                        <div className="border-t border-gray-200">
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead className="bg-gray-50">
-                                <tr>
-                                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
-                                  <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Expected Date</th>
-                                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal Net</th>
-                                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest Net</th>
-                                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
-                                  <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Reinvestment Tag</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {client.cashflows.map((cf) => (
-                                  <tr key={cf.cashflow_id} className="border-b border-gray-100">
-                                    <td className="py-3 px-4">
-                                      <span className="text-sm font-medium text-gray-800">
-                                        {cf.bond_name?.slice(0, 25) || 'N/A'}
-                                      </span>
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                      <span className="text-sm font-mono">{format(new Date(cf.expected_date), "dd-MMM-yyyy")}</span>
-                                    </td>
-                                    <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.principal_net)}</td>
-                                    <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.interest_net)}</td>
-                                    <td className="py-3 px-4 text-right font-mono text-sm font-medium">{formatINR(cf.net_amount)}</td>
-                                    <td className="py-3 px-4 text-center">
-                                      <select
-                                        value={localTags[cf.cashflow_id] || 'not_tagged'}
-                                        onChange={(e) => handleTagChange(cf.cashflow_id, e.target.value)}
-                                        className={`px-3 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getTagColor(localTags[cf.cashflow_id])}`}
-                                      >
-                                        <option value="not_tagged">Not Tagged</option>
-                                        <option value="principal">Principal</option>
-                                        <option value="interest">Interest</option>
-                                        <option value="net_amount">Net Amount</option>
-                                        <option value="not_invest">Not Invest</option>
-                                      </select>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          
-                          {/* Client Summary & Save */}
-                          <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
-                            <div className="flex gap-6 text-sm">
-                              <div>
-                                <span className="text-gray-500">Total Principal:</span>
-                                <span className="font-mono font-medium ml-2">{formatINR(client.total_principal)}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Total Interest:</span>
-                                <span className="font-mono font-medium ml-2">{formatINR(client.total_interest)}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Total Net:</span>
-                                <span className="font-mono font-medium ml-2 text-green-600">{formatINR(client.total_net)}</span>
-                              </div>
-                            </div>
-                            <Button
-                              onClick={() => handleSaveClientTags(client.client_id, client.cashflows.map(cf => cf.cashflow_id))}
-                              disabled={savingClient === client.client_id}
-                              className="bg-amber-700 hover:bg-amber-800"
-                            >
-                              {savingClient === client.client_id ? (
-                                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                              ) : (
-                                <Save className="h-4 w-4 mr-2" />
-                              )}
-                              Save Tags
-                            </Button>
-                          </div>
-                        </div>
-                      )}
                     </div>
-                  ))}
+                  </div>
                 </div>
               )}
             </div>
