@@ -92,23 +92,24 @@ export default function BondDetails() {
         units: selectedUnits
       });
       
-      // Create CSV content with proper formatting
+      // Create CSV content WITHOUT rupee symbol to avoid encoding issues
       const data = response.data;
       let csv = `Bond Name,${data.bond_name}\n`;
       csv += `Investment Date,${data.investment_date}\n`;
       csv += `Units,${data.units}\n`;
-      csv += `Price Paid,"${formatINR(data.price_paid)}"\n\n`;
+      csv += `Price Paid,${data.price_paid.toFixed(2)}\n\n`;
       csv += `Date,Month,Principal Payment,Interest Payment,TDS Deducted (10%),Net Interest,Total Net Payment\n`;
       
       data.cashflows.forEach(cf => {
-        csv += `${cf.date},${cf.month},"${formatINR(cf.principal_payment)}","${formatINR(cf.interest_payment)}","${formatINR(cf.tds_deducted)}","${formatINR(cf.net_interest)}","${formatINR(cf.total_net_payment)}"\n`;
+        csv += `${cf.date},${cf.month},${cf.principal_payment.toFixed(2)},${cf.interest_payment.toFixed(2)},${cf.tds_deducted.toFixed(2)},${cf.net_interest.toFixed(2)},${cf.total_net_payment.toFixed(2)}\n`;
       });
       
       csv += `\nSummary\n`;
-      csv += `Total Principal,"${formatINR(data.total_principal)}"\n`;
-      csv += `Total Interest,"${formatINR(data.total_interest)}"\n`;
-      csv += `Total TDS,"${formatINR(data.total_tds)}"\n`;
-      csv += `Total Net Received,"${formatINR(data.total_net_received)}"\n`;
+      csv += `Total Principal,${data.total_principal.toFixed(2)}\n`;
+      csv += `Total Interest,${data.total_interest.toFixed(2)}\n`;
+      csv += `Total TDS,${data.total_tds.toFixed(2)}\n`;
+      csv += `Total Net Received,${data.total_net_received.toFixed(2)}\n`;
+      csv += `\nNote: All amounts are in INR (Indian Rupees)\n`;
       
       // Download CSV
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
