@@ -183,13 +183,20 @@ export default function TradeVerification() {
     
     const clients = Object.values(clientMap);
     
-    // Separate tagged and untagged
-    const tagged = clients.filter(c => 
-      c.cashflows.every(cf => localTags[cf.cashflow_id] && localTags[cf.cashflow_id] !== 'not_tagged')
-    );
-    const untagged = clients.filter(c => 
-      c.cashflows.some(cf => !localTags[cf.cashflow_id] || localTags[cf.cashflow_id] === 'not_tagged')
-    );
+    // Separate tagged and untagged based on individual cashflow tags
+    // Tagged: Clients where ALL cashflows have been tagged (not 'not_tagged')
+    // Untagged: Clients where ANY cashflow is still 'not_tagged'
+    const tagged = clients.filter(c => {
+      // A client is "tagged" if ALL their cashflows have a tag other than 'not_tagged'
+      const currentTags = c.cashflows.map(cf => localTags[cf.cashflow_id] || cf.reinvestment_tag || 'not_tagged');
+      return currentTags.every(tag => tag && tag !== 'not_tagged');
+    });
+    
+    const untagged = clients.filter(c => {
+      // A client is "untagged" if ANY of their cashflows is 'not_tagged'
+      const currentTags = c.cashflows.map(cf => localTags[cf.cashflow_id] || cf.reinvestment_tag || 'not_tagged');
+      return currentTags.some(tag => !tag || tag === 'not_tagged');
+    });
     
     return { tagged, untagged };
   };
