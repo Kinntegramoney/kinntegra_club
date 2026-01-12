@@ -5,6 +5,7 @@ import Dashboard from "@/pages/Dashboard";
 import Opportunities from "@/pages/Opportunities";
 import AdminBonds from "@/pages/AdminBonds";
 import AdminSubBrokers from "@/pages/AdminSubBrokers";
+import AdminClients from "@/pages/AdminClients";
 import SubBrokerOpportunities from "@/pages/SubBrokerOpportunities";
 import CreateBond from "@/pages/CreateBond";
 import BondDetails from "@/pages/BondDetails";
@@ -70,6 +71,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
                 <AdminSubBrokers />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/admin/clients" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <AdminClients />
               </ProtectedRoute>
             } 
           />
