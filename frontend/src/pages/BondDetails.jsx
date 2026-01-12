@@ -51,22 +51,23 @@ export default function BondDetails() {
     }
   };
 
-  const calculatePrice = async () => {
+  const calculatePrice = async (units) => {
     if (!investmentDate) {
       toast.error("Please select an investment date");
       return;
     }
 
-    if (purchaseUnits < 1) {
-      toast.error("Please enter valid number of units");
+    if (!units || units < 1) {
+      toast.error("Please select number of units");
       return;
     }
 
     setCalculating(true);
+    setSelectedUnits(units);
     try {
       const response = await axios.post(`${API}/bonds/${id}/calculate`, {
         investment_date: investmentDate,
-        units: purchaseUnits
+        units: units
       });
       setCalculation(response.data);
       toast.success("Price calculated successfully!");
@@ -79,7 +80,7 @@ export default function BondDetails() {
   };
 
   const downloadCashflow = async () => {
-    if (!calculation) {
+    if (!calculation || !selectedUnits) {
       toast.error("Please calculate price first");
       return;
     }
@@ -88,33 +89,33 @@ export default function BondDetails() {
     try {
       const response = await axios.post(`${API}/bonds/${id}/download-cashflow`, {
         investment_date: investmentDate,
-        units: purchaseUnits
+        units: selectedUnits
       });
       
-      // Create CSV content
+      // Create CSV content with proper formatting
       const data = response.data;
-      let csv = `Bond Name:,${data.bond_name}\n`;
-      csv += `Investment Date:,${format(new Date(data.investment_date), "MMM dd, yyyy")}\n`;
-      csv += `Units:,${data.units}\n`;
-      csv += `Price Paid:,₹${data.price_paid.toLocaleString()}\n\n`;
+      let csv = `Bond Name,${data.bond_name}\n`;
+      csv += `Investment Date,${data.investment_date}\n`;
+      csv += `Units,${data.units}\n`;
+      csv += `Price Paid,"${formatINR(data.price_paid)}"\n\n`;
       csv += `Date,Month,Principal Payment,Interest Payment,TDS Deducted (10%),Net Interest,Total Net Payment\n`;
       
       data.cashflows.forEach(cf => {
-        csv += `${format(new Date(cf.date), "dd-MMM-yyyy")},${cf.month},₹${cf.principal_payment.toLocaleString()},₹${cf.interest_payment.toLocaleString()},₹${cf.tds_deducted.toLocaleString()},₹${cf.net_interest.toLocaleString()},₹${cf.total_net_payment.toLocaleString()}\n`;
+        csv += `${cf.date},${cf.month},"${formatINR(cf.principal_payment)}","${formatINR(cf.interest_payment)}","${formatINR(cf.tds_deducted)}","${formatINR(cf.net_interest)}","${formatINR(cf.total_net_payment)}"\n`;
       });
       
-      csv += `\nTotals,,,,,\n`;
-      csv += `Total Principal:,₹${data.total_principal.toLocaleString()}\n`;
-      csv += `Total Interest:,₹${data.total_interest.toLocaleString()}\n`;
-      csv += `Total TDS:,₹${data.total_tds.toLocaleString()}\n`;
-      csv += `Total Net Received:,₹${data.total_net_received.toLocaleString()}\n`;
+      csv += `\nSummary\n`;
+      csv += `Total Principal,"${formatINR(data.total_principal)}"\n`;
+      csv += `Total Interest,"${formatINR(data.total_interest)}"\n`;
+      csv += `Total TDS,"${formatINR(data.total_tds)}"\n`;
+      csv += `Total Net Received,"${formatINR(data.total_net_received)}"\n`;
       
       // Download CSV
-      const blob = new Blob([csv], { type: 'text/csv' });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `cashflow_${bondData.name}_${format(new Date(investmentDate), "yyyy-MM-dd")}.csv`;
+      a.download = `cashflow_${bondData.name.replace(/\s+/g, '_')}_${data.investment_date}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -129,38 +130,18 @@ export default function BondDetails() {
     }
   };
 
-  const handleApproximateAmountChange = (value) => {
-    setApproximateAmount(value);
-    if (value && calculation && calculation.price_per_unit > 0) {
-      const amount = parseFloat(value);
-      const estimatedUnits = Math.floor(amount / calculation.price_per_unit);
-      // Auto-update purchase units if reasonable
-      if (estimatedUnits > 0 && estimatedUnits <= calculation.units_available) {
-        setPurchaseUnits(estimatedUnits);
-      }
-    }
+  const formatINR = (amount) => {
+    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const recordSale = async () => {
-    if (saleUnits < 1) {
-      toast.error("Please enter a valid number of units");
-      return;
-    }
+  const getLowerBoundUnits = () => {
+    if (!approximateAmount || !calculation || !calculation.price_per_unit) return null;
+    return Math.floor(parseFloat(approximateAmount) / calculation.price_per_unit);
+  };
 
-    setRecordingSale(true);
-    try {
-      const response = await axios.post(`${API}/bonds/${id}/record-sale`, {
-        units: saleUnits
-      });
-      toast.success(response.data.message);
-      fetchBond(); // Refresh bond data
-      setSaleUnits(1);
-    } catch (error) {
-      console.error("Error recording sale:", error);
-      toast.error(error.response?.data?.detail || "Failed to record sale");
-    } finally {
-      setRecordingSale(false);
-    }
+  const getUpperBoundUnits = () => {
+    if (!approximateAmount || !calculation || !calculation.price_per_unit) return null;
+    return Math.ceil(parseFloat(approximateAmount) / calculation.price_per_unit);
   };
 
   if (loading) {
