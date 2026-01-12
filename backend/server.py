@@ -128,7 +128,7 @@ async def login_step2(login: LoginStep2):
         raise HTTPException(status_code=401, detail="User not found")
     
     # Check if user is active (for clients, they must verify profile first)
-    if user.get('is_active') == False:
+    if user.get('is_active') is False:
         raise HTTPException(status_code=403, detail="Account not activated. Please verify your profile first.")
     
     # Verify PIN
