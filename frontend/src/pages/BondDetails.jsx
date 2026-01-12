@@ -441,7 +441,20 @@ export default function BondDetails() {
             </div>
           </div>
 
-          {/* Secondary Market Calculator */}
+          {/* Secondary Market Calculator - Only show if bond is not fully funded */}
+          {isFullyFunded ? (
+            <div className="lg:col-span-3 metric-card rounded-md bg-amber-50 border-amber-200">
+              <div className="flex items-center gap-3 text-amber-700">
+                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">Bond Fully Funded</h2>
+                  <p className="text-sm text-amber-600">All {totalUnits} units have been sold. No more investments can be made.</p>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="lg:col-span-3 metric-card rounded-md bg-surface">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="h-6 w-6 text-accent" />
