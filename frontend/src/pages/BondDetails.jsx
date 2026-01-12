@@ -102,7 +102,8 @@ export default function BondDetails() {
         investment_date: investmentDate,
         calculated_price: calculation.price_per_unit,
         payment_reference: paymentReference,
-        payment_notes: paymentNotes
+        payment_notes: paymentNotes,
+        payment_proof_filename: paymentProof?.name || null
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
