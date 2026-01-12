@@ -71,6 +71,8 @@ export default function Login() {
       
       if (response.data.user.role === "broker") {
         navigate("/broker/dashboard");
+      } else if (response.data.user.role === "client") {
+        navigate("/client/opportunities");
       } else {
         navigate("/sub-broker/opportunities");
       }
