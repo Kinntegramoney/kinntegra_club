@@ -109,14 +109,13 @@ export default function BondDetails() {
       const isBroker = user?.role === 'broker';
       if (isBroker) {
         toast.success("Trade booked and approved successfully!");
+        // Redirect to Trade Verification > All Trades
+        navigate("/broker/trades");
       } else {
         toast.success("Trade request submitted for broker approval!");
+        // Redirect to sub-broker opportunities
+        navigate("/sub-broker/opportunities");
       }
-
-      // Reset form
-      setSelectedClient("");
-      setPaymentReference("");
-      setPaymentNotes("");
       
       // Refresh bond data to update available units
       fetchBond();
