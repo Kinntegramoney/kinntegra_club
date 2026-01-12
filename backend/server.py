@@ -310,6 +310,59 @@ async def delete_partner(partner_id: str, current_user: dict = Depends(get_curre
     return {"message": "Sub-broker deleted successfully"}
 
 
+class PartnerUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    mobile: Optional[str] = None
+    color: Optional[str] = None
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+
+
+@api_router.put("/partners/{partner_id}")
+async def update_partner(partner_id: str, partner_update: PartnerUpdate, current_user: dict = Depends(get_current_user)):
+    """Update a sub-broker partner (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can update partners")
+    
+    # Check if partner exists and belongs to this broker
+    partner = await db.partners.find_one({"id": partner_id, "created_by": current_user['id']})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    
+    # Build update dict with only provided fields
+    update_data = {}
+    for field in ["name", "email", "mobile", "color", "address_line1", "address_line2", "city", "state", "pincode"]:
+        value = getattr(partner_update, field)
+        if value is not None:
+            update_data[field] = value
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    # Update partner record
+    await db.partners.update_one({"id": partner_id}, {"$set": update_data})
+    
+    # Also update user record if name, email, or phone changed
+    user_update = {}
+    if "name" in update_data:
+        user_update["name"] = update_data["name"]
+    if "email" in update_data:
+        user_update["email"] = update_data["email"]
+    if "mobile" in update_data:
+        user_update["phone"] = update_data["mobile"]
+    
+    if user_update:
+        await db.users.update_one({"id": partner_id}, {"$set": user_update})
+    
+    # Return updated partner
+    updated_partner = await db.partners.find_one({"id": partner_id}, {"_id": 0})
+    return updated_partner
+
+
 # Helper function for XIRR calculation
 def calculate_xirr(dates, cashflows, guess=0.1):
     """
@@ -668,6 +721,45 @@ async def delete_bond(bond_id: str, current_user: dict = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Bond not found")
     
     return {"message": "Bond deleted successfully"}
+
+
+class BondUpdate(BaseModel):
+    name: Optional[str] = None
+    secondary_irr: Optional[float] = None
+    total_units: Optional[int] = None
+    units_sold: Optional[int] = None
+
+
+@api_router.put("/bonds/{bond_id}")
+async def update_bond(bond_id: str, bond_update: BondUpdate, current_user: dict = Depends(get_current_user)):
+    """Update a bond (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can update bonds")
+    
+    # Check if bond exists
+    bond = await db.bonds.find_one({"id": bond_id})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Build update dict with only provided fields
+    update_data = {}
+    if bond_update.name is not None:
+        update_data["name"] = bond_update.name
+    if bond_update.secondary_irr is not None:
+        update_data["secondary_irr"] = bond_update.secondary_irr
+    if bond_update.total_units is not None:
+        update_data["total_units"] = bond_update.total_units
+    if bond_update.units_sold is not None:
+        update_data["units_sold"] = bond_update.units_sold
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    await db.bonds.update_one({"id": bond_id}, {"$set": update_data})
+    
+    # Return updated bond
+    updated_bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
+    return updated_bond
 
 
 class RecordSale(BaseModel):
