@@ -15,6 +15,7 @@ const API = `${BACKEND_URL}/api`;
 export default function CreateBond() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    bond_code: "",
     name: "",
     start_date: "",
     end_date: "",

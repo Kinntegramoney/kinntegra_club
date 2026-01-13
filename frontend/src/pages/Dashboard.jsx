@@ -120,7 +120,7 @@ export default function Dashboard() {
                 className="p-3 md:p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-center"
               >
                 <Users className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 text-gray-400" />
-                <p className="font-medium text-gray-700 text-sm md:text-base">Create Sub Broker</p>
+                <p className="font-medium text-gray-700 text-sm md:text-base">Add Sub Broker</p>
               </button>
               <button
                 onClick={() => navigate("/broker/opportunities")}
