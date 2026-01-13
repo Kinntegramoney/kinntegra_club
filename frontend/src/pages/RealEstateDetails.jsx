@@ -591,11 +591,21 @@ export default function RealEstateDetails() {
                         const xirr = calculateXIRRWithParams(opp, xirrSaleStage, xirrSaleDate, parseFloat(xirrSaleRate));
                         if (xirr !== null) {
                           return (
-                            <div className={`mt-4 p-4 rounded-lg ${xirr >= 0 ? 'bg-blue-100' : 'bg-red-100'}`}>
-                              <p className={`text-sm ${xirr >= 0 ? 'text-blue-600' : 'text-red-600'}`}>Expected XIRR</p>
-                              <p className={`text-4xl font-bold ${xirr >= 0 ? 'text-blue-700' : 'text-red-700'}`}>{xirr.toFixed(2)}%</p>
-                              <p className="text-xs text-gray-600 mt-1">Annualized return</p>
-                            </div>
+                            <>
+                              <div className={`mt-4 p-4 rounded-lg ${xirr >= 0 ? 'bg-blue-100' : 'bg-red-100'}`}>
+                                <p className={`text-sm ${xirr >= 0 ? 'text-blue-600' : 'text-red-600'}`}>Expected XIRR</p>
+                                <p className={`text-4xl font-bold ${xirr >= 0 ? 'text-blue-700' : 'text-red-700'}`}>{xirr.toFixed(2)}%</p>
+                                <p className="text-xs text-gray-600 mt-1">Annualized return</p>
+                              </div>
+                              <Button 
+                                onClick={() => exportXIRRToExcel(opp, xirrSaleStage, xirrSaleDate, parseFloat(xirrSaleRate))}
+                                className="w-full mt-3 bg-green-600 hover:bg-green-700"
+                                size="sm"
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                Export XIRR Breakdown
+                              </Button>
+                            </>
                           );
                         }
                         return (
