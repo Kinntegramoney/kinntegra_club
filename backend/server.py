@@ -3119,73 +3119,45 @@ async def create_real_estate_opportunity(
     opportunity_data: RealEstateOpportunityCreate, 
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new real estate opportunity (broker only)"""
+    """Create a new off-plan real estate opportunity (broker only)"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can create real estate opportunities")
     
-    # Validate property type
-    if opportunity_data.property_type not in ['off_plan', 'fractional']:
-        raise HTTPException(status_code=400, detail="Property type must be 'off_plan' or 'fractional'")
+    # Validate unit selling fee percentage (0-2.5%)
+    if opportunity_data.unit_selling_fee_percentage < 0 or opportunity_data.unit_selling_fee_percentage > 2.5:
+        raise HTTPException(status_code=400, detail="Unit Selling Fee must be between 0% and 2.5%")
     
-    # Calculate DLD fee (absolute amount or percentage of unit price)
-    dld_fee = opportunity_data.dld_fee_amount if opportunity_data.dld_fee_amount else (
-        opportunity_data.unit_price * opportunity_data.dld_fee_percentage / 100
-    )
+    # All fees are now absolute amounts
+    dld_fee = opportunity_data.dld_fee
+    admin_fee = opportunity_data.admin_fee
+    broker_fee = opportunity_data.broker_fee
+    other_fees = opportunity_data.other_fees
     
-    # Calculate Admin fee (absolute amount or percentage of unit price)
-    admin_fee = opportunity_data.admin_fee_amount if opportunity_data.admin_fee_amount else (
-        opportunity_data.unit_price * opportunity_data.admin_fee_percentage / 100
-    )
-    
-    # Management fees (absolute amounts)
-    upfront_fee = opportunity_data.upfront_fee
-    trailer_fee = opportunity_data.trailer_fee
-    management_fee = opportunity_data.management_fee
-    unit_selling_fee = opportunity_data.unit_selling_fee
-    
-    # Calculate total cost including all fees
+    # Calculate total cost (Unit Price + all fees)
     total_cost = (
         opportunity_data.unit_price + 
         dld_fee + 
         admin_fee + 
-        opportunity_data.broker_fee + 
-        opportunity_data.other_fees +
-        upfront_fee +
-        trailer_fee +
-        management_fee +
-        unit_selling_fee
+        broker_fee + 
+        other_fees
     )
-    
-    # For OFF-PLAN: DLD is NOT part of payment schedule (paid separately)
-    cost_for_payment_schedule = opportunity_data.unit_price if opportunity_data.property_type == 'off_plan' else total_cost
-    
-    # Unit-based investment ONLY for fractional properties
-    UNIT_VALUE_AED = 500
-    if opportunity_data.property_type == 'fractional':
-        total_units = int(total_cost // UNIT_VALUE_AED)
-        if total_units == 0:
-            total_units = 1
-        units_available = total_units
-    else:
-        # Off-plan uses percentage-based allocation, not units
-        total_units = None
-        units_available = None
     
     # Calculate balcony to carpet ratio
     balcony_ratio = 0
     if opportunity_data.carpet_area > 0:
         balcony_ratio = opportunity_data.balcony_area / opportunity_data.carpet_area
     
-    # Calculate payment schedule - use unit_price for off-plan (excludes DLD)
+    # Payment schedule - percentages based on unit price only
+    # DLD and Admin fees are tracked separately but included in total
     payment_schedule = []
     if opportunity_data.payment_schedule:
         payment_schedule = calculate_payment_schedule(
-            cost_for_payment_schedule,
+            opportunity_data.unit_price,  # Based on unit price only
             [p.model_dump() for p in opportunity_data.payment_schedule]
         )
     
-    # Validate payment schedule totals to 100% for off-plan
-    if opportunity_data.property_type == 'off_plan' and payment_schedule:
+    # Validate payment schedule totals to 100%
+    if payment_schedule:
         total_percentage = sum(p['percentage'] for p in payment_schedule)
         if abs(total_percentage - 100) > 0.01:
             raise HTTPException(
