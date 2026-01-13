@@ -575,7 +575,7 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                   <div className="flex justify-between text-green-600"><span>Admin Fee</span><span className="font-medium">{adminFee.toLocaleString()} AED</span></div>
                   <div className="flex justify-between text-amber-600"><span>Brokerage Fee</span><span className="font-medium">{(parseFloat(formData.broker_fee) || 0).toLocaleString()} AED</span></div>
                   <div className="flex justify-between"><span>Other Fees</span><span className="font-medium">{(parseFloat(formData.other_fees) || 0).toLocaleString()} AED</span></div>
-                  <p className="text-xs text-gray-500 pt-2">Continue to "Management Fees" for full total</p>
+                  <p className="text-xs text-gray-500 pt-2">Continue to Management Fees tab for full total</p>
                 </div>
               </div>
             </div>
