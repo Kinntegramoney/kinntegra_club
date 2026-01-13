@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, Check, User, MapPin, Building2, ChevronRight } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,9 @@ const INDIAN_STATES = [
   "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
 ];
 
+const PROFESSIONS = ["Designer", "Developer", "Manager", "Analyst", "Consultant", "Other"];
+const BUSINESS_TAGS = ["Kinntegra Solutions", "Partner Network", "Associate", "Affiliate"];
+
 const COLORS = [
   { name: "Brown", value: "#78716C" },
   { name: "Blue", value: "#3B82F6" },
@@ -32,9 +35,13 @@ const COLORS = [
 ];
 
 const STEPS = [
-  { id: 'general', label: 'General Information', icon: User },
-  { id: 'address', label: 'Address Details', icon: MapPin },
-  { id: 'bank', label: 'Bank Details', icon: Building2 },
+  { 
+    id: 'general', 
+    label: 'GENERAL INFORMATION',
+    subItems: ['Entity Details', 'Photo ID Details', 'Communication Details', 'Bank Details', 'Other Details']
+  },
+  { id: 'license', label: 'LICENSE DETAILS', subItems: [] },
+  { id: 'commercials', label: 'COMMERCIALS', subItems: [] },
 ];
 
 export default function CreateSubBroker() {
@@ -44,12 +51,19 @@ export default function CreateSubBroker() {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     // General Info
+    introduced_by: "",
+    profession: "",
+    business_tag: "",
     name: "",
     pan: "",
     partner_code: "",
     email: "",
     mobile: "",
     color: "#78716C",
+    // Entity Details
+    entity_type: "",
+    entity_name: "",
+    authorized_person: "",
     // Address
     address_line1: "",
     address_line2: "",
@@ -61,7 +75,10 @@ export default function CreateSubBroker() {
     bank_name: "",
     account_number: "",
     ifsc_code: "",
-    branch: ""
+    branch: "",
+    // Commercials
+    commission_type: "",
+    commission_value: "",
   });
 
   useEffect(() => {
@@ -81,20 +98,20 @@ export default function CreateSubBroker() {
   const getStepIndex = () => STEPS.findIndex(s => s.id === currentStep);
   
   const getProgress = () => {
-    const stepIndex = getStepIndex();
-    // Calculate progress based on current step and filled fields
-    const baseProgress = (stepIndex / STEPS.length) * 100;
-    return Math.round(baseProgress);
+    // Start at 7% and increase based on filled fields
+    const totalFields = 15;
+    const filledFields = Object.values(formData).filter(v => v && v !== "India").length;
+    return Math.max(7, Math.round((filledFields / totalFields) * 100));
   };
 
   const isStepComplete = (stepId) => {
     switch (stepId) {
       case 'general':
-        return formData.name && formData.pan && formData.partner_code && formData.email && formData.mobile;
-      case 'address':
-        return formData.address_line1 && formData.city && formData.country && formData.state && formData.pincode;
-      case 'bank':
-        return true; // Bank details are optional
+        return formData.name && formData.pan && formData.email && formData.mobile;
+      case 'license':
+        return true;
+      case 'commercials':
+        return true;
       default:
         return false;
     }
@@ -102,10 +119,6 @@ export default function CreateSubBroker() {
 
   const handleProceed = () => {
     const stepIndex = getStepIndex();
-    if (!isStepComplete(currentStep)) {
-      toast.error("Please fill all required fields");
-      return;
-    }
     if (stepIndex < STEPS.length - 1) {
       setCurrentStep(STEPS[stepIndex + 1].id);
     } else {
@@ -114,6 +127,12 @@ export default function CreateSubBroker() {
   };
 
   const handleSubmit = async () => {
+    if (!formData.name || !formData.pan || !formData.email || !formData.mobile) {
+      toast.error("Please fill all required fields in General Information");
+      setCurrentStep('general');
+      return;
+    }
+
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -121,7 +140,22 @@ export default function CreateSubBroker() {
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
       
       await axios.post(`${API}/partners`, {
-        ...formData,
+        name: formData.name,
+        pan: formData.pan,
+        partner_code: formData.partner_code || `SB${Date.now().toString().slice(-4)}`,
+        email: formData.email,
+        mobile: formData.mobile,
+        color: formData.color,
+        address_line1: formData.address_line1,
+        address_line2: formData.address_line2,
+        city: formData.city,
+        country: formData.country,
+        state: formData.state,
+        pincode: formData.pincode,
+        bank_name: formData.bank_name,
+        account_number: formData.account_number,
+        ifsc_code: formData.ifsc_code,
+        branch: formData.branch,
         password,
         pin
       }, {
@@ -143,394 +177,474 @@ export default function CreateSubBroker() {
   const progress = getProgress();
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Left Sidebar - Step Navigation */}
-      <div className="w-72 bg-white border-r border-gray-200 flex flex-col">
-        {/* Go Back */}
-        <div className="p-4 border-b border-gray-100">
-          <button
-            onClick={() => navigate("/broker/admin/sub-brokers")}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
-            data-testid="go-back-btn"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm font-medium">Go Back</span>
-          </button>
+    <div className="min-h-screen bg-white flex">
+      {/* Left Sidebar */}
+      <div className="w-64 border-r border-gray-100 flex flex-col">
+        {/* Title */}
+        <div className="p-6 pb-4">
+          <h1 className="text-lg font-semibold text-gray-800">Create New Associate</h1>
         </div>
 
         {/* Progress Circle */}
-        <div className="p-6 flex flex-col items-center">
-          <div className="relative w-24 h-24">
-            <svg className="w-full h-full transform -rotate-90">
+        <div className="px-6 py-4 flex items-center gap-4">
+          <div className="relative w-20 h-20">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+              {/* Background circle */}
               <circle
-                cx="48"
-                cy="48"
-                r="40"
+                cx="40"
+                cy="40"
+                r="35"
                 fill="none"
                 stroke="#f3f4f6"
-                strokeWidth="6"
+                strokeWidth="5"
               />
+              {/* Progress arc - orange/peach color */}
               <circle
-                cx="48"
-                cy="48"
-                r="40"
+                cx="40"
+                cy="40"
+                r="35"
                 fill="none"
-                stroke="#10B981"
-                strokeWidth="6"
-                strokeDasharray={`${progress * 2.51} 251`}
+                stroke="#F5A962"
+                strokeWidth="5"
+                strokeDasharray={`${progress * 2.2} 220`}
                 strokeLinecap="round"
                 className="transition-all duration-500"
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-2xl font-bold text-gray-800">{progress}%</span>
+              <span className="text-xl font-bold text-gray-700">{progress}%</span>
             </div>
           </div>
-          <p className="mt-3 text-xs text-gray-500 uppercase tracking-wide">Completion</p>
         </div>
 
         {/* Steps Navigation */}
-        <nav className="flex-1 px-4 space-y-1">
-          {STEPS.map((step, index) => {
-            const Icon = step.icon;
-            const isActive = currentStep === step.id;
-            const isComplete = isStepComplete(step.id);
-            const isPast = getStepIndex() > index;
+        <nav className="flex-1 px-6 py-4">
+          <div className="relative">
+            {/* Vertical connecting line */}
+            <div className="absolute left-[7px] top-3 bottom-3 w-px bg-gray-200" />
+            
+            <div className="space-y-2">
+              {STEPS.map((step, index) => {
+                const isActive = currentStep === step.id;
+                const isComplete = isStepComplete(step.id) && getStepIndex() > index;
 
-            return (
-              <button
-                key={step.id}
-                onClick={() => setCurrentStep(step.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${
-                  isActive
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    : isPast || isComplete
-                    ? 'text-gray-600 hover:bg-gray-50'
-                    : 'text-gray-400'
-                }`}
-                data-testid={`step-${step.id}`}
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  isActive
-                    ? 'bg-emerald-100'
-                    : isPast || isComplete
-                    ? 'bg-emerald-100'
-                    : 'bg-gray-100'
-                }`}>
-                  {isPast || isComplete ? (
-                    <Check className="h-4 w-4 text-emerald-600" />
-                  ) : (
-                    <Icon className={`h-4 w-4 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
-                  )}
-                </div>
-                <span className={`text-sm font-medium ${isActive ? 'text-emerald-700' : ''}`}>
-                  {step.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* User Info */}
-        <div className="p-4 border-t border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-              <span className="text-amber-700 font-semibold">{user?.name?.charAt(0)}</span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate">{user?.name}</p>
-              <p className="text-xs text-gray-500">Broker</p>
+                return (
+                  <div key={step.id}>
+                    <button
+                      onClick={() => setCurrentStep(step.id)}
+                      className="w-full flex items-start gap-3 py-2 text-left relative z-10"
+                      data-testid={`step-${step.id}`}
+                    >
+                      {/* Circle indicator */}
+                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 ${
+                        isActive 
+                          ? 'bg-teal-600 border-teal-600' 
+                          : isComplete 
+                          ? 'bg-teal-600 border-teal-600'
+                          : 'bg-white border-gray-300'
+                      }`}>
+                        {isComplete && (
+                          <Check className="h-2.5 w-2.5 text-white m-auto" />
+                        )}
+                      </div>
+                      <span className={`text-xs font-semibold tracking-wide ${
+                        isActive ? 'text-gray-800' : 'text-gray-500'
+                      }`}>
+                        {step.label}
+                      </span>
+                    </button>
+                    
+                    {/* Sub-items */}
+                    {step.subItems.length > 0 && isActive && (
+                      <div className="ml-7 mt-1 space-y-1">
+                        {step.subItems.map((subItem, subIndex) => (
+                          <div 
+                            key={subIndex}
+                            className="text-xs text-gray-400 py-1"
+                          >
+                            {subItem}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
+        </nav>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-800">Create New Sub-Broker</h1>
-            <p className="text-gray-500 mt-1">Add a new sub-broker partner to your network</p>
-          </div>
+      <div className="flex-1 flex">
+        {/* Form Area */}
+        <div className="flex-1 p-8 max-w-2xl">
+          {/* Section Title */}
+          <h2 className="text-2xl font-semibold text-gray-800 mb-8">
+            {currentStep === 'general' && 'General Information'}
+            {currentStep === 'license' && 'License Details'}
+            {currentStep === 'commercials' && 'Commercials'}
+          </h2>
 
-          {/* Step Content */}
-          <div className="flex gap-8">
-            {/* Form Section */}
-            <div className="flex-1">
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-                  {STEPS.find(s => s.id === currentStep)?.icon && (
-                    <span className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                      {(() => {
-                        const Icon = STEPS.find(s => s.id === currentStep)?.icon;
-                        return Icon ? <Icon className="h-4 w-4 text-emerald-600" /> : null;
-                      })()}
-                    </span>
-                  )}
-                  {STEPS.find(s => s.id === currentStep)?.label}
-                </h2>
+          {/* General Information Form */}
+          {currentStep === 'general' && (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                  Introduced By <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.introduced_by} onValueChange={(value) => setFormData({...formData, introduced_by: value})}>
+                  <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-introduced-by">
+                    <SelectValue placeholder="" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="self">Self</SelectItem>
+                    <SelectItem value="referral">Referral</SelectItem>
+                    <SelectItem value="partner">Partner</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                {/* General Information */}
-                {currentStep === 'general' && (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Name (as per PAN) *</Label>
-                        <Input
-                          value={formData.name}
-                          onChange={(e) => setFormData({...formData, name: e.target.value})}
-                          placeholder="Enter full name"
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">PAN Number *</Label>
-                        <Input
-                          value={formData.pan}
-                          onChange={(e) => setFormData({...formData, pan: e.target.value.toUpperCase()})}
-                          placeholder="ABCDE1234F"
-                          maxLength={10}
-                          className="font-mono border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-pan"
-                        />
-                      </div>
-                    </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                  Profession of the Introducee <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.profession} onValueChange={(value) => setFormData({...formData, profession: value})}>
+                  <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-profession">
+                    <SelectValue placeholder="" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROFESSIONS.map(prof => (
+                      <SelectItem key={prof} value={prof}>{prof}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Partner Code *</Label>
-                        <Input
-                          value={formData.partner_code}
-                          onChange={(e) => setFormData({...formData, partner_code: e.target.value})}
-                          placeholder="e.g., SB001"
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-partner-code"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Email *</Label>
-                        <Input
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({...formData, email: e.target.value})}
-                          placeholder="partner@example.com"
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-email"
-                        />
-                      </div>
-                    </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                  Business Tag <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.business_tag} onValueChange={(value) => setFormData({...formData, business_tag: value})}>
+                  <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-business-tag">
+                    <SelectValue placeholder="" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_TAGS.map(tag => (
+                      <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Mobile Number *</Label>
-                        <Input
-                          type="tel"
-                          value={formData.mobile}
-                          onChange={(e) => setFormData({...formData, mobile: e.target.value})}
-                          placeholder="+91 98765 43210"
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-mobile"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Choose Color *</Label>
-                        <div className="flex gap-2 pt-1">
-                          {COLORS.map((color) => (
-                            <button
-                              key={color.value}
-                              type="button"
-                              onClick={() => setFormData({...formData, color: color.value})}
-                              className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
-                                formData.color === color.value ? 'border-gray-800 scale-110 ring-2 ring-offset-2 ring-gray-300' : 'border-transparent'
-                              }`}
-                              style={{ backgroundColor: color.value }}
-                              title={color.name}
-                              data-testid={`color-${color.name.toLowerCase()}`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+              {/* Commercials Section - inline */}
+              <div className="pt-4">
+                <Label className="text-xs text-gray-500 uppercase tracking-wide mb-3 block">
+                  Commercials
+                </Label>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Input
+                      value={formData.commission_value}
+                      onChange={(e) => setFormData({...formData, commission_value: e.target.value})}
+                      placeholder="10"
+                      className="h-12 border-gray-200 rounded-md"
+                      data-testid="input-commission-value"
+                    />
                   </div>
-                )}
-
-                {/* Address Details */}
-                {currentStep === 'address' && (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Address Line 1 *</Label>
-                        <Input
-                          value={formData.address_line1}
-                          onChange={(e) => setFormData({...formData, address_line1: e.target.value})}
-                          placeholder="Street address"
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-address1"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Address Line 2</Label>
-                        <Input
-                          value={formData.address_line2}
-                          onChange={(e) => setFormData({...formData, address_line2: e.target.value})}
-                          placeholder="Apartment, suite, etc."
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-address2"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">City *</Label>
-                        <Input
-                          value={formData.city}
-                          onChange={(e) => setFormData({...formData, city: e.target.value})}
-                          placeholder="Enter city"
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-city"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Country *</Label>
-                        <Select value={formData.country} onValueChange={(value) => setFormData({...formData, country: value})}>
-                          <SelectTrigger className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500" data-testid="select-country">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {COUNTRIES.map(country => (
-                              <SelectItem key={country} value={country}>{country}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">State *</Label>
-                        <Select value={formData.state} onValueChange={(value) => setFormData({...formData, state: value})}>
-                          <SelectTrigger className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500" data-testid="select-state">
-                            <SelectValue placeholder="Select state" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {INDIAN_STATES.map(state => (
-                              <SelectItem key={state} value={state}>{state}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Pincode *</Label>
-                        <Input
-                          value={formData.pincode}
-                          onChange={(e) => setFormData({...formData, pincode: e.target.value})}
-                          placeholder="400001"
-                          maxLength={6}
-                          className="font-mono border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-pincode"
-                        />
-                      </div>
-                    </div>
+                  <div className="w-24">
+                    <Select value={formData.commission_type} onValueChange={(value) => setFormData({...formData, commission_type: value})}>
+                      <SelectTrigger className="h-12 border-gray-200 rounded-md">
+                        <SelectValue placeholder="Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">%</SelectItem>
+                        <SelectItem value="fixed">Fixed</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
-
-                {/* Bank Details */}
-                {currentStep === 'bank' && (
-                  <div className="space-y-5">
-                    <p className="text-sm text-gray-500 mb-4">Bank details are optional. You can add them later.</p>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Bank Name</Label>
-                        <Input
-                          value={formData.bank_name}
-                          onChange={(e) => setFormData({...formData, bank_name: e.target.value})}
-                          placeholder="e.g., HDFC Bank"
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-bank-name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Account Number</Label>
-                        <Input
-                          value={formData.account_number}
-                          onChange={(e) => setFormData({...formData, account_number: e.target.value})}
-                          placeholder="Enter account number"
-                          className="font-mono border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-account-number"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">IFSC Code</Label>
-                        <Input
-                          value={formData.ifsc_code}
-                          onChange={(e) => setFormData({...formData, ifsc_code: e.target.value.toUpperCase()})}
-                          placeholder="e.g., HDFC0001234"
-                          className="font-mono border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-ifsc"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-gray-500 uppercase tracking-wide">Branch</Label>
-                        <Input
-                          value={formData.branch}
-                          onChange={(e) => setFormData({...formData, branch: e.target.value})}
-                          placeholder="Enter branch name"
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          data-testid="input-branch"
-                        />
-                      </div>
-                    </div>
+                  <div className="w-20">
+                    <Input
+                      value="OK"
+                      readOnly
+                      className="h-12 border-gray-200 rounded-md text-center bg-gray-50"
+                    />
                   </div>
-                )}
+                  <div className="flex-1">
+                    <Input
+                      value={formData.pan}
+                      onChange={(e) => setFormData({...formData, pan: e.target.value.toUpperCase()})}
+                      placeholder="pan card"
+                      className="h-12 border-gray-200 rounded-md font-mono"
+                      data-testid="input-pan"
+                    />
+                  </div>
+                </div>
+              </div>
 
-                {/* Action Button */}
-                <div className="mt-8 flex justify-end">
-                  <Button
-                    onClick={handleProceed}
-                    disabled={loading}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-2.5 rounded-lg font-medium flex items-center gap-2"
-                    data-testid="proceed-btn"
-                  >
-                    {loading ? "Creating..." : getStepIndex() === STEPS.length - 1 ? "Create Sub-Broker" : "Proceed"}
-                    {!loading && <ChevronRight className="h-4 w-4" />}
-                  </Button>
+              {/* Additional fields */}
+              <div className="pt-4 grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    Name (as per PAN) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    placeholder="Enter full name"
+                    className="h-12 border-gray-200 rounded-md"
+                    data-testid="input-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    Email <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    placeholder="email@example.com"
+                    className="h-12 border-gray-200 rounded-md"
+                    data-testid="input-email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    Mobile <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="tel"
+                    value={formData.mobile}
+                    onChange={(e) => setFormData({...formData, mobile: e.target.value})}
+                    placeholder="+91 98765 43210"
+                    className="h-12 border-gray-200 rounded-md"
+                    data-testid="input-mobile"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    Partner Code
+                  </Label>
+                  <Input
+                    value={formData.partner_code}
+                    onChange={(e) => setFormData({...formData, partner_code: e.target.value})}
+                    placeholder="e.g., SB001"
+                    className="h-12 border-gray-200 rounded-md"
+                    data-testid="input-partner-code"
+                  />
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Illustration */}
-            <div className="hidden lg:block w-64">
-              <div className="sticky top-8">
-                <svg viewBox="0 0 200 200" className="w-full">
-                  {/* Decorative illustration */}
-                  <circle cx="100" cy="100" r="80" fill="#ecfdf5" />
-                  <circle cx="100" cy="100" r="60" fill="#d1fae5" />
-                  <rect x="70" y="70" width="60" height="80" rx="4" fill="#10b981" />
-                  <rect x="75" y="80" width="50" height="4" rx="2" fill="#ffffff" opacity="0.7" />
-                  <rect x="75" y="90" width="40" height="4" rx="2" fill="#ffffff" opacity="0.7" />
-                  <rect x="75" y="100" width="45" height="4" rx="2" fill="#ffffff" opacity="0.7" />
-                  <rect x="75" y="110" width="35" height="4" rx="2" fill="#ffffff" opacity="0.7" />
-                  <rect x="75" y="125" width="20" height="15" rx="2" fill="#ffffff" opacity="0.9" />
-                  <circle cx="140" cy="60" r="25" fill="#fef3c7" />
-                  <path d="M130 60 L140 50 L150 60 L140 70 Z" fill="#f59e0b" />
-                  <circle cx="60" cy="140" r="20" fill="#dbeafe" />
-                  <rect x="50" y="130" width="20" height="20" rx="2" fill="#3b82f6" />
-                </svg>
-                <p className="text-center text-sm text-gray-500 mt-4">
-                  Add your sub-broker partners to expand your network
-                </p>
+          {/* License Details Form */}
+          {currentStep === 'license' && (
+            <div className="space-y-6">
+              <p className="text-sm text-gray-500 mb-4">License details are optional for sub-brokers.</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">License Number</Label>
+                  <Input
+                    placeholder="Enter license number"
+                    className="h-12 border-gray-200 rounded-md"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">Expiry Date</Label>
+                  <Input
+                    type="date"
+                    className="h-12 border-gray-200 rounded-md"
+                  />
+                </div>
               </div>
             </div>
+          )}
+
+          {/* Commercials Form */}
+          {currentStep === 'commercials' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">Address Line 1</Label>
+                  <Input
+                    value={formData.address_line1}
+                    onChange={(e) => setFormData({...formData, address_line1: e.target.value})}
+                    placeholder="Street address"
+                    className="h-12 border-gray-200 rounded-md"
+                    data-testid="input-address1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">Address Line 2</Label>
+                  <Input
+                    value={formData.address_line2}
+                    onChange={(e) => setFormData({...formData, address_line2: e.target.value})}
+                    placeholder="Apartment, suite"
+                    className="h-12 border-gray-200 rounded-md"
+                    data-testid="input-address2"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">City</Label>
+                  <Input
+                    value={formData.city}
+                    onChange={(e) => setFormData({...formData, city: e.target.value})}
+                    placeholder="Enter city"
+                    className="h-12 border-gray-200 rounded-md"
+                    data-testid="input-city"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">State</Label>
+                  <Select value={formData.state} onValueChange={(value) => setFormData({...formData, state: value})}>
+                    <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-state">
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_STATES.map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">Pincode</Label>
+                  <Input
+                    value={formData.pincode}
+                    onChange={(e) => setFormData({...formData, pincode: e.target.value})}
+                    placeholder="400001"
+                    maxLength={6}
+                    className="h-12 border-gray-200 rounded-md font-mono"
+                    data-testid="input-pincode"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">Country</Label>
+                  <Select value={formData.country} onValueChange={(value) => setFormData({...formData, country: value})}>
+                    <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-country">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRIES.map(country => (
+                        <SelectItem key={country} value={country}>{country}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Proceed Button */}
+          <div className="mt-10">
+            <Button
+              onClick={handleProceed}
+              disabled={loading}
+              className="bg-teal-700 hover:bg-teal-800 text-white px-8 py-3 h-12 rounded-md font-medium"
+              data-testid="proceed-btn"
+            >
+              {loading ? "Creating..." : getStepIndex() === STEPS.length - 1 ? "SUBMIT" : "PROCEED"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Right Illustration */}
+        <div className="w-80 p-8 flex items-start justify-center">
+          <div className="mt-16">
+            {/* Illustration matching the Zeplin design */}
+            <svg viewBox="0 0 300 350" className="w-64">
+              {/* Background elements */}
+              <rect x="60" y="30" width="180" height="140" rx="8" fill="#E8F4F8" />
+              
+              {/* Chart bars */}
+              <rect x="80" y="100" width="25" height="50" rx="2" fill="#3B82F6" />
+              <rect x="115" y="80" width="25" height="70" rx="2" fill="#3B82F6" />
+              <rect x="150" y="60" width="25" height="90" rx="2" fill="#3B82F6" />
+              <rect x="185" y="90" width="25" height="60" rx="2" fill="#3B82F6" />
+              
+              {/* Line chart */}
+              <polyline 
+                points="80,90 115,70 150,50 185,80 220,60" 
+                fill="none" 
+                stroke="#10B981" 
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              
+              {/* Pie chart */}
+              <circle cx="250" cy="80" r="35" fill="#FDE68A" />
+              <path d="M250,80 L250,45 A35,35 0 0,1 280,95 Z" fill="#F59E0B" />
+              <path d="M250,80 L280,95 A35,35 0 0,1 235,110 Z" fill="#FBBF24" />
+              
+              {/* Person */}
+              <ellipse cx="150" cy="320" rx="45" ry="8" fill="#E5E7EB" />
+              
+              {/* Body */}
+              <path d="M120,250 Q150,230 180,250 L175,310 L125,310 Z" fill="#0D9488" />
+              
+              {/* Head */}
+              <circle cx="150" cy="210" r="30" fill="#FDDCAB" />
+              
+              {/* Hair */}
+              <path d="M125,195 Q150,175 175,195 Q170,185 150,185 Q130,185 125,195" fill="#1E3A5F" />
+              
+              {/* Face */}
+              <circle cx="140" cy="210" r="2" fill="#1E3A5F" />
+              <circle cx="160" cy="210" r="2" fill="#1E3A5F" />
+              <path d="M145,220 Q150,225 155,220" fill="none" stroke="#1E3A5F" strokeWidth="2" strokeLinecap="round" />
+              
+              {/* Arms */}
+              <path d="M125,260 L100,290" stroke="#FDDCAB" strokeWidth="12" strokeLinecap="round" />
+              <path d="M175,260 L200,290" stroke="#FDDCAB" strokeWidth="12" strokeLinecap="round" />
+              
+              {/* Document/clipboard */}
+              <rect x="70" y="260" width="40" height="55" rx="4" fill="white" stroke="#E5E7EB" strokeWidth="2" />
+              <line x1="80" y1="275" x2="100" y2="275" stroke="#3B82F6" strokeWidth="2" />
+              <line x1="80" y1="285" x2="95" y2="285" stroke="#3B82F6" strokeWidth="2" />
+              <line x1="80" y1="295" x2="100" y2="295" stroke="#3B82F6" strokeWidth="2" />
+              
+              {/* Plant */}
+              <rect x="230" y="290" width="30" height="35" rx="4" fill="#FDE68A" />
+              <ellipse cx="245" cy="275" rx="20" ry="15" fill="#10B981" />
+              <ellipse cx="235" cy="265" rx="12" ry="10" fill="#34D399" />
+              <ellipse cx="255" cy="268" rx="10" ry="8" fill="#34D399" />
+              
+              {/* Coffee cup */}
+              <rect x="270" y="300" width="15" height="20" rx="2" fill="#92400E" />
+              <ellipse cx="277.5" cy="300" rx="7.5" ry="3" fill="#78350F" />
+            </svg>
           </div>
         </div>
       </div>
+
+      {/* Top Right User Info */}
+      <div className="absolute top-4 right-6 flex items-center gap-3">
+        <span className="text-sm text-red-500 font-medium">S</span>
+        <span className="text-sm text-gray-600">SUPER ADMIN</span>
+        <div className="relative">
+          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+          <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center">
+            <span className="text-xs text-white font-bold">0</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Go Back Link */}
+      <button
+        onClick={() => navigate("/broker/admin/sub-brokers")}
+        className="absolute top-6 left-6 flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors text-sm"
+        data-testid="go-back-btn"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Go Back
+      </button>
     </div>
   );
 }
