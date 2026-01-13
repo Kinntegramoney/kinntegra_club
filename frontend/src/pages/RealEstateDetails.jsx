@@ -628,6 +628,33 @@ export default function RealEstateDetails() {
           }}
         />
       )}
+
+      {/* Interest Modal */}
+      {showInterestModal && (
+        <InterestModal
+          opportunity={opp}
+          onClose={() => setShowInterestModal(false)}
+          onSuccess={() => {
+            setShowInterestModal(false);
+            fetchData();
+            toast.success("Your interest has been recorded!");
+          }}
+        />
+      )}
+
+      {/* Participate Modal */}
+      {showParticipateModal && (
+        <ParticipateModal
+          opportunity={opp}
+          remainingPercentage={remainingPercentage}
+          onClose={() => setShowParticipateModal(false)}
+          onSuccess={() => {
+            setShowParticipateModal(false);
+            fetchData();
+            toast.success("Participation confirmed!");
+          }}
+        />
+      )}
     </div>
   );
 }
