@@ -169,6 +169,14 @@ export default function BulkUpload() {
                         <li>• Sample row for reference</li>
                       </>
                     )}
+                    {activeTab === "clients" && (
+                      <>
+                        <li>• Name, PAN, Email, Mobile</li>
+                        <li>• Password, PIN for login credentials</li>
+                        <li>• Linked Sub-Broker Code (optional)</li>
+                        <li>• Address details (optional)</li>
+                      </>
+                    )}
                     {activeTab === "bonds" && (
                       <>
                         <li>• Bond Code, Name, Principal Amount</li>
