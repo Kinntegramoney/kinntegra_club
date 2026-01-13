@@ -337,6 +337,34 @@ Sub-broker View:
 - [x] **Result Display**: Upload results now show which sub-broker each client was linked to
 - [x] **Template Updated**: Download template includes Partner Code column with sample data
 
+### Phase 12: Real Estate Opportunities Module (January 13, 2026)
+- [x] **New Module**: Complete Real Estate Opportunities management system
+- [x] **Form Fields** (based on Excel columns):
+  - Building/Project Name, Unit Number
+  - Unit Price, DLD Fee, Admin Fee, Broker Fee, Other Fees
+  - Total Area, Carpet Area, Balcony Area (with ratio calculation)
+  - Unit Type (Studio, 1BR, 2BR, etc.), Floor, Parking Spaces
+  - Developer Name, Location, Amenities, Handover Date, Payment Plan
+  - Investment Time Frame (in days)
+- [x] **Off-Plan Properties**: Maximum 4 investors per property (25% share each)
+- [x] **Fractional Properties**: Unit value divided into multiples of 500 AED
+- [x] **Image Upload**: Support for up to 12 images per property
+- [x] **Investment Allocation**: Track investors and their allocations
+- [x] **Multi-step Form**: Basic Info → Pricing → Area & Details → Investment → Images
+- [x] **Property Cards**: Visual grid display with badges for type/status
+- [x] **Sidebar Integration**: New "Real Estate" menu item in broker sidebar
+
+**API Endpoints Added:**
+- `POST /api/real-estate-opportunities` - Create opportunity
+- `GET /api/real-estate-opportunities` - List opportunities (with filters)
+- `GET /api/real-estate-opportunities/{id}` - Get opportunity details
+- `PUT /api/real-estate-opportunities/{id}` - Update opportunity
+- `DELETE /api/real-estate-opportunities/{id}` - Delete opportunity
+- `POST /api/real-estate-opportunities/{id}/images` - Upload images (max 12)
+- `DELETE /api/real-estate-opportunities/{id}/images/{image_id}` - Delete image
+- `POST /api/real-estate-opportunities/{id}/invest` - Allocate investment
+- `GET /api/real-estate-opportunities/{id}/investors` - Get investors list
+
 **API Endpoints Added:**
 - `GET /api/client/verify/{token}` - Get verification details
 - `POST /api/client/verify/{token}` - Verify client profile
