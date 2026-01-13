@@ -35,6 +35,7 @@ export default function Sidebar({ user }) {
     { path: "/broker/admin/real-estate", label: "Add Real Estate" },
     { path: "/broker/admin/sub-brokers", label: "Add Sub Broker" },
     { path: "/broker/admin/clients", label: "Add Client" },
+    { path: "/broker/bulk-upload", label: "Bulk Upload", highlight: true },
   ];
 
   const SidebarContent = () => (
