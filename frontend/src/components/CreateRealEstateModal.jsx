@@ -733,22 +733,27 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {getSortedPaymentSchedule().map((milestone, idx) => {
-                    const originalIdx = getOriginalIndex(idx);
-                    return (
-                      <div key={`${milestone.date}-${idx}`} className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                  {paymentSchedule
+                    .map((milestone, originalIdx) => ({ ...milestone, originalIdx }))
+                    .sort((a, b) => {
+                      if (!a.date) return 1;
+                      if (!b.date) return -1;
+                      return new Date(a.date) - new Date(b.date);
+                    })
+                    .map((milestone, displayIdx) => (
+                      <div key={milestone.originalIdx} className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm ${
-                          idx === 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                          displayIdx === 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
                         }`}>
-                          {idx + 1}
+                          {displayIdx + 1}
                         </div>
                         <div className="flex-1 grid grid-cols-3 gap-3">
                           <div>
-                            <Label className="text-xs">Date {idx === 0 && <span className="text-red-500">(First = Booking)</span>}</Label>
+                            <Label className="text-xs">Date {displayIdx === 0 && <span className="text-red-500">(First = Booking)</span>}</Label>
                             <Input
                               type="date"
                               value={milestone.date}
-                              onChange={(e) => updatePaymentMilestone(originalIdx, "date", e.target.value)}
+                              onChange={(e) => updatePaymentMilestone(milestone.originalIdx, "date", e.target.value)}
                             />
                           </div>
                           <div>
@@ -758,7 +763,7 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                                 type="number"
                                 step="0.1"
                                 value={milestone.percentage}
-                                onChange={(e) => updatePaymentMilestone(originalIdx, "percentage", e.target.value)}
+                                onChange={(e) => updatePaymentMilestone(milestone.originalIdx, "percentage", e.target.value)}
                                 placeholder="e.g., 20"
                               />
                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
@@ -768,8 +773,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                             <Label className="text-xs">Description</Label>
                             <Input
                               value={milestone.description}
-                              onChange={(e) => updatePaymentMilestone(originalIdx, "description", e.target.value)}
-                              placeholder={idx === 0 ? "Booking" : "e.g., Construction"}
+                              onChange={(e) => updatePaymentMilestone(milestone.originalIdx, "description", e.target.value)}
+                              placeholder={displayIdx === 0 ? "Booking" : "e.g., Construction"}
                             />
                           </div>
                         </div>
@@ -777,15 +782,16 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => removePaymentMilestone(idx)}
+                          onClick={() => {
+                            setPaymentSchedule(prev => prev.filter((_, i) => i !== milestone.originalIdx));
+                          }}
                           className="text-red-500 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    );
-                  })}
-                  ))}
+                    ))
+                  }
                 </div>
               )}
 
