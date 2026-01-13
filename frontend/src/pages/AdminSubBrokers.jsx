@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
-import CreatePartnerModal from "@/components/CreatePartnerModal";
 import EditPartnerModal from "@/components/EditPartnerModal";
 import { Plus, Edit2, Trash2, RefreshCw, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,6 @@ export default function AdminSubBrokers() {
   const [user, setUser] = useState(null);
   const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPartner, setEditingPartner] = useState(null);
 
   useEffect(() => {
