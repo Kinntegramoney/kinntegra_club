@@ -267,9 +267,9 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        {/* Header - Fixed */}
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
               <Building2 className="h-5 w-5 text-orange-700" />
@@ -286,8 +286,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
           </button>
         </div>
 
-        {/* Section Tabs */}
-        <div className="flex border-b border-gray-200 px-6 overflow-x-auto">
+        {/* Section Tabs - Fixed */}
+        <div className="flex-shrink-0 flex border-b border-gray-200 px-6 overflow-x-auto bg-white">
           {sections.map(section => (
             <button
               key={section.id}
@@ -304,8 +304,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
           ))}
         </div>
 
-        {/* Form Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+        {/* Form Content - Scrollable */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 min-h-0">
           {/* Basic Info Section */}
           {activeSection === "basic" && (
             <div className="space-y-4">
