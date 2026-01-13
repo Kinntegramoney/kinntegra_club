@@ -360,7 +360,563 @@ async def reactivate_partner(partner_id: str, current_user: dict = Depends(get_c
     return {"message": "Sub-broker reactivated successfully"}
 
 
-class PartnerUpdate(BaseModel):
+# ==================== BULK UPLOAD ENDPOINTS ====================
+
+@api_router.get("/bulk/template/sub-brokers")
+async def download_subbroker_template(current_user: dict = Depends(get_current_user)):
+    """Download Excel template for bulk sub-broker upload"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can download templates")
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sub Brokers"
+    
+    # Headers
+    headers = ["Name*", "PAN*", "Partner Code*", "Email*", "Mobile*", "Password*", "PIN*", 
+               "Address Line 1", "Address Line 2", "City", "State", "Country", "Pincode"]
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center")
+        ws.column_dimensions[get_column_letter(col)].width = 18
+    
+    # Sample row
+    sample = ["John Doe", "ABCDE1234F", "SB001", "john@example.com", "9876543210", 
+              "password123", "1234", "123 Main St", "Suite 100", "Mumbai", "Maharashtra", "India", "400001"]
+    for col, value in enumerate(sample, 1):
+        ws.cell(row=2, column=col, value=value)
+    
+    # Instructions sheet
+    ws_instructions = wb.create_sheet("Instructions")
+    instructions = [
+        "BULK SUB-BROKER UPLOAD INSTRUCTIONS",
+        "",
+        "Required Fields (marked with *):",
+        "- Name: Full name of the sub-broker",
+        "- PAN: Valid PAN number (10 characters, e.g., ABCDE1234F)",
+        "- Partner Code: Unique code for the sub-broker (e.g., SB001)",
+        "- Email: Valid email address",
+        "- Mobile: 10-digit mobile number",
+        "- Password: Login password (min 6 characters)",
+        "- PIN: 4-digit PIN for transactions",
+        "",
+        "Optional Fields:",
+        "- Address details for complete profile",
+        "",
+        "Notes:",
+        "- Delete the sample row before uploading",
+        "- PAN and Partner Code must be unique",
+        "- Maximum 100 records per upload"
+    ]
+    for row, text in enumerate(instructions, 1):
+        ws_instructions.cell(row=row, column=1, value=text)
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=sub_broker_template.xlsx"}
+    )
+
+
+@api_router.post("/bulk/sub-brokers")
+async def bulk_upload_subbrokers(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Bulk upload sub-brokers from Excel file"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can bulk upload sub-brokers")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    import pandas as pd
+    
+    content = await file.read()
+    df = pd.read_excel(io.BytesIO(content), sheet_name=0)
+    
+    # Clean column names
+    df.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df.columns]
+    
+    results = {"success": 0, "failed": 0, "errors": []}
+    
+    for idx, row in df.iterrows():
+        try:
+            # Validate required fields
+            if pd.isna(row.get('name')) or pd.isna(row.get('pan')) or pd.isna(row.get('partner_code')):
+                results['errors'].append(f"Row {idx+2}: Missing required fields (Name, PAN, or Partner Code)")
+                results['failed'] += 1
+                continue
+            
+            pan = str(row['pan']).upper().strip()
+            partner_code = str(row['partner_code']).strip()
+            
+            # Check for duplicates
+            existing_pan = await db.users.find_one({"pan": pan})
+            if existing_pan:
+                results['errors'].append(f"Row {idx+2}: PAN {pan} already exists")
+                results['failed'] += 1
+                continue
+            
+            existing_code = await db.partners.find_one({"partner_code": partner_code})
+            if existing_code:
+                results['errors'].append(f"Row {idx+2}: Partner code {partner_code} already exists")
+                results['failed'] += 1
+                continue
+            
+            # Create user
+            user_id = str(uuid.uuid4())
+            user = {
+                "id": user_id,
+                "pan": pan,
+                "name": str(row['name']).strip(),
+                "email": str(row.get('email', '')).strip(),
+                "phone": str(row.get('mobile', '')).strip(),
+                "password_hash": get_password_hash(str(row.get('password', 'password123'))),
+                "pin_hash": get_password_hash(str(row.get('pin', '1234'))),
+                "role": "sub_broker",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.users.insert_one(user)
+            
+            # Create partner record
+            partner = {
+                "id": user_id,
+                "name": str(row['name']).strip(),
+                "pan": pan,
+                "partner_code": partner_code,
+                "email": str(row.get('email', '')).strip(),
+                "mobile": str(row.get('mobile', '')).strip(),
+                "color": "#4F46E5",
+                "address_line1": str(row.get('address_line_1', '')).strip() if not pd.isna(row.get('address_line_1')) else "",
+                "address_line2": str(row.get('address_line_2', '')).strip() if not pd.isna(row.get('address_line_2')) else "",
+                "city": str(row.get('city', '')).strip() if not pd.isna(row.get('city')) else "",
+                "state": str(row.get('state', '')).strip() if not pd.isna(row.get('state')) else "",
+                "country": str(row.get('country', 'India')).strip() if not pd.isna(row.get('country')) else "India",
+                "pincode": str(row.get('pincode', '')).strip() if not pd.isna(row.get('pincode')) else "",
+                "created_by": current_user['id'],
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.partners.insert_one(partner)
+            results['success'] += 1
+            
+        except Exception as e:
+            results['errors'].append(f"Row {idx+2}: {str(e)}")
+            results['failed'] += 1
+    
+    return results
+
+
+@api_router.get("/bulk/template/bonds")
+async def download_bond_template(current_user: dict = Depends(get_current_user)):
+    """Download Excel template for bulk bond upload"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can download templates")
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Bonds"
+    
+    headers = ["Bond Code*", "Bond Name*", "Principal Amount*", "Coupon Rate (%)*", 
+               "Primary IRR (%)*", "Secondary IRR (%)*", "Start Date*", "Maturity Date*",
+               "Total Units", "Interest Frequency"]
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="059669", end_color="059669", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center")
+        ws.column_dimensions[get_column_letter(col)].width = 18
+    
+    # Sample row
+    sample = ["ABC-NCD-2025", "ABC Corp NCD 2025", 1000000, 12.5, 14.0, 12.0, 
+              "2025-01-15", "2027-01-15", 10, "quarterly"]
+    for col, value in enumerate(sample, 1):
+        ws.cell(row=2, column=col, value=value)
+    
+    # Instructions sheet
+    ws_instructions = wb.create_sheet("Instructions")
+    instructions = [
+        "BULK BOND UPLOAD INSTRUCTIONS",
+        "",
+        "Required Fields (marked with *):",
+        "- Bond Code: Unique identifier (e.g., ABC-NCD-2025)",
+        "- Bond Name: Full name of the bond",
+        "- Principal Amount: Face value in INR",
+        "- Coupon Rate: Annual interest rate as percentage",
+        "- Primary IRR: Expected IRR for primary buyer",
+        "- Secondary IRR: Target IRR for secondary market",
+        "- Start Date: Bond start date (YYYY-MM-DD)",
+        "- Maturity Date: Bond maturity date (YYYY-MM-DD)",
+        "",
+        "Optional Fields:",
+        "- Total Units: Number of units (default: 1)",
+        "- Interest Frequency: quarterly, monthly, semi-annual, annual (default: quarterly)",
+        "",
+        "Notes:",
+        "- Principal and interest payments will be auto-generated",
+        "- Delete the sample row before uploading",
+        "- Maximum 50 bonds per upload"
+    ]
+    for row, text in enumerate(instructions, 1):
+        ws_instructions.cell(row=row, column=1, value=text)
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=bond_template.xlsx"}
+    )
+
+
+@api_router.post("/bulk/bonds")
+async def bulk_upload_bonds(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Bulk upload bonds from Excel file"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can bulk upload bonds")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    import pandas as pd
+    
+    content = await file.read()
+    df = pd.read_excel(io.BytesIO(content), sheet_name=0)
+    
+    # Clean column names
+    df.columns = [col.replace('*', '').replace('(%)', '').strip().lower().replace(' ', '_') for col in df.columns]
+    
+    results = {"success": 0, "failed": 0, "errors": [], "created_bonds": []}
+    
+    for idx, row in df.iterrows():
+        try:
+            # Validate required fields
+            required = ['bond_code', 'bond_name', 'principal_amount', 'coupon_rate', 
+                       'primary_irr', 'secondary_irr', 'start_date', 'maturity_date']
+            missing = [f for f in required if pd.isna(row.get(f))]
+            if missing:
+                results['errors'].append(f"Row {idx+2}: Missing required fields: {', '.join(missing)}")
+                results['failed'] += 1
+                continue
+            
+            bond_code = str(row['bond_code']).strip()
+            
+            # Check for duplicate bond code
+            existing = await db.bonds.find_one({"bond_code": bond_code})
+            if existing:
+                results['errors'].append(f"Row {idx+2}: Bond code {bond_code} already exists")
+                results['failed'] += 1
+                continue
+            
+            # Parse dates
+            start_date = pd.to_datetime(row['start_date']).strftime('%Y-%m-%d')
+            end_date = pd.to_datetime(row['maturity_date']).strftime('%Y-%m-%d')
+            
+            # Generate simple principal payment (100% at maturity)
+            principal_payments = [{"date": end_date, "percentage": 100.0}]
+            
+            # Generate interest payments based on frequency
+            frequency = str(row.get('interest_frequency', 'quarterly')).lower().strip()
+            interest_payments = []
+            principal = float(row['principal_amount'])
+            coupon_rate = float(row['coupon_rate'])
+            
+            start = datetime.strptime(start_date, '%Y-%m-%d')
+            end = datetime.strptime(end_date, '%Y-%m-%d')
+            
+            months_interval = {"monthly": 1, "quarterly": 3, "semi-annual": 6, "annual": 12}.get(frequency, 3)
+            
+            current = start
+            while current < end:
+                current = current + timedelta(days=months_interval * 30)
+                if current <= end:
+                    # Simple interest calculation
+                    interest_amount = (principal * coupon_rate / 100) * (months_interval / 12)
+                    interest_payments.append({
+                        "date": current.strftime('%Y-%m-%d'),
+                        "amount": round(interest_amount, 2)
+                    })
+            
+            bond_id = str(uuid.uuid4())
+            bond = {
+                "id": bond_id,
+                "bond_code": bond_code,
+                "name": str(row['bond_name']).strip(),
+                "principal_amount": principal,
+                "coupon_rate": coupon_rate,
+                "primary_irr": float(row['primary_irr']),
+                "secondary_irr": float(row['secondary_irr']),
+                "start_date": start_date,
+                "end_date": end_date,
+                "total_units": int(row.get('total_units', 1)) if not pd.isna(row.get('total_units')) else 1,
+                "units_sold": 0,
+                "interest_payment_frequency": frequency,
+                "principal_payments": principal_payments,
+                "interest_payments": interest_payments,
+                "created_by": current_user['id'],
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.bonds.insert_one(bond)
+            results['success'] += 1
+            results['created_bonds'].append({"id": bond_id, "name": bond['name'], "code": bond_code})
+            
+        except Exception as e:
+            results['errors'].append(f"Row {idx+2}: {str(e)}")
+            results['failed'] += 1
+    
+    return results
+
+
+@api_router.get("/bulk/template/real-estate")
+async def download_real_estate_template(current_user: dict = Depends(get_current_user)):
+    """Download Excel template for bulk real estate upload"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can download templates")
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Real Estate"
+    
+    headers = ["Building Name*", "Developer*", "Unit No*", "Floor*", "Unit Type*",
+               "Unit Price (AED)*", "Total Area (sqft)*", "Carpet Area (sqft)", 
+               "Balcony Area (sqft)", "Location", "DLD Fee (%)*", "Admin Fee (AED)*",
+               "Brokerage Fee (AED)", "Other Fees (AED)", "Selling Fee (%)",
+               "Handover Date", "Parking Spaces"]
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="EA580C", end_color="EA580C", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center")
+        ws.column_dimensions[get_column_letter(col)].width = 18
+    
+    # Sample row
+    sample = ["Palm Tower", "Emaar Properties", "1201", 12, "2BR", 2500000, 1200, 1100, 
+              100, "Dubai Marina", 4, 5000, 25000, 2000, 2, "2026-06-30", 1]
+    for col, value in enumerate(sample, 1):
+        ws.cell(row=2, column=col, value=value)
+    
+    # Payment Schedule sheet
+    ws_payments = wb.create_sheet("Payment Schedule")
+    pay_headers = ["Building Name", "Payment Description", "Due Date", "Percentage"]
+    for col, header in enumerate(pay_headers, 1):
+        cell = ws_payments.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="7C3AED", end_color="7C3AED", fill_type="solid")
+        ws_payments.column_dimensions[get_column_letter(col)].width = 20
+    
+    # Sample payment schedule
+    sample_payments = [
+        ["Palm Tower", "Booking", "2025-02-01", 20],
+        ["Palm Tower", "1st Installment", "2025-06-01", 10],
+        ["Palm Tower", "2nd Installment", "2025-12-01", 10],
+        ["Palm Tower", "3rd Installment", "2026-03-01", 10],
+        ["Palm Tower", "Handover", "2026-06-30", 50],
+    ]
+    for row_idx, payment in enumerate(sample_payments, 2):
+        for col, value in enumerate(payment, 1):
+            ws_payments.cell(row=row_idx, column=col, value=value)
+    
+    # Instructions sheet
+    ws_instructions = wb.create_sheet("Instructions")
+    instructions = [
+        "BULK REAL ESTATE UPLOAD INSTRUCTIONS",
+        "",
+        "Sheet 1 - Real Estate (Required):",
+        "- Building Name: Name of the building/project",
+        "- Developer: Developer/builder name",
+        "- Unit No: Unit number/identifier",
+        "- Floor: Floor number",
+        "- Unit Type: e.g., 1BR, 2BR, Studio, Villa",
+        "- Unit Price: Price in AED",
+        "- Total Area: Total area in sqft",
+        "- DLD Fee: Dubai Land Department fee as percentage",
+        "- Admin Fee: Administrative fee in AED",
+        "",
+        "Sheet 2 - Payment Schedule (Optional):",
+        "- Add payment milestones for each property",
+        "- Building Name must match exactly with Sheet 1",
+        "- Percentages should sum to 100%",
+        "",
+        "Notes:",
+        "- If no payment schedule provided, default 20/30/30/20 will be used",
+        "- Maximum 30 properties per upload"
+    ]
+    for row, text in enumerate(instructions, 1):
+        ws_instructions.cell(row=row, column=1, value=text)
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=real_estate_template.xlsx"}
+    )
+
+
+@api_router.post("/bulk/real-estate")
+async def bulk_upload_real_estate(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Bulk upload real estate opportunities from Excel file"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can bulk upload real estate")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    import pandas as pd
+    
+    content = await file.read()
+    excel_file = pd.ExcelFile(io.BytesIO(content))
+    
+    # Read main sheet
+    df = pd.read_excel(excel_file, sheet_name=0)
+    df.columns = [col.replace('*', '').replace('(%)', '').replace('(AED)', '').replace('(sqft)', '')
+                  .strip().lower().replace(' ', '_') for col in df.columns]
+    
+    # Read payment schedule if exists
+    payment_schedule_df = None
+    if 'Payment Schedule' in excel_file.sheet_names:
+        payment_schedule_df = pd.read_excel(excel_file, sheet_name='Payment Schedule')
+        payment_schedule_df.columns = [col.strip().lower().replace(' ', '_') for col in payment_schedule_df.columns]
+    
+    results = {"success": 0, "failed": 0, "errors": [], "created_properties": []}
+    
+    for idx, row in df.iterrows():
+        try:
+            # Validate required fields
+            required = ['building_name', 'developer', 'unit_no', 'floor', 'unit_type', 
+                       'unit_price', 'total_area', 'dld_fee', 'admin_fee']
+            missing = [f for f in required if pd.isna(row.get(f))]
+            if missing:
+                results['errors'].append(f"Row {idx+2}: Missing required fields: {', '.join(missing)}")
+                results['failed'] += 1
+                continue
+            
+            building_name = str(row['building_name']).strip()
+            unit_no = str(row['unit_no']).strip()
+            
+            # Check for duplicate
+            existing = await db.real_estate_opportunities.find_one({
+                "building_name": building_name,
+                "unit_no": unit_no,
+                "created_by": current_user['id']
+            })
+            if existing:
+                results['errors'].append(f"Row {idx+2}: Property {building_name} - Unit {unit_no} already exists")
+                results['failed'] += 1
+                continue
+            
+            # Get payment schedule for this property
+            payment_schedule = []
+            if payment_schedule_df is not None:
+                property_payments = payment_schedule_df[
+                    payment_schedule_df['building_name'].str.strip().str.lower() == building_name.lower()
+                ]
+                for _, pay_row in property_payments.iterrows():
+                    payment_schedule.append({
+                        "description": str(pay_row.get('payment_description', '')).strip(),
+                        "date": pd.to_datetime(pay_row['due_date']).strftime('%Y-%m-%d'),
+                        "percentage": float(pay_row['percentage'])
+                    })
+            
+            # Default payment schedule if none provided
+            if not payment_schedule:
+                handover_date = row.get('handover_date')
+                base_date = datetime.now()
+                if not pd.isna(handover_date):
+                    base_date = pd.to_datetime(handover_date)
+                
+                payment_schedule = [
+                    {"description": "Booking", "date": datetime.now().strftime('%Y-%m-%d'), "percentage": 20},
+                    {"description": "1st Installment", "date": (datetime.now() + timedelta(days=120)).strftime('%Y-%m-%d'), "percentage": 30},
+                    {"description": "2nd Installment", "date": (datetime.now() + timedelta(days=240)).strftime('%Y-%m-%d'), "percentage": 30},
+                    {"description": "Handover", "date": base_date.strftime('%Y-%m-%d'), "percentage": 20}
+                ]
+            
+            unit_price = float(row['unit_price'])
+            dld_fee_pct = float(row['dld_fee'])
+            admin_fee = float(row['admin_fee'])
+            brokerage_fee = float(row.get('brokerage_fee', 0)) if not pd.isna(row.get('brokerage_fee')) else 0
+            other_fees = float(row.get('other_fees', 0)) if not pd.isna(row.get('other_fees')) else 0
+            selling_fee_pct = float(row.get('selling_fee', 0)) if not pd.isna(row.get('selling_fee')) else 0
+            
+            dld_fee = unit_price * dld_fee_pct / 100
+            total_cost = unit_price + dld_fee + admin_fee + brokerage_fee + other_fees
+            
+            opp_id = str(uuid.uuid4())
+            opportunity = {
+                "id": opp_id,
+                "building_name": building_name,
+                "developer_name": str(row['developer']).strip(),
+                "unit_no": unit_no,
+                "floor": str(row['floor']),
+                "unit_type": str(row['unit_type']).strip(),
+                "property_type": "off_plan",
+                "unit_price": unit_price,
+                "total_area": float(row['total_area']),
+                "carpet_area": float(row.get('carpet_area', row['total_area'])) if not pd.isna(row.get('carpet_area')) else float(row['total_area']),
+                "balcony_area": float(row.get('balcony_area', 0)) if not pd.isna(row.get('balcony_area')) else 0,
+                "location": str(row.get('location', '')).strip() if not pd.isna(row.get('location')) else "",
+                "dld_fee_percentage": dld_fee_pct,
+                "dld_fee": dld_fee,
+                "admin_fee": admin_fee,
+                "brokerage_fee": brokerage_fee,
+                "other_fees": other_fees,
+                "selling_fee_percentage": selling_fee_pct,
+                "total_cost": total_cost,
+                "payment_schedule": payment_schedule,
+                "handover_date": pd.to_datetime(row['handover_date']).strftime('%Y-%m-%d') if not pd.isna(row.get('handover_date')) else None,
+                "parking_spaces": int(row.get('parking_spaces', 1)) if not pd.isna(row.get('parking_spaces')) else 1,
+                "max_investors": 4,
+                "current_investors": 0,
+                "investors": [],
+                "investor_payments": [],
+                "interested_users": [],
+                "invested_percentage": 0,
+                "remaining_percentage": 100,
+                "status": "available",
+                "images": [],
+                "presentations": [],
+                "created_by": current_user['id'],
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.real_estate_opportunities.insert_one(opportunity)
+            results['success'] += 1
+            results['created_properties'].append({
+                "id": opp_id, 
+                "name": f"{building_name} - Unit {unit_no}"
+            })
+            
+        except Exception as e:
+            results['errors'].append(f"Row {idx+2}: {str(e)}")
+            results['failed'] += 1
+    
+    return results
+
+
+
     name: Optional[str] = None
     email: Optional[str] = None
     mobile: Optional[str] = None
