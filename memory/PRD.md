@@ -50,8 +50,10 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
    - Corrected calculation: DLD + Admin fees included as upfront investment cost
    - Outstanding amount (unpaid unit price portion) now deducted from sale proceeds
    - Formula: Net Proceeds = Gross Sale - Selling Fee - Outstanding Amount to Developer
-   - Added detailed breakdown showing Investment (Outflows) and Sale Proceeds (Inflow)
-   - Added "Download Excel Breakdown" button to export full calculation as CSV
+   - Slider minimum now set to "Eligible %" (e.g., 40%) - cannot select below eligible percentage
+   - Clean Excel export with proper AED formatting and column structure
+   - Removed Selling Fee from Financial Summary section (it's only shown in XIRR calculation)
+   - Removed "Manage" button from Payment Schedule section
 
 ### Previous Session
 - Removed "Fractional" real estate type (simplified to Off-Plan only)
