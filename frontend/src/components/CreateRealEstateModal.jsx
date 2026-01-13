@@ -800,31 +800,40 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
               {/* Payment Amount Preview */}
               {paymentSchedule.length > 0 && unitPrice > 0 && (
                 <div className="bg-gray-100 rounded-lg p-4 mt-4">
-                  <h4 className="font-medium text-gray-700 mb-3">Payment Amount Preview</h4>
+                  <h4 className="font-medium text-gray-700 mb-3">Payment Amount Preview (Sorted by Date)</h4>
                   <div className="space-y-2 text-sm">
-                    {paymentSchedule.filter(p => p.percentage).map((milestone, idx) => {
+                    {getSortedPaymentSchedule().filter(p => p.percentage).map((milestone, idx) => {
                       const pct = parseFloat(milestone.percentage) || 0;
                       const amount = unitPrice * pct / 100;
-                      const isBooking = idx === 0 || milestone.description?.toLowerCase().includes('booking');
+                      const isFirstPayment = idx === 0;
+                      const formattedDate = milestone.date ? new Date(milestone.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
                       return (
-                        <div key={idx} className="flex justify-between items-center">
-                          <span>{milestone.description || `Milestone ${idx + 1}`} ({pct}%)</span>
+                        <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-200 last:border-0">
+                          <div>
+                            <span className="font-medium">{idx + 1}. {milestone.description || `Payment ${idx + 1}`}</span>
+                            <span className="text-gray-500 ml-2">({pct}%)</span>
+                            {formattedDate && <span className="text-gray-400 ml-2 text-xs">{formattedDate}</span>}
+                          </div>
                           <div className="text-right">
                             <span className="font-medium">AED {formatCurrency(amount)}</span>
-                            {isBooking && upfrontAmount > 0 && (
-                              <span className="text-red-600 ml-2">+ {formatCurrency(upfrontAmount)} (DLD+Admin)</span>
+                            {isFirstPayment && upfrontAmount > 0 && (
+                              <span className="text-red-600 ml-2">+ {formatCurrency(upfrontAmount)}</span>
                             )}
                           </div>
                         </div>
                       );
                     })}
-                    {paymentSchedule.length > 0 && upfrontAmount > 0 && (
-                      <div className="pt-2 mt-2 border-t border-gray-300">
-                        <p className="text-xs text-red-600">
-                          * First payment (Booking) includes DLD + Admin Fee = AED {formatCurrency(upfrontAmount)}
-                        </p>
+                    <div className="pt-2 mt-2 border-t-2 border-gray-300">
+                      <div className="flex justify-between font-bold">
+                        <span>Total (Unit Price)</span>
+                        <span>AED {formatCurrency(unitPrice)}</span>
                       </div>
-                    )}
+                      {upfrontAmount > 0 && (
+                        <p className="text-xs text-red-600 mt-1">
+                          * First payment includes DLD + Admin = AED {formatCurrency(upfrontAmount)} (paid upfront)
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
