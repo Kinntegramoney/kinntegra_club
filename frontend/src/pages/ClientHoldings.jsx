@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import ClientSidebar from "@/components/ClientSidebar";
-import { Wallet, TrendingUp, Calendar, Download, ChevronDown, ChevronUp, Check, Clock, X } from "lucide-react";
+import { Wallet, TrendingUp, Calendar, Download, ChevronDown, ChevronUp, Check, Clock, X, Building2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -12,6 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -20,10 +22,12 @@ export default function ClientHoldings() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [holdings, setHoldings] = useState(null);
+  const [realEstateHoldings, setRealEstateHoldings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedHolding, setSelectedHolding] = useState(null);
   const [showCashflowModal, setShowCashflowModal] = useState(false);
   const [activeTab, setActiveTab] = useState("summary");
+  const [mainTab, setMainTab] = useState("bonds");
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -40,6 +44,7 @@ export default function ClientHoldings() {
     
     setUser(parsedUser);
     fetchHoldings();
+    fetchRealEstateHoldings();
   }, [navigate]);
 
   const fetchHoldings = async () => {
@@ -51,9 +56,20 @@ export default function ClientHoldings() {
       setHoldings(response.data);
     } catch (error) {
       console.error("Error fetching holdings:", error);
-      toast.error("Failed to load holdings");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRealEstateHoldings = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/client/real-estate-investments`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRealEstateHoldings(response.data || []);
+    } catch (error) {
+      console.error("Error fetching real estate holdings:", error);
     }
   };
 
