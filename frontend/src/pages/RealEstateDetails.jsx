@@ -1054,8 +1054,8 @@ export default function RealEstateDetails() {
             </div>
           )}
 
-          {/* Oqood Upload Section */}
-          {canViewPaymentManagement && (
+          {/* Oqood Upload Section - Only visible after first milestone is fully verified */}
+          {canManageOqood && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
