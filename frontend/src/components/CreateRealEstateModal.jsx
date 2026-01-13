@@ -694,18 +694,31 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
               {/* Payment Amount Preview */}
               {paymentSchedule.length > 0 && unitPrice > 0 && (
                 <div className="bg-gray-100 rounded-lg p-4 mt-4">
-                  <h4 className="font-medium text-gray-700 mb-3">Payment Amount Preview (Unit Price Only)</h4>
+                  <h4 className="font-medium text-gray-700 mb-3">Payment Amount Preview</h4>
                   <div className="space-y-2 text-sm">
                     {paymentSchedule.filter(p => p.percentage).map((milestone, idx) => {
                       const pct = parseFloat(milestone.percentage) || 0;
                       const amount = unitPrice * pct / 100;
+                      const isBooking = idx === 0 || milestone.description?.toLowerCase().includes('booking');
                       return (
-                        <div key={idx} className="flex justify-between">
+                        <div key={idx} className="flex justify-between items-center">
                           <span>{milestone.description || `Milestone ${idx + 1}`} ({pct}%)</span>
-                          <span className="font-medium">AED {formatCurrency(amount)}</span>
+                          <div className="text-right">
+                            <span className="font-medium">AED {formatCurrency(amount)}</span>
+                            {isBooking && upfrontAmount > 0 && (
+                              <span className="text-red-600 ml-2">+ {formatCurrency(upfrontAmount)} (DLD+Admin)</span>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
+                    {paymentSchedule.length > 0 && upfrontAmount > 0 && (
+                      <div className="pt-2 mt-2 border-t border-gray-300">
+                        <p className="text-xs text-red-600">
+                          * First payment (Booking) includes DLD + Admin Fee = AED {formatCurrency(upfrontAmount)}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
