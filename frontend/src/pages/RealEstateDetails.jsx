@@ -4,8 +4,7 @@ import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import { 
   Building2, MapPin, ArrowLeft, Calendar, Users, Check, 
-  DollarSign, Ruler, Car, CheckCircle2, Clock, AlertCircle,
-  Plus, Upload, FileText, X
+  DollarSign, Ruler, Car, CheckCircle2, Clock, Plus, Upload, FileText, X, CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +25,7 @@ export default function RealEstateDetails() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAllocateModal, setShowAllocateModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPaymentIndex, setSelectedPaymentIndex] = useState(null);
+  const [showPaymentManagement, setShowPaymentManagement] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -65,11 +63,6 @@ export default function RealEstateDetails() {
     return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  const openPaymentModal = (index) => {
-    setSelectedPaymentIndex(index);
-    setShowPaymentModal(true);
-  };
-
   if (!user) return null;
 
   if (loading) {
@@ -98,9 +91,9 @@ export default function RealEstateDetails() {
   }
 
   const opp = opportunity;
-  const availableClients = clients.filter(c => 
-    !opp.investors?.some(inv => inv.client_id === c.id)
-  );
+  const availableClients = clients.filter(c => !opp.investors?.some(inv => inv.client_id === c.id));
+  const remainingPercentage = opp.remaining_percentage ?? (100 - (opp.invested_percentage || 0));
+  const remainingAmount = opp.total_cost * remainingPercentage / 100;
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -136,12 +129,20 @@ export default function RealEstateDetails() {
                 </p>
               </div>
             </div>
-            {opp.status === 'available' && (
-              <Button onClick={() => setShowAllocateModal(true)} className="bg-teal-600 hover:bg-teal-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Investor
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {opp.payment_schedule && opp.payment_schedule.length > 0 && (
+                <Button variant="outline" onClick={() => setShowPaymentManagement(true)}>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Manage Payments
+                </Button>
+              )}
+              {opp.status === 'available' && remainingPercentage > 0 && (
+                <Button onClick={() => setShowAllocateModal(true)} className="bg-teal-600 hover:bg-teal-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Investor
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -191,7 +192,7 @@ export default function RealEstateDetails() {
                 </div>
               </div>
 
-              {/* Payment Schedule */}
+              {/* Payment Schedule Overview (Read-only) */}
               {opp.payment_schedule && opp.payment_schedule.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -199,88 +200,36 @@ export default function RealEstateDetails() {
                       <Calendar className="h-5 w-5 text-teal-600" />
                       Payment Schedule
                     </h2>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">Progress:</span>
-                      <span className="font-bold text-teal-600">{opp.total_payment_percentage_completed || 0}%</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-gray-500">Progress: <span className="font-bold text-teal-600">{opp.total_payment_percentage_completed || 0}%</span></span>
+                      <Button size="sm" variant="outline" onClick={() => setShowPaymentManagement(true)}>
+                        Manage
+                      </Button>
                     </div>
                   </div>
                   
-                  <div className="w-full bg-gray-100 rounded-full h-3 mb-6">
+                  <div className="w-full bg-gray-100 rounded-full h-3 mb-4">
                     <div className="bg-teal-500 h-3 rounded-full" style={{ width: `${opp.total_payment_percentage_completed || 0}%` }} />
                   </div>
 
                   {opp.is_eligible_to_sell && (
-                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700">
-                      <CheckCircle2 className="h-5 w-5" />
-                      <span className="font-medium">Eligible to sell</span>
+                    <div className="mb-4 p-2 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 text-sm">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Eligible to sell</span>
                     </div>
                   )}
-                  
-                  <div className="space-y-3">
+
+                  {/* Simple timeline view */}
+                  <div className="flex items-center justify-between gap-2">
                     {opp.payment_schedule.map((payment, idx) => (
-                      <div 
-                        key={idx} 
-                        className={`p-4 rounded-lg border ${payment.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${payment.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                              {payment.completed ? <Check className="h-5 w-5" /> : <span>{idx + 1}</span>}
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-800">{payment.description || `Payment ${idx + 1}`}</p>
-                              <p className="text-sm text-gray-500">{formatDate(payment.date)}</p>
-                            </div>
-                          </div>
-                          <div className="text-right flex items-center gap-4">
-                            <div>
-                              <p className="font-bold text-gray-800">{payment.percentage}%</p>
-                              <p className="text-sm text-gray-500">AED {formatCurrency(payment.amount)}</p>
-                            </div>
-                            {!payment.completed && (
-                              <Button size="sm" onClick={() => openPaymentModal(idx)}>
-                                Record Payment
-                              </Button>
-                            )}
-                          </div>
+                      <div key={idx} className="flex-1 text-center">
+                        <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-sm ${
+                          payment.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
+                        }`}>
+                          {payment.completed ? <Check className="h-4 w-4" /> : idx + 1}
                         </div>
-                        
-                        {/* Payment Details if completed */}
-                        {payment.completed && payment.payment_details && (
-                          <div className="mt-3 pt-3 border-t border-green-200 grid grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <p className="text-gray-500">Paid On</p>
-                              <p className="font-medium">{formatDate(payment.payment_details.payment_date)}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Amount</p>
-                              <p className="font-medium">{payment.payment_details.currency} {formatCurrency(payment.payment_details.transaction_amount)}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Fees</p>
-                              <p className="font-medium">{formatCurrency(payment.payment_details.transaction_fees)}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Rate</p>
-                              <p className="font-medium">{payment.payment_details.currency_rate}</p>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Swift Copies */}
-                        {payment.swift_copies && payment.swift_copies.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-sm text-gray-500 mb-2">SWIFT Copies:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {payment.swift_copies.map((sc, scIdx) => (
-                                <div key={scIdx} className="flex items-center gap-2 bg-white px-3 py-1 rounded border text-sm">
-                                  <FileText className="h-4 w-4 text-gray-400" />
-                                  <span>{sc.filename}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        <p className="text-xs text-gray-500 mt-1">{payment.percentage}%</p>
+                        <p className="text-xs text-gray-400">{payment.description || `P${idx + 1}`}</p>
                       </div>
                     ))}
                   </div>
@@ -294,11 +243,26 @@ export default function RealEstateDetails() {
                     <Users className="h-5 w-5 text-teal-600" />
                     Investors ({opp.current_investors || 0}{opp.property_type === 'off_plan' ? '/4' : ''})
                   </h2>
-                  {opp.status === 'available' && (
+                  {opp.status === 'available' && remainingPercentage > 0 && (
                     <Button size="sm" variant="outline" onClick={() => setShowAllocateModal(true)}>
                       <Plus className="h-4 w-4 mr-1" /> Add
                     </Button>
                   )}
+                </div>
+
+                {/* Investment Progress */}
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">Investment Allocation</span>
+                    <span className="font-medium">{(100 - remainingPercentage).toFixed(1)}% allocated</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                    <div className="bg-teal-500 h-2 rounded-full" style={{ width: `${100 - remainingPercentage}%` }} />
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Invested: AED {formatCurrency(opp.total_invested || 0)}</span>
+                    <span className="text-teal-600 font-medium">Remaining: {remainingPercentage.toFixed(1)}% (AED {formatCurrency(remainingAmount)})</span>
+                  </div>
                 </div>
                 
                 {opp.investors && opp.investors.length > 0 ? (
@@ -310,8 +274,8 @@ export default function RealEstateDetails() {
                           <p className="text-sm text-gray-500">Invested on {formatDate(investor.invested_at)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-gray-800">AED {formatCurrency(investor.amount)}</p>
-                          <p className="text-sm text-gray-500">{investor.share_percentage}% share</p>
+                          <p className="font-bold text-gray-800">{investor.share_percentage}%</p>
+                          <p className="text-sm text-gray-500">AED {formatCurrency(investor.amount)}</p>
                         </div>
                       </div>
                     ))}
@@ -377,14 +341,18 @@ export default function RealEstateDetails() {
                 {opp.property_type === 'off_plan' ? (
                   <div className="space-y-2">
                     <p className="text-gray-500">Maximum 4 investors</p>
-                    <p className="text-gray-500">Each investor: 25% share</p>
-                    <p className="font-medium text-purple-600">Per investor: AED {formatCurrency(opp.total_cost / 4)}</p>
+                    <p className="text-gray-500">Custom allocation (1-100%)</p>
+                    <div className="pt-2 border-t">
+                      <p className="text-sm text-gray-500">Available for investment:</p>
+                      <p className="text-xl font-bold text-purple-600">{remainingPercentage.toFixed(1)}%</p>
+                      <p className="text-sm text-gray-500">AED {formatCurrency(remainingAmount)}</p>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <p className="text-gray-500">Max per investor:</p>
                     <p className="font-medium text-teal-600">$50,000 USD (~AED 183,500)</p>
-                    <p className="text-sm text-gray-400 mt-2">Remaining: AED {formatCurrency(opp.total_cost - (opp.total_invested || 0))}</p>
+                    <p className="text-sm text-gray-400 mt-2">Remaining: AED {formatCurrency(remainingAmount)}</p>
                   </div>
                 )}
               </div>
@@ -398,6 +366,7 @@ export default function RealEstateDetails() {
         <AllocateInvestorModal
           opportunity={opp}
           clients={availableClients}
+          remainingPercentage={remainingPercentage}
           onClose={() => setShowAllocateModal(false)}
           onSuccess={() => {
             setShowAllocateModal(false);
@@ -406,19 +375,13 @@ export default function RealEstateDetails() {
         />
       )}
 
-      {/* Record Payment Modal */}
-      {showPaymentModal && selectedPaymentIndex !== null && (
-        <RecordPaymentModal
+      {/* Payment Management Modal */}
+      {showPaymentManagement && (
+        <PaymentManagementModal
           opportunity={opp}
-          paymentIndex={selectedPaymentIndex}
-          payment={opp.payment_schedule[selectedPaymentIndex]}
-          onClose={() => {
-            setShowPaymentModal(false);
-            setSelectedPaymentIndex(null);
-          }}
+          onClose={() => setShowPaymentManagement(false)}
           onSuccess={() => {
-            setShowPaymentModal(false);
-            setSelectedPaymentIndex(null);
+            setShowPaymentManagement(false);
             fetchData();
           }}
         />
@@ -429,10 +392,30 @@ export default function RealEstateDetails() {
 
 
 // Allocate Investor Modal Component
-function AllocateInvestorModal({ opportunity, clients, onClose, onSuccess }) {
+function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onClose, onSuccess }) {
   const [selectedClient, setSelectedClient] = useState("");
+  const [percentage, setPercentage] = useState("");
   const [amount, setAmount] = useState("");
+  const [inputMode, setInputMode] = useState("percentage"); // "percentage" or "amount"
   const [loading, setLoading] = useState(false);
+
+  const maxAmount = opportunity.total_cost * remainingPercentage / 100;
+  const fractionalMax = Math.min(183500, maxAmount);
+
+  // Calculate amount from percentage or vice versa
+  useEffect(() => {
+    if (inputMode === "percentage" && percentage) {
+      const calcAmount = opportunity.total_cost * parseFloat(percentage) / 100;
+      setAmount(calcAmount.toFixed(0));
+    }
+  }, [percentage, inputMode, opportunity.total_cost]);
+
+  useEffect(() => {
+    if (inputMode === "amount" && amount) {
+      const calcPercentage = (parseFloat(amount) / opportunity.total_cost) * 100;
+      setPercentage(calcPercentage.toFixed(2));
+    }
+  }, [amount, inputMode, opportunity.total_cost]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -441,28 +424,30 @@ function AllocateInvestorModal({ opportunity, clients, onClose, onSuccess }) {
       return;
     }
 
+    const investmentAmount = parseFloat(amount);
+    if (!investmentAmount || investmentAmount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    if (opportunity.property_type === 'fractional' && investmentAmount > 183500) {
+      toast.error("Maximum investment for fractional is $50,000 USD (~AED 183,500)");
+      return;
+    }
+
+    if (investmentAmount > maxAmount) {
+      toast.error(`Maximum available is AED ${maxAmount.toLocaleString()}`);
+      return;
+    }
+
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      
-      let investmentAmount;
-      if (opportunity.property_type === 'off_plan') {
-        investmentAmount = opportunity.total_cost / 4;
-      } else {
-        investmentAmount = parseFloat(amount);
-        if (!investmentAmount || investmentAmount <= 0) {
-          toast.error("Please enter a valid amount");
-          setLoading(false);
-          return;
-        }
-      }
-
       await axios.post(
         `${API}/real-estate-opportunities/${opportunity.id}/invest`,
         { client_id: selectedClient, investment_amount: investmentAmount },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
       toast.success("Investor added successfully");
       onSuccess();
     } catch (error) {
@@ -483,6 +468,13 @@ function AllocateInvestorModal({ opportunity, clients, onClose, onSuccess }) {
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Available Info */}
+          <div className="bg-teal-50 p-4 rounded-lg">
+            <p className="text-sm text-teal-600">Available for Investment</p>
+            <p className="text-2xl font-bold text-teal-800">{remainingPercentage.toFixed(1)}%</p>
+            <p className="text-sm text-teal-600">AED {formatCurrency(maxAmount)}</p>
+          </div>
+
           <div>
             <Label>Select Client *</Label>
             <Select value={selectedClient} onValueChange={setSelectedClient}>
@@ -495,22 +487,62 @@ function AllocateInvestorModal({ opportunity, clients, onClose, onSuccess }) {
             </Select>
           </div>
 
-          {opportunity.property_type === 'off_plan' ? (
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <p className="text-sm text-purple-600">Off-Plan Investment (25% share)</p>
-              <p className="text-2xl font-bold text-purple-800">AED {formatCurrency(opportunity.total_cost / 4)}</p>
+          {/* Input Mode Toggle */}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={inputMode === "percentage" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setInputMode("percentage")}
+              className="flex-1"
+            >
+              By Percentage
+            </Button>
+            <Button
+              type="button"
+              variant={inputMode === "amount" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setInputMode("amount")}
+              className="flex-1"
+            >
+              By Amount
+            </Button>
+          </div>
+
+          {inputMode === "percentage" ? (
+            <div>
+              <Label>Investment Percentage *</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  step="0.1"
+                  max={remainingPercentage}
+                  value={percentage}
+                  onChange={(e) => setPercentage(e.target.value)}
+                  placeholder={`Max: ${remainingPercentage.toFixed(1)}%`}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+              </div>
+              {percentage && (
+                <p className="text-sm text-gray-500 mt-1">= AED {formatCurrency(amount)}</p>
+              )}
             </div>
           ) : (
             <div>
               <Label>Investment Amount (AED) *</Label>
               <Input
                 type="number"
+                max={opportunity.property_type === 'fractional' ? fractionalMax : maxAmount}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="Max: 183,500 (≈$50,000)"
-                max={183500}
+                placeholder={`Max: ${formatCurrency(opportunity.property_type === 'fractional' ? fractionalMax : maxAmount)}`}
               />
-              <p className="text-xs text-gray-500 mt-1">Maximum: $50,000 USD (~AED 183,500)</p>
+              {amount && (
+                <p className="text-sm text-gray-500 mt-1">= {percentage}% share</p>
+              )}
+              {opportunity.property_type === 'fractional' && (
+                <p className="text-xs text-amber-600 mt-1">Max $50,000 USD (~AED 183,500) per investor</p>
+              )}
             </div>
           )}
 
@@ -527,8 +559,156 @@ function AllocateInvestorModal({ opportunity, clients, onClose, onSuccess }) {
 }
 
 
-// Record Payment Modal Component
-function RecordPaymentModal({ opportunity, paymentIndex, payment, onClose, onSuccess }) {
+// Payment Management Modal Component
+function PaymentManagementModal({ opportunity, onClose, onSuccess }) {
+  const [selectedPaymentIndex, setSelectedPaymentIndex] = useState(null);
+  const [showRecordForm, setShowRecordForm] = useState(false);
+
+  const formatCurrency = (amt) => new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(amt || 0);
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const handleRecordPayment = (index) => {
+    setSelectedPaymentIndex(index);
+    setShowRecordForm(true);
+  };
+
+  if (showRecordForm && selectedPaymentIndex !== null) {
+    return (
+      <RecordPaymentForm
+        opportunity={opportunity}
+        paymentIndex={selectedPaymentIndex}
+        payment={opportunity.payment_schedule[selectedPaymentIndex]}
+        onClose={() => {
+          setShowRecordForm(false);
+          setSelectedPaymentIndex(null);
+        }}
+        onSuccess={() => {
+          setShowRecordForm(false);
+          setSelectedPaymentIndex(null);
+          onSuccess();
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-lg font-semibold">Payment Management</h2>
+            <p className="text-sm text-gray-500">{opportunity.building_name} - Unit {opportunity.unit_no}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+        </div>
+        
+        <div className="p-6 overflow-y-auto flex-1">
+          {/* Progress */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-600">Overall Progress</span>
+              <span className="font-bold text-teal-600">{opportunity.total_payment_percentage_completed || 0}%</span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-3">
+              <div className="bg-teal-500 h-3 rounded-full" style={{ width: `${opportunity.total_payment_percentage_completed || 0}%` }} />
+            </div>
+          </div>
+
+          {/* Payment List */}
+          <div className="space-y-4">
+            {opportunity.payment_schedule.map((payment, idx) => (
+              <div 
+                key={idx}
+                className={`p-4 rounded-lg border ${payment.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      payment.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {payment.completed ? <Check className="h-5 w-5" /> : idx + 1}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800">{payment.description || `Payment ${idx + 1}`}</p>
+                      <p className="text-sm text-gray-500">Due: {formatDate(payment.date)}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-gray-800">{payment.percentage}%</p>
+                    <p className="text-sm text-gray-500">AED {formatCurrency(payment.amount)}</p>
+                  </div>
+                </div>
+
+                {/* Payment Details if completed */}
+                {payment.completed && payment.payment_details && (
+                  <div className="mt-4 pt-4 border-t border-green-200">
+                    <p className="text-sm font-medium text-green-700 mb-2">Payment Recorded</p>
+                    <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">Paid On</p>
+                        <p className="font-medium">{formatDate(payment.payment_details.payment_date)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Amount</p>
+                        <p className="font-medium">{payment.payment_details.currency} {formatCurrency(payment.payment_details.transaction_amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Fees</p>
+                        <p className="font-medium">{formatCurrency(payment.payment_details.transaction_fees)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Rate</p>
+                        <p className="font-medium">{payment.payment_details.currency_rate}</p>
+                      </div>
+                    </div>
+                    {payment.payment_details.notes && (
+                      <p className="text-sm text-gray-500 mt-2">Notes: {payment.payment_details.notes}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Swift Copies */}
+                {payment.swift_copies && payment.swift_copies.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-sm text-gray-500 mb-2">SWIFT Copies:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {payment.swift_copies.map((sc, scIdx) => (
+                        <div key={scIdx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded text-sm">
+                          <FileText className="h-4 w-4 text-gray-400" />
+                          <span>{sc.filename}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Record Button for incomplete payments */}
+                {!payment.completed && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <Button onClick={() => handleRecordPayment(idx)} className="w-full">
+                      Record Payment
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4 border-t bg-gray-50">
+          <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// Record Payment Form Component
+function RecordPaymentForm({ opportunity, paymentIndex, payment, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     payment_date: new Date().toISOString().split('T')[0],
     transaction_amount: payment.amount || "",
@@ -556,7 +736,6 @@ function RecordPaymentModal({ opportunity, paymentIndex, payment, onClose, onSuc
     try {
       const token = localStorage.getItem("token");
       
-      // Record payment
       await axios.post(
         `${API}/real-estate-opportunities/${opportunity.id}/record-payment`,
         {
@@ -571,11 +750,9 @@ function RecordPaymentModal({ opportunity, paymentIndex, payment, onClose, onSuc
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Upload SWIFT copy if provided
       if (swiftFile) {
         const swiftFormData = new FormData();
         swiftFormData.append('file', swiftFile);
-        
         await axios.post(
           `${API}/real-estate-opportunities/${opportunity.id}/payments/${paymentIndex}/swift-copy`,
           swiftFormData,
@@ -606,7 +783,7 @@ function RecordPaymentModal({ opportunity, paymentIndex, payment, onClose, onSuc
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="bg-teal-50 p-4 rounded-lg mb-4">
+          <div className="bg-teal-50 p-4 rounded-lg">
             <p className="text-sm text-teal-600">Expected Amount</p>
             <p className="text-2xl font-bold text-teal-800">AED {formatCurrency(payment.amount)}</p>
           </div>
@@ -614,12 +791,7 @@ function RecordPaymentModal({ opportunity, paymentIndex, payment, onClose, onSuc
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Payment Date *</Label>
-              <Input
-                type="date"
-                value={formData.payment_date}
-                onChange={(e) => handleChange("payment_date", e.target.value)}
-                required
-              />
+              <Input type="date" value={formData.payment_date} onChange={(e) => handleChange("payment_date", e.target.value)} required />
             </div>
             <div>
               <Label>Currency</Label>
@@ -639,47 +811,24 @@ function RecordPaymentModal({ opportunity, paymentIndex, payment, onClose, onSuc
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Transaction Amount *</Label>
-              <Input
-                type="number"
-                value={formData.transaction_amount}
-                onChange={(e) => handleChange("transaction_amount", e.target.value)}
-                placeholder="Amount paid"
-                required
-              />
+              <Input type="number" value={formData.transaction_amount} onChange={(e) => handleChange("transaction_amount", e.target.value)} required />
             </div>
             <div>
               <Label>Currency Rate (to AED)</Label>
-              <Input
-                type="number"
-                step="0.0001"
-                value={formData.currency_rate}
-                onChange={(e) => handleChange("currency_rate", e.target.value)}
-                placeholder="1.0"
-              />
+              <Input type="number" step="0.0001" value={formData.currency_rate} onChange={(e) => handleChange("currency_rate", e.target.value)} />
             </div>
           </div>
 
           <div>
             <Label>Transaction Fees</Label>
-            <Input
-              type="number"
-              value={formData.transaction_fees}
-              onChange={(e) => handleChange("transaction_fees", e.target.value)}
-              placeholder="Bank/transfer fees"
-            />
+            <Input type="number" value={formData.transaction_fees} onChange={(e) => handleChange("transaction_fees", e.target.value)} />
           </div>
 
           <div>
             <Label>Notes</Label>
-            <Textarea
-              value={formData.notes}
-              onChange={(e) => handleChange("notes", e.target.value)}
-              placeholder="Any additional notes..."
-              rows={2}
-            />
+            <Textarea value={formData.notes} onChange={(e) => handleChange("notes", e.target.value)} rows={2} />
           </div>
 
-          {/* SWIFT Copy Upload */}
           <div>
             <Label>SWIFT Copy</Label>
             <div className="mt-1">
@@ -689,20 +838,13 @@ function RecordPaymentModal({ opportunity, paymentIndex, payment, onClose, onSuc
                     <FileText className="h-5 w-5 text-gray-400" />
                     <span className="text-sm">{swiftFile.name}</span>
                   </div>
-                  <button type="button" onClick={() => setSwiftFile(null)} className="text-red-500 hover:text-red-600">
-                    <X className="h-4 w-4" />
-                  </button>
+                  <button type="button" onClick={() => setSwiftFile(null)} className="text-red-500"><X className="h-4 w-4" /></button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
-                  <Upload className="h-6 w-6 text-gray-400" />
-                  <span className="text-sm text-gray-500 mt-1">Upload SWIFT copy (PDF, Image)</span>
-                  <input
-                    type="file"
-                    accept=".pdf,image/*"
-                    onChange={(e) => setSwiftFile(e.target.files[0])}
-                    className="hidden"
-                  />
+                <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-teal-400">
+                  <Upload className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-500">Upload SWIFT copy</span>
+                  <input type="file" accept=".pdf,image/*" onChange={(e) => setSwiftFile(e.target.files[0])} className="hidden" />
                 </label>
               )}
             </div>
