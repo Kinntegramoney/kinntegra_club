@@ -3230,6 +3230,8 @@ async def create_real_estate_opportunity(
         "max_investment_per_investor": round(max_investment_per_investor, 2),
         "current_investors": 0,
         "total_invested": 0,
+        "invested_percentage": 0,
+        "remaining_percentage": 100,
         "investors": [],
         
         # Optional Details
