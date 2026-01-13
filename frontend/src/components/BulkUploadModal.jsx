@@ -213,13 +213,16 @@ export default function BulkUploadModal({ onClose, onSuccess }) {
               <div className="mt-6">
                 <p className="text-sm font-medium text-gray-700 mb-2">Expected columns:</p>
                 <div className="flex flex-wrap gap-2">
-                  {['Name', 'Pan Number', 'Contact Number', 'Email Address', 'City', 'State', 'Pincode', 'Bank Account Number', 'IFSC'].map((col) => (
-                    <span key={col} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                  {['Name', 'Pan Number', 'Contact Number', 'Email Address', 'Partner Code', 'City', 'State', 'Pincode', 'Bank Account Number', 'IFSC'].map((col) => (
+                    <span key={col} className={`px-2 py-1 text-xs rounded ${col === 'Partner Code' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
                       {col}
                     </span>
                   ))}
                   <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded">+ more...</span>
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  <span className="text-blue-600">Partner Code</span> is optional - if provided, clients will be auto-linked to the corresponding sub-broker.
+                </p>
               </div>
             </>
           ) : (
