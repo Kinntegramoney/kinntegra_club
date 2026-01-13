@@ -2552,6 +2552,7 @@ class Bond(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    bond_code: str = ""  # Unique bond identifier code
     name: str
     start_date: str
     end_date: str
