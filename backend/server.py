@@ -3601,8 +3601,9 @@ async def invest_in_opportunity(
     return {
         "message": "Investment recorded successfully",
         "investor": investor_record,
+        "units_purchased": units_to_buy,
+        "units_remaining": new_units_available,
         "total_invested": new_total_invested,
-        "remaining": opportunity['total_cost'] - new_total_invested,
         "status": update_data.get('status', opportunity['status'])
     }
 
@@ -3625,9 +3626,11 @@ async def get_opportunity_investors(
         "property_type": opportunity['property_type'],
         "total_cost": opportunity['total_cost'],
         "total_invested": opportunity.get('total_invested', 0),
-        "max_investors": opportunity['max_investors'],
-        "max_investment_per_investor": opportunity.get('max_investment_per_investor'),
-        "current_investors": opportunity['current_investors'],
+        "unit_value": opportunity.get('unit_value', 500),
+        "total_units": opportunity.get('total_units', 0),
+        "units_sold": opportunity.get('units_sold', 0),
+        "units_available": opportunity.get('units_available', 0),
+        "current_investors": opportunity.get('current_investors', 0),
         "investors": opportunity.get('investors', [])
     }
 
