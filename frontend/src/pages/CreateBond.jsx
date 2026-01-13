@@ -284,7 +284,7 @@ export default function CreateBond() {
                   type="number"
                   value={formData.principal_amount}
                   onChange={handleInputChange}
-                  placeholder="1000000"
+                  placeholder="10,00,000"
                   required
                 />
               </div>
@@ -521,7 +521,7 @@ export default function CreateBond() {
                       step="0.01"
                       value={payment.amount}
                       onChange={(e) => updateInterestPayment(index, 'amount', e.target.value)}
-                      placeholder="21250"
+                      placeholder="21,250"
                       required
                     />
                   </div>
