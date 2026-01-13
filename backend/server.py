@@ -3018,6 +3018,12 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
 
 # ==================== REAL ESTATE OPPORTUNITY ====================
 
+class PaymentScheduleItem(BaseModel):
+    date: str  # YYYY-MM-DD
+    percentage: float  # e.g., 20.0 for 20%
+    description: Optional[str] = None  # e.g., "Booking", "During Construction", "Handover"
+
+
 class RealEstateOpportunityCreate(BaseModel):
     # Basic Information
     building_name: str
@@ -3026,8 +3032,16 @@ class RealEstateOpportunityCreate(BaseModel):
     
     # Pricing (in AED)
     unit_price: float
-    dld_fee: float = 0  # Dubai Land Department fee
-    admin_fee: float = 0
+    
+    # DLD Fees Section
+    dld_fee_percentage: float = 4.0  # Default 4% DLD
+    dld_fee_amount: Optional[float] = None  # Calculated or override
+    
+    # Admin Fees Section
+    admin_fee_percentage: float = 0
+    admin_fee_amount: Optional[float] = None
+    
+    # Other Fees
     broker_fee: float = 0
     other_fees: float = 0
     
@@ -3041,15 +3055,19 @@ class RealEstateOpportunityCreate(BaseModel):
     floor: int
     parking_spaces: int = 0
     
-    # Investment Details
-    time_frame_days: int  # Investment timeframe in days
+    # Payment Schedule (like principal repayments)
+    payment_schedule: List[PaymentScheduleItem] = []
+    
+    # Sale Settings
+    expected_sale_rate: Optional[float] = None  # Expected selling price per sqft
+    estimated_sell_date: Optional[str] = None  # Expected date to sell
+    eligible_to_sell_after_percentage: float = 100  # After X% payments, eligible to sell
     
     # Optional Details
     developer_name: Optional[str] = None
     location: Optional[str] = None
     amenities: Optional[List[str]] = None
     handover_date: Optional[str] = None
-    payment_plan: Optional[str] = None
     description: Optional[str] = None
 
 
@@ -3058,8 +3076,10 @@ class RealEstateOpportunityUpdate(BaseModel):
     unit_no: Optional[str] = None
     property_type: Optional[str] = None
     unit_price: Optional[float] = None
-    dld_fee: Optional[float] = None
-    admin_fee: Optional[float] = None
+    dld_fee_percentage: Optional[float] = None
+    dld_fee_amount: Optional[float] = None
+    admin_fee_percentage: Optional[float] = None
+    admin_fee_amount: Optional[float] = None
     broker_fee: Optional[float] = None
     other_fees: Optional[float] = None
     total_area: Optional[float] = None
@@ -3068,45 +3088,40 @@ class RealEstateOpportunityUpdate(BaseModel):
     unit_type: Optional[str] = None
     floor: Optional[int] = None
     parking_spaces: Optional[int] = None
-    time_frame_days: Optional[int] = None
+    payment_schedule: Optional[List[PaymentScheduleItem]] = None
+    expected_sale_rate: Optional[float] = None
+    estimated_sell_date: Optional[str] = None
+    eligible_to_sell_after_percentage: Optional[float] = None
     developer_name: Optional[str] = None
     location: Optional[str] = None
     amenities: Optional[List[str]] = None
     handover_date: Optional[str] = None
-    payment_plan: Optional[str] = None
     description: Optional[str] = None
 
 
 class InvestorAllocation(BaseModel):
     client_id: str
-    fraction_units: int  # Number of 500 AED units allocated
-    amount: float  # Total amount for this investor
+    investment_amount: float  # Amount to invest
 
 
-def calculate_fractional_units(total_amount: float) -> dict:
-    """
-    Calculate fractional units based on total amount.
-    Each unit is a multiple of 500 AED.
-    Returns: dict with total_units, unit_value, and any remainder
-    """
-    unit_value = 500
-    total_units = int(total_amount // unit_value)
-    remainder = total_amount % unit_value
-    
-    # If there's a remainder, we need to adjust - round up to next 500
-    if remainder > 0:
-        adjusted_total = (total_units + 1) * unit_value
-        total_units = total_units + 1
-    else:
-        adjusted_total = total_amount
-    
-    return {
-        "unit_value": unit_value,
-        "total_units": total_units,
-        "total_amount": adjusted_total,
-        "original_amount": total_amount,
-        "adjustment": adjusted_total - total_amount
-    }
+# Constants
+MAX_FRACTIONAL_INVESTMENT_USD = 50000
+USD_TO_AED_RATE = 3.67  # Approximate rate
+MAX_FRACTIONAL_INVESTMENT_AED = MAX_FRACTIONAL_INVESTMENT_USD * USD_TO_AED_RATE  # ~183,500 AED
+
+
+def calculate_payment_schedule(unit_price: float, payment_schedule: List[dict]) -> List[dict]:
+    """Calculate actual payment amounts based on percentages"""
+    calculated = []
+    for payment in payment_schedule:
+        amount = unit_price * (payment['percentage'] / 100)
+        calculated.append({
+            "date": payment['date'],
+            "percentage": payment['percentage'],
+            "description": payment.get('description', ''),
+            "amount": round(amount, 2)
+        })
+    return calculated
 
 
 @api_router.post("/real-estate-opportunities")
