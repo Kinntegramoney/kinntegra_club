@@ -4,7 +4,7 @@ import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import { 
   Building2, MapPin, ArrowLeft, Calendar, Users, Check, 
-  DollarSign, Ruler, Car, CheckCircle2, Clock, Plus, Upload, FileText, X, CreditCard
+  DollarSign, Ruler, Car, CheckCircle2, Clock, Plus, Upload, FileText, X, CreditCard, TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
