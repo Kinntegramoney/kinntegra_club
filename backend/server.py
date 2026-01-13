@@ -3088,6 +3088,12 @@ class RealEstateOpportunityUpdate(BaseModel):
     admin_fee_amount: Optional[float] = None
     broker_fee: Optional[float] = None
     other_fees: Optional[float] = None
+    # Management Fees
+    upfront_fee: Optional[float] = None
+    trailer_fee: Optional[float] = None
+    management_fee: Optional[float] = None
+    unit_selling_fee: Optional[float] = None
+    # Area
     total_area: Optional[float] = None
     carpet_area: Optional[float] = None
     balcony_area: Optional[float] = None
@@ -3107,7 +3113,7 @@ class RealEstateOpportunityUpdate(BaseModel):
 
 class InvestorAllocation(BaseModel):
     client_id: str
-    investment_amount: float  # Amount to invest
+    units: int  # Number of units to buy (multiples of 500 AED)
 
 
 # Constants
