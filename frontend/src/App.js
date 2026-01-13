@@ -84,6 +84,14 @@ function App() {
             } 
           />
           <Route 
+            path="/broker/admin/sub-brokers/create" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <CreateSubBroker />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/broker/admin/clients" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
