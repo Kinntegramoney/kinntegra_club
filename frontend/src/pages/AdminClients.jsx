@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreateClientModal from "@/components/CreateClientModal";
-import { Plus, Edit2, Trash2, Link2, Search, Users, FileText, RefreshCw, UserX } from "lucide-react";
+import BulkUploadModal from "@/components/BulkUploadModal";
+import { Plus, Edit2, Trash2, Link2, Search, Users, FileText, RefreshCw, UserX, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,6 +20,7 @@ export default function AdminClients() {
   const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [linkingClient, setLinkingClient] = useState(null);
 
