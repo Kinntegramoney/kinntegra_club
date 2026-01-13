@@ -98,7 +98,7 @@ export default function AdminSubBrokers() {
               <p className="text-sm text-gray-500 mt-1">Manage all sub-broker partners</p>
             </div>
             <Button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => navigate("/broker/admin/sub-brokers/create")}
               className="bg-amber-700 hover:bg-amber-800"
               data-testid="create-subbroker-btn"
             >
@@ -115,7 +115,7 @@ export default function AdminSubBrokers() {
           ) : partners.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 mb-4">No sub-brokers created yet</p>
-              <Button onClick={() => setShowCreateModal(true)}>
+              <Button onClick={() => navigate("/broker/admin/sub-brokers/create")}>
                 <Plus className="h-4 w-4 mr-2" />
                 Create First Sub Broker
               </Button>
