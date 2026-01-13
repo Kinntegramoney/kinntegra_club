@@ -59,14 +59,15 @@ export default function RealEstateDetails() {
       navigate("/login");
       return;
     }
-    setUser(JSON.parse(userData));
-  }, [navigate]);
-
-  useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user, fetchData]);
+    const parsedUser = JSON.parse(userData);
+    setUser(parsedUser);
+    
+    // Fetch data after setting user
+    const initializeData = async () => {
+      await fetchData();
+    };
+    initializeData();
+  }, [id, navigate, fetchData]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
