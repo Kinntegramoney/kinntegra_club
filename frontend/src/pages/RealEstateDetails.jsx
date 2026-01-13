@@ -28,6 +28,13 @@ export default function RealEstateDetails() {
   const [loading, setLoading] = useState(true);
   const [showAllocateModal, setShowAllocateModal] = useState(false);
   const [showPaymentManagement, setShowPaymentManagement] = useState(false);
+  const [showInterestModal, setShowInterestModal] = useState(false);
+  const [showParticipateModal, setShowParticipateModal] = useState(false);
+  
+  // XIRR Calculator state
+  const [xirrSaleStage, setXirrSaleStage] = useState(100); // % of payment completed when sold
+  const [xirrSaleDate, setXirrSaleDate] = useState("");
+  const [xirrSaleRate, setXirrSaleRate] = useState(""); // per sqft
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
