@@ -60,7 +60,6 @@ export default function RealEstateDetails() {
       return;
     }
     const parsedUser = JSON.parse(userData);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUser(parsedUser);
     
     // Fetch data after setting user
