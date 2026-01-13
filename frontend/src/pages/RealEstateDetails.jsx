@@ -889,7 +889,7 @@ export default function RealEstateDetails() {
           </div>
 
           {/* Payment Management Section - Only when all 4 investors are finalized */}
-          {(user?.role === 'broker' || user?.role === 'sub_broker') && (opp.current_investors || 0) >= 4 && opp.payment_schedule && opp.payment_schedule.length > 0 && (
+          {canViewPaymentManagement && (opp.current_investors || 0) >= 4 && opp.payment_schedule && opp.payment_schedule.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -900,24 +900,28 @@ export default function RealEstateDetails() {
               </div>
               
               <p className="text-sm text-gray-600 mb-4">
-                Record payments for all investors against each milestone. All 4 investors must pay for each milestone.
+                {user?.role === 'broker' 
+                  ? "Review and verify payments recorded by investors and sub-brokers."
+                  : "Record payments for each milestone. Broker will verify before marking complete."
+                }
               </p>
               
               {/* Payment Milestones */}
               <div className="space-y-4">
                 {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, idx) => {
                   const milestonePayments = opp.investor_payments?.filter(p => p.milestone_index === idx) || [];
-                  const paidCount = milestonePayments.length;
-                  const allPaid = paidCount >= 4;
+                  const verifiedCount = milestonePayments.filter(p => p.status === 'verified').length;
+                  const pendingCount = milestonePayments.filter(p => p.status === 'pending_verification').length;
+                  const allVerified = verifiedCount >= 4;
                   
                   return (
-                    <div key={idx} className={`border rounded-lg p-4 ${allPaid ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                    <div key={idx} className={`border rounded-lg p-4 ${allVerified ? 'bg-green-50 border-green-200' : pendingCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50'}`}>
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm ${
-                            allPaid ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                            allVerified ? 'bg-green-500 text-white' : pendingCount > 0 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-600'
                           }`}>
-                            {allPaid ? <Check className="h-4 w-4" /> : idx + 1}
+                            {allVerified ? <Check className="h-4 w-4" /> : idx + 1}
                           </div>
                           <div>
                             <p className="font-medium text-gray-800">{milestone.description || `Payment ${idx + 1}`}</p>
@@ -926,7 +930,10 @@ export default function RealEstateDetails() {
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-gray-800">AED {formatCurrency(opp.unit_price * milestone.percentage / 100)}</p>
-                          <p className="text-sm text-gray-500">{paidCount}/4 investors paid</p>
+                          <p className="text-sm text-gray-500">
+                            {verifiedCount}/4 verified
+                            {pendingCount > 0 && <span className="text-amber-600"> • {pendingCount} pending</span>}
+                          </p>
                         </div>
                       </div>
                       
@@ -934,10 +941,66 @@ export default function RealEstateDetails() {
                       <div className="grid grid-cols-4 gap-2 mb-3">
                         {opp.investors?.map((investor, invIdx) => {
                           const payment = milestonePayments.find(p => p.investor_id === investor.client_id || p.investor_index === invIdx);
+                          const isPending = payment?.status === 'pending_verification';
+                          const isVerified = payment?.status === 'verified';
+                          
                           return (
-                            <div key={invIdx} className={`p-2 rounded text-xs ${payment ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                            <div key={invIdx} className={`p-2 rounded text-xs ${
+                              isVerified ? 'bg-green-100 text-green-700' : 
+                              isPending ? 'bg-amber-100 text-amber-700' : 
+                              'bg-gray-100 text-gray-600'
+                            }`}>
                               <p className="font-medium truncate">{investor.client_name?.split(' ')[0] || `Inv ${invIdx + 1}`}</p>
-                              <p>{payment ? '✓ Paid' : 'Pending'}</p>
+                              <p>{isVerified ? '✓ Verified' : isPending ? '⏳ Pending' : 'Not Recorded'}</p>
+                              {/* Broker can verify pending payments */}
+                              {isPending && user?.role === 'broker' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="mt-1 h-6 text-xs bg-green-500 hover:bg-green-600 text-white w-full"
+                                  onClick={async () => {
+                                    try {
+                                      const token = localStorage.getItem("token");
+                                      const API = process.env.REACT_APP_BACKEND_URL;
+                                      await axios.put(
+                                        `${API}/api/real-estate-opportunities/${opp.id}/verify-payment/${payment.id}`,
+                                        {},
+                                        { headers: { Authorization: `Bearer ${token}` } }
+                                      );
+                                      fetchData();
+                                      toast.success("Payment verified!");
+                                    } catch (error) {
+                                      toast.error("Failed to verify payment");
+                                    }
+                                  }}
+                                >
+                                  Verify
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Record Payment Button - for clients (only their own) and sub-brokers */}
+                      {!allVerified && (user?.role !== 'broker') && (
+                        <Button 
+                          size="sm" 
+                          className="w-full bg-green-600 hover:bg-green-700"
+                          onClick={() => {
+                            setSelectedPaymentMilestone({ ...milestone, index: idx });
+                            setShowPaymentRecordModal(true);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Record Payment
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
                             </div>
                           );
                         })}
