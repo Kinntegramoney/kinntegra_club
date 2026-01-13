@@ -1071,6 +1071,11 @@ export default function RealEstateDetails() {
                     <span className="text-gray-600">Upload Oqood Document</span>
                   </div>
                 </Button>
+              ) : (
+                <div className="text-center py-6 bg-gray-50 rounded-lg">
+                  <FileText className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">No Oqood document uploaded yet</p>
+                </div>
               )}
             </div>
           )}
