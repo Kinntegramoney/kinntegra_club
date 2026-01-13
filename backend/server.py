@@ -3133,20 +3133,20 @@ async def create_real_estate_opportunity(
     if opportunity_data.unit_selling_fee_percentage < 0 or opportunity_data.unit_selling_fee_percentage > 2.5:
         raise HTTPException(status_code=400, detail="Unit Selling Fee must be between 0% and 2.5%")
     
-    # All fees are now absolute amounts
-    dld_fee = opportunity_data.dld_fee
+    # DLD Fee is percentage of unit price
+    dld_fee = opportunity_data.unit_price * opportunity_data.dld_fee_percentage / 100
+    
+    # Admin fee is absolute amount
     admin_fee = opportunity_data.admin_fee
+    
+    # Upfront amount (DLD + Admin) - paid with booking
+    upfront_amount = dld_fee + admin_fee
+    
     broker_fee = opportunity_data.broker_fee
     other_fees = opportunity_data.other_fees
     
-    # Calculate total cost (Unit Price + all fees)
-    total_cost = (
-        opportunity_data.unit_price + 
-        dld_fee + 
-        admin_fee + 
-        broker_fee + 
-        other_fees
-    )
+    # Total cost = Unit Price + all fees
+    total_cost = opportunity_data.unit_price + dld_fee + admin_fee + broker_fee + other_fees
     
     # Calculate balcony to carpet ratio
     balcony_ratio = 0
@@ -3154,7 +3154,7 @@ async def create_real_estate_opportunity(
         balcony_ratio = opportunity_data.balcony_area / opportunity_data.carpet_area
     
     # Payment schedule - percentages based on unit price only
-    # DLD and Admin fees are tracked separately but included in total
+    # DLD + Admin are paid upfront with booking (not part of payment schedule percentages)
     payment_schedule = []
     if opportunity_data.payment_schedule:
         payment_schedule = calculate_payment_schedule(
