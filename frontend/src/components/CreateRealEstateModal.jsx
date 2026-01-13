@@ -855,6 +855,85 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
               )}
             </div>
           )}
+
+          {/* Presentations Section */}
+          {activeSection === "presentations" && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <h3 className="font-medium text-blue-800 mb-2">Property Presentations</h3>
+                <p className="text-sm text-blue-600">Upload brochures, floor plans, or presentation files (PDF, PPT, PPTX). These will be available for download by clients and sub-brokers.</p>
+              </div>
+              
+              <label className="block border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.ppt,.pptx,.doc,.docx"
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    const totalPresentations = presentations.length + existingPresentations.length + files.length;
+                    if (totalPresentations > 10) {
+                      toast.error("Maximum 10 presentation files allowed");
+                      return;
+                    }
+                    const newPresentations = files.map(file => ({
+                      file,
+                      name: file.name,
+                      size: file.size,
+                      type: file.type
+                    }));
+                    setPresentations([...presentations, ...newPresentations]);
+                  }}
+                />
+                <Upload className="h-10 w-10 text-blue-400 mx-auto mb-2" />
+                <p className="text-gray-600">Click to upload presentations</p>
+                <p className="text-sm text-gray-400">PDF, PPT, PPTX, DOC, DOCX (Max 10 files)</p>
+              </label>
+              
+              {(presentations.length > 0 || existingPresentations.length > 0) && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Uploaded Files:</p>
+                  {existingPresentations.map((pres, idx) => (
+                    <div key={`existing-pres-${idx}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <p className="font-medium text-gray-800">{pres.filename || pres.name}</p>
+                          <p className="text-xs text-gray-500">{(pres.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExistingPresentations(existingPresentations.filter((_, i) => i !== idx))}
+                        className="p-1 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {presentations.map((pres, idx) => (
+                    <div key={`new-pres-${idx}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <p className="font-medium text-gray-800">{pres.name}</p>
+                          <p className="text-xs text-gray-500">{(pres.size / 1024).toFixed(1)} KB • New</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPresentations(presentations.filter((_, i) => i !== idx))}
+                        className="p-1 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </form>
 
         {/* Footer - Fixed */}
