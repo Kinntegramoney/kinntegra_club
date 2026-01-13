@@ -206,7 +206,7 @@ export default function RealEstateDetails() {
     return xirr;
   };
 
-  // Export XIRR calculation to Excel/CSV
+  // Export XIRR calculation to Excel/CSV - Clean format with AED currency
   const exportXIRRToExcel = (opp, saleStagePercent, saleDateStr, saleRatePerSqft) => {
     const result = calculateXIRRWithParams(opp, saleStagePercent, saleDateStr, saleRatePerSqft, true);
     if (!result || !result.cashFlows.length) {
@@ -216,44 +216,68 @@ export default function RealEstateDetails() {
 
     const { cashFlows, summary, xirr } = result;
     
-    // Build CSV content
-    let csv = "XIRR CALCULATION BREAKDOWN\n";
-    csv += `Property:,${opp.building_name} - Unit ${opp.unit_no}\n`;
-    csv += `Sale Stage:,${saleStagePercent}% of payments completed\n`;
-    csv += `Expected Sale Date:,${saleDateStr}\n`;
-    csv += `Sale Rate:,AED ${saleRatePerSqft}/sqft\n`;
-    csv += `\n`;
+    // Helper to format currency without commas (for clean CSV)
+    const fmtAED = (amt) => `AED ${Math.round(amt || 0)}`;
     
-    csv += "INVESTMENT SUMMARY\n";
-    csv += `Unit Price (Total):,AED ${formatCurrency(opp.unit_price)}\n`;
-    csv += `Unit Price Paid (${saleStagePercent}%):,AED ${formatCurrency(summary.unitPricePaid)}\n`;
-    csv += `DLD Fee:,AED ${formatCurrency(opp.dld_fee)}\n`;
-    csv += `Admin Fee:,AED ${formatCurrency(opp.admin_fee)}\n`;
-    csv += `Total Invested:,AED ${formatCurrency(summary.totalInvested)}\n`;
-    csv += `\n`;
+    // Build clean CSV content with proper columns
+    let csv = [];
     
-    csv += "SALE CALCULATION\n";
-    csv += `Gross Sale Value (${opp.total_area} sqft × AED ${saleRatePerSqft}):,AED ${formatCurrency(summary.grossSaleValue)}\n`;
-    csv += `Less: Selling Fee (${opp.unit_selling_fee_percentage || 0}%):,AED ${formatCurrency(summary.sellingFee)}\n`;
-    csv += `Less: Outstanding to Developer (${100 - saleStagePercent}% of Unit Price):,AED ${formatCurrency(summary.outstandingAmount)}\n`;
-    csv += `Net Sale Proceeds:,AED ${formatCurrency(summary.netSaleProceeds)}\n`;
-    csv += `\n`;
+    // Header
+    csv.push(["XIRR CALCULATION BREAKDOWN"]);
+    csv.push([]);
+    csv.push(["Property", `${opp.building_name} - Unit ${opp.unit_no}`]);
+    csv.push(["Sale Stage", `${saleStagePercent}%`]);
+    csv.push(["Expected Sale Date", saleDateStr]);
+    csv.push(["Sale Rate", `AED ${saleRatePerSqft}/sqft`]);
+    csv.push([]);
     
-    csv += "CASH FLOWS FOR XIRR\n";
-    csv += "Date,Description,Amount (AED),Type\n";
+    // Investment Summary
+    csv.push(["INVESTMENT SUMMARY"]);
+    csv.push(["Description", "Amount"]);
+    csv.push(["Unit Price (Total)", fmtAED(opp.unit_price)]);
+    csv.push([`Unit Price Paid (${saleStagePercent}%)`, fmtAED(summary.unitPricePaid)]);
+    csv.push(["DLD Fee", fmtAED(opp.dld_fee)]);
+    csv.push(["Admin Fee", fmtAED(opp.admin_fee)]);
+    csv.push(["Total Invested", fmtAED(summary.totalInvested)]);
+    csv.push([]);
+    
+    // Sale Calculation
+    csv.push(["SALE CALCULATION"]);
+    csv.push(["Description", "Amount"]);
+    csv.push([`Gross Sale Value (${opp.total_area} sqft × AED ${saleRatePerSqft})`, fmtAED(summary.grossSaleValue)]);
+    csv.push([`Less: Selling Fee (${opp.unit_selling_fee_percentage || 0}%)`, fmtAED(-summary.sellingFee)]);
+    csv.push([`Less: Outstanding (${100 - saleStagePercent}% of Unit Price)`, fmtAED(-summary.outstandingAmount)]);
+    csv.push(["Net Sale Proceeds", fmtAED(summary.netSaleProceeds)]);
+    csv.push([]);
+    
+    // Cash Flows
+    csv.push(["CASH FLOWS FOR XIRR"]);
+    csv.push(["Date", "Description", "Amount", "Type"]);
     cashFlows.forEach(cf => {
       const dateStr = cf.date.toISOString().split('T')[0];
-      csv += `${dateStr},${cf.description},${Math.round(cf.amount)},${cf.isOutflow ? 'Outflow' : 'Inflow'}\n`;
+      csv.push([dateStr, cf.description, fmtAED(cf.amount), cf.isOutflow ? 'Outflow' : 'Inflow']);
     });
-    csv += `\n`;
+    csv.push([]);
     
-    csv += "RESULT\n";
-    csv += `Expected XIRR:,${xirr !== null ? xirr.toFixed(2) + '%' : 'N/A'}\n`;
-    csv += `Gross Profit:,AED ${formatCurrency(summary.netSaleProceeds - summary.totalInvested + summary.totalInvested)}\n`;
-    csv += `Net Profit:,AED ${formatCurrency(summary.netSaleProceeds - summary.totalInvested)}\n`;
+    // Result
+    csv.push(["RESULT"]);
+    csv.push(["Expected XIRR", xirr !== null ? `${xirr.toFixed(2)}%` : 'N/A']);
+    csv.push(["Net Profit", fmtAED(summary.netSaleProceeds - summary.totalInvested)]);
+    
+    // Convert to CSV string with proper escaping
+    const csvContent = csv.map(row => 
+      row.map(cell => {
+        const cellStr = String(cell || '');
+        // Escape quotes and wrap in quotes if contains comma
+        if (cellStr.includes(',') || cellStr.includes('"')) {
+          return `"${cellStr.replace(/"/g, '""')}"`;
+        }
+        return cellStr;
+      }).join(',')
+    ).join('\n');
 
     // Download CSV
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `XIRR_${opp.building_name.replace(/\s+/g, '_')}_Unit${opp.unit_no}_${saleStagePercent}pct.csv`;
