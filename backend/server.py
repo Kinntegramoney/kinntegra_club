@@ -3029,12 +3029,18 @@ class RealEstateOpportunityCreate(BaseModel):
     building_name: str
     unit_no: str
     
-    # Pricing (in AED) - all absolute amounts
+    # Pricing (in AED)
     unit_price: float
-    dld_fee: float = 0  # DLD fee - absolute amount
-    admin_fee: float = 0  # Admin fee - absolute amount
-    broker_fee: float = 0  # Brokerage fee
-    other_fees: float = 0  # Other fees
+    
+    # DLD Fee (percentage of unit price) - paid upfront with booking
+    dld_fee_percentage: float = 4.0
+    
+    # Admin Fee (absolute amount) - paid upfront with booking
+    admin_fee: float = 0
+    
+    # Other Fees
+    broker_fee: float = 0
+    other_fees: float = 0
     
     # Unit Selling Fee (% of selling price, 0-2.5%)
     unit_selling_fee_percentage: float = 0
@@ -3045,17 +3051,17 @@ class RealEstateOpportunityCreate(BaseModel):
     balcony_area: float = 0
     
     # Unit Details
-    unit_type: str  # e.g., "1BR", "2BR", "Studio", "Penthouse"
+    unit_type: str
     floor: int
     parking_spaces: int = 0
     
-    # Payment Schedule - percentages based on unit price only
+    # Payment Schedule - percentages based on unit price only (excludes DLD/Admin)
     payment_schedule: List[PaymentScheduleItem] = []
     
     # Sale Settings
-    expected_sale_rate: Optional[float] = None  # Expected selling price per sqft
-    estimated_sell_date: Optional[str] = None  # Expected date to sell
-    eligible_to_sell_after_percentage: float = 100  # After X% payments, eligible to sell
+    expected_sale_rate: Optional[float] = None
+    estimated_sell_date: Optional[str] = None
+    eligible_to_sell_after_percentage: float = 100
     
     # Optional Details
     developer_name: Optional[str] = None
