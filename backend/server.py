@@ -1001,6 +1001,21 @@ async def bulk_upload_clients(file: UploadFile = File(...), current_user: dict =
                 if nominee_dob and isinstance(nominee_dob, datetime):
                     nominee_dob = nominee_dob.strftime('%Y-%m-%d')
                 
+                # Lookup sub-broker by partner code
+                partner_code = get_value('partner_code')
+                linked_subbroker_id = None
+                linked_subbroker_name = None
+                
+                if partner_code:
+                    # Find the sub-broker/partner with this code under the current broker
+                    partner = await db.partners.find_one({
+                        "partner_code": partner_code,
+                        "created_by": current_user['id']
+                    })
+                    if partner:
+                        linked_subbroker_id = partner['id']
+                        linked_subbroker_name = partner['name']
+                
                 # Create client document
                 client_id = str(uuid.uuid4())
                 client_dict = {
@@ -1031,6 +1046,7 @@ async def bulk_upload_clients(file: UploadFile = File(...), current_user: dict =
                     "investor_id": get_value('investor_id'),
                     "investor_status": get_value('investor_status'),
                     "registration_date": get_value('registration_date'),
+                    "linked_subbroker_id": linked_subbroker_id,
                     "created_by": current_user['id'],
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "bond_allocations": [],
