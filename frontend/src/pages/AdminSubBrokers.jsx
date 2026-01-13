@@ -214,6 +214,17 @@ export default function AdminSubBrokers() {
         </div>
       </div>
 
+      {/* Create Modal */}
+      {showCreateModal && (
+        <CreatePartnerModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => {
+            setShowCreateModal(false);
+            fetchPartners();
+          }}
+        />
+      )}
+
       {/* Edit Modal */}
       {editingPartner && (
         <EditPartnerModal
