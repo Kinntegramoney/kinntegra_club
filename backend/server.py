@@ -3067,20 +3067,12 @@ class RealEstateOpportunityCreate(BaseModel):
 class RealEstateOpportunityUpdate(BaseModel):
     building_name: Optional[str] = None
     unit_no: Optional[str] = None
-    property_type: Optional[str] = None
     unit_price: Optional[float] = None
-    dld_fee_percentage: Optional[float] = None
-    dld_fee_amount: Optional[float] = None
-    admin_fee_percentage: Optional[float] = None
-    admin_fee_amount: Optional[float] = None
+    dld_fee: Optional[float] = None
+    admin_fee: Optional[float] = None
     broker_fee: Optional[float] = None
     other_fees: Optional[float] = None
-    # Management Fees
-    upfront_fee: Optional[float] = None
-    trailer_fee: Optional[float] = None
-    management_fee: Optional[float] = None
-    unit_selling_fee: Optional[float] = None
-    # Area
+    unit_selling_fee_percentage: Optional[float] = None
     total_area: Optional[float] = None
     carpet_area: Optional[float] = None
     balcony_area: Optional[float] = None
@@ -3093,18 +3085,13 @@ class RealEstateOpportunityUpdate(BaseModel):
     eligible_to_sell_after_percentage: Optional[float] = None
     developer_name: Optional[str] = None
     location: Optional[str] = None
-    amenities: Optional[List[str]] = None
     handover_date: Optional[str] = None
     description: Optional[str] = None
 
 
 class InvestorAllocation(BaseModel):
     client_id: str
-    # For fractional: number of units to buy
-    units: Optional[int] = None
-    # For off-plan: investment amount or percentage
-    investment_amount: Optional[float] = None
-    share_percentage: Optional[float] = None
+    share_percentage: float  # Investment percentage (off-plan: percentage based)
 
 
 # Constants
