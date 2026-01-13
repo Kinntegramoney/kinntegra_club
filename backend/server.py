@@ -4177,6 +4177,69 @@ async def upload_oqood_document(
     }
 
 
+@api_router.put("/real-estate-opportunities/{opportunity_id}/verify-payment/{payment_id}")
+async def verify_investor_payment(
+    opportunity_id: str,
+    payment_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Verify an investor payment (broker only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can verify payments")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Find and update the payment
+    payments = opportunity.get('investor_payments', [])
+    payment_found = False
+    milestone_index = None
+    
+    for i, payment in enumerate(payments):
+        if payment.get('id') == payment_id:
+            payments[i]['status'] = 'verified'
+            payments[i]['verified_by'] = current_user['id']
+            payments[i]['verified_by_name'] = current_user.get('name', current_user.get('pan_number'))
+            payments[i]['verified_at'] = datetime.now(timezone.utc).isoformat()
+            payment_found = True
+            milestone_index = payment.get('milestone_index')
+            break
+    
+    if not payment_found:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"investor_payments": payments}}
+    )
+    
+    # Check if all payments for this milestone are now verified
+    milestone_payments = [p for p in payments if p.get('milestone_index') == milestone_index]
+    verified_count = sum(1 for p in milestone_payments if p.get('status') == 'verified')
+    
+    if verified_count >= 4:
+        # Mark milestone as completed
+        payment_schedule = opportunity.get('payment_schedule', [])
+        if milestone_index is not None and milestone_index < len(payment_schedule):
+            payment_schedule[milestone_index]['completed'] = True
+            payment_schedule[milestone_index]['completed_at'] = datetime.now(timezone.utc).isoformat()
+            
+            # Calculate total payment percentage completed
+            total_completed = sum(p['percentage'] for p in payment_schedule if p.get('completed'))
+            
+            await db.real_estate_opportunities.update_one(
+                {"id": opportunity_id},
+                {"$set": {
+                    "payment_schedule": payment_schedule,
+                    "total_payment_percentage_completed": total_completed
+                }}
+            )
+    
+    return {"message": "Payment verified successfully"}
+
+
 # Serve uploaded files
 @api_router.get("/uploads/{folder}/{filename}")
 async def serve_upload(folder: str, filename: str):
