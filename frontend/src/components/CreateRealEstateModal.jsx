@@ -190,8 +190,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
         building_name: formData.building_name,
         unit_no: formData.unit_no,
         unit_price: parseFloat(formData.unit_price),
-        dld_fee: parseFloat(formData.dld_fee) || 0,
-        admin_fee: parseFloat(formData.admin_fee) || 0,
+        dld_fee_percentage: parseFloat(formData.dld_fee_percentage) || 4,  // DLD as percentage
+        admin_fee: parseFloat(formData.admin_fee) || 0,  // Admin as absolute
         broker_fee: parseFloat(formData.broker_fee) || 0,
         other_fees: parseFloat(formData.other_fees) || 0,
         unit_selling_fee_percentage: parseFloat(formData.unit_selling_fee_percentage) || 0,
