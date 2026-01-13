@@ -1044,6 +1044,37 @@ export default function RealEstateDetails() {
           }}
         />
       )}
+
+      {/* Payment Record Modal */}
+      {showPaymentRecordModal && selectedPaymentMilestone && (
+        <PaymentRecordModal
+          opportunity={opp}
+          milestone={selectedPaymentMilestone}
+          onClose={() => {
+            setShowPaymentRecordModal(false);
+            setSelectedPaymentMilestone(null);
+          }}
+          onSuccess={() => {
+            setShowPaymentRecordModal(false);
+            setSelectedPaymentMilestone(null);
+            fetchData();
+            toast.success("Payment recorded successfully!");
+          }}
+        />
+      )}
+
+      {/* Oqood Upload Modal */}
+      {showOqoodUpload && (
+        <OqoodUploadModal
+          opportunity={opp}
+          onClose={() => setShowOqoodUpload(false)}
+          onSuccess={() => {
+            setShowOqoodUpload(false);
+            fetchData();
+            toast.success("Oqood document uploaded successfully!");
+          }}
+        />
+      )}
     </div>
   );
 }
