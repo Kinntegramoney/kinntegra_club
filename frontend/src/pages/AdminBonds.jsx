@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import EditBondModal from "@/components/EditBondModal";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -78,14 +78,24 @@ export default function AdminBonds() {
               <h1 className="text-2xl font-bold text-gray-800" data-testid="admin-bonds-title">Admin - Bonds</h1>
               <p className="text-sm text-gray-500 mt-1">Manage all bond listings</p>
             </div>
-            <Button
-              onClick={() => navigate("/bonds/create")}
-              className="bg-amber-700 hover:bg-amber-800"
-              data-testid="add-bond-btn"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Bond
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/broker/bulk-upload?tab=bonds')}
+                data-testid="bulk-upload-bonds-btn"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
+              <Button
+                onClick={() => navigate("/bonds/create")}
+                className="bg-amber-700 hover:bg-amber-800"
+                data-testid="add-bond-btn"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Bond
+              </Button>
+            </div>
           </div>
         </div>
 
