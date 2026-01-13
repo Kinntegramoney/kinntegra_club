@@ -1178,3 +1178,175 @@ function RecordPaymentForm({ opportunity, paymentIndex, payment, onClose, onSucc
     </div>
   );
 }
+
+
+// Interest Modal Component
+function InterestModal({ opportunity, onClose, onSuccess }) {
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const API = process.env.REACT_APP_BACKEND_URL;
+      await axios.post(
+        `${API}/api/real-estate-opportunities/${opportunity.id}/interest`,
+        { message },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to record interest");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Heart className="h-5 w-5 text-purple-600" />
+              Express Interest
+            </h2>
+            <p className="text-sm text-gray-500">{opportunity.building_name} - Unit {opportunity.unit_no}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="bg-purple-50 rounded-lg p-4 text-sm text-purple-700">
+            <p className="font-medium mb-1">You're expressing interest in:</p>
+            <p>{opportunity.building_name}, Unit {opportunity.unit_no}</p>
+            <p className="text-purple-600 font-bold">Total Cost: AED {new Intl.NumberFormat('en-AE').format(opportunity.total_cost)}</p>
+          </div>
+          
+          <div>
+            <Label htmlFor="interest-message">Message (Optional)</Label>
+            <Textarea
+              id="interest-message"
+              placeholder="Any specific questions or requirements?"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={3}
+            />
+          </div>
+          
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={loading} className="flex-1 bg-purple-600 hover:bg-purple-700">
+              {loading ? "Submitting..." : "Submit Interest"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
+// Participate Modal Component
+function ParticipateModal({ opportunity, remainingPercentage, onClose, onSuccess }) {
+  const [percentage, setPercentage] = useState(25);
+  const [loading, setLoading] = useState(false);
+  
+  const formatCurrency = (amt) => new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(amt || 0);
+  const investmentAmount = opportunity.total_cost * percentage / 100;
+  const availableSpots = 4 - (opportunity.current_investors || 0);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (percentage > remainingPercentage) {
+      toast.error(`Maximum available is ${remainingPercentage.toFixed(1)}%`);
+      return;
+    }
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const API = process.env.REACT_APP_BACKEND_URL;
+      await axios.post(
+        `${API}/api/real-estate-opportunities/${opportunity.id}/participate`,
+        { percentage },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to confirm participation");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-purple-600" />
+              Confirm Participation
+            </h2>
+            <p className="text-sm text-gray-500">{opportunity.building_name} - Unit {opportunity.unit_no}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <div className="bg-blue-50 rounded-lg p-4">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-blue-700">Available</span>
+              <span className="font-bold text-blue-800">{remainingPercentage.toFixed(1)}%</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-blue-700">Spots Left</span>
+              <span className="font-bold text-blue-800">{availableSpots} of 4</span>
+            </div>
+          </div>
+          
+          <div>
+            <Label className="text-sm font-medium">Your Ownership Percentage</Label>
+            <div className="mt-2">
+              <Slider
+                value={[percentage]}
+                onValueChange={(v) => setPercentage(v[0])}
+                max={Math.min(remainingPercentage, 100)}
+                min={5}
+                step={5}
+                className="mb-3"
+              />
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">5%</span>
+                <span className="text-lg font-bold text-purple-600">{percentage}%</span>
+                <span className="text-sm text-gray-500">{Math.min(remainingPercentage, 100).toFixed(0)}%</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-purple-50 rounded-lg p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-purple-700">Ownership</span>
+              <span className="font-bold text-purple-800">{percentage}%</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-purple-700">Investment Amount</span>
+              <span className="font-bold text-purple-800">AED {formatCurrency(investmentAmount)}</span>
+            </div>
+            <div className="flex justify-between text-sm pt-2 border-t border-purple-200">
+              <span className="text-purple-700">Co-owners After</span>
+              <span className="font-bold text-purple-800">{(opportunity.current_investors || 0) + 1} / 4</span>
+            </div>
+          </div>
+          
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={loading} className="flex-1 bg-purple-600 hover:bg-purple-700">
+              {loading ? "Processing..." : "Confirm Participation"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
