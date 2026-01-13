@@ -1019,7 +1019,7 @@ export default function RealEstateDetails() {
           )}
 
           {/* Oqood Upload Section */}
-          {(user?.role === 'broker' || user?.role === 'sub_broker') && (
+          {canViewPaymentManagement && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -1034,7 +1034,10 @@ export default function RealEstateDetails() {
               </div>
               
               <p className="text-sm text-gray-600 mb-4">
-                Upload the Oqood (property registration) document for client reference.
+                {user?.role === 'client' 
+                  ? "View the Oqood (property registration) document for this property."
+                  : "Upload the Oqood (property registration) document for client reference."
+                }
               </p>
               
               {opp.oqood_document ? (
@@ -1050,12 +1053,14 @@ export default function RealEstateDetails() {
                     <Button size="sm" variant="outline" onClick={() => window.open(opp.oqood_document.url, '_blank')}>
                       View
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowOqoodUpload(true)}>
-                      Replace
-                    </Button>
+                    {user?.role !== 'client' && (
+                      <Button size="sm" variant="outline" onClick={() => setShowOqoodUpload(true)}>
+                        Replace
+                      </Button>
+                    )}
                   </div>
                 </div>
-              ) : (
+              ) : user?.role !== 'client' ? (
                 <Button 
                   variant="outline" 
                   className="w-full border-dashed border-2 h-20"
