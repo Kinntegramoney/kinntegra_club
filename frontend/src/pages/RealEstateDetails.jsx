@@ -465,6 +465,38 @@ export default function RealEstateDetails() {
             </div>
           )}
 
+          {/* Presentations Section - Downloadable by clients/sub-brokers */}
+          {opp.presentations && opp.presentations.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-600" />
+                Property Documents & Presentations
+              </h2>
+              <p className="text-sm text-gray-500 mb-4">Download brochures, floor plans, and presentation files.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {opp.presentations.map((pres, idx) => (
+                  <a
+                    key={idx}
+                    href={`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/presentations/${pres.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors group"
+                    data-testid={`download-presentation-${idx}`}
+                  >
+                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-800 truncate">{pres.filename}</p>
+                      <p className="text-xs text-gray-500">{(pres.size / 1024).toFixed(1)} KB • Click to download</p>
+                    </div>
+                    <Download className="h-5 w-5 text-blue-600 group-hover:scale-110 transition-transform" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Property Overview Card */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
