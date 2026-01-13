@@ -317,14 +317,50 @@ export default function RealEstateDetails() {
            clients.some(c => opportunity.investors?.some(inv => inv.client_id === c.id));
   }, [user, opportunity, clients]);
 
-  // Check if user can view payment management and oqood
+  // Check if opportunity is fully funded (all 4 investors allocated)
+  const isFullyFunded = useMemo(() => {
+    if (!opportunity) return false;
+    return (opportunity.current_investors || 0) >= 4;
+  }, [opportunity]);
+
+  // Check if user can view payment management section
+  // Must be fully funded AND user must be broker, managing sub-broker, or co-owner
   const canViewPaymentManagement = useMemo(() => {
     if (!user || !opportunity) return false;
+    if (!isFullyFunded) return false; // Must be fully funded first
     if (user.role === 'broker') return true;
     if (user.role === 'sub_broker') return isManagingSubBroker;
     if (user.role === 'client') return isCoOwner;
     return false;
-  }, [user, opportunity, isCoOwner, isManagingSubBroker]);
+  }, [user, opportunity, isFullyFunded, isCoOwner, isManagingSubBroker]);
+
+  // Check if user can view/manage Oqood section
+  // Oqood section only appears AFTER the first milestone payments are ALL verified
+  const canManageOqood = useMemo(() => {
+    if (!canViewPaymentManagement) return false;
+    if (!opportunity?.payment_schedule?.length || !opportunity?.investors?.length) return false;
+    
+    // Sort payment schedule to get the first milestone
+    const sortedSchedule = [...opportunity.payment_schedule].sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+    const firstMilestoneIndex = opportunity.payment_schedule.indexOf(sortedSchedule[0]);
+    
+    // Get all payments for the first milestone
+    const investorPayments = opportunity.investor_payments || [];
+    const firstMilestonePayments = investorPayments.filter(
+      p => p.milestone_index === firstMilestoneIndex
+    );
+    
+    // Check if ALL investors (4) have verified payments for the first milestone
+    const verifiedCount = firstMilestonePayments.filter(
+      p => p.status === 'verified'
+    ).length;
+    const totalInvestors = opportunity.investors?.length || 0;
+    
+    // All investors must have verified payments for the first milestone
+    return verifiedCount >= totalInvestors && totalInvestors >= 4;
+  }, [canViewPaymentManagement, opportunity]);
 
   if (!user) return null;
 
