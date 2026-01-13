@@ -1594,3 +1594,151 @@ function ParticipateModal({ opportunity, remainingPercentage, onClose, onSuccess
     </div>
   );
 }
+
+
+// Share with Clients Modal Component
+function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
+  const [selectedClients, setSelectedClients] = useState([]);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  
+  const formatCurrency = (amt) => new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(amt || 0);
+
+  const toggleClient = (clientId) => {
+    setSelectedClients(prev => 
+      prev.includes(clientId) 
+        ? prev.filter(id => id !== clientId)
+        : [...prev, clientId]
+    );
+  };
+
+  const selectAll = () => {
+    if (selectedClients.length === clients.length) {
+      setSelectedClients([]);
+    } else {
+      setSelectedClients(clients.map(c => c.id));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (selectedClients.length === 0) {
+      toast.error("Please select at least one client");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const API = process.env.REACT_APP_BACKEND_URL;
+      await axios.post(
+        `${API}/api/real-estate-opportunities/${opportunity.id}/share`,
+        { 
+          client_ids: selectedClients,
+          message: message
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to share opportunity");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Send className="h-5 w-5 text-teal-600" />
+              Share with Clients
+            </h2>
+            <p className="text-sm text-gray-500">{opportunity.building_name} - Unit {opportunity.unit_no}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
+          <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+            {/* Property Summary */}
+            <div className="bg-teal-50 rounded-lg p-4">
+              <p className="text-sm text-teal-600 mb-1">Sharing Opportunity</p>
+              <p className="font-bold text-teal-800">{opportunity.building_name}</p>
+              <p className="text-sm text-teal-700">Unit {opportunity.unit_no} • {opportunity.unit_type} • {opportunity.total_area} sqft</p>
+              <p className="text-lg font-bold text-teal-800 mt-2">AED {formatCurrency(opportunity.total_cost)}</p>
+            </div>
+            
+            {/* Client Selection */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-sm font-medium">Select Clients</Label>
+                <Button type="button" variant="ghost" size="sm" onClick={selectAll}>
+                  {selectedClients.length === clients.length ? 'Deselect All' : 'Select All'}
+                </Button>
+              </div>
+              
+              {clients.length > 0 ? (
+                <div className="border rounded-lg max-h-48 overflow-y-auto">
+                  {clients.map((client) => (
+                    <div 
+                      key={client.id} 
+                      className={`flex items-center gap-3 p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 ${
+                        selectedClients.includes(client.id) ? 'bg-teal-50' : ''
+                      }`}
+                      onClick={() => toggleClient(client.id)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedClients.includes(client.id)}
+                        onChange={() => toggleClient(client.id)}
+                        className="h-4 w-4 text-teal-600 rounded"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-800">{client.name}</p>
+                        <p className="text-xs text-gray-500">{client.email || client.phone}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">No clients found</p>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-2">{selectedClients.length} client(s) selected</p>
+            </div>
+            
+            {/* Message */}
+            <div>
+              <Label htmlFor="share-message">Personal Message (Optional)</Label>
+              <Textarea
+                id="share-message"
+                placeholder="Add a personal note for your clients..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          
+          <div className="p-6 border-t bg-gray-50">
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+              <Button 
+                type="submit" 
+                disabled={loading || selectedClients.length === 0} 
+                className="flex-1 bg-teal-600 hover:bg-teal-700"
+              >
+                {loading ? "Sending..." : `Share with ${selectedClients.length} Client(s)`}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
