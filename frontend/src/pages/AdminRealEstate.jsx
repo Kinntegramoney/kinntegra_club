@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreateRealEstateModal from "@/components/CreateRealEstateModal";
-import { Plus, Building2, Search, Edit2, Trash2, Eye, MapPin } from "lucide-react";
+import { Plus, Building2, Search, Edit2, Trash2, Eye, MapPin, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +101,13 @@ export default function AdminRealEstate() {
                   className="pl-10 w-64"
                 />
               </div>
+              <Button 
+                variant="outline"
+                onClick={() => navigate('/broker/bulk-upload?tab=real-estate')}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
               <Button onClick={() => setShowCreateModal(true)} className="bg-teal-600 hover:bg-teal-700">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Property
