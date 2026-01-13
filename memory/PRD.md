@@ -43,6 +43,15 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
    - Removed restriction that prevented brokers from recording payments
    - All authorized users (broker, sub-broker, client) can now record payments
 
+7. **All-Investors Payment Recording Modal (P0)** ✅
+   - Redesigned Record Payment modal to show ALL investors at once
+   - Summary bar shows: Total Due, Recorded, Remaining, Status
+   - Each investor shows their proportionate expected amount
+   - Form fields per investor: Date, Home Currency, Amount in HC, AED Amount, SWIFT upload
+   - Effective rate auto-calculated
+   - "Record All Payments" button submits all entries
+   - Status shows "FUNDED" when total recorded matches total due
+
 ### Dec 2025 - Previous Session
 1. **Fixed Payment Milestone Sorting Bug (P0)** ✅
    - Rewrote sorting logic in `CreateRealEstateModal.jsx` to use inline sorting during render
