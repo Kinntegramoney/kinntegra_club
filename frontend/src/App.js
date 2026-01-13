@@ -144,6 +144,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/broker/bulk-upload" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <BulkUpload />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Shared Routes */}
           <Route 
