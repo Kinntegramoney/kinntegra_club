@@ -3137,11 +3137,21 @@ async def create_real_estate_opportunity(
     if opportunity_data.property_type not in ['off_plan', 'fractional']:
         raise HTTPException(status_code=400, detail="Property type must be 'off_plan' or 'fractional'")
     
+    # Calculate DLD fee (percentage of unit price or override)
+    dld_fee = opportunity_data.dld_fee_amount if opportunity_data.dld_fee_amount else (
+        opportunity_data.unit_price * opportunity_data.dld_fee_percentage / 100
+    )
+    
+    # Calculate Admin fee (percentage of unit price or override)
+    admin_fee = opportunity_data.admin_fee_amount if opportunity_data.admin_fee_amount else (
+        opportunity_data.unit_price * opportunity_data.admin_fee_percentage / 100
+    )
+    
     # Calculate total cost including all fees
     total_cost = (
         opportunity_data.unit_price + 
-        opportunity_data.dld_fee + 
-        opportunity_data.admin_fee + 
+        dld_fee + 
+        admin_fee + 
         opportunity_data.broker_fee + 
         opportunity_data.other_fees
     )
@@ -3151,14 +3161,31 @@ async def create_real_estate_opportunity(
     if opportunity_data.carpet_area > 0:
         balcony_ratio = opportunity_data.balcony_area / opportunity_data.carpet_area
     
+    # Calculate payment schedule with amounts
+    payment_schedule = []
+    if opportunity_data.payment_schedule:
+        payment_schedule = calculate_payment_schedule(
+            opportunity_data.unit_price,
+            [p.model_dump() for p in opportunity_data.payment_schedule]
+        )
+    
+    # Validate payment schedule totals to 100% for off-plan
+    if opportunity_data.property_type == 'off_plan' and payment_schedule:
+        total_percentage = sum(p['percentage'] for p in payment_schedule)
+        if abs(total_percentage - 100) > 0.01:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Payment schedule must total 100%. Current total: {total_percentage}%"
+            )
+    
     # Set max investors based on property type
     if opportunity_data.property_type == 'off_plan':
         max_investors = 4
-        fractional_info = None
+        max_investment_per_investor = total_cost / 4
     else:
-        # Fractional - calculate units in multiples of 500
-        fractional_info = calculate_fractional_units(total_cost)
-        max_investors = fractional_info['total_units']  # Each unit can be owned by different investor
+        # Fractional - max investment is 50,000 USD equivalent
+        max_investment_per_investor = MAX_FRACTIONAL_INVESTMENT_AED
+        max_investors = int(total_cost / max_investment_per_investor) + 1
     
     opportunity_dict = {
         "id": str(uuid.uuid4()),
@@ -3169,11 +3196,13 @@ async def create_real_estate_opportunity(
         
         # Pricing
         "unit_price": opportunity_data.unit_price,
-        "dld_fee": opportunity_data.dld_fee,
-        "admin_fee": opportunity_data.admin_fee,
+        "dld_fee_percentage": opportunity_data.dld_fee_percentage,
+        "dld_fee": round(dld_fee, 2),
+        "admin_fee_percentage": opportunity_data.admin_fee_percentage,
+        "admin_fee": round(admin_fee, 2),
         "broker_fee": opportunity_data.broker_fee,
         "other_fees": opportunity_data.other_fees,
-        "total_cost": total_cost,
+        "total_cost": round(total_cost, 2),
         
         # Area
         "total_area": opportunity_data.total_area,
@@ -3186,30 +3215,35 @@ async def create_real_estate_opportunity(
         "floor": opportunity_data.floor,
         "parking_spaces": opportunity_data.parking_spaces,
         
-        # Investment Details
-        "time_frame_days": opportunity_data.time_frame_days,
-        "max_investors": max_investors,
-        "current_investors": 0,
-        "investors": [],  # List of investor allocations
+        # Payment Schedule (like principal repayments)
+        "payment_schedule": payment_schedule,
+        "total_payment_percentage_completed": 0,
         
-        # Fractional specific
-        "fractional_info": fractional_info,
-        "units_available": fractional_info['total_units'] if fractional_info else max_investors,
-        "units_sold": 0,
+        # Sale Settings
+        "expected_sale_rate": opportunity_data.expected_sale_rate,
+        "estimated_sell_date": opportunity_data.estimated_sell_date,
+        "eligible_to_sell_after_percentage": opportunity_data.eligible_to_sell_after_percentage,
+        "is_eligible_to_sell": False,
+        
+        # Investment Details
+        "max_investors": max_investors,
+        "max_investment_per_investor": round(max_investment_per_investor, 2),
+        "current_investors": 0,
+        "total_invested": 0,
+        "investors": [],
         
         # Optional Details
         "developer_name": opportunity_data.developer_name,
         "location": opportunity_data.location,
         "amenities": opportunity_data.amenities or [],
         "handover_date": opportunity_data.handover_date,
-        "payment_plan": opportunity_data.payment_plan,
         "description": opportunity_data.description,
         
         # Images (to be uploaded separately)
         "images": [],
         
         # Status
-        "status": "available",  # available, fully_invested, closed
+        "status": "available",
         "created_by": current_user['id'],
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
