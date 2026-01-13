@@ -1069,22 +1069,6 @@ export default function RealEstateDetails() {
             </div>
           )}
 
-          {/* Waiting for Investors Message */}
-          {canViewPaymentManagement && (opp.current_investors || 0) < 4 && (
-            <div className="bg-amber-50 rounded-xl border border-amber-200 p-6">
-              <div className="flex items-center gap-3">
-                <Clock className="h-8 w-8 text-amber-500" />
-                <div>
-                  <h3 className="font-semibold text-amber-800">Payment Management Locked</h3>
-                  <p className="text-sm text-amber-700">
-                    Payment recording will be available once all 4 investors are finalized. 
-                    Currently {opp.current_investors || 0}/4 investors confirmed.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Oqood Upload Section - Only visible after first milestone is fully verified */}
           {canManageOqood && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
