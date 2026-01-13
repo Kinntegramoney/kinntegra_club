@@ -4,7 +4,7 @@ import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreatePartnerModal from "@/components/CreatePartnerModal";
 import EditPartnerModal from "@/components/EditPartnerModal";
-import { Plus, Edit2, Trash2, RefreshCw, UserX } from "lucide-react";
+import { Plus, Edit2, Trash2, RefreshCw, UserX, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -99,14 +99,24 @@ export default function AdminSubBrokers() {
               <h1 className="text-xl md:text-2xl font-bold text-gray-800" data-testid="admin-subbrokers-title">Admin - Sub Brokers</h1>
               <p className="text-sm text-gray-500 mt-1">Manage all sub-broker partners</p>
             </div>
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-amber-700 hover:bg-amber-800"
-              data-testid="create-subbroker-btn"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Sub Broker
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/broker/bulk-upload?tab=sub-brokers')}
+                data-testid="bulk-upload-subbroker-btn"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-amber-700 hover:bg-amber-800"
+                data-testid="create-subbroker-btn"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Sub Broker
+              </Button>
+            </div>
           </div>
         </div>
 
