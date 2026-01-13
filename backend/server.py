@@ -3520,8 +3520,7 @@ async def invest_in_opportunity(
 ):
     """
     Allocate investment in a real estate opportunity.
-    - Off-plan: Max 4 investors, each gets 25% share
-    - Fractional: Max 50,000 USD (~183,500 AED) per investor
+    Clients buy units in multiples (each unit = 500 AED)
     """
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can allocate investments")
@@ -3539,74 +3538,56 @@ async def invest_in_opportunity(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    investment_amount = allocation.investment_amount
+    # Unit-based investment
+    units_to_buy = allocation.units
+    if units_to_buy <= 0:
+        raise HTTPException(status_code=400, detail="Number of units must be greater than 0")
     
-    # Calculate current invested percentage
-    current_invested_percentage = sum(inv.get('share_percentage', 0) for inv in opportunity.get('investors', []))
-    remaining_percentage = 100 - current_invested_percentage
+    unit_value = opportunity.get('unit_value', 500)  # Default 500 AED per unit
+    total_units = opportunity.get('total_units', 0)
+    units_available = opportunity.get('units_available', total_units)
     
-    # Check investment limits based on property type
-    if opportunity['property_type'] == 'off_plan':
-        # Off-plan: Max 4 investors, custom percentage allocation
-        if opportunity['current_investors'] >= 4:
-            raise HTTPException(status_code=400, detail="Maximum 4 investors allowed for off-plan property")
-        
-        # Calculate share percentage from investment amount
-        share_percentage = (investment_amount / opportunity['total_cost']) * 100
-        
-        if share_percentage > remaining_percentage:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Only {remaining_percentage:.1f}% ({remaining_percentage * opportunity['total_cost'] / 100:,.0f} AED) remaining for investment"
-            )
-        
-        if share_percentage <= 0:
-            raise HTTPException(status_code=400, detail="Investment amount must be greater than 0")
-        
-    else:
-        # Fractional: Max 50,000 USD per investor
-        if investment_amount > MAX_FRACTIONAL_INVESTMENT_AED:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Maximum investment for fractional is {MAX_FRACTIONAL_INVESTMENT_USD:,} USD (~{MAX_FRACTIONAL_INVESTMENT_AED:,.0f} AED)"
-            )
-        
-        if investment_amount <= 0:
-            raise HTTPException(status_code=400, detail="Investment amount must be greater than 0")
-        
-        remaining = opportunity['total_cost'] - opportunity.get('total_invested', 0)
-        if investment_amount > remaining:
-            raise HTTPException(status_code=400, detail=f"Only {remaining:,.2f} AED remaining for investment")
-        
-        share_percentage = (investment_amount / opportunity['total_cost']) * 100
+    if units_to_buy > units_available:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Only {units_available} units available. You requested {units_to_buy} units."
+        )
+    
+    # Calculate investment amount and percentage
+    investment_amount = units_to_buy * unit_value
+    share_percentage = (units_to_buy / total_units) * 100 if total_units > 0 else 0
     
     # Create investor record
     investor_record = {
         "id": str(uuid.uuid4()),
         "client_id": allocation.client_id,
         "client_name": client['name'],
+        "units": units_to_buy,
+        "unit_value": unit_value,
         "amount": investment_amount,
         "share_percentage": round(share_percentage, 2),
         "invested_at": datetime.now(timezone.utc).isoformat(),
         "recorded_by": current_user['id']
     }
     
-    # Update opportunity
+    # Calculate new totals
+    new_units_sold = opportunity.get('units_sold', 0) + units_to_buy
+    new_units_available = total_units - new_units_sold
     new_total_invested = opportunity.get('total_invested', 0) + investment_amount
-    new_invested_percentage = current_invested_percentage + share_percentage
+    new_invested_percentage = (new_units_sold / total_units) * 100 if total_units > 0 else 0
     
     update_data = {
-        "current_investors": opportunity['current_investors'] + 1,
+        "current_investors": opportunity.get('current_investors', 0) + 1,
+        "units_sold": new_units_sold,
+        "units_available": new_units_available,
         "total_invested": new_total_invested,
         "invested_percentage": round(new_invested_percentage, 2),
         "remaining_percentage": round(100 - new_invested_percentage, 2),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
-    # Check if fully invested (100% allocated or max investors for off-plan)
-    if new_invested_percentage >= 99.99:  # Allow small rounding
-        update_data['status'] = 'fully_invested'
-    elif opportunity['property_type'] == 'off_plan' and update_data['current_investors'] >= 4:
+    # Check if fully invested (all units sold)
+    if new_units_available <= 0:
         update_data['status'] = 'fully_invested'
     
     await db.real_estate_opportunities.update_one(
