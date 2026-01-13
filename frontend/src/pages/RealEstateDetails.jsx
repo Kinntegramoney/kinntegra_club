@@ -949,15 +949,15 @@ export default function RealEstateDetails() {
             )}
           </div>
 
-          {/* Payment Management Section - Only when all 4 investors are finalized */}
-          {canViewPaymentManagement && (opp.current_investors || 0) >= 4 && opp.payment_schedule && opp.payment_schedule.length > 0 && (
+          {/* Payment Management Section - When property is fully funded */}
+          {canViewPaymentManagement && opp.payment_schedule && opp.payment_schedule.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-green-600" />
                   Payment Management
                 </h2>
-                <Badge className="bg-green-100 text-green-700">All 4 Investors Finalized</Badge>
+                <Badge className="bg-green-100 text-green-700">Fully Funded ({opp.current_investors || 0} Investors)</Badge>
               </div>
               
               <p className="text-sm text-gray-600 mb-4">
@@ -971,9 +971,10 @@ export default function RealEstateDetails() {
               <div className="space-y-4">
                 {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, idx) => {
                   const milestonePayments = opp.investor_payments?.filter(p => p.milestone_index === idx) || [];
+                  const totalInvestors = opp.investors?.length || 0;
                   const verifiedCount = milestonePayments.filter(p => p.status === 'verified').length;
                   const pendingCount = milestonePayments.filter(p => p.status === 'pending_verification').length;
-                  const allVerified = verifiedCount >= 4;
+                  const allVerified = totalInvestors > 0 && verifiedCount >= totalInvestors;
                   
                   return (
                     <div key={idx} className={`border rounded-lg p-4 ${allVerified ? 'bg-green-50 border-green-200' : pendingCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50'}`}>
@@ -992,18 +993,20 @@ export default function RealEstateDetails() {
                         <div className="text-right">
                           <p className="font-bold text-gray-800">AED {formatCurrency(opp.unit_price * milestone.percentage / 100)}</p>
                           <p className="text-sm text-gray-500">
-                            {verifiedCount}/4 verified
+                            {verifiedCount}/{totalInvestors} verified
                             {pendingCount > 0 && <span className="text-amber-600"> • {pendingCount} pending</span>}
                           </p>
                         </div>
                       </div>
                       
-                      {/* Investor Payment Status */}
-                      <div className="grid grid-cols-4 gap-2 mb-3">
+                      {/* Investor Payment Status - Shows proportionate amounts */}
+                      <div className={`grid gap-2 mb-3`} style={{ gridTemplateColumns: `repeat(${Math.min(opp.investors?.length || 1, 4)}, 1fr)` }}>
                         {opp.investors?.map((investor, invIdx) => {
                           const payment = milestonePayments.find(p => p.investor_id === investor.client_id || p.investor_index === invIdx);
                           const isPending = payment?.status === 'pending_verification';
                           const isVerified = payment?.status === 'verified';
+                          const investorShare = investor.share_percentage || (100 / (opp.investors?.length || 1));
+                          const investorAmount = (opp.unit_price * milestone.percentage / 100) * (investorShare / 100);
                           
                           return (
                             <div key={invIdx} className={`p-2 rounded text-xs ${
@@ -1012,6 +1015,8 @@ export default function RealEstateDetails() {
                               'bg-gray-100 text-gray-600'
                             }`}>
                               <p className="font-medium truncate">{investor.client_name?.split(' ')[0] || `Inv ${invIdx + 1}`}</p>
+                              <p className="text-[10px] text-gray-500">{investorShare.toFixed(1)}% share</p>
+                              <p className="font-semibold">AED {formatCurrency(investorAmount)}</p>
                               <p>{isVerified ? '✓ Verified' : isPending ? '⏳ Pending' : 'Not Recorded'}</p>
                               {/* Broker can verify pending payments */}
                               {isPending && user?.role === 'broker' && (
