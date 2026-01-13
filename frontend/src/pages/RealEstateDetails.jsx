@@ -165,21 +165,35 @@ export default function RealEstateDetails() {
                     <p className="text-sm text-gray-500">Total Cost (incl. fees)</p>
                     <p className="text-2xl font-bold text-teal-600">AED {formatCurrency(opp.total_cost)}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Total Units</p>
-                    <p className="text-2xl font-bold text-indigo-600">{formatCurrency(opp.total_units || Math.floor(opp.total_cost / 500))} units</p>
-                    <p className="text-xs text-gray-400">@ 500 AED per unit</p>
-                  </div>
+                  {/* Show Units only for FRACTIONAL properties */}
+                  {opp.property_type === 'fractional' && (
+                    <div>
+                      <p className="text-sm text-gray-500">Total Units</p>
+                      <p className="text-2xl font-bold text-indigo-600">{formatCurrency(opp.total_units || Math.floor(opp.total_cost / 500))} units</p>
+                      <p className="text-xs text-gray-400">@ 500 AED per unit</p>
+                    </div>
+                  )}
+                  {/* Show Max Investors for OFF-PLAN properties */}
+                  {opp.property_type === 'off_plan' && (
+                    <div>
+                      <p className="text-sm text-gray-500">Max Investors</p>
+                      <p className="text-2xl font-bold text-orange-600">{opp.max_investors || 4}</p>
+                      <p className="text-xs text-gray-400">percentage-based</p>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Fee Breakdown - Absolute Amounts */}
                 <div className="mt-6 pt-4 border-t border-gray-100">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Fee Breakdown (Absolute Amounts)</h3>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">
+                    Fee Breakdown (Absolute Amounts)
+                    {opp.property_type === 'off_plan' && <span className="text-xs text-orange-600 ml-2">* DLD excluded from payment schedule</span>}
+                  </h3>
                   <div className="grid grid-cols-4 gap-4 text-sm">
-                    <div className="bg-blue-50 rounded-lg p-3">
-                      <p className="text-blue-600 font-medium">DLD Fee</p>
-                      <p className="text-lg font-bold text-blue-800">AED {formatCurrency(opp.dld_fee)}</p>
-                      <p className="text-xs text-blue-500">({opp.dld_fee_percentage}%)</p>
+                    <div className={`rounded-lg p-3 ${opp.property_type === 'off_plan' ? 'bg-orange-50 border border-orange-200' : 'bg-blue-50'}`}>
+                      <p className={`font-medium ${opp.property_type === 'off_plan' ? 'text-orange-600' : 'text-blue-600'}`}>DLD Fee *</p>
+                      <p className={`text-lg font-bold ${opp.property_type === 'off_plan' ? 'text-orange-800' : 'text-blue-800'}`}>AED {formatCurrency(opp.dld_fee)}</p>
+                      <p className={`text-xs ${opp.property_type === 'off_plan' ? 'text-orange-500' : 'text-blue-500'}`}>({opp.dld_fee_percentage}%)</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-3">
                       <p className="text-green-600 font-medium">Admin Fee</p>
