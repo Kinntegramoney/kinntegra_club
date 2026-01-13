@@ -81,19 +81,21 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
 ## Prioritized Backlog
 
 ### P0 (Critical)
-- ✅ Payment milestone sorting bug (FIXED)
-- ✅ Move XIRR/Profit to View Details (DONE)
+- ✅ Payment milestone sorting bug (FIXED - Dec 2025)
+- ✅ Move XIRR/Profit to View Details (DONE - Dec 2025)
+- ✅ Visibility bug for Payment/Oqood sections (FIXED - Jan 2025)
 
 ### P1 (Important)
-- Per-Investor Payment Tracking Table (next major feature)
-  - Track payments per investor for each milestone
-  - Fields: Home Currency Amount, Currency Factor, Repatriation Value, SWIFT copy upload
-- Dashboard Charts & Analytics
+- End-to-End Test of Payment Verification Flow - Full lifecycle test (record payment -> broker verifies -> status updates -> UI progress reflects change)
+- Dashboard Charts & Analytics for brokers
+- General Export to Excel feature
 
 ### P2 (Nice to have)
-- Export to Excel functionality
 - Email integration for notifications
 - End-to-end testing of Client Reinvestment Approval feature
+
+## Refactoring Needed
+- `/app/frontend/src/pages/RealEstateDetails.jsx` is over 2,500 lines - needs to be broken into smaller components (e.g., XIRRCalculator, PaymentManagement, InvestorList)
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB (motor)
