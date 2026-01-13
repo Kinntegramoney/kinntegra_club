@@ -46,6 +46,13 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
    - POST /api/real-estate-opportunities/{id}/interest - Express interest
    - POST /api/real-estate-opportunities/{id}/participate - Confirm participation with percentage
 
+6. **XIRR Calculation Fix** ✅
+   - Corrected calculation: DLD + Admin fees included as upfront investment cost
+   - Outstanding amount (unpaid unit price portion) now deducted from sale proceeds
+   - Formula: Net Proceeds = Gross Sale - Selling Fee - Outstanding Amount to Developer
+   - Added detailed breakdown showing Investment (Outflows) and Sale Proceeds (Inflow)
+   - Added "Download Excel Breakdown" button to export full calculation as CSV
+
 ### Previous Session
 - Removed "Fractional" real estate type (simplified to Off-Plan only)
 - Implemented complex fee structure: DLD (% of unit price) + Admin (absolute) paid upfront
