@@ -15,10 +15,33 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
 ### Jan 2025 - Current Session
 1. **Fixed Visibility Bug for Payment/Oqood Sections (P0)** ✅
    - Fixed critical bug where "Manage Payment" button and "Oqood" section appeared prematurely
-   - Added `isFullyFunded` check - verifies `current_investors >= 4`
-   - `canViewPaymentManagement` now requires property to be fully funded
-   - Added NEW `canManageOqood` variable - Oqood section only shows when ALL 4 investors have verified payments for FIRST milestone
-   - Tested with: Euphoric Residences (0/4 investors) and Dubai Creek Tower (4/4 investors)
+   - Changed `isFullyFunded` to check status/percentage instead of hardcoded 4 investors
+   - `canViewPaymentManagement` now requires property to be fully funded (status='fully_invested' or invested_percentage >= 100%)
+   - `canManageOqood` now checks all investors (dynamic count) have verified payments for FIRST milestone
+   - Tested with: Euphoric Residences (2 investors, 100% funded) and Dubai Creek Tower (4 investors)
+
+2. **Removed 4 Co-Owner Dependency (P0)** ✅
+   - Property is "fully funded" based on invested_percentage (100%) or status, not fixed investor count
+   - Payment Management section now shows "Fully Funded (X Investors)" dynamically
+   - Works with 2, 3, or 4 investors as long as 100% is allocated
+
+3. **Proportionate Payment Amounts per Investor (P0)** ✅
+   - Each milestone now shows proportionate amounts based on investor's share percentage
+   - Example: For 75%/25% split on AED 463,591 milestone → AED 347,693 / AED 115,898
+   - Display shows: Investor name, share %, AED amount, payment status
+
+4. **Property Images in Details Page (P1)** ✅
+   - Added Property Images section at top of details page
+   - Shows image gallery in 3-column grid
+   - Clickable images open in new tab
+
+5. **Share with Clients Hidden After Funding (P1)** ✅
+   - "Share with Clients" section now hidden once property is fully funded
+   - Only visible while property status is 'available'
+
+6. **Brokers Can Record Payments (P1)** ✅
+   - Removed restriction that prevented brokers from recording payments
+   - All authorized users (broker, sub-broker, client) can now record payments
 
 ### Dec 2025 - Previous Session
 1. **Fixed Payment Milestone Sorting Bug (P0)** ✅
