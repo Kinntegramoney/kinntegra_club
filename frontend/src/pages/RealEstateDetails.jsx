@@ -1344,7 +1344,7 @@ function InterestModal({ opportunity, onClose, onSuccess }) {
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="bg-purple-50 rounded-lg p-4 text-sm text-purple-700">
-            <p className="font-medium mb-1">You're expressing interest in:</p>
+            <p className="font-medium mb-1">You&apos;re expressing interest in:</p>
             <p>{opportunity.building_name}, Unit {opportunity.unit_no}</p>
             <p className="text-purple-600 font-bold">Total Cost: AED {new Intl.NumberFormat('en-AE').format(opportunity.total_cost)}</p>
           </div>
