@@ -290,7 +290,14 @@ export default function BulkUploadModal({ onClose, onSuccess }) {
                   <div className="max-h-48 overflow-y-auto">
                     {result.created_clients.slice(0, 10).map((client, idx) => (
                       <div key={idx} className="px-4 py-2 border-b border-gray-100 last:border-0 flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-800">{client.name}</span>
+                        <div>
+                          <span className="text-sm font-medium text-gray-800">{client.name}</span>
+                          {client.linked_subbroker && (
+                            <span className="ml-2 px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded">
+                              → {client.linked_subbroker}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-xs text-gray-500 font-mono">{client.pan}</span>
                       </div>
                     ))}
