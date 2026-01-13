@@ -303,6 +303,29 @@ export default function RealEstateDetails() {
     return calculateXIRRWithParams(opp, 100, opp.estimated_sell_date, opp.expected_sale_rate);
   };
 
+  // Check if current user is a co-owner of this property
+  const isCoOwner = useMemo(() => {
+    if (!user || !opportunity) return false;
+    return opportunity.investors?.some(inv => inv.client_id === user.id || inv.user_id === user.id);
+  }, [user, opportunity]);
+
+  // Check if current user is the sub-broker managing any co-owner
+  const isManagingSubBroker = useMemo(() => {
+    if (!user || user.role !== 'sub_broker' || !opportunity) return false;
+    // Check if any investor was added by this sub-broker or if sub-broker manages these clients
+    return opportunity.investors?.some(inv => inv.added_by === user.id) || 
+           clients.some(c => opportunity.investors?.some(inv => inv.client_id === c.id));
+  }, [user, opportunity, clients]);
+
+  // Check if user can view payment management and oqood
+  const canViewPaymentManagement = useMemo(() => {
+    if (!user || !opportunity) return false;
+    if (user.role === 'broker') return true;
+    if (user.role === 'sub_broker') return isManagingSubBroker;
+    if (user.role === 'client') return isCoOwner;
+    return false;
+  }, [user, opportunity, isCoOwner, isManagingSubBroker]);
+
   if (!user) return null;
 
   if (loading) {
