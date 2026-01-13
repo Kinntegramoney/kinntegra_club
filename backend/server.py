@@ -3829,6 +3829,35 @@ async def express_interest(
         }
     )
     
+    # If interest came from a client, notify the broker who shared it
+    if current_user['role'] == 'client':
+        # Find the broker who shared this opportunity with this client
+        shares = opportunity.get('shares', [])
+        for share in shares:
+            if share.get('client_id') == current_user['id']:
+                # Notify the broker
+                notification = {
+                    "id": str(uuid.uuid4()),
+                    "user_id": share['shared_by'],
+                    "type": "client_interested",
+                    "title": "Client Showed Interest!",
+                    "message": f"{current_user.get('name', 'A client')} expressed interest in {opportunity['building_name']} - Unit {opportunity['unit_no']}",
+                    "opportunity_id": opportunity_id,
+                    "client_id": current_user['id'],
+                    "client_name": current_user.get('name', current_user.get('pan_number')),
+                    "client_message": request.message,
+                    "read": False,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.notifications.insert_one(notification)
+                
+                # Mark the share as interested
+                await db.real_estate_opportunities.update_one(
+                    {"id": opportunity_id, "shares.client_id": current_user['id']},
+                    {"$set": {"shares.$.interested": True, "shares.$.interested_at": datetime.now(timezone.utc).isoformat()}}
+                )
+                break
+    
     return {"message": "Interest recorded successfully", "interest_id": interest_record['id']}
 
 
