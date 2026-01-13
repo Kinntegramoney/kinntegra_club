@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,18 @@ const API = process.env.REACT_APP_BACKEND_URL + "/api";
 
 export default function BulkUpload() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("sub-brokers");
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || "sub-brokers";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState(null);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ["sub-brokers", "clients", "bonds", "real-estate"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const tabs = [
     { id: "sub-brokers", label: "Sub Brokers", icon: Users, color: "indigo" },
