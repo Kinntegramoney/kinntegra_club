@@ -26,9 +26,13 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     // Pricing (AED)
     unit_price: opportunity?.unit_price || "",
     
-    // Fees (absolute amounts in AED)
-    dld_fee: opportunity?.dld_fee || "",
+    // DLD Fee (percentage of unit price)
+    dld_fee_percentage: opportunity?.dld_fee_percentage || 4,
+    
+    // Admin Fee (absolute amount - paid upfront with booking)
     admin_fee: opportunity?.admin_fee || "",
+    
+    // Other Fees
     broker_fee: opportunity?.broker_fee || "",
     other_fees: opportunity?.other_fees || "",
     
