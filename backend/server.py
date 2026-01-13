@@ -4090,6 +4090,7 @@ async def record_investor_payment(
         "effective_rate": effective_rate if effective_rate else (home_currency_amount / aed_amount if aed_amount > 0 else 0),
         "swift_copy_url": swift_url,
         "swift_copy_filename": swift_filename,
+        "status": "pending_verification",  # Will be 'verified' once broker approves
         "recorded_by": current_user['id'],
         "recorded_by_name": current_user.get('name', current_user.get('pan_number')),
         "recorded_at": datetime.now(timezone.utc).isoformat()
@@ -4101,13 +4102,28 @@ async def record_investor_payment(
         {"$push": {"investor_payments": payment_record}}
     )
     
-    # Check if all payments for this milestone are complete
-    updated_opp = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
-    milestone_payments = [p for p in updated_opp.get('investor_payments', []) if p['milestone_index'] == milestone_index]
+    # Notify broker about pending payment verification
+    broker_id = opportunity.get('created_by')
+    if broker_id and current_user['id'] != broker_id:
+        notification = {
+            "id": str(uuid.uuid4()),
+            "user_id": broker_id,
+            "type": "payment_pending_verification",
+            "title": "Payment Pending Verification",
+            "message": f"A payment has been recorded for {opportunity['building_name']} - Unit {opportunity['unit_no']} and requires your verification.",
+            "opportunity_id": opportunity_id,
+            "payment_id": payment_record['id'],
+            "recorded_by": current_user.get('name', current_user.get('pan_number')),
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.notifications.insert_one(notification)
     
-    if len(milestone_payments) >= 4:
-        # Mark milestone as completed
-        payment_schedule = updated_opp.get('payment_schedule', [])
+    return {
+        "message": "Payment recorded successfully. Pending broker verification.",
+        "payment_id": payment_record['id'],
+        "status": "pending_verification"
+    }
         if milestone_index < len(payment_schedule):
             payment_schedule[milestone_index]['completed'] = True
             payment_schedule[milestone_index]['completed_at'] = datetime.now(timezone.utc).isoformat()
