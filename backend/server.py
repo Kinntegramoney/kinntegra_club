@@ -3488,8 +3488,8 @@ async def invest_in_opportunity(
 ):
     """
     Allocate investment in a real estate opportunity.
-    - Off-plan: Max 4 investors, each gets equal share
-    - Fractional: Units in multiples of 500 AED
+    - Off-plan: Max 4 investors, each gets 25% share
+    - Fractional: Max 50,000 USD (~183,500 AED) per investor
     """
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can allocate investments")
@@ -3507,6 +3507,8 @@ async def invest_in_opportunity(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
+    investment_amount = allocation.investment_amount
+    
     # Check investment limits based on property type
     if opportunity['property_type'] == 'off_plan':
         # Off-plan: Max 4 investors
@@ -3514,29 +3516,37 @@ async def invest_in_opportunity(
             raise HTTPException(status_code=400, detail="Maximum 4 investors allowed for off-plan property")
         
         # Each investor gets 25% share
+        expected_amount = opportunity['total_cost'] / 4
+        if abs(investment_amount - expected_amount) > 1:  # Allow small rounding
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Off-plan investment must be exactly 25% of total cost ({expected_amount:,.2f} AED)"
+            )
+        
         share_percentage = 25.0
-        investment_amount = opportunity['total_cost'] / 4
-        units_allocated = 1  # 1 share out of 4
         
     else:
-        # Fractional: Units in multiples of 500
-        if allocation.fraction_units <= 0:
-            raise HTTPException(status_code=400, detail="Must allocate at least 1 unit")
+        # Fractional: Max 50,000 USD per investor
+        if investment_amount > MAX_FRACTIONAL_INVESTMENT_AED:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Maximum investment for fractional is {MAX_FRACTIONAL_INVESTMENT_USD:,} USD (~{MAX_FRACTIONAL_INVESTMENT_AED:,.0f} AED)"
+            )
         
-        if allocation.fraction_units > opportunity['units_available']:
-            raise HTTPException(status_code=400, detail=f"Only {opportunity['units_available']} units available")
+        if investment_amount <= 0:
+            raise HTTPException(status_code=400, detail="Investment amount must be greater than 0")
         
-        unit_value = opportunity['fractional_info']['unit_value']  # 500 AED
-        investment_amount = allocation.fraction_units * unit_value
-        share_percentage = (allocation.fraction_units / opportunity['fractional_info']['total_units']) * 100
-        units_allocated = allocation.fraction_units
+        remaining = opportunity['total_cost'] - opportunity.get('total_invested', 0)
+        if investment_amount > remaining:
+            raise HTTPException(status_code=400, detail=f"Only {remaining:,.2f} AED remaining for investment")
+        
+        share_percentage = (investment_amount / opportunity['total_cost']) * 100
     
     # Create investor record
     investor_record = {
         "id": str(uuid.uuid4()),
         "client_id": allocation.client_id,
         "client_name": client['name'],
-        "units_allocated": units_allocated,
         "amount": investment_amount,
         "share_percentage": round(share_percentage, 2),
         "invested_at": datetime.now(timezone.utc).isoformat(),
@@ -3544,10 +3554,10 @@ async def invest_in_opportunity(
     }
     
     # Update opportunity
+    new_total_invested = opportunity.get('total_invested', 0) + investment_amount
     update_data = {
         "current_investors": opportunity['current_investors'] + 1,
-        "units_sold": opportunity['units_sold'] + units_allocated,
-        "units_available": opportunity['units_available'] - units_allocated,
+        "total_invested": new_total_invested,
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -3556,7 +3566,7 @@ async def invest_in_opportunity(
         if update_data['current_investors'] >= 4:
             update_data['status'] = 'fully_invested'
     else:
-        if update_data['units_available'] <= 0:
+        if new_total_invested >= opportunity['total_cost']:
             update_data['status'] = 'fully_invested'
     
     await db.real_estate_opportunities.update_one(
