@@ -286,28 +286,51 @@ export default function RealEstateDetails() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <Users className="h-5 w-5 text-teal-600" />
-                    Investors ({opp.current_investors || 0})
+                    Investors ({opp.current_investors || 0}{opp.property_type === 'off_plan' ? `/${opp.max_investors || 4}` : ''})
                   </h2>
-                  {opp.status === 'available' && (opp.units_available > 0 || remainingPercentage > 0) && (
+                  {opp.status === 'available' && (
+                    (opp.property_type === 'fractional' && (opp.units_available > 0)) ||
+                    (opp.property_type === 'off_plan' && remainingPercentage > 0 && (opp.current_investors || 0) < (opp.max_investors || 4))
+                  ) && (
                     <Button size="sm" variant="outline" onClick={() => setShowAllocateModal(true)}>
                       <Plus className="h-4 w-4 mr-1" /> Add
                     </Button>
                   )}
                 </div>
 
-                {/* Investment Progress - Units Based */}
+                {/* Investment Progress - Different display based on property type */}
                 <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-600">Units Sold</span>
-                    <span className="font-medium">{formatCurrency(opp.units_sold || 0)} / {formatCurrency(opp.total_units || Math.floor(opp.total_cost / 500))} units</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                    <div className="bg-teal-500 h-2 rounded-full" style={{ width: `${((opp.units_sold || 0) / (opp.total_units || Math.floor(opp.total_cost / 500) || 1)) * 100}%` }} />
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Invested: AED {formatCurrency(opp.total_invested || 0)}</span>
-                    <span className="text-teal-600 font-medium">Available: {formatCurrency(opp.units_available || (opp.total_units || Math.floor(opp.total_cost / 500)) - (opp.units_sold || 0))} units</span>
-                  </div>
+                  {opp.property_type === 'fractional' ? (
+                    <>
+                      {/* FRACTIONAL: Units-based progress */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-600">Units Sold</span>
+                        <span className="font-medium">{formatCurrency(opp.units_sold || 0)} / {formatCurrency(opp.total_units || 0)} units</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div className="bg-teal-500 h-2 rounded-full" style={{ width: `${opp.total_units ? ((opp.units_sold || 0) / opp.total_units) * 100 : 0}%` }} />
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Invested: AED {formatCurrency(opp.total_invested || 0)}</span>
+                        <span className="text-teal-600 font-medium">Available: {formatCurrency(opp.units_available || 0)} units</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* OFF-PLAN: Percentage-based progress */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-600">Investment Allocation</span>
+                        <span className="font-medium">{(100 - remainingPercentage).toFixed(1)}% allocated</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${100 - remainingPercentage}%` }} />
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Invested: AED {formatCurrency(opp.total_invested || 0)}</span>
+                        <span className="text-orange-600 font-medium">Remaining: {remainingPercentage.toFixed(1)}% (AED {formatCurrency(remainingAmount)})</span>
+                      </div>
+                    </>
+                  )}
                 </div>
                 
                 {opp.investors && opp.investors.length > 0 ? (
@@ -319,8 +342,13 @@ export default function RealEstateDetails() {
                           <p className="text-sm text-gray-500">Invested on {formatDate(investor.invested_at)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-indigo-600">{formatCurrency(investor.units || Math.round(investor.amount / 500))} units</p>
-                          <p className="text-sm text-gray-500">AED {formatCurrency(investor.amount)} ({investor.share_percentage}%)</p>
+                          {opp.property_type === 'fractional' && investor.units && (
+                            <p className="font-bold text-indigo-600">{formatCurrency(investor.units)} units</p>
+                          )}
+                          <p className={`${opp.property_type === 'off_plan' ? 'font-bold text-orange-600' : 'text-sm text-gray-500'}`}>
+                            {investor.share_percentage}%
+                          </p>
+                          <p className="text-sm text-gray-500">AED {formatCurrency(investor.amount)}</p>
                         </div>
                       </div>
                     ))}
