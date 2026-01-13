@@ -228,7 +228,7 @@ export default function RealEstateDetails() {
     const { cashFlows, summary, xirr } = result;
     
     // Helper to format currency without commas (for clean CSV)
-    const fmtAED = (amt) => `AED ${Math.round(amt || 0)}`;
+    const fmtAED = (amt) => `AED ${new Intl.NumberFormat('en-AE').format(Math.round(amt || 0))}`;
     
     // Build clean CSV content with proper columns
     let csv = [];
