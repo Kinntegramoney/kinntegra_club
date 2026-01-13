@@ -155,29 +155,48 @@ export default function ClientHoldings() {
         <div className="p-4 md:p-8">
           {loading ? (
             <div className="text-center py-12 text-gray-500">Loading holdings...</div>
-          ) : !holdings || holdings.holdings?.length === 0 ? (
-            <div className="text-center py-12">
-              <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No holdings yet</p>
-              <Button
-                className="mt-4 bg-teal-600 hover:bg-teal-700"
-                onClick={() => navigate("/client/opportunities")}
-              >
-                Browse Opportunities
-              </Button>
-            </div>
           ) : (
-            <>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-5">
-                  <p className="text-sm text-gray-500 uppercase tracking-wide">Total Investment</p>
-                  <p className="text-2xl font-bold text-gray-800 mt-1">
-                    {formatINR(holdings.summary?.total_investment)}
-                  </p>
-                </div>
-                <div className="bg-white rounded-lg border border-gray-200 p-5">
-                  <p className="text-sm text-gray-500 uppercase tracking-wide">Total Repaid (Net)</p>
+            <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
+              <TabsList className="mb-6">
+                <TabsTrigger value="bonds" className="gap-2">
+                  <Wallet className="h-4 w-4" /> Bonds
+                  {holdings?.holdings?.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">{holdings.holdings.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="real-estate" className="gap-2">
+                  <Building2 className="h-4 w-4" /> Real Estate
+                  {realEstateHoldings.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">{realEstateHoldings.length}</Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Bonds Tab */}
+              <TabsContent value="bonds">
+                {!holdings || holdings.holdings?.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">No bond holdings yet</p>
+                    <Button
+                      className="mt-4 bg-teal-600 hover:bg-teal-700"
+                      onClick={() => navigate("/client/opportunities")}
+                    >
+                      Browse Bond Opportunities
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="bg-white rounded-lg border border-gray-200 p-5">
+                        <p className="text-sm text-gray-500 uppercase tracking-wide">Total Investment</p>
+                        <p className="text-2xl font-bold text-gray-800 mt-1">
+                          {formatINR(holdings.summary?.total_investment)}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg border border-gray-200 p-5">
+                        <p className="text-sm text-gray-500 uppercase tracking-wide">Total Repaid (Net)</p>
                   <p className="text-2xl font-bold text-green-600 mt-1">
                     {formatINR(holdings.summary?.total_repaid)}
                   </p>
