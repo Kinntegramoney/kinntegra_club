@@ -329,6 +329,14 @@ Sub-broker View:
 - [x] **Notifications**: In-app notifications for sub-broker when client books units
 - [x] **Reinvestment Approval**: Client can approve/reject tagged reinvestments, broker notified
 
+### Phase 11: Bulk Upload Enhancements (January 13, 2026)
+- [x] **Sub-broker Assignment in Bulk Upload**: Clients can now be auto-linked to sub-brokers during bulk upload
+- [x] **Partner Code Column**: Excel template now includes "Partner Code" column
+- [x] **Auto-Linking Logic**: If Partner Code matches an existing sub-broker, client is automatically linked
+- [x] **UI Updates**: Bulk upload modal shows Partner Code in expected columns (highlighted in blue)
+- [x] **Result Display**: Upload results now show which sub-broker each client was linked to
+- [x] **Template Updated**: Download template includes Partner Code column with sample data
+
 **API Endpoints Added:**
 - `GET /api/client/verify/{token}` - Get verification details
 - `POST /api/client/verify/{token}` - Verify client profile
