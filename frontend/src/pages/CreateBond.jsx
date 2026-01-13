@@ -385,6 +385,19 @@ export default function CreateBond() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="minimum_units">Minimum Units (per order)</Label>
+                <Input
+                  data-testid="minimum-units-input"
+                  id="minimum_units"
+                  name="minimum_units"
+                  type="number"
+                  value={formData.minimum_units}
+                  onChange={handleInputChange}
+                  placeholder="1"
+                  required
+                />
+              </div>
             </div>
           </div>
 
