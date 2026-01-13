@@ -567,11 +567,12 @@ export default function RealEstateDetails() {
                             ) : pendingCount > 0 ? (
                               <Badge className="bg-amber-100 text-amber-700">Pending Verification</Badge>
                             ) : (
-                            <Badge className="bg-gray-100 text-gray-600">Pending</Badge>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                              <Badge className="bg-gray-100 text-gray-600">Pending</Badge>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
