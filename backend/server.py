@@ -951,7 +951,7 @@ async def create_trade(trade_data: TradeCreate, current_user: dict = Depends(get
 
 
 @api_router.get("/trades")
-async def get_trades(status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+async def get_trades(status: Optional[str] = None, client_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     """Get trades - brokers see all, sub-brokers see only their own"""
     
     query = {}
@@ -959,12 +959,20 @@ async def get_trades(status: Optional[str] = None, current_user: dict = Depends(
     if current_user['role'] == 'broker':
         # Brokers see all trades
         pass
+    elif current_user['role'] == 'client':
+        # Clients see only their own trades
+        client = await db.clients.find_one({"user_id": current_user['id']})
+        if client:
+            query["client_id"] = client['id']
     else:
         # Sub-brokers see only trades they created
         query["created_by"] = current_user['id']
     
     if status:
         query["status"] = status
+    
+    if client_id:
+        query["client_id"] = client_id
     
     trades = await db.trades.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return trades
