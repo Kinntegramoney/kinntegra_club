@@ -3033,17 +3033,23 @@ class RealEstateOpportunityCreate(BaseModel):
     # Pricing (in AED)
     unit_price: float
     
-    # DLD Fees Section
+    # DLD Fees Section (absolute amounts)
     dld_fee_percentage: float = 4.0  # Default 4% DLD
-    dld_fee_amount: Optional[float] = None  # Calculated or override
+    dld_fee_amount: Optional[float] = None  # Override with absolute amount
     
-    # Admin Fees Section
+    # Admin Fees Section (absolute amounts)
     admin_fee_percentage: float = 0
-    admin_fee_amount: Optional[float] = None
+    admin_fee_amount: Optional[float] = None  # Override with absolute amount
     
-    # Other Fees
+    # Brokerage Fee (absolute amount)
     broker_fee: float = 0
     other_fees: float = 0
+    
+    # Management Fees Section (absolute amounts)
+    upfront_fee: float = 0  # One-time upfront fee
+    trailer_fee: float = 0  # Ongoing trailer fee
+    management_fee: float = 0  # Property management fee
+    unit_selling_fee: float = 0  # Fee when selling units
     
     # Area Details (sq.ft)
     total_area: float
