@@ -107,6 +107,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/broker/real-estate" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <RealEstateOpportunities />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Sub-Broker Routes */}
           <Route 
