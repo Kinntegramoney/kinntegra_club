@@ -574,6 +574,101 @@ export default function Holdings() {
                 </div>
               )}
               
+              {/* Trades Tab Content */}
+              {mainTab === "trades" && (
+                <div className="space-y-4">
+                  {clientTrades.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                      <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">No trades found for this client</p>
+                    </div>
+                  ) : (
+                    clientTrades.map((trade) => (
+                      <div
+                        key={trade.id}
+                        className="bg-white rounded-lg border border-gray-200 p-4 md:p-6"
+                        data-testid={`trade-card-${trade.id}`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-4">
+                          <div>
+                            <h3 className="font-semibold text-base md:text-lg truncate">{trade.bond_name}</h3>
+                            <p className="text-xs md:text-sm text-gray-500">
+                              Created by {trade.created_by_name} ({trade.created_by_role === 'sub_broker' ? 'Sub-Broker' : trade.created_by_role === 'client' ? 'Client' : 'Broker'})
+                            </p>
+                          </div>
+                          {trade.status === 'pending' ? (
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-medium">Pending</span>
+                          ) : trade.status === 'approved' ? (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">Approved</span>
+                          ) : (
+                            <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">Rejected</span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-4">
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase">Trade Date</p>
+                            <p className="font-mono text-sm">{format(new Date(trade.created_at), "dd-MMM-yyyy")}</p>
+                            <p className="font-mono text-xs text-gray-400">{format(new Date(trade.created_at), "HH:mm")}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase">Units</p>
+                            <p className="font-mono font-bold text-base md:text-lg">{trade.units}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase">Price/Unit</p>
+                            <p className="font-mono text-sm">₹{trade.calculated_price?.toLocaleString('en-IN')}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase">Total</p>
+                            <p className="font-mono font-bold text-amber-600 text-sm md:text-base">₹{trade.total_amount?.toLocaleString('en-IN')}</p>
+                          </div>
+                          <div className="col-span-2 md:col-span-1">
+                            <p className="text-xs text-gray-500 uppercase">Investment Date</p>
+                            <p className="font-mono text-sm">{format(new Date(trade.investment_date), "dd-MMM-yyyy")}</p>
+                          </div>
+                        </div>
+
+                        {(trade.payment_reference || trade.payment_notes || trade.payment_proof_filename) && (
+                          <div className="bg-gray-50 p-3 rounded-md mb-4">
+                            <p className="text-xs text-gray-500 uppercase mb-2 font-medium">Payment Details</p>
+                            <div className="space-y-1 text-sm">
+                              {trade.payment_reference && (
+                                <p><span className="text-gray-500">Reference:</span> <span className="font-mono">{trade.payment_reference}</span></p>
+                              )}
+                              {trade.payment_proof_filename && (
+                                <p className="flex items-center gap-2">
+                                  <FileImage className="h-4 w-4 text-green-600" />
+                                  <span className="text-gray-500">Proof:</span> 
+                                  <span className="text-green-700 truncate max-w-[200px]">{trade.payment_proof_filename}</span>
+                                </p>
+                              )}
+                              {trade.payment_notes && (
+                                <p><span className="text-gray-500">Notes:</span> {trade.payment_notes}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {trade.broker_notes && (
+                          <div className="bg-blue-50 p-3 rounded-md mb-4">
+                            <p className="text-xs text-blue-600 uppercase mb-1">Broker Notes</p>
+                            <p className="text-sm">{trade.broker_notes}</p>
+                          </div>
+                        )}
+
+                        {trade.approved_at && (
+                          <div className="text-xs text-gray-500 pt-3 border-t border-gray-200">
+                            {trade.status === 'approved' ? 'Approved' : 'Rejected'} on {format(new Date(trade.approved_at), "MMM dd, yyyy 'at' HH:mm")}
+                            {trade.approved_by_name && ` by ${trade.approved_by_name}`}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+              
               {/* Holdings Tab Content */}
               {mainTab === "holdings" && (
               <>
