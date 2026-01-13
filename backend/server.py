@@ -2499,6 +2499,7 @@ class InterestPayment(BaseModel):
 
 
 class BondCreate(BaseModel):
+    bond_code: str = ""  # Unique bond identifier code
     name: str
     start_date: str  # ISO format
     end_date: str
