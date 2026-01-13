@@ -425,28 +425,17 @@ export default function RealEstateDetails() {
 // Allocate Investor Modal Component
 function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onClose, onSuccess }) {
   const [selectedClient, setSelectedClient] = useState("");
-  const [percentage, setPercentage] = useState("");
-  const [amount, setAmount] = useState("");
-  const [inputMode, setInputMode] = useState("percentage"); // "percentage" or "amount"
+  const [units, setUnits] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const maxAmount = opportunity.total_cost * remainingPercentage / 100;
-  const fractionalMax = Math.min(183500, maxAmount);
+  const unitValue = opportunity.unit_value || 500;
+  const totalUnits = opportunity.total_units || Math.floor(opportunity.total_cost / unitValue);
+  const unitsSold = opportunity.units_sold || 0;
+  const unitsAvailable = opportunity.units_available ?? (totalUnits - unitsSold);
 
-  // Calculate amount from percentage or vice versa
-  useEffect(() => {
-    if (inputMode === "percentage" && percentage) {
-      const calcAmount = opportunity.total_cost * parseFloat(percentage) / 100;
-      setAmount(calcAmount.toFixed(0));
-    }
-  }, [percentage, inputMode, opportunity.total_cost]);
-
-  useEffect(() => {
-    if (inputMode === "amount" && amount) {
-      const calcPercentage = (parseFloat(amount) / opportunity.total_cost) * 100;
-      setPercentage(calcPercentage.toFixed(2));
-    }
-  }, [amount, inputMode, opportunity.total_cost]);
+  // Calculate investment details
+  const investmentAmount = units ? parseInt(units) * unitValue : 0;
+  const sharePercentage = totalUnits > 0 ? ((parseInt(units) || 0) / totalUnits) * 100 : 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -455,19 +444,14 @@ function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onCl
       return;
     }
 
-    const investmentAmount = parseFloat(amount);
-    if (!investmentAmount || investmentAmount <= 0) {
-      toast.error("Please enter a valid amount");
+    const unitsToBuy = parseInt(units);
+    if (!unitsToBuy || unitsToBuy <= 0) {
+      toast.error("Please enter number of units");
       return;
     }
 
-    if (opportunity.property_type === 'fractional' && investmentAmount > 183500) {
-      toast.error("Maximum investment for fractional is $50,000 USD (~AED 183,500)");
-      return;
-    }
-
-    if (investmentAmount > maxAmount) {
-      toast.error(`Maximum available is AED ${maxAmount.toLocaleString()}`);
+    if (unitsToBuy > unitsAvailable) {
+      toast.error(`Only ${unitsAvailable.toLocaleString()} units available`);
       return;
     }
 
@@ -476,7 +460,7 @@ function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onCl
       const token = localStorage.getItem("token");
       await axios.post(
         `${API}/real-estate-opportunities/${opportunity.id}/invest`,
-        { client_id: selectedClient, investment_amount: investmentAmount },
+        { client_id: selectedClient, units: unitsToBuy },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("Investor added successfully");
@@ -499,11 +483,11 @@ function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onCl
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Available Info */}
-          <div className="bg-teal-50 p-4 rounded-lg">
-            <p className="text-sm text-teal-600">Available for Investment</p>
-            <p className="text-2xl font-bold text-teal-800">{remainingPercentage.toFixed(1)}%</p>
-            <p className="text-sm text-teal-600">AED {formatCurrency(maxAmount)}</p>
+          {/* Available Units Info */}
+          <div className="bg-indigo-50 p-4 rounded-lg">
+            <p className="text-sm text-indigo-600">Available Units</p>
+            <p className="text-2xl font-bold text-indigo-800">{formatCurrency(unitsAvailable)} units</p>
+            <p className="text-sm text-indigo-600">AED {formatCurrency(unitsAvailable * unitValue)} @ {formatCurrency(unitValue)} AED/unit</p>
           </div>
 
           <div>
@@ -518,62 +502,38 @@ function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onCl
             </Select>
           </div>
 
-          {/* Input Mode Toggle */}
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={inputMode === "percentage" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setInputMode("percentage")}
-              className="flex-1"
-            >
-              By Percentage
-            </Button>
-            <Button
-              type="button"
-              variant={inputMode === "amount" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setInputMode("amount")}
-              className="flex-1"
-            >
-              By Amount
-            </Button>
+          {/* Units Input */}
+          <div>
+            <Label>Number of Units *</Label>
+            <Input
+              type="number"
+              min="1"
+              max={unitsAvailable}
+              value={units}
+              onChange={(e) => setUnits(e.target.value)}
+              placeholder={`Max: ${formatCurrency(unitsAvailable)} units`}
+            />
+            <p className="text-xs text-gray-500 mt-1">Each unit = {formatCurrency(unitValue)} AED</p>
           </div>
 
-          {inputMode === "percentage" ? (
-            <div>
-              <Label>Investment Percentage *</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  step="0.1"
-                  max={remainingPercentage}
-                  value={percentage}
-                  onChange={(e) => setPercentage(e.target.value)}
-                  placeholder={`Max: ${remainingPercentage.toFixed(1)}%`}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+          {/* Investment Preview */}
+          {units && parseInt(units) > 0 && (
+            <div className="bg-teal-50 p-4 rounded-lg">
+              <h4 className="text-sm font-medium text-teal-700 mb-2">Investment Preview</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-teal-600">Units</span>
+                  <span className="font-medium">{formatCurrency(parseInt(units))}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-teal-600">Amount</span>
+                  <span className="font-bold">AED {formatCurrency(investmentAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-teal-600">Share</span>
+                  <span className="font-medium">{sharePercentage.toFixed(2)}%</span>
+                </div>
               </div>
-              {percentage && (
-                <p className="text-sm text-gray-500 mt-1">= AED {formatCurrency(amount)}</p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <Label>Investment Amount (AED) *</Label>
-              <Input
-                type="number"
-                max={opportunity.property_type === 'fractional' ? fractionalMax : maxAmount}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder={`Max: ${formatCurrency(opportunity.property_type === 'fractional' ? fractionalMax : maxAmount)}`}
-              />
-              {amount && (
-                <p className="text-sm text-gray-500 mt-1">= {percentage}% share</p>
-              )}
-              {opportunity.property_type === 'fractional' && (
-                <p className="text-xs text-amber-600 mt-1">Max $50,000 USD (~AED 183,500) per investor</p>
-              )}
             </div>
           )}
 
