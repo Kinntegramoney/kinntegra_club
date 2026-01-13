@@ -99,7 +99,9 @@ export default function Sidebar({ user }) {
                   className={`w-full text-left px-3 md:px-4 py-2 rounded-lg text-sm transition-colors ${
                     isActive(item.path)
                       ? 'bg-amber-50 text-amber-700'
-                      : 'text-gray-600 hover:bg-gray-50'
+                      : item.highlight 
+                        ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium'
+                        : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   {item.label}
