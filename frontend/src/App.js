@@ -18,6 +18,7 @@ import ClientHoldings from "@/pages/ClientHoldings";
 import ClientTradeVerification from "@/pages/ClientTradeVerification";
 import ClientProfile from "@/pages/ClientProfile";
 import ClientRealEstateInvestments from "@/pages/ClientRealEstateInvestments";
+import BulkUpload from "@/pages/BulkUpload";
 import { Toaster } from "@/components/ui/sonner";
 
 // Protected Route Component
