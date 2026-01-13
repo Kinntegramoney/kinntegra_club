@@ -17,12 +17,20 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
    - Rewrote sorting logic in `CreateRealEstateModal.jsx` to use inline sorting during render
    - Milestones now correctly sort by date when added/edited
    - Removed buggy `getSortedPaymentSchedule` and `getOriginalIndex` functions
-   - Each milestone tracks its `originalIdx` for correct state updates
 
 2. **Moved Expected Profit & XIRR to View Details** ✅
    - Removed XIRR calculation display from "Add Property" modal
    - Added XIRR and Expected Profit display to `RealEstateDetails.jsx` in "Expected Returns" section
-   - Calculation considers: payment schedule dates, upfront fees (DLD + Admin), selling fee, expected sale rate
+
+3. **Redesigned Property Card** ✅
+   - Property Name with building icon
+   - Unit Details (floor and unit number)
+   - Size (apartment type and area in sqft)
+   - Total Cost with asterisk (*) - hover shows full cost breakdown tooltip
+   - Interested count and Investors (X/4)
+   - Payment Progress bar
+   - View Details button
+   - Removed DLD% from card display
 
 ### Previous Session
 - Removed "Fractional" real estate type (simplified to Off-Plan only)
