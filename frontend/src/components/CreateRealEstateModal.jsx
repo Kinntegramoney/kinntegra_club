@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { 
-  X, Building2, MapPin, DollarSign, Ruler, Calendar, Upload, 
-  Image, Trash2, Info, Plus, Percent, CalendarDays
+  X, Building2, DollarSign, Ruler, Calendar, Upload, 
+  Image, Trash2, Plus, CalendarDays
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,30 +22,20 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     // Basic Info
     building_name: opportunity?.building_name || "",
     unit_no: opportunity?.unit_no || "",
-    property_type: opportunity?.property_type || "fractional",
     
-    // Pricing
+    // Pricing (AED)
     unit_price: opportunity?.unit_price || "",
     
-    // DLD Fees (absolute amount)
-    dld_fee_percentage: opportunity?.dld_fee_percentage || 4,
-    dld_fee_amount: opportunity?.dld_fee || "",
-    
-    // Admin Fees (absolute amount)
-    admin_fee_percentage: opportunity?.admin_fee_percentage || 0,
-    admin_fee_amount: opportunity?.admin_fee || "",
-    
-    // Brokerage Fee (absolute amount)
+    // Fees (absolute amounts in AED)
+    dld_fee: opportunity?.dld_fee || "",
+    admin_fee: opportunity?.admin_fee || "",
     broker_fee: opportunity?.broker_fee || "",
     other_fees: opportunity?.other_fees || "",
     
-    // Management Fees (absolute amounts)
-    upfront_fee: opportunity?.upfront_fee || "",
-    trailer_fee: opportunity?.trailer_fee || "",
-    management_fee: opportunity?.management_fee || "",
-    unit_selling_fee: opportunity?.unit_selling_fee || "",
+    // Unit Selling Fee (% of selling price, 0-2.5%)
+    unit_selling_fee_percentage: opportunity?.unit_selling_fee_percentage || "",
     
-    // Area
+    // Area (sqft)
     total_area: opportunity?.total_area || "",
     carpet_area: opportunity?.carpet_area || "",
     balcony_area: opportunity?.balcony_area || "",
@@ -63,12 +53,11 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     // Optional
     developer_name: opportunity?.developer_name || "",
     location: opportunity?.location || "",
-    amenities: opportunity?.amenities?.join(", ") || "",
     handover_date: opportunity?.handover_date || "",
     description: opportunity?.description || ""
   });
 
-  // Payment Schedule (like principal repayments)
+  // Payment Schedule - percentages based on unit price only
   const [paymentSchedule, setPaymentSchedule] = useState(
     opportunity?.payment_schedule?.map(p => ({
       date: p.date,
@@ -83,37 +72,14 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
   const [activeSection, setActiveSection] = useState("basic");
 
   // Calculate totals
-  const calculateDldFee = () => {
-    if (formData.dld_fee_amount) return parseFloat(formData.dld_fee_amount);
-    const price = parseFloat(formData.unit_price) || 0;
-    return price * (parseFloat(formData.dld_fee_percentage) || 0) / 100;
-  };
+  const unitPrice = parseFloat(formData.unit_price) || 0;
+  const dldFee = parseFloat(formData.dld_fee) || 0;
+  const adminFee = parseFloat(formData.admin_fee) || 0;
+  const brokerFee = parseFloat(formData.broker_fee) || 0;
+  const otherFees = parseFloat(formData.other_fees) || 0;
+  const totalCost = unitPrice + dldFee + adminFee + brokerFee + otherFees;
 
-  const calculateAdminFee = () => {
-    if (formData.admin_fee_amount) return parseFloat(formData.admin_fee_amount);
-    const price = parseFloat(formData.unit_price) || 0;
-    return price * (parseFloat(formData.admin_fee_percentage) || 0) / 100;
-  };
-
-  const calculateTotalCost = () => {
-    const price = parseFloat(formData.unit_price) || 0;
-    const dld = calculateDldFee();
-    const admin = calculateAdminFee();
-    const broker = parseFloat(formData.broker_fee) || 0;
-    const other = parseFloat(formData.other_fees) || 0;
-    const upfront = parseFloat(formData.upfront_fee) || 0;
-    const trailer = parseFloat(formData.trailer_fee) || 0;
-    const management = parseFloat(formData.management_fee) || 0;
-    const unitSelling = parseFloat(formData.unit_selling_fee) || 0;
-    return price + dld + admin + broker + other + upfront + trailer + management + unitSelling;
-  };
-
-  // Calculate units (total cost / 500 AED)
-  const calculateUnits = () => {
-    const total = calculateTotalCost();
-    return Math.floor(total / 500) || 0;
-  };
-
+  // Payment schedule total percentage
   const getTotalPaymentPercentage = () => {
     return paymentSchedule.reduce((sum, p) => sum + (parseFloat(p.percentage) || 0), 0);
   };
@@ -122,7 +88,7 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Payment Schedule Methods
+  // Payment Schedule handlers
   const addPaymentMilestone = () => {
     setPaymentSchedule(prev => [...prev, { date: "", percentage: "", description: "" }]);
   };
@@ -139,28 +105,20 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     setPaymentSchedule(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleImageSelect = (e) => {
+  // Image handlers
+  const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    const totalImages = existingImages.length + images.length + files.length;
+    const totalImages = images.length + existingImages.length + files.length;
     
     if (totalImages > 12) {
-      toast.error(`Maximum 12 images allowed. You can add ${12 - existingImages.length - images.length} more.`);
+      toast.error("Maximum 12 images allowed");
       return;
     }
 
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    const validFiles = files.filter(f => validTypes.includes(f.type));
-    
-    if (validFiles.length !== files.length) {
-      toast.warning("Some files were skipped. Only JPEG, PNG, WebP, and GIF are allowed.");
-    }
-
-    const newImages = validFiles.map(file => ({
+    const newImages = files.map(file => ({
       file,
-      preview: URL.createObjectURL(file),
-      name: file.name
+      preview: URL.createObjectURL(file)
     }));
-
     setImages(prev => [...prev, ...newImages]);
   };
 
@@ -175,7 +133,6 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
 
   const removeExistingImage = async (imageId) => {
     if (!isEditing) return;
-    
     try {
       const token = localStorage.getItem("token");
       await axios.delete(`${API}/real-estate-opportunities/${opportunity.id}/images/${imageId}`, {
@@ -184,7 +141,6 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
       setExistingImages(prev => prev.filter(img => img.id !== imageId));
       toast.success("Image removed");
     } catch (error) {
-      console.error("Error removing image:", error);
       toast.error("Failed to remove image");
     }
   };
@@ -199,13 +155,20 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
       return;
     }
 
-    // Validate payment schedule totals 100% for off-plan
-    if (formData.property_type === 'off_plan' && paymentSchedule.length > 0) {
+    // Validate payment schedule totals 100%
+    if (paymentSchedule.length > 0) {
       const totalPercent = getTotalPaymentPercentage();
       if (Math.abs(totalPercent - 100) > 0.01) {
         toast.error(`Payment schedule must total 100%. Current: ${totalPercent.toFixed(1)}%`);
         return;
       }
+    }
+
+    // Validate unit selling fee percentage
+    const sellingFeePercent = parseFloat(formData.unit_selling_fee_percentage) || 0;
+    if (sellingFeePercent < 0 || sellingFeePercent > 2.5) {
+      toast.error("Unit Selling Fee must be between 0% and 2.5%");
+      return;
     }
 
     setLoading(true);
@@ -216,20 +179,12 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
       const payload = {
         building_name: formData.building_name,
         unit_no: formData.unit_no,
-        property_type: formData.property_type,
         unit_price: parseFloat(formData.unit_price),
-        dld_fee_percentage: parseFloat(formData.dld_fee_percentage) || 4,
-        dld_fee_amount: formData.dld_fee_amount ? parseFloat(formData.dld_fee_amount) : null,
-        admin_fee_percentage: parseFloat(formData.admin_fee_percentage) || 0,
-        admin_fee_amount: formData.admin_fee_amount ? parseFloat(formData.admin_fee_amount) : null,
+        dld_fee: parseFloat(formData.dld_fee) || 0,
+        admin_fee: parseFloat(formData.admin_fee) || 0,
         broker_fee: parseFloat(formData.broker_fee) || 0,
         other_fees: parseFloat(formData.other_fees) || 0,
-        // Management Fees
-        upfront_fee: parseFloat(formData.upfront_fee) || 0,
-        trailer_fee: parseFloat(formData.trailer_fee) || 0,
-        management_fee: parseFloat(formData.management_fee) || 0,
-        unit_selling_fee: parseFloat(formData.unit_selling_fee) || 0,
-        // Area
+        unit_selling_fee_percentage: parseFloat(formData.unit_selling_fee_percentage) || 0,
         total_area: parseFloat(formData.total_area),
         carpet_area: parseFloat(formData.carpet_area),
         balcony_area: parseFloat(formData.balcony_area) || 0,
@@ -246,7 +201,6 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
         eligible_to_sell_after_percentage: parseFloat(formData.eligible_to_sell_after_percentage) || 100,
         developer_name: formData.developer_name || null,
         location: formData.location || null,
-        amenities: formData.amenities ? formData.amenities.split(",").map(a => a.trim()).filter(Boolean) : [],
         handover_date: formData.handover_date || null,
         description: formData.description || null
       };
@@ -258,16 +212,16 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
           headers: { Authorization: `Bearer ${token}` }
         });
         opportunityId = opportunity.id;
-        toast.success("Opportunity updated successfully");
+        toast.success("Property updated successfully");
       } else {
         const response = await axios.post(`${API}/real-estate-opportunities`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
         opportunityId = response.data.id;
-        toast.success("Opportunity created successfully");
+        toast.success("Property created successfully");
       }
 
-      // Upload new images if any
+      // Upload images if any
       if (images.length > 0) {
         const formDataImages = new FormData();
         images.forEach(img => {
@@ -280,28 +234,22 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
             'Content-Type': 'multipart/form-data'
           }
         });
-        toast.success(`${images.length} images uploaded`);
       }
 
       onSuccess();
     } catch (error) {
-      console.error("Error:", error);
-      toast.error(error.response?.data?.detail || "Failed to save opportunity");
+      toast.error(error.response?.data?.detail || "Failed to save property");
     } finally {
       setLoading(false);
     }
   };
 
-  const totalCost = calculateTotalCost();
-  const dldFee = calculateDldFee();
-  const adminFee = calculateAdminFee();
-  const totalUnits = calculateUnits();
+  const formatCurrency = (amt) => new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(amt || 0);
 
   const sections = [
     { id: "basic", label: "Basic Info", icon: Building2 },
-    { id: "fees", label: "DLD & Fees", icon: DollarSign },
-    { id: "management", label: "Management Fees", icon: Percent },
-    { id: "area", label: "Area", icon: Ruler },
+    { id: "fees", label: "Pricing & Fees", icon: DollarSign },
+    { id: "area", label: "Area & Details", icon: Ruler },
     { id: "payments", label: "Payment Schedule", icon: CalendarDays },
     { id: "sale", label: "Sale Settings", icon: Calendar },
     { id: "images", label: "Images", icon: Image }
@@ -313,12 +261,12 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-teal-700" />
+            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-orange-700" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-800">
-                {isEditing ? "Edit Real Estate Opportunity" : "Add Real Estate Opportunity"}
+                {isEditing ? "Edit Property" : "Add Off-Plan Property"}
               </h2>
               <p className="text-sm text-gray-500">Fill in the property details</p>
             </div>
@@ -336,24 +284,24 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
               onClick={() => setActiveSection(section.id)}
               className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 activeSection === section.id
-                  ? 'border-teal-600 text-teal-600'
+                  ? 'border-orange-600 text-orange-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <section.icon className="h-4 w-4" />
-              {section.label}
+              <span className="text-sm font-medium">{section.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Content */}
+        {/* Form Content */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
           {/* Basic Info Section */}
           {activeSection === "basic" && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="building_name">Building/Project Name *</Label>
+                  <Label htmlFor="building_name">Building Name *</Label>
                   <Input
                     id="building_name"
                     value={formData.building_name}
@@ -368,23 +316,13 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                     id="unit_no"
                     value={formData.unit_no}
                     onChange={(e) => handleChange("unit_no", e.target.value)}
-                    placeholder="e.g., 1501-A"
+                    placeholder="e.g., 2501"
                     required
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="property_type">Property Type *</Label>
-                  <Select value={formData.property_type} onValueChange={(v) => handleChange("property_type", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="off_plan">Off-Plan (Max 4 Investors)</SelectItem>
-                      <SelectItem value="fractional">Fractional (Max $50K/investor)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="unit_type">Unit Type *</Label>
                   <Select value={formData.unit_type} onValueChange={(v) => handleChange("unit_type", v)}>
@@ -394,21 +332,45 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                       <SelectItem value="1BR">1 Bedroom</SelectItem>
                       <SelectItem value="2BR">2 Bedroom</SelectItem>
                       <SelectItem value="3BR">3 Bedroom</SelectItem>
+                      <SelectItem value="4BR">4 Bedroom</SelectItem>
                       <SelectItem value="Penthouse">Penthouse</SelectItem>
+                      <SelectItem value="Townhouse">Townhouse</SelectItem>
                       <SelectItem value="Villa">Villa</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="floor">Floor *</Label>
+                  <Input
+                    id="floor"
+                    type="number"
+                    value={formData.floor}
+                    onChange={(e) => handleChange("floor", e.target.value)}
+                    placeholder="e.g., 25"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="parking_spaces">Parking Spaces</Label>
+                  <Input
+                    id="parking_spaces"
+                    type="number"
+                    min="0"
+                    value={formData.parking_spaces}
+                    onChange={(e) => handleChange("parking_spaces", e.target.value)}
+                    placeholder="0"
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="developer_name">Developer Name</Label>
+                  <Label htmlFor="developer_name">Developer</Label>
                   <Input
                     id="developer_name"
                     value={formData.developer_name}
                     onChange={(e) => handleChange("developer_name", e.target.value)}
-                    placeholder="e.g., Emaar Properties"
+                    placeholder="e.g., Emaar"
                   />
                 </div>
                 <div>
@@ -432,423 +394,168 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                   rows={3}
                 />
               </div>
-
-              {/* Type Info */}
-              <div className={`p-4 rounded-lg ${formData.property_type === 'off_plan' ? 'bg-purple-50 border border-purple-200' : 'bg-amber-50 border border-amber-200'}`}>
-                <div className="flex items-start gap-3">
-                  <Info className={`h-5 w-5 flex-shrink-0 mt-0.5 ${formData.property_type === 'off_plan' ? 'text-purple-600' : 'text-amber-600'}`} />
-                  <div>
-                    {formData.property_type === 'off_plan' ? (
-                      <>
-                        <p className="font-medium text-purple-800">Off-Plan Property</p>
-                        <p className="text-sm text-purple-600 mt-1">Maximum 4 investors. Each gets 25% share. Payment schedule required.</p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-medium text-amber-800">Fractional Investment</p>
-                        <p className="text-sm text-amber-600 mt-1">Maximum $50,000 USD (~183,500 AED) per investor.</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
-          {/* DLD & Fees Section */}
+          {/* Pricing & Fees Section */}
           {activeSection === "fees" && (
             <div className="space-y-6">
               {/* Unit Price */}
-              <div>
-                <Label htmlFor="unit_price">Unit Price (AED) *</Label>
+              <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                <Label htmlFor="unit_price" className="text-orange-800 font-medium">Unit Price (AED) *</Label>
                 <Input
                   id="unit_price"
                   type="number"
                   value={formData.unit_price}
                   onChange={(e) => handleChange("unit_price", e.target.value)}
                   placeholder="e.g., 2000000"
+                  className="mt-2 text-lg"
                   required
                 />
+                <p className="text-sm text-orange-600 mt-1">Base price of the property</p>
               </div>
 
-              {/* DLD Fees Section */}
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" /> DLD Fee (Dubai Land Department)
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="dld_fee_percentage">DLD Fee %</Label>
-                    <Input
-                      id="dld_fee_percentage"
-                      type="number"
-                      step="0.1"
-                      value={formData.dld_fee_percentage}
-                      onChange={(e) => handleChange("dld_fee_percentage", e.target.value)}
-                      placeholder="4"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="dld_fee_amount">Absolute Amount (AED)</Label>
-                    <Input
-                      id="dld_fee_amount"
-                      type="number"
-                      value={formData.dld_fee_amount}
-                      onChange={(e) => handleChange("dld_fee_amount", e.target.value)}
-                      placeholder="Override % with fixed amount"
-                    />
-                  </div>
+              {/* Fees Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <Label htmlFor="dld_fee" className="text-blue-800 font-medium">DLD Fee (AED)</Label>
+                  <Input
+                    id="dld_fee"
+                    type="number"
+                    value={formData.dld_fee}
+                    onChange={(e) => handleChange("dld_fee", e.target.value)}
+                    placeholder="e.g., 80000"
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-blue-600 mt-1">Dubai Land Department fee</p>
                 </div>
-                <p className="text-sm text-blue-600 mt-2 font-medium">
-                  Amount: AED {dldFee.toLocaleString()}
-                </p>
-              </div>
-
-              {/* Admin Fees Section */}
-              <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                <h4 className="font-medium text-green-800 mb-3 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" /> Admin Fee
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="admin_fee_percentage">Admin Fee %</Label>
-                    <Input
-                      id="admin_fee_percentage"
-                      type="number"
-                      step="0.1"
-                      value={formData.admin_fee_percentage}
-                      onChange={(e) => handleChange("admin_fee_percentage", e.target.value)}
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="admin_fee_amount">Absolute Amount (AED)</Label>
-                    <Input
-                      id="admin_fee_amount"
-                      type="number"
-                      value={formData.admin_fee_amount}
-                      onChange={(e) => handleChange("admin_fee_amount", e.target.value)}
-                      placeholder="Override % with fixed amount"
-                    />
-                  </div>
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                  <Label htmlFor="admin_fee" className="text-green-800 font-medium">Admin Fee (AED)</Label>
+                  <Input
+                    id="admin_fee"
+                    type="number"
+                    value={formData.admin_fee}
+                    onChange={(e) => handleChange("admin_fee", e.target.value)}
+                    placeholder="e.g., 10000"
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-green-600 mt-1">Administrative charges</p>
                 </div>
-                <p className="text-sm text-green-600 mt-2 font-medium">
-                  Amount: AED {adminFee.toLocaleString()}
-                </p>
-              </div>
-
-              {/* Brokerage & Other Fees */}
-              <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                <h4 className="font-medium text-amber-800 mb-3 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" /> Brokerage & Other Fees
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="broker_fee">Brokerage Fee (AED)</Label>
-                    <Input
-                      id="broker_fee"
-                      type="number"
-                      value={formData.broker_fee}
-                      onChange={(e) => handleChange("broker_fee", e.target.value)}
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="other_fees">Other Fees (AED)</Label>
-                    <Input
-                      id="other_fees"
-                      type="number"
-                      value={formData.other_fees}
-                      onChange={(e) => handleChange("other_fees", e.target.value)}
-                      placeholder="0"
-                    />
-                  </div>
+                <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                  <Label htmlFor="broker_fee" className="text-amber-800 font-medium">Brokerage Fee (AED)</Label>
+                  <Input
+                    id="broker_fee"
+                    type="number"
+                    value={formData.broker_fee}
+                    onChange={(e) => handleChange("broker_fee", e.target.value)}
+                    placeholder="e.g., 40000"
+                    className="mt-2"
+                  />
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <Label htmlFor="other_fees" className="text-gray-800 font-medium">Other Fees (AED)</Label>
+                  <Input
+                    id="other_fees"
+                    type="number"
+                    value={formData.other_fees}
+                    onChange={(e) => handleChange("other_fees", e.target.value)}
+                    placeholder="e.g., 5000"
+                    className="mt-2"
+                  />
                 </div>
               </div>
 
-              {/* Partial Summary */}
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h4 className="font-medium text-gray-700 mb-3">Fees Summary (Partial)</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span>Unit Price</span><span className="font-medium">{(parseFloat(formData.unit_price) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-blue-600"><span>DLD Fee</span><span className="font-medium">{dldFee.toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-green-600"><span>Admin Fee</span><span className="font-medium">{adminFee.toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-amber-600"><span>Brokerage Fee</span><span className="font-medium">{(parseFloat(formData.broker_fee) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between"><span>Other Fees</span><span className="font-medium">{(parseFloat(formData.other_fees) || 0).toLocaleString()} AED</span></div>
-                  <p className="text-xs text-gray-500 pt-2">Continue to Management Fees tab for full total</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Management Fees Section */}
-          {activeSection === "management" && (
-            <div className="space-y-6">
+              {/* Unit Selling Fee */}
               <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                <h4 className="font-medium text-purple-800 mb-1">Management Fees</h4>
-                <p className="text-sm text-purple-600 mb-4">All fees entered as absolute amounts in AED</p>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="upfront_fee">Upfront Fee (AED)</Label>
-                    <Input
-                      id="upfront_fee"
-                      type="number"
-                      value={formData.upfront_fee}
-                      onChange={(e) => handleChange("upfront_fee", e.target.value)}
-                      placeholder="One-time upfront fee"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="trailer_fee">Trailer Fee (AED)</Label>
-                    <Input
-                      id="trailer_fee"
-                      type="number"
-                      value={formData.trailer_fee}
-                      onChange={(e) => handleChange("trailer_fee", e.target.value)}
-                      placeholder="Ongoing trailer fee"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="management_fee">Management Fee (AED)</Label>
-                    <Input
-                      id="management_fee"
-                      type="number"
-                      value={formData.management_fee}
-                      onChange={(e) => handleChange("management_fee", e.target.value)}
-                      placeholder="Property management fee"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="unit_selling_fee">Unit Selling Fee (AED)</Label>
-                    <Input
-                      id="unit_selling_fee"
-                      type="number"
-                      value={formData.unit_selling_fee}
-                      onChange={(e) => handleChange("unit_selling_fee", e.target.value)}
-                      placeholder="Fee when selling units"
-                    />
-                  </div>
+                <Label htmlFor="unit_selling_fee_percentage" className="text-purple-800 font-medium">
+                  Unit Selling Fee (% of Selling Price)
+                </Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <Input
+                    id="unit_selling_fee_percentage"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="2.5"
+                    value={formData.unit_selling_fee_percentage}
+                    onChange={(e) => handleChange("unit_selling_fee_percentage", e.target.value)}
+                    placeholder="0 - 2.5"
+                    className="w-32"
+                  />
+                  <span className="text-purple-600">%</span>
                 </div>
+                <p className="text-xs text-purple-600 mt-1">Fee charged when property is sold (0% - 2.5%)</p>
               </div>
 
-              {/* Complete Cost Summary */}
-              <div className="bg-teal-50 rounded-lg p-4 border border-teal-200">
-                <h4 className="font-medium text-teal-800 mb-3">Complete Cost Summary</h4>
+              {/* Total Summary */}
+              <div className="bg-gray-100 rounded-lg p-4">
+                <h4 className="font-medium text-gray-700 mb-3">Cost Summary</h4>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span>Unit Price</span><span className="font-medium">{(parseFloat(formData.unit_price) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-blue-600"><span>DLD Fee</span><span className="font-medium">{dldFee.toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-green-600"><span>Admin Fee</span><span className="font-medium">{adminFee.toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-amber-600"><span>Brokerage Fee</span><span className="font-medium">{(parseFloat(formData.broker_fee) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between"><span>Other Fees</span><span className="font-medium">{(parseFloat(formData.other_fees) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-purple-600"><span>Upfront Fee</span><span className="font-medium">{(parseFloat(formData.upfront_fee) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-purple-600"><span>Trailer Fee</span><span className="font-medium">{(parseFloat(formData.trailer_fee) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-purple-600"><span>Management Fee</span><span className="font-medium">{(parseFloat(formData.management_fee) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-purple-600"><span>Unit Selling Fee</span><span className="font-medium">{(parseFloat(formData.unit_selling_fee) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between pt-3 border-t border-teal-200 font-bold text-lg">
-                    <span>Total Investment</span>
-                    <span className="text-teal-700">{totalCost.toLocaleString()} AED</span>
+                  <div className="flex justify-between">
+                    <span>Unit Price</span>
+                    <span className="font-medium">AED {formatCurrency(unitPrice)}</span>
                   </div>
-                </div>
-              </div>
-
-              {/* Unit Calculation */}
-              <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-                <h4 className="font-medium text-indigo-800 mb-3">Unit Calculation</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-blue-600">
+                    <span>DLD Fee</span>
+                    <span className="font-medium">AED {formatCurrency(dldFee)}</span>
+                  </div>
+                  <div className="flex justify-between text-green-600">
+                    <span>Admin Fee</span>
+                    <span className="font-medium">AED {formatCurrency(adminFee)}</span>
+                  </div>
+                  <div className="flex justify-between text-amber-600">
+                    <span>Brokerage</span>
+                    <span className="font-medium">AED {formatCurrency(brokerFee)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Other Fees</span>
+                    <span className="font-medium">AED {formatCurrency(otherFees)}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-gray-300 font-bold text-lg">
                     <span>Total Cost</span>
-                    <span className="font-medium">{totalCost.toLocaleString()} AED</span>
+                    <span className="text-orange-600">AED {formatCurrency(totalCost)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Unit Value</span>
-                    <span className="font-medium">500 AED per unit</span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t border-indigo-200 font-bold text-lg text-indigo-700">
-                    <span>Total Units</span>
-                    <span>{totalUnits.toLocaleString()} units</span>
-                  </div>
-                  <p className="text-xs text-indigo-600 mt-2">
-                    Clients can purchase investment in multiples of these units (500 AED each)
-                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Area Section */}
+          {/* Area & Details Section */}
           {activeSection === "area" && (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="total_area">Total Area (sq.ft) *</Label>
-                  <Input id="total_area" type="number" value={formData.total_area} onChange={(e) => handleChange("total_area", e.target.value)} required />
+                  <Label htmlFor="total_area">Total Area (sqft) *</Label>
+                  <Input
+                    id="total_area"
+                    type="number"
+                    value={formData.total_area}
+                    onChange={(e) => handleChange("total_area", e.target.value)}
+                    placeholder="e.g., 1500"
+                    required
+                  />
                 </div>
                 <div>
-                  <Label htmlFor="carpet_area">Carpet Area (sq.ft) *</Label>
-                  <Input id="carpet_area" type="number" value={formData.carpet_area} onChange={(e) => handleChange("carpet_area", e.target.value)} required />
+                  <Label htmlFor="carpet_area">Carpet Area (sqft) *</Label>
+                  <Input
+                    id="carpet_area"
+                    type="number"
+                    value={formData.carpet_area}
+                    onChange={(e) => handleChange("carpet_area", e.target.value)}
+                    placeholder="e.g., 1200"
+                    required
+                  />
                 </div>
                 <div>
-                  <Label htmlFor="balcony_area">Balcony Area (sq.ft)</Label>
-                  <Input id="balcony_area" type="number" value={formData.balcony_area} onChange={(e) => handleChange("balcony_area", e.target.value)} />
+                  <Label htmlFor="balcony_area">Balcony Area (sqft)</Label>
+                  <Input
+                    id="balcony_area"
+                    type="number"
+                    value={formData.balcony_area}
+                    onChange={(e) => handleChange("balcony_area", e.target.value)}
+                    placeholder="e.g., 200"
+                  />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="floor">Floor Number *</Label>
-                  <Input id="floor" type="number" value={formData.floor} onChange={(e) => handleChange("floor", e.target.value)} required />
-                </div>
-                <div>
-                  <Label htmlFor="parking_spaces">Parking Spaces</Label>
-                  <Input id="parking_spaces" type="number" value={formData.parking_spaces} onChange={(e) => handleChange("parking_spaces", e.target.value)} />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="amenities">Amenities (comma-separated)</Label>
-                <Input id="amenities" value={formData.amenities} onChange={(e) => handleChange("amenities", e.target.value)} placeholder="Pool, Gym, Concierge" />
-              </div>
-            </div>
-          )}
-
-          {/* Payment Schedule Section */}
-          {activeSection === "payments" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-gray-800">Payment Schedule</h3>
-                  <p className="text-sm text-gray-500">Define payment milestones with dates and percentages</p>
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={addPaymentMilestone}>
-                  <Plus className="h-4 w-4 mr-1" /> Add Milestone
-                </Button>
-              </div>
-
-              {paymentSchedule.length === 0 ? (
-                <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                  <CalendarDays className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-500">No payment milestones added</p>
-                  <Button type="button" variant="outline" size="sm" className="mt-3" onClick={addPaymentMilestone}>
-                    <Plus className="h-4 w-4 mr-1" /> Add First Milestone
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {paymentSchedule.map((payment, idx) => (
-                    <div key={idx} className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex-1 grid grid-cols-3 gap-3">
-                        <div>
-                          <Label className="text-xs">Payment Date</Label>
-                          <Input
-                            type="date"
-                            value={payment.date}
-                            onChange={(e) => updatePaymentMilestone(idx, "date", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Percentage (%)</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            value={payment.percentage}
-                            onChange={(e) => updatePaymentMilestone(idx, "percentage", e.target.value)}
-                            placeholder="e.g., 20"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Description</Label>
-                          <Input
-                            value={payment.description}
-                            onChange={(e) => updatePaymentMilestone(idx, "description", e.target.value)}
-                            placeholder="e.g., Booking"
-                          />
-                        </div>
-                      </div>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removePaymentMilestone(idx)} className="text-red-500">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Total Percentage */}
-              {paymentSchedule.length > 0 && (
-                <div className={`p-4 rounded-lg ${Math.abs(getTotalPaymentPercentage() - 100) < 0.01 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">Total Payment Percentage</span>
-                    <span className={`text-lg font-bold ${Math.abs(getTotalPaymentPercentage() - 100) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
-                      {getTotalPaymentPercentage().toFixed(1)}%
-                    </span>
-                  </div>
-                  {formData.property_type === 'off_plan' && Math.abs(getTotalPaymentPercentage() - 100) > 0.01 && (
-                    <p className="text-sm text-red-600 mt-1">Off-plan properties require payment schedule to total 100%</p>
-                  )}
-                </div>
-              )}
-
-              {/* Calculated Amounts */}
-              {paymentSchedule.length > 0 && parseFloat(formData.unit_price) > 0 && (
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="font-medium text-gray-700 mb-3">Payment Amounts (Based on Unit Price)</h4>
-                  <div className="space-y-2 text-sm">
-                    {paymentSchedule.filter(p => p.date && p.percentage).map((p, idx) => (
-                      <div key={idx} className="flex justify-between">
-                        <span className="text-gray-600">{p.description || `Payment ${idx + 1}`} ({p.percentage}%)</span>
-                        <span className="font-medium">{((parseFloat(formData.unit_price) || 0) * parseFloat(p.percentage) / 100).toLocaleString()} AED</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Sale Settings Section */}
-          {activeSection === "sale" && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="expected_sale_rate">Expected Sale Rate (AED/sqft)</Label>
-                <Input
-                  id="expected_sale_rate"
-                  type="number"
-                  value={formData.expected_sale_rate}
-                  onChange={(e) => handleChange("expected_sale_rate", e.target.value)}
-                  placeholder="e.g., 2500"
-                />
-                {formData.expected_sale_rate && formData.total_area && (
-                  <p className="text-sm text-teal-600 mt-1">
-                    Estimated Sale Value: AED {(parseFloat(formData.expected_sale_rate) * parseFloat(formData.total_area)).toLocaleString()}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="estimated_sell_date">Estimated Sell Date</Label>
-                <Input
-                  id="estimated_sell_date"
-                  type="date"
-                  value={formData.estimated_sell_date}
-                  onChange={(e) => handleChange("estimated_sell_date", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="eligible_to_sell_after_percentage">Eligible to Sell After (% payments completed)</Label>
-                <Input
-                  id="eligible_to_sell_after_percentage"
-                  type="number"
-                  step="1"
-                  min="0"
-                  max="100"
-                  value={formData.eligible_to_sell_after_percentage}
-                  onChange={(e) => handleChange("eligible_to_sell_after_percentage", e.target.value)}
-                  placeholder="100"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Property becomes eligible to sell after this % of payments are made
-                </p>
               </div>
 
               <div>
@@ -863,55 +570,226 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
             </div>
           )}
 
-          {/* Images Section */}
-          {activeSection === "images" && (
+          {/* Payment Schedule Section */}
+          {activeSection === "payments" && (
             <div className="space-y-4">
+              <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                <p className="text-sm text-orange-700">
+                  <strong>Note:</strong> Payment schedule percentages are based on the <strong>Unit Price</strong> only. 
+                  DLD and Admin fees are tracked separately but paid proportionally with each milestone.
+                </p>
+              </div>
+
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Property Images</Label>
-                  <p className="text-sm text-gray-500">Upload up to 12 images</p>
+                  <h3 className="font-medium">Payment Milestones</h3>
+                  <p className="text-sm text-gray-500">
+                    Total: {getTotalPaymentPercentage().toFixed(1)}% 
+                    {Math.abs(getTotalPaymentPercentage() - 100) > 0.01 && (
+                      <span className="text-red-500 ml-2">(must equal 100%)</span>
+                    )}
+                  </p>
                 </div>
-                <span className="text-sm text-gray-500">{existingImages.length + images.length} / 12</span>
+                <Button type="button" variant="outline" size="sm" onClick={addPaymentMilestone}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Milestone
+                </Button>
               </div>
 
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
-              >
-                <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
-                <Upload className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600">Click to upload or drag and drop</p>
-              </div>
-
-              {existingImages.length > 0 && (
-                <div>
-                  <Label className="mb-2 block">Existing Images</Label>
-                  <div className="grid grid-cols-4 gap-3">
-                    {existingImages.map((img) => (
-                      <div key={img.id} className="relative group">
-                        <img src={`data:${img.content_type};base64,${img.data}`} alt={img.filename} className="w-full h-24 object-cover rounded-lg" />
-                        <button type="button" onClick={() => removeExistingImage(img.id)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+              {paymentSchedule.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed">
+                  <CalendarDays className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">No payment milestones added</p>
+                  <Button type="button" variant="outline" size="sm" className="mt-2" onClick={addPaymentMilestone}>
+                    Add First Milestone
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {paymentSchedule.map((milestone, idx) => (
+                    <div key={idx} className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-700 font-medium text-sm">
+                        {idx + 1}
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex-1 grid grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-xs">Date</Label>
+                          <Input
+                            type="date"
+                            value={milestone.date}
+                            onChange={(e) => updatePaymentMilestone(idx, "date", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Percentage</Label>
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={milestone.percentage}
+                              onChange={(e) => updatePaymentMilestone(idx, "percentage", e.target.value)}
+                              placeholder="e.g., 20"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Description</Label>
+                          <Input
+                            value={milestone.description}
+                            onChange={(e) => updatePaymentMilestone(idx, "description", e.target.value)}
+                            placeholder="e.g., Booking"
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removePaymentMilestone(idx)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
 
-              {images.length > 0 && (
-                <div>
-                  <Label className="mb-2 block">New Images</Label>
-                  <div className="grid grid-cols-4 gap-3">
-                    {images.map((img, idx) => (
-                      <div key={idx} className="relative group">
-                        <img src={img.preview} alt={img.name} className="w-full h-24 object-cover rounded-lg" />
-                        <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+              {/* Payment Amount Preview */}
+              {paymentSchedule.length > 0 && unitPrice > 0 && (
+                <div className="bg-gray-100 rounded-lg p-4 mt-4">
+                  <h4 className="font-medium text-gray-700 mb-3">Payment Amount Preview (Unit Price Only)</h4>
+                  <div className="space-y-2 text-sm">
+                    {paymentSchedule.filter(p => p.percentage).map((milestone, idx) => {
+                      const pct = parseFloat(milestone.percentage) || 0;
+                      const amount = unitPrice * pct / 100;
+                      return (
+                        <div key={idx} className="flex justify-between">
+                          <span>{milestone.description || `Milestone ${idx + 1}`} ({pct}%)</span>
+                          <span className="font-medium">AED {formatCurrency(amount)}</span>
+                        </div>
+                      );
+                    })}
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sale Settings Section */}
+          {activeSection === "sale" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="expected_sale_rate">Expected Sale Rate (AED/sqft)</Label>
+                  <Input
+                    id="expected_sale_rate"
+                    type="number"
+                    value={formData.expected_sale_rate}
+                    onChange={(e) => handleChange("expected_sale_rate", e.target.value)}
+                    placeholder="e.g., 2800"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="estimated_sell_date">Estimated Sell Date</Label>
+                  <Input
+                    id="estimated_sell_date"
+                    type="date"
+                    value={formData.estimated_sell_date}
+                    onChange={(e) => handleChange("estimated_sell_date", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="eligible_to_sell_after_percentage">Eligible to Sell After (%)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="eligible_to_sell_after_percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.eligible_to_sell_after_percentage}
+                    onChange={(e) => handleChange("eligible_to_sell_after_percentage", e.target.value)}
+                    className="w-32"
+                  />
+                  <span className="text-gray-500">% of payments completed</span>
+                </div>
+              </div>
+
+              {/* Expected Profit Preview */}
+              {formData.expected_sale_rate && formData.total_area && (
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                  <h4 className="font-medium text-green-800 mb-2">Expected Profit</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Expected Sale Value</span>
+                      <span className="font-medium">
+                        AED {formatCurrency(parseFloat(formData.expected_sale_rate) * parseFloat(formData.total_area))}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total Cost</span>
+                      <span className="font-medium">AED {formatCurrency(totalCost)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-green-200 font-bold">
+                      <span>Estimated Profit</span>
+                      <span className="text-green-700">
+                        AED {formatCurrency((parseFloat(formData.expected_sale_rate) * parseFloat(formData.total_area)) - totalCost)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Images Section */}
+          {activeSection === "images" && (
+            <div className="space-y-4">
+              <div 
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-orange-400 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-600">Click to upload images</p>
+                <p className="text-sm text-gray-400">Max 12 images (PNG, JPG)</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
+
+              {(images.length > 0 || existingImages.length > 0) && (
+                <div className="grid grid-cols-4 gap-4">
+                  {existingImages.map((img, idx) => (
+                    <div key={`existing-${idx}`} className="relative group">
+                      <img src={img.url} alt="" className="w-full h-24 object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={() => removeExistingImage(img.id)}
+                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {images.map((img, idx) => (
+                    <div key={`new-${idx}`} className="relative group">
+                      <img src={img.preview} alt="" className="w-full h-24 object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -919,32 +797,17 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
         </form>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
-          <div>
-            {activeSection !== "basic" && (
-              <Button type="button" variant="ghost" onClick={() => {
-                const idx = sections.findIndex(s => s.id === activeSection);
-                if (idx > 0) setActiveSection(sections[idx - 1].id);
-              }}>
-                ← Previous
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            {activeSection !== "images" ? (
-              <Button type="button" onClick={() => {
-                const idx = sections.findIndex(s => s.id === activeSection);
-                if (idx < sections.length - 1) setActiveSection(sections[idx + 1].id);
-              }} className="bg-teal-600 hover:bg-teal-700">
-                Next →
-              </Button>
-            ) : (
-              <Button onClick={handleSubmit} disabled={loading} className="bg-teal-600 hover:bg-teal-700">
-                {loading ? "Saving..." : isEditing ? "Update" : "Create"}
-              </Button>
-            )}
-          </div>
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={loading}
+            className="bg-orange-600 hover:bg-orange-700"
+          >
+            {loading ? "Saving..." : isEditing ? "Update Property" : "Create Property"}
+          </Button>
         </div>
       </div>
     </div>
