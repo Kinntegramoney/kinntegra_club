@@ -1918,3 +1918,360 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
     </div>
   );
 }
+
+
+// Payment Record Modal - Records payment per investor for a milestone
+function PaymentRecordModal({ opportunity, milestone, onClose, onSuccess }) {
+  const [selectedInvestor, setSelectedInvestor] = useState("");
+  const [formData, setFormData] = useState({
+    transfer_date: "",
+    home_currency: "INR",
+    home_currency_amount: "",
+    aed_amount: "",
+    effective_rate: ""
+  });
+  const [swiftFile, setSwiftFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
+  const formatCurrency = (amt) => new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(amt || 0);
+  
+  // Get investors who haven't paid for this milestone yet
+  const existingPayments = opportunity.investor_payments?.filter(p => p.milestone_index === milestone.index) || [];
+  const paidInvestorIds = existingPayments.map(p => p.investor_id || p.investor_index);
+  const unpaidInvestors = opportunity.investors?.filter((inv, idx) => 
+    !paidInvestorIds.includes(inv.client_id) && !paidInvestorIds.includes(idx)
+  ) || [];
+  
+  // Calculate expected AED amount based on investor's share
+  const selectedInv = opportunity.investors?.find((inv, idx) => 
+    inv.client_id === selectedInvestor || idx.toString() === selectedInvestor
+  );
+  const expectedAED = selectedInv 
+    ? (opportunity.unit_price * milestone.percentage / 100) * (selectedInv.share_percentage / 100)
+    : 0;
+  
+  // Auto-calculate effective rate
+  const calculateEffectiveRate = () => {
+    const homeAmt = parseFloat(formData.home_currency_amount) || 0;
+    const aedAmt = parseFloat(formData.aed_amount) || 0;
+    if (homeAmt > 0 && aedAmt > 0) {
+      return (homeAmt / aedAmt).toFixed(4);
+    }
+    return "";
+  };
+
+  const handleChange = (field, value) => {
+    const newData = { ...formData, [field]: value };
+    
+    // Auto-calculate effective rate when both amounts are entered
+    if (field === 'home_currency_amount' || field === 'aed_amount') {
+      const homeAmt = parseFloat(field === 'home_currency_amount' ? value : newData.home_currency_amount) || 0;
+      const aedAmt = parseFloat(field === 'aed_amount' ? value : newData.aed_amount) || 0;
+      if (homeAmt > 0 && aedAmt > 0) {
+        newData.effective_rate = (homeAmt / aedAmt).toFixed(4);
+      }
+    }
+    
+    setFormData(newData);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedInvestor || !formData.transfer_date || !formData.aed_amount) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const API = process.env.REACT_APP_BACKEND_URL;
+      
+      // Create FormData for file upload
+      const submitData = new FormData();
+      submitData.append('milestone_index', milestone.index);
+      submitData.append('investor_id', selectedInvestor);
+      submitData.append('transfer_date', formData.transfer_date);
+      submitData.append('home_currency', formData.home_currency);
+      submitData.append('home_currency_amount', formData.home_currency_amount || 0);
+      submitData.append('aed_amount', formData.aed_amount);
+      submitData.append('effective_rate', formData.effective_rate || calculateEffectiveRate());
+      
+      if (swiftFile) {
+        submitData.append('swift_copy', swiftFile);
+      }
+      
+      await axios.post(
+        `${API}/api/real-estate-opportunities/${opportunity.id}/investor-payment`,
+        submitData,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+      );
+      
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to record payment");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-green-600" />
+              Record Payment
+            </h2>
+            <p className="text-sm text-gray-500">{milestone.description || `Payment ${milestone.index + 1}`} - {milestone.percentage}%</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Milestone Info */}
+          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+            <div className="flex justify-between">
+              <span className="text-green-700">Total Milestone Amount</span>
+              <span className="font-bold text-green-800">AED {formatCurrency(opportunity.unit_price * milestone.percentage / 100)}</span>
+            </div>
+            <p className="text-xs text-green-600 mt-1">Due: {new Date(milestone.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+          </div>
+          
+          {/* Select Investor */}
+          <div>
+            <Label>Select Investor *</Label>
+            {unpaidInvestors.length > 0 ? (
+              <Select value={selectedInvestor} onValueChange={setSelectedInvestor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose investor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unpaidInvestors.map((inv, idx) => {
+                    const originalIdx = opportunity.investors?.findIndex(i => i.client_id === inv.client_id);
+                    return (
+                      <SelectItem key={inv.client_id || idx} value={inv.client_id || originalIdx.toString()}>
+                        {inv.client_name} ({inv.share_percentage}%)
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm text-green-600 p-3 bg-green-50 rounded-lg">All investors have paid for this milestone!</p>
+            )}
+            {selectedInv && (
+              <p className="text-xs text-gray-500 mt-1">
+                Expected: AED {formatCurrency(expectedAED)} ({selectedInv.share_percentage}% share)
+              </p>
+            )}
+          </div>
+          
+          {/* Transfer Date */}
+          <div>
+            <Label htmlFor="transfer_date">Date of Transfer *</Label>
+            <Input
+              id="transfer_date"
+              type="date"
+              value={formData.transfer_date}
+              onChange={(e) => handleChange('transfer_date', e.target.value)}
+              required
+            />
+          </div>
+          
+          {/* Home Currency Selection */}
+          <div>
+            <Label>Home Currency</Label>
+            <Select value={formData.home_currency} onValueChange={(v) => handleChange('home_currency', v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="INR">INR - Indian Rupee</SelectItem>
+                <SelectItem value="USD">USD - US Dollar</SelectItem>
+                <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                <SelectItem value="EUR">EUR - Euro</SelectItem>
+                <SelectItem value="AED">AED - UAE Dirham</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Amount in Home Currency */}
+          <div>
+            <Label htmlFor="home_currency_amount">Amount Debited ({formData.home_currency})</Label>
+            <Input
+              id="home_currency_amount"
+              type="number"
+              step="0.01"
+              placeholder={`Amount in ${formData.home_currency}`}
+              value={formData.home_currency_amount}
+              onChange={(e) => handleChange('home_currency_amount', e.target.value)}
+            />
+          </div>
+          
+          {/* AED Amount */}
+          <div>
+            <Label htmlFor="aed_amount">AED Amount Received *</Label>
+            <Input
+              id="aed_amount"
+              type="number"
+              step="0.01"
+              placeholder="Amount in AED"
+              value={formData.aed_amount}
+              onChange={(e) => handleChange('aed_amount', e.target.value)}
+              required
+            />
+          </div>
+          
+          {/* Effective Rate (Auto-calculated) */}
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <div className="flex justify-between items-center">
+              <span className="text-blue-700">Effective Exchange Rate</span>
+              <span className="font-bold text-blue-800 text-lg">
+                {formData.effective_rate || calculateEffectiveRate() || '--'} {formData.home_currency}/AED
+              </span>
+            </div>
+            <p className="text-xs text-blue-600 mt-1">Auto-calculated from amounts</p>
+          </div>
+          
+          {/* SWIFT Copy Upload */}
+          <div>
+            <Label>SWIFT Copy</Label>
+            <div className="mt-1">
+              {swiftFile ? (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-gray-500" />
+                    <span className="text-sm text-gray-700 truncate max-w-xs">{swiftFile.name}</span>
+                  </div>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setSwiftFile(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                  <Upload className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-600">Upload SWIFT copy</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={(e) => setSwiftFile(e.target.files[0])}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button 
+              type="submit" 
+              disabled={loading || !selectedInvestor || unpaidInvestors.length === 0} 
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              {loading ? "Recording..." : "Record Payment"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
+// Oqood Upload Modal
+function OqoodUploadModal({ opportunity, onClose, onSuccess }) {
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) {
+      toast.error("Please select a file to upload");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const API = process.env.REACT_APP_BACKEND_URL;
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      await axios.post(
+        `${API}/api/real-estate-opportunities/${opportunity.id}/oqood`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+      );
+      
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to upload Oqood document");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Upload Oqood Document
+            </h2>
+            <p className="text-sm text-gray-500">{opportunity.building_name} - Unit {opportunity.unit_no}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-700">
+            <p className="font-medium mb-1">What is Oqood?</p>
+            <p>Oqood is the property registration document issued by the Dubai Land Department. Upload it here for client reference.</p>
+          </div>
+          
+          <div>
+            {file ? (
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-8 w-8 text-blue-600" />
+                  <div>
+                    <p className="font-medium text-gray-800 truncate max-w-xs">{file.name}</p>
+                    <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                </div>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setFile(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+                <Upload className="h-10 w-10 text-gray-400" />
+                <span className="text-gray-600">Click to upload Oqood document</span>
+                <span className="text-xs text-gray-400">PDF, JPG, PNG (max 10MB)</span>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => setFile(e.target.files[0])}
+                />
+              </label>
+            )}
+          </div>
+          
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={loading || !file} className="flex-1 bg-blue-600 hover:bg-blue-700">
+              {loading ? "Uploading..." : "Upload Document"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
