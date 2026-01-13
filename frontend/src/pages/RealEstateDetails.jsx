@@ -72,53 +72,91 @@ export default function RealEstateDetails() {
     return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  // XIRR Calculation Function - flexible version for calculator
-  const calculateXIRRWithParams = (opp, saleStagePercent, saleDateStr, saleRatePerSqft) => {
-    if (!opp || !opp.unit_price || !opp.payment_schedule || opp.payment_schedule.length === 0) return null;
-    if (!saleRatePerSqft || !opp.total_area || !saleDateStr) return null;
+  // XIRR Calculation Function - CORRECTED VERSION
+  // DLD + Admin are upfront costs paid with first payment
+  // Outstanding amount (unpaid portion) is deducted from sale proceeds
+  const calculateXIRRWithParams = (opp, saleStagePercent, saleDateStr, saleRatePerSqft, returnDetails = false) => {
+    if (!opp || !opp.unit_price || !opp.payment_schedule || opp.payment_schedule.length === 0) {
+      return returnDetails ? { xirr: null, cashFlows: [] } : null;
+    }
+    if (!saleRatePerSqft || !opp.total_area || !saleDateStr) {
+      return returnDetails ? { xirr: null, cashFlows: [] } : null;
+    }
     
     const sortedSchedule = [...opp.payment_schedule]
       .filter(p => p.date && p.percentage)
       .sort((a, b) => new Date(a.date) - new Date(b.date));
-    if (sortedSchedule.length === 0) return null;
+    if (sortedSchedule.length === 0) {
+      return returnDetails ? { xirr: null, cashFlows: [] } : null;
+    }
 
     const cashFlows = [];
     const unitPrice = opp.unit_price;
-    const upfrontAmount = (opp.dld_fee || 0) + (opp.admin_fee || 0);
+    const dldFee = opp.dld_fee || 0;
+    const adminFee = opp.admin_fee || 0;
+    const upfrontFees = dldFee + adminFee;
     
-    // Calculate cumulative percentage to determine which payments are made before sale
+    // Track total paid towards unit price
+    let totalPaidTowardsUnit = 0;
     let cumulativePercent = 0;
     let isFirstPayment = true;
     
     sortedSchedule.forEach(milestone => {
       const pct = parseFloat(milestone.percentage) || 0;
+      const prevCumulative = cumulativePercent;
       cumulativePercent += pct;
       
       // Only include payments up to the sale stage
-      if (cumulativePercent <= saleStagePercent) {
-        const amount = unitPrice * pct / 100;
-        const totalAmount = isFirstPayment ? amount + upfrontAmount : amount;
-        cashFlows.push({ date: new Date(milestone.date), amount: -totalAmount });
-        isFirstPayment = false;
-      } else if (cumulativePercent - pct < saleStagePercent) {
-        // Partial payment for the milestone that crosses the threshold
-        const remainingPct = saleStagePercent - (cumulativePercent - pct);
-        if (remainingPct > 0) {
-          const amount = unitPrice * remainingPct / 100;
-          const totalAmount = isFirstPayment ? amount + upfrontAmount : amount;
-          cashFlows.push({ date: new Date(milestone.date), amount: -totalAmount });
-          isFirstPayment = false;
+      if (prevCumulative < saleStagePercent) {
+        let effectivePct = pct;
+        // If this milestone crosses the sale stage, only count partial
+        if (cumulativePercent > saleStagePercent) {
+          effectivePct = saleStagePercent - prevCumulative;
         }
+        
+        const paymentAmount = unitPrice * effectivePct / 100;
+        totalPaidTowardsUnit += paymentAmount;
+        
+        // First payment includes DLD + Admin fees (upfront costs)
+        const totalOutflow = isFirstPayment ? paymentAmount + upfrontFees : paymentAmount;
+        
+        cashFlows.push({ 
+          date: new Date(milestone.date), 
+          amount: -totalOutflow,
+          description: isFirstPayment ? `${milestone.description || 'Booking'} + DLD + Admin` : (milestone.description || `Payment`),
+          percentage: effectivePct,
+          isOutflow: true
+        });
+        isFirstPayment = false;
       }
     });
 
-    if (cashFlows.length === 0) return null;
+    if (cashFlows.length === 0) {
+      return returnDetails ? { xirr: null, cashFlows: [] } : null;
+    }
 
-    // Add sale proceeds
-    const expectedSaleValue = parseFloat(saleRatePerSqft) * opp.total_area;
-    const sellingFee = expectedSaleValue * (opp.unit_selling_fee_percentage || 0) / 100;
-    cashFlows.push({ date: new Date(saleDateStr), amount: expectedSaleValue - sellingFee });
+    // Calculate sale proceeds
+    const grossSaleValue = parseFloat(saleRatePerSqft) * opp.total_area;
+    const sellingFee = grossSaleValue * (opp.unit_selling_fee_percentage || 0) / 100;
+    
+    // Outstanding amount = Unit price not yet paid (remaining %)
+    const outstandingAmount = unitPrice * (100 - saleStagePercent) / 100;
+    
+    // Net proceeds = Gross Sale - Selling Fee - Outstanding Amount to Developer
+    const netSaleProceeds = grossSaleValue - sellingFee - outstandingAmount;
+    
+    cashFlows.push({ 
+      date: new Date(saleDateStr), 
+      amount: netSaleProceeds,
+      description: 'Sale Proceeds (Net)',
+      grossSale: grossSaleValue,
+      sellingFee: sellingFee,
+      outstandingDeducted: outstandingAmount,
+      isOutflow: false
+    });
 
+    // Calculate XIRR using Newton-Raphson
+    let xirr = null;
     try {
       const tol = 0.0001, maxIter = 100;
       let rate = 0.1;
