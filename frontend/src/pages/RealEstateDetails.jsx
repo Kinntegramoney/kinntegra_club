@@ -432,12 +432,6 @@ export default function RealEstateDetails() {
               </div>
             </div>
             <div className="flex gap-2">
-              {canViewPaymentManagement && opp.payment_schedule && opp.payment_schedule.length > 0 && (
-                <Button variant="outline" onClick={() => setShowPaymentManagement(true)} data-testid="manage-payments-btn">
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Manage Payments
-                </Button>
-              )}
               {opp.status === 'available' && remainingPercentage > 0 && (
                 <Button onClick={() => setShowAllocateModal(true)} className="bg-teal-600 hover:bg-teal-700">
                   <Plus className="h-4 w-4 mr-2" />
