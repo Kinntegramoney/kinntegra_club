@@ -32,6 +32,7 @@ export default function Sidebar({ user }) {
 
   const adminItems = [
     { path: "/broker/admin/bonds", label: "Add Bond" },
+    { path: "/broker/admin/real-estate", label: "Add Real Estate" },
     { path: "/broker/admin/sub-brokers", label: "Create Sub Broker" },
     { path: "/broker/admin/clients", label: "Create Client" },
   ];
