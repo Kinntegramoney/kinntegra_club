@@ -124,7 +124,7 @@ export default function ClientOpportunities() {
                     <div className="flex items-center gap-2 text-sm">
                       <Percent className="h-4 w-4 text-gray-400" />
                       <span className="text-gray-600">
-                        Coupon: {bond.coupon_rate}% | IRR: {bond.secondary_irr}%
+                        IRR: {bond.secondary_irr}%
                       </span>
                     </div>
                   </div>

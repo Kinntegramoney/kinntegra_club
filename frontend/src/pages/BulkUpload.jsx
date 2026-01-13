@@ -189,7 +189,7 @@ export default function BulkUpload() {
                     {activeTab === "bonds" && (
                       <>
                         <li>• Bond Code, Name, Principal Amount</li>
-                        <li>• Coupon Rate, Primary/Secondary IRR</li>
+                        <li>• Primary/Secondary IRR</li>
                         <li>• Start and Maturity Dates</li>
                         <li>• Auto-generates payment schedules</li>
                       </>
