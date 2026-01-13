@@ -36,16 +36,6 @@ export default function RealEstateDetails() {
   const [xirrSaleDate, setXirrSaleDate] = useState("");
   const [xirrSaleRate, setXirrSaleRate] = useState(""); // per sqft
 
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (!userData) {
-      navigate("/login");
-      return;
-    }
-    setUser(JSON.parse(userData));
-    fetchData();
-  }, [id, navigate]);
-
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -62,6 +52,16 @@ export default function RealEstateDetails() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (!userData) {
+      navigate("/login");
+      return;
+    }
+    setUser(JSON.parse(userData));
+    fetchData();
+  }, [id, navigate, fetchData]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
