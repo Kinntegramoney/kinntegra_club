@@ -199,35 +199,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     setPaymentSchedule(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
-      // Always sort by date after any update
-      return updated.sort((a, b) => {
-        if (!a.date) return 1;
-        if (!b.date) return -1;
-        return new Date(a.date) - new Date(b.date);
-      });
+      return updated; // Don't sort here - sorting is done during render
     });
-  };
-
-  const removePaymentMilestone = (index) => {
-    // Get sorted schedule, find actual index, then remove
-    const sorted = getSortedPaymentSchedule();
-    const milestoneToRemove = sorted[index];
-    setPaymentSchedule(prev => prev.filter(p => 
-      !(p.date === milestoneToRemove.date && 
-        p.percentage === milestoneToRemove.percentage && 
-        p.description === milestoneToRemove.description)
-    ));
-  };
-
-  // Get the actual index in the original array for a sorted index
-  const getOriginalIndex = (sortedIndex) => {
-    const sorted = getSortedPaymentSchedule();
-    const milestone = sorted[sortedIndex];
-    return paymentSchedule.findIndex(p => 
-      p.date === milestone.date && 
-      p.percentage === milestone.percentage && 
-      p.description === milestone.description
-    );
   };
 
   // Image handlers
