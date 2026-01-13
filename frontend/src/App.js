@@ -6,16 +6,17 @@ import Opportunities from "@/pages/Opportunities";
 import AdminBonds from "@/pages/AdminBonds";
 import AdminSubBrokers from "@/pages/AdminSubBrokers";
 import AdminClients from "@/pages/AdminClients";
+import AdminRealEstate from "@/pages/AdminRealEstate";
 import TradeVerification from "@/pages/TradeVerification";
 import Holdings from "@/pages/Holdings";
 import SubBrokerOpportunities from "@/pages/SubBrokerOpportunities";
 import CreateBond from "@/pages/CreateBond";
 import BondDetails from "@/pages/BondDetails";
+import RealEstateDetails from "@/pages/RealEstateDetails";
 import ClientOpportunities from "@/pages/ClientOpportunities";
 import ClientHoldings from "@/pages/ClientHoldings";
 import ClientTradeVerification from "@/pages/ClientTradeVerification";
 import ClientProfile from "@/pages/ClientProfile";
-import RealEstateOpportunities from "@/pages/RealEstateOpportunities";
 import { Toaster } from "@/components/ui/sonner";
 
 // Protected Route Component
