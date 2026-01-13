@@ -72,6 +72,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
 
   const [images, setImages] = useState([]);
   const [existingImages, setExistingImages] = useState(opportunity?.images || []);
+  const [presentations, setPresentations] = useState([]);
+  const [existingPresentations, setExistingPresentations] = useState(opportunity?.presentations || []);
   const [loading, setLoading] = useState(false);
   const [activeSection, setActiveSection] = useState("basic");
 
