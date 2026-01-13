@@ -156,7 +156,7 @@ export default function AdminClients() {
                 />
               </div>
               <Button
-                onClick={() => setShowBulkUploadModal(true)}
+                onClick={() => navigate('/broker/bulk-upload?tab=clients')}
                 variant="outline"
                 className="border-amber-300 text-amber-700 hover:bg-amber-50"
                 data-testid="bulk-upload-btn"
