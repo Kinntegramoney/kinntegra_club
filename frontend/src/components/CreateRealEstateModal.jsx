@@ -728,6 +728,13 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                 </Button>
               </div>
 
+              {/* Note about auto-sorting */}
+              {paymentSchedule.length > 1 && (
+                <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                  ℹ️ Milestones are automatically sorted by date
+                </p>
+              )}
+
               {paymentSchedule.length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed">
                   <CalendarDays className="h-10 w-10 text-gray-300 mx-auto mb-2" />
@@ -740,12 +747,14 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                 <div className="space-y-3">
                   {paymentSchedule.map((milestone, idx) => (
                     <div key={idx} className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
-                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-700 font-medium text-sm">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm ${
+                        idx === 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                      }`}>
                         {idx + 1}
                       </div>
                       <div className="flex-1 grid grid-cols-3 gap-3">
                         <div>
-                          <Label className="text-xs">Date</Label>
+                          <Label className="text-xs">Date {idx === 0 && <span className="text-red-500">(First = Booking)</span>}</Label>
                           <Input
                             type="date"
                             value={milestone.date}
@@ -770,7 +779,7 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                           <Input
                             value={milestone.description}
                             onChange={(e) => updatePaymentMilestone(idx, "description", e.target.value)}
-                            placeholder="e.g., Booking"
+                            placeholder={idx === 0 ? "Booking" : "e.g., Construction"}
                           />
                         </div>
                       </div>
