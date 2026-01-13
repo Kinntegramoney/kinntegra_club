@@ -3028,28 +3028,16 @@ class RealEstateOpportunityCreate(BaseModel):
     # Basic Information
     building_name: str
     unit_no: str
-    property_type: str  # "off_plan" or "fractional"
     
-    # Pricing (in AED)
+    # Pricing (in AED) - all absolute amounts
     unit_price: float
+    dld_fee: float = 0  # DLD fee - absolute amount
+    admin_fee: float = 0  # Admin fee - absolute amount
+    broker_fee: float = 0  # Brokerage fee
+    other_fees: float = 0  # Other fees
     
-    # DLD Fees Section (absolute amounts)
-    dld_fee_percentage: float = 4.0  # Default 4% DLD
-    dld_fee_amount: Optional[float] = None  # Override with absolute amount
-    
-    # Admin Fees Section (absolute amounts)
-    admin_fee_percentage: float = 0
-    admin_fee_amount: Optional[float] = None  # Override with absolute amount
-    
-    # Brokerage Fee (absolute amount)
-    broker_fee: float = 0
-    other_fees: float = 0
-    
-    # Management Fees Section (absolute amounts)
-    upfront_fee: float = 0  # One-time upfront fee
-    trailer_fee: float = 0  # Ongoing trailer fee
-    management_fee: float = 0  # Property management fee
-    unit_selling_fee: float = 0  # Fee when selling units
+    # Unit Selling Fee (% of selling price, 0-2.5%)
+    unit_selling_fee_percentage: float = 0
     
     # Area Details (sq.ft)
     total_area: float
@@ -3061,7 +3049,7 @@ class RealEstateOpportunityCreate(BaseModel):
     floor: int
     parking_spaces: int = 0
     
-    # Payment Schedule (like principal repayments)
+    # Payment Schedule - percentages based on unit price only
     payment_schedule: List[PaymentScheduleItem] = []
     
     # Sale Settings
@@ -3072,7 +3060,6 @@ class RealEstateOpportunityCreate(BaseModel):
     # Optional Details
     developer_name: Optional[str] = None
     location: Optional[str] = None
-    amenities: Optional[List[str]] = None
     handover_date: Optional[str] = None
     description: Optional[str] = None
 
