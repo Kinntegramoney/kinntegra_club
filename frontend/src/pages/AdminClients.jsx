@@ -144,7 +144,7 @@ export default function AdminClients() {
               <h1 className="text-2xl font-bold text-gray-800" data-testid="admin-clients-title">Admin - Clients</h1>
               <p className="text-sm text-gray-500 mt-1">Manage client accounts and link to sub-brokers</p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -155,6 +155,15 @@ export default function AdminClients() {
                   className="pl-10 w-64"
                 />
               </div>
+              <Button
+                onClick={() => setShowBulkUploadModal(true)}
+                variant="outline"
+                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                data-testid="bulk-upload-btn"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
               <Button
                 onClick={() => setShowCreateModal(true)}
                 className="bg-amber-700 hover:bg-amber-800"
