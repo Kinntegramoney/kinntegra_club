@@ -886,6 +886,19 @@ export default function RealEstateDetails() {
           }}
         />
       )}
+
+      {/* Share with Clients Modal */}
+      {showShareModal && (
+        <ShareWithClientsModal
+          opportunity={opp}
+          clients={clients}
+          onClose={() => setShowShareModal(false)}
+          onSuccess={() => {
+            setShowShareModal(false);
+            toast.success("Opportunity shared with selected clients!");
+          }}
+        />
+      )}
     </div>
   );
 }
