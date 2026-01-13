@@ -317,10 +317,13 @@ export default function RealEstateDetails() {
            clients.some(c => opportunity.investors?.some(inv => inv.client_id === c.id));
   }, [user, opportunity, clients]);
 
-  // Check if opportunity is fully funded (all 4 investors allocated)
+  // Check if opportunity is fully funded (100% invested or status is fully_invested)
   const isFullyFunded = useMemo(() => {
     if (!opportunity) return false;
-    return (opportunity.current_investors || 0) >= 4;
+    // Check by status OR by invested percentage
+    return opportunity.status === 'fully_invested' || 
+           (opportunity.invested_percentage && opportunity.invested_percentage >= 99.99) ||
+           (opportunity.remaining_percentage !== undefined && opportunity.remaining_percentage <= 0.01);
   }, [opportunity]);
 
   // Check if user can view payment management section
@@ -335,7 +338,7 @@ export default function RealEstateDetails() {
   }, [user, opportunity, isFullyFunded, isCoOwner, isManagingSubBroker]);
 
   // Check if user can view/manage Oqood section
-  // Oqood section only appears AFTER the first milestone payments are ALL verified
+  // Oqood section only appears AFTER the first milestone payments are ALL verified by ALL investors
   const canManageOqood = useMemo(() => {
     if (!canViewPaymentManagement) return false;
     if (!opportunity?.payment_schedule?.length || !opportunity?.investors?.length) return false;
@@ -352,14 +355,14 @@ export default function RealEstateDetails() {
       p => p.milestone_index === firstMilestoneIndex
     );
     
-    // Check if ALL investors (4) have verified payments for the first milestone
+    // Check if ALL investors have verified payments for the first milestone
     const verifiedCount = firstMilestonePayments.filter(
       p => p.status === 'verified'
     ).length;
     const totalInvestors = opportunity.investors?.length || 0;
     
     // All investors must have verified payments for the first milestone
-    return verifiedCount >= totalInvestors && totalInvestors >= 4;
+    return totalInvestors > 0 && verifiedCount >= totalInvestors;
   }, [canViewPaymentManagement, opportunity]);
 
   if (!user) return null;
