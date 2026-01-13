@@ -36,6 +36,13 @@ export default function RealEstateDetails() {
   const [xirrSaleDate, setXirrSaleDate] = useState("");
   const [xirrSaleRate, setXirrSaleRate] = useState(""); // per sqft
 
+  // Update xirrSaleStage to eligible percentage when opportunity loads
+  useEffect(() => {
+    if (opportunity?.eligible_to_sell_after_percentage) {
+      setXirrSaleStage(opportunity.eligible_to_sell_after_percentage);
+    }
+  }, [opportunity]);
+
   const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
