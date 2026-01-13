@@ -916,7 +916,7 @@ async def bulk_upload_real_estate(
     return results
 
 
-
+class PartnerUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     mobile: Optional[str] = None
