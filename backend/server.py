@@ -3149,15 +3149,21 @@ async def create_real_estate_opportunity(
     if opportunity_data.property_type not in ['off_plan', 'fractional']:
         raise HTTPException(status_code=400, detail="Property type must be 'off_plan' or 'fractional'")
     
-    # Calculate DLD fee (percentage of unit price or override)
+    # Calculate DLD fee (absolute amount or percentage of unit price)
     dld_fee = opportunity_data.dld_fee_amount if opportunity_data.dld_fee_amount else (
         opportunity_data.unit_price * opportunity_data.dld_fee_percentage / 100
     )
     
-    # Calculate Admin fee (percentage of unit price or override)
+    # Calculate Admin fee (absolute amount or percentage of unit price)
     admin_fee = opportunity_data.admin_fee_amount if opportunity_data.admin_fee_amount else (
         opportunity_data.unit_price * opportunity_data.admin_fee_percentage / 100
     )
+    
+    # Management fees (absolute amounts)
+    upfront_fee = opportunity_data.upfront_fee
+    trailer_fee = opportunity_data.trailer_fee
+    management_fee = opportunity_data.management_fee
+    unit_selling_fee = opportunity_data.unit_selling_fee
     
     # Calculate total cost including all fees
     total_cost = (
@@ -3165,8 +3171,18 @@ async def create_real_estate_opportunity(
         dld_fee + 
         admin_fee + 
         opportunity_data.broker_fee + 
-        opportunity_data.other_fees
+        opportunity_data.other_fees +
+        upfront_fee +
+        trailer_fee +
+        management_fee +
+        unit_selling_fee
     )
+    
+    # Calculate units (total cost divided by 500 AED per unit)
+    UNIT_VALUE_AED = 500
+    total_units = int(total_cost // UNIT_VALUE_AED)
+    if total_units == 0:
+        total_units = 1  # Minimum 1 unit
     
     # Calculate balcony to carpet ratio
     balcony_ratio = 0
@@ -3190,15 +3206,6 @@ async def create_real_estate_opportunity(
                 detail=f"Payment schedule must total 100%. Current total: {total_percentage}%"
             )
     
-    # Set max investors based on property type
-    if opportunity_data.property_type == 'off_plan':
-        max_investors = 4
-        max_investment_per_investor = total_cost / 4
-    else:
-        # Fractional - max investment is 50,000 USD equivalent
-        max_investment_per_investor = MAX_FRACTIONAL_INVESTMENT_AED
-        max_investors = int(total_cost / max_investment_per_investor) + 1
-    
     opportunity_dict = {
         "id": str(uuid.uuid4()),
         # Basic Info
@@ -3206,7 +3213,7 @@ async def create_real_estate_opportunity(
         "unit_no": opportunity_data.unit_no,
         "property_type": opportunity_data.property_type,
         
-        # Pricing
+        # Pricing (absolute amounts)
         "unit_price": opportunity_data.unit_price,
         "dld_fee_percentage": opportunity_data.dld_fee_percentage,
         "dld_fee": round(dld_fee, 2),
@@ -3214,7 +3221,20 @@ async def create_real_estate_opportunity(
         "admin_fee": round(admin_fee, 2),
         "broker_fee": opportunity_data.broker_fee,
         "other_fees": opportunity_data.other_fees,
+        
+        # Management Fees (absolute amounts)
+        "upfront_fee": upfront_fee,
+        "trailer_fee": trailer_fee,
+        "management_fee": management_fee,
+        "unit_selling_fee": unit_selling_fee,
+        
         "total_cost": round(total_cost, 2),
+        
+        # Unit-based investment
+        "unit_value": UNIT_VALUE_AED,
+        "total_units": total_units,
+        "units_sold": 0,
+        "units_available": total_units,
         
         # Area
         "total_area": opportunity_data.total_area,
@@ -3238,8 +3258,6 @@ async def create_real_estate_opportunity(
         "is_eligible_to_sell": False,
         
         # Investment Details
-        "max_investors": max_investors,
-        "max_investment_per_investor": round(max_investment_per_investor, 2),
         "current_investors": 0,
         "total_invested": 0,
         "invested_percentage": 0,
