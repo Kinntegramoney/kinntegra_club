@@ -169,7 +169,7 @@ export default function AdminRealEstate() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="font-mono font-medium">AED {formatCurrency(opp.total_cost)}</span>
-                        <p className="text-xs text-gray-500">DLD: {opp.dld_fee_percentage}%</p>
+                        <p className="text-xs text-gray-500">{opp.total_area} sqft</p>
                       </td>
                       <td className="px-6 py-4">
                         {opp.property_type === 'off_plan' ? (
