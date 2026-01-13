@@ -22,22 +22,28 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     // Basic Info
     building_name: opportunity?.building_name || "",
     unit_no: opportunity?.unit_no || "",
-    property_type: opportunity?.property_type || "off_plan",
+    property_type: opportunity?.property_type || "fractional",
     
     // Pricing
     unit_price: opportunity?.unit_price || "",
     
-    // DLD Fees
+    // DLD Fees (absolute amount)
     dld_fee_percentage: opportunity?.dld_fee_percentage || 4,
-    dld_fee_amount: opportunity?.dld_fee_amount || "",
+    dld_fee_amount: opportunity?.dld_fee || "",
     
-    // Admin Fees
+    // Admin Fees (absolute amount)
     admin_fee_percentage: opportunity?.admin_fee_percentage || 0,
-    admin_fee_amount: opportunity?.admin_fee_amount || "",
+    admin_fee_amount: opportunity?.admin_fee || "",
     
-    // Other Fees
+    // Brokerage Fee (absolute amount)
     broker_fee: opportunity?.broker_fee || "",
     other_fees: opportunity?.other_fees || "",
+    
+    // Management Fees (absolute amounts)
+    upfront_fee: opportunity?.upfront_fee || "",
+    trailer_fee: opportunity?.trailer_fee || "",
+    management_fee: opportunity?.management_fee || "",
+    unit_selling_fee: opportunity?.unit_selling_fee || "",
     
     // Area
     total_area: opportunity?.total_area || "",
@@ -95,7 +101,17 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     const admin = calculateAdminFee();
     const broker = parseFloat(formData.broker_fee) || 0;
     const other = parseFloat(formData.other_fees) || 0;
-    return price + dld + admin + broker + other;
+    const upfront = parseFloat(formData.upfront_fee) || 0;
+    const trailer = parseFloat(formData.trailer_fee) || 0;
+    const management = parseFloat(formData.management_fee) || 0;
+    const unitSelling = parseFloat(formData.unit_selling_fee) || 0;
+    return price + dld + admin + broker + other + upfront + trailer + management + unitSelling;
+  };
+
+  // Calculate units (total cost / 500 AED)
+  const calculateUnits = () => {
+    const total = calculateTotalCost();
+    return Math.floor(total / 500) || 0;
   };
 
   const getTotalPaymentPercentage = () => {
