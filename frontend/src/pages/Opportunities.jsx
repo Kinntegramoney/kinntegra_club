@@ -118,27 +118,34 @@ export default function Opportunities() {
   };
 
   const RealEstateCard = ({ opp, status }) => {
-    const investedPercent = opp.total_cost > 0 
-      ? Math.round((opp.total_invested || 0) / opp.total_cost * 100) 
-      : 0;
-    
     const formatCurrency = (amount) => {
       return new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
     };
 
+    // Cost breakdown for tooltip
+    const costBreakdown = [
+      { label: "Unit Price", value: opp.unit_price },
+      { label: "DLD Fee", value: opp.dld_fee },
+      { label: "Admin Fee", value: opp.admin_fee },
+      { label: "Brokerage", value: opp.broker_fee },
+      { label: "Other Fees", value: opp.other_fees },
+    ].filter(item => item.value > 0);
+
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-teal-500 transition-colors">
+        {/* Header - Property Name */}
         <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-teal-600" />
-            <h3 className="text-lg font-semibold text-gray-800">{opp.building_name}</h3>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-teal-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">{opp.building_name}</h3>
+              <p className="text-sm text-gray-500">Unit {opp.unit_no} • Floor {opp.floor}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {opp.property_type === 'off_plan' ? (
-              <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">Off-Plan</Badge>
-            ) : (
-              <Badge className="bg-teal-100 text-teal-700 hover:bg-teal-100">Fractional</Badge>
-            )}
+          <div className="flex flex-col items-end gap-1">
+            <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">Off-Plan</Badge>
             {status === 'available' && (
               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Available</span>
             )}
@@ -148,10 +155,40 @@ export default function Opportunities() {
           </div>
         </div>
 
-        <div className="text-sm text-gray-500 mb-3">
-          Unit {opp.unit_no} • {opp.unit_type} • Floor {opp.floor}
+        {/* Property Info Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {/* Size/Type */}
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Size</p>
+            <p className="font-semibold text-gray-800">{opp.unit_type}</p>
+            <p className="text-sm text-gray-600">{opp.total_area} sqft</p>
+          </div>
+          
+          {/* Total Cost with Tooltip */}
+          <div className="bg-gray-50 rounded-lg p-3 relative group cursor-help">
+            <p className="text-xs text-gray-500 mb-1">Total Cost <span className="text-orange-500">*</span></p>
+            <p className="font-semibold text-teal-700">AED {formatCurrency(opp.total_cost)}</p>
+            
+            {/* Tooltip on hover */}
+            <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-xs rounded-lg p-3 w-48 -right-2 top-full mt-1 shadow-lg">
+              <p className="font-medium mb-2 text-gray-200">Cost Breakdown</p>
+              {costBreakdown.map((item, idx) => (
+                <div key={idx} className="flex justify-between py-0.5">
+                  <span className="text-gray-400">{item.label}</span>
+                  <span>AED {formatCurrency(item.value)}</span>
+                </div>
+              ))}
+              <div className="border-t border-gray-700 mt-2 pt-2 flex justify-between font-medium">
+                <span>Total</span>
+                <span>AED {formatCurrency(opp.total_cost)}</span>
+              </div>
+              {/* Tooltip arrow */}
+              <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+            </div>
+          </div>
         </div>
 
+        {/* Location if present */}
         {opp.location && (
           <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
             <MapPin className="h-4 w-4" />
@@ -159,41 +196,28 @@ export default function Opportunities() {
           </div>
         )}
 
-        <div className="space-y-2 text-sm mb-4">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Total Cost:</span>
-            <span className="font-mono font-medium">AED {formatCurrency(opp.total_cost)}</span>
+        {/* Interest & Investors */}
+        <div className="flex items-center justify-between mb-4 py-3 border-t border-b border-gray-100">
+          <div className="text-center flex-1">
+            <p className="text-xs text-gray-500">Interested</p>
+            <p className="font-bold text-amber-600">{opp.interested_count || 0}</p>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">DLD Fee:</span>
-            <span className="font-mono text-gray-500">{opp.dld_fee_percentage}%</span>
-          </div>
-          {opp.property_type === 'off_plan' ? (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Investors:</span>
-              <span className="font-mono font-medium text-purple-600">{opp.current_investors} / 4</span>
-            </div>
-          ) : (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Invested:</span>
-              <span className="font-mono font-medium text-teal-600">{investedPercent}%</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-gray-600">Area:</span>
-            <span className="font-mono">{opp.total_area} sqft</span>
+          <div className="w-px h-8 bg-gray-200"></div>
+          <div className="text-center flex-1">
+            <p className="text-xs text-gray-500">Investors</p>
+            <p className="font-bold text-purple-600">{opp.current_investors || 0} <span className="text-gray-400 font-normal">/ 4</span></p>
           </div>
         </div>
 
-        {/* Payment Progress */}
+        {/* Payment Progress - only show if payments exist */}
         {opp.payment_schedule && opp.payment_schedule.length > 0 && (
           <div className="mb-4">
-            <div className="flex items-center justify-between text-sm mb-1">
-              <span className="text-gray-600">Payment Progress:</span>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-gray-500">Payment Progress</span>
               <span className="font-medium text-teal-600">{opp.total_payment_percentage_completed || 0}%</span>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-2">
-              <div className="bg-teal-500 h-2 rounded-full" style={{ width: `${opp.total_payment_percentage_completed || 0}%` }} />
+            <div className="w-full bg-gray-100 rounded-full h-1.5">
+              <div className="bg-teal-500 h-1.5 rounded-full" style={{ width: `${opp.total_payment_percentage_completed || 0}%` }} />
             </div>
           </div>
         )}
