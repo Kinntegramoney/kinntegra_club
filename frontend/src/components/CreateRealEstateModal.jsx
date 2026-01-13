@@ -295,10 +295,12 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
   const totalCost = calculateTotalCost();
   const dldFee = calculateDldFee();
   const adminFee = calculateAdminFee();
+  const totalUnits = calculateUnits();
 
   const sections = [
     { id: "basic", label: "Basic Info", icon: Building2 },
     { id: "fees", label: "DLD & Fees", icon: DollarSign },
+    { id: "management", label: "Management Fees", icon: Percent },
     { id: "area", label: "Area", icon: Ruler },
     { id: "payments", label: "Payment Schedule", icon: CalendarDays },
     { id: "sale", label: "Sale Settings", icon: Calendar },
