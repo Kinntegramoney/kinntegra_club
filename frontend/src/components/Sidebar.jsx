@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, Users, Settings, LogOut, ChevronRight, ClipboardCheck, Menu, X, Wallet } from "lucide-react";
+import { LayoutGrid, TrendingUp, Users, Settings, LogOut, ChevronRight, ClipboardCheck, Menu, X, Wallet, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar({ user }) {
@@ -26,6 +26,7 @@ export default function Sidebar({ user }) {
   const menuItems = [
     { path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid },
     { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp },
+    { path: "/broker/real-estate", label: "Real Estate", icon: Building2 },
     { path: "/broker/trades", label: "Trade Verification", icon: ClipboardCheck },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
   ];
