@@ -4124,25 +4124,6 @@ async def record_investor_payment(
         "payment_id": payment_record['id'],
         "status": "pending_verification"
     }
-        if milestone_index < len(payment_schedule):
-            payment_schedule[milestone_index]['completed'] = True
-            payment_schedule[milestone_index]['completed_at'] = datetime.now(timezone.utc).isoformat()
-            
-            # Calculate total payment percentage completed
-            total_completed = sum(p['percentage'] for p in payment_schedule if p.get('completed'))
-            
-            await db.real_estate_opportunities.update_one(
-                {"id": opportunity_id},
-                {"$set": {
-                    "payment_schedule": payment_schedule,
-                    "total_payment_percentage_completed": total_completed
-                }}
-            )
-    
-    return {
-        "message": "Payment recorded successfully",
-        "payment_id": payment_record['id']
-    }
 
 
 @api_router.post("/real-estate-opportunities/{opportunity_id}/oqood")
