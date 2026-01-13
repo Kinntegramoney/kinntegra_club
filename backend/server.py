@@ -848,6 +848,307 @@ async def get_client_details(client_id: str, current_user: dict = Depends(get_cu
 # ==================== END CLIENT MANAGEMENT ====================
 
 
+# ==================== BULK UPLOAD ====================
+
+class BulkUploadResult(BaseModel):
+    total_rows: int
+    successful: int
+    failed: int
+    errors: List[dict]
+    created_clients: List[dict]
+
+
+@api_router.post("/clients/bulk-upload")
+async def bulk_upload_clients(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """
+    Bulk upload clients from Excel file.
+    Expected columns from the investor list Excel:
+    - Name, Pan Number, Contact Number, Email Address, Type (entity type)
+    - Address1, Address2, City, State, Country, Pincode
+    - Bank Account Number, Account Holder Name, IFSC
+    - Father / Husband's Name, Occupation, Date of Birth
+    - Nominee Name, Nominee Mobile Number, Relationship With Nominee, Nominee Date of Birth
+    - Demat Account, Registration Date (as expiry date)
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can bulk upload clients")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Only Excel files (.xlsx, .xls) are supported")
+    
+    try:
+        # Read the Excel file
+        contents = await file.read()
+        wb = load_workbook(filename=io.BytesIO(contents), data_only=True)
+        ws = wb.active
+        
+        # Get headers from first row
+        headers = []
+        for cell in ws[1]:
+            headers.append(str(cell.value).strip() if cell.value else "")
+        
+        # Column mapping from Excel to our schema
+        column_map = {
+            'Name': 'name',
+            'Pan Number': 'pan_number',
+            'Contact Number': 'mobile',
+            'Email Address': 'email',
+            'Type': 'entity_type',
+            'Address1': 'address_line1',
+            'Address2': 'address_line2',
+            'City': 'city',
+            'State': 'state',
+            'Country': 'country',
+            'Pincode': 'pincode',
+            'Bank Account Number': 'account_number',
+            'Account Holder Name': 'account_holder_name',
+            'IFSC': 'ifsc_code',
+            'Father / Husband\'s Name': 'father_husband_name',
+            'Occupation': 'occupation',
+            'Date of Birth': 'date_of_birth',
+            'Nominee Name': 'nominee_name',
+            'Nominee Mobile Number': 'nominee_mobile',
+            'Relationship With Nominee': 'nominee_relationship',
+            'Nominee Date of Birth': 'nominee_dob',
+            'Demat Account': 'demat_account',
+            'Registration Date': 'registration_date',
+            'Investor ID': 'investor_id',
+            'Partner Code': 'partner_code',
+            'Investor Status': 'investor_status',
+            'Invested Amount (in ₹)': 'invested_amount',
+        }
+        
+        # Find column indices
+        col_indices = {}
+        for i, header in enumerate(headers):
+            for excel_col, db_field in column_map.items():
+                if header.lower().strip() == excel_col.lower().strip():
+                    col_indices[db_field] = i
+                    break
+        
+        results = {
+            "total_rows": 0,
+            "successful": 0,
+            "failed": 0,
+            "errors": [],
+            "created_clients": []
+        }
+        
+        # Process each row (starting from row 2)
+        for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            if not any(row):  # Skip empty rows
+                continue
+            
+            results["total_rows"] += 1
+            
+            try:
+                # Extract data from row
+                def get_value(field_name):
+                    if field_name in col_indices:
+                        val = row[col_indices[field_name]]
+                        if val is not None:
+                            return str(val).strip()
+                    return None
+                
+                name = get_value('name')
+                pan = get_value('pan_number')
+                
+                # Skip placeholder/test data
+                if not name or not pan:
+                    results["failed"] += 1
+                    results["errors"].append({
+                        "row": row_num,
+                        "error": "Missing required fields (Name or PAN)"
+                    })
+                    continue
+                
+                # Skip obvious test data
+                if 'test' in name.lower() or 'service test' in name.lower():
+                    results["failed"] += 1
+                    results["errors"].append({
+                        "row": row_num,
+                        "error": f"Skipped test data: {name}"
+                    })
+                    continue
+                
+                # Check if client with same PAN already exists
+                existing = await db.clients.find_one({"pan_number": pan.upper()})
+                if existing:
+                    results["failed"] += 1
+                    results["errors"].append({
+                        "row": row_num,
+                        "error": f"Client with PAN {pan} already exists"
+                    })
+                    continue
+                
+                # Parse mobile number - clean it
+                mobile = get_value('mobile')
+                if mobile:
+                    mobile = mobile.replace(' ', '').strip()
+                
+                # Parse pincode - clean it
+                pincode = get_value('pincode')
+                if pincode and pincode.startswith('IN'):
+                    pincode = None  # Invalid format
+                
+                # Parse date of birth
+                dob = get_value('date_of_birth')
+                if dob and isinstance(dob, datetime):
+                    dob = dob.strftime('%Y-%m-%d')
+                
+                # Parse nominee DOB
+                nominee_dob = get_value('nominee_dob')
+                if nominee_dob and isinstance(nominee_dob, datetime):
+                    nominee_dob = nominee_dob.strftime('%Y-%m-%d')
+                
+                # Create client document
+                client_id = str(uuid.uuid4())
+                client_dict = {
+                    "id": client_id,
+                    "name": name,
+                    "pan_number": pan.upper(),
+                    "email": get_value('email'),
+                    "mobile": mobile,
+                    "entity_type": get_value('entity_type') or "Indian Citizen",
+                    "address_line1": get_value('address_line1'),
+                    "address_line2": get_value('address_line2'),
+                    "city": get_value('city'),
+                    "state": get_value('state'),
+                    "country": get_value('country') or "India",
+                    "pincode": pincode,
+                    "account_number": get_value('account_number'),
+                    "account_holder_name": get_value('account_holder_name'),
+                    "ifsc_code": get_value('ifsc_code'),
+                    "bank_name": None,  # Not in Excel
+                    "father_husband_name": get_value('father_husband_name'),
+                    "occupation": get_value('occupation'),
+                    "date_of_birth": dob,
+                    "nominee_name": get_value('nominee_name'),
+                    "nominee_mobile": get_value('nominee_mobile'),
+                    "nominee_relationship": get_value('nominee_relationship'),
+                    "nominee_dob": nominee_dob,
+                    "demat_account": get_value('demat_account'),
+                    "investor_id": get_value('investor_id'),
+                    "investor_status": get_value('investor_status'),
+                    "registration_date": get_value('registration_date'),
+                    "created_by": current_user['id'],
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "bond_allocations": [],
+                    "is_active": True,
+                    "verification_status": 'pending',
+                    "verification_token": str(uuid.uuid4()),
+                    "source": "bulk_upload"
+                }
+                
+                # Create user account for client
+                user_id = str(uuid.uuid4())
+                default_password = pan.upper()[-4:] + "1234"
+                default_pin = "1234"
+                
+                user_data = {
+                    "id": user_id,
+                    "pan": pan.upper(),
+                    "name": name,
+                    "email": get_value('email'),
+                    "phone": mobile,
+                    "password_hash": get_password_hash(default_password),
+                    "pin_hash": get_password_hash(default_pin),
+                    "role": "client",
+                    "is_active": False,  # Activated after verification
+                    "client_id": client_id,
+                    "broker_id": current_user['id'],
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                
+                client_dict['user_id'] = user_id
+                
+                # Check if user with same PAN already exists
+                existing_user = await db.users.find_one({"pan": pan.upper()})
+                if not existing_user:
+                    await db.users.insert_one(user_data)
+                
+                await db.clients.insert_one(client_dict)
+                
+                results["successful"] += 1
+                results["created_clients"].append({
+                    "name": name,
+                    "pan": pan.upper(),
+                    "id": client_id
+                })
+                
+            except Exception as e:
+                results["failed"] += 1
+                results["errors"].append({
+                    "row": row_num,
+                    "error": str(e)
+                })
+        
+        return results
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+
+@api_router.get("/clients/bulk-upload/template")
+async def get_bulk_upload_template(current_user: dict = Depends(get_current_user)):
+    """Download a template Excel file for bulk client upload"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this")
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Client Upload Template"
+    
+    # Headers matching the expected format
+    headers = [
+        "Name", "Pan Number", "Contact Number", "Email Address", "Type",
+        "Father / Husband's Name", "Occupation", "Date of Birth",
+        "Address1", "Address2", "City", "State", "Country", "Pincode",
+        "Bank Account Number", "Account Holder Name", "IFSC",
+        "Demat Account",
+        "Nominee Name", "Nominee Mobile Number", "Relationship With Nominee", "Nominee Date of Birth"
+    ]
+    
+    # Add headers
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.alignment = Alignment(horizontal="center")
+    
+    # Add sample row
+    sample_data = [
+        "John Doe", "ABCDE1234F", "+91 9876543210", "john@example.com", "Indian Citizen",
+        "Father Name", "Business", "1990-01-15",
+        "123 Main Street", "Apt 4B", "Mumbai", "Maharashtra", "India", "400001",
+        "1234567890123", "John Doe", "HDFC0001234",
+        "IN30123456789012",
+        "Jane Doe", "9876543210", "Spouse", "1992-05-20"
+    ]
+    
+    for col, value in enumerate(sample_data, 1):
+        ws.cell(row=2, column=col, value=value)
+    
+    # Adjust column widths
+    for col in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 18
+    
+    # Save to buffer
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=client_upload_template.xlsx"}
+    )
+
+
+# ==================== END BULK UPLOAD ====================
+
+
 # ==================== TRADE MANAGEMENT ====================
 
 class TradeCreate(BaseModel):
