@@ -4033,6 +4033,164 @@ async def mark_notification_read(
     return {"message": "Notification marked as read"}
 
 
+@api_router.post("/real-estate-opportunities/{opportunity_id}/investor-payment")
+async def record_investor_payment(
+    opportunity_id: str,
+    milestone_index: int = Form(...),
+    investor_id: str = Form(...),
+    transfer_date: str = Form(...),
+    home_currency: str = Form("AED"),
+    home_currency_amount: float = Form(0),
+    aed_amount: float = Form(...),
+    effective_rate: float = Form(0),
+    swift_copy: UploadFile = File(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """Record a payment from an investor for a specific milestone"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can record payments")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Verify all 4 investors are finalized
+    if (opportunity.get('current_investors', 0) < 4):
+        raise HTTPException(status_code=400, detail="Cannot record payments until all 4 investors are finalized")
+    
+    # Handle SWIFT copy upload
+    swift_url = None
+    swift_filename = None
+    if swift_copy:
+        # Save file locally (in production, upload to cloud storage)
+        import os
+        upload_dir = "/app/uploads/swift"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        file_ext = swift_copy.filename.split('.')[-1] if '.' in swift_copy.filename else 'pdf'
+        swift_filename = f"{opportunity_id}_{investor_id}_{milestone_index}_{uuid.uuid4()}.{file_ext}"
+        file_path = os.path.join(upload_dir, swift_filename)
+        
+        with open(file_path, "wb") as f:
+            content = await swift_copy.read()
+            f.write(content)
+        
+        swift_url = f"/uploads/swift/{swift_filename}"
+    
+    # Create payment record
+    payment_record = {
+        "id": str(uuid.uuid4()),
+        "milestone_index": milestone_index,
+        "investor_id": investor_id,
+        "transfer_date": transfer_date,
+        "home_currency": home_currency,
+        "home_currency_amount": home_currency_amount,
+        "aed_amount": aed_amount,
+        "effective_rate": effective_rate if effective_rate else (home_currency_amount / aed_amount if aed_amount > 0 else 0),
+        "swift_copy_url": swift_url,
+        "swift_copy_filename": swift_filename,
+        "recorded_by": current_user['id'],
+        "recorded_by_name": current_user.get('name', current_user.get('pan_number')),
+        "recorded_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Update opportunity
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$push": {"investor_payments": payment_record}}
+    )
+    
+    # Check if all payments for this milestone are complete
+    updated_opp = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    milestone_payments = [p for p in updated_opp.get('investor_payments', []) if p['milestone_index'] == milestone_index]
+    
+    if len(milestone_payments) >= 4:
+        # Mark milestone as completed
+        payment_schedule = updated_opp.get('payment_schedule', [])
+        if milestone_index < len(payment_schedule):
+            payment_schedule[milestone_index]['completed'] = True
+            payment_schedule[milestone_index]['completed_at'] = datetime.now(timezone.utc).isoformat()
+            
+            # Calculate total payment percentage completed
+            total_completed = sum(p['percentage'] for p in payment_schedule if p.get('completed'))
+            
+            await db.real_estate_opportunities.update_one(
+                {"id": opportunity_id},
+                {"$set": {
+                    "payment_schedule": payment_schedule,
+                    "total_payment_percentage_completed": total_completed
+                }}
+            )
+    
+    return {
+        "message": "Payment recorded successfully",
+        "payment_id": payment_record['id']
+    }
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/oqood")
+async def upload_oqood_document(
+    opportunity_id: str,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload Oqood document for a real estate opportunity"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can upload Oqood documents")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Save file
+    import os
+    upload_dir = "/app/uploads/oqood"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'pdf'
+    filename = f"{opportunity_id}_oqood_{uuid.uuid4()}.{file_ext}"
+    file_path = os.path.join(upload_dir, filename)
+    
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    
+    oqood_document = {
+        "filename": file.filename,
+        "stored_filename": filename,
+        "url": f"/uploads/oqood/{filename}",
+        "uploaded_by": current_user['id'],
+        "uploaded_by_name": current_user.get('name', current_user.get('pan_number')),
+        "uploaded_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"oqood_document": oqood_document}}
+    )
+    
+    return {
+        "message": "Oqood document uploaded successfully",
+        "filename": filename
+    }
+
+
+# Serve uploaded files
+@api_router.get("/uploads/{folder}/{filename}")
+async def serve_upload(folder: str, filename: str):
+    """Serve uploaded files"""
+    import os
+    from fastapi.responses import FileResponse
+    
+    file_path = f"/app/uploads/{folder}/{filename}"
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return FileResponse(file_path)
+
+
 @api_router.get("/client/real-estate-investments")
 async def get_client_real_estate_investments(current_user: dict = Depends(get_current_user)):
     """Get real estate investments for the logged-in client"""
