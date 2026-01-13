@@ -20,6 +20,7 @@ export default function BulkUpload() {
 
   const tabs = [
     { id: "sub-brokers", label: "Sub Brokers", icon: Users, color: "indigo" },
+    { id: "clients", label: "Clients", icon: Users, color: "purple" },
     { id: "bonds", label: "Bonds", icon: TrendingUp, color: "green" },
     { id: "real-estate", label: "Real Estate", icon: Building2, color: "orange" }
   ];
@@ -91,6 +92,7 @@ export default function BulkUpload() {
   const getTabColor = (tabId) => {
     const colors = {
       "sub-brokers": { bg: "bg-indigo-600", light: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-200" },
+      "clients": { bg: "bg-purple-600", light: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
       "bonds": { bg: "bg-green-600", light: "bg-green-50", text: "text-green-600", border: "border-green-200" },
       "real-estate": { bg: "bg-orange-600", light: "bg-orange-50", text: "text-orange-600", border: "border-orange-200" }
     };
