@@ -264,7 +264,110 @@ export default function ClientHoldings() {
                   </table>
                 </div>
               </div>
-            </>
+                  </>
+                )}
+              </TabsContent>
+
+              {/* Real Estate Tab */}
+              <TabsContent value="real-estate">
+                {realEstateHoldings.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">No real estate holdings yet</p>
+                    <Button
+                      className="mt-4 bg-teal-600 hover:bg-teal-700"
+                      onClick={() => navigate("/client/opportunities")}
+                    >
+                      Browse Real Estate Opportunities
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Real Estate Summary */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="bg-white rounded-lg border border-gray-200 p-5">
+                        <p className="text-sm text-gray-500 uppercase tracking-wide">Total RE Investment</p>
+                        <p className="text-2xl font-bold text-gray-800 mt-1">
+                          {formatAED(realEstateHoldings.reduce((sum, h) => sum + (h.investment_amount || 0), 0))}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg border border-gray-200 p-5">
+                        <p className="text-sm text-gray-500 uppercase tracking-wide">Properties</p>
+                        <p className="text-2xl font-bold text-purple-600 mt-1">
+                          {realEstateHoldings.length}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg border border-gray-200 p-5">
+                        <p className="text-sm text-gray-500 uppercase tracking-wide">Avg. Ownership</p>
+                        <p className="text-2xl font-bold text-blue-600 mt-1">
+                          {(realEstateHoldings.reduce((sum, h) => sum + (h.share_percentage || 0), 0) / realEstateHoldings.length).toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Real Estate Holdings Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {realEstateHoldings.map((property) => (
+                        <div key={property.opportunity_id} className="bg-white rounded-lg border border-gray-200 p-5 hover:border-teal-500 transition-colors">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <Building2 className="h-5 w-5 text-purple-600" />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-gray-800">{property.building_name}</h3>
+                                <p className="text-sm text-gray-500">Unit {property.unit_no} • Floor {property.floor}</p>
+                              </div>
+                            </div>
+                            <Badge className="bg-purple-100 text-purple-700">Off-Plan</Badge>
+                          </div>
+                          
+                          {property.location && (
+                            <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
+                              <MapPin className="h-4 w-4" />
+                              {property.location}
+                            </div>
+                          )}
+                          
+                          <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-100">
+                            <div>
+                              <p className="text-xs text-gray-500">Your Share</p>
+                              <p className="font-bold text-purple-600 text-lg">{property.share_percentage}%</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Investment</p>
+                              <p className="font-bold text-gray-800">{formatAED(property.investment_amount)}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                            <div>
+                              <p className="text-xs text-gray-500">Payment Progress</p>
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className="bg-teal-500 h-2 rounded-full" 
+                                    style={{ width: `${property.payment_progress || 0}%` }} 
+                                  />
+                                </div>
+                                <span className="text-sm font-medium">{property.payment_progress || 0}%</span>
+                              </div>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => navigate(`/client/real-estate/${property.opportunity_id}`)}
+                            >
+                              View Details
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </TabsContent>
+            </Tabs>
           )}
         </div>
       </div>
