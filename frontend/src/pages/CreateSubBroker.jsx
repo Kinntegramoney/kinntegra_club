@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, Check, ChevronDown } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +20,6 @@ const INDIAN_STATES = [
   "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
 ];
 
-const PROFESSIONS = ["Designer", "Developer", "Manager", "Analyst", "Consultant", "Other"];
-const BUSINESS_TAGS = ["Kinntegra Solutions", "Partner Network", "Associate", "Affiliate"];
-
 const COLORS = [
   { name: "Brown", value: "#78716C" },
   { name: "Blue", value: "#3B82F6" },
@@ -36,49 +33,35 @@ const COLORS = [
 
 const STEPS = [
   { 
-    id: 'general', 
-    label: 'GENERAL INFORMATION',
-    subItems: ['Entity Details', 'Photo ID Details', 'Communication Details', 'Bank Details', 'Other Details']
+    id: 'partner', 
+    label: 'PARTNER DETAILS',
+    subItems: ['Name', 'PAN Number', 'Partner Code', 'Email', 'Mobile', 'Colour']
   },
-  { id: 'license', label: 'LICENSE DETAILS', subItems: [] },
-  { id: 'commercials', label: 'COMMERCIALS', subItems: [] },
+  { 
+    id: 'address', 
+    label: 'ADDRESS DETAILS', 
+    subItems: ['Address Line 1', 'Address Line 2', 'City', 'Country', 'State', 'Pincode'] 
+  },
 ];
 
 export default function CreateSubBroker() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [currentStep, setCurrentStep] = useState('general');
+  const [currentStep, setCurrentStep] = useState('partner');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    // General Info
-    introduced_by: "",
-    profession: "",
-    business_tag: "",
     name: "",
     pan: "",
     partner_code: "",
     email: "",
     mobile: "",
     color: "#78716C",
-    // Entity Details
-    entity_type: "",
-    entity_name: "",
-    authorized_person: "",
-    // Address
     address_line1: "",
     address_line2: "",
     city: "",
     country: "India",
     state: "",
-    pincode: "",
-    // Bank Details
-    bank_name: "",
-    account_number: "",
-    ifsc_code: "",
-    branch: "",
-    // Commercials
-    commission_type: "",
-    commission_value: "",
+    pincode: ""
   });
 
   useEffect(() => {
@@ -98,20 +81,20 @@ export default function CreateSubBroker() {
   const getStepIndex = () => STEPS.findIndex(s => s.id === currentStep);
   
   const getProgress = () => {
-    // Start at 7% and increase based on filled fields
-    const totalFields = 15;
-    const filledFields = Object.values(formData).filter(v => v && v !== "India").length;
+    const totalFields = 11; // All required fields
+    const filledFields = [
+      formData.name, formData.pan, formData.partner_code, formData.email, formData.mobile,
+      formData.address_line1, formData.address_line2, formData.city, formData.state, formData.pincode
+    ].filter(v => v && v.trim() !== "").length;
     return Math.max(7, Math.round((filledFields / totalFields) * 100));
   };
 
   const isStepComplete = (stepId) => {
     switch (stepId) {
-      case 'general':
-        return formData.name && formData.pan && formData.email && formData.mobile;
-      case 'license':
-        return true;
-      case 'commercials':
-        return true;
+      case 'partner':
+        return formData.name && formData.pan && formData.partner_code && formData.email && formData.mobile;
+      case 'address':
+        return formData.address_line1 && formData.address_line2 && formData.city && formData.state && formData.pincode;
       default:
         return false;
     }
@@ -119,6 +102,13 @@ export default function CreateSubBroker() {
 
   const handleProceed = () => {
     const stepIndex = getStepIndex();
+    
+    // Validate current step
+    if (currentStep === 'partner' && !isStepComplete('partner')) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+    
     if (stepIndex < STEPS.length - 1) {
       setCurrentStep(STEPS[stepIndex + 1].id);
     } else {
@@ -127,9 +117,12 @@ export default function CreateSubBroker() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.pan || !formData.email || !formData.mobile) {
-      toast.error("Please fill all required fields in General Information");
-      setCurrentStep('general');
+    // Validate all fields
+    const requiredFields = ['name', 'pan', 'partner_code', 'email', 'mobile', 'address_line1', 'address_line2', 'city', 'state', 'pincode'];
+    const missingFields = requiredFields.filter(field => !formData[field]);
+    
+    if (missingFields.length > 0) {
+      toast.error("Please fill all required fields");
       return;
     }
 
@@ -140,22 +133,7 @@ export default function CreateSubBroker() {
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
       
       await axios.post(`${API}/partners`, {
-        name: formData.name,
-        pan: formData.pan,
-        partner_code: formData.partner_code || `SB${Date.now().toString().slice(-4)}`,
-        email: formData.email,
-        mobile: formData.mobile,
-        color: formData.color,
-        address_line1: formData.address_line1,
-        address_line2: formData.address_line2,
-        city: formData.city,
-        country: formData.country,
-        state: formData.state,
-        pincode: formData.pincode,
-        bank_name: formData.bank_name,
-        account_number: formData.account_number,
-        ifsc_code: formData.ifsc_code,
-        branch: formData.branch,
+        ...formData,
         password,
         pin
       }, {
@@ -180,16 +158,25 @@ export default function CreateSubBroker() {
     <div className="min-h-screen bg-white flex">
       {/* Left Sidebar */}
       <div className="w-64 border-r border-gray-100 flex flex-col">
+        {/* Go Back */}
+        <button
+          onClick={() => navigate("/broker/admin/sub-brokers")}
+          className="p-6 pb-2 flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors text-sm"
+          data-testid="go-back-btn"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Go Back
+        </button>
+
         {/* Title */}
-        <div className="p-6 pb-4">
-          <h1 className="text-lg font-semibold text-gray-800">Create New Associate</h1>
+        <div className="px-6 py-4">
+          <h1 className="text-lg font-semibold text-gray-800">Create New Sub-Broker</h1>
         </div>
 
         {/* Progress Circle */}
         <div className="px-6 py-4 flex items-center gap-4">
           <div className="relative w-20 h-20">
             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
-              {/* Background circle */}
               <circle
                 cx="40"
                 cy="40"
@@ -198,7 +185,6 @@ export default function CreateSubBroker() {
                 stroke="#f3f4f6"
                 strokeWidth="5"
               />
-              {/* Progress arc - orange/peach color */}
               <circle
                 cx="40"
                 cy="40"
@@ -226,7 +212,8 @@ export default function CreateSubBroker() {
             <div className="space-y-2">
               {STEPS.map((step, index) => {
                 const isActive = currentStep === step.id;
-                const isComplete = isStepComplete(step.id) && getStepIndex() > index;
+                const isComplete = isStepComplete(step.id);
+                const isPast = getStepIndex() > index;
 
                 return (
                   <div key={step.id}>
@@ -235,16 +222,15 @@ export default function CreateSubBroker() {
                       className="w-full flex items-start gap-3 py-2 text-left relative z-10"
                       data-testid={`step-${step.id}`}
                     >
-                      {/* Circle indicator */}
-                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 ${
+                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center ${
                         isActive 
                           ? 'bg-teal-600 border-teal-600' 
-                          : isComplete 
+                          : isPast || isComplete 
                           ? 'bg-teal-600 border-teal-600'
                           : 'bg-white border-gray-300'
                       }`}>
-                        {isComplete && (
-                          <Check className="h-2.5 w-2.5 text-white m-auto" />
+                        {(isPast || isComplete) && !isActive && (
+                          <Check className="h-2.5 w-2.5 text-white" />
                         )}
                       </div>
                       <span className={`text-xs font-semibold tracking-wide ${
@@ -281,223 +267,165 @@ export default function CreateSubBroker() {
         <div className="flex-1 p-8 max-w-2xl">
           {/* Section Title */}
           <h2 className="text-2xl font-semibold text-gray-800 mb-8">
-            {currentStep === 'general' && 'General Information'}
-            {currentStep === 'license' && 'License Details'}
-            {currentStep === 'commercials' && 'Commercials'}
+            {currentStep === 'partner' && 'Partner Details'}
+            {currentStep === 'address' && 'Address Details'}
           </h2>
 
-          {/* General Information Form */}
-          {currentStep === 'general' && (
+          {/* Partner Details Form */}
+          {currentStep === 'partner' && (
             <div className="space-y-6">
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500 uppercase tracking-wide">
-                  Introduced By <span className="text-red-500">*</span>
-                </Label>
-                <Select value={formData.introduced_by} onValueChange={(value) => setFormData({...formData, introduced_by: value})}>
-                  <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-introduced-by">
-                    <SelectValue placeholder="" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="self">Self</SelectItem>
-                    <SelectItem value="referral">Referral</SelectItem>
-                    <SelectItem value="partner">Partner</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500 uppercase tracking-wide">
-                  Profession of the Introducee <span className="text-red-500">*</span>
-                </Label>
-                <Select value={formData.profession} onValueChange={(value) => setFormData({...formData, profession: value})}>
-                  <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-profession">
-                    <SelectValue placeholder="" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROFESSIONS.map(prof => (
-                      <SelectItem key={prof} value={prof}>{prof}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500 uppercase tracking-wide">
-                  Business Tag <span className="text-red-500">*</span>
-                </Label>
-                <Select value={formData.business_tag} onValueChange={(value) => setFormData({...formData, business_tag: value})}>
-                  <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-business-tag">
-                    <SelectValue placeholder="" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BUSINESS_TAGS.map(tag => (
-                      <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Commercials Section - inline */}
-              <div className="pt-4">
-                <Label className="text-xs text-gray-500 uppercase tracking-wide mb-3 block">
-                  Commercials
-                </Label>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <Input
-                      value={formData.commission_value}
-                      onChange={(e) => setFormData({...formData, commission_value: e.target.value})}
-                      placeholder="10"
-                      className="h-12 border-gray-200 rounded-md"
-                      data-testid="input-commission-value"
-                    />
-                  </div>
-                  <div className="w-24">
-                    <Select value={formData.commission_type} onValueChange={(value) => setFormData({...formData, commission_type: value})}>
-                      <SelectTrigger className="h-12 border-gray-200 rounded-md">
-                        <SelectValue placeholder="Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="percentage">%</SelectItem>
-                        <SelectItem value="fixed">Fixed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-20">
-                    <Input
-                      value="OK"
-                      readOnly
-                      className="h-12 border-gray-200 rounded-md text-center bg-gray-50"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Input
-                      value={formData.pan}
-                      onChange={(e) => setFormData({...formData, pan: e.target.value.toUpperCase()})}
-                      placeholder="pan card"
-                      className="h-12 border-gray-200 rounded-md font-mono"
-                      data-testid="input-pan"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Additional fields */}
-              <div className="pt-4 grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs text-gray-500 uppercase tracking-wide">
-                    Name (as per PAN) <span className="text-red-500">*</span>
+                    NAME (AS PER PAN CARD) <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Enter full name"
                     className="h-12 border-gray-200 rounded-md"
                     data-testid="input-name"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs text-gray-500 uppercase tracking-wide">
-                    Email <span className="text-red-500">*</span>
+                    PAN NUMBER <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    value={formData.pan}
+                    onChange={(e) => setFormData({...formData, pan: e.target.value.toUpperCase()})}
+                    maxLength={10}
+                    className="h-12 border-gray-200 rounded-md font-mono"
+                    data-testid="input-pan"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    PARTNER CODE <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    value={formData.partner_code}
+                    onChange={(e) => setFormData({...formData, partner_code: e.target.value})}
+                    className="h-12 border-gray-200 rounded-md"
+                    data-testid="input-partner-code"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    EMAIL <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    placeholder="email@example.com"
                     className="h-12 border-gray-200 rounded-md"
                     data-testid="input-email"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs text-gray-500 uppercase tracking-wide">
-                    Mobile <span className="text-red-500">*</span>
+                    MOBILE NO <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="tel"
                     value={formData.mobile}
                     onChange={(e) => setFormData({...formData, mobile: e.target.value})}
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 or Ext"
                     className="h-12 border-gray-200 rounded-md"
                     data-testid="input-mobile"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs text-gray-500 uppercase tracking-wide">
-                    Partner Code
+                    CHOOSE COLOUR <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    value={formData.partner_code}
-                    onChange={(e) => setFormData({...formData, partner_code: e.target.value})}
-                    placeholder="e.g., SB001"
-                    className="h-12 border-gray-200 rounded-md"
-                    data-testid="input-partner-code"
-                  />
+                  <div className="flex gap-2 pt-2">
+                    {COLORS.map((color) => (
+                      <button
+                        key={color.value}
+                        type="button"
+                        onClick={() => setFormData({...formData, color: color.value})}
+                        className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
+                          formData.color === color.value ? 'border-gray-800 scale-110 ring-2 ring-offset-2 ring-gray-300' : 'border-transparent'
+                        }`}
+                        style={{ backgroundColor: color.value }}
+                        title={color.name}
+                        data-testid={`color-${color.name.toLowerCase()}`}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* License Details Form */}
-          {currentStep === 'license' && (
-            <div className="space-y-6">
-              <p className="text-sm text-gray-500 mb-4">License details are optional for sub-brokers.</p>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs text-gray-500 uppercase tracking-wide">License Number</Label>
-                  <Input
-                    placeholder="Enter license number"
-                    className="h-12 border-gray-200 rounded-md"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-gray-500 uppercase tracking-wide">Expiry Date</Label>
-                  <Input
-                    type="date"
-                    className="h-12 border-gray-200 rounded-md"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Commercials Form */}
-          {currentStep === 'commercials' && (
+          {/* Address Details Form */}
+          {currentStep === 'address' && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-500 uppercase tracking-wide">Address Line 1</Label>
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    ADDRESS LINE 1 <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     value={formData.address_line1}
                     onChange={(e) => setFormData({...formData, address_line1: e.target.value})}
-                    placeholder="Street address"
                     className="h-12 border-gray-200 rounded-md"
                     data-testid="input-address1"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-500 uppercase tracking-wide">Address Line 2</Label>
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    ADDRESS LINE 2 <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     value={formData.address_line2}
                     onChange={(e) => setFormData({...formData, address_line2: e.target.value})}
-                    placeholder="Apartment, suite"
                     className="h-12 border-gray-200 rounded-md"
                     data-testid="input-address2"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-500 uppercase tracking-wide">City</Label>
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    CITY <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     value={formData.city}
                     onChange={(e) => setFormData({...formData, city: e.target.value})}
-                    placeholder="Enter city"
                     className="h-12 border-gray-200 rounded-md"
                     data-testid="input-city"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-500 uppercase tracking-wide">State</Label>
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    COUNTRY <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={formData.country} onValueChange={(value) => setFormData({...formData, country: value})}>
+                    <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-country">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRIES.map(country => (
+                        <SelectItem key={country} value={country}>{country}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    STATE <span className="text-red-500">*</span>
+                  </Label>
                   <Select value={formData.state} onValueChange={(value) => setFormData({...formData, state: value})}>
                     <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-state">
                       <SelectValue placeholder="Select state" />
@@ -510,28 +438,16 @@ export default function CreateSubBroker() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs text-gray-500 uppercase tracking-wide">Pincode</Label>
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    PINCODE <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     value={formData.pincode}
                     onChange={(e) => setFormData({...formData, pincode: e.target.value})}
-                    placeholder="400001"
                     maxLength={6}
                     className="h-12 border-gray-200 rounded-md font-mono"
                     data-testid="input-pincode"
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-gray-500 uppercase tracking-wide">Country</Label>
-                  <Select value={formData.country} onValueChange={(value) => setFormData({...formData, country: value})}>
-                    <SelectTrigger className="h-12 border-gray-200 rounded-md" data-testid="select-country">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COUNTRIES.map(country => (
-                        <SelectItem key={country} value={country}>{country}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             </div>
@@ -545,7 +461,7 @@ export default function CreateSubBroker() {
               className="bg-teal-700 hover:bg-teal-800 text-white px-8 py-3 h-12 rounded-md font-medium"
               data-testid="proceed-btn"
             >
-              {loading ? "Creating..." : getStepIndex() === STEPS.length - 1 ? "SUBMIT" : "PROCEED"}
+              {loading ? "CREATING..." : getStepIndex() === STEPS.length - 1 ? "SAVE CHANGES" : "PROCEED"}
             </Button>
           </div>
         </div>
@@ -553,7 +469,6 @@ export default function CreateSubBroker() {
         {/* Right Illustration */}
         <div className="w-80 p-8 flex items-start justify-center">
           <div className="mt-16">
-            {/* Illustration matching the Zeplin design */}
             <svg viewBox="0 0 300 350" className="w-64">
               {/* Background elements */}
               <rect x="60" y="30" width="180" height="140" rx="8" fill="#E8F4F8" />
@@ -579,7 +494,7 @@ export default function CreateSubBroker() {
               <path d="M250,80 L250,45 A35,35 0 0,1 280,95 Z" fill="#F59E0B" />
               <path d="M250,80 L280,95 A35,35 0 0,1 235,110 Z" fill="#FBBF24" />
               
-              {/* Person */}
+              {/* Person shadow */}
               <ellipse cx="150" cy="320" rx="45" ry="8" fill="#E5E7EB" />
               
               {/* Body */}
@@ -600,7 +515,7 @@ export default function CreateSubBroker() {
               <path d="M125,260 L100,290" stroke="#FDDCAB" strokeWidth="12" strokeLinecap="round" />
               <path d="M175,260 L200,290" stroke="#FDDCAB" strokeWidth="12" strokeLinecap="round" />
               
-              {/* Document/clipboard */}
+              {/* Document */}
               <rect x="70" y="260" width="40" height="55" rx="4" fill="white" stroke="#E5E7EB" strokeWidth="2" />
               <line x1="80" y1="275" x2="100" y2="275" stroke="#3B82F6" strokeWidth="2" />
               <line x1="80" y1="285" x2="95" y2="285" stroke="#3B82F6" strokeWidth="2" />
@@ -611,10 +526,6 @@ export default function CreateSubBroker() {
               <ellipse cx="245" cy="275" rx="20" ry="15" fill="#10B981" />
               <ellipse cx="235" cy="265" rx="12" ry="10" fill="#34D399" />
               <ellipse cx="255" cy="268" rx="10" ry="8" fill="#34D399" />
-              
-              {/* Coffee cup */}
-              <rect x="270" y="300" width="15" height="20" rx="2" fill="#92400E" />
-              <ellipse cx="277.5" cy="300" rx="7.5" ry="3" fill="#78350F" />
             </svg>
           </div>
         </div>
@@ -622,29 +533,13 @@ export default function CreateSubBroker() {
 
       {/* Top Right User Info */}
       <div className="absolute top-4 right-6 flex items-center gap-3">
-        <span className="text-sm text-red-500 font-medium">S</span>
-        <span className="text-sm text-gray-600">SUPER ADMIN</span>
+        <span className="text-sm text-gray-600">{user?.name}</span>
         <div className="relative">
-          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          </div>
-          <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center">
-            <span className="text-xs text-white font-bold">0</span>
+          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+            <span className="text-amber-700 font-semibold">{user?.name?.charAt(0)}</span>
           </div>
         </div>
       </div>
-
-      {/* Go Back Link */}
-      <button
-        onClick={() => navigate("/broker/admin/sub-brokers")}
-        className="absolute top-6 left-6 flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors text-sm"
-        data-testid="go-back-btn"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Go Back
-      </button>
     </div>
   );
 }
