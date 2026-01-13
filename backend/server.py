@@ -3509,21 +3509,27 @@ async def invest_in_opportunity(
     
     investment_amount = allocation.investment_amount
     
+    # Calculate current invested percentage
+    current_invested_percentage = sum(inv.get('share_percentage', 0) for inv in opportunity.get('investors', []))
+    remaining_percentage = 100 - current_invested_percentage
+    
     # Check investment limits based on property type
     if opportunity['property_type'] == 'off_plan':
-        # Off-plan: Max 4 investors
+        # Off-plan: Max 4 investors, custom percentage allocation
         if opportunity['current_investors'] >= 4:
             raise HTTPException(status_code=400, detail="Maximum 4 investors allowed for off-plan property")
         
-        # Each investor gets 25% share
-        expected_amount = opportunity['total_cost'] / 4
-        if abs(investment_amount - expected_amount) > 1:  # Allow small rounding
+        # Calculate share percentage from investment amount
+        share_percentage = (investment_amount / opportunity['total_cost']) * 100
+        
+        if share_percentage > remaining_percentage:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Off-plan investment must be exactly 25% of total cost ({expected_amount:,.2f} AED)"
+                detail=f"Only {remaining_percentage:.1f}% ({remaining_percentage * opportunity['total_cost'] / 100:,.0f} AED) remaining for investment"
             )
         
-        share_percentage = 25.0
+        if share_percentage <= 0:
+            raise HTTPException(status_code=400, detail="Investment amount must be greater than 0")
         
     else:
         # Fractional: Max 50,000 USD per investor
@@ -3555,19 +3561,21 @@ async def invest_in_opportunity(
     
     # Update opportunity
     new_total_invested = opportunity.get('total_invested', 0) + investment_amount
+    new_invested_percentage = current_invested_percentage + share_percentage
+    
     update_data = {
         "current_investors": opportunity['current_investors'] + 1,
         "total_invested": new_total_invested,
+        "invested_percentage": round(new_invested_percentage, 2),
+        "remaining_percentage": round(100 - new_invested_percentage, 2),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
-    # Check if fully invested
-    if opportunity['property_type'] == 'off_plan':
-        if update_data['current_investors'] >= 4:
-            update_data['status'] = 'fully_invested'
-    else:
-        if new_total_invested >= opportunity['total_cost']:
-            update_data['status'] = 'fully_invested'
+    # Check if fully invested (100% allocated or max investors for off-plan)
+    if new_invested_percentage >= 99.99:  # Allow small rounding
+        update_data['status'] = 'fully_invested'
+    elif opportunity['property_type'] == 'off_plan' and update_data['current_investors'] >= 4:
+        update_data['status'] = 'fully_invested'
     
     await db.real_estate_opportunities.update_one(
         {"id": opportunity_id},
