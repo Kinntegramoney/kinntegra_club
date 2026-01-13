@@ -25,6 +25,7 @@ export default function CreateBond() {
     secondary_irr: "",
     interest_payment_frequency: "quarterly",
     total_units: "1",
+    minimum_units: "1",
     units_sold: "0"
   });
 
