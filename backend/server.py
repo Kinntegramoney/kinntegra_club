@@ -3275,6 +3275,7 @@ class Bond(BaseModel):
     coupon_rate: float
     primary_irr: float
     secondary_irr: float
+    minimum_units: int = 1  # Minimum units per order
     principal_payments: List[PrincipalPayment]
     interest_payment_frequency: str
     interest_payments: List[InterestPayment]
