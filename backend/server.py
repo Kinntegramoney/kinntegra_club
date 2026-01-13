@@ -1089,7 +1089,8 @@ async def bulk_upload_clients(file: UploadFile = File(...), current_user: dict =
                 results["created_clients"].append({
                     "name": name,
                     "pan": pan.upper(),
-                    "id": client_id
+                    "id": client_id,
+                    "linked_subbroker": linked_subbroker_name
                 })
                 
             except Exception as e:
