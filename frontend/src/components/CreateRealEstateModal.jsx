@@ -600,10 +600,16 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
           {/* Payment Schedule Section */}
           {activeSection === "payments" && (
             <div className="space-y-4">
+              <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                <p className="text-sm text-red-700">
+                  <strong>Important:</strong> DLD Fee (AED {formatCurrency(dldFee)}) + Admin Fee (AED {formatCurrency(adminFee)}) = <strong>AED {formatCurrency(upfrontAmount)}</strong> will be paid <strong>upfront with the booking amount</strong>.
+                </p>
+              </div>
+              
               <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
                 <p className="text-sm text-orange-700">
-                  <strong>Note:</strong> Payment schedule percentages are based on the <strong>Unit Price</strong> only. 
-                  DLD and Admin fees are tracked separately but paid proportionally with each milestone.
+                  <strong>Payment Schedule:</strong> Percentages below are based on <strong>Unit Price (AED {formatCurrency(unitPrice)})</strong> only. 
+                  The upfront fees (DLD + Admin) are NOT included in these percentages.
                 </p>
               </div>
 
@@ -618,6 +624,9 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                   </p>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={addPaymentMilestone}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Milestone
+                </Button>
+              </div>
                   <Plus className="h-4 w-4 mr-1" /> Add Milestone
                 </Button>
               </div>
