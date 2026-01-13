@@ -250,6 +250,18 @@ export default function CreateBond() {
             <h2 className="text-xl font-semibold mb-4">Bond Details</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="bond_code">Bond Code</Label>
+                <Input
+                  data-testid="bond-code-input"
+                  id="bond_code"
+                  name="bond_code"
+                  value={formData.bond_code}
+                  onChange={handleInputChange}
+                  placeholder="e.g., ABC-NCD-2025"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="name">Bond Name</Label>
                 <Input
                   data-testid="bond-name-input"
