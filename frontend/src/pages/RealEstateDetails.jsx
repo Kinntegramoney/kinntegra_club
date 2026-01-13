@@ -63,6 +63,54 @@ export default function RealEstateDetails() {
     return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  // XIRR Calculation Function
+  const calculateXIRR = (opp) => {
+    if (!opp || !opp.unit_price || !opp.payment_schedule || opp.payment_schedule.length === 0) return null;
+    if (!opp.expected_sale_rate || !opp.total_area || !opp.estimated_sell_date) return null;
+    
+    const sortedSchedule = [...opp.payment_schedule]
+      .filter(p => p.date && p.percentage)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (sortedSchedule.length === 0) return null;
+
+    const cashFlows = [];
+    const unitPrice = opp.unit_price;
+    const upfrontAmount = (opp.dld_fee || 0) + (opp.admin_fee || 0);
+    
+    let isFirstPayment = true;
+    sortedSchedule.forEach(milestone => {
+      const pct = parseFloat(milestone.percentage) || 0;
+      const amount = unitPrice * pct / 100;
+      const totalAmount = isFirstPayment ? amount + upfrontAmount : amount;
+      cashFlows.push({ date: new Date(milestone.date), amount: -totalAmount });
+      isFirstPayment = false;
+    });
+
+    const expectedSaleValue = opp.expected_sale_rate * opp.total_area;
+    const sellingFee = expectedSaleValue * (opp.unit_selling_fee_percentage || 0) / 100;
+    cashFlows.push({ date: new Date(opp.estimated_sell_date), amount: expectedSaleValue - sellingFee });
+
+    try {
+      const tol = 0.0001, maxIter = 100;
+      let rate = 0.1;
+      const firstDate = cashFlows[0].date;
+      
+      for (let i = 0; i < maxIter; i++) {
+        let npvVal = 0, dnpvVal = 0;
+        cashFlows.forEach(cf => {
+          const years = (cf.date - firstDate) / (365 * 24 * 60 * 60 * 1000);
+          npvVal += cf.amount / Math.pow(1 + rate, years);
+          dnpvVal -= years * cf.amount / Math.pow(1 + rate, years + 1);
+        });
+        if (Math.abs(dnpvVal) < 1e-10) break;
+        const newRate = rate - npvVal / dnpvVal;
+        if (Math.abs(newRate - rate) < tol) return newRate * 100;
+        rate = newRate;
+      }
+      return rate * 100;
+    } catch (e) { return null; }
+  };
+
   if (!user) return null;
 
   if (loading) {
