@@ -575,49 +575,86 @@ export default function RealEstateDetails() {
                   
                   {xirrSaleDate && xirrSaleRate ? (
                     <>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Sale Value</span>
-                          <span className="font-bold text-gray-800">AED {formatCurrency(parseFloat(xirrSaleRate) * opp.total_area)}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Amount Invested ({xirrSaleStage}%)</span>
-                          <span className="font-medium text-gray-800">AED {formatCurrency(opp.unit_price * xirrSaleStage / 100 + opp.dld_fee + opp.admin_fee)}</span>
-                        </div>
-                        <div className="flex justify-between items-center pt-3 border-t">
-                          <span className="text-gray-600">Gross Profit</span>
-                          <span className={`font-bold ${(parseFloat(xirrSaleRate) * opp.total_area) - (opp.unit_price * xirrSaleStage / 100 + opp.dld_fee + opp.admin_fee) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            AED {formatCurrency((parseFloat(xirrSaleRate) * opp.total_area) - (opp.unit_price * xirrSaleStage / 100 + opp.dld_fee + opp.admin_fee))}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* XIRR Result */}
                       {(() => {
-                        const xirr = calculateXIRRWithParams(opp, xirrSaleStage, xirrSaleDate, parseFloat(xirrSaleRate));
-                        if (xirr !== null) {
-                          return (
-                            <>
-                              <div className={`mt-4 p-4 rounded-lg ${xirr >= 0 ? 'bg-blue-100' : 'bg-red-100'}`}>
-                                <p className={`text-sm ${xirr >= 0 ? 'text-blue-600' : 'text-red-600'}`}>Expected XIRR</p>
-                                <p className={`text-4xl font-bold ${xirr >= 0 ? 'text-blue-700' : 'text-red-700'}`}>{xirr.toFixed(2)}%</p>
-                                <p className="text-xs text-gray-600 mt-1">Annualized return</p>
-                              </div>
-                              <Button 
-                                onClick={() => exportXIRRToExcel(opp, xirrSaleStage, xirrSaleDate, parseFloat(xirrSaleRate))}
-                                className="w-full mt-3 bg-green-600 hover:bg-green-700"
-                                size="sm"
-                              >
-                                <FileText className="h-4 w-4 mr-2" />
-                                Export XIRR Breakdown
-                              </Button>
-                            </>
-                          );
-                        }
+                        const result = calculateXIRRWithParams(opp, xirrSaleStage, xirrSaleDate, parseFloat(xirrSaleRate), true);
+                        const summary = result?.summary;
+                        const xirr = result?.xirr;
+                        
+                        if (!summary) return <p className="text-gray-500">Unable to calculate</p>;
+                        
                         return (
-                          <div className="mt-4 p-4 rounded-lg bg-yellow-50">
-                            <p className="text-sm text-yellow-700">Unable to calculate XIRR. Check payment schedule dates.</p>
-                          </div>
+                          <>
+                            {/* Investment Summary */}
+                            <div className="space-y-2 text-sm">
+                              <p className="font-medium text-gray-700 border-b pb-1">Investment (Outflows)</p>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Unit Price Paid ({xirrSaleStage}%)</span>
+                                <span className="text-red-600">-AED {formatCurrency(summary.unitPricePaid)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">DLD + Admin (Upfront)</span>
+                                <span className="text-red-600">-AED {formatCurrency(summary.upfrontFees)}</span>
+                              </div>
+                              <div className="flex justify-between font-medium border-t pt-1">
+                                <span>Total Invested</span>
+                                <span className="text-red-700">-AED {formatCurrency(summary.totalInvested)}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Sale Calculation */}
+                            <div className="space-y-2 text-sm mt-4">
+                              <p className="font-medium text-gray-700 border-b pb-1">Sale Proceeds (Inflow)</p>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Gross Sale ({opp.total_area} sqft)</span>
+                                <span>AED {formatCurrency(summary.grossSaleValue)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Less: Selling Fee ({opp.unit_selling_fee_percentage || 0}%)</span>
+                                <span className="text-red-500">-AED {formatCurrency(summary.sellingFee)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Less: Outstanding ({100 - xirrSaleStage}%)</span>
+                                <span className="text-red-500">-AED {formatCurrency(summary.outstandingAmount)}</span>
+                              </div>
+                              <div className="flex justify-between font-medium border-t pt-1">
+                                <span>Net Proceeds</span>
+                                <span className="text-green-700">+AED {formatCurrency(summary.netSaleProceeds)}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Net Profit */}
+                            <div className={`mt-3 p-3 rounded-lg ${summary.netSaleProceeds - summary.totalInvested >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium">Net Profit</span>
+                                <span className={`font-bold text-lg ${summary.netSaleProceeds - summary.totalInvested >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                  AED {formatCurrency(summary.netSaleProceeds - summary.totalInvested)}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* XIRR Result */}
+                            {xirr !== null ? (
+                              <>
+                                <div className={`mt-3 p-4 rounded-lg ${xirr >= 0 ? 'bg-blue-100' : 'bg-red-100'}`}>
+                                  <p className={`text-sm ${xirr >= 0 ? 'text-blue-600' : 'text-red-600'}`}>Expected XIRR</p>
+                                  <p className={`text-4xl font-bold ${xirr >= 0 ? 'text-blue-700' : 'text-red-700'}`}>{xirr.toFixed(2)}%</p>
+                                  <p className="text-xs text-gray-600 mt-1">Annualized return</p>
+                                </div>
+                                <Button 
+                                  onClick={() => exportXIRRToExcel(opp, xirrSaleStage, xirrSaleDate, parseFloat(xirrSaleRate))}
+                                  className="w-full mt-3 bg-green-600 hover:bg-green-700"
+                                  size="sm"
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download Excel Breakdown
+                                </Button>
+                              </>
+                            ) : (
+                              <div className="mt-3 p-3 rounded-lg bg-yellow-50">
+                                <p className="text-sm text-yellow-700">Unable to calculate XIRR. Check dates.</p>
+                              </div>
+                            )}
+                          </>
                         );
                       })()}
                     </>
