@@ -36,7 +36,7 @@ export default function RealEstateDetails() {
   const [xirrSaleDate, setXirrSaleDate] = useState("");
   const [xirrSaleRate, setXirrSaleRate] = useState(""); // per sqft
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       const [oppRes, clientsRes] = await Promise.all([
@@ -51,7 +51,7 @@ export default function RealEstateDetails() {
       toast.error("Failed to load property details");
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -60,8 +60,13 @@ export default function RealEstateDetails() {
       return;
     }
     setUser(JSON.parse(userData));
-    fetchData();
-  }, [id, navigate, fetchData]);
+  }, [navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user, fetchData]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
