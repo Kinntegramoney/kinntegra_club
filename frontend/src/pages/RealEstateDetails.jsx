@@ -426,7 +426,7 @@ export default function RealEstateDetails() {
             
             {/* Fee Breakdown */}
             <h3 className="text-sm font-medium text-gray-700 mb-3">Fee Breakdown</h3>
-            <div className="grid grid-cols-5 gap-3 text-sm">
+            <div className="grid grid-cols-4 gap-3 text-sm">
               <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
                 <p className="text-orange-600 font-medium">DLD Fee</p>
                 <p className="text-lg font-bold text-orange-800">AED {formatCurrency(opp.dld_fee)}</p>
@@ -444,11 +444,6 @@ export default function RealEstateDetails() {
                 <p className="text-gray-600 font-medium">Other Fees</p>
                 <p className="text-lg font-bold text-gray-800">AED {formatCurrency(opp.other_fees)}</p>
               </div>
-              <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
-                <p className="text-purple-600 font-medium">Selling Fee</p>
-                <p className="text-lg font-bold text-purple-800">{opp.unit_selling_fee_percentage || 0}%</p>
-                <p className="text-xs text-purple-500">of sale price</p>
-              </div>
             </div>
           </div>
 
@@ -460,12 +455,7 @@ export default function RealEstateDetails() {
                   <Calendar className="h-5 w-5 text-teal-600" />
                   Payment Schedule
                 </h2>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-gray-500">Progress: <span className="font-bold text-teal-600">{opp.total_payment_percentage_completed || 0}%</span></span>
-                  <Button size="sm" variant="outline" onClick={() => setShowPaymentManagement(true)}>
-                    Manage
-                  </Button>
-                </div>
+                <span className="text-sm text-gray-500">Progress: <span className="font-bold text-teal-600">{opp.total_payment_percentage_completed || 0}%</span></span>
               </div>
               
               <div className="w-full bg-gray-100 rounded-full h-3 mb-6">
