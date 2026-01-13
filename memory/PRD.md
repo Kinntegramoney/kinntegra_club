@@ -52,6 +52,23 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
    - "Record All Payments" button submits all entries
    - Status shows "FUNDED" when total recorded matches total due
 
+8. **Removed Manage Payments Button from Header (P1)** ✅
+   - Payment Management section is already on the page, button was redundant
+
+9. **Presentation Upload in Add Property (P1)** ✅
+   - New "Presentations" section in Add Property modal
+   - Upload PDF, PPT, PPTX, DOC, DOCX files (max 10)
+   - Files stored on server with download endpoint
+
+10. **Presentations Download on Details Page (P1)** ✅
+    - New "Property Documents & Presentations" section
+    - Shows all uploaded presentations with download links
+    - Available to clients and sub-brokers
+
+11. **Database Cleared (P0)** ✅
+    - All data (users, bonds, real estate, notifications) cleared
+    - Ready for fresh opportunity and user creation
+
 ### Dec 2025 - Previous Session
 1. **Fixed Payment Milestone Sorting Bug (P0)** ✅
    - Rewrote sorting logic in `CreateRealEstateModal.jsx` to use inline sorting during render
