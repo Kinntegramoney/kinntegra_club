@@ -499,10 +499,15 @@ export default function BondDetails() {
                 <Input
                   data-testid="approximate-amount-input"
                   id="approximate_amount"
-                  type="number"
-                  value={approximateAmount}
-                  onChange={(e) => setApproximateAmount(e.target.value)}
-                  placeholder="e.g., 1000000"
+                  type="text"
+                  value={approximateAmount ? parseInt(approximateAmount).toLocaleString('en-IN') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (value === '' || !isNaN(value)) {
+                      setApproximateAmount(value);
+                    }
+                  }}
+                  placeholder="e.g., 10,00,000"
                 />
               </div>
               <div className="flex items-end">
