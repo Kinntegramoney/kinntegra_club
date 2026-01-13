@@ -516,6 +516,164 @@ async def bulk_upload_subbrokers(
     return results
 
 
+@api_router.get("/bulk/template/clients")
+async def download_client_template(current_user: dict = Depends(get_current_user)):
+    """Download Excel template for bulk client upload"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can download templates")
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Clients"
+    
+    # Headers
+    headers = ["Name*", "PAN*", "Email*", "Mobile*", "Password*", "PIN*", 
+               "Sub-Broker Code", "Address Line 1", "Address Line 2", "City", "State", "Country", "Pincode"]
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="7C3AED", end_color="7C3AED", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center")
+        ws.column_dimensions[get_column_letter(col)].width = 18
+    
+    # Sample row
+    sample = ["Jane Smith", "PQRST5678U", "jane@example.com", "9876543213", 
+              "password123", "1234", "SB001", "456 Park Ave", "", "Delhi", "Delhi", "India", "110001"]
+    for col, value in enumerate(sample, 1):
+        ws.cell(row=2, column=col, value=value)
+    
+    # Instructions sheet
+    ws_instructions = wb.create_sheet("Instructions")
+    instructions = [
+        "BULK CLIENT UPLOAD INSTRUCTIONS",
+        "",
+        "Required Fields (marked with *):",
+        "- Name: Full name of the client",
+        "- PAN: Valid PAN number (10 characters, e.g., PQRST5678U)",
+        "- Email: Valid email address",
+        "- Mobile: 10-digit mobile number",
+        "- Password: Login password (min 6 characters)",
+        "- PIN: 4-digit PIN for transactions",
+        "",
+        "Optional Fields:",
+        "- Sub-Broker Code: Link client to a sub-broker (e.g., SB001)",
+        "- Address details for complete profile",
+        "",
+        "Notes:",
+        "- Delete the sample row before uploading",
+        "- PAN must be unique",
+        "- Maximum 200 records per upload"
+    ]
+    for row, text in enumerate(instructions, 1):
+        ws_instructions.cell(row=row, column=1, value=text)
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=client_template.xlsx"}
+    )
+
+
+@api_router.post("/bulk/clients")
+async def bulk_upload_clients(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Bulk upload clients from Excel file"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can bulk upload clients")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    import pandas as pd
+    
+    content = await file.read()
+    df = pd.read_excel(io.BytesIO(content), sheet_name=0)
+    
+    # Clean column names
+    df.columns = [col.replace('*', '').strip().lower().replace(' ', '_').replace('-', '_') for col in df.columns]
+    
+    results = {"success": 0, "failed": 0, "errors": []}
+    
+    for idx, row in df.iterrows():
+        try:
+            # Validate required fields
+            if pd.isna(row.get('name')) or pd.isna(row.get('pan')):
+                results['errors'].append(f"Row {idx+2}: Missing required fields (Name or PAN)")
+                results['failed'] += 1
+                continue
+            
+            pan = str(row['pan']).upper().strip()
+            
+            # Check for duplicates
+            existing_pan = await db.users.find_one({"pan": pan})
+            if existing_pan:
+                results['errors'].append(f"Row {idx+2}: PAN {pan} already exists")
+                results['failed'] += 1
+                continue
+            
+            # Find linked sub-broker if provided
+            linked_subbroker_id = None
+            sub_broker_code = row.get('sub_broker_code')
+            if not pd.isna(sub_broker_code) and sub_broker_code:
+                sub_broker = await db.partners.find_one({"partner_code": str(sub_broker_code).strip()})
+                if sub_broker:
+                    linked_subbroker_id = sub_broker['id']
+                else:
+                    results['errors'].append(f"Row {idx+2}: Sub-broker code {sub_broker_code} not found (client will be created without link)")
+            
+            # Create user
+            user_id = str(uuid.uuid4())
+            user = {
+                "id": user_id,
+                "pan": pan,
+                "name": str(row['name']).strip(),
+                "email": str(row.get('email', '')).strip() if not pd.isna(row.get('email')) else "",
+                "phone": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else "",
+                "password_hash": get_password_hash(str(row.get('password', 'password123'))),
+                "pin_hash": get_password_hash(str(row.get('pin', '1234'))),
+                "role": "client",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.users.insert_one(user)
+            
+            # Create client record
+            client = {
+                "id": user_id,
+                "name": str(row['name']).strip(),
+                "pan": pan,
+                "email": str(row.get('email', '')).strip() if not pd.isna(row.get('email')) else "",
+                "mobile": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else "",
+                "address_line1": str(row.get('address_line_1', '')).strip() if not pd.isna(row.get('address_line_1')) else "",
+                "address_line2": str(row.get('address_line_2', '')).strip() if not pd.isna(row.get('address_line_2')) else "",
+                "city": str(row.get('city', '')).strip() if not pd.isna(row.get('city')) else "",
+                "state": str(row.get('state', '')).strip() if not pd.isna(row.get('state')) else "",
+                "country": str(row.get('country', 'India')).strip() if not pd.isna(row.get('country')) else "India",
+                "pincode": str(row.get('pincode', '')).strip() if not pd.isna(row.get('pincode')) else "",
+                "linked_subbroker_id": linked_subbroker_id,
+                "created_by": current_user['id'],
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "bond_allocations": [],
+                "real_estate_investments": []
+            }
+            await db.clients.insert_one(client)
+            results['success'] += 1
+            
+        except Exception as e:
+            results['errors'].append(f"Row {idx+2}: {str(e)}")
+            results['failed'] += 1
+    
+    return results
+
+
 @api_router.get("/bulk/template/bonds")
 async def download_bond_template(current_user: dict = Depends(get_current_user)):
     """Download Excel template for bulk bond upload"""
