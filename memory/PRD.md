@@ -338,16 +338,41 @@ Sub-broker View:
 - [x] **Template Updated**: Download template includes Partner Code column with sample data
 
 ### Phase 12: Real Estate Opportunities Module (January 13, 2026)
-- [x] **New Module**: Complete Real Estate Opportunities management system
-- [x] **Form Fields** (based on Excel columns):
-  - Building/Project Name, Unit Number
-  - Unit Price, DLD Fee, Admin Fee, Broker Fee, Other Fees
-  - Total Area, Carpet Area, Balcony Area (with ratio calculation)
-  - Unit Type (Studio, 1BR, 2BR, etc.), Floor, Parking Spaces
-  - Developer Name, Location, Amenities, Handover Date, Payment Plan
-  - Investment Time Frame (in days)
+- [x] **Integrated into Opportunities Page**: Real Estate shown as a tab alongside Bonds (not separate sidebar item)
 - [x] **Off-Plan Properties**: Maximum 4 investors per property (25% share each)
-- [x] **Fractional Properties**: Unit value divided into multiples of 500 AED
+- [x] **Fractional Properties**: Maximum $50,000 USD (~183,500 AED) per investor
+- [x] **DLD Fees Section**: Configurable as percentage or fixed amount, displayed separately
+- [x] **Admin Fees Section**: Configurable as percentage or fixed amount, displayed separately
+- [x] **Payment Schedule**: Define payment milestones with:
+  - Payment Date
+  - Percentage (%)
+  - Description (e.g., "Booking", "During Construction", "Handover")
+  - Auto-calculated amounts based on unit price
+  - Validation that off-plan schedules total 100%
+  - Track completed payments and percentage progress
+- [x] **Sale Settings**:
+  - Expected Sale Rate (AED/sqft)
+  - Estimated Sell Date
+  - Eligible to Sell After X% payments (threshold)
+  - "Is Eligible to Sell" status based on payment progress
+- [x] **Form Fields**:
+  - Building/Project Name, Unit Number
+  - Property Type (Off-Plan/Fractional)
+  - Unit Price, DLD Fee %, Admin Fee %, Broker Fee, Other Fees
+  - Total Area, Carpet Area, Balcony Area
+  - Unit Type, Floor, Parking Spaces
+  - Developer Name, Location, Amenities, Handover Date
+- [x] **Image Upload**: Max 12 images per property
+- [x] **Multi-step Form**: Basic Info → DLD & Fees → Area → Payment Schedule → Sale Settings → Images
+
+**API Endpoints:**
+- `POST /api/real-estate-opportunities` - Create with payment schedule
+- `GET /api/real-estate-opportunities` - List with filters
+- `PUT /api/real-estate-opportunities/{id}` - Update
+- `DELETE /api/real-estate-opportunities/{id}` - Delete
+- `POST /api/real-estate-opportunities/{id}/images` - Upload images (max 12)
+- `POST /api/real-estate-opportunities/{id}/invest` - Allocate investment
+- `POST /api/real-estate-opportunities/{id}/record-payment` - Mark payment milestone complete
 - [x] **Image Upload**: Support for up to 12 images per property
 - [x] **Investment Allocation**: Track investors and their allocations
 - [x] **Multi-step Form**: Basic Info → Pricing → Area & Details → Investment → Images
