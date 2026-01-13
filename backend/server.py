@@ -3074,7 +3074,7 @@ class RealEstateOpportunityUpdate(BaseModel):
     building_name: Optional[str] = None
     unit_no: Optional[str] = None
     unit_price: Optional[float] = None
-    dld_fee: Optional[float] = None
+    dld_fee_percentage: Optional[float] = None
     admin_fee: Optional[float] = None
     broker_fee: Optional[float] = None
     other_fees: Optional[float] = None
