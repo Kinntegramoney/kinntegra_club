@@ -156,7 +156,7 @@ export default function RealEstateDetails() {
                   <DollarSign className="h-5 w-5 text-teal-600" />
                   Financial Summary
                 </h2>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-3 gap-6">
                   <div>
                     <p className="text-sm text-gray-500">Unit Price</p>
                     <p className="text-2xl font-bold text-gray-800">AED {formatCurrency(opp.unit_price)}</p>
@@ -165,23 +165,29 @@ export default function RealEstateDetails() {
                     <p className="text-sm text-gray-500">Total Cost (incl. fees)</p>
                     <p className="text-2xl font-bold text-teal-600">AED {formatCurrency(opp.total_cost)}</p>
                   </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Total Units</p>
+                    <p className="text-2xl font-bold text-indigo-600">{formatCurrency(opp.total_units || Math.floor(opp.total_cost / 500))} units</p>
+                    <p className="text-xs text-gray-400">@ 500 AED per unit</p>
+                  </div>
                 </div>
                 
+                {/* Fee Breakdown - Absolute Amounts */}
                 <div className="mt-6 pt-4 border-t border-gray-100">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Fee Breakdown</h3>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Fee Breakdown (Absolute Amounts)</h3>
                   <div className="grid grid-cols-4 gap-4 text-sm">
                     <div className="bg-blue-50 rounded-lg p-3">
                       <p className="text-blue-600 font-medium">DLD Fee</p>
-                      <p className="text-lg font-bold text-blue-800">{opp.dld_fee_percentage}%</p>
-                      <p className="text-xs text-blue-600">AED {formatCurrency(opp.dld_fee)}</p>
+                      <p className="text-lg font-bold text-blue-800">AED {formatCurrency(opp.dld_fee)}</p>
+                      <p className="text-xs text-blue-500">({opp.dld_fee_percentage}%)</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-3">
                       <p className="text-green-600 font-medium">Admin Fee</p>
-                      <p className="text-lg font-bold text-green-800">{opp.admin_fee_percentage}%</p>
-                      <p className="text-xs text-green-600">AED {formatCurrency(opp.admin_fee)}</p>
+                      <p className="text-lg font-bold text-green-800">AED {formatCurrency(opp.admin_fee)}</p>
+                      <p className="text-xs text-green-500">({opp.admin_fee_percentage}%)</p>
                     </div>
                     <div className="bg-amber-50 rounded-lg p-3">
-                      <p className="text-amber-600 font-medium">Broker Fee</p>
+                      <p className="text-amber-600 font-medium">Brokerage</p>
                       <p className="text-lg font-bold text-amber-800">AED {formatCurrency(opp.broker_fee)}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3">
@@ -190,6 +196,31 @@ export default function RealEstateDetails() {
                     </div>
                   </div>
                 </div>
+
+                {/* Management Fees */}
+                {(opp.upfront_fee || opp.trailer_fee || opp.management_fee || opp.unit_selling_fee) && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">Management Fees</h3>
+                    <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div className="bg-purple-50 rounded-lg p-3">
+                        <p className="text-purple-600 font-medium">Upfront Fee</p>
+                        <p className="text-lg font-bold text-purple-800">AED {formatCurrency(opp.upfront_fee || 0)}</p>
+                      </div>
+                      <div className="bg-purple-50 rounded-lg p-3">
+                        <p className="text-purple-600 font-medium">Trailer Fee</p>
+                        <p className="text-lg font-bold text-purple-800">AED {formatCurrency(opp.trailer_fee || 0)}</p>
+                      </div>
+                      <div className="bg-purple-50 rounded-lg p-3">
+                        <p className="text-purple-600 font-medium">Management Fee</p>
+                        <p className="text-lg font-bold text-purple-800">AED {formatCurrency(opp.management_fee || 0)}</p>
+                      </div>
+                      <div className="bg-purple-50 rounded-lg p-3">
+                        <p className="text-purple-600 font-medium">Unit Selling Fee</p>
+                        <p className="text-lg font-bold text-purple-800">AED {formatCurrency(opp.unit_selling_fee || 0)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Payment Schedule Overview (Read-only) */}
