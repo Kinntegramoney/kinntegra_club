@@ -93,6 +93,14 @@ function App() {
             } 
           />
           <Route 
+            path="/broker/admin/real-estate" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <AdminRealEstate />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/broker/trades" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
@@ -109,10 +117,10 @@ function App() {
             } 
           />
           <Route 
-            path="/broker/real-estate" 
+            path="/broker/real-estate/:id" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
-                <RealEstateOpportunities />
+                <RealEstateDetails />
               </ProtectedRoute>
             } 
           />
