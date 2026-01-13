@@ -3911,6 +3911,99 @@ async def confirm_participation(
     }
 
 
+class ShareOpportunityRequest(BaseModel):
+    client_ids: List[str]
+    message: str = ""
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/share")
+async def share_opportunity_with_clients(
+    opportunity_id: str,
+    request: ShareOpportunityRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Share a real estate opportunity with selected clients (broker/sub-broker only)"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can share opportunities")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Create share records for each client
+    share_records = []
+    for client_id in request.client_ids:
+        share_record = {
+            "id": str(uuid.uuid4()),
+            "client_id": client_id,
+            "shared_by": current_user['id'],
+            "shared_by_name": current_user.get('name', current_user.get('pan_number')),
+            "shared_by_role": current_user['role'],
+            "message": request.message,
+            "shared_at": datetime.now(timezone.utc).isoformat(),
+            "viewed": False,
+            "interested": False
+        }
+        share_records.append(share_record)
+    
+    # Update opportunity with share records
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$push": {"shares": {"$each": share_records}}}
+    )
+    
+    # Create notifications for each client
+    for client_id in request.client_ids:
+        notification = {
+            "id": str(uuid.uuid4()),
+            "user_id": client_id,
+            "type": "opportunity_shared",
+            "title": "New Investment Opportunity",
+            "message": f"{current_user.get('name', 'Your broker')} shared a real estate opportunity: {opportunity['building_name']} - Unit {opportunity['unit_no']}",
+            "opportunity_id": opportunity_id,
+            "from_user_id": current_user['id'],
+            "from_user_name": current_user.get('name', current_user.get('pan_number')),
+            "custom_message": request.message,
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.notifications.insert_one(notification)
+    
+    return {
+        "message": f"Opportunity shared with {len(request.client_ids)} client(s)",
+        "shares_created": len(share_records)
+    }
+
+
+@api_router.get("/notifications")
+async def get_notifications(current_user: dict = Depends(get_current_user)):
+    """Get notifications for the current user"""
+    notifications = await db.notifications.find(
+        {"user_id": current_user['id']},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(50).to_list(50)
+    
+    return notifications
+
+
+@api_router.put("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Mark a notification as read"""
+    result = await db.notifications.update_one(
+        {"id": notification_id, "user_id": current_user['id']},
+        {"$set": {"read": True}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    return {"message": "Notification marked as read"}
+
+
 @api_router.get("/client/real-estate-investments")
 async def get_client_real_estate_investments(current_user: dict = Depends(get_current_user)):
     """Get real estate investments for the logged-in client"""
