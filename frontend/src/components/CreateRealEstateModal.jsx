@@ -425,32 +425,49 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                 <p className="text-sm text-orange-600 mt-1">Base price of the property</p>
               </div>
 
-              {/* Fees Grid */}
+              {/* Upfront Fees - DLD + Admin (paid with booking) */}
+              <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                <h4 className="text-red-800 font-medium mb-3">Upfront Fees (Paid with Booking)</h4>
+                <p className="text-xs text-red-600 mb-3">DLD and Admin fees are paid upfront along with the booking amount</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="dld_fee_percentage" className="text-blue-800">DLD Fee (%)</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        id="dld_fee_percentage"
+                        type="number"
+                        step="0.1"
+                        value={formData.dld_fee_percentage}
+                        onChange={(e) => handleChange("dld_fee_percentage", e.target.value)}
+                        placeholder="4"
+                        className="w-24"
+                      />
+                      <span className="text-gray-500">%</span>
+                      <span className="text-blue-600 font-medium ml-2">= AED {formatCurrency(dldFee)}</span>
+                    </div>
+                    <p className="text-xs text-blue-500 mt-1">% of Unit Price</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="admin_fee" className="text-green-800">Admin Fee (AED)</Label>
+                    <Input
+                      id="admin_fee"
+                      type="number"
+                      value={formData.admin_fee}
+                      onChange={(e) => handleChange("admin_fee", e.target.value)}
+                      placeholder="e.g., 10000"
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-green-500 mt-1">Absolute amount</p>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-red-200 flex justify-between text-sm font-medium">
+                  <span className="text-red-700">Total Upfront (with Booking)</span>
+                  <span className="text-red-800">AED {formatCurrency(upfrontAmount)}</span>
+                </div>
+              </div>
+
+              {/* Other Fees */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <Label htmlFor="dld_fee" className="text-blue-800 font-medium">DLD Fee (AED)</Label>
-                  <Input
-                    id="dld_fee"
-                    type="number"
-                    value={formData.dld_fee}
-                    onChange={(e) => handleChange("dld_fee", e.target.value)}
-                    placeholder="e.g., 80000"
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-blue-600 mt-1">Dubai Land Department fee</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                  <Label htmlFor="admin_fee" className="text-green-800 font-medium">Admin Fee (AED)</Label>
-                  <Input
-                    id="admin_fee"
-                    type="number"
-                    value={formData.admin_fee}
-                    onChange={(e) => handleChange("admin_fee", e.target.value)}
-                    placeholder="e.g., 10000"
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-green-600 mt-1">Administrative charges</p>
-                </div>
                 <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
                   <Label htmlFor="broker_fee" className="text-amber-800 font-medium">Brokerage Fee (AED)</Label>
                   <Input
