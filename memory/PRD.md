@@ -404,6 +404,21 @@ Sub-broker View:
 - `PUT /api/notifications/{id}/read` - Mark notification as read
 - `GET /api/notifications/unread-count` - Get unread notification count
 
+### Phase 15: Unit-Based Investment & Management Fees (January 13, 2026) - IMPLEMENTED
+- [x] **Absolute Fee Amounts**: DLD, Admin, and Brokerage fees now display as absolute AED amounts
+- [x] **Management Fees Section**: New fields added:
+  - Upfront Fee (AED)
+  - Trailer Fee (AED)
+  - Management Fee (AED)
+  - Unit Selling Fee (AED)
+- [x] **Unit-Based Investment**: Total cost divided by 500 AED = Total Units
+  - Clients purchase investment in multiples of units
+  - Each unit = 500 AED
+  - Shows units sold, units available, and percentage share
+- [x] **Updated Create Modal**: New "Management Fees" tab with complete cost summary
+- [x] **Updated Details Page**: Shows total units, unit-based progress, and absolute fee breakdown
+- [x] **Updated Investor Modal**: Simplified unit input with investment preview
+
 ## Testing Status
 - Backend: 84/84 tests passing (100%) - includes 22 new client portal tests
 - Frontend: All UI flows verified
