@@ -3361,12 +3361,15 @@ async def update_real_estate_opportunity(
         total_cost = unit_price + dld_fee + admin_fee + broker_fee + other_fees
         update_dict['total_cost'] = total_cost
         
-        # Recalculate fractional info if fractional type
-        prop_type = update_dict.get('property_type', opportunity['property_type'])
-        if prop_type == 'fractional':
-            fractional_info = calculate_fractional_units(total_cost)
-            update_dict['fractional_info'] = fractional_info
-            update_dict['units_available'] = fractional_info['total_units'] - opportunity.get('units_sold', 0)
+        # Recalculate units
+        UNIT_VALUE_AED = 500
+        total_units = int(total_cost // UNIT_VALUE_AED)
+        if total_units == 0:
+            total_units = 1
+        update_dict['total_units'] = total_units
+        update_dict['unit_value'] = UNIT_VALUE_AED
+        units_sold = opportunity.get('units_sold', 0)
+        update_dict['units_available'] = total_units - units_sold
     
     # Recalculate balcony ratio if area fields changed
     if any(k in update_dict for k in ['carpet_area', 'balcony_area']):
