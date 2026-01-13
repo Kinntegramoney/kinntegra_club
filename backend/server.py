@@ -3177,8 +3177,10 @@ async def create_real_estate_opportunity(
         "unit_no": opportunity_data.unit_no,
         "property_type": "off_plan",  # Only off-plan supported
         "unit_price": opportunity_data.unit_price,
+        "dld_fee_percentage": opportunity_data.dld_fee_percentage,
         "dld_fee": round(dld_fee, 2),
         "admin_fee": round(admin_fee, 2),
+        "upfront_amount": round(upfront_amount, 2),  # DLD + Admin (paid with booking)
         "broker_fee": broker_fee,
         "other_fees": other_fees,
         "unit_selling_fee_percentage": opportunity_data.unit_selling_fee_percentage,
