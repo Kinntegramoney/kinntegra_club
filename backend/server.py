@@ -3611,28 +3611,78 @@ async def get_opportunity_investors(
     }
 
 
+class PaymentRecordRequest(BaseModel):
+    payment_index: int
+    payment_date: str  # Date payment was made
+    transaction_amount: float  # Actual amount paid
+    transaction_fees: float = 0  # Bank/transfer fees
+    currency: str = "AED"  # Currency used
+    currency_rate: float = 1.0  # Exchange rate if not AED
+    notes: Optional[str] = None
+
+
 @api_router.post("/real-estate-opportunities/{opportunity_id}/record-payment")
 async def record_payment_milestone(
     opportunity_id: str,
-    payment_index: int,
+    payment_data: PaymentRecordRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """Mark a payment milestone as completed"""
-    if current_user['role'] != 'broker':
-        raise HTTPException(status_code=403, detail="Only brokers can record payments")
-    
+    """
+    Mark a payment milestone as completed with full transaction details.
+    Allowed for: broker, sub_broker, client (if tagged to this investment)
+    """
     opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id})
     
     if not opportunity:
         raise HTTPException(status_code=404, detail="Real estate opportunity not found")
     
+    # Check authorization
+    user_role = current_user['role']
+    user_id = current_user['id']
+    
+    if user_role == 'broker':
+        # Broker must own this opportunity
+        if opportunity.get('created_by') != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    elif user_role == 'sub_broker':
+        # Sub-broker must have a client invested in this opportunity
+        investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
+        # Get clients linked to this sub-broker
+        sub_broker_clients = await db.clients.find({"linked_subbroker_id": user_id}, {"id": 1}).to_list(1000)
+        sub_broker_client_ids = [c['id'] for c in sub_broker_clients]
+        if not any(cid in investor_client_ids for cid in sub_broker_client_ids):
+            raise HTTPException(status_code=403, detail="No linked clients invested in this property")
+    elif user_role == 'client':
+        # Client must be an investor
+        investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
+        # Get client record for this user
+        client = await db.clients.find_one({"pan_number": current_user.get('pan_number')})
+        if not client or client['id'] not in investor_client_ids:
+            raise HTTPException(status_code=403, detail="You are not invested in this property")
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     payment_schedule = opportunity.get('payment_schedule', [])
+    payment_index = payment_data.payment_index
+    
     if payment_index < 0 or payment_index >= len(payment_schedule):
         raise HTTPException(status_code=400, detail="Invalid payment index")
     
-    # Mark payment as completed
+    # Update payment with full details
     payment_schedule[payment_index]['completed'] = True
     payment_schedule[payment_index]['completed_at'] = datetime.now(timezone.utc).isoformat()
+    payment_schedule[payment_index]['payment_details'] = {
+        "payment_date": payment_data.payment_date,
+        "transaction_amount": payment_data.transaction_amount,
+        "transaction_fees": payment_data.transaction_fees,
+        "currency": payment_data.currency,
+        "currency_rate": payment_data.currency_rate,
+        "amount_in_aed": payment_data.transaction_amount * payment_data.currency_rate,
+        "notes": payment_data.notes,
+        "recorded_by": user_id,
+        "recorded_by_role": user_role,
+        "recorded_at": datetime.now(timezone.utc).isoformat()
+    }
     
     # Calculate total completed percentage
     total_completed = sum(p['percentage'] for p in payment_schedule if p.get('completed'))
@@ -3657,6 +3707,189 @@ async def record_payment_milestone(
         "total_completed_percentage": total_completed,
         "is_eligible_to_sell": is_eligible
     }
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/payments/{payment_index}/swift-copy")
+async def upload_swift_copy(
+    opportunity_id: str,
+    payment_index: int,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload SWIFT copy for a payment milestone"""
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Check authorization (same logic as record-payment)
+    user_role = current_user['role']
+    user_id = current_user['id']
+    
+    if user_role == 'broker':
+        if opportunity.get('created_by') != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    elif user_role == 'sub_broker':
+        investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
+        sub_broker_clients = await db.clients.find({"linked_subbroker_id": user_id}, {"id": 1}).to_list(1000)
+        sub_broker_client_ids = [c['id'] for c in sub_broker_clients]
+        if not any(cid in investor_client_ids for cid in sub_broker_client_ids):
+            raise HTTPException(status_code=403, detail="Not authorized")
+    elif user_role == 'client':
+        investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
+        client = await db.clients.find_one({"pan_number": current_user.get('pan_number')})
+        if not client or client['id'] not in investor_client_ids:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    payment_schedule = opportunity.get('payment_schedule', [])
+    
+    if payment_index < 0 or payment_index >= len(payment_schedule):
+        raise HTTPException(status_code=400, detail="Invalid payment index")
+    
+    # Validate file type
+    allowed_types = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: PDF, JPEG, PNG, WebP")
+    
+    # Read and encode file
+    content = await file.read()
+    import base64
+    encoded = base64.b64encode(content).decode('utf-8')
+    
+    swift_copy = {
+        "id": str(uuid.uuid4()),
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "size": len(content),
+        "data": encoded,
+        "uploaded_by": user_id,
+        "uploaded_by_role": user_role,
+        "uploaded_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Add or replace swift copy for this payment
+    if 'swift_copies' not in payment_schedule[payment_index]:
+        payment_schedule[payment_index]['swift_copies'] = []
+    
+    payment_schedule[payment_index]['swift_copies'].append(swift_copy)
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {
+            "payment_schedule": payment_schedule,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "message": "SWIFT copy uploaded successfully",
+        "swift_copy_id": swift_copy['id'],
+        "filename": file.filename
+    }
+
+
+@api_router.get("/real-estate-opportunities/{opportunity_id}/payments")
+async def get_payment_schedule(
+    opportunity_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get payment schedule for a real estate opportunity.
+    Accessible by: broker (owner), sub-broker (if client invested), client (if invested)
+    """
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Check authorization
+    user_role = current_user['role']
+    user_id = current_user['id']
+    authorized = False
+    
+    if user_role == 'broker':
+        authorized = opportunity.get('created_by') == user_id
+    elif user_role == 'sub_broker':
+        investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
+        sub_broker_clients = await db.clients.find({"linked_subbroker_id": user_id}, {"id": 1}).to_list(1000)
+        sub_broker_client_ids = [c['id'] for c in sub_broker_clients]
+        authorized = any(cid in investor_client_ids for cid in sub_broker_client_ids)
+    elif user_role == 'client':
+        investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
+        client = await db.clients.find_one({"pan_number": current_user.get('pan_number')})
+        authorized = client and client['id'] in investor_client_ids
+    
+    if not authorized:
+        raise HTTPException(status_code=403, detail="Not authorized to view this payment schedule")
+    
+    # Strip base64 data from swift copies for list view (too large)
+    payment_schedule = opportunity.get('payment_schedule', [])
+    for payment in payment_schedule:
+        if 'swift_copies' in payment:
+            for sc in payment['swift_copies']:
+                sc['data'] = None  # Remove data, keep metadata
+    
+    return {
+        "opportunity_id": opportunity_id,
+        "building_name": opportunity['building_name'],
+        "unit_no": opportunity['unit_no'],
+        "total_cost": opportunity['total_cost'],
+        "unit_price": opportunity['unit_price'],
+        "payment_schedule": payment_schedule,
+        "total_payment_percentage_completed": opportunity.get('total_payment_percentage_completed', 0),
+        "is_eligible_to_sell": opportunity.get('is_eligible_to_sell', False),
+        "eligible_to_sell_after_percentage": opportunity.get('eligible_to_sell_after_percentage', 100)
+    }
+
+
+@api_router.get("/client/real-estate-investments")
+async def get_client_real_estate_investments(current_user: dict = Depends(get_current_user)):
+    """Get real estate investments for the logged-in client"""
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Get client record
+    client = await db.clients.find_one({"pan_number": current_user.get('pan_number')})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client profile not found")
+    
+    client_id = client['id']
+    
+    # Find all opportunities where this client is an investor
+    opportunities = await db.real_estate_opportunities.find(
+        {"investors.client_id": client_id},
+        {"_id": 0, "images": 0}  # Exclude large fields
+    ).to_list(1000)
+    
+    # Format response with client-specific investment details
+    result = []
+    for opp in opportunities:
+        # Find client's investment in this opportunity
+        client_investment = next(
+            (inv for inv in opp.get('investors', []) if inv['client_id'] == client_id),
+            None
+        )
+        
+        result.append({
+            "id": opp['id'],
+            "building_name": opp['building_name'],
+            "unit_no": opp['unit_no'],
+            "property_type": opp['property_type'],
+            "location": opp.get('location'),
+            "total_cost": opp['total_cost'],
+            "unit_price": opp['unit_price'],
+            "status": opp['status'],
+            "payment_schedule": opp.get('payment_schedule', []),
+            "total_payment_percentage_completed": opp.get('total_payment_percentage_completed', 0),
+            "is_eligible_to_sell": opp.get('is_eligible_to_sell', False),
+            "my_investment": client_investment,
+            "expected_sale_rate": opp.get('expected_sale_rate'),
+            "estimated_sell_date": opp.get('estimated_sell_date')
+        })
+    
+    return result
 
 
 # ==================== END REAL ESTATE OPPORTUNITY ====================
