@@ -511,18 +511,21 @@ export default function RealEstateDetails() {
                 {/* Calculator Inputs */}
                 <div className="space-y-5">
                   <div>
-                    <Label className="text-sm font-medium text-gray-700">Sale Stage (% of payments completed)</Label>
+                    <Label className="text-sm font-medium text-gray-700">
+                      Sale Stage (% of payments completed)
+                      <span className="text-xs text-orange-600 ml-2">Min: {opp.eligible_to_sell_after_percentage || 100}% (Eligible)</span>
+                    </Label>
                     <div className="mt-2">
                       <Slider
                         value={[xirrSaleStage]}
                         onValueChange={(v) => setXirrSaleStage(v[0])}
                         max={100}
-                        min={10}
+                        min={opp.eligible_to_sell_after_percentage || 100}
                         step={10}
                         className="mb-2"
                       />
                       <div className="flex justify-between text-xs text-gray-500">
-                        <span>10%</span>
+                        <span>{opp.eligible_to_sell_after_percentage || 100}%</span>
                         <span className="font-bold text-blue-600">{xirrSaleStage}%</span>
                         <span>100%</span>
                       </div>
