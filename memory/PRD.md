@@ -414,6 +414,23 @@ Sub-broker View:
 - **Sub-broker**: PAN: `FGHIJ5678K`, Password: `subbroker123`, PIN: `5678`
 - **Client**: PAN: `TESTCP1234`, Password: `12341234`, PIN: `1234`
 
+### Phase 13: Real Estate Payment Management Enhancements (January 13, 2026) - VERIFIED COMPLETE
+- [x] **Payment Schedule View Separation**: Payment schedule now displays as read-only timeline with progress indicator
+- [x] **Manage Payments Modal**: Dedicated modal for payment management with detailed payment history
+- [x] **Custom Investor Allocation**: Off-plan properties support custom percentage/amount allocation (not fixed 25%)
+- [x] **Toggle Input Mode**: Broker can choose "By Percentage" or "By Amount" when adding investors
+- [x] **Payment Recording Details**: Records payment date, amount, fees, currency, currency rate, and notes
+- [x] **SWIFT Copy Upload**: Support for uploading SWIFT copies per payment milestone
+- [x] **Investment Progress Tracking**: Shows remaining percentage and amount available for investment
+
+### Phase 14: Client Reinvestment Approval (January 13, 2026) - VERIFIED COMPLETE  
+- [x] **Client Trade & Reinvestment Page**: Located at `/client/trades`
+- [x] **My Trades Tab**: Shows client's trade history with status badges (Approved/Rejected/Pending)
+- [x] **Reinvestment Approval Tab**: Displays pending, approved, and rejected reinvestment tags
+- [x] **Approve/Reject Actions**: Client can approve or reject broker-tagged reinvestments with optional notes
+- [x] **Tag Modification Protection**: Backend prevents broker/sub-broker from modifying client-approved tags
+- [x] **Notifications**: Creates notification for broker when client approves/rejects a tag
+
 ## Backlog / Future Enhancements
 
 ### P0 - Critical
@@ -422,8 +439,9 @@ Sub-broker View:
 - [ ] Email notifications when client books units
 
 ### P1 - High Priority
-- [ ] Dashboard charts and analytics
-- [ ] Export all bonds to Excel
+- [ ] Dashboard charts and analytics for brokers
+- [ ] Export all bonds/real estate to Excel
+- [ ] Projected ROI calculation on Real Estate details page
 
 ### P2 - Medium Priority
 - [ ] Email notifications for new bonds
