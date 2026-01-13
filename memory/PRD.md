@@ -32,6 +32,20 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
    - View Details button
    - Removed DLD% from card display
 
+4. **Comprehensive View Details Page** ✅
+   - Property Information: Building, Unit Details, Size, Location, Balcony, Parking, Max Co-owners, Status
+   - Financial Summary: Unit Price, Total Cost, Fee Breakdown (DLD, Admin, Brokerage, Other, Selling Fee)
+   - Payment Schedule table with dates, descriptions, percentages, amounts, status
+   - **XIRR Calculator**: Slider for sale stage (10-100%), date picker, per-sqft price input, real-time XIRR calculation
+   - Interest & Participation section with two buttons:
+     - "Interested to Know More" - records interest
+     - "Confirm to Participate" - allows selecting ownership percentage (5-100%)
+   - Current Investors section with allocation progress
+
+5. **Backend Endpoints for Interest/Participation** ✅
+   - POST /api/real-estate-opportunities/{id}/interest - Express interest
+   - POST /api/real-estate-opportunities/{id}/participate - Confirm participation with percentage
+
 ### Previous Session
 - Removed "Fractional" real estate type (simplified to Off-Plan only)
 - Implemented complex fee structure: DLD (% of unit price) + Admin (absolute) paid upfront
