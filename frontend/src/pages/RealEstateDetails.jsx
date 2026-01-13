@@ -2076,256 +2076,342 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
 
 // Payment Record Modal - Records payment per investor for a milestone
 function PaymentRecordModal({ opportunity, milestone, onClose, onSuccess }) {
-  const [selectedInvestor, setSelectedInvestor] = useState("");
-  const [formData, setFormData] = useState({
-    transfer_date: "",
-    home_currency: "INR",
-    home_currency_amount: "",
-    aed_amount: "",
-    effective_rate: ""
-  });
-  const [swiftFile, setSwiftFile] = useState(null);
+  const [investorPayments, setInvestorPayments] = useState({});
+  const [swiftFiles, setSwiftFiles] = useState({});
   const [loading, setLoading] = useState(false);
   
   const formatCurrency = (amt) => new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(amt || 0);
   
-  // Get investors who haven't paid for this milestone yet
+  // Get existing payments for this milestone
   const existingPayments = opportunity.investor_payments?.filter(p => p.milestone_index === milestone.index) || [];
-  const paidInvestorIds = existingPayments.map(p => p.investor_id || p.investor_index);
-  const unpaidInvestors = opportunity.investors?.filter((inv, idx) => 
-    !paidInvestorIds.includes(inv.client_id) && !paidInvestorIds.includes(idx)
-  ) || [];
+  const paidInvestorIds = existingPayments.map(p => p.investor_id);
   
-  // Calculate expected AED amount based on investor's share
-  const selectedInv = opportunity.investors?.find((inv, idx) => 
-    inv.client_id === selectedInvestor || idx.toString() === selectedInvestor
-  );
-  const expectedAED = selectedInv 
-    ? (opportunity.unit_price * milestone.percentage / 100) * (selectedInv.share_percentage / 100)
-    : 0;
+  // Calculate milestone totals
+  const totalMilestoneAmount = opportunity.unit_price * milestone.percentage / 100;
   
-  // Auto-calculate effective rate
-  const calculateEffectiveRate = () => {
-    const homeAmt = parseFloat(formData.home_currency_amount) || 0;
-    const aedAmt = parseFloat(formData.aed_amount) || 0;
+  // Initialize investor payment data
+  const investors = opportunity.investors || [];
+  
+  // Get investor's expected and recorded amounts
+  const getInvestorData = (investor) => {
+    const share = investor.share_percentage || (100 / investors.length);
+    const expectedAmount = totalMilestoneAmount * (share / 100);
+    const existingPayment = existingPayments.find(p => p.investor_id === investor.client_id);
+    const isPaid = !!existingPayment;
+    const paymentData = investorPayments[investor.client_id] || {
+      transfer_date: "",
+      home_currency: "INR",
+      home_currency_amount: "",
+      aed_amount: "",
+      notes: ""
+    };
+    return { share, expectedAmount, existingPayment, isPaid, paymentData };
+  };
+  
+  // Calculate totals
+  const totalRecorded = investors.reduce((sum, inv) => {
+    const data = getInvestorData(inv);
+    if (data.isPaid) {
+      return sum + (data.existingPayment.aed_amount || 0);
+    }
+    return sum + (parseFloat(investorPayments[inv.client_id]?.aed_amount) || 0);
+  }, 0);
+  
+  const totalExpected = totalMilestoneAmount;
+  const remainingAmount = totalExpected - totalRecorded;
+  const isMilestoneFunded = remainingAmount <= 0.01;
+  
+  // Handle input change for an investor
+  const handleInvestorChange = (clientId, field, value) => {
+    setInvestorPayments(prev => ({
+      ...prev,
+      [clientId]: {
+        ...(prev[clientId] || { transfer_date: "", home_currency: "INR", home_currency_amount: "", aed_amount: "", notes: "" }),
+        [field]: value
+      }
+    }));
+  };
+  
+  // Handle file change for an investor
+  const handleFileChange = (clientId, file) => {
+    setSwiftFiles(prev => ({ ...prev, [clientId]: file }));
+  };
+  
+  // Calculate effective rate
+  const getEffectiveRate = (paymentData) => {
+    const homeAmt = parseFloat(paymentData.home_currency_amount) || 0;
+    const aedAmt = parseFloat(paymentData.aed_amount) || 0;
     if (homeAmt > 0 && aedAmt > 0) {
       return (homeAmt / aedAmt).toFixed(4);
     }
     return "";
   };
-
-  const handleChange = (field, value) => {
-    const newData = { ...formData, [field]: value };
-    
-    // Auto-calculate effective rate when both amounts are entered
-    if (field === 'home_currency_amount' || field === 'aed_amount') {
-      const homeAmt = parseFloat(field === 'home_currency_amount' ? value : newData.home_currency_amount) || 0;
-      const aedAmt = parseFloat(field === 'aed_amount' ? value : newData.aed_amount) || 0;
-      if (homeAmt > 0 && aedAmt > 0) {
-        newData.effective_rate = (homeAmt / aedAmt).toFixed(4);
-      }
-    }
-    
-    setFormData(newData);
-  };
-
+  
+  // Submit all payments
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedInvestor || !formData.transfer_date || !formData.aed_amount) {
-      toast.error("Please fill all required fields");
+    
+    // Get investors with new payment data
+    const paymentsToRecord = investors.filter(inv => {
+      const data = getInvestorData(inv);
+      return !data.isPaid && investorPayments[inv.client_id]?.aed_amount;
+    });
+    
+    if (paymentsToRecord.length === 0) {
+      toast.error("Please enter payment details for at least one investor");
       return;
     }
     
     setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const API = process.env.REACT_APP_BACKEND_URL;
+    const token = localStorage.getItem("token");
+    const API = process.env.REACT_APP_BACKEND_URL;
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const investor of paymentsToRecord) {
+      const paymentData = investorPayments[investor.client_id];
+      const swiftFile = swiftFiles[investor.client_id];
       
-      // Create FormData for file upload
-      const submitData = new FormData();
-      submitData.append('milestone_index', milestone.index);
-      submitData.append('investor_id', selectedInvestor);
-      submitData.append('transfer_date', formData.transfer_date);
-      submitData.append('home_currency', formData.home_currency);
-      submitData.append('home_currency_amount', formData.home_currency_amount || 0);
-      submitData.append('aed_amount', formData.aed_amount);
-      submitData.append('effective_rate', formData.effective_rate || calculateEffectiveRate());
-      
-      if (swiftFile) {
-        submitData.append('swift_copy', swiftFile);
+      try {
+        const submitData = new FormData();
+        submitData.append('milestone_index', milestone.index);
+        submitData.append('investor_id', investor.client_id);
+        submitData.append('transfer_date', paymentData.transfer_date);
+        submitData.append('home_currency', paymentData.home_currency);
+        submitData.append('home_currency_amount', paymentData.home_currency_amount || 0);
+        submitData.append('aed_amount', paymentData.aed_amount);
+        submitData.append('effective_rate', getEffectiveRate(paymentData));
+        submitData.append('notes', paymentData.notes || '');
+        
+        if (swiftFile) {
+          submitData.append('swift_copy', swiftFile);
+        }
+        
+        await axios.post(
+          `${API}/api/real-estate-opportunities/${opportunity.id}/investor-payment`,
+          submitData,
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+        );
+        successCount++;
+      } catch (error) {
+        console.error(`Error recording payment for ${investor.client_name}:`, error);
+        errorCount++;
       }
-      
-      await axios.post(
-        `${API}/api/real-estate-opportunities/${opportunity.id}/investor-payment`,
-        submitData,
-        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
-      );
-      
+    }
+    
+    setLoading(false);
+    
+    if (successCount > 0) {
+      toast.success(`${successCount} payment(s) recorded successfully!`);
       onSuccess();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to record payment");
-    } finally {
-      setLoading(false);
+    }
+    if (errorCount > 0) {
+      toast.error(`${errorCount} payment(s) failed to record`);
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-green-600" />
-              Record Payment
+              Record Payments - {milestone.description || `Payment ${milestone.index + 1}`}
             </h2>
-            <p className="text-sm text-gray-500">{milestone.description || `Payment ${milestone.index + 1}`} - {milestone.percentage}%</p>
+            <p className="text-sm text-gray-500">{milestone.percentage}% • Due: {new Date(milestone.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Milestone Info */}
-          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-            <div className="flex justify-between">
-              <span className="text-green-700">Total Milestone Amount</span>
-              <span className="font-bold text-green-800">AED {formatCurrency(opportunity.unit_price * milestone.percentage / 100)}</span>
+        {/* Summary Bar */}
+        <div className="p-4 bg-gray-50 border-b">
+          <div className="grid grid-cols-4 gap-4 text-center">
+            <div className="bg-white rounded-lg p-3 border">
+              <p className="text-xs text-gray-500">Total Due</p>
+              <p className="font-bold text-gray-800">AED {formatCurrency(totalExpected)}</p>
             </div>
-            <p className="text-xs text-green-600 mt-1">Due: {new Date(milestone.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-          </div>
-          
-          {/* Select Investor */}
-          <div>
-            <Label>Select Investor *</Label>
-            {unpaidInvestors.length > 0 ? (
-              <Select value={selectedInvestor} onValueChange={setSelectedInvestor}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose investor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {unpaidInvestors.map((inv, idx) => {
-                    const originalIdx = opportunity.investors?.findIndex(i => i.client_id === inv.client_id);
-                    return (
-                      <SelectItem key={inv.client_id || idx} value={inv.client_id || originalIdx.toString()}>
-                        {inv.client_name} ({inv.share_percentage}%)
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className="text-sm text-green-600 p-3 bg-green-50 rounded-lg">All investors have paid for this milestone!</p>
-            )}
-            {selectedInv && (
-              <p className="text-xs text-gray-500 mt-1">
-                Expected: AED {formatCurrency(expectedAED)} ({selectedInv.share_percentage}% share)
+            <div className="bg-white rounded-lg p-3 border">
+              <p className="text-xs text-gray-500">Recorded</p>
+              <p className="font-bold text-green-600">AED {formatCurrency(totalRecorded)}</p>
+            </div>
+            <div className="bg-white rounded-lg p-3 border">
+              <p className="text-xs text-gray-500">Remaining</p>
+              <p className={`font-bold ${remainingAmount <= 0.01 ? 'text-green-600' : 'text-amber-600'}`}>
+                AED {formatCurrency(Math.max(0, remainingAmount))}
               </p>
-            )}
-          </div>
-          
-          {/* Transfer Date */}
-          <div>
-            <Label htmlFor="transfer_date">Date of Transfer *</Label>
-            <Input
-              id="transfer_date"
-              type="date"
-              value={formData.transfer_date}
-              onChange={(e) => handleChange('transfer_date', e.target.value)}
-              required
-            />
-          </div>
-          
-          {/* Home Currency Selection */}
-          <div>
-            <Label>Home Currency</Label>
-            <Select value={formData.home_currency} onValueChange={(v) => handleChange('home_currency', v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="INR">INR - Indian Rupee</SelectItem>
-                <SelectItem value="USD">USD - US Dollar</SelectItem>
-                <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                <SelectItem value="EUR">EUR - Euro</SelectItem>
-                <SelectItem value="AED">AED - UAE Dirham</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {/* Amount in Home Currency */}
-          <div>
-            <Label htmlFor="home_currency_amount">Amount Debited ({formData.home_currency})</Label>
-            <Input
-              id="home_currency_amount"
-              type="number"
-              step="0.01"
-              placeholder={`Amount in ${formData.home_currency}`}
-              value={formData.home_currency_amount}
-              onChange={(e) => handleChange('home_currency_amount', e.target.value)}
-            />
-          </div>
-          
-          {/* AED Amount */}
-          <div>
-            <Label htmlFor="aed_amount">AED Amount Received *</Label>
-            <Input
-              id="aed_amount"
-              type="number"
-              step="0.01"
-              placeholder="Amount in AED"
-              value={formData.aed_amount}
-              onChange={(e) => handleChange('aed_amount', e.target.value)}
-              required
-            />
-          </div>
-          
-          {/* Effective Rate (Auto-calculated) */}
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-            <div className="flex justify-between items-center">
-              <span className="text-blue-700">Effective Exchange Rate</span>
-              <span className="font-bold text-blue-800 text-lg">
-                {formData.effective_rate || calculateEffectiveRate() || '--'} {formData.home_currency}/AED
-              </span>
             </div>
-            <p className="text-xs text-blue-600 mt-1">Auto-calculated from amounts</p>
+            <div className={`rounded-lg p-3 border ${isMilestoneFunded ? 'bg-green-100 border-green-300' : 'bg-amber-50 border-amber-200'}`}>
+              <p className="text-xs text-gray-500">Status</p>
+              <p className={`font-bold ${isMilestoneFunded ? 'text-green-700' : 'text-amber-700'}`}>
+                {isMilestoneFunded ? '✓ FUNDED' : 'Pending'}
+              </p>
+            </div>
           </div>
-          
-          {/* SWIFT Copy Upload */}
-          <div>
-            <Label>SWIFT Copy</Label>
-            <div className="mt-1">
-              {swiftFile ? (
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-gray-500" />
-                    <span className="text-sm text-gray-700 truncate max-w-xs">{swiftFile.name}</span>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6">
+          {/* Investor Payment Forms */}
+          <div className="space-y-6">
+            {investors.map((investor, idx) => {
+              const { share, expectedAmount, existingPayment, isPaid, paymentData } = getInvestorData(investor);
+              
+              return (
+                <div 
+                  key={investor.client_id || idx} 
+                  className={`rounded-xl border p-4 ${isPaid ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}
+                >
+                  {/* Investor Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                        isPaid ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {isPaid ? <Check className="h-5 w-5" /> : idx + 1}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800">{investor.client_name}</p>
+                        <p className="text-sm text-gray-500">{share.toFixed(1)}% share • Expected: AED {formatCurrency(expectedAmount)}</p>
+                      </div>
+                    </div>
+                    {isPaid && (
+                      <Badge className="bg-green-100 text-green-700">✓ Recorded</Badge>
+                    )}
                   </div>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setSwiftFile(null)}>
-                    <X className="h-4 w-4" />
-                  </Button>
+                  
+                  {isPaid ? (
+                    /* Show existing payment details */
+                    <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div className="bg-white rounded p-2">
+                        <p className="text-gray-500 text-xs">Date</p>
+                        <p className="font-medium">{new Date(existingPayment.transfer_date).toLocaleDateString()}</p>
+                      </div>
+                      <div className="bg-white rounded p-2">
+                        <p className="text-gray-500 text-xs">AED Amount</p>
+                        <p className="font-medium text-green-700">AED {formatCurrency(existingPayment.aed_amount)}</p>
+                      </div>
+                      <div className="bg-white rounded p-2">
+                        <p className="text-gray-500 text-xs">Home Currency</p>
+                        <p className="font-medium">{existingPayment.home_currency} {formatCurrency(existingPayment.home_currency_amount)}</p>
+                      </div>
+                      <div className="bg-white rounded p-2">
+                        <p className="text-gray-500 text-xs">Status</p>
+                        <p className={`font-medium ${existingPayment.status === 'verified' ? 'text-green-600' : 'text-amber-600'}`}>
+                          {existingPayment.status === 'verified' ? '✓ Verified' : '⏳ Pending Verification'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Payment Input Form */
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs">Date of Transfer *</Label>
+                        <Input
+                          type="date"
+                          value={paymentData.transfer_date}
+                          onChange={(e) => handleInvestorChange(investor.client_id, 'transfer_date', e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Home Currency</Label>
+                        <Select 
+                          value={paymentData.home_currency} 
+                          onValueChange={(v) => handleInvestorChange(investor.client_id, 'home_currency', v)}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="INR">INR</SelectItem>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="AED">AED</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Amount in {paymentData.home_currency}</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder={`Amount in ${paymentData.home_currency}`}
+                          value={paymentData.home_currency_amount}
+                          onChange={(e) => handleInvestorChange(investor.client_id, 'home_currency_amount', e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">AED Amount Received *</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Amount in AED"
+                          value={paymentData.aed_amount}
+                          onChange={(e) => handleInvestorChange(investor.client_id, 'aed_amount', e.target.value)}
+                          className="mt-1"
+                        />
+                        {paymentData.aed_amount && (
+                          <p className={`text-xs mt-1 ${
+                            Math.abs(parseFloat(paymentData.aed_amount) - expectedAmount) < 1 
+                              ? 'text-green-600' 
+                              : 'text-amber-600'
+                          }`}>
+                            {Math.abs(parseFloat(paymentData.aed_amount) - expectedAmount) < 1 
+                              ? '✓ Matches expected' 
+                              : `Diff: AED ${formatCurrency(parseFloat(paymentData.aed_amount) - expectedAmount)}`
+                            }
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-xs">Effective Rate</Label>
+                        <div className="mt-1 p-2 bg-blue-50 rounded border border-blue-200 text-sm">
+                          {getEffectiveRate(paymentData) || '--'} {paymentData.home_currency}/AED
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">SWIFT Copy</Label>
+                        <div className="mt-1">
+                          {swiftFiles[investor.client_id] ? (
+                            <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border text-sm">
+                              <FileText className="h-4 w-4" />
+                              <span className="truncate flex-1">{swiftFiles[investor.client_id].name}</span>
+                              <button type="button" onClick={() => handleFileChange(investor.client_id, null)}>
+                                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="flex items-center gap-2 p-2 border-2 border-dashed rounded cursor-pointer hover:bg-gray-50 text-sm">
+                              <Upload className="h-4 w-4 text-gray-400" />
+                              <span className="text-gray-500">Upload</span>
+                              <input
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                className="hidden"
+                                onChange={(e) => handleFileChange(investor.client_id, e.target.files[0])}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
-                  <Upload className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-600">Upload SWIFT copy</span>
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    className="hidden"
-                    onChange={(e) => setSwiftFile(e.target.files[0])}
-                  />
-                </label>
-              )}
-            </div>
+              );
+            })}
           </div>
           
-          <div className="flex gap-3 pt-4">
+          {/* Submit Button */}
+          <div className="flex gap-3 pt-6 mt-6 border-t sticky bottom-0 bg-white">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
             <Button 
               type="submit" 
-              disabled={loading || !selectedInvestor || unpaidInvestors.length === 0} 
+              disabled={loading} 
               className="flex-1 bg-green-600 hover:bg-green-700"
             >
-              {loading ? "Recording..." : "Record Payment"}
+              {loading ? "Recording..." : "Record All Payments"}
             </Button>
           </div>
         </form>
