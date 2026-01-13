@@ -170,7 +170,7 @@ export default function AdminClients() {
                 data-testid="create-client-btn"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Create Client
+                Add Client
               </Button>
             </div>
           </div>

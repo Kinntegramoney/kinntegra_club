@@ -105,7 +105,7 @@ export default function AdminSubBrokers() {
               data-testid="create-subbroker-btn"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Create Sub Broker
+              Add Sub Broker
             </Button>
           </div>
         </div>

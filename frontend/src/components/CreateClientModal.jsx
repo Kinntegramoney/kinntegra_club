@@ -527,7 +527,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
             className="bg-amber-700 hover:bg-amber-800"
             data-testid="create-client-submit"
           >
-            {loading ? "Creating..." : "Create Client"}
+            {loading ? "Adding..." : "Add Client"}
           </Button>
         </div>
       </div>
