@@ -842,8 +842,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
           )}
         </form>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+        {/* Footer - Fixed */}
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
