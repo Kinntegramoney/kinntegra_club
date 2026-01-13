@@ -367,19 +367,6 @@ export default function BondDetails() {
                 <p className="text-2xl font-mono font-bold" data-testid="bond-principal-display">₹{bondData.principal_amount.toLocaleString()}</p>
               </div>
               <div className="metric-card rounded-md">
-                <p className="text-xs text-muted-foreground mb-1">Coupon Rate</p>
-                <p className="text-2xl font-mono font-bold">{bondData.coupon_rate}%</p>
-              </div>
-              <div className="metric-card rounded-md">
-                <p className="text-xs text-muted-foreground mb-1">Primary IRR</p>
-                <p className="text-2xl font-mono font-bold text-success">{bondData.primary_irr}%</p>
-                {calculated_primary_irr && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Calculated: <span className="font-mono">{calculated_primary_irr.toFixed(2)}%</span>
-                  </p>
-                )}
-              </div>
-              <div className="metric-card rounded-md">
                 <p className="text-xs text-muted-foreground mb-1">Secondary IRR</p>
                 <p className="text-2xl font-mono font-bold text-accent">{bondData.secondary_irr}%</p>
               </div>
@@ -389,7 +376,7 @@ export default function BondDetails() {
                   {(bondData.total_units || 1) - (bondData.units_sold || 0)}/{bondData.total_units || 1}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Sold: {bondData.units_sold || 0}
+                  Sold: {bondData.units_sold || 0} | Min: {bondData.minimum_units || 1}
                 </p>
               </div>
             </div>
