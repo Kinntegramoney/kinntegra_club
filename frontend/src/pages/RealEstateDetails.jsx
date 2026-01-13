@@ -429,8 +429,8 @@ export default function RealEstateDetails() {
               </div>
             </div>
             <div className="flex gap-2">
-              {opp.payment_schedule && opp.payment_schedule.length > 0 && (
-                <Button variant="outline" onClick={() => setShowPaymentManagement(true)}>
+              {canViewPaymentManagement && opp.payment_schedule && opp.payment_schedule.length > 0 && (
+                <Button variant="outline" onClick={() => setShowPaymentManagement(true)} data-testid="manage-payments-btn">
                   <CreditCard className="h-4 w-4 mr-2" />
                   Manage Payments
                 </Button>
