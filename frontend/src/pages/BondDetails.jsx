@@ -528,18 +528,38 @@ export default function BondDetails() {
               <div className="mb-4 p-4 bg-white border border-border rounded-md">
                 <p className="text-sm font-medium mb-3">For approximate amount of ₹{parseFloat(approximateAmount).toLocaleString('en-IN')}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="p-3 border border-border rounded-md hover:border-accent transition-colors">
+                  <div 
+                    className={`p-3 rounded-md transition-all cursor-pointer ${
+                      selectedBound === 'lower' 
+                        ? 'border-2 border-accent bg-accent/5 ring-2 ring-accent/20' 
+                        : 'border border-border hover:border-accent'
+                    }`}
+                    onClick={() => {
+                      if (getLowerBoundUnits() >= 1 && getLowerBoundUnits() <= calculation.units_available) {
+                        setSelectedBound('lower');
+                        calculatePrice(getLowerBoundUnits());
+                      }
+                    }}
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-muted-foreground">Lower Bound</span>
-                      <Button
-                        data-testid="select-lower-bound-btn"
-                        size="sm"
-                        onClick={() => calculatePrice(getLowerBoundUnits())}
-                        disabled={calculating || getLowerBoundUnits() < 1 || getLowerBoundUnits() > calculation.units_available}
-                        className="btn-scale"
-                      >
-                        Select
-                      </Button>
+                      {selectedBound === 'lower' ? (
+                        <span className="text-xs font-semibold text-accent bg-accent/10 px-2 py-1 rounded">✓ Selected</span>
+                      ) : (
+                        <Button
+                          data-testid="select-lower-bound-btn"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedBound('lower');
+                            calculatePrice(getLowerBoundUnits());
+                          }}
+                          disabled={calculating || getLowerBoundUnits() < 1 || getLowerBoundUnits() > calculation.units_available}
+                          className="btn-scale"
+                        >
+                          Select
+                        </Button>
+                      )}
                     </div>
                     <p className="text-lg font-mono font-bold" data-testid="lower-bound-units">
                       {getLowerBoundUnits()} unit{getLowerBoundUnits() !== 1 ? 's' : ''}
@@ -548,18 +568,38 @@ export default function BondDetails() {
                       ₹{(getLowerBoundUnits() * calculation.price_per_unit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="p-3 border border-border rounded-md hover:border-accent transition-colors">
+                  <div 
+                    className={`p-3 rounded-md transition-all cursor-pointer ${
+                      selectedBound === 'upper' 
+                        ? 'border-2 border-accent bg-accent/5 ring-2 ring-accent/20' 
+                        : 'border border-border hover:border-accent'
+                    }`}
+                    onClick={() => {
+                      if (getUpperBoundUnits() >= 1 && getUpperBoundUnits() <= calculation.units_available) {
+                        setSelectedBound('upper');
+                        calculatePrice(getUpperBoundUnits());
+                      }
+                    }}
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-muted-foreground">Upper Bound</span>
-                      <Button
-                        data-testid="select-upper-bound-btn"
-                        size="sm"
-                        onClick={() => calculatePrice(getUpperBoundUnits())}
-                        disabled={calculating || getUpperBoundUnits() < 1 || getUpperBoundUnits() > calculation.units_available}
-                        className="btn-scale"
-                      >
-                        Select
-                      </Button>
+                      {selectedBound === 'upper' ? (
+                        <span className="text-xs font-semibold text-accent bg-accent/10 px-2 py-1 rounded">✓ Selected</span>
+                      ) : (
+                        <Button
+                          data-testid="select-upper-bound-btn"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedBound('upper');
+                            calculatePrice(getUpperBoundUnits());
+                          }}
+                          disabled={calculating || getUpperBoundUnits() < 1 || getUpperBoundUnits() > calculation.units_available}
+                          className="btn-scale"
+                        >
+                          Select
+                        </Button>
+                      )}
                     </div>
                     <p className="text-lg font-mono font-bold" data-testid="upper-bound-units">
                       {getUpperBoundUnits()} unit{getUpperBoundUnits() !== 1 ? 's' : ''}
@@ -570,7 +610,7 @@ export default function BondDetails() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-3">
-                  Select lower or upper bound to calculate exact price and cashflow
+                  {selectedBound ? `${selectedBound === 'lower' ? 'Lower' : 'Upper'} bound selected` : 'Click on a bound or press Select to calculate exact price and cashflow'}
                 </p>
               </div>
             )}
