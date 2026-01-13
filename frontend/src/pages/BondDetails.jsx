@@ -24,6 +24,7 @@ export default function BondDetails() {
   const [calculating, setCalculating] = useState(false);
   const [approximateAmount, setApproximateAmount] = useState("");
   const [selectedUnits, setSelectedUnits] = useState(null);
+  const [selectedBound, setSelectedBound] = useState(null); // 'lower' or 'upper'
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   
