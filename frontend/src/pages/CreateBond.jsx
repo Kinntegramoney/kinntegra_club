@@ -199,6 +199,7 @@ export default function CreateBond() {
         primary_irr: parseFloat(formData.primary_irr),
         secondary_irr: parseFloat(formData.secondary_irr),
         total_units: parseInt(formData.total_units),
+        minimum_units: parseInt(formData.minimum_units) || 1,
         units_sold: 0,
         principal_payments: principalPayments.map(p => ({
           date: p.date,
