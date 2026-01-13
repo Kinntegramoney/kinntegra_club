@@ -3449,6 +3449,124 @@ async def delete_opportunity_image(
     return {"message": "Image deleted successfully", "remaining_images": len(updated_images)}
 
 
+@api_router.post("/real-estate-opportunities/{opportunity_id}/presentations")
+async def upload_opportunity_presentations(
+    opportunity_id: str,
+    files: List[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload presentation files for a real estate opportunity (max 10 files)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can upload presentations")
+    
+    opportunity = await db.real_estate_opportunities.find_one({
+        "id": opportunity_id, 
+        "created_by": current_user['id']
+    })
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    current_presentations = opportunity.get('presentations', [])
+    
+    # Check total presentation limit
+    if len(current_presentations) + len(files) > 10:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Maximum 10 presentations allowed. Currently have {len(current_presentations)}, trying to add {len(files)}"
+        )
+    
+    # Validate file types
+    allowed_types = [
+        'application/pdf', 
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ]
+    new_presentations = []
+    
+    # Create uploads directory if not exists
+    import os
+    upload_dir = "/app/uploads/presentations"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    for file in files:
+        if file.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid file type: {file.content_type}. Allowed: PDF, PPT, PPTX, DOC, DOCX"
+            )
+        
+        # Save file to disk
+        file_id = str(uuid.uuid4())
+        file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'pdf'
+        saved_filename = f"{file_id}.{file_ext}"
+        file_path = os.path.join(upload_dir, saved_filename)
+        
+        content = await file.read()
+        with open(file_path, 'wb') as f:
+            f.write(content)
+        
+        presentation_data = {
+            "id": file_id,
+            "filename": file.filename,
+            "saved_filename": saved_filename,
+            "content_type": file.content_type,
+            "size": len(content),
+            "url": f"/uploads/presentations/{saved_filename}",
+            "uploaded_at": datetime.now(timezone.utc).isoformat()
+        }
+        new_presentations.append(presentation_data)
+    
+    # Update opportunity with new presentations
+    updated_presentations = current_presentations + new_presentations
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"presentations": updated_presentations, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {
+        "message": f"Successfully uploaded {len(new_presentations)} presentations",
+        "total_presentations": len(updated_presentations),
+        "presentation_ids": [pres['id'] for pres in new_presentations]
+    }
+
+
+@api_router.get("/real-estate-opportunities/{opportunity_id}/presentations/{presentation_id}")
+async def download_presentation(
+    opportunity_id: str,
+    presentation_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Download a presentation file"""
+    from fastapi.responses import FileResponse
+    import os
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    presentations = opportunity.get('presentations', [])
+    presentation = next((p for p in presentations if p['id'] == presentation_id), None)
+    
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+    
+    file_path = f"/app/uploads/presentations/{presentation['saved_filename']}"
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found on server")
+    
+    return FileResponse(
+        path=file_path,
+        filename=presentation['filename'],
+        media_type=presentation['content_type']
+    )
+
+
 @api_router.post("/real-estate-opportunities/{opportunity_id}/invest")
 async def invest_in_opportunity(
     opportunity_id: str,
