@@ -224,6 +224,12 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
         admin_fee_amount: formData.admin_fee_amount ? parseFloat(formData.admin_fee_amount) : null,
         broker_fee: parseFloat(formData.broker_fee) || 0,
         other_fees: parseFloat(formData.other_fees) || 0,
+        // Management Fees
+        upfront_fee: parseFloat(formData.upfront_fee) || 0,
+        trailer_fee: parseFloat(formData.trailer_fee) || 0,
+        management_fee: parseFloat(formData.management_fee) || 0,
+        unit_selling_fee: parseFloat(formData.unit_selling_fee) || 0,
+        // Area
         total_area: parseFloat(formData.total_area),
         carpet_area: parseFloat(formData.carpet_area),
         balcony_area: parseFloat(formData.balcony_area) || 0,
