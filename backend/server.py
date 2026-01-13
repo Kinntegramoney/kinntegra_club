@@ -3796,6 +3796,121 @@ async def get_payment_schedule(
     }
 
 
+class InterestRequest(BaseModel):
+    message: str = ""
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/interest")
+async def express_interest(
+    opportunity_id: str,
+    request: InterestRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Express interest in a real estate opportunity"""
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    interest_record = {
+        "id": str(uuid.uuid4()),
+        "user_id": current_user['id'],
+        "user_name": current_user.get('name', current_user.get('pan_number')),
+        "user_role": current_user['role'],
+        "message": request.message,
+        "expressed_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {
+            "$push": {"interests": interest_record},
+            "$inc": {"interested_count": 1}
+        }
+    )
+    
+    return {"message": "Interest recorded successfully", "interest_id": interest_record['id']}
+
+
+class ParticipateRequest(BaseModel):
+    percentage: float
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/participate")
+async def confirm_participation(
+    opportunity_id: str,
+    request: ParticipateRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Confirm participation as a co-owner in a real estate opportunity"""
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    if opportunity.get('status') != 'available':
+        raise HTTPException(status_code=400, detail="This opportunity is no longer available")
+    
+    current_investors = opportunity.get('current_investors', 0)
+    max_investors = opportunity.get('max_investors', 4)
+    
+    if current_investors >= max_investors:
+        raise HTTPException(status_code=400, detail="Maximum number of investors reached")
+    
+    # Calculate remaining percentage
+    total_allocated = sum(inv.get('share_percentage', 0) for inv in opportunity.get('investors', []))
+    remaining_percentage = 100 - total_allocated
+    
+    if request.percentage > remaining_percentage:
+        raise HTTPException(status_code=400, detail=f"Maximum available percentage is {remaining_percentage:.1f}%")
+    
+    if request.percentage < 1:
+        raise HTTPException(status_code=400, detail="Minimum participation is 1%")
+    
+    # Calculate investment amount
+    investment_amount = opportunity['total_cost'] * request.percentage / 100
+    
+    participation_record = {
+        "id": str(uuid.uuid4()),
+        "user_id": current_user['id'],
+        "user_name": current_user.get('name', current_user.get('pan_number')),
+        "user_role": current_user['role'],
+        "share_percentage": request.percentage,
+        "amount": investment_amount,
+        "confirmed_at": datetime.now(timezone.utc).isoformat(),
+        "status": "pending_payment"  # pending_payment, confirmed, completed
+    }
+    
+    # Update opportunity
+    new_total_allocated = total_allocated + request.percentage
+    new_total_invested = (opportunity.get('total_invested', 0)) + investment_amount
+    new_investor_count = current_investors + 1
+    
+    update_data = {
+        "$push": {"investors": participation_record},
+        "$set": {
+            "current_investors": new_investor_count,
+            "total_invested": new_total_invested
+        }
+    }
+    
+    # Mark as fully invested if all spots filled or 100% allocated
+    if new_investor_count >= max_investors or new_total_allocated >= 100:
+        update_data["$set"]["status"] = "fully_invested"
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        update_data
+    )
+    
+    return {
+        "message": "Participation confirmed successfully",
+        "participation_id": participation_record['id'],
+        "percentage": request.percentage,
+        "investment_amount": investment_amount
+    }
+
+
 @api_router.get("/client/real-estate-investments")
 async def get_client_real_estate_investments(current_user: dict = Depends(get_current_user)):
     """Get real estate investments for the logged-in client"""
