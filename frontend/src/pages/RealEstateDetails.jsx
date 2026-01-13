@@ -1018,8 +1018,8 @@ export default function RealEstateDetails() {
                         })}
                       </div>
                       
-                      {/* Record Payment Button - for clients (only their own) and sub-brokers */}
-                      {!allVerified && (user?.role !== 'broker') && (
+                      {/* Record Payment Button - for all users with access to payment management */}
+                      {!allVerified && (
                         <Button 
                           size="sm" 
                           className="w-full bg-green-600 hover:bg-green-700"
@@ -1027,6 +1027,7 @@ export default function RealEstateDetails() {
                             setSelectedPaymentMilestone({ ...milestone, index: idx });
                             setShowPaymentRecordModal(true);
                           }}
+                          data-testid="record-payment-btn"
                         >
                           <Plus className="h-4 w-4 mr-1" /> Record Payment
                         </Button>
