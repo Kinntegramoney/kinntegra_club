@@ -4181,9 +4181,6 @@ async def upload_oqood_document(
 @api_router.get("/uploads/{folder}/{filename}")
 async def serve_upload(folder: str, filename: str):
     """Serve uploaded files"""
-    import os
-    from fastapi.responses import FileResponse
-    
     file_path = f"/app/uploads/{folder}/{filename}"
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
