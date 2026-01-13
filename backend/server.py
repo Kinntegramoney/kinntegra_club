@@ -3113,7 +3113,11 @@ class RealEstateOpportunityUpdate(BaseModel):
 
 class InvestorAllocation(BaseModel):
     client_id: str
-    units: int  # Number of units to buy (multiples of 500 AED)
+    # For fractional: number of units to buy
+    units: Optional[int] = None
+    # For off-plan: investment amount or percentage
+    investment_amount: Optional[float] = None
+    share_percentage: Optional[float] = None
 
 
 # Constants
