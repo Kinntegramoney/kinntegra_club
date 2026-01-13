@@ -4055,9 +4055,9 @@ async def record_investor_payment(
     if not opportunity:
         raise HTTPException(status_code=404, detail="Real estate opportunity not found")
     
-    # Verify all 4 investors are finalized
-    if (opportunity.get('current_investors', 0) < 4):
-        raise HTTPException(status_code=400, detail="Cannot record payments until all 4 investors are finalized")
+    # Verify opportunity is fully funded before allowing payment recording
+    if opportunity.get('status') != 'fully_invested':
+        raise HTTPException(status_code=400, detail="Cannot record payments until the property is fully funded")
     
     # Handle SWIFT copy upload
     swift_url = None
