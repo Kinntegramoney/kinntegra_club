@@ -77,11 +77,17 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
 
   // Calculate totals
   const unitPrice = parseFloat(formData.unit_price) || 0;
-  const dldFee = parseFloat(formData.dld_fee) || 0;
-  const adminFee = parseFloat(formData.admin_fee) || 0;
+  const dldFeePercentage = parseFloat(formData.dld_fee_percentage) || 0;
+  const dldFee = unitPrice * dldFeePercentage / 100;  // DLD is % of unit price
+  const adminFee = parseFloat(formData.admin_fee) || 0;  // Admin is absolute
   const brokerFee = parseFloat(formData.broker_fee) || 0;
   const otherFees = parseFloat(formData.other_fees) || 0;
+  
+  // Total cost = Unit Price + all fees
   const totalCost = unitPrice + dldFee + adminFee + brokerFee + otherFees;
+  
+  // Upfront amount (paid with booking) = DLD + Admin Fee
+  const upfrontAmount = dldFee + adminFee;
 
   // Payment schedule total percentage
   const getTotalPaymentPercentage = () => {
