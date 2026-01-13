@@ -230,24 +230,377 @@ export default function RealEstateDetails() {
           </div>
         </div>
 
-        <div className="p-8">
-          <div className="grid grid-cols-3 gap-6">
-            {/* Left Column */}
-            <div className="col-span-2 space-y-6">
-              {/* Financial Summary */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-teal-600" />
-                  Financial Summary
+        <div className="p-8 space-y-6">
+          {/* Property Overview Card */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-teal-600" />
+              Property Information
+            </h2>
+            <div className="grid grid-cols-4 gap-6">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-1">Building</p>
+                <p className="font-semibold text-gray-800">{opp.building_name}</p>
+                {opp.developer_name && <p className="text-sm text-gray-500">by {opp.developer_name}</p>}
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-1">Unit Details</p>
+                <p className="font-semibold text-gray-800">Unit {opp.unit_no}</p>
+                <p className="text-sm text-gray-500">Floor {opp.floor} • {opp.unit_type}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-1">Size</p>
+                <p className="font-semibold text-gray-800">{opp.total_area} sqft</p>
+                <p className="text-sm text-gray-500">Carpet: {opp.carpet_area} sqft</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-1">Location</p>
+                <p className="font-semibold text-gray-800 flex items-center gap-1">
+                  <MapPin className="h-4 w-4" />
+                  {opp.location || 'Not specified'}
+                </p>
+                {opp.handover_date && <p className="text-sm text-gray-500">Handover: {formatDate(opp.handover_date)}</p>}
+              </div>
+            </div>
+            
+            {/* Additional Details */}
+            <div className="grid grid-cols-4 gap-6 mt-4">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <p className="text-xs text-blue-600 mb-1">Balcony</p>
+                <p className="font-semibold text-blue-800">{opp.balcony_area || 0} sqft</p>
+              </div>
+              <div className="bg-amber-50 rounded-lg p-4">
+                <p className="text-xs text-amber-600 mb-1">Parking</p>
+                <p className="font-semibold text-amber-800 flex items-center gap-1">
+                  <Car className="h-4 w-4" /> {opp.parking_spaces || 0} spaces
+                </p>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-4">
+                <p className="text-xs text-purple-600 mb-1">Max Co-owners</p>
+                <p className="font-semibold text-purple-800">{opp.max_investors || 4}</p>
+              </div>
+              <div className="bg-teal-50 rounded-lg p-4">
+                <p className="text-xs text-teal-600 mb-1">Status</p>
+                <p className="font-semibold text-teal-800">{opp.status === 'available' ? 'Available' : opp.status === 'fully_invested' ? 'Fully Invested' : 'Closed'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Financial Summary */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-teal-600" />
+              Financial Summary
+            </h2>
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="bg-orange-50 rounded-lg p-5 border border-orange-200">
+                <p className="text-sm text-orange-600 mb-1">Unit Price</p>
+                <p className="text-3xl font-bold text-orange-800">AED {formatCurrency(opp.unit_price)}</p>
+              </div>
+              <div className="bg-teal-50 rounded-lg p-5 border border-teal-200">
+                <p className="text-sm text-teal-600 mb-1">Total Cost (incl. all fees)</p>
+                <p className="text-3xl font-bold text-teal-800">AED {formatCurrency(opp.total_cost)}</p>
+              </div>
+            </div>
+            
+            {/* Fee Breakdown */}
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Fee Breakdown</h3>
+            <div className="grid grid-cols-5 gap-3 text-sm">
+              <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+                <p className="text-orange-600 font-medium">DLD Fee</p>
+                <p className="text-lg font-bold text-orange-800">AED {formatCurrency(opp.dld_fee)}</p>
+                <p className="text-xs text-orange-500">({opp.dld_fee_percentage}%)</p>
+              </div>
+              <div className="bg-green-50 rounded-lg p-3 border border-green-100">
+                <p className="text-green-600 font-medium">Admin Fee</p>
+                <p className="text-lg font-bold text-green-800">AED {formatCurrency(opp.admin_fee)}</p>
+              </div>
+              <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
+                <p className="text-amber-600 font-medium">Brokerage</p>
+                <p className="text-lg font-bold text-amber-800">AED {formatCurrency(opp.broker_fee)}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                <p className="text-gray-600 font-medium">Other Fees</p>
+                <p className="text-lg font-bold text-gray-800">AED {formatCurrency(opp.other_fees)}</p>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                <p className="text-purple-600 font-medium">Selling Fee</p>
+                <p className="text-lg font-bold text-purple-800">{opp.unit_selling_fee_percentage || 0}%</p>
+                <p className="text-xs text-purple-500">of sale price</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Schedule */}
+          {opp.payment_schedule && opp.payment_schedule.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-teal-600" />
+                  Payment Schedule
                 </h2>
-                <div className="grid grid-cols-3 gap-6">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-500">Progress: <span className="font-bold text-teal-600">{opp.total_payment_percentage_completed || 0}%</span></span>
+                  <Button size="sm" variant="outline" onClick={() => setShowPaymentManagement(true)}>
+                    Manage
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="w-full bg-gray-100 rounded-full h-3 mb-6">
+                <div className="bg-teal-500 h-3 rounded-full transition-all" style={{ width: `${opp.total_payment_percentage_completed || 0}%` }} />
+              </div>
+
+              {/* Payment milestones table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 px-3 text-gray-500 font-medium">#</th>
+                      <th className="text-left py-2 px-3 text-gray-500 font-medium">Date</th>
+                      <th className="text-left py-2 px-3 text-gray-500 font-medium">Description</th>
+                      <th className="text-right py-2 px-3 text-gray-500 font-medium">%</th>
+                      <th className="text-right py-2 px-3 text-gray-500 font-medium">Amount (AED)</th>
+                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((payment, idx) => (
+                      <tr key={idx} className="border-b border-gray-100">
+                        <td className="py-3 px-3 font-medium">{idx + 1}</td>
+                        <td className="py-3 px-3">{formatDate(payment.date)}</td>
+                        <td className="py-3 px-3">{payment.description || `Payment ${idx + 1}`}</td>
+                        <td className="py-3 px-3 text-right font-medium">{payment.percentage}%</td>
+                        <td className="py-3 px-3 text-right font-mono">{formatCurrency(opp.unit_price * payment.percentage / 100)}</td>
+                        <td className="py-3 px-3 text-center">
+                          {payment.completed ? (
+                            <Badge className="bg-green-100 text-green-700"><Check className="h-3 w-3 mr-1" />Paid</Badge>
+                          ) : (
+                            <Badge className="bg-gray-100 text-gray-600">Pending</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* XIRR Calculator */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-blue-600" />
+              XIRR Calculator
+              <span className="text-xs font-normal text-gray-500 ml-2">Estimate returns at different sale scenarios</span>
+            </h2>
+            
+            {opp.payment_schedule && opp.payment_schedule.length > 0 ? (
+              <div className="grid grid-cols-2 gap-6">
+                {/* Calculator Inputs */}
+                <div className="space-y-5">
                   <div>
-                    <p className="text-sm text-gray-500">Unit Price</p>
-                    <p className="text-2xl font-bold text-gray-800">AED {formatCurrency(opp.unit_price)}</p>
+                    <Label className="text-sm font-medium text-gray-700">Sale Stage (% of payments completed)</Label>
+                    <div className="mt-2">
+                      <Slider
+                        value={[xirrSaleStage]}
+                        onValueChange={(v) => setXirrSaleStage(v[0])}
+                        max={100}
+                        min={10}
+                        step={10}
+                        className="mb-2"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>10%</span>
+                        <span className="font-bold text-blue-600">{xirrSaleStage}%</span>
+                        <span>100%</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      If sold after {xirrSaleStage}% payment: AED {formatCurrency(opp.unit_price * xirrSaleStage / 100)} paid
+                    </p>
                   </div>
+                  
                   <div>
-                    <p className="text-sm text-gray-500">Total Cost (incl. fees)</p>
-                    <p className="text-2xl font-bold text-teal-600">AED {formatCurrency(opp.total_cost)}</p>
+                    <Label htmlFor="xirr-sale-date" className="text-sm font-medium text-gray-700">Expected Sale Date</Label>
+                    <Input
+                      id="xirr-sale-date"
+                      type="date"
+                      value={xirrSaleDate}
+                      onChange={(e) => setXirrSaleDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="xirr-sale-rate" className="text-sm font-medium text-gray-700">Sale Price (AED/sqft)</Label>
+                    <Input
+                      id="xirr-sale-rate"
+                      type="number"
+                      placeholder={`e.g., ${Math.round((opp.unit_price / opp.total_area) * 1.2)}`}
+                      value={xirrSaleRate}
+                      onChange={(e) => setXirrSaleRate(e.target.value)}
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Current rate: AED {formatCurrency(Math.round(opp.unit_price / opp.total_area))}/sqft
+                    </p>
+                  </div>
+                </div>
+
+                {/* Results */}
+                <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                  <h3 className="text-sm font-medium text-gray-700 mb-4">Projected Returns</h3>
+                  
+                  {xirrSaleDate && xirrSaleRate ? (
+                    <>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Sale Value</span>
+                          <span className="font-bold text-gray-800">AED {formatCurrency(parseFloat(xirrSaleRate) * opp.total_area)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Amount Invested ({xirrSaleStage}%)</span>
+                          <span className="font-medium text-gray-800">AED {formatCurrency(opp.unit_price * xirrSaleStage / 100 + opp.dld_fee + opp.admin_fee)}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-3 border-t">
+                          <span className="text-gray-600">Gross Profit</span>
+                          <span className={`font-bold ${(parseFloat(xirrSaleRate) * opp.total_area) - (opp.unit_price * xirrSaleStage / 100 + opp.dld_fee + opp.admin_fee) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            AED {formatCurrency((parseFloat(xirrSaleRate) * opp.total_area) - (opp.unit_price * xirrSaleStage / 100 + opp.dld_fee + opp.admin_fee))}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* XIRR Result */}
+                      {(() => {
+                        const xirr = calculateXIRRWithParams(opp, xirrSaleStage, xirrSaleDate, parseFloat(xirrSaleRate));
+                        if (xirr !== null) {
+                          return (
+                            <div className={`mt-4 p-4 rounded-lg ${xirr >= 0 ? 'bg-blue-100' : 'bg-red-100'}`}>
+                              <p className={`text-sm ${xirr >= 0 ? 'text-blue-600' : 'text-red-600'}`}>Expected XIRR</p>
+                              <p className={`text-4xl font-bold ${xirr >= 0 ? 'text-blue-700' : 'text-red-700'}`}>{xirr.toFixed(2)}%</p>
+                              <p className="text-xs text-gray-600 mt-1">Annualized return</p>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="mt-4 p-4 rounded-lg bg-yellow-50">
+                            <p className="text-sm text-yellow-700">Unable to calculate XIRR. Check payment schedule dates.</p>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Calculator className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500">Enter sale date and price to calculate XIRR</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <Info className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500">Payment schedule required for XIRR calculation</p>
+              </div>
+            )}
+          </div>
+
+          {/* Interest & Participation Section */}
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">Interested in this Property?</h2>
+            <p className="text-gray-600 mb-6">Express your interest or confirm your participation as one of the 4 co-owners.</p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="h-auto py-4 border-purple-300 hover:bg-purple-100"
+                onClick={() => setShowInterestModal(true)}
+              >
+                <div className="flex items-center gap-3">
+                  <Heart className="h-6 w-6 text-purple-600" />
+                  <div className="text-left">
+                    <p className="font-semibold text-purple-700">Interested to Know More</p>
+                    <p className="text-xs text-gray-500 font-normal">Get more details about this opportunity</p>
+                  </div>
+                </div>
+              </Button>
+              
+              <Button 
+                size="lg" 
+                className="h-auto py-4 bg-purple-600 hover:bg-purple-700"
+                onClick={() => setShowParticipateModal(true)}
+                disabled={remainingPercentage <= 0 || (opp.current_investors || 0) >= 4}
+              >
+                <div className="flex items-center gap-3">
+                  <UserPlus className="h-6 w-6" />
+                  <div className="text-left">
+                    <p className="font-semibold">Confirm to Participate</p>
+                    <p className="text-xs opacity-80 font-normal">{remainingPercentage.toFixed(1)}% available • {4 - (opp.current_investors || 0)} spots left</p>
+                  </div>
+                </div>
+              </Button>
+            </div>
+          </div>
+
+          {/* Current Investors */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <Users className="h-5 w-5 text-teal-600" />
+                Current Investors ({opp.current_investors || 0}/4)
+              </h2>
+              {opp.status === 'available' && remainingPercentage > 0 && (opp.current_investors || 0) < 4 && (
+                <Button size="sm" variant="outline" onClick={() => setShowAllocateModal(true)}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Investor
+                </Button>
+              )}
+            </div>
+
+            {/* Investment Progress */}
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-600">Investment Allocation</span>
+                <span className="font-medium">{(100 - remainingPercentage).toFixed(1)}% allocated</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${100 - remainingPercentage}%` }} />
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Invested: AED {formatCurrency(opp.total_invested || 0)}</span>
+                <span className="text-purple-600 font-medium">Remaining: {remainingPercentage.toFixed(1)}%</span>
+              </div>
+            </div>
+            
+            {opp.investors && opp.investors.length > 0 ? (
+              <div className="space-y-3">
+                {opp.investors.map((investor, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">
+                        {idx + 1}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800">{investor.client_name}</p>
+                        <p className="text-sm text-gray-500">Invested on {formatDate(investor.invested_at)}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-purple-600 text-lg">{investor.share_percentage}%</p>
+                      <p className="text-sm text-gray-500">AED {formatCurrency(investor.amount)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Users className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500">No investors yet. Be the first to participate!</p>
+              </div>
+            )}
+          </div>
+        </div>
                   </div>
                   {/* Show Units only for FRACTIONAL properties */}
                   {opp.property_type === 'fractional' && (
