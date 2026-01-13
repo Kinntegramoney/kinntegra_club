@@ -575,13 +575,13 @@ export default function RealEstateDetails() {
                     <Input
                       id="xirr-sale-rate"
                       type="number"
-                      placeholder={`e.g., ${Math.round((opp.unit_price / opp.total_area) * 1.2)}`}
+                      placeholder={`e.g., ${Math.round(((opp.unit_price + (opp.dld_fee || 0) + (opp.admin_fee || 0)) / opp.total_area) * 1.2)}`}
                       value={xirrSaleRate}
                       onChange={(e) => setXirrSaleRate(e.target.value)}
                       className="mt-1"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Current rate: AED {formatCurrency(Math.round(opp.unit_price / opp.total_area))}/sqft
+                      Current rate (incl. DLD+Admin): AED {formatCurrency(Math.round((opp.unit_price + (opp.dld_fee || 0) + (opp.admin_fee || 0)) / opp.total_area))}/sqft
                     </p>
                   </div>
                 </div>
