@@ -431,18 +431,47 @@ export default function RealEstateDetails() {
                 </div>
               </div>
 
-              {/* Sale Settings */}
+              {/* Sale Settings & Returns */}
               <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Sale Settings</h2>
+                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-teal-600" />
+                  Expected Returns
+                </h2>
                 <div className="space-y-4">
                   {opp.expected_sale_rate ? (
                     <>
                       <div className="flex justify-between"><span className="text-gray-500">Expected Rate</span><span className="font-medium">AED {formatCurrency(opp.expected_sale_rate)}/sqft</span></div>
                       <div className="flex justify-between"><span className="text-gray-500">Expected Value</span><span className="font-bold text-teal-600">AED {formatCurrency(opp.expected_sale_rate * opp.total_area)}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500">Est. Profit</span><span className="font-bold text-green-600">AED {formatCurrency((opp.expected_sale_rate * opp.total_area) - opp.total_cost)}</span></div>
+                      
+                      {/* Expected Profit */}
+                      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                        <p className="text-sm text-green-600 mb-1">Estimated Profit</p>
+                        <p className="text-2xl font-bold text-green-700">AED {formatCurrency((opp.expected_sale_rate * opp.total_area) - opp.total_cost)}</p>
+                      </div>
+                      
+                      {/* XIRR Display */}
+                      {(() => {
+                        const xirr = calculateXIRR(opp);
+                        if (xirr !== null) {
+                          return (
+                            <div className={`rounded-lg p-4 border ${xirr >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
+                              <p className={`text-sm mb-1 ${xirr >= 0 ? 'text-blue-600' : 'text-red-600'}`}>Expected XIRR</p>
+                              <p className={`text-2xl font-bold ${xirr >= 0 ? 'text-blue-700' : 'text-red-700'}`}>{xirr.toFixed(2)}%</p>
+                              <p className="text-xs text-gray-500 mt-1">Annualized return based on payment schedule</p>
+                            </div>
+                          );
+                        } else if (opp.payment_schedule?.length > 0 && opp.estimated_sell_date) {
+                          return (
+                            <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                              <p className="text-sm text-yellow-700">XIRR requires complete payment schedule with dates</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </>
                   ) : (
-                    <p className="text-gray-400 text-sm">No sale rate set</p>
+                    <p className="text-gray-400 text-sm">Set expected sale rate to view returns</p>
                   )}
                   {opp.estimated_sell_date && <div className="flex justify-between"><span className="text-gray-500">Est. Sell Date</span><span className="font-medium">{formatDate(opp.estimated_sell_date)}</span></div>}
                   <div className="flex justify-between"><span className="text-gray-500">Eligible After</span><span className="font-medium">{opp.eligible_to_sell_after_percentage || 100}%</span></div>
