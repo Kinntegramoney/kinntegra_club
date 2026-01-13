@@ -1001,32 +1001,9 @@ export default function RealEstateDetails() {
               </div>
             </div>
           )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      
-                      {!allPaid && (
-                        <Button 
-                          size="sm" 
-                          className="w-full bg-green-600 hover:bg-green-700"
-                          onClick={() => {
-                            setSelectedPaymentMilestone({ ...milestone, index: idx });
-                            setShowPaymentRecordModal(true);
-                          }}
-                        >
-                          <Plus className="h-4 w-4 mr-1" /> Record Payment
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {/* Waiting for Investors Message */}
-          {(user?.role === 'broker' || user?.role === 'sub_broker') && (opp.current_investors || 0) < 4 && (
+          {canViewPaymentManagement && (opp.current_investors || 0) < 4 && (
             <div className="bg-amber-50 rounded-xl border border-amber-200 p-6">
               <div className="flex items-center gap-3">
                 <Clock className="h-8 w-8 text-amber-500" />
