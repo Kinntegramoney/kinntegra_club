@@ -3016,6 +3016,543 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
     }
 
 
+# ==================== REAL ESTATE OPPORTUNITY ====================
+
+class RealEstateOpportunityCreate(BaseModel):
+    # Basic Information
+    building_name: str
+    unit_no: str
+    property_type: str  # "off_plan" or "fractional"
+    
+    # Pricing (in AED)
+    unit_price: float
+    dld_fee: float = 0  # Dubai Land Department fee
+    admin_fee: float = 0
+    broker_fee: float = 0
+    other_fees: float = 0
+    
+    # Area Details (sq.ft)
+    total_area: float
+    carpet_area: float
+    balcony_area: float = 0
+    
+    # Unit Details
+    unit_type: str  # e.g., "1BR", "2BR", "Studio", "Penthouse"
+    floor: int
+    parking_spaces: int = 0
+    
+    # Investment Details
+    time_frame_days: int  # Investment timeframe in days
+    
+    # Optional Details
+    developer_name: Optional[str] = None
+    location: Optional[str] = None
+    amenities: Optional[List[str]] = None
+    handover_date: Optional[str] = None
+    payment_plan: Optional[str] = None
+    description: Optional[str] = None
+
+
+class RealEstateOpportunityUpdate(BaseModel):
+    building_name: Optional[str] = None
+    unit_no: Optional[str] = None
+    property_type: Optional[str] = None
+    unit_price: Optional[float] = None
+    dld_fee: Optional[float] = None
+    admin_fee: Optional[float] = None
+    broker_fee: Optional[float] = None
+    other_fees: Optional[float] = None
+    total_area: Optional[float] = None
+    carpet_area: Optional[float] = None
+    balcony_area: Optional[float] = None
+    unit_type: Optional[str] = None
+    floor: Optional[int] = None
+    parking_spaces: Optional[int] = None
+    time_frame_days: Optional[int] = None
+    developer_name: Optional[str] = None
+    location: Optional[str] = None
+    amenities: Optional[List[str]] = None
+    handover_date: Optional[str] = None
+    payment_plan: Optional[str] = None
+    description: Optional[str] = None
+
+
+class InvestorAllocation(BaseModel):
+    client_id: str
+    fraction_units: int  # Number of 500 AED units allocated
+    amount: float  # Total amount for this investor
+
+
+def calculate_fractional_units(total_amount: float) -> dict:
+    """
+    Calculate fractional units based on total amount.
+    Each unit is a multiple of 500 AED.
+    Returns: dict with total_units, unit_value, and any remainder
+    """
+    unit_value = 500
+    total_units = int(total_amount // unit_value)
+    remainder = total_amount % unit_value
+    
+    # If there's a remainder, we need to adjust - round up to next 500
+    if remainder > 0:
+        adjusted_total = (total_units + 1) * unit_value
+        total_units = total_units + 1
+    else:
+        adjusted_total = total_amount
+    
+    return {
+        "unit_value": unit_value,
+        "total_units": total_units,
+        "total_amount": adjusted_total,
+        "original_amount": total_amount,
+        "adjustment": adjusted_total - total_amount
+    }
+
+
+@api_router.post("/real-estate-opportunities")
+async def create_real_estate_opportunity(
+    opportunity_data: RealEstateOpportunityCreate, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new real estate opportunity (broker only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can create real estate opportunities")
+    
+    # Validate property type
+    if opportunity_data.property_type not in ['off_plan', 'fractional']:
+        raise HTTPException(status_code=400, detail="Property type must be 'off_plan' or 'fractional'")
+    
+    # Calculate total cost including all fees
+    total_cost = (
+        opportunity_data.unit_price + 
+        opportunity_data.dld_fee + 
+        opportunity_data.admin_fee + 
+        opportunity_data.broker_fee + 
+        opportunity_data.other_fees
+    )
+    
+    # Calculate balcony to carpet ratio
+    balcony_ratio = 0
+    if opportunity_data.carpet_area > 0:
+        balcony_ratio = opportunity_data.balcony_area / opportunity_data.carpet_area
+    
+    # Set max investors based on property type
+    if opportunity_data.property_type == 'off_plan':
+        max_investors = 4
+        fractional_info = None
+    else:
+        # Fractional - calculate units in multiples of 500
+        fractional_info = calculate_fractional_units(total_cost)
+        max_investors = fractional_info['total_units']  # Each unit can be owned by different investor
+    
+    opportunity_dict = {
+        "id": str(uuid.uuid4()),
+        # Basic Info
+        "building_name": opportunity_data.building_name,
+        "unit_no": opportunity_data.unit_no,
+        "property_type": opportunity_data.property_type,
+        
+        # Pricing
+        "unit_price": opportunity_data.unit_price,
+        "dld_fee": opportunity_data.dld_fee,
+        "admin_fee": opportunity_data.admin_fee,
+        "broker_fee": opportunity_data.broker_fee,
+        "other_fees": opportunity_data.other_fees,
+        "total_cost": total_cost,
+        
+        # Area
+        "total_area": opportunity_data.total_area,
+        "carpet_area": opportunity_data.carpet_area,
+        "balcony_area": opportunity_data.balcony_area,
+        "balcony_ratio": round(balcony_ratio, 4),
+        
+        # Unit Details
+        "unit_type": opportunity_data.unit_type,
+        "floor": opportunity_data.floor,
+        "parking_spaces": opportunity_data.parking_spaces,
+        
+        # Investment Details
+        "time_frame_days": opportunity_data.time_frame_days,
+        "max_investors": max_investors,
+        "current_investors": 0,
+        "investors": [],  # List of investor allocations
+        
+        # Fractional specific
+        "fractional_info": fractional_info,
+        "units_available": fractional_info['total_units'] if fractional_info else max_investors,
+        "units_sold": 0,
+        
+        # Optional Details
+        "developer_name": opportunity_data.developer_name,
+        "location": opportunity_data.location,
+        "amenities": opportunity_data.amenities or [],
+        "handover_date": opportunity_data.handover_date,
+        "payment_plan": opportunity_data.payment_plan,
+        "description": opportunity_data.description,
+        
+        # Images (to be uploaded separately)
+        "images": [],
+        
+        # Status
+        "status": "available",  # available, fully_invested, closed
+        "created_by": current_user['id'],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.real_estate_opportunities.insert_one(opportunity_dict)
+    
+    # Remove _id for response
+    if '_id' in opportunity_dict:
+        del opportunity_dict['_id']
+    
+    return opportunity_dict
+
+
+@api_router.get("/real-estate-opportunities")
+async def get_real_estate_opportunities(
+    status: Optional[str] = None,
+    property_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all real estate opportunities"""
+    query = {}
+    
+    if current_user['role'] == 'broker':
+        query["created_by"] = current_user['id']
+    
+    if status:
+        query["status"] = status
+    
+    if property_type:
+        query["property_type"] = property_type
+    
+    opportunities = await db.real_estate_opportunities.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return opportunities
+
+
+@api_router.get("/real-estate-opportunities/{opportunity_id}")
+async def get_real_estate_opportunity(
+    opportunity_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get a specific real estate opportunity"""
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    return opportunity
+
+
+@api_router.put("/real-estate-opportunities/{opportunity_id}")
+async def update_real_estate_opportunity(
+    opportunity_id: str,
+    update_data: RealEstateOpportunityUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a real estate opportunity (broker only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can update real estate opportunities")
+    
+    opportunity = await db.real_estate_opportunities.find_one({
+        "id": opportunity_id, 
+        "created_by": current_user['id']
+    })
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Build update dict with only provided fields
+    update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    
+    if not update_dict:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    # Recalculate totals if any pricing field changed
+    if any(k in update_dict for k in ['unit_price', 'dld_fee', 'admin_fee', 'broker_fee', 'other_fees']):
+        unit_price = update_dict.get('unit_price', opportunity['unit_price'])
+        dld_fee = update_dict.get('dld_fee', opportunity['dld_fee'])
+        admin_fee = update_dict.get('admin_fee', opportunity['admin_fee'])
+        broker_fee = update_dict.get('broker_fee', opportunity['broker_fee'])
+        other_fees = update_dict.get('other_fees', opportunity['other_fees'])
+        
+        total_cost = unit_price + dld_fee + admin_fee + broker_fee + other_fees
+        update_dict['total_cost'] = total_cost
+        
+        # Recalculate fractional info if fractional type
+        prop_type = update_dict.get('property_type', opportunity['property_type'])
+        if prop_type == 'fractional':
+            fractional_info = calculate_fractional_units(total_cost)
+            update_dict['fractional_info'] = fractional_info
+            update_dict['units_available'] = fractional_info['total_units'] - opportunity.get('units_sold', 0)
+    
+    # Recalculate balcony ratio if area fields changed
+    if any(k in update_dict for k in ['carpet_area', 'balcony_area']):
+        carpet_area = update_dict.get('carpet_area', opportunity['carpet_area'])
+        balcony_area = update_dict.get('balcony_area', opportunity['balcony_area'])
+        if carpet_area > 0:
+            update_dict['balcony_ratio'] = round(balcony_area / carpet_area, 4)
+    
+    update_dict['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": update_dict}
+    )
+    
+    updated = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    return updated
+
+
+@api_router.delete("/real-estate-opportunities/{opportunity_id}")
+async def delete_real_estate_opportunity(
+    opportunity_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a real estate opportunity (broker only, only if no investors)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can delete real estate opportunities")
+    
+    opportunity = await db.real_estate_opportunities.find_one({
+        "id": opportunity_id, 
+        "created_by": current_user['id']
+    })
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    if opportunity.get('current_investors', 0) > 0:
+        raise HTTPException(status_code=400, detail="Cannot delete opportunity with existing investors")
+    
+    await db.real_estate_opportunities.delete_one({"id": opportunity_id})
+    
+    return {"message": "Real estate opportunity deleted successfully"}
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/images")
+async def upload_opportunity_images(
+    opportunity_id: str,
+    files: List[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload images for a real estate opportunity (max 12 images)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can upload images")
+    
+    opportunity = await db.real_estate_opportunities.find_one({
+        "id": opportunity_id, 
+        "created_by": current_user['id']
+    })
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    current_images = opportunity.get('images', [])
+    
+    # Check total image limit
+    if len(current_images) + len(files) > 12:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Maximum 12 images allowed. Currently have {len(current_images)}, trying to add {len(files)}"
+        )
+    
+    # Validate file types
+    allowed_types = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    new_images = []
+    
+    for file in files:
+        if file.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid file type: {file.content_type}. Allowed: JPEG, PNG, WebP, GIF"
+            )
+        
+        # Read file content and encode as base64 for storage
+        # In production, you'd upload to cloud storage (S3, etc.)
+        content = await file.read()
+        import base64
+        encoded = base64.b64encode(content).decode('utf-8')
+        
+        image_data = {
+            "id": str(uuid.uuid4()),
+            "filename": file.filename,
+            "content_type": file.content_type,
+            "size": len(content),
+            "data": encoded,  # Base64 encoded
+            "uploaded_at": datetime.now(timezone.utc).isoformat()
+        }
+        new_images.append(image_data)
+    
+    # Update opportunity with new images
+    updated_images = current_images + new_images
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"images": updated_images, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {
+        "message": f"Successfully uploaded {len(new_images)} images",
+        "total_images": len(updated_images),
+        "image_ids": [img['id'] for img in new_images]
+    }
+
+
+@api_router.delete("/real-estate-opportunities/{opportunity_id}/images/{image_id}")
+async def delete_opportunity_image(
+    opportunity_id: str,
+    image_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a specific image from a real estate opportunity"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can delete images")
+    
+    opportunity = await db.real_estate_opportunities.find_one({
+        "id": opportunity_id, 
+        "created_by": current_user['id']
+    })
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    current_images = opportunity.get('images', [])
+    updated_images = [img for img in current_images if img['id'] != image_id]
+    
+    if len(updated_images) == len(current_images):
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"images": updated_images, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Image deleted successfully", "remaining_images": len(updated_images)}
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/invest")
+async def invest_in_opportunity(
+    opportunity_id: str,
+    allocation: InvestorAllocation,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Allocate investment in a real estate opportunity.
+    - Off-plan: Max 4 investors, each gets equal share
+    - Fractional: Units in multiples of 500 AED
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can allocate investments")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    if opportunity['status'] != 'available':
+        raise HTTPException(status_code=400, detail="This opportunity is no longer available for investment")
+    
+    # Verify client exists
+    client = await db.clients.find_one({"id": allocation.client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Check investment limits based on property type
+    if opportunity['property_type'] == 'off_plan':
+        # Off-plan: Max 4 investors
+        if opportunity['current_investors'] >= 4:
+            raise HTTPException(status_code=400, detail="Maximum 4 investors allowed for off-plan property")
+        
+        # Each investor gets 25% share
+        share_percentage = 25.0
+        investment_amount = opportunity['total_cost'] / 4
+        units_allocated = 1  # 1 share out of 4
+        
+    else:
+        # Fractional: Units in multiples of 500
+        if allocation.fraction_units <= 0:
+            raise HTTPException(status_code=400, detail="Must allocate at least 1 unit")
+        
+        if allocation.fraction_units > opportunity['units_available']:
+            raise HTTPException(status_code=400, detail=f"Only {opportunity['units_available']} units available")
+        
+        unit_value = opportunity['fractional_info']['unit_value']  # 500 AED
+        investment_amount = allocation.fraction_units * unit_value
+        share_percentage = (allocation.fraction_units / opportunity['fractional_info']['total_units']) * 100
+        units_allocated = allocation.fraction_units
+    
+    # Create investor record
+    investor_record = {
+        "id": str(uuid.uuid4()),
+        "client_id": allocation.client_id,
+        "client_name": client['name'],
+        "units_allocated": units_allocated,
+        "amount": investment_amount,
+        "share_percentage": round(share_percentage, 2),
+        "invested_at": datetime.now(timezone.utc).isoformat(),
+        "recorded_by": current_user['id']
+    }
+    
+    # Update opportunity
+    update_data = {
+        "current_investors": opportunity['current_investors'] + 1,
+        "units_sold": opportunity['units_sold'] + units_allocated,
+        "units_available": opportunity['units_available'] - units_allocated,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Check if fully invested
+    if opportunity['property_type'] == 'off_plan':
+        if update_data['current_investors'] >= 4:
+            update_data['status'] = 'fully_invested'
+    else:
+        if update_data['units_available'] <= 0:
+            update_data['status'] = 'fully_invested'
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {
+            "$set": update_data,
+            "$push": {"investors": investor_record}
+        }
+    )
+    
+    return {
+        "message": "Investment recorded successfully",
+        "investor": investor_record,
+        "remaining_units": update_data['units_available'],
+        "status": update_data.get('status', opportunity['status'])
+    }
+
+
+@api_router.get("/real-estate-opportunities/{opportunity_id}/investors")
+async def get_opportunity_investors(
+    opportunity_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get list of investors for an opportunity"""
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    return {
+        "opportunity_id": opportunity_id,
+        "building_name": opportunity['building_name'],
+        "unit_no": opportunity['unit_no'],
+        "property_type": opportunity['property_type'],
+        "total_cost": opportunity['total_cost'],
+        "max_investors": opportunity['max_investors'],
+        "current_investors": opportunity['current_investors'],
+        "investors": opportunity.get('investors', []),
+        "fractional_info": opportunity.get('fractional_info')
+    }
+
+
+# ==================== END REAL ESTATE OPPORTUNITY ====================
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
