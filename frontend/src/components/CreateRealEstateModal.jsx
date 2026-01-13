@@ -244,6 +244,21 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
         });
       }
 
+      // Upload presentations if any
+      if (presentations.length > 0) {
+        const formDataPresentations = new FormData();
+        presentations.forEach(pres => {
+          formDataPresentations.append('files', pres.file);
+        });
+
+        await axios.post(`${API}/real-estate-opportunities/${opportunityId}/presentations`, formDataPresentations, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      }
+
       onSuccess();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Failed to save property");
