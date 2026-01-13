@@ -474,7 +474,7 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
               {/* DLD Fees Section */}
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                 <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
-                  <Percent className="h-4 w-4" /> DLD Fee (Dubai Land Department)
+                  <DollarSign className="h-4 w-4" /> DLD Fee (Dubai Land Department)
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -489,25 +489,25 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                     />
                   </div>
                   <div>
-                    <Label htmlFor="dld_fee_amount">Or Fixed Amount (AED)</Label>
+                    <Label htmlFor="dld_fee_amount">Absolute Amount (AED)</Label>
                     <Input
                       id="dld_fee_amount"
                       type="number"
                       value={formData.dld_fee_amount}
                       onChange={(e) => handleChange("dld_fee_amount", e.target.value)}
-                      placeholder="Leave empty to use %"
+                      placeholder="Override % with fixed amount"
                     />
                   </div>
                 </div>
-                <p className="text-sm text-blue-600 mt-2">
-                  Calculated: AED {dldFee.toLocaleString()}
+                <p className="text-sm text-blue-600 mt-2 font-medium">
+                  Amount: AED {dldFee.toLocaleString()}
                 </p>
               </div>
 
               {/* Admin Fees Section */}
               <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                 <h4 className="font-medium text-green-800 mb-3 flex items-center gap-2">
-                  <Percent className="h-4 w-4" /> Admin Fee
+                  <DollarSign className="h-4 w-4" /> Admin Fee
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -522,58 +522,155 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                     />
                   </div>
                   <div>
-                    <Label htmlFor="admin_fee_amount">Or Fixed Amount (AED)</Label>
+                    <Label htmlFor="admin_fee_amount">Absolute Amount (AED)</Label>
                     <Input
                       id="admin_fee_amount"
                       type="number"
                       value={formData.admin_fee_amount}
                       onChange={(e) => handleChange("admin_fee_amount", e.target.value)}
-                      placeholder="Leave empty to use %"
+                      placeholder="Override % with fixed amount"
                     />
                   </div>
                 </div>
-                <p className="text-sm text-green-600 mt-2">
-                  Calculated: AED {adminFee.toLocaleString()}
+                <p className="text-sm text-green-600 mt-2 font-medium">
+                  Amount: AED {adminFee.toLocaleString()}
                 </p>
               </div>
 
-              {/* Other Fees */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="broker_fee">Broker Fee (AED)</Label>
-                  <Input
-                    id="broker_fee"
-                    type="number"
-                    value={formData.broker_fee}
-                    onChange={(e) => handleChange("broker_fee", e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="other_fees">Other Fees (AED)</Label>
-                  <Input
-                    id="other_fees"
-                    type="number"
-                    value={formData.other_fees}
-                    onChange={(e) => handleChange("other_fees", e.target.value)}
-                    placeholder="0"
-                  />
+              {/* Brokerage & Other Fees */}
+              <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                <h4 className="font-medium text-amber-800 mb-3 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" /> Brokerage & Other Fees
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="broker_fee">Brokerage Fee (AED)</Label>
+                    <Input
+                      id="broker_fee"
+                      type="number"
+                      value={formData.broker_fee}
+                      onChange={(e) => handleChange("broker_fee", e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="other_fees">Other Fees (AED)</Label>
+                    <Input
+                      id="other_fees"
+                      type="number"
+                      value={formData.other_fees}
+                      onChange={(e) => handleChange("other_fees", e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Total Summary */}
+              {/* Partial Summary */}
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h4 className="font-medium text-gray-700 mb-3">Cost Summary</h4>
+                <h4 className="font-medium text-gray-700 mb-3">Fees Summary (Partial)</h4>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span>Unit Price</span><span>{(parseFloat(formData.unit_price) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-blue-600"><span>DLD Fee ({formData.dld_fee_percentage}%)</span><span>{dldFee.toLocaleString()} AED</span></div>
-                  <div className="flex justify-between text-green-600"><span>Admin Fee ({formData.admin_fee_percentage}%)</span><span>{adminFee.toLocaleString()} AED</span></div>
-                  <div className="flex justify-between"><span>Broker Fee</span><span>{(parseFloat(formData.broker_fee) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between"><span>Other Fees</span><span>{(parseFloat(formData.other_fees) || 0).toLocaleString()} AED</span></div>
-                  <div className="flex justify-between pt-2 border-t font-semibold text-base">
-                    <span>Total Investment</span>
-                    <span className="text-teal-600">{totalCost.toLocaleString()} AED</span>
+                  <div className="flex justify-between"><span>Unit Price</span><span className="font-medium">{(parseFloat(formData.unit_price) || 0).toLocaleString()} AED</span></div>
+                  <div className="flex justify-between text-blue-600"><span>DLD Fee</span><span className="font-medium">{dldFee.toLocaleString()} AED</span></div>
+                  <div className="flex justify-between text-green-600"><span>Admin Fee</span><span className="font-medium">{adminFee.toLocaleString()} AED</span></div>
+                  <div className="flex justify-between text-amber-600"><span>Brokerage Fee</span><span className="font-medium">{(parseFloat(formData.broker_fee) || 0).toLocaleString()} AED</span></div>
+                  <div className="flex justify-between"><span>Other Fees</span><span className="font-medium">{(parseFloat(formData.other_fees) || 0).toLocaleString()} AED</span></div>
+                  <p className="text-xs text-gray-500 pt-2">Continue to "Management Fees" for full total</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Management Fees Section */}
+          {activeSection === "management" && (
+            <div className="space-y-6">
+              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <h4 className="font-medium text-purple-800 mb-1">Management Fees</h4>
+                <p className="text-sm text-purple-600 mb-4">All fees entered as absolute amounts in AED</p>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="upfront_fee">Upfront Fee (AED)</Label>
+                    <Input
+                      id="upfront_fee"
+                      type="number"
+                      value={formData.upfront_fee}
+                      onChange={(e) => handleChange("upfront_fee", e.target.value)}
+                      placeholder="One-time upfront fee"
+                    />
                   </div>
+                  <div>
+                    <Label htmlFor="trailer_fee">Trailer Fee (AED)</Label>
+                    <Input
+                      id="trailer_fee"
+                      type="number"
+                      value={formData.trailer_fee}
+                      onChange={(e) => handleChange("trailer_fee", e.target.value)}
+                      placeholder="Ongoing trailer fee"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="management_fee">Management Fee (AED)</Label>
+                    <Input
+                      id="management_fee"
+                      type="number"
+                      value={formData.management_fee}
+                      onChange={(e) => handleChange("management_fee", e.target.value)}
+                      placeholder="Property management fee"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="unit_selling_fee">Unit Selling Fee (AED)</Label>
+                    <Input
+                      id="unit_selling_fee"
+                      type="number"
+                      value={formData.unit_selling_fee}
+                      onChange={(e) => handleChange("unit_selling_fee", e.target.value)}
+                      placeholder="Fee when selling units"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Complete Cost Summary */}
+              <div className="bg-teal-50 rounded-lg p-4 border border-teal-200">
+                <h4 className="font-medium text-teal-800 mb-3">Complete Cost Summary</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span>Unit Price</span><span className="font-medium">{(parseFloat(formData.unit_price) || 0).toLocaleString()} AED</span></div>
+                  <div className="flex justify-between text-blue-600"><span>DLD Fee</span><span className="font-medium">{dldFee.toLocaleString()} AED</span></div>
+                  <div className="flex justify-between text-green-600"><span>Admin Fee</span><span className="font-medium">{adminFee.toLocaleString()} AED</span></div>
+                  <div className="flex justify-between text-amber-600"><span>Brokerage Fee</span><span className="font-medium">{(parseFloat(formData.broker_fee) || 0).toLocaleString()} AED</span></div>
+                  <div className="flex justify-between"><span>Other Fees</span><span className="font-medium">{(parseFloat(formData.other_fees) || 0).toLocaleString()} AED</span></div>
+                  <div className="flex justify-between text-purple-600"><span>Upfront Fee</span><span className="font-medium">{(parseFloat(formData.upfront_fee) || 0).toLocaleString()} AED</span></div>
+                  <div className="flex justify-between text-purple-600"><span>Trailer Fee</span><span className="font-medium">{(parseFloat(formData.trailer_fee) || 0).toLocaleString()} AED</span></div>
+                  <div className="flex justify-between text-purple-600"><span>Management Fee</span><span className="font-medium">{(parseFloat(formData.management_fee) || 0).toLocaleString()} AED</span></div>
+                  <div className="flex justify-between text-purple-600"><span>Unit Selling Fee</span><span className="font-medium">{(parseFloat(formData.unit_selling_fee) || 0).toLocaleString()} AED</span></div>
+                  <div className="flex justify-between pt-3 border-t border-teal-200 font-bold text-lg">
+                    <span>Total Investment</span>
+                    <span className="text-teal-700">{totalCost.toLocaleString()} AED</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Unit Calculation */}
+              <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                <h4 className="font-medium text-indigo-800 mb-3">Unit Calculation</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Total Cost</span>
+                    <span className="font-medium">{totalCost.toLocaleString()} AED</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Unit Value</span>
+                    <span className="font-medium">500 AED per unit</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-indigo-200 font-bold text-lg text-indigo-700">
+                    <span>Total Units</span>
+                    <span>{totalUnits.toLocaleString()} units</span>
+                  </div>
+                  <p className="text-xs text-indigo-600 mt-2">
+                    Clients can purchase investment in multiples of these units (500 AED each)
+                  </p>
                 </div>
               </div>
             </div>
