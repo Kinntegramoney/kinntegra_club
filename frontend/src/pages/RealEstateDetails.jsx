@@ -449,6 +449,28 @@ export default function RealEstateDetails() {
         </div>
 
         <div className="p-8 space-y-6">
+          {/* Property Images */}
+          {opp.images && opp.images.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-teal-600" />
+                Property Images
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                {opp.images.map((img, idx) => (
+                  <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-gray-100">
+                    <img 
+                      src={img.url || img} 
+                      alt={`${opp.building_name} - Image ${idx + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                      onClick={() => window.open(img.url || img, '_blank')}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Property Overview Card */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
