@@ -3580,7 +3580,8 @@ async def invest_in_opportunity(
     return {
         "message": "Investment recorded successfully",
         "investor": investor_record,
-        "remaining_units": update_data['units_available'],
+        "total_invested": new_total_invested,
+        "remaining": opportunity['total_cost'] - new_total_invested,
         "status": update_data.get('status', opportunity['status'])
     }
 
@@ -3602,10 +3603,59 @@ async def get_opportunity_investors(
         "unit_no": opportunity['unit_no'],
         "property_type": opportunity['property_type'],
         "total_cost": opportunity['total_cost'],
+        "total_invested": opportunity.get('total_invested', 0),
         "max_investors": opportunity['max_investors'],
+        "max_investment_per_investor": opportunity.get('max_investment_per_investor'),
         "current_investors": opportunity['current_investors'],
-        "investors": opportunity.get('investors', []),
-        "fractional_info": opportunity.get('fractional_info')
+        "investors": opportunity.get('investors', [])
+    }
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/record-payment")
+async def record_payment_milestone(
+    opportunity_id: str,
+    payment_index: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Mark a payment milestone as completed"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can record payments")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    payment_schedule = opportunity.get('payment_schedule', [])
+    if payment_index < 0 or payment_index >= len(payment_schedule):
+        raise HTTPException(status_code=400, detail="Invalid payment index")
+    
+    # Mark payment as completed
+    payment_schedule[payment_index]['completed'] = True
+    payment_schedule[payment_index]['completed_at'] = datetime.now(timezone.utc).isoformat()
+    
+    # Calculate total completed percentage
+    total_completed = sum(p['percentage'] for p in payment_schedule if p.get('completed'))
+    
+    # Check if eligible to sell
+    eligible_threshold = opportunity.get('eligible_to_sell_after_percentage', 100)
+    is_eligible = total_completed >= eligible_threshold
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {
+            "payment_schedule": payment_schedule,
+            "total_payment_percentage_completed": total_completed,
+            "is_eligible_to_sell": is_eligible,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "message": "Payment recorded successfully",
+        "payment": payment_schedule[payment_index],
+        "total_completed_percentage": total_completed,
+        "is_eligible_to_sell": is_eligible
     }
 
 
