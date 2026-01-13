@@ -627,9 +627,6 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                   <Plus className="h-4 w-4 mr-1" /> Add Milestone
                 </Button>
               </div>
-                  <Plus className="h-4 w-4 mr-1" /> Add Milestone
-                </Button>
-              </div>
 
               {paymentSchedule.length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed">
