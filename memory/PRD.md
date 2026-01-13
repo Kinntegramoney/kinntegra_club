@@ -12,7 +12,15 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
 
 ## What's Been Implemented
 
-### Dec 2025 - Current Session
+### Jan 2025 - Current Session
+1. **Fixed Visibility Bug for Payment/Oqood Sections (P0)** ✅
+   - Fixed critical bug where "Manage Payment" button and "Oqood" section appeared prematurely
+   - Added `isFullyFunded` check - verifies `current_investors >= 4`
+   - `canViewPaymentManagement` now requires property to be fully funded
+   - Added NEW `canManageOqood` variable - Oqood section only shows when ALL 4 investors have verified payments for FIRST milestone
+   - Tested with: Euphoric Residences (0/4 investors) and Dubai Creek Tower (4/4 investors)
+
+### Dec 2025 - Previous Session
 1. **Fixed Payment Milestone Sorting Bug (P0)** ✅
    - Rewrote sorting logic in `CreateRealEstateModal.jsx` to use inline sorting during render
    - Milestones now correctly sort by date when added/edited
@@ -54,6 +62,15 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
    - Clean Excel export with proper AED formatting and column structure
    - Removed Selling Fee from Financial Summary section (it's only shown in XIRR calculation)
    - Removed "Manage" button from Payment Schedule section
+
+7. **Per-Investor Payment Management** ✅
+   - UI/modals for recording individual investor payments
+   - SWIFT copy and Oqood document upload
+   - Backend endpoints for payment recording
+
+8. **Payment Verification Flow** ✅
+   - Backend endpoints for broker to verify payments
+   - UI elements for verification workflow
 
 ### Previous Session
 - Removed "Fractional" real estate type (simplified to Off-Plan only)
