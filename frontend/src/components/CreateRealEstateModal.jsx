@@ -800,27 +800,34 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                 <div className="bg-gray-100 rounded-lg p-4 mt-4">
                   <h4 className="font-medium text-gray-700 mb-3">Payment Amount Preview (Sorted by Date)</h4>
                   <div className="space-y-2 text-sm">
-                    {getSortedPaymentSchedule().filter(p => p.percentage).map((milestone, idx) => {
-                      const pct = parseFloat(milestone.percentage) || 0;
-                      const amount = unitPrice * pct / 100;
-                      const isFirstPayment = idx === 0;
-                      const formattedDate = milestone.date ? new Date(milestone.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
-                      return (
-                        <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-200 last:border-0">
-                          <div>
-                            <span className="font-medium">{idx + 1}. {milestone.description || `Payment ${idx + 1}`}</span>
-                            <span className="text-gray-500 ml-2">({pct}%)</span>
-                            {formattedDate && <span className="text-gray-400 ml-2 text-xs">{formattedDate}</span>}
+                    {paymentSchedule
+                      .filter(p => p.percentage)
+                      .sort((a, b) => {
+                        if (!a.date) return 1;
+                        if (!b.date) return -1;
+                        return new Date(a.date) - new Date(b.date);
+                      })
+                      .map((milestone, idx) => {
+                        const pct = parseFloat(milestone.percentage) || 0;
+                        const amount = unitPrice * pct / 100;
+                        const isFirstPayment = idx === 0;
+                        const formattedDate = milestone.date ? new Date(milestone.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+                        return (
+                          <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-200 last:border-0">
+                            <div>
+                              <span className="font-medium">{idx + 1}. {milestone.description || `Payment ${idx + 1}`}</span>
+                              <span className="text-gray-500 ml-2">({pct}%)</span>
+                              {formattedDate && <span className="text-gray-400 ml-2 text-xs">{formattedDate}</span>}
+                            </div>
+                            <div className="text-right">
+                              <span className="font-medium">AED {formatCurrency(amount)}</span>
+                              {isFirstPayment && upfrontAmount > 0 && (
+                                <span className="text-red-600 ml-2">+ {formatCurrency(upfrontAmount)}</span>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className="font-medium">AED {formatCurrency(amount)}</span>
-                            {isFirstPayment && upfrontAmount > 0 && (
-                              <span className="text-red-600 ml-2">+ {formatCurrency(upfrontAmount)}</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                     <div className="pt-2 mt-2 border-t-2 border-gray-300">
                       <div className="flex justify-between font-bold">
                         <span>Total (Unit Price)</span>
@@ -879,58 +886,11 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                 </div>
               </div>
 
-              {/* Expected Profit Preview */}
-              {formData.expected_sale_rate && formData.total_area && (
-                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                  <h4 className="font-medium text-green-800 mb-2">Expected Profit</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Expected Sale Value</span>
-                      <span className="font-medium">
-                        AED {formatCurrency(parseFloat(formData.expected_sale_rate) * parseFloat(formData.total_area))}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total Cost</span>
-                      <span className="font-medium">AED {formatCurrency(totalCost)}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-green-200 font-bold">
-                      <span>Estimated Profit</span>
-                      <span className="text-green-700">
-                        AED {formatCurrency((parseFloat(formData.expected_sale_rate) * parseFloat(formData.total_area)) - totalCost)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* XIRR Calculation */}
-              {expectedXIRR !== null && (
-                <div className={`rounded-lg p-4 border ${expectedXIRR >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
-                  <h4 className={`font-medium mb-2 ${expectedXIRR >= 0 ? 'text-blue-800' : 'text-red-800'}`}>
-                    Expected XIRR (Internal Rate of Return)
-                  </h4>
-                  <div className="flex items-center gap-4">
-                    <span className={`text-3xl font-bold ${expectedXIRR >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-                      {expectedXIRR.toFixed(2)}%
-                    </span>
-                    <span className="text-sm text-gray-600">
-                      annualized return based on payment schedule and expected sale
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Calculated using: Payment outflows (including DLD + Admin with booking) → Sale inflow (net of selling fee)
-                  </p>
-                </div>
-              )}
-
-              {expectedXIRR === null && formData.expected_sale_rate && formData.total_area && (
-                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                  <p className="text-sm text-yellow-700">
-                    <strong>XIRR Calculation:</strong> Add payment schedule dates and estimated sell date to calculate expected XIRR.
-                  </p>
-                </div>
-              )}
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <p className="text-sm text-gray-600">
+                  <strong>Note:</strong> Expected Profit and XIRR calculations will be shown in the property details page after creation.
+                </p>
+              </div>
             </div>
           )}
 
