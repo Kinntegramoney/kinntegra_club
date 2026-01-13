@@ -195,6 +195,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/client/real-estate" 
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ClientRealEstateInvestments />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </BrowserRouter>
       <Toaster />
