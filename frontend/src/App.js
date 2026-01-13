@@ -15,6 +15,7 @@ import ClientOpportunities from "@/pages/ClientOpportunities";
 import ClientHoldings from "@/pages/ClientHoldings";
 import ClientTradeVerification from "@/pages/ClientTradeVerification";
 import ClientProfile from "@/pages/ClientProfile";
+import RealEstateOpportunities from "@/pages/RealEstateOpportunities";
 import { Toaster } from "@/components/ui/sonner";
 
 // Protected Route Component
