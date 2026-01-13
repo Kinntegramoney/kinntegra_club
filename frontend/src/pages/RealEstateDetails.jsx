@@ -171,11 +171,88 @@ export default function RealEstateDetails() {
         });
         if (Math.abs(dnpvVal) < 1e-10) break;
         const newRate = rate - npvVal / dnpvVal;
-        if (Math.abs(newRate - rate) < tol) return newRate * 100;
+        if (Math.abs(newRate - rate) < tol) {
+          xirr = newRate * 100;
+          break;
+        }
         rate = newRate;
       }
-      return rate * 100;
-    } catch (e) { return null; }
+      if (xirr === null) xirr = rate * 100;
+    } catch (e) { 
+      xirr = null;
+    }
+
+    if (returnDetails) {
+      return {
+        xirr,
+        cashFlows,
+        summary: {
+          totalInvested: totalPaidTowardsUnit + upfrontFees,
+          unitPricePaid: totalPaidTowardsUnit,
+          upfrontFees,
+          grossSaleValue,
+          sellingFee,
+          outstandingAmount,
+          netSaleProceeds
+        }
+      };
+    }
+    return xirr;
+  };
+
+  // Export XIRR calculation to Excel/CSV
+  const exportXIRRToExcel = (opp, saleStagePercent, saleDateStr, saleRatePerSqft) => {
+    const result = calculateXIRRWithParams(opp, saleStagePercent, saleDateStr, saleRatePerSqft, true);
+    if (!result || !result.cashFlows.length) {
+      toast.error("Cannot export - please enter sale date and price first");
+      return;
+    }
+
+    const { cashFlows, summary, xirr } = result;
+    
+    // Build CSV content
+    let csv = "XIRR CALCULATION BREAKDOWN\n";
+    csv += `Property:,${opp.building_name} - Unit ${opp.unit_no}\n`;
+    csv += `Sale Stage:,${saleStagePercent}% of payments completed\n`;
+    csv += `Expected Sale Date:,${saleDateStr}\n`;
+    csv += `Sale Rate:,AED ${saleRatePerSqft}/sqft\n`;
+    csv += `\n`;
+    
+    csv += "INVESTMENT SUMMARY\n";
+    csv += `Unit Price (Total):,AED ${formatCurrency(opp.unit_price)}\n`;
+    csv += `Unit Price Paid (${saleStagePercent}%):,AED ${formatCurrency(summary.unitPricePaid)}\n`;
+    csv += `DLD Fee:,AED ${formatCurrency(opp.dld_fee)}\n`;
+    csv += `Admin Fee:,AED ${formatCurrency(opp.admin_fee)}\n`;
+    csv += `Total Invested:,AED ${formatCurrency(summary.totalInvested)}\n`;
+    csv += `\n`;
+    
+    csv += "SALE CALCULATION\n";
+    csv += `Gross Sale Value (${opp.total_area} sqft × AED ${saleRatePerSqft}):,AED ${formatCurrency(summary.grossSaleValue)}\n`;
+    csv += `Less: Selling Fee (${opp.unit_selling_fee_percentage || 0}%):,AED ${formatCurrency(summary.sellingFee)}\n`;
+    csv += `Less: Outstanding to Developer (${100 - saleStagePercent}% of Unit Price):,AED ${formatCurrency(summary.outstandingAmount)}\n`;
+    csv += `Net Sale Proceeds:,AED ${formatCurrency(summary.netSaleProceeds)}\n`;
+    csv += `\n`;
+    
+    csv += "CASH FLOWS FOR XIRR\n";
+    csv += "Date,Description,Amount (AED),Type\n";
+    cashFlows.forEach(cf => {
+      const dateStr = cf.date.toISOString().split('T')[0];
+      csv += `${dateStr},${cf.description},${Math.round(cf.amount)},${cf.isOutflow ? 'Outflow' : 'Inflow'}\n`;
+    });
+    csv += `\n`;
+    
+    csv += "RESULT\n";
+    csv += `Expected XIRR:,${xirr !== null ? xirr.toFixed(2) + '%' : 'N/A'}\n`;
+    csv += `Gross Profit:,AED ${formatCurrency(summary.netSaleProceeds - summary.totalInvested + summary.totalInvested)}\n`;
+    csv += `Net Profit:,AED ${formatCurrency(summary.netSaleProceeds - summary.totalInvested)}\n`;
+
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `XIRR_${opp.building_name.replace(/\s+/g, '_')}_Unit${opp.unit_no}_${saleStagePercent}pct.csv`;
+    link.click();
+    toast.success("XIRR calculation exported!");
   };
 
   // Simple XIRR for default display
