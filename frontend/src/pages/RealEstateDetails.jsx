@@ -30,6 +30,7 @@ export default function RealEstateDetails() {
   const [showPaymentManagement, setShowPaymentManagement] = useState(false);
   const [showInterestModal, setShowInterestModal] = useState(false);
   const [showParticipateModal, setShowParticipateModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   
   // XIRR Calculator state
   const [xirrSaleStage, setXirrSaleStage] = useState(100); // % of payment completed when sold
