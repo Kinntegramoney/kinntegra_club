@@ -94,6 +94,98 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     return paymentSchedule.reduce((sum, p) => sum + (parseFloat(p.percentage) || 0), 0);
   };
 
+  // Get sorted payment schedule by date
+  const getSortedPaymentSchedule = () => {
+    return [...paymentSchedule].sort((a, b) => {
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      return new Date(a.date) - new Date(b.date);
+    });
+  };
+
+  // XIRR Calculation
+  const calculateXIRR = () => {
+    if (!unitPrice || paymentSchedule.length === 0) return null;
+    if (!formData.expected_sale_rate || !formData.total_area || !formData.estimated_sell_date) return null;
+    
+    const sortedSchedule = getSortedPaymentSchedule().filter(p => p.date && p.percentage);
+    if (sortedSchedule.length === 0) return null;
+
+    // Build cash flows: negative for payments (outflows), positive for sale (inflow)
+    const cashFlows = [];
+    
+    // First payment includes upfront (DLD + Admin)
+    let isFirstPayment = true;
+    sortedSchedule.forEach(milestone => {
+      const pct = parseFloat(milestone.percentage) || 0;
+      const amount = unitPrice * pct / 100;
+      // First payment includes upfront fees
+      const totalAmount = isFirstPayment ? amount + upfrontAmount : amount;
+      cashFlows.push({
+        date: new Date(milestone.date),
+        amount: -totalAmount // Negative = outflow
+      });
+      isFirstPayment = false;
+    });
+
+    // Add sale proceeds (positive = inflow)
+    const expectedSaleValue = parseFloat(formData.expected_sale_rate) * parseFloat(formData.total_area);
+    // Deduct unit selling fee if applicable
+    const sellingFee = expectedSaleValue * (parseFloat(formData.unit_selling_fee_percentage) || 0) / 100;
+    const netSaleProceeds = expectedSaleValue - sellingFee;
+    
+    cashFlows.push({
+      date: new Date(formData.estimated_sell_date),
+      amount: netSaleProceeds // Positive = inflow
+    });
+
+    // XIRR calculation using Newton-Raphson method
+    const xirr = (cashFlows) => {
+      const tol = 0.0001;
+      const maxIter = 100;
+      let rate = 0.1; // Initial guess 10%
+
+      const npv = (rate) => {
+        const firstDate = cashFlows[0].date;
+        return cashFlows.reduce((sum, cf) => {
+          const years = (cf.date - firstDate) / (365 * 24 * 60 * 60 * 1000);
+          return sum + cf.amount / Math.pow(1 + rate, years);
+        }, 0);
+      };
+
+      const dnpv = (rate) => {
+        const firstDate = cashFlows[0].date;
+        return cashFlows.reduce((sum, cf) => {
+          const years = (cf.date - firstDate) / (365 * 24 * 60 * 60 * 1000);
+          return sum - years * cf.amount / Math.pow(1 + rate, years + 1);
+        }, 0);
+      };
+
+      for (let i = 0; i < maxIter; i++) {
+        const npvValue = npv(rate);
+        const dnpvValue = dnpv(rate);
+        
+        if (Math.abs(dnpvValue) < 1e-10) break;
+        
+        const newRate = rate - npvValue / dnpvValue;
+        
+        if (Math.abs(newRate - rate) < tol) {
+          return newRate * 100; // Return as percentage
+        }
+        rate = newRate;
+      }
+      return rate * 100;
+    };
+
+    try {
+      return xirr(cashFlows);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const expectedXIRR = calculateXIRR();
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -107,6 +199,14 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     setPaymentSchedule(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
+      // Auto-sort by date after update
+      if (field === 'date') {
+        return updated.sort((a, b) => {
+          if (!a.date) return 1;
+          if (!b.date) return -1;
+          return new Date(a.date) - new Date(b.date);
+        });
+      }
       return updated;
     });
   };
