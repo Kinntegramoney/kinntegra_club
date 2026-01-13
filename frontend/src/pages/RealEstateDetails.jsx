@@ -692,43 +692,88 @@ export default function RealEstateDetails() {
             )}
           </div>
 
-          {/* Interest & Participation Section */}
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">Interested in this Property?</h2>
-            <p className="text-gray-600 mb-6">Express your interest or confirm your participation as one of the 4 co-owners.</p>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="h-auto py-4 border-purple-300 hover:bg-purple-100"
-                onClick={() => setShowInterestModal(true)}
-              >
-                <div className="flex items-center gap-3">
-                  <Heart className="h-6 w-6 text-purple-600" />
-                  <div className="text-left">
-                    <p className="font-semibold text-purple-700">Interested to Know More</p>
-                    <p className="text-xs text-gray-500 font-normal">Get more details about this opportunity</p>
+          {/* Interest & Participation Section - Only for Clients */}
+          {user?.role === 'client' && (
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-2">Interested in this Property?</h2>
+              <p className="text-gray-600 mb-6">Express your interest or confirm your participation as one of the 4 co-owners.</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="h-auto py-4 border-purple-300 hover:bg-purple-100"
+                  onClick={() => setShowInterestModal(true)}
+                >
+                  <div className="flex items-center gap-3">
+                    <Heart className="h-6 w-6 text-purple-600" />
+                    <div className="text-left">
+                      <p className="font-semibold text-purple-700">Interested to Know More</p>
+                      <p className="text-xs text-gray-500 font-normal">Get more details about this opportunity</p>
+                    </div>
                   </div>
-                </div>
-              </Button>
+                </Button>
+                
+                <Button 
+                  size="lg" 
+                  className="h-auto py-4 bg-purple-600 hover:bg-purple-700"
+                  onClick={() => setShowParticipateModal(true)}
+                  disabled={remainingPercentage <= 0 || (opp.current_investors || 0) >= 4}
+                >
+                  <div className="flex items-center gap-3">
+                    <UserPlus className="h-6 w-6" />
+                    <div className="text-left">
+                      <p className="font-semibold">Confirm to Participate</p>
+                      <p className="text-xs opacity-80 font-normal">{remainingPercentage.toFixed(1)}% available • {4 - (opp.current_investors || 0)} spots left</p>
+                    </div>
+                  </div>
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Share with Clients Section - Only for Broker/Sub-broker */}
+          {(user?.role === 'broker' || user?.role === 'sub_broker') && (
+            <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl border border-teal-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <Send className="h-5 w-5 text-teal-600" />
+                Share with Clients
+              </h2>
+              <p className="text-gray-600 mb-4">Send this opportunity to your clients. You'll receive a notification when they show interest.</p>
               
               <Button 
                 size="lg" 
-                className="h-auto py-4 bg-purple-600 hover:bg-purple-700"
-                onClick={() => setShowParticipateModal(true)}
-                disabled={remainingPercentage <= 0 || (opp.current_investors || 0) >= 4}
+                className="bg-teal-600 hover:bg-teal-700"
+                onClick={() => setShowShareModal(true)}
               >
-                <div className="flex items-center gap-3">
-                  <UserPlus className="h-6 w-6" />
-                  <div className="text-left">
-                    <p className="font-semibold">Confirm to Participate</p>
-                    <p className="text-xs opacity-80 font-normal">{remainingPercentage.toFixed(1)}% available • {4 - (opp.current_investors || 0)} spots left</p>
+                <Send className="h-5 w-5 mr-2" />
+                Select Clients & Share
+              </Button>
+              
+              {/* Show recent interests */}
+              {opp.interests && opp.interests.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-teal-200">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-amber-500" />
+                    Recent Client Interests ({opp.interests.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {opp.interests.slice(0, 3).map((interest, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                        <div>
+                          <p className="font-medium text-gray-800">{interest.user_name}</p>
+                          <p className="text-xs text-gray-500">{formatDate(interest.expressed_at)}</p>
+                        </div>
+                        {interest.message && (
+                          <p className="text-sm text-gray-600 italic max-w-xs truncate">"{interest.message}"</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </Button>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Current Investors */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
