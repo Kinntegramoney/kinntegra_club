@@ -77,6 +77,10 @@ export default function ClientHoldings() {
     return `₹ ${(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
+  const formatAED = (amount) => {
+    return `AED ${(amount || 0).toLocaleString('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
   const handleDownload = async () => {
     try {
       const token = localStorage.getItem("token");
