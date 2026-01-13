@@ -887,6 +887,34 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                   </div>
                 </div>
               )}
+
+              {/* XIRR Calculation */}
+              {expectedXIRR !== null && (
+                <div className={`rounded-lg p-4 border ${expectedXIRR >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
+                  <h4 className={`font-medium mb-2 ${expectedXIRR >= 0 ? 'text-blue-800' : 'text-red-800'}`}>
+                    Expected XIRR (Internal Rate of Return)
+                  </h4>
+                  <div className="flex items-center gap-4">
+                    <span className={`text-3xl font-bold ${expectedXIRR >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                      {expectedXIRR.toFixed(2)}%
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      annualized return based on payment schedule and expected sale
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Calculated using: Payment outflows (including DLD + Admin with booking) → Sale inflow (net of selling fee)
+                  </p>
+                </div>
+              )}
+
+              {expectedXIRR === null && formData.expected_sale_rate && formData.total_area && (
+                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                  <p className="text-sm text-yellow-700">
+                    <strong>XIRR Calculation:</strong> Add payment schedule dates and estimated sell date to calculate expected XIRR.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
