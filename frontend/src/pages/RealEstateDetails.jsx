@@ -468,16 +468,36 @@ export default function RealEstateDetails() {
 function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onClose, onSuccess }) {
   const [selectedClient, setSelectedClient] = useState("");
   const [units, setUnits] = useState("");
+  const [percentage, setPercentage] = useState("");
+  const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const isFractional = opportunity.property_type === 'fractional';
   const unitValue = opportunity.unit_value || 500;
-  const totalUnits = opportunity.total_units || Math.floor(opportunity.total_cost / unitValue);
-  const unitsSold = opportunity.units_sold || 0;
-  const unitsAvailable = opportunity.units_available ?? (totalUnits - unitsSold);
+  const totalUnits = opportunity.total_units || 0;
+  const unitsAvailable = opportunity.units_available || 0;
+  const maxAmount = opportunity.total_cost * remainingPercentage / 100;
 
-  // Calculate investment details
-  const investmentAmount = units ? parseInt(units) * unitValue : 0;
-  const sharePercentage = totalUnits > 0 ? ((parseInt(units) || 0) / totalUnits) * 100 : 0;
+  // Calculate investment details for fractional
+  const investmentAmount = isFractional && units ? parseInt(units) * unitValue : parseFloat(amount) || 0;
+  const sharePercentage = isFractional && totalUnits > 0 
+    ? ((parseInt(units) || 0) / totalUnits) * 100 
+    : parseFloat(percentage) || (opportunity.total_cost > 0 ? (investmentAmount / opportunity.total_cost) * 100 : 0);
+
+  // Auto-calculate amount from percentage for off-plan
+  const handlePercentageChange = (val) => {
+    setPercentage(val);
+    if (val && opportunity.total_cost) {
+      setAmount((opportunity.total_cost * parseFloat(val) / 100).toFixed(0));
+    }
+  };
+
+  const handleAmountChange = (val) => {
+    setAmount(val);
+    if (val && opportunity.total_cost) {
+      setPercentage(((parseFloat(val) / opportunity.total_cost) * 100).toFixed(2));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -486,23 +506,46 @@ function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onCl
       return;
     }
 
-    const unitsToBuy = parseInt(units);
-    if (!unitsToBuy || unitsToBuy <= 0) {
-      toast.error("Please enter number of units");
-      return;
-    }
-
-    if (unitsToBuy > unitsAvailable) {
-      toast.error(`Only ${unitsAvailable.toLocaleString()} units available`);
-      return;
-    }
-
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
+      
+      let payload = { client_id: selectedClient };
+      
+      if (isFractional) {
+        const unitsToBuy = parseInt(units);
+        if (!unitsToBuy || unitsToBuy <= 0) {
+          toast.error("Please enter number of units");
+          setLoading(false);
+          return;
+        }
+        if (unitsToBuy > unitsAvailable) {
+          toast.error(`Only ${unitsAvailable.toLocaleString()} units available`);
+          setLoading(false);
+          return;
+        }
+        payload.units = unitsToBuy;
+      } else {
+        // Off-plan: percentage or amount
+        const investAmt = parseFloat(amount);
+        const investPct = parseFloat(percentage);
+        if (!investAmt && !investPct) {
+          toast.error("Please enter percentage or amount");
+          setLoading(false);
+          return;
+        }
+        if (investPct > remainingPercentage) {
+          toast.error(`Only ${remainingPercentage.toFixed(1)}% available`);
+          setLoading(false);
+          return;
+        }
+        payload.share_percentage = investPct;
+        payload.investment_amount = investAmt;
+      }
+
       await axios.post(
         `${API}/real-estate-opportunities/${opportunity.id}/invest`,
-        { client_id: selectedClient, units: unitsToBuy },
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("Investor added successfully");
@@ -520,17 +563,29 @@ function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onCl
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-lg font-semibold">Add Investor</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Add Investor</h2>
+            <p className="text-sm text-gray-500">{isFractional ? 'Fractional (Unit-based)' : 'Off-Plan (Percentage-based)'}</p>
+          </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Available Units Info */}
-          <div className="bg-indigo-50 p-4 rounded-lg">
-            <p className="text-sm text-indigo-600">Available Units</p>
-            <p className="text-2xl font-bold text-indigo-800">{formatCurrency(unitsAvailable)} units</p>
-            <p className="text-sm text-indigo-600">AED {formatCurrency(unitsAvailable * unitValue)} @ {formatCurrency(unitValue)} AED/unit</p>
-          </div>
+          {/* Available Info */}
+          {isFractional ? (
+            <div className="bg-indigo-50 p-4 rounded-lg">
+              <p className="text-sm text-indigo-600">Available Units</p>
+              <p className="text-2xl font-bold text-indigo-800">{formatCurrency(unitsAvailable)} units</p>
+              <p className="text-sm text-indigo-600">AED {formatCurrency(unitsAvailable * unitValue)} @ {formatCurrency(unitValue)} AED/unit</p>
+            </div>
+          ) : (
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <p className="text-sm text-orange-600">Available for Investment</p>
+              <p className="text-2xl font-bold text-orange-800">{remainingPercentage.toFixed(1)}%</p>
+              <p className="text-sm text-orange-600">AED {formatCurrency(maxAmount)}</p>
+              <p className="text-xs text-orange-500 mt-1">Max {opportunity.max_investors || 4} investors</p>
+            </div>
+          )}
 
           <div>
             <Label>Select Client *</Label>
@@ -544,36 +599,69 @@ function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onCl
             </Select>
           </div>
 
-          {/* Units Input */}
-          <div>
-            <Label>Number of Units *</Label>
-            <Input
-              type="number"
-              min="1"
-              max={unitsAvailable}
-              value={units}
-              onChange={(e) => setUnits(e.target.value)}
-              placeholder={`Max: ${formatCurrency(unitsAvailable)} units`}
-            />
-            <p className="text-xs text-gray-500 mt-1">Each unit = {formatCurrency(unitValue)} AED</p>
-          </div>
+          {isFractional ? (
+            /* FRACTIONAL: Units Input */
+            <div>
+              <Label>Number of Units *</Label>
+              <Input
+                type="number"
+                min="1"
+                max={unitsAvailable}
+                value={units}
+                onChange={(e) => setUnits(e.target.value)}
+                placeholder={`Max: ${formatCurrency(unitsAvailable)} units`}
+              />
+              <p className="text-xs text-gray-500 mt-1">Each unit = {formatCurrency(unitValue)} AED</p>
+            </div>
+          ) : (
+            /* OFF-PLAN: Percentage/Amount Input */
+            <div className="space-y-3">
+              <div>
+                <Label>Investment Percentage *</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="0.1"
+                    max={remainingPercentage}
+                    value={percentage}
+                    onChange={(e) => handlePercentageChange(e.target.value)}
+                    placeholder={`Max: ${remainingPercentage.toFixed(1)}%`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                </div>
+              </div>
+              <div className="text-center text-xs text-gray-400">OR</div>
+              <div>
+                <Label>Investment Amount (AED)</Label>
+                <Input
+                  type="number"
+                  max={maxAmount}
+                  value={amount}
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                  placeholder={`Max: ${formatCurrency(maxAmount)}`}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Investment Preview */}
-          {units && parseInt(units) > 0 && (
-            <div className="bg-teal-50 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-teal-700 mb-2">Investment Preview</h4>
+          {((isFractional && units && parseInt(units) > 0) || (!isFractional && (percentage || amount))) && (
+            <div className={`p-4 rounded-lg ${isFractional ? 'bg-teal-50' : 'bg-orange-50'}`}>
+              <h4 className={`text-sm font-medium mb-2 ${isFractional ? 'text-teal-700' : 'text-orange-700'}`}>Investment Preview</h4>
               <div className="space-y-1 text-sm">
+                {isFractional && (
+                  <div className="flex justify-between">
+                    <span className="text-teal-600">Units</span>
+                    <span className="font-medium">{formatCurrency(parseInt(units))}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
-                  <span className="text-teal-600">Units</span>
-                  <span className="font-medium">{formatCurrency(parseInt(units))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-teal-600">Amount</span>
-                  <span className="font-bold">AED {formatCurrency(investmentAmount)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-teal-600">Share</span>
+                  <span className={isFractional ? 'text-teal-600' : 'text-orange-600'}>Share</span>
                   <span className="font-medium">{sharePercentage.toFixed(2)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className={isFractional ? 'text-teal-600' : 'text-orange-600'}>Amount</span>
+                  <span className="font-bold">AED {formatCurrency(isFractional ? investmentAmount : parseFloat(amount))}</span>
                 </div>
               </div>
             </div>
@@ -581,7 +669,7 @@ function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onCl
 
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={loading} className="flex-1 bg-teal-600 hover:bg-teal-700">
+            <Button type="submit" disabled={loading} className={`flex-1 ${isFractional ? 'bg-teal-600 hover:bg-teal-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
               {loading ? "Adding..." : "Add Investor"}
             </Button>
           </div>
