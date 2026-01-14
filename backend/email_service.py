@@ -58,10 +58,13 @@ def send_email(
         bool: True if email sent successfully, False otherwise
     """
     try:
+        # Get config dynamically
+        config = get_mail_config()
+        
         # Create message
         message = MIMEMultipart("alternative")
         message["Subject"] = subject
-        message["From"] = f"{MAIL_FROM_NAME} <{MAIL_FROM_ADDRESS}>"
+        message["From"] = f"{config['from_name']} <{config['from_address']}>"
         message["To"] = to_email
         
         if cc:
@@ -86,9 +89,9 @@ def send_email(
         # Create SSL context and send
         context = ssl.create_default_context()
         
-        with smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT, context=context) as server:
-            server.login(MAIL_USERNAME, MAIL_PASSWORD)
-            server.sendmail(MAIL_FROM_ADDRESS, recipients, message.as_string())
+        with smtplib.SMTP_SSL(config['host'], config['port'], context=context) as server:
+            server.login(config['username'], config['password'])
+            server.sendmail(config['from_address'], recipients, message.as_string())
         
         logger.info(f"Email sent successfully to {to_email}")
         return True
