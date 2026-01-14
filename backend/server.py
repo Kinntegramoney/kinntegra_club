@@ -6841,13 +6841,32 @@ async def get_monthly_stats(year: int = None, current_user: dict = Depends(get_c
 # One-time setup endpoint - can be called manually after deployment
 @api_router.get("/setup-broker")
 async def setup_broker_endpoint():
-    """One-time setup endpoint to create the default broker account"""
+    """One-time setup endpoint to create or reset the default broker account"""
     try:
         # Check if broker already exists
         existing_broker = await db.users.find_one({"pan": "ANVPB5297J"})
         
         if existing_broker:
-            return {"status": "exists", "message": "Broker account already exists"}
+            # RESET the password and pin to fix any hash issues
+            new_password_hash = get_password_hash("Laksh@0208")
+            new_pin_hash = get_password_hash("0516")
+            
+            await db.users.update_one(
+                {"pan": "ANVPB5297J"},
+                {"$set": {
+                    "password_hash": new_password_hash,
+                    "pin_hash": new_pin_hash
+                }}
+            )
+            return {
+                "status": "reset", 
+                "message": "Broker password has been reset successfully",
+                "credentials": {
+                    "pan": "ANVPB5297J",
+                    "password": "Laksh@0208",
+                    "pin": "0516"
+                }
+            }
         
         # Create the default broker account
         broker_data = {
