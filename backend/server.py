@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, UploadFile, File, Form
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, UploadFile, File, Form, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse, FileResponse
 from dotenv import load_dotenv
@@ -18,6 +18,13 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from auth import verify_password, get_password_hash, create_access_token, verify_token
+from email_service import (
+    send_welcome_email_client, 
+    send_welcome_email_subbroker,
+    send_bond_opportunity_email,
+    send_real_estate_opportunity_email,
+    send_password_reset_email
+)
 
 
 ROOT_DIR = Path(__file__).parent
