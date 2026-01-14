@@ -6018,6 +6018,309 @@ async def get_client_real_estate_investments(current_user: dict = Depends(get_cu
 # ==================== END REAL ESTATE OPPORTUNITY ====================
 
 
+# ==================== CURRENCY RATE PROJECTIONS ====================
+
+class CurrencyRateProjection(BaseModel):
+    year: int
+    currency: str  # INR, USD, EUR, GBP, etc.
+    projected_rate: float  # Rate per 1 AED (e.g., 22.5 INR = 1 AED)
+
+class CurrencyRateProjectionsUpdate(BaseModel):
+    projections: List[CurrencyRateProjection]
+
+@api_router.get("/settings/currency-projections")
+async def get_currency_projections(current_user: dict = Depends(get_current_user)):
+    """Get projected currency rates for XIRR calculations"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access settings")
+    
+    broker_id = current_user['id']
+    
+    settings = await db.broker_settings.find_one({"broker_id": broker_id}, {"_id": 0})
+    if not settings:
+        # Return default projections for current and next 5 years
+        from datetime import datetime
+        current_year = datetime.now().year
+        default_projections = [
+            {"year": current_year + i, "currency": "INR", "projected_rate": 22.5}
+            for i in range(6)
+        ]
+        return {"projections": default_projections}
+    
+    return {"projections": settings.get("currency_projections", [])}
+
+@api_router.put("/settings/currency-projections")
+async def update_currency_projections(
+    data: CurrencyRateProjectionsUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update projected currency rates"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can update settings")
+    
+    broker_id = current_user['id']
+    
+    # Upsert the settings
+    await db.broker_settings.update_one(
+        {"broker_id": broker_id},
+        {
+            "$set": {
+                "broker_id": broker_id,
+                "currency_projections": [p.dict() for p in data.projections],
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    
+    return {"message": "Currency projections updated successfully"}
+
+
+@api_router.get("/real-estate-opportunities/{opportunity_id}/xirr-comparison/{investor_id}")
+async def get_xirr_comparison_report(
+    opportunity_id: str,
+    investor_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate XIRR comparison report for an investor showing projected vs actual rates"""
+    
+    # Get the opportunity
+    opp = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    # Get the investor
+    investor = next((inv for inv in opp.get('investors', []) if inv.get('client_id') == investor_id), None)
+    if not investor:
+        raise HTTPException(status_code=404, detail="Investor not found in this opportunity")
+    
+    # Get broker's projected rates
+    broker_id = opp.get('created_by')
+    settings = await db.broker_settings.find_one({"broker_id": broker_id}, {"_id": 0})
+    projected_rates = {p['year']: p for p in settings.get('currency_projections', [])} if settings else {}
+    
+    # Get client info
+    client = await db.clients.find_one({"id": investor_id}, {"_id": 0, "name": 1, "preferred_currency": 1})
+    client_currency = client.get('preferred_currency', 'INR') if client else 'INR'
+    
+    # Get investor's share percentage
+    share_percentage = investor.get('share_percentage', 25)
+    
+    # Calculate investor's portion of total cost
+    total_cost = opp.get('total_cost', 0)
+    unit_price = opp.get('unit_price', 0)
+    investor_total_cost = total_cost * share_percentage / 100
+    investor_unit_price = unit_price * share_percentage / 100
+    
+    # Get payment schedule and actual payments
+    payment_schedule = opp.get('payment_schedule', [])
+    investor_payments = opp.get('investor_payments', [])
+    investor_actual_payments = [p for p in investor_payments if p.get('investor_id') == investor_id]
+    
+    # Build cashflow comparison
+    cashflows_projected = []
+    cashflows_actual = []
+    total_projected_home_currency = 0
+    total_actual_home_currency = 0
+    total_aed_amount = 0
+    
+    for idx, milestone in enumerate(payment_schedule):
+        milestone_date = milestone.get('date', '')
+        milestone_percentage = milestone.get('percentage', 0)
+        milestone_aed = investor_unit_price * milestone_percentage / 100
+        
+        # Get year for projected rate lookup
+        try:
+            year = int(milestone_date[:4]) if milestone_date else datetime.now().year
+        except:
+            year = datetime.now().year
+        
+        # Get projected rate for this year
+        projected_rate_info = projected_rates.get(year, {})
+        projected_rate = projected_rate_info.get('projected_rate', 22.5) if projected_rate_info else 22.5
+        
+        # Calculate projected home currency amount
+        projected_home_currency = milestone_aed * projected_rate
+        total_projected_home_currency += projected_home_currency
+        total_aed_amount += milestone_aed
+        
+        # Find actual payment for this milestone
+        actual_payment = next((p for p in investor_actual_payments if p.get('milestone_index') == idx), None)
+        
+        if actual_payment:
+            actual_home_currency = float(actual_payment.get('payment_details', {}).get('home_currency_amount', 0) or 0)
+            actual_aed = float(actual_payment.get('payment_details', {}).get('aed_amount', 0) or actual_payment.get('aed_amount', 0))
+            actual_rate = actual_home_currency / actual_aed if actual_aed > 0 else projected_rate
+        else:
+            # Use projected values if no actual payment yet
+            actual_home_currency = projected_home_currency
+            actual_aed = milestone_aed
+            actual_rate = projected_rate
+        
+        total_actual_home_currency += actual_home_currency
+        
+        cashflows_projected.append({
+            "date": milestone_date,
+            "description": milestone.get('description', f'Milestone {idx + 1}'),
+            "percentage": milestone_percentage,
+            "aed_amount": milestone_aed,
+            "projected_rate": projected_rate,
+            "home_currency_amount": projected_home_currency,
+            "type": "outflow"
+        })
+        
+        cashflows_actual.append({
+            "date": milestone_date,
+            "description": milestone.get('description', f'Milestone {idx + 1}'),
+            "percentage": milestone_percentage,
+            "aed_amount": actual_aed,
+            "actual_rate": actual_rate,
+            "home_currency_amount": actual_home_currency,
+            "type": "outflow",
+            "is_paid": actual_payment is not None
+        })
+    
+    # Calculate sale proceeds (inflow)
+    sell_date = opp.get('estimated_sell_date', '')
+    expected_sale_rate = opp.get('expected_sale_rate', 0)  # per sqft
+    total_area = opp.get('total_area', 0)
+    selling_fee_percentage = opp.get('selling_fee_percentage', 0)
+    
+    if sell_date and expected_sale_rate and total_area:
+        gross_sale = expected_sale_rate * total_area
+        selling_fee = gross_sale * selling_fee_percentage / 100
+        
+        # Calculate outstanding amount (unpaid portion of unit price)
+        paid_percentage = sum(m.get('percentage', 0) for m in payment_schedule if any(
+            p.get('milestone_index') == i and p.get('status') == 'verified' 
+            for i, p in enumerate(investor_actual_payments)
+        ))
+        outstanding_percentage = 100 - paid_percentage
+        outstanding_amount = investor_unit_price * outstanding_percentage / 100
+        
+        net_sale = gross_sale - selling_fee - outstanding_amount
+        investor_net_sale = net_sale * share_percentage / 100
+        
+        # Get projected rate for sale year
+        try:
+            sale_year = int(sell_date[:4])
+        except:
+            sale_year = datetime.now().year + 2
+        
+        sale_projected_rate = projected_rates.get(sale_year, {}).get('projected_rate', 22.5)
+        
+        # Add sale inflow
+        cashflows_projected.append({
+            "date": sell_date,
+            "description": "Expected Sale Proceeds",
+            "aed_amount": investor_net_sale,
+            "projected_rate": sale_projected_rate,
+            "home_currency_amount": investor_net_sale * sale_projected_rate,
+            "type": "inflow"
+        })
+        
+        cashflows_actual.append({
+            "date": sell_date,
+            "description": "Expected Sale Proceeds",
+            "aed_amount": investor_net_sale,
+            "actual_rate": sale_projected_rate,  # Use projected for future sale
+            "home_currency_amount": investor_net_sale * sale_projected_rate,
+            "type": "inflow",
+            "is_paid": False
+        })
+    
+    # Calculate XIRR for both scenarios
+    def calculate_xirr_from_cashflows(cashflows):
+        """Calculate XIRR from cashflow list"""
+        try:
+            from scipy.optimize import brentq
+            
+            cf_data = []
+            for cf in cashflows:
+                date_str = cf.get('date', '')
+                if not date_str:
+                    continue
+                try:
+                    dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                except:
+                    try:
+                        dt = datetime.strptime(date_str, '%Y-%m-%d')
+                    except:
+                        continue
+                
+                amount = cf.get('home_currency_amount', 0)
+                if cf.get('type') == 'outflow':
+                    amount = -abs(amount)
+                else:
+                    amount = abs(amount)
+                
+                cf_data.append((dt, amount))
+            
+            if len(cf_data) < 2:
+                return None
+            
+            # Sort by date
+            cf_data.sort(key=lambda x: x[0])
+            
+            dates = [cf[0] for cf in cf_data]
+            amounts = [cf[1] for cf in cf_data]
+            
+            # Check if we have both positive and negative cashflows
+            if not (any(a > 0 for a in amounts) and any(a < 0 for a in amounts)):
+                return None
+            
+            def xnpv(rate, dates, amounts):
+                first_date = dates[0]
+                return sum(
+                    amount / ((1 + rate) ** ((date - first_date).days / 365.0))
+                    for date, amount in zip(dates, amounts)
+                )
+            
+            try:
+                xirr = brentq(lambda r: xnpv(r, dates, amounts), -0.999, 10, maxiter=1000)
+                return round(xirr * 100, 2)
+            except:
+                return None
+        except Exception as e:
+            print(f"XIRR calculation error: {e}")
+            return None
+    
+    xirr_projected = calculate_xirr_from_cashflows(cashflows_projected)
+    xirr_actual = calculate_xirr_from_cashflows(cashflows_actual)
+    
+    # Calculate currency gain/loss
+    currency_gain_loss = total_projected_home_currency - total_actual_home_currency
+    currency_gain_loss_percentage = (currency_gain_loss / total_projected_home_currency * 100) if total_projected_home_currency > 0 else 0
+    
+    return {
+        "opportunity": {
+            "id": opportunity_id,
+            "building_name": opp.get('building_name', ''),
+            "unit_number": opp.get('unit_number', ''),
+            "estimated_sell_date": sell_date,
+            "expected_sale_rate": expected_sale_rate
+        },
+        "investor": {
+            "id": investor_id,
+            "name": client.get('name', 'Unknown') if client else 'Unknown',
+            "share_percentage": share_percentage,
+            "currency": client_currency
+        },
+        "summary": {
+            "total_investment_aed": total_aed_amount,
+            "total_projected_home_currency": round(total_projected_home_currency, 2),
+            "total_actual_home_currency": round(total_actual_home_currency, 2),
+            "currency_gain_loss": round(currency_gain_loss, 2),
+            "currency_gain_loss_percentage": round(currency_gain_loss_percentage, 2),
+            "xirr_projected": xirr_projected,
+            "xirr_actual": xirr_actual,
+            "xirr_difference": round((xirr_actual or 0) - (xirr_projected or 0), 2) if xirr_projected and xirr_actual else None
+        },
+        "cashflows_projected": cashflows_projected,
+        "cashflows_actual": cashflows_actual
+    }
+
+
 # ==================== DASHBOARD ANALYTICS ENDPOINTS ====================
 
 @api_router.get("/dashboard/summary")
