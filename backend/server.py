@@ -6387,6 +6387,142 @@ async def get_xirr_comparison_report(
     }
 
 
+# ==================== EMAIL SHARING ENDPOINTS ====================
+
+class EmailShareRequest(BaseModel):
+    client_ids: List[str]
+    personal_message: Optional[str] = None
+
+@api_router.post("/bonds/{bond_id}/share-email")
+async def share_bond_via_email(
+    bond_id: str, 
+    request: EmailShareRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Share bond opportunity with clients via email"""
+    
+    # Get the bond
+    bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Get sender info
+    sender_name = current_user.get('name', 'Kinntegraa')
+    
+    # Get clients
+    clients_sent = []
+    clients_failed = []
+    
+    for client_id in request.client_ids:
+        client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+        if not client:
+            clients_failed.append({"id": client_id, "reason": "Client not found"})
+            continue
+        
+        if not client.get('email'):
+            clients_failed.append({"id": client_id, "name": client.get('name'), "reason": "No email address"})
+            continue
+        
+        # Send email in background
+        background_tasks.add_task(
+            send_bond_opportunity_email,
+            recipient_email=client['email'],
+            recipient_name=client.get('name', 'Investor'),
+            bond_details=bond,
+            sender_name=sender_name,
+            personal_message=request.personal_message
+        )
+        clients_sent.append({"id": client_id, "name": client.get('name'), "email": client['email']})
+    
+    return {
+        "message": f"Emails queued for {len(clients_sent)} clients",
+        "sent_to": clients_sent,
+        "failed": clients_failed
+    }
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/share-email")
+async def share_real_estate_via_email(
+    opportunity_id: str, 
+    request: EmailShareRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Share real estate opportunity with clients via email"""
+    
+    # Get the property
+    opp = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    if not opp:
+        raise HTTPException(status_code=404, detail="Property not found")
+    
+    # Get sender info
+    sender_name = current_user.get('name', 'Kinntegraa')
+    
+    # Get clients
+    clients_sent = []
+    clients_failed = []
+    
+    for client_id in request.client_ids:
+        client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+        if not client:
+            clients_failed.append({"id": client_id, "reason": "Client not found"})
+            continue
+        
+        if not client.get('email'):
+            clients_failed.append({"id": client_id, "name": client.get('name'), "reason": "No email address"})
+            continue
+        
+        # Send email in background
+        background_tasks.add_task(
+            send_real_estate_opportunity_email,
+            recipient_email=client['email'],
+            recipient_name=client.get('name', 'Investor'),
+            property_details=opp,
+            sender_name=sender_name,
+            personal_message=request.personal_message
+        )
+        clients_sent.append({"id": client_id, "name": client.get('name'), "email": client['email']})
+    
+    return {
+        "message": f"Emails queued for {len(clients_sent)} clients",
+        "sent_to": clients_sent,
+        "failed": clients_failed
+    }
+
+
+@api_router.post("/email/test")
+async def test_email(current_user: dict = Depends(get_current_user)):
+    """Test email configuration by sending a test email to the current user"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can test email")
+    
+    # Get user's email
+    user = await db.users.find_one({"id": current_user['id']}, {"_id": 0})
+    if not user or not user.get('email'):
+        raise HTTPException(status_code=400, detail="No email address found for your account")
+    
+    from email_service import send_email
+    
+    success = send_email(
+        to_email=user['email'],
+        subject="Kinntegraa - Test Email",
+        html_content=f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h1 style="color: #4F46E5;">✅ Email Configuration Working!</h1>
+            <p>Hello {current_user.get('name', 'User')},</p>
+            <p>This is a test email from your Kinntegraa system. If you received this, your email configuration is working correctly.</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">&copy; 2025 Kinntegraa. All rights reserved.</p>
+        </div>
+        """
+    )
+    
+    if success:
+        return {"message": f"Test email sent successfully to {user['email']}"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to send test email. Check server logs.")
+
+
 # ==================== DASHBOARD ANALYTICS ENDPOINTS ====================
 
 @api_router.get("/dashboard/summary")
