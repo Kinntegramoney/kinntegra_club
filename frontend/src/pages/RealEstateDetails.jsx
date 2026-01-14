@@ -2489,16 +2489,33 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">AED Amount *</Label>
+                            <Label className="text-xs">AED Rate</Label>
                             <Input
                               type="number"
-                              placeholder="Amount in AED"
-                              value={investorPayments[investor.client_id]?.aed_amount || ""}
-                              onChange={(e) => handleInvestorChange(investor.client_id, 'aed_amount', e.target.value)}
+                              step="0.0001"
+                              placeholder="Exchange rate to AED"
+                              value={investorPayments[investor.client_id]?.aed_rate || ""}
+                              onChange={(e) => handleInvestorChange(investor.client_id, 'aed_rate', e.target.value)}
                               className="mt-1"
-                              required
                             />
                           </div>
+                        </div>
+                        
+                        <div>
+                          <Label className="text-xs">AED Amount *</Label>
+                          <Input
+                            type="number"
+                            placeholder="Amount in AED"
+                            value={investorPayments[investor.client_id]?.aed_amount || ""}
+                            onChange={(e) => handleInvestorChange(investor.client_id, 'aed_amount', e.target.value)}
+                            className="mt-1"
+                            required
+                          />
+                          {investorPayments[investor.client_id]?.home_currency_amount && investorPayments[investor.client_id]?.aed_rate && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Calculated: {(parseFloat(investorPayments[investor.client_id]?.home_currency_amount || 0) / parseFloat(investorPayments[investor.client_id]?.aed_rate || 1)).toFixed(2)} AED
+                            </p>
+                          )}
                         </div>
                         
                         <div>
