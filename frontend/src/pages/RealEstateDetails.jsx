@@ -1395,6 +1395,28 @@ export default function RealEstateDetails() {
           }}
         />
       )}
+      
+      {/* Currency Settings Modal */}
+      {showCurrencySettingsModal && (
+        <CurrencySettingsModal
+          onClose={() => setShowCurrencySettingsModal(false)}
+          onSuccess={() => {
+            toast.success("Currency settings updated!");
+          }}
+        />
+      )}
+      
+      {/* XIRR Comparison Modal */}
+      {showXirrComparisonModal && selectedInvestorForXirr && (
+        <XirrComparisonModal
+          opportunity={opp}
+          investor={selectedInvestorForXirr}
+          onClose={() => {
+            setShowXirrComparisonModal(false);
+            setSelectedInvestorForXirr(null);
+          }}
+        />
+      )}
     </div>
   );
 }
