@@ -14,6 +14,18 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
 
 ### Jan 2025 - Current Session
 
+10. **Unified Payments Section (P0)** ✅ (Jan 14, 2025)
+    - Merged Payment Schedule, Payment Management, and Payment Documents into ONE unified "Payments" section
+    - Single section header: "💳 Payments" with "Fully Allocated (X Investors)" badge
+    - **Payment Schedule Table** at top with:
+      - Columns: #, Date, Description, %, Amount (AED), Invoices, Payments, Receipts, Status
+      - 3 progress bars (Invoices/blue, Payments/green, Receipts/purple) visible when fully allocated
+      - Status shows "Open" until 100% funded, then "Complete/Partial/Pending"
+    - **Documents Overview** grid below showing client-wise document status (Invoice, SWIFT, Receipt) per milestone
+    - **Milestone Actions** section for recording payments and managing invoices
+    - Removed duplicate "Payment Documents" section that was standalone
+    - File reduced from 3000+ lines to ~3100 lines
+
 9. **Payment Schedule Status & Progress Column Update** ✅
    - Payment schedule now shows "Open" status until all 4 investors are tagged
    - Progress column is hidden until all 4 investors are tagged
