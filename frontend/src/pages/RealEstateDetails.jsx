@@ -738,7 +738,6 @@ export default function RealEstateDetails() {
                             const investorAmount = (opp.unit_price * milestone.percentage / 100) * (investorShare / 100);
                             
                             // Sequential workflow: Invoice → SWIFT → Receipt
-                            // Also allow SWIFT upload if payment exists (for backwards compatibility)
                             const canUploadSwift = (hasInvoice || hasPayment) && !hasSwift;
                             const canUploadReceipt = hasSwift && !hasReceipt;
                             
@@ -747,32 +746,47 @@ export default function RealEstateDetails() {
                                 <div className="flex flex-col items-center gap-1">
                                   {/* Document Icons Row */}
                                   <div className="flex items-center gap-1">
-                                    {/* 1. Invoice - First step, always available for broker to upload */}
-                                    {hasInvoice ? (
-                                      <button className="w-6 h-6 rounded bg-blue-100 hover:bg-blue-200 text-blue-600 flex items-center justify-center" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}`, '_blank')} title="View Invoice"><FileText className="h-3 w-3" /></button>
-                                    ) : user?.role === 'broker' ? (
-                                      <button className="w-6 h-6 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center" onClick={() => { setSelectedInvoiceMilestone({ milestone: { ...milestone, index: idx }, investor, amount: investorAmount }); setShowInvoiceUploadModal(true); }} title="Send Invoice"><Upload className="h-3 w-3" /></button>
-                                    ) : (
-                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title="Awaiting Invoice">-</span>
-                                    )}
+                                    {/* 1. Invoice Column */}
+                                    <div className="flex flex-col items-center">
+                                      {hasInvoice ? (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
+                                          <button className="text-[9px] text-blue-600 hover:text-blue-800 font-medium mt-0.5" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}`, '_blank')}>View</button>
+                                        </>
+                                      ) : user?.role === 'broker' ? (
+                                        <button className="w-6 h-6 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center" onClick={() => { setSelectedInvoiceMilestone({ milestone: { ...milestone, index: idx }, investor, amount: investorAmount }); setShowInvoiceUploadModal(true); }} title="Send Invoice"><Upload className="h-3 w-3" /></button>
+                                      ) : (
+                                        <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title="Awaiting Invoice">-</span>
+                                      )}
+                                    </div>
                                     
-                                    {/* 2. SWIFT - Second step, active after invoice OR if payment already recorded */}
-                                    {hasSwift ? (
-                                      <button className="w-6 h-6 rounded bg-teal-100 hover:bg-teal-200 text-teal-600 flex items-center justify-center" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${payment.swift_copy_url}`, '_blank')} title="View SWIFT"><Check className="h-3 w-3" /></button>
-                                    ) : canUploadSwift ? (
-                                      <button className="w-6 h-6 rounded bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center" onClick={() => { setSelectedPaymentMilestone({ ...milestone, index: idx }); setShowPaymentRecordModal(true); }} title="Upload SWIFT / Record Payment"><Upload className="h-3 w-3" /></button>
-                                    ) : (
-                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title="Upload Invoice first">-</span>
-                                    )}
+                                    {/* 2. SWIFT Column */}
+                                    <div className="flex flex-col items-center">
+                                      {hasSwift ? (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-teal-100 text-teal-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
+                                          <button className="text-[9px] text-teal-600 hover:text-teal-800 font-medium mt-0.5" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${payment.swift_copy_url}`, '_blank')}>View</button>
+                                        </>
+                                      ) : canUploadSwift ? (
+                                        <button className="w-6 h-6 rounded bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center" onClick={() => { setSelectedPaymentMilestone({ ...milestone, index: idx }); setShowPaymentRecordModal(true); }} title="Upload SWIFT"><Upload className="h-3 w-3" /></button>
+                                      ) : (
+                                        <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title="Upload Invoice first">-</span>
+                                      )}
+                                    </div>
                                     
-                                    {/* 3. Receipt - Third step, only active after SWIFT is uploaded */}
-                                    {hasReceipt ? (
-                                      <button className="w-6 h-6 rounded bg-purple-100 hover:bg-purple-200 text-purple-600 flex items-center justify-center" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`, '_blank')} title="View Receipt"><FileText className="h-3 w-3" /></button>
-                                    ) : canUploadReceipt ? (
-                                      <button className="w-6 h-6 rounded bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center" onClick={() => { setSelectedPaymentForReceipt({ payment, investor, milestone: { ...milestone, index: idx } }); setShowDeveloperReceiptModal(true); }} title="Upload Receipt"><Upload className="h-3 w-3" /></button>
-                                    ) : (
-                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title={!hasSwift ? "Upload SWIFT first" : "N/A"}>-</span>
-                                    )}
+                                    {/* 3. Receipt Column */}
+                                    <div className="flex flex-col items-center">
+                                      {hasReceipt ? (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
+                                          <button className="text-[9px] text-purple-600 hover:text-purple-800 font-medium mt-0.5" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`, '_blank')}>View</button>
+                                        </>
+                                      ) : canUploadReceipt ? (
+                                        <button className="w-6 h-6 rounded bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center" onClick={() => { setSelectedPaymentForReceipt({ payment, investor, milestone: { ...milestone, index: idx } }); setShowDeveloperReceiptModal(true); }} title="Upload Receipt"><Upload className="h-3 w-3" /></button>
+                                      ) : (
+                                        <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title="Upload SWIFT first">-</span>
+                                      )}
+                                    </div>
                                   </div>
                                   
                                   {/* Status & Amount */}
