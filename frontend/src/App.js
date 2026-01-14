@@ -1,6 +1,8 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "@/pages/Login";
+import CustomerSignup from "@/pages/CustomerSignup";
+import ForgotPassword from "@/pages/ForgotPassword";
 import Dashboard from "@/pages/Dashboard";
 import Opportunities from "@/pages/Opportunities";
 import AdminBonds from "@/pages/AdminBonds";
