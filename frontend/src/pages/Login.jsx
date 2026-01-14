@@ -94,43 +94,51 @@ export default function Login() {
     >
       {/* Login Card */}
       <div 
-        className="relative bg-white w-full max-w-md mx-4 overflow-hidden"
+        className="relative bg-white w-full max-w-md mx-4"
         style={{ 
           borderRadius: '14px',
-          boxShadow: '0 25px 50px rgba(0,0,0,0.35)'
+          boxShadow: '0 25px 50px rgba(0,0,0,0.35)',
+          overflow: 'hidden'
         }}
         data-testid="login-card"
       >
-        {/* Header Strip with gradient */}
+        {/* Header Strip with gradient - MUST be visible */}
         <div 
-          className="h-[90px] relative"
           style={{
-            background: 'linear-gradient(135deg, #33222A 0%, #2b1c23 100%)'
+            height: '90px',
+            background: 'linear-gradient(135deg, #33222A 0%, #2b1c23 100%)',
+            position: 'relative'
           }}
         />
         
         {/* Logo - positioned to overlap header and body */}
         <div 
-          className="absolute left-1/2 z-10"
           style={{
+            position: 'absolute',
+            left: '50%',
+            top: '30px',
             transform: 'translateX(-50%)',
-            top: '30px'
+            zIndex: 10
           }}
         >
           <img 
             src="/logo.png" 
             alt="Kinntegraa Club" 
-            className="w-[120px] h-[120px] rounded-full"
             style={{
+              width: '120px',
+              height: '120px',
+              borderRadius: '50%',
+              display: 'block',
               border: 'none',
               outline: 'none',
-              boxShadow: 'none'
+              boxShadow: 'none',
+              padding: 0
             }}
           />
         </div>
 
         {/* Card Body */}
-        <div className="pt-[70px] px-8 pb-8">
+        <div style={{ paddingTop: '60px', paddingLeft: '32px', paddingRight: '32px', paddingBottom: '32px' }}>
           {step === 1 ? (
             <form onSubmit={handleStep1Submit} data-testid="step1-form">
               <div className="space-y-5">
@@ -149,7 +157,7 @@ export default function Login() {
                     value={formData.pan}
                     onChange={(e) => setFormData({...formData, pan: e.target.value.toUpperCase()})}
                     maxLength={10}
-                    className="h-11 font-mono text-base uppercase focus:border-[#875A31] focus:ring-[#875A31]/25"
+                    className="h-11 font-mono text-base uppercase"
                     style={{
                       borderColor: '#dee2e6',
                       borderRadius: '0.375rem'
@@ -173,7 +181,7 @@ export default function Login() {
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      className="h-11 pr-12 text-base focus:border-[#875A31] focus:ring-[#875A31]/25"
+                      className="h-11 pr-12 text-base"
                       style={{
                         borderColor: '#dee2e6',
                         borderRadius: '0.375rem'
@@ -191,21 +199,27 @@ export default function Login() {
                   </div>
                 </div>
 
+                {/* Forgot Password Link */}
+                <div className="text-right">
+                  <a 
+                    href="#" 
+                    className="text-sm font-semibold hover:underline"
+                    style={{ color: '#875A31' }}
+                  >
+                    Forgot Password?
+                  </a>
+                </div>
+
                 <Button
                   data-testid="next-button"
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 font-semibold text-sm mt-6 transition-colors"
+                  className="w-full h-11 font-semibold text-sm transition-colors hover:opacity-90"
                   style={{
                     background: '#875A31',
                     color: 'white',
-                    borderRadius: '0.375rem'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = '#33222A';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = '#875A31';
+                    borderRadius: '0.375rem',
+                    marginTop: '8px'
                   }}
                 >
                   {loading ? "SIGNING IN..." : "SIGN IN"}
@@ -237,7 +251,7 @@ export default function Login() {
                       value={formData.pin}
                       onChange={(e) => setFormData({...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 4)})}
                       maxLength={4}
-                      className="h-11 pr-12 text-center text-xl tracking-[0.5em] font-mono focus:border-[#875A31] focus:ring-[#875A31]/25"
+                      className="h-11 pr-12 text-center text-xl tracking-[0.5em] font-mono"
                       style={{
                         borderColor: '#dee2e6',
                         borderRadius: '0.375rem'
@@ -262,18 +276,12 @@ export default function Login() {
                       setStep(1);
                       setFormData({...formData, pin: ""});
                     }}
-                    className="flex-1 h-11 font-semibold text-sm transition-colors"
+                    className="flex-1 h-11 font-semibold text-sm transition-colors hover:bg-gray-100"
                     style={{
                       background: 'transparent',
                       color: '#875A31',
                       border: '1px solid #875A31',
                       borderRadius: '0.375rem'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = '#f3f4f6';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'transparent';
                     }}
                   >
                     BACK
@@ -282,17 +290,11 @@ export default function Login() {
                     data-testid="verify-button"
                     type="submit"
                     disabled={loading}
-                    className="flex-1 h-11 font-semibold text-sm transition-colors"
+                    className="flex-1 h-11 font-semibold text-sm transition-colors hover:opacity-90"
                     style={{
                       background: '#875A31',
                       color: 'white',
                       borderRadius: '0.375rem'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = '#33222A';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = '#875A31';
                     }}
                   >
                     {loading ? "VERIFYING..." : "SIGN IN"}
