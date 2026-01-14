@@ -728,6 +728,7 @@ export default function RealEstateDetails() {
                           {isFullyAllocated && opp.investors?.map((investor, invIdx) => {
                             const invoice = opp.investor_invoices?.find(inv => inv.milestone_index === idx && inv.investor_id === investor.client_id);
                             const payment = milestonePayments.find(p => p.investor_id === investor.client_id || p.investor_index === invIdx);
+                            const hasInvoice = !!invoice;
                             const hasSwift = payment?.swift_copy_url;
                             const hasReceipt = payment?.developer_receipt;
                             const isVerified = payment?.status === 'verified';
@@ -735,36 +736,40 @@ export default function RealEstateDetails() {
                             const investorShare = investor.share_percentage || (100 / totalInvestors);
                             const investorAmount = (opp.unit_price * milestone.percentage / 100) * (investorShare / 100);
                             
+                            // Sequential workflow: Invoice → SWIFT → Receipt
+                            const canUploadSwift = hasInvoice && !hasSwift; // SWIFT only after invoice
+                            const canUploadReceipt = hasSwift && !hasReceipt; // Receipt only after SWIFT
+                            
                             return (
                               <td key={invIdx} className="py-2 px-2 text-center border-l border-gray-100">
                                 <div className="flex flex-col items-center gap-1">
                                   {/* Document Icons Row */}
                                   <div className="flex items-center gap-1">
-                                    {/* Invoice */}
-                                    {invoice ? (
+                                    {/* 1. Invoice - First step, always available for broker to upload */}
+                                    {hasInvoice ? (
                                       <button className="w-6 h-6 rounded bg-blue-100 hover:bg-blue-200 text-blue-600 flex items-center justify-center" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}`, '_blank')} title="View Invoice"><FileText className="h-3 w-3" /></button>
-                                    ) : user?.role === 'broker' && !isVerified ? (
+                                    ) : user?.role === 'broker' ? (
                                       <button className="w-6 h-6 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center" onClick={() => { setSelectedInvoiceMilestone({ milestone: { ...milestone, index: idx }, investor, amount: investorAmount }); setShowInvoiceUploadModal(true); }} title="Send Invoice"><Upload className="h-3 w-3" /></button>
                                     ) : (
-                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center">-</span>
+                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title="Awaiting Invoice">-</span>
                                     )}
                                     
-                                    {/* SWIFT */}
+                                    {/* 2. SWIFT - Second step, only active after invoice is uploaded */}
                                     {hasSwift ? (
                                       <button className="w-6 h-6 rounded bg-teal-100 hover:bg-teal-200 text-teal-600 flex items-center justify-center" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${payment.swift_copy_url}`, '_blank')} title="View SWIFT"><Check className="h-3 w-3" /></button>
-                                    ) : payment ? (
-                                      <span className="w-6 h-6 rounded bg-amber-100 text-amber-500 flex items-center justify-center" title="Pending"><Clock className="h-3 w-3" /></span>
+                                    ) : canUploadSwift ? (
+                                      <button className="w-6 h-6 rounded bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center" onClick={() => { setSelectedPaymentMilestone({ ...milestone, index: idx }); setShowPaymentRecordModal(true); }} title="Upload SWIFT / Record Payment"><Upload className="h-3 w-3" /></button>
                                     ) : (
-                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center">-</span>
+                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title={!hasInvoice ? "Upload Invoice first" : "N/A"}>-</span>
                                     )}
                                     
-                                    {/* Receipt */}
+                                    {/* 3. Receipt - Third step, only active after SWIFT is uploaded */}
                                     {hasReceipt ? (
                                       <button className="w-6 h-6 rounded bg-purple-100 hover:bg-purple-200 text-purple-600 flex items-center justify-center" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`, '_blank')} title="View Receipt"><FileText className="h-3 w-3" /></button>
-                                    ) : isVerified ? (
+                                    ) : canUploadReceipt ? (
                                       <button className="w-6 h-6 rounded bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center" onClick={() => { setSelectedPaymentForReceipt({ payment, investor, milestone: { ...milestone, index: idx } }); setShowDeveloperReceiptModal(true); }} title="Upload Receipt"><Upload className="h-3 w-3" /></button>
                                     ) : (
-                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center">-</span>
+                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title={!hasSwift ? "Upload SWIFT first" : "N/A"}>-</span>
                                     )}
                                   </div>
                                   
