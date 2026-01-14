@@ -3995,7 +3995,7 @@ class BondWithCalculations(BaseModel):
 # Routes
 @api_router.get("/")
 async def root():
-    return {"message": "BondFlow Pro API"}
+    return {"message": "BondFlow Pro API", "version": "2.1.0", "updated": "2026-01-14T17:30:00Z"}
 
 
 @api_router.post("/bonds", response_model=Bond)
