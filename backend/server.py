@@ -4915,6 +4915,10 @@ async def record_investor_payment(
         swift_url = f"/uploads/swift/{swift_filename}"
     
     # Create payment record
+    # If broker is recording, auto-verify the payment
+    is_broker_recording = current_user['role'] == 'broker' and opportunity.get('created_by') == current_user['id']
+    payment_status = "verified" if is_broker_recording else "pending_verification"
+    
     payment_record = {
         "id": str(uuid.uuid4()),
         "milestone_index": milestone_index,
@@ -4926,10 +4930,12 @@ async def record_investor_payment(
         "effective_rate": effective_rate if effective_rate else (home_currency_amount / aed_amount if aed_amount > 0 else 0),
         "swift_copy_url": swift_url,
         "swift_copy_filename": swift_filename,
-        "status": "pending_verification",  # Will be 'verified' once broker approves
+        "status": payment_status,
         "recorded_by": current_user['id'],
         "recorded_by_name": current_user.get('name', current_user.get('pan_number')),
-        "recorded_at": datetime.now(timezone.utc).isoformat()
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "verified_at": datetime.now(timezone.utc).isoformat() if is_broker_recording else None,
+        "verified_by": current_user['id'] if is_broker_recording else None
     }
     
     # Update opportunity
