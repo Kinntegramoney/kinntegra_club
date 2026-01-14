@@ -53,6 +53,23 @@ class LoginStep2(BaseModel):
     temp_token: str
     pin: str
 
+class PasswordResetRequest(BaseModel):
+    pan: str
+    email: str
+
+class PasswordResetConfirm(BaseModel):
+    reset_token: str
+    new_password: str
+    new_pin: str
+
+class CustomerSignup(BaseModel):
+    pan: str
+    name: str
+    email: str
+    phone: str
+    password: str
+    pin: str
+
 class UserCreate(BaseModel):
     pan: str
     name: str
