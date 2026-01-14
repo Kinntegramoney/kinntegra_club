@@ -2796,6 +2796,24 @@ class ReinvestmentApproval(BaseModel):
 async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_user)):
     """Get upcoming repayments for the next 6 months for reinvestment tagging"""
     
+    # First, ensure all approved trades have cashflows generated
+    all_trades = await db.trades.find({"status": "approved"}, {"_id": 0}).to_list(10000)
+    
+    for trade in all_trades:
+        # Check if cashflows exist for this trade
+        existing = await db.holding_cashflows.find_one({"trade_id": trade['id']})
+        if not existing:
+            # Generate and store cashflows
+            bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
+            if bond:
+                cashflows = generate_client_cashflows(trade, bond)
+                if cashflows:
+                    for cf in cashflows:
+                        cf['client_id'] = trade['client_id']
+                        cf['bond_id'] = trade['bond_id']
+                        cf['bond_name'] = trade.get('bond_name', bond.get('issuer', ''))
+                    await db.holding_cashflows.insert_many(cashflows)
+    
     # Get all cashflows that are not repaid and in the next 6 months
     today = datetime.now(timezone.utc).date()
     six_months_later = today + timedelta(days=180)
