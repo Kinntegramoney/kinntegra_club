@@ -2447,11 +2447,27 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
                   {prevPayments.length > 0 && (
                     <div className="mb-4">
                       <p className="text-xs font-medium text-gray-600 mb-2">Previous Payments:</p>
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         {prevPayments.map((p, pIdx) => (
-                          <div key={pIdx} className="flex justify-between text-sm p-2 bg-green-50 rounded">
-                            <span className="text-gray-600">{new Date(p.transfer_date).toLocaleDateString()}</span>
-                            <span className="font-medium text-green-700">AED {formatCurrency(p.aed_amount)}</span>
+                          <div key={pIdx} className="p-2 bg-green-50 rounded border border-green-100">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">{new Date(p.transfer_date).toLocaleDateString()}</span>
+                              <span className="font-medium text-green-700">AED {formatCurrency(p.aed_amount)}</span>
+                            </div>
+                            {p.home_currency_amount && p.aed_amount && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                Rate: 1 AED = {(parseFloat(p.home_currency_amount) / parseFloat(p.aed_amount)).toFixed(4)} {p.home_currency || 'INR'}
+                              </div>
+                            )}
+                            {p.swift_copy_url && (
+                              <button 
+                                type="button"
+                                className="text-xs text-teal-600 hover:text-teal-800 font-medium mt-1 flex items-center gap-1"
+                                onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${p.swift_copy_url}`, '_blank')}
+                              >
+                                <Eye className="h-3 w-3" /> View SWIFT
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
