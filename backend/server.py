@@ -4033,6 +4033,110 @@ async def record_sale(bond_id: str, sale: RecordSale):
     }
 
 
+@api_router.post("/bonds/{bond_id}/presentations")
+async def upload_bond_presentations(
+    bond_id: str,
+    files: List[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload presentation files for a bond (max 10 files)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can upload presentations")
+    
+    bond = await db.bonds.find_one({"id": bond_id})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    current_presentations = bond.get('presentations', [])
+    
+    if len(current_presentations) + len(files) > 10:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Maximum 10 presentations allowed. Currently have {len(current_presentations)}, trying to add {len(files)}"
+        )
+    
+    allowed_types = ['application/pdf', 
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'application/vnd.ms-powerpoint',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    
+    new_presentations = []
+    
+    upload_dir = "/app/uploads/bond_presentations"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    for file in files:
+        if file.content_type not in allowed_types:
+            continue
+        
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'pdf'
+        saved_filename = f"{bond_id}_{uuid.uuid4().hex[:8]}.{file_extension}"
+        file_path = os.path.join(upload_dir, saved_filename)
+        
+        content = await file.read()
+        with open(file_path, 'wb') as f:
+            f.write(content)
+        
+        presentation_data = {
+            "id": str(uuid.uuid4()),
+            "original_filename": file.filename,
+            "content_type": file.content_type,
+            "size": len(content),
+            "url": f"/uploads/bond_presentations/{saved_filename}",
+            "uploaded_at": datetime.now(timezone.utc).isoformat()
+        }
+        new_presentations.append(presentation_data)
+    
+    await db.bonds.update_one(
+        {"id": bond_id},
+        {"$set": {"presentations": current_presentations + new_presentations}}
+    )
+    
+    return {
+        "message": f"Uploaded {len(new_presentations)} presentation(s)",
+        "presentations": new_presentations
+    }
+
+
+@api_router.delete("/bonds/{bond_id}/presentations/{presentation_id}")
+async def delete_bond_presentation(
+    bond_id: str,
+    presentation_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a presentation from a bond"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can delete presentations")
+    
+    bond = await db.bonds.find_one({"id": bond_id})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    presentations = bond.get('presentations', [])
+    presentation = next((p for p in presentations if p['id'] == presentation_id), None)
+    
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+    
+    # Try to delete file
+    try:
+        file_path = f"/app{presentation['url']}"
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except Exception as e:
+        pass
+    
+    updated_presentations = [p for p in presentations if p['id'] != presentation_id]
+    
+    await db.bonds.update_one(
+        {"id": bond_id},
+        {"$set": {"presentations": updated_presentations}}
+    )
+    
+    return {"message": "Presentation deleted"}
+
+
 @api_router.post("/bonds/{bond_id}/download-cashflow", response_model=CashflowDownload)
 async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculation):
     """Generate month-wise cashflow with TDS calculation"""
