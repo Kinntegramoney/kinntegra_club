@@ -2568,15 +2568,26 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
                               />
                             </div>
                             <div>
-                              <Label className="text-xs">AED Amount</Label>
+                              <Label className="text-xs">AED Rate</Label>
                               <Input
                                 type="number"
-                                placeholder="Amount in AED"
-                                value={ap.aed_amount}
-                                onChange={(e) => updateAdditionalPayment(ap.id, 'aed_amount', e.target.value)}
+                                step="0.0001"
+                                placeholder="Exchange rate"
+                                value={ap.aed_rate || ""}
+                                onChange={(e) => updateAdditionalPayment(ap.id, 'aed_rate', e.target.value)}
                                 className="mt-1"
                               />
                             </div>
+                          </div>
+                          <div className="mt-3">
+                            <Label className="text-xs">AED Amount</Label>
+                            <Input
+                              type="number"
+                              placeholder="Amount in AED"
+                              value={ap.aed_amount}
+                              onChange={(e) => updateAdditionalPayment(ap.id, 'aed_amount', e.target.value)}
+                              className="mt-1"
+                            />
                           </div>
                         </div>
                       ))}
