@@ -1249,139 +1249,198 @@ export default function RealEstateDetails() {
             </div>
           )}
 
-          {/* Payment Documents Section - Shows all uploaded documents for each investor */}
-          {canViewPaymentManagement && opp.investor_payments && opp.investor_payments.length > 0 && (
+          {/* Payment Documents Grid - Client-wise view with milestones as columns */}
+          {canViewPaymentManagement && opp.investors && opp.investors.length > 0 && opp.payment_schedule && opp.payment_schedule.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                   <FileText className="h-5 w-5 text-indigo-600" />
                   Payment Documents
                 </h2>
-                <Badge className="bg-indigo-100 text-indigo-700">
-                  {opp.investor_payments.filter(p => p.status === 'verified').length} Verified Payments
-                </Badge>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="w-3 h-3 rounded bg-blue-500"></span>
+                    <span className="text-gray-600">Invoice</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="w-3 h-3 rounded bg-teal-500"></span>
+                    <span className="text-gray-600">SWIFT</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="w-3 h-3 rounded bg-purple-500"></span>
+                    <span className="text-gray-600">Receipt</span>
+                  </div>
+                </div>
               </div>
               
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-collapse">
                   <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 px-3 text-gray-500 font-medium">Investor</th>
-                      <th className="text-left py-2 px-3 text-gray-500 font-medium">Milestone</th>
-                      <th className="text-right py-2 px-3 text-gray-500 font-medium">Amount</th>
-                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Status</th>
-                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Invoice</th>
-                      <th className="text-center py-2 px-3 text-gray-500 font-medium">SWIFT Copy</th>
-                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Dev Receipt</th>
+                    <tr className="border-b-2 border-gray-300">
+                      <th className="text-left py-3 px-3 text-gray-700 font-semibold bg-gray-50 sticky left-0 z-10 min-w-[150px]">
+                        Client
+                      </th>
+                      {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, mIdx) => (
+                        <th key={mIdx} className="text-center py-2 px-2 text-gray-700 font-semibold bg-gray-50 min-w-[120px]" colSpan="3">
+                          <div className="text-xs font-medium text-gray-800">{milestone.description || `Payment ${mIdx + 1}`}</div>
+                          <div className="text-[10px] text-gray-500">{milestone.percentage}%</div>
+                        </th>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="sticky left-0 z-10 bg-gray-50"></th>
+                      {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((_, mIdx) => (
+                        <React.Fragment key={mIdx}>
+                          <th className="text-center py-1 px-1 text-[10px] text-blue-600 font-medium">INV</th>
+                          <th className="text-center py-1 px-1 text-[10px] text-teal-600 font-medium">SWIFT</th>
+                          <th className="text-center py-1 px-1 text-[10px] text-purple-600 font-medium">RCP</th>
+                        </React.Fragment>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {opp.investor_payments.map((payment, idx) => {
-                      const investor = opp.investors?.find(inv => inv.client_id === payment.investor_id);
-                      const milestone = opp.payment_schedule?.[payment.milestone_index];
-                      const invoice = opp.investor_invoices?.find(
-                        inv => inv.milestone_index === payment.milestone_index && inv.investor_id === payment.investor_id
-                      );
+                    {opp.investors?.map((investor, invIdx) => {
+                      const investorShare = investor.share_percentage || (100 / (opp.investors?.length || 1));
                       
                       return (
-                        <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-3">
-                            <p className="font-medium text-gray-800">{investor?.client_name || 'Unknown'}</p>
-                            <p className="text-xs text-gray-500">{investor?.share_percentage?.toFixed(1)}% share</p>
+                        <tr key={invIdx} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-3 sticky left-0 z-10 bg-white">
+                            <div className="font-medium text-gray-800">{investor.client_name}</div>
+                            <div className="text-xs text-gray-500">{investorShare.toFixed(1)}% share</div>
+                            <div className="text-xs text-gray-400">
+                              AED {formatCurrency((opp.unit_price || 0) * investorShare / 100)}
+                            </div>
                           </td>
-                          <td className="py-3 px-3">
-                            <p className="text-gray-800">{milestone?.description || `Payment ${payment.milestone_index + 1}`}</p>
-                            <p className="text-xs text-gray-500">{milestone?.percentage}%</p>
-                          </td>
-                          <td className="py-3 px-3 text-right font-mono">
-                            AED {formatCurrency(payment.aed_amount)}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            {payment.status === 'verified' ? (
-                              <Badge className="bg-green-100 text-green-700">✓ Verified</Badge>
-                            ) : (
-                              <Badge className="bg-amber-100 text-amber-700">⏳ Pending</Badge>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            {invoice ? (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700"
-                                onClick={() => {
-                                  const token = localStorage.getItem("token");
-                                  window.open(
-                                    `${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}?token=${token}`,
-                                    '_blank'
-                                  );
-                                }}
-                              >
-                                <Download className="h-3 w-3 mr-1" /> View
-                              </Button>
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            {payment.swift_copy_url ? (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-xs bg-teal-100 hover:bg-teal-200 text-teal-700"
-                                onClick={() => {
-                                  window.open(
-                                    `${process.env.REACT_APP_BACKEND_URL}${payment.swift_copy_url}`,
-                                    '_blank'
-                                  );
-                                }}
-                              >
-                                <Download className="h-3 w-3 mr-1" /> View
-                              </Button>
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            {payment.developer_receipt ? (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-xs bg-purple-100 hover:bg-purple-200 text-purple-700"
-                                onClick={() => {
-                                  window.open(
-                                    `${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`,
-                                    '_blank'
-                                  );
-                                }}
-                              >
-                                <Download className="h-3 w-3 mr-1" /> View
-                              </Button>
-                            ) : payment.status === 'verified' ? (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-xs bg-purple-500 hover:bg-purple-600 text-white"
-                                onClick={() => {
-                                  setSelectedPaymentForReceipt({
-                                    payment: payment,
-                                    investor: investor,
-                                    milestone: { ...milestone, index: payment.milestone_index }
-                                  });
-                                  setShowDeveloperReceiptModal(true);
-                                }}
-                              >
-                                <Upload className="h-3 w-3 mr-1" /> Upload
-                              </Button>
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
+                          {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, mIdx) => {
+                            // Get actual milestone index from original array
+                            const actualMilestoneIndex = opp.payment_schedule.findIndex(m => m.date === milestone.date && m.description === milestone.description);
+                            
+                            // Find invoice for this investor and milestone
+                            const invoice = opp.investor_invoices?.find(
+                              inv => inv.milestone_index === actualMilestoneIndex && inv.investor_id === investor.client_id
+                            );
+                            
+                            // Find payment for this investor and milestone
+                            const payment = opp.investor_payments?.find(
+                              p => p.milestone_index === actualMilestoneIndex && p.investor_id === investor.client_id
+                            );
+                            
+                            const hasSwift = payment?.swift_copy_url;
+                            const hasReceipt = payment?.developer_receipt;
+                            const isVerified = payment?.status === 'verified';
+                            
+                            return (
+                              <React.Fragment key={mIdx}>
+                                {/* Invoice Cell */}
+                                <td className="py-2 px-1 text-center border-l border-gray-100">
+                                  {invoice ? (
+                                    <button
+                                      className="w-7 h-7 rounded bg-blue-100 hover:bg-blue-200 text-blue-600 flex items-center justify-center mx-auto"
+                                      onClick={() => {
+                                        const token = localStorage.getItem("token");
+                                        window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}?token=${token}`, '_blank');
+                                      }}
+                                      title="View Invoice"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </button>
+                                  ) : user?.role === 'broker' ? (
+                                    <button
+                                      className="w-7 h-7 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center mx-auto"
+                                      onClick={() => {
+                                        const milestoneAmount = (opp.unit_price * milestone.percentage / 100) * (investorShare / 100);
+                                        setSelectedInvoiceMilestone({ 
+                                          milestone: { ...milestone, index: actualMilestoneIndex }, 
+                                          investor: investor,
+                                          amount: milestoneAmount
+                                        });
+                                        setShowInvoiceUploadModal(true);
+                                      }}
+                                      title="Send Invoice"
+                                    >
+                                      <Upload className="h-3 w-3" />
+                                    </button>
+                                  ) : (
+                                    <span className="w-7 h-7 rounded bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">-</span>
+                                  )}
+                                </td>
+                                
+                                {/* SWIFT Cell */}
+                                <td className="py-2 px-1 text-center">
+                                  {hasSwift ? (
+                                    <button
+                                      className="w-7 h-7 rounded bg-teal-100 hover:bg-teal-200 text-teal-600 flex items-center justify-center mx-auto"
+                                      onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${payment.swift_copy_url}`, '_blank')}
+                                      title="View SWIFT Copy"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </button>
+                                  ) : payment ? (
+                                    <span className="w-7 h-7 rounded bg-amber-100 text-amber-600 flex items-center justify-center mx-auto" title="Payment recorded without SWIFT">
+                                      <Clock className="h-3 w-3" />
+                                    </span>
+                                  ) : (
+                                    <span className="w-7 h-7 rounded bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">-</span>
+                                  )}
+                                </td>
+                                
+                                {/* Receipt Cell */}
+                                <td className="py-2 px-1 text-center border-r border-gray-100">
+                                  {hasReceipt ? (
+                                    <button
+                                      className="w-7 h-7 rounded bg-purple-100 hover:bg-purple-200 text-purple-600 flex items-center justify-center mx-auto"
+                                      onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`, '_blank')}
+                                      title="View Developer Receipt"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </button>
+                                  ) : isVerified ? (
+                                    <button
+                                      className="w-7 h-7 rounded bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center mx-auto"
+                                      onClick={() => {
+                                        setSelectedPaymentForReceipt({
+                                          payment: payment,
+                                          investor: investor,
+                                          milestone: { ...milestone, index: actualMilestoneIndex }
+                                        });
+                                        setShowDeveloperReceiptModal(true);
+                                      }}
+                                      title="Upload Receipt"
+                                    >
+                                      <Upload className="h-3 w-3" />
+                                    </button>
+                                  ) : (
+                                    <span className="w-7 h-7 rounded bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">-</span>
+                                  )}
+                                </td>
+                              </React.Fragment>
+                            );
+                          })}
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
+              </div>
+              
+              {/* Legend */}
+              <div className="mt-4 pt-4 border-t border-gray-200 flex flex-wrap gap-4 text-xs text-gray-500">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
+                  <span>Document Available</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded bg-blue-500 text-white flex items-center justify-center"><Upload className="h-3 w-3" /></span>
+                  <span>Upload Available</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded bg-amber-100 text-amber-600 flex items-center justify-center"><Clock className="h-3 w-3" /></span>
+                  <span>Pending</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded bg-gray-100 text-gray-400 flex items-center justify-center">-</span>
+                  <span>Not Available</span>
+                </div>
               </div>
             </div>
           )}
