@@ -1274,6 +1274,7 @@ export default function RealEstateDetails() {
         <PaymentRecordModal
           opportunity={opp}
           milestone={selectedPaymentMilestone}
+          selectedInvestor={selectedPaymentMilestone.selectedInvestor}
           onClose={() => {
             setShowPaymentRecordModal(false);
             setSelectedPaymentMilestone(null);
