@@ -6148,9 +6148,16 @@ async def get_xirr_comparison_report(
         actual_payment = next((p for p in investor_actual_payments if p.get('milestone_index') == idx), None)
         
         if actual_payment:
-            actual_home_currency = float(actual_payment.get('payment_details', {}).get('home_currency_amount', 0) or 0)
-            actual_aed = float(actual_payment.get('payment_details', {}).get('aed_amount', 0) or actual_payment.get('aed_amount', 0))
-            actual_rate = actual_home_currency / actual_aed if actual_aed > 0 else projected_rate
+            # Get values directly from payment record (not nested in payment_details)
+            actual_home_currency = float(actual_payment.get('home_currency_amount', 0) or 0)
+            actual_aed = float(actual_payment.get('aed_amount', 0) or 0)
+            # Use effective_rate if available, otherwise calculate from amounts
+            if actual_payment.get('effective_rate'):
+                actual_rate = float(actual_payment.get('effective_rate', 0))
+            elif actual_home_currency > 0 and actual_aed > 0:
+                actual_rate = actual_home_currency / actual_aed
+            else:
+                actual_rate = projected_rate
         else:
             # Use projected values if no actual payment yet
             actual_home_currency = projected_home_currency
