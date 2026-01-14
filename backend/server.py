@@ -3964,6 +3964,49 @@ async def get_real_estate_opportunities(
     return opportunities
 
 
+@api_router.get("/real-estate-opportunities/client/{client_id}")
+async def get_client_real_estate_investments(
+    client_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all real estate investments for a specific client (broker/sub-broker only)"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can view client investments")
+    
+    # Find all opportunities where this client is an investor
+    opportunities = await db.real_estate_opportunities.find(
+        {"investors.client_id": client_id},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    # Transform data to show client-specific information
+    client_investments = []
+    for opp in opportunities:
+        investor = next((inv for inv in opp.get('investors', []) if inv.get('client_id') == client_id), None)
+        if investor:
+            # Count completed payments for this client
+            client_payments = [p for p in opp.get('investor_payments', []) if p.get('investor_id') == client_id and p.get('status') == 'verified']
+            total_milestones = len(opp.get('payment_schedule', []))
+            
+            client_investments.append({
+                "id": opp.get('id'),
+                "building_name": opp.get('building_name'),
+                "project_name": opp.get('project_name'),
+                "developer_name": opp.get('developer_name'),
+                "unit_no": opp.get('unit_no'),
+                "unit_price": opp.get('unit_price'),
+                "status": opp.get('status'),
+                "share_percentage": investor.get('share_percentage', 0),
+                "investment_amount": investor.get('amount', 0),
+                "invested_at": investor.get('invested_at'),
+                "payment_schedule": opp.get('payment_schedule', []),
+                "payments_completed": len(client_payments),
+                "payments_completed_percent": round((len(client_payments) / total_milestones * 100) if total_milestones > 0 else 0, 1)
+            })
+    
+    return client_investments
+
+
 @api_router.get("/real-estate-opportunities/{opportunity_id}")
 async def get_real_estate_opportunity(
     opportunity_id: str,
