@@ -731,14 +731,16 @@ export default function RealEstateDetails() {
                             const hasInvoice = !!invoice;
                             const hasSwift = payment?.swift_copy_url;
                             const hasReceipt = payment?.developer_receipt;
+                            const hasPayment = !!payment;
                             const isVerified = payment?.status === 'verified';
                             const isPending = payment?.status === 'pending_verification';
                             const investorShare = investor.share_percentage || (100 / totalInvestors);
                             const investorAmount = (opp.unit_price * milestone.percentage / 100) * (investorShare / 100);
                             
                             // Sequential workflow: Invoice → SWIFT → Receipt
-                            const canUploadSwift = hasInvoice && !hasSwift; // SWIFT only after invoice
-                            const canUploadReceipt = hasSwift && !hasReceipt; // Receipt only after SWIFT
+                            // Also allow SWIFT upload if payment exists (for backwards compatibility)
+                            const canUploadSwift = (hasInvoice || hasPayment) && !hasSwift;
+                            const canUploadReceipt = hasSwift && !hasReceipt;
                             
                             return (
                               <td key={invIdx} className="py-2 px-2 text-center border-l border-gray-100">
@@ -754,13 +756,13 @@ export default function RealEstateDetails() {
                                       <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title="Awaiting Invoice">-</span>
                                     )}
                                     
-                                    {/* 2. SWIFT - Second step, only active after invoice is uploaded */}
+                                    {/* 2. SWIFT - Second step, active after invoice OR if payment already recorded */}
                                     {hasSwift ? (
                                       <button className="w-6 h-6 rounded bg-teal-100 hover:bg-teal-200 text-teal-600 flex items-center justify-center" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${payment.swift_copy_url}`, '_blank')} title="View SWIFT"><Check className="h-3 w-3" /></button>
                                     ) : canUploadSwift ? (
                                       <button className="w-6 h-6 rounded bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center" onClick={() => { setSelectedPaymentMilestone({ ...milestone, index: idx }); setShowPaymentRecordModal(true); }} title="Upload SWIFT / Record Payment"><Upload className="h-3 w-3" /></button>
                                     ) : (
-                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title={!hasInvoice ? "Upload Invoice first" : "N/A"}>-</span>
+                                      <span className="w-6 h-6 rounded bg-gray-100 text-gray-300 flex items-center justify-center" title="Upload Invoice first">-</span>
                                     )}
                                     
                                     {/* 3. Receipt - Third step, only active after SWIFT is uploaded */}
