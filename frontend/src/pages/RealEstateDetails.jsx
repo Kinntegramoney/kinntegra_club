@@ -2431,6 +2431,18 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
                     </div>
                   </div>
                   
+                  {/* Effective Rate Display - shown when home currency and AED amounts are entered */}
+                  {investorPayments[investor.client_id]?.home_currency_amount && investorPayments[investor.client_id]?.aed_amount && parseFloat(investorPayments[investor.client_id]?.aed_amount) > 0 && (
+                    <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-indigo-700 font-medium">Effective Rate</span>
+                        <span className="text-lg font-bold text-indigo-600">
+                          1 AED = {(parseFloat(investorPayments[investor.client_id]?.home_currency_amount) / parseFloat(investorPayments[investor.client_id]?.aed_amount)).toFixed(4)} {investorPayments[investor.client_id]?.home_currency || 'INR'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Previous Payments List */}
                   {prevPayments.length > 0 && (
                     <div className="mb-4">
