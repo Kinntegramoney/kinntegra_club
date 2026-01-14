@@ -451,16 +451,22 @@ export default function RealEstateDetails() {
                 Property Images
               </h2>
               <div className="grid grid-cols-3 gap-4">
-                {opp.images.map((img, idx) => (
-                  <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-gray-100">
-                    <img 
-                      src={img.url || img} 
-                      alt={`${opp.building_name} - Image ${idx + 1}`}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                      onClick={() => window.open(img.url || img, '_blank')}
-                    />
-                  </div>
-                ))}
+                {opp.images.map((img, idx) => {
+                  // Handle different image formats: base64 data, url string, or object with url
+                  const imgSrc = img.data 
+                    ? (img.data.startsWith('data:') ? img.data : `data:${img.content_type || 'image/jpeg'};base64,${img.data}`)
+                    : (img.url || img);
+                  return (
+                    <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-gray-100">
+                      <img 
+                        src={imgSrc}
+                        alt={`${opp.building_name} - Image ${idx + 1}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                        onClick={() => window.open(imgSrc, '_blank')}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
