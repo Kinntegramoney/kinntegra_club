@@ -888,8 +888,8 @@ export default function RealEstateDetails() {
             </div>
           )}
 
-          {/* Share with Clients Section - Only for Broker/Sub-broker when property is NOT fully funded */}
-          {(user?.role === 'broker' || user?.role === 'sub_broker') && !isFullyFunded && (
+          {/* Share with Clients Section - Only for Broker/Sub-broker when property is NOT fully allocated */}
+          {(user?.role === 'broker' || user?.role === 'sub_broker') && !isFullyAllocated && (
             <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl border border-teal-200 p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
                 <Send className="h-5 w-5 text-teal-600" />
