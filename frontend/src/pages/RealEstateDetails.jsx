@@ -1041,7 +1041,7 @@ export default function RealEstateDetails() {
                         </div>
                       </div>
                       
-                      {/* Investor Payment Status - Shows proportionate amounts */}
+                      {/* Investor Payment Status - Shows proportionate amounts with Invoice Management */}
                       <div className={`grid gap-2 mb-3`} style={{ gridTemplateColumns: `repeat(${Math.min(opp.investors?.length || 1, 4)}, 1fr)` }}>
                         {opp.investors?.map((investor, invIdx) => {
                           const payment = milestonePayments.find(p => p.investor_id === investor.client_id || p.investor_index === invIdx);
@@ -1049,6 +1049,12 @@ export default function RealEstateDetails() {
                           const isVerified = payment?.status === 'verified';
                           const investorShare = investor.share_percentage || (100 / (opp.investors?.length || 1));
                           const investorAmount = (opp.unit_price * milestone.percentage / 100) * (investorShare / 100);
+                          
+                          // Check if invoice exists for this investor/milestone
+                          const invoice = opp.investor_invoices?.find(
+                            inv => inv.milestone_index === idx && inv.investor_id === investor.client_id
+                          );
+                          const hasInvoice = !!invoice;
                           
                           return (
                             <div key={invIdx} className={`p-2 rounded text-xs ${
@@ -1059,7 +1065,57 @@ export default function RealEstateDetails() {
                               <p className="font-medium truncate">{investor.client_name?.split(' ')[0] || `Inv ${invIdx + 1}`}</p>
                               <p className="text-[10px] text-gray-500">{investorShare.toFixed(1)}% share</p>
                               <p className="font-semibold">AED {formatCurrency(investorAmount)}</p>
+                              
+                              {/* Invoice Status */}
+                              <div className="mt-1 mb-1">
+                                {hasInvoice ? (
+                                  <span className="inline-flex items-center gap-1 text-blue-600">
+                                    <FileText className="h-3 w-3" /> Invoice Sent
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">No Invoice</span>
+                                )}
+                              </div>
+                              
+                              {/* Payment Status */}
                               <p>{isVerified ? '✓ Verified' : isPending ? '⏳ Pending' : 'Not Recorded'}</p>
+                              
+                              {/* Invoice Actions */}
+                              {user?.role === 'broker' && !hasInvoice && !isVerified && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="mt-1 h-6 text-xs bg-blue-500 hover:bg-blue-600 text-white w-full"
+                                  onClick={() => {
+                                    setSelectedInvoiceMilestone({ 
+                                      milestone: { ...milestone, index: idx }, 
+                                      investor: investor,
+                                      amount: investorAmount
+                                    });
+                                    setShowInvoiceUploadModal(true);
+                                  }}
+                                >
+                                  <Upload className="h-3 w-3 mr-1" /> Send Invoice
+                                </Button>
+                              )}
+                              
+                              {/* Download Invoice Button */}
+                              {hasInvoice && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="mt-1 h-6 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 w-full"
+                                  onClick={() => {
+                                    window.open(
+                                      `${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}`,
+                                      '_blank'
+                                    );
+                                  }}
+                                >
+                                  <Download className="h-3 w-3 mr-1" /> View Invoice
+                                </Button>
+                              )}
+                              
                               {/* Broker can verify pending payments */}
                               {isPending && user?.role === 'broker' && (
                                 <Button
