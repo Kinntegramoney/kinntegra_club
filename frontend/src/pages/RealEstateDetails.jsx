@@ -1145,6 +1145,43 @@ export default function RealEstateDetails() {
                                   Verify
                                 </Button>
                               )}
+                              
+                              {/* Developer Receipt - Show after payment is verified */}
+                              {isVerified && (
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                  {payment?.developer_receipt ? (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 w-full"
+                                      onClick={() => {
+                                        window.open(
+                                          `${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`,
+                                          '_blank'
+                                        );
+                                      }}
+                                    >
+                                      <FileText className="h-3 w-3 mr-1" /> Dev Receipt
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 text-xs bg-purple-500 hover:bg-purple-600 text-white w-full"
+                                      onClick={() => {
+                                        setSelectedPaymentForReceipt({
+                                          payment: payment,
+                                          investor: investor,
+                                          milestone: { ...milestone, index: idx }
+                                        });
+                                        setShowDeveloperReceiptModal(true);
+                                      }}
+                                    >
+                                      <Upload className="h-3 w-3 mr-1" /> Upload Receipt
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
