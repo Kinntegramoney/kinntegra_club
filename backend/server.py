@@ -1039,7 +1039,7 @@ async def bulk_upload_real_estate(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Bulk upload real estate opportunities from Excel file"""
+    """Bulk upload real estate opportunities from Excel file with multiple sheets"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can bulk upload real estate")
     
@@ -1051,32 +1051,57 @@ async def bulk_upload_real_estate(
     content = await file.read()
     excel_file = pd.ExcelFile(io.BytesIO(content))
     
-    # Read main sheet
-    df = pd.read_excel(excel_file, sheet_name=0)
-    df.columns = [col.replace('*', '').replace('(%)', '').replace('(AED)', '').replace('(sqft)', '')
-                  .strip().lower().replace(' ', '_') for col in df.columns]
+    # Helper to normalize column names
+    def normalize_columns(df):
+        df.columns = [col.replace('*', '').replace('(%)', '').replace('(AED)', '').replace('(sqft)', '')
+                      .strip().lower().replace(' ', '_') for col in df.columns]
+        return df
     
-    # Read payment schedule if exists
-    payment_schedule_df = None
-    if 'Payment Schedule' in excel_file.sheet_names:
-        payment_schedule_df = pd.read_excel(excel_file, sheet_name='Payment Schedule')
-        payment_schedule_df.columns = [col.strip().lower().replace(' ', '_') for col in payment_schedule_df.columns]
+    # Read all sheets
+    sheets_data = {}
+    sheet_mapping = {
+        'Basic Information': 'basic',
+        'Pricing & Fees': 'pricing',
+        'Unit Details': 'unit',
+        'Sale Settings': 'sale',
+        'Payment Schedule': 'payments'
+    }
+    
+    for sheet_name, key in sheet_mapping.items():
+        if sheet_name in excel_file.sheet_names:
+            df = pd.read_excel(excel_file, sheet_name=sheet_name)
+            sheets_data[key] = normalize_columns(df)
+    
+    # Fallback to old single-sheet format if new sheets not found
+    if 'basic' not in sheets_data:
+        # Try reading from first sheet (old format)
+        df = pd.read_excel(excel_file, sheet_name=0)
+        df = normalize_columns(df)
+        sheets_data['main'] = df
+        
+        # Try old Payment Schedule sheet
+        if 'Payment Schedule' in excel_file.sheet_names:
+            pay_df = pd.read_excel(excel_file, sheet_name='Payment Schedule')
+            sheets_data['payments'] = normalize_columns(pay_df)
     
     results = {"success": 0, "failed": 0, "errors": [], "created_properties": []}
     
-    for idx, row in df.iterrows():
+    # Get unique properties from basic info or main sheet
+    if 'basic' in sheets_data:
+        basic_df = sheets_data['basic']
+        properties = basic_df[['building_name', 'unit_no']].drop_duplicates()
+    elif 'main' in sheets_data:
+        properties = sheets_data['main'][['building_name', 'unit_no']].drop_duplicates()
+    else:
+        raise HTTPException(status_code=400, detail="No valid data sheets found")
+    
+    for _, prop_row in properties.iterrows():
         try:
-            # Validate required fields
-            required = ['building_name', 'developer', 'unit_no', 'floor', 'unit_type', 
-                       'unit_price', 'total_area', 'dld_fee', 'admin_fee']
-            missing = [f for f in required if pd.isna(row.get(f))]
-            if missing:
-                results['errors'].append(f"Row {idx+2}: Missing required fields: {', '.join(missing)}")
-                results['failed'] += 1
-                continue
+            building_name = str(prop_row['building_name']).strip()
+            unit_no = str(prop_row['unit_no']).strip()
             
-            building_name = str(row['building_name']).strip()
-            unit_no = str(row['unit_no']).strip()
+            if pd.isna(prop_row['building_name']) or pd.isna(prop_row['unit_no']):
+                continue
             
             # Check for duplicate
             existing = await db.real_estate_opportunities.find_one({
@@ -1085,15 +1110,110 @@ async def bulk_upload_real_estate(
                 "created_by": current_user['id']
             })
             if existing:
-                results['errors'].append(f"Row {idx+2}: Property {building_name} - Unit {unit_no} already exists")
+                results['errors'].append(f"Property {building_name} - Unit {unit_no} already exists")
                 results['failed'] += 1
                 continue
             
-            # Get payment schedule for this property
+            # Gather data from all sheets
+            property_data = {
+                'building_name': building_name,
+                'unit_no': unit_no
+            }
+            
+            # New multi-sheet format
+            if 'basic' in sheets_data:
+                # Basic Information
+                basic_row = sheets_data['basic'][
+                    (sheets_data['basic']['building_name'].str.strip() == building_name) & 
+                    (sheets_data['basic']['unit_no'].astype(str).str.strip() == unit_no)
+                ]
+                if not basic_row.empty:
+                    row = basic_row.iloc[0]
+                    property_data['developer_name'] = str(row.get('developer_name', '')).strip() if not pd.isna(row.get('developer_name')) else ''
+                    property_data['location'] = str(row.get('location', '')).strip() if not pd.isna(row.get('location')) else ''
+                    property_data['description'] = str(row.get('description', '')).strip() if not pd.isna(row.get('description')) else ''
+                    property_data['handover_date'] = pd.to_datetime(row['handover_date']).strftime('%Y-%m-%d') if not pd.isna(row.get('handover_date')) else None
+                
+                # Pricing & Fees
+                if 'pricing' in sheets_data:
+                    pricing_row = sheets_data['pricing'][
+                        (sheets_data['pricing']['building_name'].str.strip() == building_name) & 
+                        (sheets_data['pricing']['unit_no'].astype(str).str.strip() == unit_no)
+                    ]
+                    if not pricing_row.empty:
+                        row = pricing_row.iloc[0]
+                        property_data['unit_price'] = float(row['unit_price']) if not pd.isna(row.get('unit_price')) else 0
+                        property_data['dld_fee_percentage'] = float(row['dld_fee']) if not pd.isna(row.get('dld_fee')) else 4
+                        property_data['admin_fee'] = float(row['admin_fee']) if not pd.isna(row.get('admin_fee')) else 0
+                        property_data['broker_fee'] = float(row.get('broker_fee', 0)) if not pd.isna(row.get('broker_fee')) else 0
+                        property_data['other_fees'] = float(row.get('other_fees', 0)) if not pd.isna(row.get('other_fees')) else 0
+                        property_data['selling_fee_percentage'] = float(row.get('unit_selling_fee', 0)) if not pd.isna(row.get('unit_selling_fee')) else 0
+                
+                # Unit Details
+                if 'unit' in sheets_data:
+                    unit_row = sheets_data['unit'][
+                        (sheets_data['unit']['building_name'].str.strip() == building_name) & 
+                        (sheets_data['unit']['unit_no'].astype(str).str.strip() == unit_no)
+                    ]
+                    if not unit_row.empty:
+                        row = unit_row.iloc[0]
+                        property_data['unit_type'] = str(row['unit_type']).strip() if not pd.isna(row.get('unit_type')) else '1BR'
+                        property_data['floor'] = str(row['floor']) if not pd.isna(row.get('floor')) else '1'
+                        property_data['total_area'] = float(row['total_area']) if not pd.isna(row.get('total_area')) else 0
+                        property_data['carpet_area'] = float(row.get('carpet_area', row.get('total_area', 0))) if not pd.isna(row.get('carpet_area')) else property_data.get('total_area', 0)
+                        property_data['balcony_area'] = float(row.get('balcony_area', 0)) if not pd.isna(row.get('balcony_area')) else 0
+                        property_data['parking_spaces'] = int(row.get('parking_spaces', 1)) if not pd.isna(row.get('parking_spaces')) else 1
+                
+                # Sale Settings
+                if 'sale' in sheets_data:
+                    sale_row = sheets_data['sale'][
+                        (sheets_data['sale']['building_name'].str.strip() == building_name) & 
+                        (sheets_data['sale']['unit_no'].astype(str).str.strip() == unit_no)
+                    ]
+                    if not sale_row.empty:
+                        row = sale_row.iloc[0]
+                        property_data['expected_sale_rate'] = float(row.get('expected_sale_rate', 0)) if not pd.isna(row.get('expected_sale_rate')) else None
+                        property_data['estimated_sell_date'] = pd.to_datetime(row['estimated_sell_date']).strftime('%Y-%m-%d') if not pd.isna(row.get('estimated_sell_date')) else None
+                        property_data['eligible_to_sell_after_percentage'] = float(row.get('eligible_to_sell_after', 100)) if not pd.isna(row.get('eligible_to_sell_after')) else 100
+            
+            # Old single-sheet format fallback
+            elif 'main' in sheets_data:
+                main_row = sheets_data['main'][
+                    (sheets_data['main']['building_name'].str.strip() == building_name) & 
+                    (sheets_data['main']['unit_no'].astype(str).str.strip() == unit_no)
+                ]
+                if not main_row.empty:
+                    row = main_row.iloc[0]
+                    property_data['developer_name'] = str(row.get('developer', '')).strip() if not pd.isna(row.get('developer')) else ''
+                    property_data['unit_price'] = float(row['unit_price']) if not pd.isna(row.get('unit_price')) else 0
+                    property_data['total_area'] = float(row['total_area']) if not pd.isna(row.get('total_area')) else 0
+                    property_data['carpet_area'] = float(row.get('carpet_area', row['total_area'])) if not pd.isna(row.get('carpet_area')) else property_data['total_area']
+                    property_data['balcony_area'] = float(row.get('balcony_area', 0)) if not pd.isna(row.get('balcony_area')) else 0
+                    property_data['location'] = str(row.get('location', '')).strip() if not pd.isna(row.get('location')) else ''
+                    property_data['dld_fee_percentage'] = float(row.get('dld_fee', 4)) if not pd.isna(row.get('dld_fee')) else 4
+                    property_data['admin_fee'] = float(row.get('admin_fee', 0)) if not pd.isna(row.get('admin_fee')) else 0
+                    property_data['broker_fee'] = float(row.get('brokerage_fee', 0)) if not pd.isna(row.get('brokerage_fee')) else 0
+                    property_data['other_fees'] = float(row.get('other_fees', 0)) if not pd.isna(row.get('other_fees')) else 0
+                    property_data['selling_fee_percentage'] = float(row.get('selling_fee', 0)) if not pd.isna(row.get('selling_fee')) else 0
+                    property_data['unit_type'] = str(row.get('unit_type', '1BR')).strip()
+                    property_data['floor'] = str(row.get('floor', '1'))
+                    property_data['parking_spaces'] = int(row.get('parking_spaces', 1)) if not pd.isna(row.get('parking_spaces')) else 1
+                    property_data['handover_date'] = pd.to_datetime(row['handover_date']).strftime('%Y-%m-%d') if not pd.isna(row.get('handover_date')) else None
+            
+            # Validate required fields
+            required = ['unit_price', 'total_area']
+            missing = [f for f in required if not property_data.get(f)]
+            if missing:
+                results['errors'].append(f"{building_name} - Unit {unit_no}: Missing {', '.join(missing)}")
+                results['failed'] += 1
+                continue
+            
+            # Get payment schedule
             payment_schedule = []
-            if payment_schedule_df is not None:
-                property_payments = payment_schedule_df[
-                    payment_schedule_df['building_name'].str.strip().str.lower() == building_name.lower()
+            if 'payments' in sheets_data:
+                property_payments = sheets_data['payments'][
+                    (sheets_data['payments']['building_name'].str.strip().str.lower() == building_name.lower()) &
+                    (sheets_data['payments']['unit_no'].astype(str).str.strip() == unit_no)
                 ]
                 for _, pay_row in property_payments.iterrows():
                     payment_schedule.append({
@@ -1104,10 +1224,10 @@ async def bulk_upload_real_estate(
             
             # Default payment schedule if none provided
             if not payment_schedule:
-                handover_date = row.get('handover_date')
+                handover_date = property_data.get('handover_date')
                 base_date = datetime.now()
-                if not pd.isna(handover_date):
-                    base_date = pd.to_datetime(handover_date)
+                if handover_date:
+                    base_date = datetime.strptime(handover_date, '%Y-%m-%d')
                 
                 payment_schedule = [
                     {"description": "Booking", "date": datetime.now().strftime('%Y-%m-%d'), "percentage": 20},
@@ -1116,40 +1236,41 @@ async def bulk_upload_real_estate(
                     {"description": "Handover", "date": base_date.strftime('%Y-%m-%d'), "percentage": 20}
                 ]
             
-            unit_price = float(row['unit_price'])
-            dld_fee_pct = float(row['dld_fee'])
-            admin_fee = float(row['admin_fee'])
-            brokerage_fee = float(row.get('brokerage_fee', 0)) if not pd.isna(row.get('brokerage_fee')) else 0
-            other_fees = float(row.get('other_fees', 0)) if not pd.isna(row.get('other_fees')) else 0
-            selling_fee_pct = float(row.get('selling_fee', 0)) if not pd.isna(row.get('selling_fee')) else 0
-            
+            # Calculate fees
+            unit_price = property_data.get('unit_price', 0)
+            dld_fee_pct = property_data.get('dld_fee_percentage', 4)
             dld_fee = unit_price * dld_fee_pct / 100
-            total_cost = unit_price + dld_fee + admin_fee + brokerage_fee + other_fees
+            total_cost = unit_price + dld_fee + property_data.get('admin_fee', 0) + property_data.get('broker_fee', 0) + property_data.get('other_fees', 0)
             
+            # Create opportunity
             opp_id = str(uuid.uuid4())
             opportunity = {
                 "id": opp_id,
                 "building_name": building_name,
-                "developer_name": str(row['developer']).strip(),
+                "developer_name": property_data.get('developer_name', ''),
                 "unit_no": unit_no,
-                "floor": str(row['floor']),
-                "unit_type": str(row['unit_type']).strip(),
+                "floor": property_data.get('floor', '1'),
+                "unit_type": property_data.get('unit_type', '1BR'),
                 "property_type": "off_plan",
                 "unit_price": unit_price,
-                "total_area": float(row['total_area']),
-                "carpet_area": float(row.get('carpet_area', row['total_area'])) if not pd.isna(row.get('carpet_area')) else float(row['total_area']),
-                "balcony_area": float(row.get('balcony_area', 0)) if not pd.isna(row.get('balcony_area')) else 0,
-                "location": str(row.get('location', '')).strip() if not pd.isna(row.get('location')) else "",
+                "total_area": property_data.get('total_area', 0),
+                "carpet_area": property_data.get('carpet_area', property_data.get('total_area', 0)),
+                "balcony_area": property_data.get('balcony_area', 0),
+                "location": property_data.get('location', ''),
+                "description": property_data.get('description', ''),
                 "dld_fee_percentage": dld_fee_pct,
                 "dld_fee": dld_fee,
-                "admin_fee": admin_fee,
-                "brokerage_fee": brokerage_fee,
-                "other_fees": other_fees,
-                "selling_fee_percentage": selling_fee_pct,
+                "admin_fee": property_data.get('admin_fee', 0),
+                "brokerage_fee": property_data.get('broker_fee', 0),
+                "other_fees": property_data.get('other_fees', 0),
+                "selling_fee_percentage": property_data.get('selling_fee_percentage', 0),
                 "total_cost": total_cost,
                 "payment_schedule": payment_schedule,
-                "handover_date": pd.to_datetime(row['handover_date']).strftime('%Y-%m-%d') if not pd.isna(row.get('handover_date')) else None,
-                "parking_spaces": int(row.get('parking_spaces', 1)) if not pd.isna(row.get('parking_spaces')) else 1,
+                "handover_date": property_data.get('handover_date'),
+                "parking_spaces": property_data.get('parking_spaces', 1),
+                "expected_sale_rate": property_data.get('expected_sale_rate'),
+                "estimated_sell_date": property_data.get('estimated_sell_date'),
+                "eligible_to_sell_after_percentage": property_data.get('eligible_to_sell_after_percentage', 100),
                 "max_investors": 4,
                 "current_investors": 0,
                 "investors": [],
