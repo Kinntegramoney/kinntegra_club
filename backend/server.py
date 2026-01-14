@@ -2859,6 +2859,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                     "interest_net": cf.get('interest_component', 0) - cf.get('tds_amount', 0),
                     "net_amount": cf.get('net_amount', 0),
                     "reinvestment_tag": cf.get('reinvestment_tag', 'not_tagged'),
+                    "custom_amount": cf.get('custom_amount'),
                     "month": cf_date.strftime("%B %Y")
                 })
         except (ValueError, TypeError):
