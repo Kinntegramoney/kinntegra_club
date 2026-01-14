@@ -122,6 +122,18 @@ export default function TradeVerification() {
 
   const handleTagChange = (cashflowId, tag) => {
     setLocalTags(prev => ({ ...prev, [cashflowId]: tag }));
+    // Clear custom amount if switching away from "other"
+    if (tag !== 'other') {
+      setCustomAmounts(prev => {
+        const newAmounts = { ...prev };
+        delete newAmounts[cashflowId];
+        return newAmounts;
+      });
+    }
+  };
+
+  const handleCustomAmountChange = (cashflowId, amount) => {
+    setCustomAmounts(prev => ({ ...prev, [cashflowId]: amount }));
   };
 
   const handleSaveClientTags = async (clientId, cashflowIds) => {
