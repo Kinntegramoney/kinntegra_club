@@ -304,8 +304,8 @@ export default function Login() {
             </form>
           )}
 
-          {/* Footer */}
-          <div className="mt-8 text-center text-xs" style={{ color: '#D5CFC0' }}>
+          {/* Footer - same color as SIGN IN button */}
+          <div className="mt-8 text-center text-xs" style={{ color: '#875A31' }}>
             <p>Kinntegraa L.L.C-FZ | License Number: 2418465.01</p>
             <p className="mt-1">Meydan Grandstand, 6th floor, Meydan Road,</p>
             <p>Nad Al Sheba, Dubai, U.A.E.</p>
