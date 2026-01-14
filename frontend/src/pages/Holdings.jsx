@@ -20,6 +20,7 @@ export default function Holdings() {
   const [clientDetails, setClientDetails] = useState(null); // Full client KYC details
   const [clientHoldings, setClientHoldings] = useState(null);
   const [clientTrades, setClientTrades] = useState([]); // Trades for the selected client
+  const [clientRealEstate, setClientRealEstate] = useState([]); // Real estate investments for the selected client
   const [loading, setLoading] = useState(true);
   const [loadingHoldings, setLoadingHoldings] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
