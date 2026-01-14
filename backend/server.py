@@ -848,76 +848,180 @@ async def download_real_estate_template(current_user: dict = Depends(get_current
         raise HTTPException(status_code=403, detail="Only brokers can download templates")
     
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Real Estate"
     
-    headers = ["Building Name*", "Developer*", "Unit No*", "Floor*", "Unit Type*",
-               "Unit Price (AED)*", "Total Area (sqft)*", "Carpet Area (sqft)", 
-               "Balcony Area (sqft)", "Location", "DLD Fee (%)*", "Admin Fee (AED)*",
-               "Brokerage Fee (AED)", "Other Fees (AED)", "Selling Fee (%)",
-               "Handover Date", "Parking Spaces"]
+    # Sheet 1: Basic Information
+    ws_basic = wb.active
+    ws_basic.title = "Basic Information"
     
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=header)
+    basic_headers = [
+        "Building Name*", "Unit No*", "Developer Name*", "Location", 
+        "Description", "Handover Date"
+    ]
+    for col, header in enumerate(basic_headers, 1):
+        cell = ws_basic.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = PatternFill(start_color="EA580C", end_color="EA580C", fill_type="solid")
-        cell.alignment = Alignment(horizontal="center")
-        ws.column_dimensions[get_column_letter(col)].width = 18
+        cell.fill = PatternFill(start_color="1D4ED8", end_color="1D4ED8", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_basic.column_dimensions[get_column_letter(col)].width = 20
     
-    # Sample row
-    sample = ["Palm Tower", "Emaar Properties", "1201", 12, "2BR", 2500000, 1200, 1100, 
-              100, "Dubai Marina", 4, 5000, 25000, 2000, 2, "2026-06-30", 1]
-    for col, value in enumerate(sample, 1):
-        ws.cell(row=2, column=col, value=value)
+    # Sample data for Basic Info
+    basic_sample = ["Palm Tower", "1201", "Emaar Properties", "Dubai Marina", 
+                   "Luxury 2BR apartment with sea view", "2026-06-30"]
+    for col, value in enumerate(basic_sample, 1):
+        ws_basic.cell(row=2, column=col, value=value)
     
-    # Payment Schedule sheet
+    # Sheet 2: Pricing & Fees
+    ws_pricing = wb.create_sheet("Pricing & Fees")
+    
+    pricing_headers = [
+        "Building Name*", "Unit No*", "Unit Price (AED)*", "DLD Fee (%)*", 
+        "Admin Fee (AED)*", "Broker Fee (AED)", "Other Fees (AED)", 
+        "Unit Selling Fee (%)"
+    ]
+    for col, header in enumerate(pricing_headers, 1):
+        cell = ws_pricing.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="059669", end_color="059669", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_pricing.column_dimensions[get_column_letter(col)].width = 18
+    
+    # Sample data for Pricing
+    pricing_sample = ["Palm Tower", "1201", 2500000, 4, 5000, 25000, 2000, 2]
+    for col, value in enumerate(pricing_sample, 1):
+        ws_pricing.cell(row=2, column=col, value=value)
+    
+    # Sheet 3: Unit Details
+    ws_unit = wb.create_sheet("Unit Details")
+    
+    unit_headers = [
+        "Building Name*", "Unit No*", "Unit Type*", "Floor*", 
+        "Total Area (sqft)*", "Carpet Area (sqft)", "Balcony Area (sqft)", 
+        "Parking Spaces"
+    ]
+    for col, header in enumerate(unit_headers, 1):
+        cell = ws_unit.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="7C3AED", end_color="7C3AED", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_unit.column_dimensions[get_column_letter(col)].width = 18
+    
+    # Sample data for Unit Details
+    unit_sample = ["Palm Tower", "1201", "2BR", 12, 1200, 1100, 100, 1]
+    for col, value in enumerate(unit_sample, 1):
+        ws_unit.cell(row=2, column=col, value=value)
+    
+    # Sheet 4: Sale Settings
+    ws_sale = wb.create_sheet("Sale Settings")
+    
+    sale_headers = [
+        "Building Name*", "Unit No*", "Expected Sale Rate (AED/sqft)", 
+        "Estimated Sell Date", "Eligible to Sell After (%)"
+    ]
+    for col, header in enumerate(sale_headers, 1):
+        cell = ws_sale.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="DC2626", end_color="DC2626", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_sale.column_dimensions[get_column_letter(col)].width = 22
+    
+    # Sample data for Sale Settings
+    sale_sample = ["Palm Tower", "1201", 2800, "2027-01-15", 100]
+    for col, value in enumerate(sale_sample, 1):
+        ws_sale.cell(row=2, column=col, value=value)
+    
+    # Sheet 5: Payment Schedule
     ws_payments = wb.create_sheet("Payment Schedule")
-    pay_headers = ["Building Name", "Payment Description", "Due Date", "Percentage"]
+    
+    pay_headers = ["Building Name*", "Unit No*", "Payment Description*", "Due Date*", "Percentage*"]
     for col, header in enumerate(pay_headers, 1):
         cell = ws_payments.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = PatternFill(start_color="7C3AED", end_color="7C3AED", fill_type="solid")
+        cell.fill = PatternFill(start_color="EA580C", end_color="EA580C", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
         ws_payments.column_dimensions[get_column_letter(col)].width = 20
     
     # Sample payment schedule
     sample_payments = [
-        ["Palm Tower", "Booking", "2025-02-01", 20],
-        ["Palm Tower", "1st Installment", "2025-06-01", 10],
-        ["Palm Tower", "2nd Installment", "2025-12-01", 10],
-        ["Palm Tower", "3rd Installment", "2026-03-01", 10],
-        ["Palm Tower", "Handover", "2026-06-30", 50],
+        ["Palm Tower", "1201", "Booking Amount", "2025-02-01", 20],
+        ["Palm Tower", "1201", "1st Installment", "2025-06-01", 10],
+        ["Palm Tower", "1201", "2nd Installment", "2025-12-01", 10],
+        ["Palm Tower", "1201", "3rd Installment", "2026-03-01", 10],
+        ["Palm Tower", "1201", "Handover Payment", "2026-06-30", 50],
     ]
     for row_idx, payment in enumerate(sample_payments, 2):
         for col, value in enumerate(payment, 1):
             ws_payments.cell(row=row_idx, column=col, value=value)
     
-    # Instructions sheet
+    # Sheet 6: Instructions
     ws_instructions = wb.create_sheet("Instructions")
     instructions = [
         "BULK REAL ESTATE UPLOAD INSTRUCTIONS",
         "",
-        "Sheet 1 - Real Estate (Required):",
-        "- Building Name: Name of the building/project",
-        "- Developer: Developer/builder name",
-        "- Unit No: Unit number/identifier",
-        "- Floor: Floor number",
-        "- Unit Type: e.g., 1BR, 2BR, Studio, Villa",
-        "- Unit Price: Price in AED",
-        "- Total Area: Total area in sqft",
-        "- DLD Fee: Dubai Land Department fee as percentage",
-        "- Admin Fee: Administrative fee in AED",
+        "This template has 5 data sheets. Fill all sheets for complete property information.",
+        "Fields marked with * are required.",
         "",
-        "Sheet 2 - Payment Schedule (Optional):",
-        "- Add payment milestones for each property",
-        "- Building Name must match exactly with Sheet 1",
-        "- Percentages should sum to 100%",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 1 - Basic Information (Blue)",
+        "═══════════════════════════════════════════════════════════════",
+        "• Building Name*: Name of the building/project (must be consistent across all sheets)",
+        "• Unit No*: Unit number/identifier (must be consistent across all sheets)",
+        "• Developer Name*: Developer/builder name",
+        "• Location: Area/locality (e.g., Dubai Marina, Downtown)",
+        "• Description: Property description and features",
+        "• Handover Date: Expected handover date (YYYY-MM-DD format)",
         "",
-        "Notes:",
-        "- If no payment schedule provided, default 20/30/30/20 will be used",
-        "- Maximum 30 properties per upload"
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 2 - Pricing & Fees (Green)",
+        "═══════════════════════════════════════════════════════════════",
+        "• Unit Price*: Base price in AED (excluding fees)",
+        "• DLD Fee*: Dubai Land Department fee as percentage (typically 4%)",
+        "• Admin Fee*: Administrative fee in AED (paid upfront with booking)",
+        "• Broker Fee: Brokerage fee in AED (if any)",
+        "• Other Fees: Any other fees in AED",
+        "• Unit Selling Fee: Fee percentage when selling (0-2.5%)",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 3 - Unit Details (Purple)",
+        "═══════════════════════════════════════════════════════════════",
+        "• Unit Type*: Type of unit (e.g., Studio, 1BR, 2BR, 3BR, Penthouse, Villa)",
+        "• Floor*: Floor number",
+        "• Total Area*: Total area in square feet",
+        "• Carpet Area: Built-up area in square feet",
+        "• Balcony Area: Balcony area in square feet",
+        "• Parking Spaces: Number of parking spots (default: 1)",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 4 - Sale Settings (Red)",
+        "═══════════════════════════════════════════════════════════════",
+        "• Expected Sale Rate: Expected sale price per sqft in AED",
+        "• Estimated Sell Date: Target date to sell (YYYY-MM-DD format)",
+        "• Eligible to Sell After: Minimum payment % before selling (default: 100)",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 5 - Payment Schedule (Orange)",
+        "═══════════════════════════════════════════════════════════════",
+        "• Building Name & Unit No: Must match exactly with other sheets",
+        "• Payment Description*: Name of the milestone (e.g., Booking, 1st Installment)",
+        "• Due Date*: Payment due date (YYYY-MM-DD format)",
+        "• Percentage*: Percentage of unit price for this milestone",
+        "• NOTE: Total percentages for each property MUST equal 100%",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "IMPORTANT NOTES",
+        "═══════════════════════════════════════════════════════════════",
+        "1. Building Name and Unit No must be IDENTICAL across all sheets",
+        "2. Use YYYY-MM-DD format for all dates (e.g., 2025-06-30)",
+        "3. Payment schedule percentages must sum to exactly 100%",
+        "4. If no payment schedule provided, default 20/30/30/20 will be used",
+        "5. Maximum 30 properties per upload",
+        "6. Photos and brochures can be uploaded after property creation",
+        "7. Numbers should not include currency symbols or commas",
     ]
     for row, text in enumerate(instructions, 1):
-        ws_instructions.cell(row=row, column=1, value=text)
+        cell = ws_instructions.cell(row=row, column=1, value=text)
+        if text.startswith("═") or text.startswith("SHEET") or text.startswith("BULK") or text.startswith("IMPORTANT"):
+            cell.font = Font(bold=True)
+        ws_instructions.column_dimensions['A'].width = 80
     
     output = io.BytesIO()
     wb.save(output)
