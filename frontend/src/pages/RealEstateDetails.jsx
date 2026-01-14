@@ -1269,63 +1269,6 @@ export default function RealEstateDetails() {
             </div>
           )}
 
-          {/* Current Investors */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <Users className="h-5 w-5 text-teal-600" />
-                Current Investors ({opp.investors?.length || 0})
-              </h2>
-              {opp.status === 'available' && remainingPercentage > 0 && (
-                <Button size="sm" variant="outline" onClick={() => setShowAllocateModal(true)}>
-                  <Plus className="h-4 w-4 mr-1" /> Add Investor
-                </Button>
-              )}
-            </div>
-
-            {/* Investment Progress */}
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-600">Investment Allocation</span>
-                <span className="font-medium">{(100 - remainingPercentage).toFixed(1)}% allocated</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${100 - remainingPercentage}%` }} />
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Invested: AED {formatCurrency(opp.total_invested || 0)}</span>
-                <span className="text-purple-600 font-medium">Remaining: {remainingPercentage.toFixed(1)}%</span>
-              </div>
-            </div>
-            
-            {opp.investors && opp.investors.length > 0 ? (
-              <div className="space-y-3">
-                {opp.investors.map((investor, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">
-                        {idx + 1}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-800">{investor.client_name}</p>
-                        <p className="text-sm text-gray-500">Invested on {formatDate(investor.invested_at)}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-purple-600 text-lg">{investor.share_percentage}%</p>
-                      <p className="text-sm text-gray-500">AED {formatCurrency(investor.amount)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Users className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                <p className="text-gray-500">No investors yet. Be the first to participate!</p>
-              </div>
-            )}
-          </div>
-
           {/* Oqood Upload Section - Only visible after first milestone is fully verified */}
           {canManageOqood && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
