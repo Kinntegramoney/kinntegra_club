@@ -6867,6 +6867,41 @@ async def setup_broker_endpoint():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Reset broker password endpoint
+@api_router.get("/reset-broker-password")
+async def reset_broker_password():
+    """Reset the broker password to fix authentication issues"""
+    try:
+        # Find broker
+        existing_broker = await db.users.find_one({"pan": "ANVPB5297J"})
+        
+        if not existing_broker:
+            return {"status": "error", "message": "Broker account not found"}
+        
+        # Update password and pin with fresh hashes
+        new_password_hash = get_password_hash("Laksh@0208")
+        new_pin_hash = get_password_hash("0516")
+        
+        await db.users.update_one(
+            {"pan": "ANVPB5297J"},
+            {"$set": {
+                "password_hash": new_password_hash,
+                "pin_hash": new_pin_hash
+            }}
+        )
+        
+        return {
+            "status": "success", 
+            "message": "Broker password reset successfully",
+            "credentials": {
+                "pan": "ANVPB5297J",
+                "password": "Laksh@0208",
+                "pin": "0516"
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the router in the main app
 app.include_router(api_router)
 
