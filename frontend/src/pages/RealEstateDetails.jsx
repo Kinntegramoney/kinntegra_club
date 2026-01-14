@@ -610,7 +610,7 @@ export default function RealEstateDetails() {
                       <th className="text-left py-2 px-3 text-gray-500 font-medium">Description</th>
                       <th className="text-right py-2 px-3 text-gray-500 font-medium">%</th>
                       <th className="text-right py-2 px-3 text-gray-500 font-medium">Amount (AED)</th>
-                      {hasAllInvestorsTagged && (
+                      {isFullyAllocated && (
                         <th className="text-center py-2 px-3 text-gray-500 font-medium">Progress</th>
                       )}
                       <th className="text-center py-2 px-3 text-gray-500 font-medium">Status</th>
@@ -624,7 +624,10 @@ export default function RealEstateDetails() {
                       const pendingCount = milestonePayments.filter(p => p.status === 'pending_verification').length;
                       const totalInvestors = opp.investors?.length || 0;
                       const progressPercent = totalInvestors > 0 ? Math.round((verifiedCount / totalInvestors) * 100) : 0;
-                      const allInvestorsTagged = totalInvestors >= 4;
+                      // Check if property is fully funded (100% allocated)
+                      const propertyFullyFunded = opp.status === 'fully_invested' || 
+                        (opp.invested_percentage && opp.invested_percentage >= 99.99) ||
+                        (opp.remaining_percentage !== undefined && opp.remaining_percentage <= 0.01);
                       
                       return (
                         <tr key={idx} className="border-b border-gray-100">
@@ -633,7 +636,7 @@ export default function RealEstateDetails() {
                           <td className="py-3 px-3">{payment.description || `Payment ${idx + 1}`}</td>
                           <td className="py-3 px-3 text-right font-medium">{payment.percentage}%</td>
                           <td className="py-3 px-3 text-right font-mono">{formatCurrency(opp.unit_price * payment.percentage / 100)}</td>
-                          {hasAllInvestorsTagged && (
+                          {isFullyAllocated && (
                             <td className="py-3 px-3">
                               {totalInvestors > 0 && (
                                 <div className="flex items-center gap-2">
@@ -652,7 +655,7 @@ export default function RealEstateDetails() {
                             </td>
                           )}
                           <td className="py-3 px-3 text-center">
-                            {!allInvestorsTagged ? (
+                            {!propertyFullyFunded ? (
                               <Badge className="bg-blue-100 text-blue-700">Open</Badge>
                             ) : payment.completed || verifiedCount >= totalInvestors ? (
                               <Badge className="bg-green-100 text-green-700"><Check className="h-3 w-3 mr-1" />Complete</Badge>
