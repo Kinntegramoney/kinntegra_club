@@ -2644,3 +2644,165 @@ function OqoodUploadModal({ opportunity, onClose, onSuccess }) {
     </div>
   );
 }
+
+
+// Invoice Upload Modal Component
+function InvoiceUploadModal({ opportunity, milestone, investor, amount, onClose, onSuccess }) {
+  const [file, setFile] = useState(null);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState(milestone.date?.split('T')[0] || "");
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const formatCurrency = (amt) => new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(amt || 0);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) {
+      toast.error("Please select an invoice file to upload");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const API = process.env.REACT_APP_BACKEND_URL;
+      
+      const formData = new FormData();
+      formData.append('milestone_index', milestone.index);
+      formData.append('investor_id', investor.client_id);
+      formData.append('invoice_number', invoiceNumber);
+      formData.append('invoice_date', invoiceDate);
+      formData.append('due_date', dueDate);
+      formData.append('notes', notes);
+      formData.append('invoice_file', file);
+      
+      await axios.post(
+        `${API}/api/real-estate-opportunities/${opportunity.id}/upload-invoice`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+      );
+      
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to upload invoice");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Upload Invoice
+            </h2>
+            <p className="text-sm text-gray-500">{milestone.description || `Payment ${milestone.index + 1}`} • {milestone.percentage}%</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Investor and Amount Info */}
+          <div className="bg-blue-50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-600 font-medium">Invoice For:</p>
+                <p className="font-semibold text-gray-800">{investor.client_name}</p>
+                <p className="text-xs text-gray-500">{investor.share_percentage?.toFixed(1)}% share</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-blue-600 font-medium">Amount Due:</p>
+                <p className="font-bold text-xl text-gray-800">AED {formatCurrency(amount)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Invoice Details */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs">Invoice Number</Label>
+              <Input
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                placeholder="e.g., INV-001"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Invoice Date</Label>
+              <Input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <Label className="text-xs">Due Date</Label>
+            <Input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs">Notes (Optional)</Label>
+            <Input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any additional notes for the investor"
+              className="mt-1"
+            />
+          </div>
+          
+          {/* File Upload */}
+          <div>
+            <Label className="text-xs">Invoice Document *</Label>
+            {file ? (
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border mt-1">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-8 w-8 text-blue-600" />
+                  <div>
+                    <p className="font-medium text-gray-800 truncate max-w-xs">{file.name}</p>
+                    <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                </div>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setFile(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 mt-1">
+                <Upload className="h-8 w-8 text-gray-400" />
+                <span className="text-gray-600 text-sm">Click to upload invoice</span>
+                <span className="text-xs text-gray-400">PDF, JPG, PNG (max 10MB)</span>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => setFile(e.target.files[0])}
+                />
+              </label>
+            )}
+          </div>
+          
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={loading || !file} className="flex-1 bg-blue-600 hover:bg-blue-700">
+              {loading ? "Uploading..." : "Send Invoice"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
