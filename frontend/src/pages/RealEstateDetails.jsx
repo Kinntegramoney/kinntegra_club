@@ -2865,3 +2865,154 @@ function InvoiceUploadModal({ opportunity, milestone, investor, amount, onClose,
     </div>
   );
 }
+
+
+// Developer Receipt Upload Modal Component
+function DeveloperReceiptModal({ opportunity, payment, investor, milestone, onClose, onSuccess }) {
+  const [file, setFile] = useState(null);
+  const [receiptNumber, setReceiptNumber] = useState("");
+  const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split('T')[0]);
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const formatCurrency = (amt) => new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(amt || 0);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) {
+      toast.error("Please select a receipt file to upload");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const API = process.env.REACT_APP_BACKEND_URL;
+      
+      const formData = new FormData();
+      formData.append('milestone_index', milestone.index);
+      formData.append('payment_id', payment.id);
+      formData.append('receipt_number', receiptNumber);
+      formData.append('receipt_date', receiptDate);
+      formData.append('notes', notes);
+      formData.append('receipt_file', file);
+      
+      await axios.post(
+        `${API}/api/real-estate-opportunities/${opportunity.id}/upload-developer-receipt`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+      );
+      
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to upload receipt");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="h-5 w-5 text-purple-600" />
+              Upload Developer Receipt
+            </h2>
+            <p className="text-sm text-gray-500">{milestone.description || `Payment ${milestone.index + 1}`} • {milestone.percentage}%</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Payment Info */}
+          <div className="bg-purple-50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-purple-600 font-medium">Receipt For:</p>
+                <p className="font-semibold text-gray-800">{investor.client_name}</p>
+                <p className="text-xs text-gray-500">{investor.share_percentage?.toFixed(1)}% share</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-purple-600 font-medium">Payment Amount:</p>
+                <p className="font-bold text-xl text-gray-800">AED {formatCurrency(payment.aed_amount)}</p>
+                <p className="text-xs text-gray-500">Paid on {new Date(payment.transfer_date).toLocaleDateString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Receipt Details */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs">Receipt Number</Label>
+              <Input
+                value={receiptNumber}
+                onChange={(e) => setReceiptNumber(e.target.value)}
+                placeholder="e.g., RCP-001"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Receipt Date</Label>
+              <Input
+                type="date"
+                value={receiptDate}
+                onChange={(e) => setReceiptDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs">Notes (Optional)</Label>
+            <Input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any additional notes about the receipt"
+              className="mt-1"
+            />
+          </div>
+          
+          {/* File Upload */}
+          <div>
+            <Label className="text-xs">Developer Receipt Document *</Label>
+            {file ? (
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border mt-1">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-8 w-8 text-purple-600" />
+                  <div>
+                    <p className="font-medium text-gray-800 truncate max-w-xs">{file.name}</p>
+                    <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                </div>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setFile(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 mt-1">
+                <Upload className="h-8 w-8 text-gray-400" />
+                <span className="text-gray-600 text-sm">Click to upload developer receipt</span>
+                <span className="text-xs text-gray-400">PDF, JPG, PNG (max 10MB)</span>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => setFile(e.target.files[0])}
+                />
+              </label>
+            )}
+          </div>
+          
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={loading || !file} className="flex-1 bg-purple-600 hover:bg-purple-700">
+              {loading ? "Uploading..." : "Upload Receipt"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
