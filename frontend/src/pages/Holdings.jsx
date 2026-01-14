@@ -70,7 +70,7 @@ export default function Holdings() {
     setLoadingHoldings(true);
     try {
       const token = localStorage.getItem("token");
-      const [holdingsRes, clientRes, tradesRes] = await Promise.all([
+      const [holdingsRes, clientRes, tradesRes, realEstateRes] = await Promise.all([
         axios.get(`${API}/holdings/client/${clientId}`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
@@ -79,7 +79,10 @@ export default function Holdings() {
         }),
         axios.get(`${API}/trades?client_id=${clientId}`, {
           headers: { Authorization: `Bearer ${token}` }
-        })
+        }),
+        axios.get(`${API}/real-estate-opportunities/client/${clientId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => ({ data: [] })) // Handle if endpoint doesn't exist yet
       ]);
       setClientHoldings(holdingsRes.data);
       setClientDetails(clientRes.data);
@@ -88,6 +91,7 @@ export default function Holdings() {
         new Date(b.created_at) - new Date(a.created_at)
       );
       setClientTrades(sortedTrades);
+      setClientRealEstate(realEstateRes.data || []);
     } catch (error) {
       console.error("Error fetching holdings:", error);
       toast.error("Failed to load holdings");
