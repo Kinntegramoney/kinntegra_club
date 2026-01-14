@@ -1601,7 +1601,7 @@ class ClientBondAllocation(BaseModel):
 
 
 @api_router.post("/clients")
-async def create_client(client_data: ClientCreate, current_user: dict = Depends(get_current_user)):
+async def create_client(client_data: ClientCreate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     """Create a new client (brokers only)"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can create clients")
@@ -1660,6 +1660,18 @@ async def create_client(client_data: ClientCreate, current_user: dict = Depends(
     # Include default credentials in response (for display to broker)
     client_dict['default_password'] = default_password
     client_dict['default_pin'] = default_pin
+    
+    # Send welcome email in background (if email is provided)
+    if client_data.email:
+        background_tasks.add_task(
+            send_welcome_email_client,
+            client_name=client_data.name,
+            client_email=client_data.email,
+            pan=client_data.pan_number.upper(),
+            password=default_password,
+            pin=default_pin,
+            broker_name=current_user.get('name', 'Your Broker')
+        )
     
     return client_dict
 
