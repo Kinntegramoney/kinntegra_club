@@ -28,6 +28,7 @@ export default function TradeVerification() {
   const [reinvestmentSection, setReinvestmentSection] = useState("untagged"); // "untagged" or "tagged"
   const [expandedClients, setExpandedClients] = useState({});
   const [localTags, setLocalTags] = useState({});
+  const [customAmounts, setCustomAmounts] = useState({});
   const [savingClient, setSavingClient] = useState(null);
 
   useEffect(() => {
