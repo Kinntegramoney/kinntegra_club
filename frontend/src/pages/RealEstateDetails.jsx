@@ -1208,6 +1208,143 @@ export default function RealEstateDetails() {
             </div>
           )}
 
+          {/* Payment Documents Section - Shows all uploaded documents for each investor */}
+          {canViewPaymentManagement && opp.investor_payments && opp.investor_payments.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-indigo-600" />
+                  Payment Documents
+                </h2>
+                <Badge className="bg-indigo-100 text-indigo-700">
+                  {opp.investor_payments.filter(p => p.status === 'verified').length} Verified Payments
+                </Badge>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 px-3 text-gray-500 font-medium">Investor</th>
+                      <th className="text-left py-2 px-3 text-gray-500 font-medium">Milestone</th>
+                      <th className="text-right py-2 px-3 text-gray-500 font-medium">Amount</th>
+                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Status</th>
+                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Invoice</th>
+                      <th className="text-center py-2 px-3 text-gray-500 font-medium">SWIFT Copy</th>
+                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Dev Receipt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {opp.investor_payments.map((payment, idx) => {
+                      const investor = opp.investors?.find(inv => inv.client_id === payment.investor_id);
+                      const milestone = opp.payment_schedule?.[payment.milestone_index];
+                      const invoice = opp.investor_invoices?.find(
+                        inv => inv.milestone_index === payment.milestone_index && inv.investor_id === payment.investor_id
+                      );
+                      
+                      return (
+                        <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-3">
+                            <p className="font-medium text-gray-800">{investor?.client_name || 'Unknown'}</p>
+                            <p className="text-xs text-gray-500">{investor?.share_percentage?.toFixed(1)}% share</p>
+                          </td>
+                          <td className="py-3 px-3">
+                            <p className="text-gray-800">{milestone?.description || `Payment ${payment.milestone_index + 1}`}</p>
+                            <p className="text-xs text-gray-500">{milestone?.percentage}%</p>
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono">
+                            AED {formatCurrency(payment.aed_amount)}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            {payment.status === 'verified' ? (
+                              <Badge className="bg-green-100 text-green-700">✓ Verified</Badge>
+                            ) : (
+                              <Badge className="bg-amber-100 text-amber-700">⏳ Pending</Badge>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            {invoice ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700"
+                                onClick={() => {
+                                  const token = localStorage.getItem("token");
+                                  window.open(
+                                    `${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}?token=${token}`,
+                                    '_blank'
+                                  );
+                                }}
+                              >
+                                <Download className="h-3 w-3 mr-1" /> View
+                              </Button>
+                            ) : (
+                              <span className="text-gray-400 text-xs">-</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            {payment.swift_copy_url ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs bg-teal-100 hover:bg-teal-200 text-teal-700"
+                                onClick={() => {
+                                  window.open(
+                                    `${process.env.REACT_APP_BACKEND_URL}${payment.swift_copy_url}`,
+                                    '_blank'
+                                  );
+                                }}
+                              >
+                                <Download className="h-3 w-3 mr-1" /> View
+                              </Button>
+                            ) : (
+                              <span className="text-gray-400 text-xs">-</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            {payment.developer_receipt ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs bg-purple-100 hover:bg-purple-200 text-purple-700"
+                                onClick={() => {
+                                  window.open(
+                                    `${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`,
+                                    '_blank'
+                                  );
+                                }}
+                              >
+                                <Download className="h-3 w-3 mr-1" /> View
+                              </Button>
+                            ) : payment.status === 'verified' ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs bg-purple-500 hover:bg-purple-600 text-white"
+                                onClick={() => {
+                                  setSelectedPaymentForReceipt({
+                                    payment: payment,
+                                    investor: investor,
+                                    milestone: { ...milestone, index: payment.milestone_index }
+                                  });
+                                  setShowDeveloperReceiptModal(true);
+                                }}
+                              >
+                                <Upload className="h-3 w-3 mr-1" /> Upload
+                              </Button>
+                            ) : (
+                              <span className="text-gray-400 text-xs">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Oqood Upload Section - Only visible after first milestone is fully verified */}
           {canManageOqood && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
