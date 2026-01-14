@@ -102,11 +102,11 @@ export default function Login() {
         }}
         data-testid="login-card"
       >
-        {/* Header Strip with gradient - MUST be visible */}
+        {/* Header Strip - same color as SIGN IN button */}
         <div 
           style={{
             height: '90px',
-            background: 'linear-gradient(135deg, #33222A 0%, #2b1c23 100%)',
+            background: '#875A31',
             position: 'relative'
           }}
         />
