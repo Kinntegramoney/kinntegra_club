@@ -881,25 +881,6 @@ export default function RealEstateDetails() {
                               </td>
                             );
                           })}
-                          
-                          {/* Action Button */}
-                          {canViewPaymentManagement && isFullyAllocated && (
-                            <td className="py-4 px-3 text-center">
-                              {!allVerified && (
-                                <Button 
-                                  size="sm" 
-                                  className="bg-green-600 hover:bg-green-700 text-xs h-8"
-                                  onClick={() => {
-                                    setSelectedPaymentMilestone({ ...milestone, index: idx });
-                                    setShowPaymentRecordModal(true);
-                                  }}
-                                  data-testid="record-payment-btn"
-                                >
-                                  <Plus className="h-3 w-3 mr-1" /> Record
-                                </Button>
-                              )}
-                            </td>
-                          )}
                         </tr>
                       );
                     })}
