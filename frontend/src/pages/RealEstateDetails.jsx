@@ -38,6 +38,9 @@ export default function RealEstateDetails() {
   const [selectedInvoiceMilestone, setSelectedInvoiceMilestone] = useState(null);
   const [showDeveloperReceiptModal, setShowDeveloperReceiptModal] = useState(false);
   const [selectedPaymentForReceipt, setSelectedPaymentForReceipt] = useState(null);
+  const [showCurrencySettingsModal, setShowCurrencySettingsModal] = useState(false);
+  const [showXirrComparisonModal, setShowXirrComparisonModal] = useState(false);
+  const [selectedInvestorForXirr, setSelectedInvestorForXirr] = useState(null);
   
   // XIRR Calculator state
   const [xirrSaleStage, setXirrSaleStage] = useState(100); // % of payment completed when sold
