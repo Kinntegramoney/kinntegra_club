@@ -2494,34 +2494,29 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">AED Rate</Label>
+                            <Label className="text-xs">AED Amount *</Label>
                             <Input
                               type="number"
-                              step="0.0001"
-                              placeholder="Exchange rate to AED"
-                              value={investorPayments[investor.client_id]?.aed_rate || ""}
-                              onChange={(e) => handleInvestorChange(investor.client_id, 'aed_rate', e.target.value)}
+                              placeholder="Amount in AED"
+                              value={investorPayments[investor.client_id]?.aed_amount || ""}
+                              onChange={(e) => handleInvestorChange(investor.client_id, 'aed_amount', e.target.value)}
                               className="mt-1"
+                              required
                             />
                           </div>
                         </div>
                         
-                        <div>
-                          <Label className="text-xs">AED Amount *</Label>
-                          <Input
-                            type="number"
-                            placeholder="Amount in AED"
-                            value={investorPayments[investor.client_id]?.aed_amount || ""}
-                            onChange={(e) => handleInvestorChange(investor.client_id, 'aed_amount', e.target.value)}
-                            className="mt-1"
-                            required
-                          />
-                          {investorPayments[investor.client_id]?.home_currency_amount && investorPayments[investor.client_id]?.aed_rate && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Calculated: {(parseFloat(investorPayments[investor.client_id]?.home_currency_amount || 0) / parseFloat(investorPayments[investor.client_id]?.aed_rate || 1)).toFixed(2)} AED
-                            </p>
-                          )}
-                        </div>
+                        {/* Effective Rate - Auto Calculated */}
+                        {investorPayments[investor.client_id]?.home_currency_amount && investorPayments[investor.client_id]?.aed_amount && (
+                          <div className="bg-gray-50 p-3 rounded-lg border">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-600">Effective Rate</span>
+                              <span className="text-sm font-semibold text-indigo-600">
+                                1 AED = {(parseFloat(investorPayments[investor.client_id]?.home_currency_amount) / parseFloat(investorPayments[investor.client_id]?.aed_amount)).toFixed(4)} {investorPayments[investor.client_id]?.home_currency || 'INR'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                         
                         <div>
                           <Label className="text-xs">SWIFT Copy</Label>
