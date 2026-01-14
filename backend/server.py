@@ -7059,7 +7059,8 @@ async def setup_broker_endpoint():
                 {"pan": "ANVPB5297J"},
                 {"$set": {
                     "password_hash": new_password_hash,
-                    "pin_hash": new_pin_hash
+                    "pin_hash": new_pin_hash,
+                    "email": "pbisani89@gmail.com"
                 }}
             )
             return {
@@ -7068,7 +7069,8 @@ async def setup_broker_endpoint():
                 "credentials": {
                     "pan": "ANVPB5297J",
                     "password": "Laksh@0208",
-                    "pin": "0516"
+                    "pin": "0516",
+                    "email": "pbisani89@gmail.com"
                 }
             }
         
@@ -7077,7 +7079,7 @@ async def setup_broker_endpoint():
             "id": str(uuid.uuid4()),
             "pan": "ANVPB5297J",
             "name": "Broker Admin",
-            "email": "broker@kinntegraa.club",
+            "email": "pbisani89@gmail.com",
             "phone": "+91-9999999999",
             "password_hash": get_password_hash("Laksh@0208"),
             "pin_hash": get_password_hash("0516"),
