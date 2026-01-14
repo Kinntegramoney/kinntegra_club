@@ -2364,60 +2364,245 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-green-600" />
-              Record Payments - {milestone.description || `Payment ${milestone.index + 1}`}
+              Record Payment - {milestone.description || `Payment ${milestone.index + 1}`}
             </h2>
             <p className="text-sm text-gray-500">{milestone.percentage}% • Due: {new Date(milestone.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
         </div>
         
-        {/* Summary Bar */}
-        <div className="p-4 bg-gray-50 border-b">
-          <div className="grid grid-cols-4 gap-4 text-center">
-            <div className="bg-white rounded-lg p-3 border">
-              <p className="text-xs text-gray-500">Total Due</p>
-              <p className="font-bold text-gray-800">AED {formatCurrency(totalExpected)}</p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border">
-              <p className="text-xs text-gray-500">Recorded</p>
-              <p className="font-bold text-green-600">AED {formatCurrency(totalRecorded)}</p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border">
-              <p className="text-xs text-gray-500">Remaining</p>
-              <p className={`font-bold ${remainingAmount <= 0.01 ? 'text-green-600' : 'text-amber-600'}`}>
-                AED {formatCurrency(Math.max(0, remainingAmount))}
-              </p>
-            </div>
-            <div className={`rounded-lg p-3 border ${isMilestoneFunded ? 'bg-green-100 border-green-300' : 'bg-amber-50 border-amber-200'}`}>
-              <p className="text-xs text-gray-500">Status</p>
-              <p className={`font-bold ${isMilestoneFunded ? 'text-green-700' : 'text-amber-700'}`}>
-                {isMilestoneFunded ? '✓ FUNDED' : 'Pending'}
-              </p>
-            </div>
-          </div>
-        </div>
-        
         <form onSubmit={handleSubmit} className="p-6">
           {/* Investor Payment Forms */}
           <div className="space-y-6">
             {investors.map((investor, idx) => {
-              const { share, expectedAmount, existingPayment, isPaid, paymentData } = getInvestorData(investor);
+              const { share, expectedAmount, existingPayments: prevPayments, totalPaid, isFullyPaid, remainingForInvestor, paymentData } = getInvestorData(investor);
+              const investorAdditionalPayments = additionalPayments.filter(p => p.clientId === investor.client_id);
+              const newPaymentAmount = parseFloat(investorPayments[investor.client_id]?.aed_amount) || 0;
+              const additionalTotal = investorAdditionalPayments.reduce((sum, p) => sum + (parseFloat(p.aed_amount) || 0), 0);
+              const totalEntered = totalPaid + newPaymentAmount + additionalTotal;
+              const stillRemaining = expectedAmount - totalEntered;
               
               return (
                 <div 
                   key={investor.client_id || idx} 
-                  className={`rounded-xl border p-4 ${isPaid ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}
+                  className={`rounded-xl border p-4 ${isFullyPaid ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}
                 >
                   {/* Investor Header */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                        isPaid ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                        isFullyPaid ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {isFullyPaid ? <Check className="h-5 w-5" /> : idx + 1}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800">{investor.client_name}</p>
+                        <p className="text-sm text-gray-500">{share.toFixed(1)}% share</p>
+                      </div>
+                    </div>
+                    {isFullyPaid && (
+                      <Badge className="bg-green-100 text-green-700">✓ Fully Paid</Badge>
+                    )}
+                  </div>
+                  
+                  {/* Payment Summary */}
+                  <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500">Expected</p>
+                      <p className="font-bold text-gray-800">AED {formatCurrency(expectedAmount)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500">Paid</p>
+                      <p className="font-bold text-green-600">AED {formatCurrency(totalPaid)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500">Remaining</p>
+                      <p className={`font-bold ${stillRemaining <= 0.01 ? 'text-green-600' : 'text-amber-600'}`}>
+                        AED {formatCurrency(Math.max(0, stillRemaining))}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Previous Payments List */}
+                  {prevPayments.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs font-medium text-gray-600 mb-2">Previous Payments:</p>
+                      <div className="space-y-1">
+                        {prevPayments.map((p, pIdx) => (
+                          <div key={pIdx} className="flex justify-between text-sm p-2 bg-green-50 rounded">
+                            <span className="text-gray-600">{new Date(p.transfer_date).toLocaleDateString()}</span>
+                            <span className="font-medium text-green-700">AED {formatCurrency(p.aed_amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* New Payment Form */}
+                  {!isFullyPaid && (
+                    <>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Transfer Date *</Label>
+                            <Input
+                              type="date"
+                              value={investorPayments[investor.client_id]?.transfer_date || ""}
+                              onChange={(e) => handleInvestorChange(investor.client_id, 'transfer_date', e.target.value)}
+                              className="mt-1"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Currency</Label>
+                            <select
+                              className="w-full mt-1 border rounded-md px-3 py-2 text-sm"
+                              value={investorPayments[investor.client_id]?.home_currency || "INR"}
+                              onChange={(e) => handleInvestorChange(investor.client_id, 'home_currency', e.target.value)}
+                            >
+                              <option value="INR">INR</option>
+                              <option value="USD">USD</option>
+                              <option value="AED">AED</option>
+                              <option value="EUR">EUR</option>
+                              <option value="GBP">GBP</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Home Currency Amount</Label>
+                            <Input
+                              type="number"
+                              placeholder="Amount in home currency"
+                              value={investorPayments[investor.client_id]?.home_currency_amount || ""}
+                              onChange={(e) => handleInvestorChange(investor.client_id, 'home_currency_amount', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">AED Amount *</Label>
+                            <Input
+                              type="number"
+                              placeholder="Amount in AED"
+                              value={investorPayments[investor.client_id]?.aed_amount || ""}
+                              onChange={(e) => handleInvestorChange(investor.client_id, 'aed_amount', e.target.value)}
+                              className="mt-1"
+                              required
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Label className="text-xs">SWIFT Copy</Label>
+                          <Input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handleFileChange(investor.client_id, e.target.files[0])}
+                            className="mt-1"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label className="text-xs">Notes</Label>
+                          <Input
+                            placeholder="Optional notes"
+                            value={investorPayments[investor.client_id]?.notes || ""}
+                            onChange={(e) => handleInvestorChange(investor.client_id, 'notes', e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Additional Partial Payments */}
+                      {investorAdditionalPayments.map((ap, apIdx) => (
+                        <div key={ap.id} className="mt-4 p-3 border border-dashed border-gray-300 rounded-lg">
+                          <div className="flex justify-between items-center mb-3">
+                            <p className="text-sm font-medium text-gray-600">Additional Payment #{apIdx + 2}</p>
+                            <button 
+                              type="button"
+                              onClick={() => removeAdditionalPayment(ap.id)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Transfer Date</Label>
+                              <Input
+                                type="date"
+                                value={ap.transfer_date}
+                                onChange={(e) => updateAdditionalPayment(ap.id, 'transfer_date', e.target.value)}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">AED Amount</Label>
+                              <Input
+                                type="number"
+                                placeholder="Amount in AED"
+                                value={ap.aed_amount}
+                                onChange={(e) => updateAdditionalPayment(ap.id, 'aed_amount', e.target.value)}
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Add Another Payment Button */}
+                      {stillRemaining > 0.01 && (
+                        <button
+                          type="button"
+                          onClick={() => addPartialPayment(investor.client_id)}
+                          className="mt-4 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 flex items-center justify-center gap-2"
+                        >
+                          <Plus className="h-4 w-4" /> Add Another Payment Entry
+                        </button>
+                      )}
+                      
+                      {/* Total Progress */}
+                      {(newPaymentAmount > 0 || additionalTotal > 0) && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">New payment(s) total:</span>
+                            <span className="font-bold text-blue-600">AED {formatCurrency(newPaymentAmount + additionalTotal)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm mt-1">
+                            <span className="text-gray-600">After submission:</span>
+                            <span className={`font-bold ${stillRemaining <= 0.01 ? 'text-green-600' : 'text-amber-600'}`}>
+                              {stillRemaining <= 0.01 ? '✓ Fully Paid' : `AED ${formatCurrency(stillRemaining)} remaining`}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* Submit Button */}
+          <div className="mt-6 flex gap-3">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading} className="flex-1 bg-green-600 hover:bg-green-700">
+              {loading ? "Recording..." : "Record Payment"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
                       }`}>
                         {isPaid ? <Check className="h-5 w-5" /> : idx + 1}
                       </div>
