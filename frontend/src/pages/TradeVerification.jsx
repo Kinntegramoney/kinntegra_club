@@ -552,18 +552,33 @@ export default function TradeVerification() {
                             <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(entry.principal_net)}</td>
                             <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(entry.interest_net)}</td>
                             <td className="py-3 px-4 text-right font-mono text-sm font-medium text-green-600">{formatINR(entry.net_amount)}</td>
-                            <td className="py-3 px-4 text-center">
-                              <select
-                                value={localTags[entry.cashflow_id] || 'not_tagged'}
-                                onChange={(e) => handleTagChange(entry.cashflow_id, e.target.value)}
-                                className={`px-2 py-1 text-xs rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getTagColor(localTags[entry.cashflow_id])}`}
-                              >
-                                <option value="not_tagged">Not Tagged</option>
-                                <option value="principal">Principal</option>
-                                <option value="interest">Interest</option>
-                                <option value="net_amount">Net Amount</option>
-                                <option value="not_invest">Not Invest</option>
-                              </select>
+                            <td className="py-3 px-4">
+                              <div className="flex flex-col gap-2">
+                                <select
+                                  value={localTags[entry.cashflow_id] || 'not_tagged'}
+                                  onChange={(e) => handleTagChange(entry.cashflow_id, e.target.value)}
+                                  className={`px-2 py-1 text-xs rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getTagColor(localTags[entry.cashflow_id])}`}
+                                >
+                                  <option value="not_tagged">Not Tagged</option>
+                                  <option value="principal">Principal</option>
+                                  <option value="interest">Interest</option>
+                                  <option value="net_amount">Net Amount</option>
+                                  <option value="other">Other (Custom)</option>
+                                  <option value="not_invest">Not Invest</option>
+                                </select>
+                                {localTags[entry.cashflow_id] === 'other' && (
+                                  <input
+                                    type="number"
+                                    placeholder="Enter amount"
+                                    value={customAmounts[entry.cashflow_id] || ''}
+                                    onChange={(e) => handleCustomAmountChange(entry.cashflow_id, e.target.value)}
+                                    className="px-2 py-1 text-xs rounded-lg border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 w-28"
+                                  />
+                                )}
+                                {entry.custom_amount && localTags[entry.cashflow_id] !== 'other' && entry.reinvestment_tag === 'other' && (
+                                  <span className="text-xs text-amber-600">Custom: {formatINR(entry.custom_amount)}</span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-3 px-4 text-center">
                               <Button
