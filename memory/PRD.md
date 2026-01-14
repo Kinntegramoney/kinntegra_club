@@ -13,6 +13,13 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
 ## What's Been Implemented
 
 ### Jan 2025 - Current Session
+
+9. **Payment Schedule Status & Progress Column Update** ✅
+   - Payment schedule now shows "Open" status until all 4 investors are tagged
+   - Progress column is hidden until all 4 investors are tagged
+   - Changed terminology from "Fully Funded" to "Fully Allocated" in Payment Management header
+   - Payment Management section only appears after all 4 investors are tagged
+
 1. **Fixed Visibility Bug for Payment/Oqood Sections (P0)** ✅
    - Fixed critical bug where "Manage Payment" button and "Oqood" section appeared prematurely
    - Changed `isFullyFunded` to check status/percentage instead of hardcoded 4 investors
