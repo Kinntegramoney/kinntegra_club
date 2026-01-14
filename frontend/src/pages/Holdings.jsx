@@ -686,6 +686,116 @@ export default function Holdings() {
                 </div>
               )}
               
+              {/* Real Estate Tab Content */}
+              {mainTab === "real-estate" && (
+                <div className="space-y-6">
+                  {clientRealEstate.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>No real estate investments found</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Summary Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg p-5 text-white">
+                          <p className="text-teal-100 text-sm">Total Properties</p>
+                          <p className="text-2xl font-bold">{clientRealEstate.length}</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-5 text-white">
+                          <p className="text-amber-100 text-sm">Total Investment</p>
+                          <p className="text-2xl font-bold">
+                            AED {new Intl.NumberFormat('en-AE').format(
+                              clientRealEstate.reduce((sum, re) => sum + (re.investment_amount || 0), 0)
+                            )}
+                          </p>
+                        </div>
+                        <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg p-5 text-white">
+                          <p className="text-indigo-100 text-sm">Avg Share</p>
+                          <p className="text-2xl font-bold">
+                            {(clientRealEstate.reduce((sum, re) => sum + (re.share_percentage || 0), 0) / clientRealEstate.length).toFixed(1)}%
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Properties List */}
+                      <div className="space-y-4">
+                        {clientRealEstate.map((property, idx) => (
+                          <div key={idx} className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <Building2 className="h-5 w-5 text-teal-600" />
+                                  <h4 className="font-semibold text-gray-800">{property.building_name || 'Property'}</h4>
+                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                    property.status === 'fully_invested' 
+                                      ? 'bg-green-100 text-green-700' 
+                                      : 'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    {property.status === 'fully_invested' ? 'Fully Allocated' : 'Active'}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-500 mb-3">
+                                  {property.project_name} • Unit {property.unit_no} • {property.developer_name}
+                                </p>
+                                
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                  <div>
+                                    <p className="text-xs text-gray-500">Share</p>
+                                    <p className="font-semibold text-gray-800">{property.share_percentage?.toFixed(1)}%</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Investment</p>
+                                    <p className="font-semibold text-gray-800">AED {new Intl.NumberFormat('en-AE').format(property.investment_amount || 0)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Unit Price</p>
+                                    <p className="font-semibold text-gray-800">AED {new Intl.NumberFormat('en-AE').format(property.unit_price || 0)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Invested On</p>
+                                    <p className="font-semibold text-gray-800">
+                                      {property.invested_at ? format(new Date(property.invested_at), 'dd MMM yyyy') : '-'}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Payment Progress */}
+                                {property.payment_schedule && property.payment_schedule.length > 0 && (
+                                  <div className="mt-4 pt-4 border-t border-gray-100">
+                                    <p className="text-xs text-gray-500 mb-2">Payment Progress</p>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                        <div 
+                                          className="bg-teal-500 h-2 rounded-full transition-all" 
+                                          style={{ width: `${property.payments_completed_percent || 0}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-sm font-medium text-gray-600">
+                                        {property.payments_completed || 0}/{property.payment_schedule.length} milestones
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => navigate(`/broker/real-estate/${property.id}`)}
+                                className="ml-4"
+                              >
+                                <Eye className="h-4 w-4 mr-1" /> View
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              
               {/* Holdings Tab Content */}
               {mainTab === "holdings" && (
               <>
