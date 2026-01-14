@@ -13,16 +13,26 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, List
 import logging
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
-# Email configuration from environment
-MAIL_HOST = os.environ.get('MAIL_HOST', 'mail.kinntegraa.club')
-MAIL_PORT = int(os.environ.get('MAIL_PORT', 465))
-MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '')
-MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')
-MAIL_FROM_ADDRESS = os.environ.get('MAIL_FROM_ADDRESS', 'donotreply@kinntegraa.club')
-MAIL_FROM_NAME = os.environ.get('MAIL_FROM_NAME', 'Kinntegraa')
+
+def get_mail_config():
+    """Get mail configuration from environment variables"""
+    return {
+        'host': os.environ.get('MAIL_HOST', 'mail.kinntegraa.club'),
+        'port': int(os.environ.get('MAIL_PORT', 465)),
+        'username': os.environ.get('MAIL_USERNAME', ''),
+        'password': os.environ.get('MAIL_PASSWORD', ''),
+        'from_address': os.environ.get('MAIL_FROM_ADDRESS', 'donotreply@kinntegraa.club'),
+        'from_name': os.environ.get('MAIL_FROM_NAME', 'Kinntegraa')
+    }
 
 
 def send_email(
