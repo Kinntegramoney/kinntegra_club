@@ -7157,7 +7157,7 @@ async def seed_default_broker():
                 "id": str(uuid.uuid4()),
                 "pan": "ANVPB5297J",
                 "name": "Broker Admin",
-                "email": "broker@kinntegraa.club",
+                "email": "pbisani89@gmail.com",
                 "phone": "+91-9999999999",
                 "password_hash": get_password_hash("Laksh@0208"),
                 "pin_hash": get_password_hash("0516"),
