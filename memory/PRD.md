@@ -1,206 +1,139 @@
-# Kinntegraa B2B Platform - PRD
+# Kinntegraa NCD Exchange Platform - PRD
 
 ## Original Problem Statement
-Build a B2B platform for brokers and sub-brokers to manage secondary market Non-Convertible Debenture (NCD) transactions and Off-Plan Real Estate investments.
+B2B platform for brokers to manage secondary market Non-Convertible Debentures (NCD) and Real Estate transactions.
 
-## Core Requirements
-- User authentication with 2-step login (PAN + Password, then PIN)
-- Bond management (NCD bonds)
-- Real Estate management (Off-Plan properties only - Fractional removed)
-- Client management
-- Payment schedule tracking
-- Analytics Dashboard for brokers
+## Core Users
+- **Brokers**: Primary users who manage clients, sub-brokers, and opportunities
+- **Sub-Brokers**: Work under brokers to manage their clients
+- **Clients**: End customers who invest in bonds and real estate
+
+## Tech Stack
+- **Frontend**: React with Shadcn/UI, Recharts
+- **Backend**: FastAPI (Python)
+- **Database**: MongoDB
+- **Email**: External SMTP (mail.kinntegraa.club)
+
+---
 
 ## What's Been Implemented
 
-### Jan 2025 - Current Session
+### Authentication System
+- [x] Two-step login (PAN+Password → PIN)
+- [x] JWT-based authentication with role-based access
+- [x] Customer self-signup (NEW - Jan 14, 2026)
+- [x] Forgot Password/PIN reset flow (NEW - Jan 14, 2026)
+- [x] Password reset via email with token
 
-11. **Analytics Dashboard (P0)** ✅ (Jan 14, 2025)
-    - **Backend Endpoints**: 5 new endpoints under `/api/dashboard/`:
-      - `/summary` - Clients, sub-brokers, opportunities, AUM, trades counts
-      - `/clients-by-city` - Geographic distribution of clients
-      - `/aum-distribution` - AUM by asset class and sub-broker
-      - `/activity-log` - Recent trades, investments, client creations
-      - `/monthly-stats` - Monthly statistics with year filter
-    - **Frontend Dashboard** (`/app/frontend/src/pages/Dashboard.jsx`):
-      - 6 KPI Cards: Clients, Sub-Brokers, Total AUM, Bond Opportunities, Real Estate, Trades
-      - Client Status Donut Chart (Active/Inactive)
-      - AUM Distribution Pie Chart (Bonds vs Real Estate)
-      - Client Spread by City Horizontal Bar Chart
-      - AUM by Sub-Broker Stacked Bar Chart
-      - Monthly Console Area Chart with year selector
-      - Recent Activity Table with trades, investments, new clients
-      - Quick Actions buttons for navigation
-      - Refresh button for data reload
-    - **Tested**: 17/17 backend tests passed, all frontend components verified
+### Broker Dashboard
+- [x] Analytics dashboard with key metrics
+- [x] Client status visualization
+- [x] AUM distribution charts
+- [x] Client spread by city
+- [x] Monthly activity console
+- [x] AUM by sub-broker
 
-10. **Unified Payments Section (P0)** ✅ (Jan 14, 2025)
-    - Merged Payment Schedule, Payment Management, and Payment Documents into ONE unified "Payments" section
-    - Single section header: "💳 Payments" with "Fully Allocated (X Investors)" badge
-    - **Payment Schedule Table** at top with:
-      - Columns: #, Date, Description, %, Amount (AED), Invoices, Payments, Receipts, Status
-      - 3 progress bars (Invoices/blue, Payments/green, Receipts/purple) visible when fully allocated
-      - Status shows "Open" until 100% funded, then "Complete/Partial/Pending"
-    - **Documents Overview** grid below showing client-wise document status (Invoice, SWIFT, Receipt) per milestone
-    - **Milestone Actions** section for recording payments and managing invoices
-    - Removed duplicate "Payment Documents" section that was standalone
-    - File reduced from 3000+ lines to ~3100 lines
+### Bond Management
+- [x] Create/edit bond opportunities
+- [x] Bond details page with investment calculator
+- [x] Client investment tracking
+- [x] Trade verification workflow
 
-9. **Payment Schedule Status & Progress Column Update** ✅
-   - Payment schedule now shows "Open" status until all 4 investors are tagged
-   - Progress column is hidden until all 4 investors are tagged
-   - Changed terminology from "Fully Funded" to "Fully Allocated" in Payment Management header
-   - Payment Management section only appears after all 4 investors are tagged
+### Real Estate Management
+- [x] Off-plan real estate opportunities
+- [x] Payment tracking (investor payments, developer receipts)
+- [x] XIRR comparison report (projected vs actual)
+- [x] Currency projection settings
+- [x] Oqood fee tracking
 
-1. **Fixed Visibility Bug for Payment/Oqood Sections (P0)** ✅
-   - Fixed critical bug where "Manage Payment" button and "Oqood" section appeared prematurely
-   - Changed `isFullyFunded` to check status/percentage instead of hardcoded 4 investors
-   - `canViewPaymentManagement` now requires property to be fully funded (status='fully_invested' or invested_percentage >= 100%)
-   - `canManageOqood` now checks all investors (dynamic count) have verified payments for FIRST milestone
-   - Tested with: Euphoric Residences (2 investors, 100% funded) and Dubai Creek Tower (4 investors)
+### Client Management
+- [x] Bulk upload via Excel templates
+- [x] Client profile management
+- [x] Holdings view for brokers
+- [x] Client-facing portal
 
-2. **Removed 4 Co-Owner Dependency (P0)** ✅
-   - Property is "fully funded" based on invested_percentage (100%) or status, not fixed investor count
-   - Payment Management section now shows "Fully Funded (X Investors)" dynamically
-   - Works with 2, 3, or 4 investors as long as 100% is allocated
+### Reinvestment Tagging
+- [x] Tag cash flows to new opportunities
+- [x] Custom amount entry for "Other" option
+- [x] Projected amounts display
 
-3. **Proportionate Payment Amounts per Investor (P0)** ✅
-   - Each milestone now shows proportionate amounts based on investor's share percentage
-   - Example: For 75%/25% split on AED 463,591 milestone → AED 347,693 / AED 115,898
-   - Display shows: Investor name, share %, AED amount, payment status
+### Email Integration
+- [x] SMTP configuration
+- [x] Welcome emails for new clients/sub-brokers
+- [x] Password reset emails
+- [ ] Share opportunities via email (backend ready, frontend pending)
 
-4. **Property Images in Details Page (P1)** ✅
-   - Added Property Images section at top of details page
-   - Shows image gallery in 3-column grid
-   - Clickable images open in new tab
+### Setup/Admin
+- [x] Database seeding for broker account on startup
+- [x] Setup endpoint for broker password reset
 
-5. **Share with Clients Hidden After Funding (P1)** ✅
-   - "Share with Clients" section now hidden once property is fully funded
-   - Only visible while property status is 'available'
+---
 
-6. **Brokers Can Record Payments (P1)** ✅
-   - Removed restriction that prevented brokers from recording payments
-   - All authorized users (broker, sub-broker, client) can now record payments
+## Pending Tasks
 
-7. **All-Investors Payment Recording Modal (P0)** ✅
-   - Redesigned Record Payment modal to show ALL investors at once
-   - Summary bar shows: Total Due, Recorded, Remaining, Status
-   - Each investor shows their proportionate expected amount
-   - Form fields per investor: Date, Home Currency, Amount in HC, AED Amount, SWIFT upload
-   - Effective rate auto-calculated
-   - "Record All Payments" button submits all entries
-   - Status shows "FUNDED" when total recorded matches total due
+### P0 - Critical
+- [ ] **Deployment sync issue** - Code changes not reflecting after deployment (platform issue, contact support)
 
-8. **Removed Manage Payments Button from Header (P1)** ✅
-   - Payment Management section is already on the page, button was redundant
+### P1 - High Priority
+- [ ] Build Frontend UI for Email Sharing (Bond & Real Estate detail pages)
+- [ ] Test bulk upload end-to-end (template → fill → upload → verify)
+- [ ] Bond presentation upload UI
 
-9. **Presentation Upload in Add Property (P1)** ✅
-   - New "Presentations" section in Add Property modal
-   - Upload PDF, PPT, PPTX, DOC, DOCX files (max 10)
-   - Files stored on server with download endpoint
+### P2 - Medium Priority
+- [ ] BondDetails calculator fix (clear selectedBound on manual input)
+- [ ] General "Export to Excel" functionality
 
-10. **Presentations Download on Details Page (P1)** ✅
-    - New "Property Documents & Presentations" section
-    - Shows all uploaded presentations with download links
-    - Available to clients and sub-brokers
+### P3 - Technical Debt
+- [ ] **CRITICAL**: Refactor RealEstateDetails.jsx (~3500 lines) into smaller components
 
-11. **Database Cleared (P0)** ✅
-    - All data (users, bonds, real estate, notifications) cleared
-    - Ready for fresh opportunity and user creation
+---
 
-### Dec 2025 - Previous Session
-1. **Fixed Payment Milestone Sorting Bug (P0)** ✅
-   - Rewrote sorting logic in `CreateRealEstateModal.jsx` to use inline sorting during render
-   - Milestones now correctly sort by date when added/edited
-   - Removed buggy `getSortedPaymentSchedule` and `getOriginalIndex` functions
+## API Endpoints
 
-2. **Moved Expected Profit & XIRR to View Details** ✅
-   - Removed XIRR calculation display from "Add Property" modal
-   - Added XIRR and Expected Profit display to `RealEstateDetails.jsx` in "Expected Returns" section
+### Auth
+- `POST /api/auth/login-step1` - PAN + Password verification
+- `POST /api/auth/login-step2` - PIN verification
+- `POST /api/auth/customer-signup` - Customer self-registration
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Reset with token
+- `GET /api/auth/verify-reset-token/{token}` - Validate token
 
-3. **Redesigned Property Card** ✅
-   - Property Name with building icon
-   - Unit Details (floor and unit number)
-   - Size (apartment type and area in sqft)
-   - Total Cost with asterisk (*) - hover shows full cost breakdown tooltip
-   - Interested count and Investors (X/4)
-   - Payment Progress bar
-   - View Details button
-   - Removed DLD% from card display
+### Dashboard
+- `GET /api/dashboard/summary`
+- `GET /api/dashboard/clients-by-city`
+- `GET /api/dashboard/aum-distribution`
+- `GET /api/dashboard/activity-log`
+- `GET /api/dashboard/monthly-stats`
 
-4. **Comprehensive View Details Page** ✅
-   - Property Information: Building, Unit Details, Size, Location, Balcony, Parking, Max Co-owners, Status
-   - Financial Summary: Unit Price, Total Cost, Fee Breakdown (DLD, Admin, Brokerage, Other, Selling Fee)
-   - Payment Schedule table with dates, descriptions, percentages, amounts, status
-   - **XIRR Calculator**: Slider for sale stage (10-100%), date picker, per-sqft price input, real-time XIRR calculation
-   - Interest & Participation section with two buttons:
-     - "Interested to Know More" - records interest
-     - "Confirm to Participate" - allows selecting ownership percentage (5-100%)
-   - Current Investors section with allocation progress
+### Setup
+- `GET /api/setup-broker` - Create/reset broker account
 
-5. **Backend Endpoints for Interest/Participation** ✅
-   - POST /api/real-estate-opportunities/{id}/interest - Express interest
-   - POST /api/real-estate-opportunities/{id}/participate - Confirm participation with percentage
+---
 
-6. **XIRR Calculation Fix** ✅
-   - Corrected calculation: DLD + Admin fees included as upfront investment cost
-   - Outstanding amount (unpaid unit price portion) now deducted from sale proceeds
-   - Formula: Net Proceeds = Gross Sale - Selling Fee - Outstanding Amount to Developer
-   - Slider minimum now set to "Eligible %" (e.g., 40%) - cannot select below eligible percentage
-   - Clean Excel export with proper AED formatting and column structure
-   - Removed Selling Fee from Financial Summary section (it's only shown in XIRR calculation)
-   - Removed "Manage" button from Payment Schedule section
+## Credentials
 
-7. **Per-Investor Payment Management** ✅
-   - UI/modals for recording individual investor payments
-   - SWIFT copy and Oqood document upload
-   - Backend endpoints for payment recording
+### Broker (Production)
+- **PAN**: ANVPB5297J
+- **Password**: Laksh@0208
+- **PIN**: 0516
 
-8. **Payment Verification Flow** ✅
-   - Backend endpoints for broker to verify payments
-   - UI elements for verification workflow
+### Test Customer (Preview only)
+- **PAN**: TESTPAN123
+- **Password**: Test@123
+- **PIN**: 1234
 
-### Previous Session
-- Removed "Fractional" real estate type (simplified to Off-Plan only)
-- Implemented complex fee structure: DLD (% of unit price) + Admin (absolute) paid upfront
-- Payment schedule based on Unit Price only
-- Multi-tab creation modal with fixed header/footer
+---
 
-## Prioritized Backlog
+## URLs
+- **Preview**: https://ncdexchange.preview.emergentagent.com
+- **Deployed**: https://kinntegraa.club
 
-### P0 (Critical)
-- ✅ Payment milestone sorting bug (FIXED - Dec 2025)
-- ✅ Move XIRR/Profit to View Details (DONE - Dec 2025)
-- ✅ Visibility bug for Payment/Oqood sections (FIXED - Jan 2025)
-- ✅ Analytics Dashboard (COMPLETED - Jan 2025)
+---
 
-### P1 (Important)
-- Test bulk upload templates end-to-end (Bonds, Clients, Sub-brokers)
-- Complete Bond Presentation UI on BondDetails.jsx
-- Test "Discount by Developer" field on Real Estate creation
-- End-to-End Test of Payment Verification Flow
-- General Export to Excel feature
+## Known Issues
+1. Deployment not syncing latest code (contact support@emergent.sh)
+2. RealEstateDetails.jsx needs urgent refactoring
 
-### P2 (Nice to have)
-- Email integration for notifications
-- End-to-end testing of Client Reinvestment Approval feature
-- Fix BondDetails.jsx investment calculator (clear selection on manual input)
+---
 
-## Refactoring Needed
-- **CRITICAL**: `/app/frontend/src/pages/RealEstateDetails.jsx` is over 2,500 lines - needs to be broken into smaller components (e.g., XIRRCalculator, PaymentManagement, InvestorList)
-
-## Tech Stack
-- Backend: FastAPI + MongoDB (motor)
-- Frontend: React + Tailwind CSS + Shadcn UI + Recharts
-- Auth: JWT-based 2-step authentication
-
-## Key Files
-- `/app/frontend/src/components/CreateRealEstateModal.jsx` - Property creation modal
-- `/app/frontend/src/pages/RealEstateDetails.jsx` - Property details with XIRR display
-- `/app/frontend/src/pages/Dashboard.jsx` - Analytics Dashboard with charts
-- `/app/backend/server.py` - API endpoints including dashboard
-
-## Test Credentials
-- Broker: PAN: `BROKER001A`, Password: `broker123`, PIN: `1234`
-- Sub-broker: PAN: `SB001` (Mike SubBroker), `SB002` (Nina SubBroker)
-- Clients: Alice Client (`ALICE0001A`), Bob Client (`BOBCL0002B`), Frank Client (`FRANKCL02F`)
+*Last Updated: January 14, 2026*
