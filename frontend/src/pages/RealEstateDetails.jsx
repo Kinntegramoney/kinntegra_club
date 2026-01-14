@@ -2185,29 +2185,35 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
 
 
 // Payment Record Modal - Records payment per investor for a milestone
-function PaymentRecordModal({ opportunity, milestone, onClose, onSuccess }) {
+function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose, onSuccess }) {
   const [investorPayments, setInvestorPayments] = useState({});
   const [swiftFiles, setSwiftFiles] = useState({});
   const [loading, setLoading] = useState(false);
+  const [additionalPayments, setAdditionalPayments] = useState([]); // For partial payments
   
   const formatCurrency = (amt) => new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(amt || 0);
   
   // Get existing payments for this milestone
   const existingPayments = opportunity.investor_payments?.filter(p => p.milestone_index === milestone.index) || [];
-  const paidInvestorIds = existingPayments.map(p => p.investor_id);
   
   // Calculate milestone totals
   const totalMilestoneAmount = opportunity.unit_price * milestone.percentage / 100;
   
-  // Initialize investor payment data
-  const investors = opportunity.investors || [];
+  // If selectedInvestor is provided, only show that investor
+  const investors = selectedInvestor 
+    ? [selectedInvestor] 
+    : (opportunity.investors || []);
   
   // Get investor's expected and recorded amounts
   const getInvestorData = (investor) => {
-    const share = investor.share_percentage || (100 / investors.length);
+    const share = investor.share_percentage || (100 / (opportunity.investors?.length || 1));
     const expectedAmount = totalMilestoneAmount * (share / 100);
-    const existingPayment = existingPayments.find(p => p.investor_id === investor.client_id);
-    const isPaid = !!existingPayment;
+    const investorPayments = existingPayments.filter(p => p.investor_id === investor.client_id);
+    const totalPaid = investorPayments.reduce((sum, p) => sum + (p.aed_amount || 0), 0);
+    const latestPayment = investorPayments[investorPayments.length - 1];
+    const isFullyPaid = totalPaid >= expectedAmount - 0.01;
+    const remainingForInvestor = expectedAmount - totalPaid;
+    
     const paymentData = investorPayments[investor.client_id] || {
       transfer_date: "",
       home_currency: "INR",
@@ -2215,21 +2221,8 @@ function PaymentRecordModal({ opportunity, milestone, onClose, onSuccess }) {
       aed_amount: "",
       notes: ""
     };
-    return { share, expectedAmount, existingPayment, isPaid, paymentData };
+    return { share, expectedAmount, existingPayments: investorPayments, totalPaid, latestPayment, isFullyPaid, remainingForInvestor, paymentData };
   };
-  
-  // Calculate totals
-  const totalRecorded = investors.reduce((sum, inv) => {
-    const data = getInvestorData(inv);
-    if (data.isPaid) {
-      return sum + (data.existingPayment.aed_amount || 0);
-    }
-    return sum + (parseFloat(investorPayments[inv.client_id]?.aed_amount) || 0);
-  }, 0);
-  
-  const totalExpected = totalMilestoneAmount;
-  const remainingAmount = totalExpected - totalRecorded;
-  const isMilestoneFunded = remainingAmount <= 0.01;
   
   // Handle input change for an investor
   const handleInvestorChange = (clientId, field, value) => {
@@ -2257,23 +2250,70 @@ function PaymentRecordModal({ opportunity, milestone, onClose, onSuccess }) {
     return "";
   };
   
+  // Add another payment entry for partial payments
+  const addPartialPayment = (clientId) => {
+    setAdditionalPayments(prev => [...prev, { 
+      clientId, 
+      id: Date.now(),
+      transfer_date: "",
+      home_currency: "INR",
+      home_currency_amount: "",
+      aed_amount: "",
+      notes: ""
+    }]);
+  };
+  
+  // Update additional payment
+  const updateAdditionalPayment = (paymentId, field, value) => {
+    setAdditionalPayments(prev => prev.map(p => 
+      p.id === paymentId ? { ...p, [field]: value } : p
+    ));
+  };
+  
+  // Remove additional payment
+  const removeAdditionalPayment = (paymentId) => {
+    setAdditionalPayments(prev => prev.filter(p => p.id !== paymentId));
+  };
+  
   // Submit all payments
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Get investors with new payment data (check if aed_amount has a value > 0)
-    const paymentsToRecord = investors.filter(inv => {
+    // Collect all payments to record (main + additional)
+    const allPaymentsToRecord = [];
+    
+    // Main payment entries
+    investors.forEach(inv => {
       const data = getInvestorData(inv);
       const aedAmount = parseFloat(investorPayments[inv.client_id]?.aed_amount) || 0;
-      return !data.isPaid && aedAmount > 0;
+      if (!data.isFullyPaid && aedAmount > 0) {
+        allPaymentsToRecord.push({
+          investor: inv,
+          paymentData: investorPayments[inv.client_id],
+          swiftFile: swiftFiles[inv.client_id]
+        });
+      }
     });
     
-    if (paymentsToRecord.length === 0) {
-      toast.error("Please enter payment details (AED Amount) for at least one investor");
+    // Additional partial payments
+    additionalPayments.forEach(ap => {
+      const aedAmount = parseFloat(ap.aed_amount) || 0;
+      if (aedAmount > 0) {
+        const investor = investors.find(i => i.client_id === ap.clientId);
+        if (investor) {
+          allPaymentsToRecord.push({
+            investor,
+            paymentData: ap,
+            swiftFile: null
+          });
+        }
+      }
+    });
+    
+    if (allPaymentsToRecord.length === 0) {
+      toast.error("Please enter payment details (AED Amount)");
       return;
     }
-    
-    console.log(`Recording payments for ${paymentsToRecord.length} investors:`, paymentsToRecord.map(i => i.client_name));
     
     setLoading(true);
     const token = localStorage.getItem("token");
@@ -2282,13 +2322,8 @@ function PaymentRecordModal({ opportunity, milestone, onClose, onSuccess }) {
     let errorCount = 0;
     let errors = [];
     
-    // Process all payments sequentially to avoid race conditions
-    for (const investor of paymentsToRecord) {
-      const paymentData = investorPayments[investor.client_id];
-      const swiftFile = swiftFiles[investor.client_id];
-      
-      console.log(`Recording payment for ${investor.client_name}:`, paymentData);
-      
+    // Process all payments sequentially
+    for (const { investor, paymentData, swiftFile } of allPaymentsToRecord) {
       try {
         const submitData = new FormData();
         submitData.append('milestone_index', milestone.index);
@@ -2304,15 +2339,13 @@ function PaymentRecordModal({ opportunity, milestone, onClose, onSuccess }) {
           submitData.append('swift_copy', swiftFile);
         }
         
-        const response = await axios.post(
+        await axios.post(
           `${API}/api/real-estate-opportunities/${opportunity.id}/investor-payment`,
           submitData,
           { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
         );
-        console.log(`Payment recorded for ${investor.client_name}:`, response.data);
         successCount++;
       } catch (error) {
-        console.error(`Error recording payment for ${investor.client_name}:`, error.response?.data || error.message);
         errors.push(`${investor.client_name}: ${error.response?.data?.detail || error.message}`);
         errorCount++;
       }
@@ -2321,7 +2354,7 @@ function PaymentRecordModal({ opportunity, milestone, onClose, onSuccess }) {
     setLoading(false);
     
     if (successCount > 0) {
-      toast.success(`${successCount} payment(s) recorded and verified!`);
+      toast.success(`${successCount} payment(s) recorded!`);
       onSuccess();
     }
     if (errorCount > 0) {
