@@ -317,13 +317,19 @@ export default function RealEstateDetails() {
            clients.some(c => opportunity.investors?.some(inv => inv.client_id === c.id));
   }, [user, opportunity, clients]);
 
-  // Check if opportunity is fully funded (100% invested or status is fully_invested)
-  const isFullyFunded = useMemo(() => {
+  // Check if opportunity is fully allocated (100% invested or status is fully_invested)
+  const isFullyAllocated = useMemo(() => {
     if (!opportunity) return false;
     // Check by status OR by invested percentage
     return opportunity.status === 'fully_invested' || 
            (opportunity.invested_percentage && opportunity.invested_percentage >= 99.99) ||
            (opportunity.remaining_percentage !== undefined && opportunity.remaining_percentage <= 0.01);
+  }, [opportunity]);
+  
+  // Check if all 4 investors are tagged (for showing Progress column and Payment Management)
+  const hasAllInvestorsTagged = useMemo(() => {
+    if (!opportunity) return false;
+    return (opportunity.investors?.length || 0) >= 4;
   }, [opportunity]);
 
   // Check if user can view payment management section
