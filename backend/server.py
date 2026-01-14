@@ -518,55 +518,147 @@ async def bulk_upload_subbrokers(
 
 @api_router.get("/bulk/template/clients")
 async def download_client_template(current_user: dict = Depends(get_current_user)):
-    """Download Excel template for bulk client upload"""
+    """Download Excel template for bulk client upload with all fields"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can download templates")
     
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Clients"
     
-    # Headers
-    headers = ["Name*", "PAN*", "Email*", "Mobile*", "Password*", "PIN*", 
-               "Sub-Broker Code", "Address Line 1", "Address Line 2", "City", "State", "Country", "Pincode"]
+    # Sheet 1: Personal Details
+    ws_personal = wb.active
+    ws_personal.title = "Personal Details"
     
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=header)
+    personal_headers = ["Name*", "PAN*", "Email*", "Mobile*", "Password*", "PIN*", 
+                       "Date of Birth", "Occupation", "Father/Husband Name", "Demat Account No"]
+    for col, header in enumerate(personal_headers, 1):
+        cell = ws_personal.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="7C3AED", end_color="7C3AED", fill_type="solid")
-        cell.alignment = Alignment(horizontal="center")
-        ws.column_dimensions[get_column_letter(col)].width = 18
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_personal.column_dimensions[get_column_letter(col)].width = 18
     
     # Sample row
-    sample = ["Jane Smith", "PQRST5678U", "jane@example.com", "9876543213", 
-              "password123", "1234", "SB001", "456 Park Ave", "", "Delhi", "Delhi", "India", "110001"]
-    for col, value in enumerate(sample, 1):
-        ws.cell(row=2, column=col, value=value)
+    personal_sample = ["Jane Smith", "PQRST5678U", "jane@example.com", "9876543213", 
+                      "password123", "1234", "1990-05-15", "Business", "John Smith", "1234567890123456"]
+    for col, value in enumerate(personal_sample, 1):
+        ws_personal.cell(row=2, column=col, value=value)
+    
+    # Sheet 2: Address Details
+    ws_address = wb.create_sheet("Address Details")
+    
+    address_headers = ["PAN*", "Address Line 1", "Address Line 2", "City", "State", "Country", "Pincode"]
+    for col, header in enumerate(address_headers, 1):
+        cell = ws_address.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="059669", end_color="059669", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_address.column_dimensions[get_column_letter(col)].width = 18
+    
+    address_sample = ["PQRST5678U", "456 Park Avenue", "Apartment 10B", "Mumbai", "Maharashtra", "India", "400001"]
+    for col, value in enumerate(address_sample, 1):
+        ws_address.cell(row=2, column=col, value=value)
+    
+    # Sheet 3: Bank Details
+    ws_bank = wb.create_sheet("Bank Details")
+    
+    bank_headers = ["PAN*", "Bank Name", "Account Number", "Branch", "IFSC Code"]
+    for col, header in enumerate(bank_headers, 1):
+        cell = ws_bank.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="EA580C", end_color="EA580C", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_bank.column_dimensions[get_column_letter(col)].width = 20
+    
+    bank_sample = ["PQRST5678U", "HDFC Bank", "12345678901234", "Andheri West", "HDFC0001234"]
+    for col, value in enumerate(bank_sample, 1):
+        ws_bank.cell(row=2, column=col, value=value)
+    
+    # Sheet 4: Nominee Details
+    ws_nominee = wb.create_sheet("Nominee Details")
+    
+    nominee_headers = ["PAN*", "Nominee Name", "Nominee DOB", "Nominee Mobile", "Relationship"]
+    for col, header in enumerate(nominee_headers, 1):
+        cell = ws_nominee.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="DC2626", end_color="DC2626", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_nominee.column_dimensions[get_column_letter(col)].width = 18
+    
+    nominee_sample = ["PQRST5678U", "John Smith", "1965-03-20", "9876543210", "Father"]
+    for col, value in enumerate(nominee_sample, 1):
+        ws_nominee.cell(row=2, column=col, value=value)
+    
+    # Sheet 5: Sub-Broker Assignment
+    ws_subbroker = wb.create_sheet("Sub-Broker Assignment")
+    
+    sb_headers = ["PAN*", "Sub-Broker Code"]
+    for col, header in enumerate(sb_headers, 1):
+        cell = ws_subbroker.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_subbroker.column_dimensions[get_column_letter(col)].width = 20
+    
+    sb_sample = ["PQRST5678U", "SB001"]
+    for col, value in enumerate(sb_sample, 1):
+        ws_subbroker.cell(row=2, column=col, value=value)
     
     # Instructions sheet
     ws_instructions = wb.create_sheet("Instructions")
     instructions = [
         "BULK CLIENT UPLOAD INSTRUCTIONS",
         "",
-        "Required Fields (marked with *):",
-        "- Name: Full name of the client",
-        "- PAN: Valid PAN number (10 characters, e.g., PQRST5678U)",
-        "- Email: Valid email address",
-        "- Mobile: 10-digit mobile number",
-        "- Password: Login password (min 6 characters)",
-        "- PIN: 4-digit PIN for transactions",
+        "This template has 5 data sheets. Fill Personal Details (required) and optionally fill other sheets.",
+        "PAN number is used to link data across sheets.",
         "",
-        "Optional Fields:",
-        "- Sub-Broker Code: Link client to a sub-broker (e.g., SB001)",
-        "- Address details for complete profile",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 1 - Personal Details (Purple) - REQUIRED",
+        "═══════════════════════════════════════════════════════════════",
+        "• Name*: Full legal name",
+        "• PAN*: Valid 10-character PAN (e.g., PQRST5678U)",
+        "• Email*: Valid email address",
+        "• Mobile*: 10-digit mobile number",
+        "• Password*: Login password (min 6 characters)",
+        "• PIN*: 4-digit transaction PIN",
+        "• Date of Birth: Format YYYY-MM-DD",
+        "• Occupation: Client's occupation/profession",
+        "• Father/Husband Name: As per PAN card",
+        "• Demat Account No: 16-digit demat account",
         "",
-        "Notes:",
-        "- Delete the sample row before uploading",
-        "- PAN must be unique",
-        "- Maximum 200 records per upload"
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 2 - Address Details (Green) - OPTIONAL",
+        "═══════════════════════════════════════════════════════════════",
+        "• Complete residential address of the client",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 3 - Bank Details (Orange) - OPTIONAL",
+        "═══════════════════════════════════════════════════════════════",
+        "• Bank account details for payments and withdrawals",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 4 - Nominee Details (Red) - OPTIONAL",
+        "═══════════════════════════════════════════════════════════════",
+        "• Nominee information for the client's investments",
+        "• Relationship: Father, Mother, Spouse, Son, Daughter, etc.",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 5 - Sub-Broker Assignment (Indigo) - OPTIONAL",
+        "═══════════════════════════════════════════════════════════════",
+        "• Assign clients to sub-brokers using their partner code",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "IMPORTANT NOTES",
+        "═══════════════════════════════════════════════════════════════",
+        "1. PAN must be unique and match across all sheets",
+        "2. Delete sample rows before uploading",
+        "3. Maximum 200 clients per upload",
+        "4. Dates should be in YYYY-MM-DD format",
     ]
     for row, text in enumerate(instructions, 1):
-        ws_instructions.cell(row=row, column=1, value=text)
+        cell = ws_instructions.cell(row=row, column=1, value=text)
+        if text.startswith("═") or text.startswith("SHEET") or text.startswith("BULK") or text.startswith("IMPORTANT"):
+            cell.font = Font(bold=True)
+        ws_instructions.column_dimensions['A'].width = 70
     
     output = io.BytesIO()
     wb.save(output)
@@ -575,7 +667,7 @@ async def download_client_template(current_user: dict = Depends(get_current_user
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=client_template.xlsx"}
+        headers={"Content-Disposition": "attachment; filename=client_upload_template.xlsx"}
     )
 
 
