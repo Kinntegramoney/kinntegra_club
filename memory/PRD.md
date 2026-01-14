@@ -9,10 +9,30 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
 - Real Estate management (Off-Plan properties only - Fractional removed)
 - Client management
 - Payment schedule tracking
+- Analytics Dashboard for brokers
 
 ## What's Been Implemented
 
 ### Jan 2025 - Current Session
+
+11. **Analytics Dashboard (P0)** ✅ (Jan 14, 2025)
+    - **Backend Endpoints**: 5 new endpoints under `/api/dashboard/`:
+      - `/summary` - Clients, sub-brokers, opportunities, AUM, trades counts
+      - `/clients-by-city` - Geographic distribution of clients
+      - `/aum-distribution` - AUM by asset class and sub-broker
+      - `/activity-log` - Recent trades, investments, client creations
+      - `/monthly-stats` - Monthly statistics with year filter
+    - **Frontend Dashboard** (`/app/frontend/src/pages/Dashboard.jsx`):
+      - 6 KPI Cards: Clients, Sub-Brokers, Total AUM, Bond Opportunities, Real Estate, Trades
+      - Client Status Donut Chart (Active/Inactive)
+      - AUM Distribution Pie Chart (Bonds vs Real Estate)
+      - Client Spread by City Horizontal Bar Chart
+      - AUM by Sub-Broker Stacked Bar Chart
+      - Monthly Console Area Chart with year selector
+      - Recent Activity Table with trades, investments, new clients
+      - Quick Actions buttons for navigation
+      - Refresh button for data reload
+    - **Tested**: 17/17 backend tests passed, all frontend components verified
 
 10. **Unified Payments Section (P0)** ✅ (Jan 14, 2025)
     - Merged Payment Schedule, Payment Management, and Payment Documents into ONE unified "Payments" section
@@ -152,29 +172,35 @@ Build a B2B platform for brokers and sub-brokers to manage secondary market Non-
 - ✅ Payment milestone sorting bug (FIXED - Dec 2025)
 - ✅ Move XIRR/Profit to View Details (DONE - Dec 2025)
 - ✅ Visibility bug for Payment/Oqood sections (FIXED - Jan 2025)
+- ✅ Analytics Dashboard (COMPLETED - Jan 2025)
 
 ### P1 (Important)
-- End-to-End Test of Payment Verification Flow - Full lifecycle test (record payment -> broker verifies -> status updates -> UI progress reflects change)
-- Dashboard Charts & Analytics for brokers
+- Test bulk upload templates end-to-end (Bonds, Clients, Sub-brokers)
+- Complete Bond Presentation UI on BondDetails.jsx
+- Test "Discount by Developer" field on Real Estate creation
+- End-to-End Test of Payment Verification Flow
 - General Export to Excel feature
 
 ### P2 (Nice to have)
 - Email integration for notifications
 - End-to-end testing of Client Reinvestment Approval feature
+- Fix BondDetails.jsx investment calculator (clear selection on manual input)
 
 ## Refactoring Needed
-- `/app/frontend/src/pages/RealEstateDetails.jsx` is over 2,500 lines - needs to be broken into smaller components (e.g., XIRRCalculator, PaymentManagement, InvestorList)
+- **CRITICAL**: `/app/frontend/src/pages/RealEstateDetails.jsx` is over 2,500 lines - needs to be broken into smaller components (e.g., XIRRCalculator, PaymentManagement, InvestorList)
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB (motor)
-- Frontend: React + Tailwind CSS + Shadcn UI
+- Frontend: React + Tailwind CSS + Shadcn UI + Recharts
 - Auth: JWT-based 2-step authentication
 
 ## Key Files
 - `/app/frontend/src/components/CreateRealEstateModal.jsx` - Property creation modal
 - `/app/frontend/src/pages/RealEstateDetails.jsx` - Property details with XIRR display
-- `/app/backend/server.py` - API endpoints
+- `/app/frontend/src/pages/Dashboard.jsx` - Analytics Dashboard with charts
+- `/app/backend/server.py` - API endpoints including dashboard
 
 ## Test Credentials
-- Broker: PAN: `ABCDE1234F`, Password: `broker123`, PIN: `1234`
-- Sub-broker: PAN: `FGHIJ5678K`, Password: `subbroker123`, PIN: `5678`
+- Broker: PAN: `BROKER001A`, Password: `broker123`, PIN: `1234`
+- Sub-broker: PAN: `SB001` (Mike SubBroker), `SB002` (Nina SubBroker)
+- Clients: Alice Client (`ALICE0001A`), Bob Client (`BOBCL0002B`), Frank Client (`FRANKCL02F`)
