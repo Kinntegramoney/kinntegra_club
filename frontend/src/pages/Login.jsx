@@ -202,14 +202,29 @@ export default function Login() {
               </Button>
 
               <div className="text-center mt-4">
-                <button
-                  type="button"
+                <Link
+                  to="/forgot-password"
                   className="text-sm hover:underline"
                   style={{ color: '#9CA3AF' }}
-                  onClick={() => toast.info("Please contact administrator")}
+                  data-testid="forgot-password-link"
                 >
                   Forgot Password?
-                </button>
+                </Link>
+              </div>
+
+              {/* Signup Link */}
+              <div className="text-center mt-4 pt-4 border-t" style={{ borderColor: '#E5E7EB' }}>
+                <p className="text-sm" style={{ color: '#6B7280' }}>
+                  Don't have an account?{" "}
+                  <Link
+                    to="/signup"
+                    className="font-medium hover:underline"
+                    style={{ color: '#D4A853' }}
+                    data-testid="signup-link"
+                  >
+                    Sign Up
+                  </Link>
+                </p>
               </div>
             </div>
           </form>
@@ -270,14 +285,14 @@ export default function Login() {
               </Button>
 
               <div className="text-center mt-4">
-                <button
-                  type="button"
+                <Link
+                  to="/forgot-password"
                   className="text-sm hover:underline"
                   style={{ color: '#9CA3AF' }}
-                  onClick={() => toast.info("Please contact administrator")}
+                  data-testid="forgot-pin-link"
                 >
                   Forgot PIN?
-                </button>
+                </Link>
               </div>
 
               <div className="text-center mt-6">
