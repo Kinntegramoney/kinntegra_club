@@ -3,12 +3,13 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from typing import Optional
 import secrets
+import os
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT settings
-SECRET_KEY = secrets.token_urlsafe(32)  # In production, use environment variable
+# JWT settings - Use environment variable or generate a stable key
+SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'k8sN2vX9pL4mQ7wR1tY6uZ3aE5cF0gH8jB')  # Fallback for dev
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 10080  # 7 days
 
