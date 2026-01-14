@@ -890,6 +890,58 @@ export default function RealEstateDetails() {
             </div>
           )}
 
+          {/* XIRR Comparison Report Section - Below Payments */}
+          {isFullyAllocated && opp.investors && opp.investors.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-indigo-600" />
+                  XIRR Comparison Report
+                  <span className="text-xs font-normal text-gray-500 ml-2">Projected vs Actual Currency Rates</span>
+                </h2>
+                {user?.role === 'broker' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowCurrencySettingsModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Currency Settings
+                  </Button>
+                )}
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-4">
+                Compare expected XIRR (based on projected currency rates) vs actual XIRR (based on actual transaction rates) for each investor.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {opp.investors.map((investor, idx) => (
+                  <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-800">{investor.client_name || `Investor ${idx + 1}`}</span>
+                      <Badge variant="outline">{investor.share_percentage || 25}%</Badge>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3">Share: AED {formatCurrency(opp.total_cost * (investor.share_percentage || 25) / 100)}</p>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedInvestorForXirr(investor);
+                        setShowXirrComparisonModal(true);
+                      }}
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      View Report
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* XIRR Calculator */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
