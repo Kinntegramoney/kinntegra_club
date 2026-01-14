@@ -621,7 +621,11 @@ export default function RealEstateDetails() {
                       <th className="text-right py-2 px-3 text-gray-500 font-medium">%</th>
                       <th className="text-right py-2 px-3 text-gray-500 font-medium">Amount (AED)</th>
                       {isFullyAllocated && (
-                        <th className="text-center py-2 px-3 text-gray-500 font-medium">Progress</th>
+                        <>
+                          <th className="text-center py-2 px-3 text-gray-500 font-medium">Invoices</th>
+                          <th className="text-center py-2 px-3 text-gray-500 font-medium">Payments</th>
+                          <th className="text-center py-2 px-3 text-gray-500 font-medium">Receipts</th>
+                        </>
                       )}
                       <th className="text-center py-2 px-3 text-gray-500 font-medium">Status</th>
                     </tr>
@@ -633,7 +637,19 @@ export default function RealEstateDetails() {
                       const verifiedCount = milestonePayments.filter(p => p.status === 'verified').length;
                       const pendingCount = milestonePayments.filter(p => p.status === 'pending_verification').length;
                       const totalInvestors = opp.investors?.length || 0;
-                      const progressPercent = totalInvestors > 0 ? Math.round((verifiedCount / totalInvestors) * 100) : 0;
+                      
+                      // Count invoices sent for this milestone
+                      const invoicesSent = opp.investor_invoices?.filter(inv => inv.milestone_index === idx).length || 0;
+                      const invoicePercent = totalInvestors > 0 ? Math.round((invoicesSent / totalInvestors) * 100) : 0;
+                      
+                      // Count payments recorded for this milestone
+                      const paymentsRecorded = milestonePayments.length;
+                      const paymentPercent = totalInvestors > 0 ? Math.round((verifiedCount / totalInvestors) * 100) : 0;
+                      
+                      // Count developer receipts uploaded for this milestone
+                      const receiptsUploaded = milestonePayments.filter(p => p.developer_receipt).length;
+                      const receiptPercent = totalInvestors > 0 ? Math.round((receiptsUploaded / totalInvestors) * 100) : 0;
+                      
                       // Check if property is fully funded (100% allocated)
                       const propertyFullyFunded = opp.status === 'fully_invested' || 
                         (opp.invested_percentage && opp.invested_percentage >= 99.99) ||
@@ -647,22 +663,47 @@ export default function RealEstateDetails() {
                           <td className="py-3 px-3 text-right font-medium">{payment.percentage}%</td>
                           <td className="py-3 px-3 text-right font-mono">{formatCurrency(opp.unit_price * payment.percentage / 100)}</td>
                           {isFullyAllocated && (
-                            <td className="py-3 px-3">
-                              {totalInvestors > 0 && (
-                                <div className="flex items-center gap-2">
-                                  <div className="flex-1 bg-gray-200 rounded-full h-2 w-16">
+                            <>
+                              {/* Invoices Progress */}
+                              <td className="py-3 px-3">
+                                <div className="flex flex-col items-center gap-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
                                     <div 
-                                      className="bg-green-500 h-2 rounded-full transition-all" 
-                                      style={{ width: `${progressPercent}%` }} 
+                                      className="bg-blue-500 h-2 rounded-full transition-all" 
+                                      style={{ width: `${invoicePercent}%` }} 
                                     />
                                   </div>
-                                  <span className="text-xs text-gray-500">{verifiedCount}/{totalInvestors}</span>
+                                  <span className="text-xs text-blue-600 font-medium">{invoicesSent}/{totalInvestors}</span>
+                                </div>
+                              </td>
+                              {/* Payments Progress */}
+                              <td className="py-3 px-3">
+                                <div className="flex flex-col items-center gap-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-green-500 h-2 rounded-full transition-all" 
+                                      style={{ width: `${paymentPercent}%` }} 
+                                    />
+                                  </div>
+                                  <span className="text-xs text-green-600 font-medium">{verifiedCount}/{totalInvestors}</span>
                                   {pendingCount > 0 && (
-                                    <span className="text-xs text-amber-600">({pendingCount} pending)</span>
+                                    <span className="text-[10px] text-amber-600">({pendingCount} pending)</span>
                                   )}
                                 </div>
-                              )}
-                            </td>
+                              </td>
+                              {/* Receipts Progress */}
+                              <td className="py-3 px-3">
+                                <div className="flex flex-col items-center gap-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-purple-500 h-2 rounded-full transition-all" 
+                                      style={{ width: `${receiptPercent}%` }} 
+                                    />
+                                  </div>
+                                  <span className="text-xs text-purple-600 font-medium">{receiptsUploaded}/{totalInvestors}</span>
+                                </div>
+                              </td>
+                            </>
                           )}
                           <td className="py-3 px-3 text-center">
                             {!propertyFullyFunded ? (
