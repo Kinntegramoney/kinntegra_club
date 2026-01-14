@@ -2231,7 +2231,7 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
     setInvestorPayments(prev => ({
       ...prev,
       [clientId]: {
-        ...(prev[clientId] || { transfer_date: "", home_currency: "INR", home_currency_amount: "", aed_amount: "", notes: "" }),
+        ...(prev[clientId] || { transfer_date: "", home_currency: "INR", home_currency_amount: "", aed_rate: "", aed_amount: "", notes: "" }),
         [field]: value
       }
     }));
