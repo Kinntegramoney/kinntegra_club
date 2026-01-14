@@ -1329,6 +1329,26 @@ export default function RealEstateDetails() {
           }}
         />
       )}
+
+      {/* Invoice Upload Modal */}
+      {showInvoiceUploadModal && selectedInvoiceMilestone && (
+        <InvoiceUploadModal
+          opportunity={opp}
+          milestone={selectedInvoiceMilestone.milestone}
+          investor={selectedInvoiceMilestone.investor}
+          amount={selectedInvoiceMilestone.amount}
+          onClose={() => {
+            setShowInvoiceUploadModal(false);
+            setSelectedInvoiceMilestone(null);
+          }}
+          onSuccess={() => {
+            setShowInvoiceUploadModal(false);
+            setSelectedInvoiceMilestone(null);
+            fetchData();
+            toast.success("Invoice uploaded successfully!");
+          }}
+        />
+      )}
     </div>
   );
 }
