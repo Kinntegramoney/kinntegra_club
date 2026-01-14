@@ -1,143 +1,165 @@
 <analysis>**original_problem_statement:**
-The initial request was to build a B2B platform for brokers and sub-brokers to manage secondary market Non-Convertible Debenture (NCD) and Real Estate transactions.
+The user initially requested a B2B platform for brokers to manage secondary market Non-Convertible Debentures (NCD) and Real Estate transactions.
 
 **PRODUCT REQUIREMENTS added this session:**
-1.  **Simplify Real Estate**: Focus exclusively on Off-Plan properties, removing Fractional.
-2.  **Revamp Off-Plan Creation**: Update fee structure (DLD%, Admin absolute), base payment schedule on Unit Price only, and add a Unit Selling Fee.
-3.  **Enhance UI/UX**:
-    *   Fix sorting of payment milestones in the creation modal.
-    *   Move XIRR/Profit calculation from the creation modal to the details page.
-    *   Redesign property cards on the opportunities page to show more details.
-4.  **Interactive XIRR Calculator**: On the details page, create a calculator to project XIRR based on user-defined sale stage, date, and price.
-5.  **Role-Based Actions**:
-    *   Interested/Participate buttons on the details page should only be visible to clients.
-    *   Brokers/sub-brokers should instead see a Share with Clients feature to send opportunities and receive notifications upon client interest.
-6.  **Payment Management System**:
-    *   Implement a system to track payments per investor for each milestone, including home currency amount, effective exchange rate, and SWIFT copy uploads.
-    *   Add a section for uploading the Oqood (property registration) document.
-7.  **Verification Flow & Permissions**:
-    *   Recorded payments must be verified by a broker before being marked as complete.
-    *   The Payment Management and Oqood sections must have strict visibility rules based on user role (co-owner, sub-broker) and opportunity status (fully funded, first payment verified).
-8.  **Client Holdings**: Create a Holdings page for clients to view their real estate investments.
+1.  **Fix Visibility Logic**: Correct a critical bug where payment management and Oqood upload sections were visible prematurely.
+2.  **Refine Funding Logic**: Base the fully funded status on the total investment percentage (100%) rather than a hardcoded count of 4 investors.
+3.  **Enhance Payment Management**:
+    *   Create a modal to record payments for all investors in a single milestone at once.
+    *   Show proportionate payment amounts for each investor based on their share percentage.
+    *   Allow brokers to record payments, not just clients/sub-brokers.
+    *   Remove the redundant Manage Payments header button.
+    *   Hide the Share with Clients button for fully funded deals.
+4.  **Add Presentation Management**: Implement functionality to upload presentation files when creating a real estate opportunity and allow them to be downloaded from the details page.
+5.  **Data Management**: Provide a mechanism to clear all data (users, opportunities) and re-seed with test accounts.
+6.  **Bulk Upload Module**: Create a comprehensive feature for bulk uploading Sub-Brokers, Clients, Bonds, and Real Estate opportunities via Excel templates.
+7.  **Bond Form Enhancements**:
+    *   Add a Bond Code field.
+    *   Add a Minimum Units field.
+    *   Hide Coupon Rate and Primary IRR from the user-facing details pages.
+8.  **UI/UX Improvements**:
+    *   Rename Create Sub Broker/Client to Add Sub Broker/Client.
+    *   Use comma separators for all currency values across the application.
+    *   Improve the UI for selecting investment bounds on the  page.
+9.  **Logging**: Make payment proofs visible in logs after approval or rejection.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack financial platform for managing NCD bonds and Off-Plan Real Estate opportunities. The application has a role-based workflow for brokers, sub-brokers, and clients. Key features include creating real estate opportunities, sharing them with clients, and an in-depth  page. This page features an interactive XIRR calculator, role-specific action buttons, and a comprehensive (but buggy) payment management system for tracking investor payments against milestones, complete with a broker verification flow and document upload capabilities. A  page also exists for clients to view their investments.
+A full-stack financial platform with role-based access for brokers, sub-brokers, and clients to manage NCD bonds and Off-Plan Real Estate. The application features a detailed real-estate page with an interactive XIRR calculator, role-based action buttons, and a sophisticated payment management system that supports proportionate investor shares and multi-investor payment recording. A new, comprehensive bulk upload module allows for the creation of sub-brokers, clients, bonds, and real estate opportunities from Excel files. The system also supports uploading and downloading property-specific presentations.
 
 **Last working item**:
-- **Last item agent was working**: The agent was attempting to fix a critical visibility bug on the  page. The user reported that the Manage Payment button and the Oqood upload section were visible to brokers at incorrect times, violating the business logic. Specifically, the Oqood section should only appear after the first payment milestone (20% down payment + DLD/Admin fees) is fully paid and verified.
+- **Last item agent was working**: The agent was implementing a user request on the  page to improve the investment calculation UI. This involved three parts: formatting the Approximate Investment input with commas, adding a visual selection indicator (border and Selected text) to the upper/lower bound cards, and making payment proofs visible in logs. The agent was actively editing  to implement the selection indicator.
 - **Status**: IN PROGRESS
 - **Agent Testing Done**: N
-- **Which testing method agent to use?**: . The agent must log in as a broker, navigate to a property where the initial payment has **not** been verified, and take a screenshot to confirm the Oqood and Manage Payment sections are hidden.
-- **User Testing Done**: Y (User identified and reported the bug).
+- **Which testing method agent to use?**: . The next agent should log in as a client, navigate to a bond's detail page, and take a screenshot to verify that clicking an investment bound (e.g., Lower Bound) adds a visual border and Selected text, and that typing in the Approximate Investment field uses comma formatting.
+- **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Incorrect Visibility Logic for Payment/Oqood Sections (P0)**
-    - **Description**: In , the Manage Payment and Oqood Upload sections are displayed to users before the required conditions are met. This breaks the intended workflow.
-    - **Attempted fixes**: The agent created  and  helper variables to conditionally render these sections. However, the underlying logic is flawed, as the user confirmed the sections are still visible prematurely.
-    - **Next debug checklist**:
+-   **Issue 1: Incomplete UI update on BondDetails page (P0)**
+    -   **Description**: The user requested a visual selection indicator for the investment bounds. The agent added the  state but has not finished the implementation. The selection state does not reset when the user types a new amount in the Approximate Investment input.
+    -   **Attempted fixes**: The agent added  state and started modifying the JSX to include conditional styling.
+    -   **Next debug checklist**:
         1.  Open .
-        2.  Locate the  memoized variable. Its logic must be updated to check if all payments associated with the *first milestone* in  have a status of .
-        3.  Review the  logic to ensure it strictly checks that the opportunity is fully funded AND the current user is a co-owner or their managing sub-broker.
-    - **Why fix this issue and what will be achieved with the fix?**: This is a critical business logic flaw. Fixing it will enforce the correct user workflow and prevent unauthorized actions or data entry.
-    - **Status**: IN PROGRESS
-    - **Is recurring issue?**: Y
-    - **Should Test frontend/backend/both after fix?**: frontend
-    - **Blocked on other issue**: None
+        2.  Find the  function.
+        3.  Inside this function, add  to ensure any previous bound selection is cleared when the user types a new value.
+        4.  Verify the JSX logic for the bound cards correctly uses  to apply classes like  and display Selected.
+    -   **Why fix this issue and what will be achieved with the fix?**: This will complete the user-requested UI enhancement, making the investment calculator more intuitive for clients.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: frontend
+    -   **Blocked on other issue**: None
+
+-   **Issue 2: Implement Payment Proof Visibility in Logs (P1)**
+    -   **Description**: User requested that payment proofs (SWIFT copies) be visible in logs after they are approved or rejected. The term logs is ambiguous and requires clarification.
+    -   **Attempted fixes**: None.
+    -   **Next debug checklist**:
+        1.  Ask the user for clarification: What do they envision for logs? Is it a new Payment History page, an audit trail section on the details page, or something else?
+        2.  Based on user feedback, plan the implementation, which will likely require a new UI component and a backend endpoint to fetch payment history with status and document URLs.
+    -   **Why fix this issue and what will be achieved with the fix?**: It will provide transparency and a historical record of payment verifications, which is crucial for financial tracking.
+    -   **Status**: NOT STARTED
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: both
+    -   **Blocked on other issue**: User clarification.
 
 **In progress Task List**:
-- None.
+-   **Task 1: Complete BondDetails UI Enhancement (P0)**
+    -   **Where to resume**: . The agent needs to add  to the  function to finalize the investment bound selection logic.
+    -   **What will be achieved with this?**: A more interactive and user-friendly interface for calculating bond investments.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: frontend
+    -   **Blocked on something**: None.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks**:
-    - **(P0) End-to-End Test of Payment Verification Flow**: While the components exist, the full lifecycle (record payment -> broker verifies -> status updates -> UI progress reflects change) needs a complete test run.
-    - **(P1) Dashboard Charts and Analytics**: Implement dashboard charts for brokers to visualize key metrics.
-    - **(P1) General Export to Excel**: Add a feature to export bond and real estate data from the main list views.
+    - **(P0) End-to-End Test of Bulk Uploads**: Thoroughly test the bulk upload functionality for sub-brokers, clients, bonds, and real estate with both valid and invalid data to ensure stability.
 - **Future Tasks**:
-    - **Email Integration**: For notifications when sharing opportunities or for client verification.
-    - **End-to-End Testing of Client Reinvestment Approval**: A legacy feature that was never fully tested.
+    - **Dashboard Charts and Analytics**: Implement visual dashboards for brokers.
+    - **General Export to Excel**: Add export functionality to data tables.
+    - **Email Integration**: Set up email notifications for key events.
+    - **Refactor **: Break down the monolithic 2,500+ line component into smaller, manageable pieces.
 
 **Completed work in this session**
-- **Fixed** the payment milestone sorting bug in .
-- **Redesigned** the property cards on the  page with more details.
-- **Moved and Enhanced** the XIRR calculation to the  page, making it interactive and correcting the underlying formula.
-- **Added** an Excel download feature for the XIRR cash flow.
-- **Implemented Role-Based UI**: Brokers now see a Share with Clients button on the details page, while clients see Interested/Participate buttons. This includes the backend sharing endpoint and a notification system for brokers.
-- **Implemented Per-Investor Payment Management**: Created the UI/modals for recording individual investor payments, uploading SWIFT/Oqood documents, and added the corresponding backend endpoints.
-- **Implemented Payment Verification Flow**: Backend endpoints and UI elements are in place for a broker to verify payments recorded by users.
-- **Created Client Holdings Page**: Updated  with a tabbed view to show both Bond and Real Estate investments.
-- **Numerous UI/UX Fixes**: Addressed multiple user requests, including removing redundant information, correcting fee calculations, and adjusting UI component behavior.
+- **Fixed Visibility Bug**: Corrected the logic in  to properly hide/show the Payment Management and Oqood sections.
+- **Refactored Funding Logic**: The fully funded status is now correctly based on investment percentage, not a fixed number of investors.
+- **Enhanced Payment Management**: Implemented a modal for recording payments for all investors at once, enabled brokers to record payments, and hid the Share with Clients button on funded deals.
+- **Added Presentation Upload/Download**: Implemented the feature for real estate opportunities.
+- **Implemented Bulk Upload Module**: Created backend endpoints and a unified frontend page for bulk uploading Sub-Brokers, Clients, Bonds, and Real Estate.
+- **Enhanced Bond Creation**: Added Bond Code and Minimum Units fields and hid Coupon Rate and Primary IRR from UI displays.
+- **UI Improvements**: Renamed Create to Add for users, and implemented comma formatting for all numbers.
+- **Database Cleared**: Wiped the database and re-seeded test users as requested.
 
 **Earlier issues found/mentioned but not fixed**
-- **Client Approval for Reinvestment Tags**: A feature from a previous session that was marked complete but never functionally tested.
+- **Client Approval for Reinvestment Tags**: A legacy feature from a previous session that was marked complete but never functionally tested.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend**: FastAPI, MongoDB (motor), Pydantic for data validation, Passlib for authentication.
-- **Frontend**: React (Hooks: , , ), React Router, Tailwind CSS, Axios for API calls.
+- **Backend**: FastAPI, MongoDB (motor), Pydantic.  was installed and used for parsing Excel files in bulk upload endpoints.
+- **Frontend**: React (Hooks), React Router, Tailwind CSS, Axios.
 
 **key DB schema**
-- **real_estate_opportunities**: Contains all property data. The  array's milestone objects now contain payment records with a  field ( or ). Also includes .
-- **notifications**: Stores records for events like  and .
+-   **real_estate_opportunities**: Now contains a  array (list of file paths). The  array objects now include a  key.
+-   **bonds**: The schema now includes  (string) and  (integer).
 
 **All files of reference**
-- : This is the most critical file. It contains the current bug and most of the new features from this session.
-- : All backend logic resides here, including the new endpoints for sharing, payment management, and verification.
-- : The updated client-facing holdings page.
+-  (File being actively modified for the current task)
+-  (Heavily modified to add bulk upload endpoints and update data models)
+-  (Significantly refactored to fix bugs and add features)
+-  (New file for the bulk upload feature)
+-  (Updated for presentation uploads)
+-  (Updated to add new fields)
 
 **Areas that need refactoring**:
--  is over 2,500 lines long and contains multiple modal definitions and complex state management. It urgently needs to be broken down into smaller, reusable components (e.g., , , ) to improve maintainability and reduce the risk of bugs.
+-  is over 2,500 lines. It is the primary source of technical debt and a high-risk area for future bugs. It urgently needs to be broken down into smaller components.
 
 **key api endpoints**
-- : Shares an opportunity with clients.
-- : Expresses client interest and notifies the broker.
-- : Records an investor's payment with  status.
-- : Broker verifies a payment.
-- : Uploads the Oqood document.
+- 
+- 
+- 
+- 
+- 
 
 **Critical Info for New Agent**
-- **TOP PRIORITY (P0)**: You must fix the visibility bug in . The Oqood section and Manage Payment controls are appearing before they should. The logic inside the  and  helper variables is flawed and needs to be corrected based on the user's explicit rules.
-- **Refactoring Needed**: The  file is extremely large and complex. While your primary goal is to fix the bug, be aware that this complexity is a likely source of issues. Any new feature implementation in this file will be difficult without refactoring.
-- **Follow the Workflow**: The application has a defined workflow (Create -> Share -> Participate -> Fund -> Track Payments -> Verify). Ensure your fixes respect this flow.
-- **User is a good tester**: The user provides detailed and accurate feedback. Trust their bug reports and address them directly.
+- Your immediate priority is to complete the UI enhancement on the  page by adding the reset logic for the selected investment bound.
+- After finishing the UI task, you must seek clarification from the user regarding the payment proof in logs feature before proceeding with its implementation.
+- The database has been recently cleared and re-seeded. Use the credentials provided below for all testing.
+- The  component, while functional, is extremely large. Propose refactoring it to the user as a future task to improve maintainability.
 
 **documents and test reports created in this job**
--  (updated)
+- 
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Reported the visibility bug for the Oqood and Manage Payment sections, specifying the correct logic. (PENDING)
-2.  **Agent**: Announced the implementation of the payment verification flow and client holdings page.
-3.  **User**: Defined the payment verification flow, visibility rules, and requested the client holdings page. (Partially Implemented, bug found).
-4.  **Agent**: Announced the implementation of the per-investor payment management system.
-5.  **User**: Provided requirements for the payment management system. (Implemented).
-6.  **Agent**: Announced the implementation of the role-based Share vs Interest UI.
-7.  **User**: Defined the requirements for role-based UI and notifications. (Implemented).
-8.  **Agent**: Fixed UI issues (Progress bar, current rate calculation).
-9.  **User**: Reported more UI issues needing fixes. (Completed).
-10. **Agent**: Fixed UI issues (Selling fee, Manage button, XIRR slider).
+1.  **User**: Requested UI fixes for bound selection on  and visibility for payment proofs in logs. (PENDING)
+2.  **Agent**: Summarized number formatting changes. (Completed)
+3.  **User**: Requested comma formatting in all numbers. (Completed)
+4.  **Agent**: Summarized changes to hide IRR/Coupon and add minimum units to bonds. (Completed)
+5.  **User**: Requested hiding Coupon/Primary IRR and adding a Minimum Units field to bonds. (Completed)
+6.  **Agent**: Confirmed bulk upload buttons were added. (Completed)
+7.  **User**: Requested that bulk upload buttons be added to their respective add pages. (Completed)
+8.  **Agent**: Provided login credentials after fixing a backend crash. (Completed)
+9.  **User**: Reported an invalid pan and password error. (Resolved)
+10. **Agent**: Summarized the implementation of the bulk upload module. (Completed)
 
 **Project Health Check:**
-- **Broken**: Yes. A critical business logic and permissions bug prevents the payment management workflow from functioning as designed.
+- **Broken**: No. The application is in a stable state. The current task is an enhancement, not a critical bug fix.
 
 **3rd Party Integrations**
-- None.
+- **openpyxl**: Used on the backend for parsing  files for the bulk upload features.
 
 **Testing status**
-- **Testing agent used after significant changes**: NO
+- **Testing agent used after significant changes**: YES (For the visibility logic fix).
 - **Troubleshoot agent used after agent stuck in loop**: NO
 - **Test files created**: []
-- **Known regressions**: The visibility logic for payment management features is a new bug.
+- **Known regressions**: None.
 
 **Credentials to test flow:**
-Run 🌱 Seeding users...
-⚠️  65 users already exist
-Do you want to clear all users and reseed? (yes/no):  if needed.
 - **Broker**: PAN: , Password: , PIN: 
 - **Sub-broker**: PAN: , Password: , PIN: 
+- **Client**: PAN: , Password: , PIN: 
 
 **What agent forgot to execute**
-- The agent failed to correctly implement the complex, multi-condition visibility logic for the payment management and Oqood sections, leading to a bug the user had to report.
-- The agent has not yet addressed the technical debt of the massive  component, which is a significant risk to future development.</analysis>
+- The agent did not complete the full implementation for the investment bound selection UI on ; specifically, the logic to reset the selection state () when the user manually changes the investment amount is missing.
+- The agent has not yet started work on or clarified the requirements for making payment proofs visible in logs.</analysis>
