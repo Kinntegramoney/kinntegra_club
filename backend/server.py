@@ -6856,6 +6856,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+@app.on_event("startup")
+async def seed_default_broker():
+    """Create default broker account if it doesn't exist"""
+    try:
+        # Check if broker already exists
+        existing_broker = await db.users.find_one({"pan": "ANVPB5297J"})
+        
+        if not existing_broker:
+            # Create the default broker account
+            broker_data = {
+                "id": str(uuid.uuid4()),
+                "pan": "ANVPB5297J",
+                "name": "Broker Admin",
+                "email": "broker@kinntegraa.club",
+                "phone": "+91-9999999999",
+                "password_hash": get_password_hash("Laksh@0208"),
+                "pin_hash": get_password_hash("0516"),
+                "role": "broker",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.users.insert_one(broker_data)
+            logger.info("Default broker account created successfully: ANVPB5297J")
+        else:
+            logger.info("Broker account already exists: ANVPB5297J")
+    except Exception as e:
+        logger.error(f"Error seeding default broker: {e}")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
