@@ -3110,3 +3110,419 @@ function DeveloperReceiptModal({ opportunity, payment, investor, milestone, onCl
     </div>
   );
 }
+
+
+// Currency Settings Modal Component
+function CurrencySettingsModal({ onClose, onSuccess }) {
+  const [loading, setLoading] = useState(false);
+  const [projections, setProjections] = useState([]);
+  const currentYear = new Date().getFullYear();
+  
+  useEffect(() => {
+    fetchProjections();
+  }, []);
+  
+  const fetchProjections = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/settings/currency-projections`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.projections && response.data.projections.length > 0) {
+        setProjections(response.data.projections);
+      } else {
+        // Initialize with default years
+        const defaults = [];
+        for (let i = 0; i < 6; i++) {
+          defaults.push({ year: currentYear + i, currency: "INR", projected_rate: 22.5 });
+        }
+        setProjections(defaults);
+      }
+    } catch (error) {
+      console.error("Error fetching projections:", error);
+      // Initialize with defaults
+      const defaults = [];
+      for (let i = 0; i < 6; i++) {
+        defaults.push({ year: currentYear + i, currency: "INR", projected_rate: 22.5 });
+      }
+      setProjections(defaults);
+    }
+  };
+  
+  const updateProjection = (index, field, value) => {
+    const updated = [...projections];
+    updated[index] = { ...updated[index], [field]: field === 'projected_rate' || field === 'year' ? parseFloat(value) || 0 : value };
+    setProjections(updated);
+  };
+  
+  const addYear = () => {
+    const lastYear = projections.length > 0 ? projections[projections.length - 1].year : currentYear - 1;
+    setProjections([...projections, { year: lastYear + 1, currency: "INR", projected_rate: 22.5 }]);
+  };
+  
+  const removeYear = (index) => {
+    setProjections(projections.filter((_, i) => i !== index));
+  };
+  
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `${process.env.REACT_APP_BACKEND_URL}/api/settings/currency-projections`,
+        { projections },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Currency projections saved!");
+      onSuccess?.();
+      onClose();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to save projections");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-auto">
+        <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Settings className="h-5 w-5 text-indigo-600" />
+              Currency Rate Projections
+            </h2>
+            <p className="text-sm text-gray-500">Set projected exchange rates for XIRR calculations</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+        </div>
+        
+        <form onSubmit={handleSave} className="p-4 space-y-4">
+          <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
+            <strong>Note:</strong> These projected rates are used to calculate the "Expected XIRR" in comparison reports. 
+            Rates are defined as: 1 AED = X [Currency]
+          </div>
+          
+          <div className="space-y-3">
+            <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-2">
+              <div className="col-span-3">Year</div>
+              <div className="col-span-3">Currency</div>
+              <div className="col-span-4">Rate (per 1 AED)</div>
+              <div className="col-span-2"></div>
+            </div>
+            
+            {projections.map((proj, idx) => (
+              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                <div className="col-span-3">
+                  <Input
+                    type="number"
+                    value={proj.year}
+                    onChange={(e) => updateProjection(idx, 'year', e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <select
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    value={proj.currency}
+                    onChange={(e) => updateProjection(idx, 'currency', e.target.value)}
+                  >
+                    <option value="INR">INR</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                  </select>
+                </div>
+                <div className="col-span-4">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={proj.projected_rate}
+                    onChange={(e) => updateProjection(idx, 'projected_rate', e.target.value)}
+                    placeholder="e.g., 22.5"
+                    className="text-sm"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <button 
+                    type="button" 
+                    onClick={() => removeYear(idx)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <button
+            type="button"
+            onClick={addYear}
+            className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 flex items-center justify-center gap-2"
+          >
+            <Plus className="h-4 w-4" /> Add Year
+          </button>
+          
+          <div className="flex gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={loading} className="flex-1 bg-indigo-600 hover:bg-indigo-700">
+              {loading ? "Saving..." : "Save Projections"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// XIRR Comparison Report Modal Component
+function XirrComparisonModal({ opportunity, investor, onClose }) {
+  const [loading, setLoading] = useState(true);
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    if (investor?.client_id) {
+      fetchReport();
+    }
+  }, [investor]);
+  
+  const fetchReport = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opportunity.id}/xirr-comparison/${investor.client_id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setReport(response.data);
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to load report");
+      console.error("Error fetching XIRR comparison:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const exportToExcel = () => {
+    if (!report) return;
+    
+    const csv = [];
+    
+    // Header
+    csv.push(["XIRR COMPARISON REPORT"]);
+    csv.push([]);
+    csv.push(["Property", report.opportunity.building_name]);
+    csv.push(["Unit", report.opportunity.unit_number]);
+    csv.push(["Investor", report.investor.name]);
+    csv.push(["Share", `${report.investor.share_percentage}%`]);
+    csv.push(["Currency", report.investor.currency]);
+    csv.push([]);
+    
+    // Summary
+    csv.push(["SUMMARY"]);
+    csv.push(["Total Investment (AED)", report.summary.total_investment_aed.toFixed(2)]);
+    csv.push(["Total Projected (Home Currency)", report.summary.total_projected_home_currency.toFixed(2)]);
+    csv.push(["Total Actual (Home Currency)", report.summary.total_actual_home_currency.toFixed(2)]);
+    csv.push(["Currency Gain/Loss", report.summary.currency_gain_loss.toFixed(2)]);
+    csv.push(["Currency Impact %", `${report.summary.currency_gain_loss_percentage.toFixed(2)}%`]);
+    csv.push([]);
+    csv.push(["Expected XIRR (Projected Rates)", report.summary.xirr_projected ? `${report.summary.xirr_projected.toFixed(2)}%` : 'N/A']);
+    csv.push(["Actual XIRR (Actual Rates)", report.summary.xirr_actual ? `${report.summary.xirr_actual.toFixed(2)}%` : 'N/A']);
+    csv.push(["XIRR Difference", report.summary.xirr_difference ? `${report.summary.xirr_difference.toFixed(2)}%` : 'N/A']);
+    csv.push([]);
+    
+    // Projected Cashflows
+    csv.push(["PROJECTED CASHFLOWS"]);
+    csv.push(["Date", "Description", "AED Amount", "Projected Rate", "Home Currency Amount", "Type"]);
+    report.cashflows_projected.forEach(cf => {
+      csv.push([
+        cf.date,
+        cf.description,
+        cf.aed_amount.toFixed(2),
+        cf.projected_rate.toFixed(4),
+        cf.home_currency_amount.toFixed(2),
+        cf.type
+      ]);
+    });
+    csv.push([]);
+    
+    // Actual Cashflows
+    csv.push(["ACTUAL CASHFLOWS"]);
+    csv.push(["Date", "Description", "AED Amount", "Actual Rate", "Home Currency Amount", "Type", "Paid"]);
+    report.cashflows_actual.forEach(cf => {
+      csv.push([
+        cf.date,
+        cf.description,
+        cf.aed_amount.toFixed(2),
+        cf.actual_rate.toFixed(4),
+        cf.home_currency_amount.toFixed(2),
+        cf.type,
+        cf.is_paid ? 'Yes' : 'No'
+      ]);
+    });
+    
+    // Convert to CSV string
+    const csvContent = csv.map(row => row.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `XIRR_Comparison_${report.opportunity.building_name.replace(/\s+/g, '_')}_${report.investor.name.replace(/\s+/g, '_')}.csv`;
+    link.click();
+    toast.success("Report exported!");
+  };
+  
+  const formatCurrency = (val) => {
+    if (val === null || val === undefined) return '0';
+    return val.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-auto">
+        <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between z-10">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-indigo-600" />
+              XIRR Comparison Report
+            </h2>
+            <p className="text-sm text-gray-500">{investor?.client_name || 'Investor'} - {investor?.share_percentage || 25}% Share</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {report && (
+              <Button variant="outline" size="sm" onClick={exportToExcel}>
+                <Download className="h-4 w-4 mr-2" /> Export Excel
+              </Button>
+            )}
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+          </div>
+        </div>
+        
+        <div className="p-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              <span className="ml-3 text-gray-600">Loading report...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12 text-red-600">
+              <p>{error}</p>
+              <Button variant="outline" onClick={fetchReport} className="mt-4">Retry</Button>
+            </div>
+          ) : report ? (
+            <div className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-indigo-50 rounded-lg p-4">
+                  <p className="text-xs text-indigo-600 font-medium">Expected XIRR</p>
+                  <p className="text-2xl font-bold text-indigo-800">
+                    {report.summary.xirr_projected !== null ? `${report.summary.xirr_projected.toFixed(2)}%` : 'N/A'}
+                  </p>
+                  <p className="text-xs text-gray-500">Using projected rates</p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-4">
+                  <p className="text-xs text-emerald-600 font-medium">Actual XIRR</p>
+                  <p className="text-2xl font-bold text-emerald-800">
+                    {report.summary.xirr_actual !== null ? `${report.summary.xirr_actual.toFixed(2)}%` : 'N/A'}
+                  </p>
+                  <p className="text-xs text-gray-500">Using actual rates</p>
+                </div>
+                <div className={`rounded-lg p-4 ${report.summary.xirr_difference >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <p className="text-xs text-gray-600 font-medium">XIRR Difference</p>
+                  <p className={`text-2xl font-bold ${report.summary.xirr_difference >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                    {report.summary.xirr_difference !== null ? `${report.summary.xirr_difference >= 0 ? '+' : ''}${report.summary.xirr_difference.toFixed(2)}%` : 'N/A'}
+                  </p>
+                  <p className="text-xs text-gray-500">{report.summary.xirr_difference >= 0 ? 'Better than expected' : 'Below expected'}</p>
+                </div>
+                <div className={`rounded-lg p-4 ${report.summary.currency_gain_loss >= 0 ? 'bg-green-50' : 'bg-amber-50'}`}>
+                  <p className="text-xs text-gray-600 font-medium">Currency Impact</p>
+                  <p className={`text-2xl font-bold ${report.summary.currency_gain_loss >= 0 ? 'text-green-800' : 'text-amber-800'}`}>
+                    {report.summary.currency_gain_loss >= 0 ? '+' : ''}{formatCurrency(report.summary.currency_gain_loss)}
+                  </p>
+                  <p className="text-xs text-gray-500">{report.investor.currency} {report.summary.currency_gain_loss >= 0 ? 'saved' : 'extra spent'}</p>
+                </div>
+              </div>
+              
+              {/* Investment Summary */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-medium text-gray-800 mb-3">Investment Summary</h3>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-500">Total AED Investment</p>
+                    <p className="font-semibold">AED {formatCurrency(report.summary.total_investment_aed)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Projected Total ({report.investor.currency})</p>
+                    <p className="font-semibold">{report.investor.currency} {formatCurrency(report.summary.total_projected_home_currency)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Actual Total ({report.investor.currency})</p>
+                    <p className="font-semibold">{report.investor.currency} {formatCurrency(report.summary.total_actual_home_currency)}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Cashflow Comparison Table */}
+              <div>
+                <h3 className="font-medium text-gray-800 mb-3">Cashflow Comparison</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border rounded-lg overflow-hidden">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="text-left p-3 font-medium text-gray-600">Date</th>
+                        <th className="text-left p-3 font-medium text-gray-600">Description</th>
+                        <th className="text-right p-3 font-medium text-gray-600">AED Amount</th>
+                        <th className="text-right p-3 font-medium text-indigo-600">Projected Rate</th>
+                        <th className="text-right p-3 font-medium text-indigo-600">Projected {report.investor.currency}</th>
+                        <th className="text-right p-3 font-medium text-emerald-600">Actual Rate</th>
+                        <th className="text-right p-3 font-medium text-emerald-600">Actual {report.investor.currency}</th>
+                        <th className="text-center p-3 font-medium text-gray-600">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report.cashflows_projected.map((cf, idx) => {
+                        const actualCf = report.cashflows_actual[idx];
+                        const diff = cf.home_currency_amount - (actualCf?.home_currency_amount || 0);
+                        return (
+                          <tr key={idx} className={`border-t ${cf.type === 'inflow' ? 'bg-green-50' : ''}`}>
+                            <td className="p-3">{cf.date || '-'}</td>
+                            <td className="p-3">{cf.description}</td>
+                            <td className="p-3 text-right font-medium">{cf.type === 'outflow' ? '-' : '+'}{formatCurrency(cf.aed_amount)}</td>
+                            <td className="p-3 text-right text-indigo-600">{cf.projected_rate.toFixed(4)}</td>
+                            <td className="p-3 text-right text-indigo-600">{formatCurrency(cf.home_currency_amount)}</td>
+                            <td className="p-3 text-right text-emerald-600">{actualCf?.actual_rate?.toFixed(4) || '-'}</td>
+                            <td className="p-3 text-right text-emerald-600">{actualCf ? formatCurrency(actualCf.home_currency_amount) : '-'}</td>
+                            <td className="p-3 text-center">
+                              {actualCf?.is_paid ? (
+                                <Badge className="bg-green-100 text-green-700">Paid</Badge>
+                              ) : cf.type === 'inflow' ? (
+                                <Badge className="bg-blue-100 text-blue-700">Expected</Badge>
+                              ) : (
+                                <Badge className="bg-amber-100 text-amber-700">Pending</Badge>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              
+              {/* Info Note */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                <strong>Note:</strong> The "Expected XIRR" uses projected currency rates set in Currency Settings. 
+                The "Actual XIRR" uses the actual exchange rates from recorded SWIFT transactions. 
+                Future payments and sale proceeds use projected rates for both calculations.
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
