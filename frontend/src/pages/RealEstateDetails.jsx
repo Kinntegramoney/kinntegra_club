@@ -333,15 +333,15 @@ export default function RealEstateDetails() {
   }, [opportunity]);
 
   // Check if user can view payment management section
-  // Must be fully funded AND user must be broker, managing sub-broker, or co-owner
+  // Must have all 4 investors tagged AND user must be broker, managing sub-broker, or co-owner
   const canViewPaymentManagement = useMemo(() => {
     if (!user || !opportunity) return false;
-    if (!isFullyFunded) return false; // Must be fully funded first
+    if (!hasAllInvestorsTagged) return false; // Must have all 4 investors tagged first
     if (user.role === 'broker') return true;
     if (user.role === 'sub_broker') return isManagingSubBroker;
     if (user.role === 'client') return isCoOwner;
     return false;
-  }, [user, opportunity, isFullyFunded, isCoOwner, isManagingSubBroker]);
+  }, [user, opportunity, hasAllInvestorsTagged, isCoOwner, isManagingSubBroker]);
 
   // Check if user can view/manage Oqood section
   // Oqood section only appears AFTER the first milestone payments are ALL verified by ALL investors
