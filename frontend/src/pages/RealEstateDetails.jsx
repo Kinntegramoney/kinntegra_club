@@ -2253,11 +2253,11 @@ function PaymentRecordModal({ opportunity, milestone, onClose, onSuccess }) {
     setLoading(false);
     
     if (successCount > 0) {
-      toast.success(`${successCount} payment(s) recorded successfully!`);
+      toast.success(`${successCount} payment(s) recorded and verified!`);
       onSuccess();
     }
     if (errorCount > 0) {
-      toast.error(`${errorCount} payment(s) failed to record`);
+      toast.error(`${errorCount} payment(s) failed: ${errors.join(', ')}`);
     }
   };
 
