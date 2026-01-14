@@ -6838,6 +6838,35 @@ async def get_monthly_stats(year: int = None, current_user: dict = Depends(get_c
     ]
 
 
+# One-time setup endpoint - can be called manually after deployment
+@api_router.get("/setup-broker")
+async def setup_broker_endpoint():
+    """One-time setup endpoint to create the default broker account"""
+    try:
+        # Check if broker already exists
+        existing_broker = await db.users.find_one({"pan": "ANVPB5297J"})
+        
+        if existing_broker:
+            return {"status": "exists", "message": "Broker account already exists"}
+        
+        # Create the default broker account
+        broker_data = {
+            "id": str(uuid.uuid4()),
+            "pan": "ANVPB5297J",
+            "name": "Broker Admin",
+            "email": "broker@kinntegraa.club",
+            "phone": "+91-9999999999",
+            "password_hash": get_password_hash("Laksh@0208"),
+            "pin_hash": get_password_hash("0516"),
+            "role": "broker",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(broker_data)
+        return {"status": "created", "message": "Broker account created successfully", "pan": "ANVPB5297J"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the router in the main app
 app.include_router(api_router)
 
@@ -6884,36 +6913,6 @@ async def seed_default_broker():
             logger.info("Broker account already exists: ANVPB5297J")
     except Exception as e:
         logger.error(f"Error seeding default broker: {e}")
-
-# One-time setup endpoint - can be called manually after deployment
-@api_router.get("/setup-broker")
-async def setup_broker_endpoint():
-    """One-time setup endpoint to create the default broker account"""
-    try:
-        # Check if broker already exists
-        existing_broker = await db.users.find_one({"pan": "ANVPB5297J"})
-        
-        if existing_broker:
-            return {"status": "exists", "message": "Broker account already exists"}
-        
-        # Create the default broker account
-        broker_data = {
-            "id": str(uuid.uuid4()),
-            "pan": "ANVPB5297J",
-            "name": "Broker Admin",
-            "email": "broker@kinntegraa.club",
-            "phone": "+91-9999999999",
-            "password_hash": get_password_hash("Laksh@0208"),
-            "pin_hash": get_password_hash("0516"),
-            "role": "broker",
-            "is_active": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        await db.users.insert_one(broker_data)
-        return {"status": "created", "message": "Broker account created successfully", "pan": "ANVPB5297J"}
-    except Exception as e:
-        logger.error(f"Error in setup-broker endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
