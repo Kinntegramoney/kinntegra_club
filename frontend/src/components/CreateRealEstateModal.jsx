@@ -36,6 +36,10 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     broker_fee: opportunity?.broker_fee || "",
     other_fees: opportunity?.other_fees || "",
     
+    // Developer Discount
+    developer_discount: opportunity?.developer_discount || "",
+    developer_discount_percentage: opportunity?.developer_discount_percentage || "",
+    
     // Unit Selling Fee (% of selling price, 0-2.5%)
     unit_selling_fee_percentage: opportunity?.unit_selling_fee_percentage || "",
     
