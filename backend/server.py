@@ -5414,6 +5414,47 @@ async def verify_investor_payment(
     return {"message": "Payment verified successfully"}
 
 
+@api_router.put("/real-estate-opportunities/{opportunity_id}/approve-receipt/{payment_id}")
+async def approve_developer_receipt(
+    opportunity_id: str,
+    payment_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Approve a developer receipt (broker only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can approve receipts")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Find and update the payment
+    payments = opportunity.get('investor_payments', [])
+    payment_found = False
+    
+    for i, payment in enumerate(payments):
+        if payment.get('id') == payment_id:
+            if not payment.get('developer_receipt'):
+                raise HTTPException(status_code=400, detail="No receipt uploaded for this payment")
+            payments[i]['receipt_approved'] = True
+            payments[i]['receipt_approved_by'] = current_user['id']
+            payments[i]['receipt_approved_by_name'] = current_user.get('name', current_user.get('pan_number'))
+            payments[i]['receipt_approved_at'] = datetime.now(timezone.utc).isoformat()
+            payment_found = True
+            break
+    
+    if not payment_found:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"investor_payments": payments}}
+    )
+    
+    return {"message": "Receipt approved successfully"}
+
+
 # Serve uploaded files
 @api_router.get("/uploads/{folder}/{filename}")
 async def serve_upload(folder: str, filename: str):
