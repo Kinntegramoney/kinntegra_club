@@ -239,7 +239,7 @@ class Partner(BaseModel):
 
 
 @api_router.post("/partners")
-async def create_partner(partner_data: PartnerCreate, current_user: dict = Depends(get_current_user)):
+async def create_partner(partner_data: PartnerCreate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     """Create a new sub-broker partner (brokers only)"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can create partners")
@@ -288,6 +288,19 @@ async def create_partner(partner_data: PartnerCreate, current_user: dict = Depen
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.partners.insert_one(partner)
+    
+    # Send welcome email in background (if email is provided)
+    if partner_data.email:
+        background_tasks.add_task(
+            send_welcome_email_subbroker,
+            subbroker_name=partner_data.name,
+            subbroker_email=partner_data.email,
+            pan=partner_data.pan.upper(),
+            password=partner_data.password,
+            pin=partner_data.pin,
+            partner_code=partner_data.partner_code,
+            broker_name=current_user.get('name', 'Your Broker')
+        )
     
     return {
         "id": partner['id'],
