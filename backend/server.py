@@ -4944,9 +4944,9 @@ async def record_investor_payment(
         {"$push": {"investor_payments": payment_record}}
     )
     
-    # Notify broker about pending payment verification
+    # Notify broker about pending payment verification (only if not already verified by broker)
     broker_id = opportunity.get('created_by')
-    if broker_id and current_user['id'] != broker_id:
+    if broker_id and current_user['id'] != broker_id and payment_status == "pending_verification":
         notification = {
             "id": str(uuid.uuid4()),
             "user_id": broker_id,
@@ -4961,11 +4961,19 @@ async def record_investor_payment(
         }
         await db.notifications.insert_one(notification)
     
-    return {
-        "message": "Payment recorded successfully. Pending broker verification.",
-        "payment_id": payment_record['id'],
-        "status": "pending_verification"
-    }
+    # Return appropriate message based on status
+    if payment_status == "verified":
+        return {
+            "message": "Payment recorded and automatically verified.",
+            "payment_id": payment_record['id'],
+            "status": "verified"
+        }
+    else:
+        return {
+            "message": "Payment recorded successfully. Pending broker verification.",
+            "payment_id": payment_record['id'],
+            "status": "pending_verification"
+        }
 
 
 @api_router.post("/real-estate-opportunities/{opportunity_id}/oqood")
