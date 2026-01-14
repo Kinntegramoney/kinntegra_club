@@ -183,6 +183,193 @@ async def login_step2(login: LoginStep2):
     }
 
 
+# Password Reset Routes
+@api_router.post("/auth/forgot-password")
+async def forgot_password(request: PasswordResetRequest, background_tasks: BackgroundTasks):
+    """Request password reset - sends email with reset token"""
+    # Find user by PAN and email
+    user = await db.users.find_one({
+        "pan": request.pan.upper(),
+        "email": request.email.lower()
+    })
+    
+    if not user:
+        # Don't reveal if user exists or not for security
+        return {"message": "If your PAN and email match our records, you will receive a reset link"}
+    
+    # Create reset token (expires in 1 hour)
+    reset_token = create_access_token(
+        data={"user_id": user['id'], "type": "password_reset"},
+        expires_delta=timedelta(hours=1)
+    )
+    
+    # Store reset token in database
+    await db.password_resets.insert_one({
+        "user_id": user['id'],
+        "token": reset_token,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "used": False
+    })
+    
+    # Send reset email
+    try:
+        background_tasks.add_task(
+            send_password_reset_email,
+            user['email'],
+            user['name'],
+            reset_token
+        )
+    except Exception as e:
+        logger.error(f"Error sending reset email: {e}")
+    
+    return {"message": "If your PAN and email match our records, you will receive a reset link"}
+
+
+@api_router.post("/auth/reset-password")
+async def reset_password(request: PasswordResetConfirm):
+    """Reset password and PIN using reset token"""
+    # Verify token
+    payload = verify_token(request.reset_token)
+    
+    if not payload or payload.get("type") != "password_reset":
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    user_id = payload.get("user_id")
+    
+    # Check if token was already used
+    reset_record = await db.password_resets.find_one({
+        "user_id": user_id,
+        "token": request.reset_token,
+        "used": False
+    })
+    
+    if not reset_record:
+        raise HTTPException(status_code=400, detail="Reset token already used or invalid")
+    
+    # Validate new password and PIN
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    if len(request.new_pin) != 4 or not request.new_pin.isdigit():
+        raise HTTPException(status_code=400, detail="PIN must be exactly 4 digits")
+    
+    # Update user password and PIN
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "password_hash": get_password_hash(request.new_password),
+            "pin_hash": get_password_hash(request.new_pin)
+        }}
+    )
+    
+    # Mark token as used
+    await db.password_resets.update_one(
+        {"_id": reset_record["_id"]},
+        {"$set": {"used": True}}
+    )
+    
+    return {"message": "Password and PIN reset successfully. You can now login with your new credentials."}
+
+
+@api_router.get("/auth/verify-reset-token/{token}")
+async def verify_reset_token(token: str):
+    """Verify if a reset token is valid"""
+    payload = verify_token(token)
+    
+    if not payload or payload.get("type") != "password_reset":
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    # Check if token was already used
+    reset_record = await db.password_resets.find_one({
+        "token": token,
+        "used": False
+    })
+    
+    if not reset_record:
+        raise HTTPException(status_code=400, detail="Reset token already used")
+    
+    return {"valid": True, "message": "Token is valid"}
+
+
+# Customer Self-Registration
+@api_router.post("/auth/customer-signup")
+async def customer_signup(signup: CustomerSignup):
+    """Allow customers to sign up directly"""
+    # Validate PAN format (basic validation)
+    pan = signup.pan.upper().strip()
+    if len(pan) != 10:
+        raise HTTPException(status_code=400, detail="PAN must be exactly 10 characters")
+    
+    # Check if PAN already exists
+    existing_user = await db.users.find_one({"pan": pan})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="PAN already registered. Please login or reset your password.")
+    
+    # Check if email already exists
+    existing_email = await db.users.find_one({"email": signup.email.lower()})
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Validate password
+    if len(signup.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    # Validate PIN
+    if len(signup.pin) != 4 or not signup.pin.isdigit():
+        raise HTTPException(status_code=400, detail="PIN must be exactly 4 digits")
+    
+    # Create user account
+    user_id = str(uuid.uuid4())
+    user = {
+        "id": user_id,
+        "pan": pan,
+        "name": signup.name.strip(),
+        "email": signup.email.lower().strip(),
+        "phone": signup.phone.strip(),
+        "password_hash": get_password_hash(signup.password),
+        "pin_hash": get_password_hash(signup.pin),
+        "role": "client",
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "self_registered": True
+    }
+    
+    await db.users.insert_one(user)
+    
+    # Create corresponding client record
+    client_id = str(uuid.uuid4())
+    client = {
+        "id": client_id,
+        "name": signup.name.strip(),
+        "email": signup.email.lower().strip(),
+        "phone": signup.phone.strip(),
+        "pan": pan,
+        "city": "",
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": "self_registration"
+    }
+    
+    await db.clients.insert_one(client)
+    
+    # Link user to client
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"client_id": client_id}}
+    )
+    
+    return {
+        "message": "Account created successfully! You can now login.",
+        "user": {
+            "id": user_id,
+            "pan": pan,
+            "name": signup.name,
+            "email": signup.email,
+            "role": "client"
+        }
+    }
+
+
 @api_router.post("/auth/register")
 async def register_user(user_data: UserCreate):
     """Register a new user (broker or sub-broker)"""
