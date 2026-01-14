@@ -740,7 +740,7 @@ export default function RealEstateDetails() {
                             
                             // Sequential workflow: Invoice → SWIFT (verify) → Receipt (approve)
                             const canUploadSwift = hasInvoice && !hasSwift;
-                            const canUploadReceipt = isVerified && !hasReceipt; // Only after SWIFT is verified
+                            const canUploadReceipt = hasSwift && isVerified && !hasReceipt; // Only after SWIFT is uploaded AND verified
                             
                             return (
                               <td key={invIdx} className="py-2 px-2 text-center border-l border-gray-100">
