@@ -602,34 +602,22 @@ export default function RealEstateDetails() {
             </div>
           </div>
 
-          {/* Unified Payments Section - Single Sleek Design */}
+          {/* Unified Payments Section */}
           {opp.payment_schedule && opp.payment_schedule.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Payments
-                  </h2>
-                  <div className="flex items-center gap-3">
-                    {isFullyAllocated && (
-                      <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full">
-                        {opp.investors?.length || 0} Investors • Fully Allocated
-                      </span>
-                    )}
-                    {/* Legend */}
-                    <div className="hidden md:flex items-center gap-2 text-white/80 text-xs">
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-300"></span>INV</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-300"></span>SWIFT</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-300"></span>RCP</span>
-                    </div>
-                  </div>
-                </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              {/* Header - matches other sections */}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-green-600" />
+                  Payments
+                </h2>
+                {isFullyAllocated && (
+                  <Badge className="bg-green-100 text-green-700">Fully Allocated ({opp.investors?.length || 0} Investors)</Badge>
+                )}
               </div>
 
               {/* Unified Table */}
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto border rounded-lg">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
