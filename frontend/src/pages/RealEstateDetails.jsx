@@ -2244,12 +2244,17 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
   
   // Calculate effective rate
   const getEffectiveRate = (paymentData) => {
+    // If aed_rate is explicitly provided, use it
+    if (paymentData.aed_rate && parseFloat(paymentData.aed_rate) > 0) {
+      return parseFloat(paymentData.aed_rate).toFixed(4);
+    }
+    // Otherwise calculate from home currency and AED amounts
     const homeAmt = parseFloat(paymentData.home_currency_amount) || 0;
     const aedAmt = parseFloat(paymentData.aed_amount) || 0;
     if (homeAmt > 0 && aedAmt > 0) {
       return (homeAmt / aedAmt).toFixed(4);
     }
-    return "";
+    return "1";
   };
   
   // Add another payment entry for partial payments
