@@ -325,23 +325,17 @@ export default function RealEstateDetails() {
            (opportunity.invested_percentage && opportunity.invested_percentage >= 99.99) ||
            (opportunity.remaining_percentage !== undefined && opportunity.remaining_percentage <= 0.01);
   }, [opportunity]);
-  
-  // Check if all 4 investors are tagged (for showing Progress column and Payment Management)
-  const hasAllInvestorsTagged = useMemo(() => {
-    if (!opportunity) return false;
-    return (opportunity.investors?.length || 0) >= 4;
-  }, [opportunity]);
 
   // Check if user can view payment management section
-  // Must have all 4 investors tagged AND user must be broker, managing sub-broker, or co-owner
+  // Must be fully allocated (100% funded) AND user must be broker, managing sub-broker, or co-owner
   const canViewPaymentManagement = useMemo(() => {
     if (!user || !opportunity) return false;
-    if (!hasAllInvestorsTagged) return false; // Must have all 4 investors tagged first
+    if (!isFullyAllocated) return false; // Must be fully allocated (100% funded) first
     if (user.role === 'broker') return true;
     if (user.role === 'sub_broker') return isManagingSubBroker;
     if (user.role === 'client') return isCoOwner;
     return false;
-  }, [user, opportunity, hasAllInvestorsTagged, isCoOwner, isManagingSubBroker]);
+  }, [user, opportunity, isFullyAllocated, isCoOwner, isManagingSubBroker]);
 
   // Check if user can view/manage Oqood section
   // Oqood section only appears AFTER the first milestone payments are ALL verified by ALL investors
