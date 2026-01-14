@@ -233,11 +233,25 @@ export default function TradeVerification() {
 
   // Save a single entry's tag
   const handleSaveEntryTag = async (cashflowId) => {
+    const tag = localTags[cashflowId];
+    const customAmount = customAmounts[cashflowId];
+    
+    // Validate custom amount if "other" is selected
+    if (tag === 'other' && (!customAmount || parseFloat(customAmount) <= 0)) {
+      toast.error("Please enter a valid custom amount");
+      return;
+    }
+    
     setSavingClient(cashflowId);
     try {
       const token = localStorage.getItem("token");
+      const payload = { 
+        reinvestment_tag: tag,
+        custom_amount: tag === 'other' ? parseFloat(customAmount) : null
+      };
+      
       await axios.put(`${API}/reinvestment/tag/${cashflowId}`, 
-        { reinvestment_tag: localTags[cashflowId] },
+        payload,
         { headers: { Authorization: `Bearer ${token}` }}
       );
       toast.success("Tag saved successfully");
