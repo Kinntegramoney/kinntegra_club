@@ -2193,50 +2193,59 @@ function PaymentRecordModal({ opportunity, milestone, onClose, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Get investors with new payment data
+    // Get investors with new payment data (check if aed_amount has a value > 0)
     const paymentsToRecord = investors.filter(inv => {
       const data = getInvestorData(inv);
-      return !data.isPaid && investorPayments[inv.client_id]?.aed_amount;
+      const aedAmount = parseFloat(investorPayments[inv.client_id]?.aed_amount) || 0;
+      return !data.isPaid && aedAmount > 0;
     });
     
     if (paymentsToRecord.length === 0) {
-      toast.error("Please enter payment details for at least one investor");
+      toast.error("Please enter payment details (AED Amount) for at least one investor");
       return;
     }
+    
+    console.log(`Recording payments for ${paymentsToRecord.length} investors:`, paymentsToRecord.map(i => i.client_name));
     
     setLoading(true);
     const token = localStorage.getItem("token");
     const API = process.env.REACT_APP_BACKEND_URL;
     let successCount = 0;
     let errorCount = 0;
+    let errors = [];
     
+    // Process all payments sequentially to avoid race conditions
     for (const investor of paymentsToRecord) {
       const paymentData = investorPayments[investor.client_id];
       const swiftFile = swiftFiles[investor.client_id];
+      
+      console.log(`Recording payment for ${investor.client_name}:`, paymentData);
       
       try {
         const submitData = new FormData();
         submitData.append('milestone_index', milestone.index);
         submitData.append('investor_id', investor.client_id);
-        submitData.append('transfer_date', paymentData.transfer_date);
-        submitData.append('home_currency', paymentData.home_currency);
-        submitData.append('home_currency_amount', paymentData.home_currency_amount || 0);
-        submitData.append('aed_amount', paymentData.aed_amount);
-        submitData.append('effective_rate', getEffectiveRate(paymentData));
+        submitData.append('transfer_date', paymentData.transfer_date || new Date().toISOString().split('T')[0]);
+        submitData.append('home_currency', paymentData.home_currency || 'AED');
+        submitData.append('home_currency_amount', parseFloat(paymentData.home_currency_amount) || 0);
+        submitData.append('aed_amount', parseFloat(paymentData.aed_amount) || 0);
+        submitData.append('effective_rate', getEffectiveRate(paymentData) || 1);
         submitData.append('notes', paymentData.notes || '');
         
         if (swiftFile) {
           submitData.append('swift_copy', swiftFile);
         }
         
-        await axios.post(
+        const response = await axios.post(
           `${API}/api/real-estate-opportunities/${opportunity.id}/investor-payment`,
           submitData,
           { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
         );
+        console.log(`Payment recorded for ${investor.client_name}:`, response.data);
         successCount++;
       } catch (error) {
-        console.error(`Error recording payment for ${investor.client_name}:`, error);
+        console.error(`Error recording payment for ${investor.client_name}:`, error.response?.data || error.message);
+        errors.push(`${investor.client_name}: ${error.response?.data?.detail || error.message}`);
         errorCount++;
       }
     }
