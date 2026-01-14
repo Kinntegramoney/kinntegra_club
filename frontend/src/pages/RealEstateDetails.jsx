@@ -1331,7 +1331,7 @@ export default function RealEstateDetails() {
                             
                             return (
                               <React.Fragment key={mIdx}>
-                                {/* Invoice Cell */}
+                                {/* Invoice Cell - Download only */}
                                 <td className="py-2 px-1 text-center border-l border-gray-100">
                                   {invoice ? (
                                     <button
@@ -1343,22 +1343,6 @@ export default function RealEstateDetails() {
                                       title="View Invoice"
                                     >
                                       <Check className="h-4 w-4" />
-                                    </button>
-                                  ) : user?.role === 'broker' ? (
-                                    <button
-                                      className="w-7 h-7 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center mx-auto"
-                                      onClick={() => {
-                                        const milestoneAmount = (opp.unit_price * milestone.percentage / 100) * (investorShare / 100);
-                                        setSelectedInvoiceMilestone({ 
-                                          milestone: { ...milestone, index: actualMilestoneIndex }, 
-                                          investor: investor,
-                                          amount: milestoneAmount
-                                        });
-                                        setShowInvoiceUploadModal(true);
-                                      }}
-                                      title="Send Invoice"
-                                    >
-                                      <Upload className="h-3 w-3" />
                                     </button>
                                   ) : (
                                     <span className="w-7 h-7 rounded bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">-</span>
