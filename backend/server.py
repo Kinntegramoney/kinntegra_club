@@ -6219,16 +6219,17 @@ async def get_activity_log(limit: int = 20, current_user: dict = Depends(get_cur
     
     for re in real_estate:
         investors = re.get('investors', [])
+        property_name = re.get('building_name', re.get('property_name', 'Unknown'))
         for inv in investors:
             client = await db.clients.find_one({"id": inv.get('client_id')}, {"_id": 0, "name": 1})
             activities.append({
                 "type": "real_estate_investment",
                 "status": "invested",
-                "description": f"RE Investment: {client.get('name', 'Unknown') if client else 'Unknown'} - {re.get('property_name', 'Unknown')} ({inv.get('percentage', 0)}%)",
-                "amount": re.get('total_cost', 0) * inv.get('percentage', 0) / 100,
+                "description": f"RE Investment: {client.get('name', 'Unknown') if client else 'Unknown'} - {property_name} ({inv.get('share_percentage', inv.get('percentage', 0))}%)",
+                "amount": re.get('total_cost', 0) * inv.get('share_percentage', inv.get('percentage', 0)) / 100,
                 "timestamp": inv.get('invested_at'),
                 "client_name": client.get('name', 'Unknown') if client else 'Unknown',
-                "property_name": re.get('property_name', 'Unknown')
+                "property_name": property_name
             })
     
     # Get recent client creations
