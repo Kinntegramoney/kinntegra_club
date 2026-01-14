@@ -6036,6 +6036,320 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ==================== DASHBOARD ANALYTICS ENDPOINTS ====================
+
+@api_router.get("/dashboard/summary")
+async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
+    """Get summary statistics for broker dashboard"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access dashboard")
+    
+    broker_id = current_user['id']
+    
+    # Get clients
+    clients = await db.clients.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
+    total_clients = len(clients)
+    active_clients = len([c for c in clients if c.get('is_active', True) and not c.get('deactivated_at')])
+    
+    # Get sub-brokers (partners)
+    partners = await db.partners.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
+    total_subbrokers = len(partners)
+    active_subbrokers = len([p for p in partners if p.get('is_active', True)])
+    
+    # Get bonds
+    bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
+    total_bonds = len(bonds)
+    available_bonds = len([b for b in bonds if b.get('status') == 'available'])
+    funded_bonds = len([b for b in bonds if b.get('status') == 'funded'])
+    closed_bonds = len([b for b in bonds if b.get('status') == 'closed'])
+    
+    # Get real estate opportunities
+    real_estate = await db.real_estate_opportunities.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
+    total_real_estate = len(real_estate)
+    available_re = len([r for r in real_estate if r.get('status') == 'available'])
+    invested_re = len([r for r in real_estate if r.get('status') in ['partially_invested', 'fully_invested']])
+    
+    # Calculate AUM
+    # Bond AUM = sum of (units_sold * face_value) for all bonds
+    bond_aum = sum(
+        (b.get('units_sold', 0) * b.get('face_value', 0)) 
+        for b in bonds
+    )
+    
+    # Real Estate AUM = sum of (total_cost * invested_percentage / 100) for all properties
+    real_estate_aum = sum(
+        (r.get('total_cost', 0) * r.get('invested_percentage', 0) / 100)
+        for r in real_estate
+    )
+    
+    total_aum = bond_aum + real_estate_aum
+    
+    # Get trades for revenue calculation
+    trades = await db.trades.find({"status": "approved"}, {"_id": 0}).to_list(10000)
+    
+    return {
+        "clients": {
+            "total": total_clients,
+            "active": active_clients
+        },
+        "sub_brokers": {
+            "total": total_subbrokers,
+            "active": active_subbrokers
+        },
+        "opportunities": {
+            "bonds": {
+                "total": total_bonds,
+                "available": available_bonds,
+                "funded": funded_bonds,
+                "closed": closed_bonds
+            },
+            "real_estate": {
+                "total": total_real_estate,
+                "available": available_re,
+                "invested": invested_re
+            }
+        },
+        "aum": {
+            "total": total_aum,
+            "bonds": bond_aum,
+            "real_estate": real_estate_aum
+        },
+        "trades_count": len(trades)
+    }
+
+
+@api_router.get("/dashboard/clients-by-city")
+async def get_clients_by_city(current_user: dict = Depends(get_current_user)):
+    """Get client distribution by city"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access dashboard")
+    
+    broker_id = current_user['id']
+    clients = await db.clients.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
+    
+    city_counts = {}
+    for client in clients:
+        city = client.get('city', 'Unknown') or 'Unknown'
+        city_counts[city] = city_counts.get(city, 0) + 1
+    
+    # Sort by count descending and return top 10
+    sorted_cities = sorted(city_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    return [{"city": city, "count": count} for city, count in sorted_cities]
+
+
+@api_router.get("/dashboard/aum-distribution")
+async def get_aum_distribution(current_user: dict = Depends(get_current_user)):
+    """Get AUM distribution by asset class and sub-broker"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access dashboard")
+    
+    broker_id = current_user['id']
+    
+    # Get all bonds
+    bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
+    bond_aum = sum((b.get('units_sold', 0) * b.get('face_value', 0)) for b in bonds)
+    
+    # Get real estate opportunities
+    real_estate = await db.real_estate_opportunities.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
+    real_estate_aum = sum((r.get('total_cost', 0) * r.get('invested_percentage', 0) / 100) for r in real_estate)
+    
+    # Get sub-brokers with their linked clients and calculate their AUM
+    partners = await db.partners.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
+    subbroker_aum = []
+    
+    for partner in partners:
+        partner_id = partner.get('id')
+        # Get clients linked to this sub-broker
+        linked_clients = await db.clients.find({"linked_subbroker_id": partner_id}, {"_id": 0}).to_list(1000)
+        
+        # Calculate AUM from bond allocations
+        sb_bond_aum = 0
+        for client in linked_clients:
+            allocations = client.get('bond_allocations', [])
+            for alloc in allocations:
+                bond = next((b for b in bonds if b.get('id') == alloc.get('bond_id')), None)
+                if bond:
+                    sb_bond_aum += alloc.get('units_paid', 0) * bond.get('face_value', 0)
+        
+        # Calculate AUM from real estate investments
+        sb_re_aum = 0
+        for re in real_estate:
+            investors = re.get('investors', [])
+            for inv in investors:
+                if inv.get('client_id') in [c.get('id') for c in linked_clients]:
+                    sb_re_aum += re.get('total_cost', 0) * inv.get('percentage', 0) / 100
+        
+        subbroker_aum.append({
+            "name": partner.get('name', 'Unknown'),
+            "partner_code": partner.get('partner_code', ''),
+            "aum": sb_bond_aum + sb_re_aum,
+            "bond_aum": sb_bond_aum,
+            "real_estate_aum": sb_re_aum,
+            "client_count": len(linked_clients)
+        })
+    
+    # Sort by AUM descending
+    subbroker_aum.sort(key=lambda x: x['aum'], reverse=True)
+    
+    return {
+        "by_asset_class": [
+            {"name": "NCD Bonds", "value": bond_aum},
+            {"name": "Real Estate", "value": real_estate_aum}
+        ],
+        "by_subbroker": subbroker_aum[:10]  # Top 10 sub-brokers
+    }
+
+
+@api_router.get("/dashboard/activity-log")
+async def get_activity_log(limit: int = 20, current_user: dict = Depends(get_current_user)):
+    """Get recent activity log for the broker"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access dashboard")
+    
+    broker_id = current_user['id']
+    activities = []
+    
+    # Get recent trades
+    trades = await db.trades.find(
+        {},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    
+    for trade in trades:
+        client = await db.clients.find_one({"id": trade.get('client_id')}, {"_id": 0, "name": 1})
+        bond = await db.bonds.find_one({"id": trade.get('bond_id')}, {"_id": 0, "issuer": 1, "face_value": 1})
+        
+        activities.append({
+            "type": "trade",
+            "status": trade.get('status'),
+            "description": f"Trade: {client.get('name', 'Unknown')} - {bond.get('issuer', 'Unknown')} ({trade.get('units', 0)} units)",
+            "amount": trade.get('units', 0) * (bond.get('face_value', 0) if bond else 0),
+            "timestamp": trade.get('created_at'),
+            "client_name": client.get('name', 'Unknown') if client else 'Unknown'
+        })
+    
+    # Get recent real estate investments
+    real_estate = await db.real_estate_opportunities.find(
+        {"created_by": broker_id},
+        {"_id": 0}
+    ).to_list(100)
+    
+    for re in real_estate:
+        investors = re.get('investors', [])
+        for inv in investors:
+            client = await db.clients.find_one({"id": inv.get('client_id')}, {"_id": 0, "name": 1})
+            activities.append({
+                "type": "real_estate_investment",
+                "status": "invested",
+                "description": f"RE Investment: {client.get('name', 'Unknown') if client else 'Unknown'} - {re.get('property_name', 'Unknown')} ({inv.get('percentage', 0)}%)",
+                "amount": re.get('total_cost', 0) * inv.get('percentage', 0) / 100,
+                "timestamp": inv.get('invested_at'),
+                "client_name": client.get('name', 'Unknown') if client else 'Unknown',
+                "property_name": re.get('property_name', 'Unknown')
+            })
+    
+    # Get recent client creations
+    clients = await db.clients.find(
+        {"created_by": broker_id},
+        {"_id": 0, "name": 1, "created_at": 1, "city": 1}
+    ).sort("created_at", -1).to_list(limit)
+    
+    for client in clients:
+        activities.append({
+            "type": "client_created",
+            "status": "new",
+            "description": f"New Client: {client.get('name', 'Unknown')} ({client.get('city', 'Unknown')})",
+            "amount": 0,
+            "timestamp": client.get('created_at'),
+            "client_name": client.get('name', 'Unknown')
+        })
+    
+    # Sort all activities by timestamp descending
+    activities.sort(key=lambda x: x.get('timestamp', '') or '', reverse=True)
+    
+    return activities[:limit]
+
+
+@api_router.get("/dashboard/monthly-stats")
+async def get_monthly_stats(year: int = None, current_user: dict = Depends(get_current_user)):
+    """Get monthly statistics for the console chart"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access dashboard")
+    
+    from datetime import datetime
+    
+    if year is None:
+        year = datetime.now().year
+    
+    broker_id = current_user['id']
+    
+    # Initialize monthly data
+    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    monthly_data = {m: {"investments": 0, "trades": 0, "clients": 0} for m in months}
+    
+    # Get trades by month
+    trades = await db.trades.find({"status": "approved"}, {"_id": 0}).to_list(10000)
+    for trade in trades:
+        created_at = trade.get('created_at')
+        if created_at:
+            try:
+                if isinstance(created_at, str):
+                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                else:
+                    dt = created_at
+                if dt.year == year:
+                    month_name = months[dt.month - 1]
+                    bond = await db.bonds.find_one({"id": trade.get('bond_id')}, {"_id": 0, "face_value": 1})
+                    monthly_data[month_name]["trades"] += trade.get('units', 0) * (bond.get('face_value', 0) if bond else 0)
+            except:
+                pass
+    
+    # Get real estate investments by month
+    real_estate = await db.real_estate_opportunities.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
+    for re in real_estate:
+        investors = re.get('investors', [])
+        for inv in investors:
+            invested_at = inv.get('invested_at')
+            if invested_at:
+                try:
+                    if isinstance(invested_at, str):
+                        dt = datetime.fromisoformat(invested_at.replace('Z', '+00:00'))
+                    else:
+                        dt = invested_at
+                    if dt.year == year:
+                        month_name = months[dt.month - 1]
+                        monthly_data[month_name]["investments"] += re.get('total_cost', 0) * inv.get('percentage', 0) / 100
+                except:
+                    pass
+    
+    # Get new clients by month
+    clients = await db.clients.find({"created_by": broker_id}, {"_id": 0, "created_at": 1}).to_list(1000)
+    for client in clients:
+        created_at = client.get('created_at')
+        if created_at:
+            try:
+                if isinstance(created_at, str):
+                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                else:
+                    dt = created_at
+                if dt.year == year:
+                    month_name = months[dt.month - 1]
+                    monthly_data[month_name]["clients"] += 1
+            except:
+                pass
+    
+    return [
+        {
+            "month": month,
+            "investments": monthly_data[month]["investments"],
+            "trades": monthly_data[month]["trades"],
+            "clients": monthly_data[month]["clients"]
+        }
+        for month in months
+    ]
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
