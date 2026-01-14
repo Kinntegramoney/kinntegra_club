@@ -877,13 +877,12 @@ export default function RealEstateDetails() {
               </div>
               
               {/* Footer Legend */}
-              <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center gap-4 text-xs text-gray-500">
+              <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-gray-500">
                 <span className="font-medium text-gray-600">Legend:</span>
-                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><FileText className="h-2 w-2" /></span>Invoice</span>
-                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-teal-100 text-teal-600 flex items-center justify-center"><Check className="h-2 w-2" /></span>SWIFT</span>
-                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-purple-100 text-purple-600 flex items-center justify-center"><FileText className="h-2 w-2" /></span>Receipt</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-green-100 text-green-600 flex items-center justify-center"><Check className="h-2 w-2" /></span>Uploaded/Verified</span>
                 <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-blue-500 text-white flex items-center justify-center"><Upload className="h-2 w-2" /></span>Upload</span>
-                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-amber-100 text-amber-600 flex items-center justify-center"><Clock className="h-2 w-2" /></span>Pending</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-amber-100 text-amber-600 flex items-center justify-center"><Clock className="h-2 w-2" /></span>Pending Approval</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-2 w-2" /></span>Pending</span>
               </div>
             </div>
           )}
