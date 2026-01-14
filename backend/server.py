@@ -768,57 +768,137 @@ async def bulk_upload_clients(
 
 @api_router.get("/bulk/template/bonds")
 async def download_bond_template(current_user: dict = Depends(get_current_user)):
-    """Download Excel template for bulk bond upload"""
+    """Download Excel template for bulk bond upload with all fields"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can download templates")
     
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Bonds"
     
-    headers = ["Bond Code*", "Bond Name*", "Principal Amount*", "Coupon Rate (%)*", 
-               "Primary IRR (%)*", "Secondary IRR (%)*", "Start Date*", "Maturity Date*",
-               "Total Units", "Interest Frequency"]
+    # Sheet 1: Basic Bond Information
+    ws_basic = wb.active
+    ws_basic.title = "Bond Details"
     
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=header)
+    basic_headers = ["Bond Code*", "Bond Name*", "Issuer/Company Name", "Credit Rating", 
+                     "Start Date*", "Maturity Date*", "Description"]
+    for col, header in enumerate(basic_headers, 1):
+        cell = ws_basic.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="059669", end_color="059669", fill_type="solid")
-        cell.alignment = Alignment(horizontal="center")
-        ws.column_dimensions[get_column_letter(col)].width = 18
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_basic.column_dimensions[get_column_letter(col)].width = 20
     
-    # Sample row
-    sample = ["ABC-NCD-2025", "ABC Corp NCD 2025", 1000000, 12.5, 14.0, 12.0, 
-              "2025-01-15", "2027-01-15", 10, "quarterly"]
-    for col, value in enumerate(sample, 1):
-        ws.cell(row=2, column=col, value=value)
+    basic_sample = ["ABC-NCD-2025", "ABC Corp NCD 2025", "ABC Corporation Ltd", "AA+", 
+                   "2025-01-15", "2027-01-15", "Secured NCD with quarterly interest"]
+    for col, value in enumerate(basic_sample, 1):
+        ws_basic.cell(row=2, column=col, value=value)
+    
+    # Sheet 2: Financial Details
+    ws_financial = wb.create_sheet("Financial Details")
+    
+    financial_headers = ["Bond Code*", "Principal Amount (INR)*", "Coupon Rate (%)*", 
+                        "Primary IRR (%)*", "Secondary IRR (%)*", "Face Value per Unit"]
+    for col, header in enumerate(financial_headers, 1):
+        cell = ws_financial.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="7C3AED", end_color="7C3AED", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_financial.column_dimensions[get_column_letter(col)].width = 22
+    
+    financial_sample = ["ABC-NCD-2025", 1000000, 12.5, 14.0, 12.0, 100000]
+    for col, value in enumerate(financial_sample, 1):
+        ws_financial.cell(row=2, column=col, value=value)
+    
+    # Sheet 3: Units & Limits
+    ws_units = wb.create_sheet("Units & Limits")
+    
+    units_headers = ["Bond Code*", "Total Units*", "Minimum Units per Order", 
+                    "Interest Payment Frequency"]
+    for col, header in enumerate(units_headers, 1):
+        cell = ws_units.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="EA580C", end_color="EA580C", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_units.column_dimensions[get_column_letter(col)].width = 25
+    
+    units_sample = ["ABC-NCD-2025", 10, 1, "quarterly"]
+    for col, value in enumerate(units_sample, 1):
+        ws_units.cell(row=2, column=col, value=value)
+    
+    # Sheet 4: Principal Payments
+    ws_principal = wb.create_sheet("Principal Payments")
+    
+    principal_headers = ["Bond Code*", "Payment Description*", "Payment Date*", "Percentage*"]
+    for col, header in enumerate(principal_headers, 1):
+        cell = ws_principal.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="DC2626", end_color="DC2626", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_principal.column_dimensions[get_column_letter(col)].width = 22
+    
+    principal_samples = [
+        ["ABC-NCD-2025", "Partial Principal 1", "2026-07-15", 50],
+        ["ABC-NCD-2025", "Final Principal", "2027-01-15", 50],
+    ]
+    for row_idx, sample in enumerate(principal_samples, 2):
+        for col, value in enumerate(sample, 1):
+            ws_principal.cell(row=row_idx, column=col, value=value)
     
     # Instructions sheet
     ws_instructions = wb.create_sheet("Instructions")
     instructions = [
         "BULK BOND UPLOAD INSTRUCTIONS",
         "",
-        "Required Fields (marked with *):",
-        "- Bond Code: Unique identifier (e.g., ABC-NCD-2025)",
-        "- Bond Name: Full name of the bond",
-        "- Principal Amount: Face value in INR",
-        "- Coupon Rate: Annual interest rate as percentage",
-        "- Primary IRR: Expected IRR for primary buyer",
-        "- Secondary IRR: Target IRR for secondary market",
-        "- Start Date: Bond start date (YYYY-MM-DD)",
-        "- Maturity Date: Bond maturity date (YYYY-MM-DD)",
+        "This template has 4 data sheets. Fill all required sheets.",
+        "Bond Code is used to link data across sheets.",
         "",
-        "Optional Fields:",
-        "- Total Units: Number of units (default: 1)",
-        "- Interest Frequency: quarterly, monthly, semi-annual, annual (default: quarterly)",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 1 - Bond Details (Green) - REQUIRED",
+        "═══════════════════════════════════════════════════════════════",
+        "• Bond Code*: Unique identifier (e.g., ABC-NCD-2025)",
+        "• Bond Name*: Full name of the bond issue",
+        "• Issuer/Company Name: Company issuing the bond",
+        "• Credit Rating: Rating from CRISIL/ICRA/CARE (e.g., AA+, A1+)",
+        "• Start Date*: Bond issue date (YYYY-MM-DD)",
+        "• Maturity Date*: Final maturity date (YYYY-MM-DD)",
+        "• Description: Additional details about the bond",
         "",
-        "Notes:",
-        "- Principal and interest payments will be auto-generated",
-        "- Delete the sample row before uploading",
-        "- Maximum 50 bonds per upload"
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 2 - Financial Details (Purple) - REQUIRED",
+        "═══════════════════════════════════════════════════════════════",
+        "• Principal Amount*: Total principal in INR",
+        "• Coupon Rate*: Annual interest rate as percentage",
+        "• Primary IRR*: Expected IRR for primary buyer",
+        "• Secondary IRR*: Target IRR for secondary market trading",
+        "• Face Value per Unit: Value of each unit (optional)",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 3 - Units & Limits (Orange) - REQUIRED",
+        "═══════════════════════════════════════════════════════════════",
+        "• Total Units*: Number of units available (default: 1)",
+        "• Minimum Units: Minimum purchase quantity (default: 1)",
+        "• Interest Frequency: quarterly, monthly, semi-annual, annual",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 4 - Principal Payments (Red) - REQUIRED",
+        "═══════════════════════════════════════════════════════════════",
+        "• Add principal repayment schedule",
+        "• Total percentages must equal 100%",
+        "• Can have multiple payments (partial + final)",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "IMPORTANT NOTES",
+        "═══════════════════════════════════════════════════════════════",
+        "1. Bond Code must be unique and match across all sheets",
+        "2. Principal payments must sum to exactly 100%",
+        "3. Interest payments will be auto-generated based on frequency",
+        "4. Maximum 50 bonds per upload",
+        "5. Presentations can be uploaded after bond creation",
     ]
     for row, text in enumerate(instructions, 1):
-        ws_instructions.cell(row=row, column=1, value=text)
+        cell = ws_instructions.cell(row=row, column=1, value=text)
+        if text.startswith("═") or text.startswith("SHEET") or text.startswith("BULK") or text.startswith("IMPORTANT"):
+            cell.font = Font(bold=True)
+        ws_instructions.column_dimensions['A'].width = 70
     
     output = io.BytesIO()
     wb.save(output)
