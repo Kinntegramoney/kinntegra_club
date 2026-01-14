@@ -2219,6 +2219,7 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
       transfer_date: "",
       home_currency: "INR",
       home_currency_amount: "",
+      aed_rate: "",
       aed_amount: "",
       notes: ""
     };
