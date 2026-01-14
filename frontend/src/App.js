@@ -145,6 +145,14 @@ function App() {
             } 
           />
           <Route 
+            path="/sub-broker/real-estate/:id" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <RealEstateDetails />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/broker/bulk-upload" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
