@@ -988,7 +988,7 @@ export default function RealEstateDetails() {
             )}
           </div>
 
-          {/* Payment Management Section - When property is fully funded */}
+          {/* Payment Management Section - When all 4 investors are tagged */}
           {canViewPaymentManagement && opp.payment_schedule && opp.payment_schedule.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -996,7 +996,7 @@ export default function RealEstateDetails() {
                   <CreditCard className="h-5 w-5 text-green-600" />
                   Payment Management
                 </h2>
-                <Badge className="bg-green-100 text-green-700">Fully Funded ({opp.current_investors || 0} Investors)</Badge>
+                <Badge className="bg-green-100 text-green-700">Fully Allocated ({opp.investors?.length || 0} Investors)</Badge>
               </div>
               
               <p className="text-sm text-gray-600 mb-4">
