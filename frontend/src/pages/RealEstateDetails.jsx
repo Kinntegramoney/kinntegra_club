@@ -643,7 +643,6 @@ export default function RealEstateDetails() {
                           <div className="text-[10px] text-gray-400">{inv.share_percentage || (100 / opp.investors.length).toFixed(0)}%</div>
                         </th>
                       ))}
-                      {canViewPaymentManagement && isFullyAllocated && <th className="text-center py-3 px-3 text-gray-600 font-semibold">Action</th>}
                     </tr>
                   </thead>
                   <tbody>
