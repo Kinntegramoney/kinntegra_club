@@ -510,6 +510,41 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                 </div>
               </div>
 
+              {/* Developer Discount */}
+              <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
+                <Label className="text-emerald-800 font-medium">Developer Discount</Label>
+                <p className="text-xs text-emerald-600 mb-3">Any discount offered by the developer</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="developer_discount" className="text-sm text-gray-600">Discount Amount (AED)</Label>
+                    <Input
+                      id="developer_discount"
+                      type="number"
+                      value={formData.developer_discount}
+                      onChange={(e) => handleChange("developer_discount", e.target.value)}
+                      placeholder="e.g., 50000"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="developer_discount_percentage" className="text-sm text-gray-600">Or Discount %</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        id="developer_discount_percentage"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={formData.developer_discount_percentage}
+                        onChange={(e) => handleChange("developer_discount_percentage", e.target.value)}
+                        placeholder="e.g., 5"
+                      />
+                      <span className="text-emerald-600">%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Unit Selling Fee */}
               <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
                 <Label htmlFor="unit_selling_fee_percentage" className="text-purple-800 font-medium">
