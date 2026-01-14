@@ -5036,6 +5036,123 @@ async def delete_invoice(
     return {"message": "Invoice deleted successfully"}
 
 
+@api_router.post("/real-estate-opportunities/{opportunity_id}/upload-developer-receipt")
+async def upload_developer_receipt(
+    opportunity_id: str,
+    milestone_index: int = Form(...),
+    payment_id: str = Form(...),
+    receipt_number: str = Form(None),
+    receipt_date: str = Form(None),
+    notes: str = Form(None),
+    receipt_file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload a developer receipt for a recorded payment (by client or broker)"""
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Find the payment record
+    investor_payments = opportunity.get('investor_payments', [])
+    payment = next((p for p in investor_payments if p.get('id') == payment_id), None)
+    
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment record not found")
+    
+    # Verify authorization - client can only upload for their own payment, broker can upload for any
+    if current_user['role'] == 'client':
+        client = await db.clients.find_one({"pan_number": current_user.get('pan_number')})
+        if not client or payment.get('investor_id') != client.get('id'):
+            raise HTTPException(status_code=403, detail="Not authorized to upload receipt for this payment")
+    elif current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Save receipt file
+    upload_dir = "/app/uploads/developer_receipts"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_ext = receipt_file.filename.split('.')[-1] if '.' in receipt_file.filename else 'pdf'
+    receipt_filename = f"{opportunity_id}_{payment_id}_{uuid.uuid4()}.{file_ext}"
+    file_path = os.path.join(upload_dir, receipt_filename)
+    
+    with open(file_path, "wb") as f:
+        content = await receipt_file.read()
+        f.write(content)
+    
+    # Update the payment record with developer receipt info
+    receipt_record = {
+        "id": str(uuid.uuid4()),
+        "receipt_number": receipt_number or f"RCP-{payment_id[:8]}".upper(),
+        "receipt_date": receipt_date or datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+        "file_url": f"/uploads/developer_receipts/{receipt_filename}",
+        "original_filename": receipt_file.filename,
+        "notes": notes,
+        "uploaded_by": current_user['id'],
+        "uploaded_by_name": current_user.get('name', current_user.get('pan_number')),
+        "uploaded_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Update the specific payment in the array
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id, "investor_payments.id": payment_id},
+        {"$set": {"investor_payments.$.developer_receipt": receipt_record}}
+    )
+    
+    return {
+        "message": "Developer receipt uploaded successfully",
+        "receipt_id": receipt_record['id']
+    }
+
+
+@api_router.get("/real-estate-opportunities/{opportunity_id}/developer-receipt/{payment_id}")
+async def download_developer_receipt(
+    opportunity_id: str,
+    payment_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Download a developer receipt file"""
+    from fastapi.responses import FileResponse
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Find the payment record
+    payment = next((p for p in opportunity.get('investor_payments', []) if p.get('id') == payment_id), None)
+    if not payment or not payment.get('developer_receipt'):
+        raise HTTPException(status_code=404, detail="Developer receipt not found")
+    
+    receipt = payment['developer_receipt']
+    
+    # Check authorization
+    user_role = current_user['role']
+    if user_role == 'client':
+        client = await db.clients.find_one({"pan_number": current_user.get('pan_number')})
+        if not client or payment.get('investor_id') != client.get('id'):
+            raise HTTPException(status_code=403, detail="Not authorized")
+    elif user_role == 'sub_broker':
+        # Sub-broker can view receipts for their clients
+        investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
+        sub_broker_clients = await db.clients.find({"linked_subbroker_id": current_user['id']}, {"id": 1}).to_list(1000)
+        sub_broker_client_ids = [c['id'] for c in sub_broker_clients]
+        if not any(cid in investor_client_ids for cid in sub_broker_client_ids):
+            raise HTTPException(status_code=403, detail="Not authorized")
+    elif user_role != 'broker':
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    file_path = f"/app{receipt['file_url']}"
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Receipt file not found")
+    
+    return FileResponse(
+        file_path,
+        filename=receipt.get('original_filename', 'developer_receipt.pdf'),
+        media_type='application/octet-stream'
+    )
+
+
 @api_router.post("/real-estate-opportunities/{opportunity_id}/investor-payment")
 async def record_investor_payment(
     opportunity_id: str,
