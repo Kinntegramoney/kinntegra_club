@@ -1036,28 +1036,140 @@ export default function RealEstateDetails() {
             )}
           </div>
 
-          {/* Payment Management Section - When all 4 investors are tagged */}
+          {/* Payments Section - Combined Payment Management and Documents */}
           {canViewPaymentManagement && opp.payment_schedule && opp.payment_schedule.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
+              {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-green-600" />
-                  Payment Management
+                  Payments
                 </h2>
                 <Badge className="bg-green-100 text-green-700">Fully Allocated ({opp.investors?.length || 0} Investors)</Badge>
               </div>
               
-              <p className="text-sm text-gray-600 mb-4">
-                {user?.role === 'broker' 
-                  ? "Review and verify payments recorded by investors and sub-brokers."
-                  : "Record payments for each milestone. Broker will verify before marking complete."
-                }
-              </p>
+              {/* Documents Grid - Client-wise view */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-700">Documents Overview</h3>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="w-3 h-3 rounded bg-blue-500"></span>
+                      <span className="text-gray-600">Invoice</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="w-3 h-3 rounded bg-teal-500"></span>
+                      <span className="text-gray-600">SWIFT</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="w-3 h-3 rounded bg-purple-500"></span>
+                      <span className="text-gray-600">Receipt</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="overflow-x-auto border rounded-lg">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="border-b-2 border-gray-300">
+                        <th className="text-left py-3 px-3 text-gray-700 font-semibold bg-gray-50 sticky left-0 z-10 min-w-[150px]">
+                          Client
+                        </th>
+                        {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, mIdx) => (
+                          <th key={mIdx} className="text-center py-2 px-2 text-gray-700 font-semibold bg-gray-50 min-w-[120px]" colSpan="3">
+                            <div className="text-xs font-medium text-gray-800">{milestone.description || `Payment ${mIdx + 1}`}</div>
+                            <div className="text-[10px] text-gray-500">{milestone.percentage}%</div>
+                          </th>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50">
+                        <th className="sticky left-0 z-10 bg-gray-50"></th>
+                        {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((_, mIdx) => (
+                          <React.Fragment key={mIdx}>
+                            <th className="text-center py-1 px-1 text-[10px] text-blue-600 font-medium">INV</th>
+                            <th className="text-center py-1 px-1 text-[10px] text-teal-600 font-medium">SWIFT</th>
+                            <th className="text-center py-1 px-1 text-[10px] text-purple-600 font-medium">RCP</th>
+                          </React.Fragment>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {opp.investors?.map((investor, invIdx) => {
+                        const investorShare = investor.share_percentage || (100 / (opp.investors?.length || 1));
+                        
+                        return (
+                          <tr key={invIdx} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-3 sticky left-0 z-10 bg-white">
+                              <div className="font-medium text-gray-800">{investor.client_name}</div>
+                              <div className="text-xs text-gray-500">{investorShare.toFixed(1)}% share</div>
+                            </td>
+                            {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, mIdx) => {
+                              const actualMilestoneIndex = opp.payment_schedule.findIndex(m => m.date === milestone.date && m.description === milestone.description);
+                              const invoice = opp.investor_invoices?.find(inv => inv.milestone_index === actualMilestoneIndex && inv.investor_id === investor.client_id);
+                              const payment = opp.investor_payments?.find(p => p.milestone_index === actualMilestoneIndex && p.investor_id === investor.client_id);
+                              const hasSwift = payment?.swift_copy_url;
+                              const hasReceipt = payment?.developer_receipt;
+                              const isVerified = payment?.status === 'verified';
+                              
+                              return (
+                                <React.Fragment key={mIdx}>
+                                  <td className="py-2 px-1 text-center border-l border-gray-100">
+                                    {invoice ? (
+                                      <button className="w-7 h-7 rounded bg-blue-100 hover:bg-blue-200 text-blue-600 flex items-center justify-center mx-auto" onClick={() => { const token = localStorage.getItem("token"); window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}?token=${token}`, '_blank'); }} title="View Invoice"><Check className="h-4 w-4" /></button>
+                                    ) : (
+                                      <span className="w-7 h-7 rounded bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">-</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2 px-1 text-center">
+                                    {hasSwift ? (
+                                      <button className="w-7 h-7 rounded bg-teal-100 hover:bg-teal-200 text-teal-600 flex items-center justify-center mx-auto" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${payment.swift_copy_url}`, '_blank')} title="View SWIFT Copy"><Check className="h-4 w-4" /></button>
+                                    ) : payment ? (
+                                      <span className="w-7 h-7 rounded bg-amber-100 text-amber-600 flex items-center justify-center mx-auto" title="Payment recorded without SWIFT"><Clock className="h-3 w-3" /></span>
+                                    ) : (
+                                      <span className="w-7 h-7 rounded bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">-</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2 px-1 text-center border-r border-gray-100">
+                                    {hasReceipt ? (
+                                      <button className="w-7 h-7 rounded bg-purple-100 hover:bg-purple-200 text-purple-600 flex items-center justify-center mx-auto" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`, '_blank')} title="View Developer Receipt"><Check className="h-4 w-4" /></button>
+                                    ) : isVerified ? (
+                                      <button className="w-7 h-7 rounded bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center mx-auto" onClick={() => { setSelectedPaymentForReceipt({ payment, investor, milestone: { ...milestone, index: actualMilestoneIndex } }); setShowDeveloperReceiptModal(true); }} title="Upload Receipt"><Upload className="h-3 w-3" /></button>
+                                    ) : (
+                                      <span className="w-7 h-7 rounded bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">-</span>
+                                    )}
+                                  </td>
+                                </React.Fragment>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Legend */}
+                <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-1"><span className="w-5 h-5 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Check className="h-3 w-3" /></span><span>Available</span></div>
+                  <div className="flex items-center gap-1"><span className="w-5 h-5 rounded bg-purple-500 text-white flex items-center justify-center"><Upload className="h-3 w-3" /></span><span>Upload</span></div>
+                  <div className="flex items-center gap-1"><span className="w-5 h-5 rounded bg-amber-100 text-amber-600 flex items-center justify-center"><Clock className="h-3 w-3" /></span><span>Pending</span></div>
+                  <div className="flex items-center gap-1"><span className="w-5 h-5 rounded bg-gray-100 text-gray-400 flex items-center justify-center">-</span><span>N/A</span></div>
+                </div>
+              </div>
               
-              {/* Payment Milestones */}
-              <div className="space-y-4">
-                {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, idx) => {
-                  const milestonePayments = opp.investor_payments?.filter(p => p.milestone_index === idx) || [];
+              {/* Milestone Actions */}
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Milestone Actions</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  {user?.role === 'broker' 
+                    ? "Send invoices, record payments, and verify submissions from investors."
+                    : "Record payments for each milestone. Broker will verify before marking complete."
+                  }
+                </p>
+                
+                <div className="space-y-4">
+                  {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, idx) => {
+                    const milestonePayments = opp.investor_payments?.filter(p => p.milestone_index === idx) || [];
                   const totalInvestors = opp.investors?.length || 0;
                   const verifiedCount = milestonePayments.filter(p => p.status === 'verified').length;
                   const pendingCount = milestonePayments.filter(p => p.status === 'pending_verification').length;
