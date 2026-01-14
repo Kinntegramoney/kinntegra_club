@@ -616,7 +616,9 @@ export default function RealEstateDetails() {
                       <th className="text-left py-2 px-3 text-gray-500 font-medium">Description</th>
                       <th className="text-right py-2 px-3 text-gray-500 font-medium">%</th>
                       <th className="text-right py-2 px-3 text-gray-500 font-medium">Amount (AED)</th>
-                      <th className="text-center py-2 px-3 text-gray-500 font-medium">Progress</th>
+                      {hasAllInvestorsTagged && (
+                        <th className="text-center py-2 px-3 text-gray-500 font-medium">Progress</th>
+                      )}
                       <th className="text-center py-2 px-3 text-gray-500 font-medium">Status</th>
                     </tr>
                   </thead>
@@ -626,8 +628,9 @@ export default function RealEstateDetails() {
                       const milestonePayments = opp.investor_payments?.filter(p => p.milestone_index === idx) || [];
                       const verifiedCount = milestonePayments.filter(p => p.status === 'verified').length;
                       const pendingCount = milestonePayments.filter(p => p.status === 'pending_verification').length;
-                      const totalInvestors = opp.current_investors || 0;
+                      const totalInvestors = opp.investors?.length || 0;
                       const progressPercent = totalInvestors > 0 ? Math.round((verifiedCount / totalInvestors) * 100) : 0;
+                      const allInvestorsTagged = totalInvestors >= 4;
                       
                       return (
                         <tr key={idx} className="border-b border-gray-100">
@@ -636,24 +639,28 @@ export default function RealEstateDetails() {
                           <td className="py-3 px-3">{payment.description || `Payment ${idx + 1}`}</td>
                           <td className="py-3 px-3 text-right font-medium">{payment.percentage}%</td>
                           <td className="py-3 px-3 text-right font-mono">{formatCurrency(opp.unit_price * payment.percentage / 100)}</td>
-                          <td className="py-3 px-3">
-                            {totalInvestors > 0 && (
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-gray-200 rounded-full h-2 w-16">
-                                  <div 
-                                    className="bg-green-500 h-2 rounded-full transition-all" 
-                                    style={{ width: `${progressPercent}%` }} 
-                                  />
+                          {hasAllInvestorsTagged && (
+                            <td className="py-3 px-3">
+                              {totalInvestors > 0 && (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 bg-gray-200 rounded-full h-2 w-16">
+                                    <div 
+                                      className="bg-green-500 h-2 rounded-full transition-all" 
+                                      style={{ width: `${progressPercent}%` }} 
+                                    />
+                                  </div>
+                                  <span className="text-xs text-gray-500">{verifiedCount}/{totalInvestors}</span>
+                                  {pendingCount > 0 && (
+                                    <span className="text-xs text-amber-600">({pendingCount} pending)</span>
+                                  )}
                                 </div>
-                                <span className="text-xs text-gray-500">{verifiedCount}/{totalInvestors}</span>
-                                {pendingCount > 0 && (
-                                  <span className="text-xs text-amber-600">({pendingCount} pending)</span>
-                                )}
-                              </div>
-                            )}
-                          </td>
+                              )}
+                            </td>
+                          )}
                           <td className="py-3 px-3 text-center">
-                            {payment.completed || verifiedCount >= totalInvestors ? (
+                            {!allInvestorsTagged ? (
+                              <Badge className="bg-blue-100 text-blue-700">Open</Badge>
+                            ) : payment.completed || verifiedCount >= totalInvestors ? (
                               <Badge className="bg-green-100 text-green-700"><Check className="h-3 w-3 mr-1" />Complete</Badge>
                             ) : verifiedCount > 0 ? (
                               <Badge className="bg-blue-100 text-blue-700">Partial</Badge>
