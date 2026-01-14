@@ -1388,6 +1388,26 @@ export default function RealEstateDetails() {
           }}
         />
       )}
+
+      {/* Developer Receipt Upload Modal */}
+      {showDeveloperReceiptModal && selectedPaymentForReceipt && (
+        <DeveloperReceiptModal
+          opportunity={opp}
+          payment={selectedPaymentForReceipt.payment}
+          investor={selectedPaymentForReceipt.investor}
+          milestone={selectedPaymentForReceipt.milestone}
+          onClose={() => {
+            setShowDeveloperReceiptModal(false);
+            setSelectedPaymentForReceipt(null);
+          }}
+          onSuccess={() => {
+            setShowDeveloperReceiptModal(false);
+            setSelectedPaymentForReceipt(null);
+            fetchData();
+            toast.success("Developer receipt uploaded successfully!");
+          }}
+        />
+      )}
     </div>
   );
 }
