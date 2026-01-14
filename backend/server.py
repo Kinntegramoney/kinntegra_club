@@ -4869,6 +4869,173 @@ async def mark_notification_read(
     return {"message": "Notification marked as read"}
 
 
+@api_router.post("/real-estate-opportunities/{opportunity_id}/upload-invoice")
+async def upload_investor_invoice(
+    opportunity_id: str,
+    milestone_index: int = Form(...),
+    investor_id: str = Form(...),
+    invoice_number: str = Form(None),
+    invoice_date: str = Form(None),
+    due_date: str = Form(None),
+    notes: str = Form(None),
+    invoice_file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload an invoice for a specific investor and milestone (broker only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can upload invoices")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Verify broker owns this opportunity
+    if opportunity.get('created_by') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Not authorized to upload invoices for this property")
+    
+    # Verify investor exists in this opportunity
+    investor = next((inv for inv in opportunity.get('investors', []) if inv.get('client_id') == investor_id), None)
+    if not investor:
+        raise HTTPException(status_code=404, detail="Investor not found in this opportunity")
+    
+    # Verify milestone exists
+    payment_schedule = opportunity.get('payment_schedule', [])
+    if milestone_index < 0 or milestone_index >= len(payment_schedule):
+        raise HTTPException(status_code=400, detail="Invalid milestone index")
+    
+    # Save invoice file
+    import os
+    upload_dir = "/app/uploads/invoices"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_ext = invoice_file.filename.split('.')[-1] if '.' in invoice_file.filename else 'pdf'
+    invoice_filename = f"{opportunity_id}_{investor_id}_{milestone_index}_{uuid.uuid4()}.{file_ext}"
+    file_path = os.path.join(upload_dir, invoice_filename)
+    
+    with open(file_path, "wb") as f:
+        content = await invoice_file.read()
+        f.write(content)
+    
+    # Create invoice record
+    invoice_record = {
+        "id": str(uuid.uuid4()),
+        "milestone_index": milestone_index,
+        "investor_id": investor_id,
+        "investor_name": investor.get('client_name', 'Unknown'),
+        "invoice_number": invoice_number or f"INV-{opportunity_id[:8]}-{milestone_index}-{investor_id[:8]}".upper(),
+        "invoice_date": invoice_date or datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+        "due_date": due_date or payment_schedule[milestone_index].get('date'),
+        "amount": opportunity.get('unit_price', 0) * payment_schedule[milestone_index].get('percentage', 0) / 100 * (investor.get('share_percentage', 0) / 100),
+        "file_url": f"/uploads/invoices/{invoice_filename}",
+        "original_filename": invoice_file.filename,
+        "notes": notes,
+        "uploaded_by": current_user['id'],
+        "uploaded_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Update opportunity with invoice
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$push": {"investor_invoices": invoice_record}}
+    )
+    
+    return {
+        "message": "Invoice uploaded successfully",
+        "invoice_id": invoice_record['id'],
+        "invoice_number": invoice_record['invoice_number']
+    }
+
+
+@api_router.get("/real-estate-opportunities/{opportunity_id}/invoices/{invoice_id}")
+async def download_invoice(
+    opportunity_id: str,
+    invoice_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Download an invoice file"""
+    from fastapi.responses import FileResponse
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Find the invoice
+    invoice = next((inv for inv in opportunity.get('investor_invoices', []) if inv.get('id') == invoice_id), None)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Check authorization
+    user_role = current_user['role']
+    user_id = current_user['id']
+    
+    if user_role == 'broker':
+        if opportunity.get('created_by') != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    elif user_role == 'sub_broker':
+        # Sub-broker can view invoices for their clients
+        investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
+        sub_broker_clients = await db.clients.find({"linked_subbroker_id": user_id}, {"id": 1}).to_list(1000)
+        sub_broker_client_ids = [c['id'] for c in sub_broker_clients]
+        if not any(cid in investor_client_ids for cid in sub_broker_client_ids):
+            raise HTTPException(status_code=403, detail="Not authorized")
+    elif user_role == 'client':
+        # Client can only view their own invoices
+        client = await db.clients.find_one({"pan_number": current_user.get('pan_number')})
+        if not client or invoice.get('investor_id') != client['id']:
+            raise HTTPException(status_code=403, detail="Not authorized to view this invoice")
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    file_path = f"/app{invoice['file_url']}"
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Invoice file not found")
+    
+    return FileResponse(
+        file_path,
+        filename=invoice.get('original_filename', 'invoice.pdf'),
+        media_type='application/octet-stream'
+    )
+
+
+@api_router.delete("/real-estate-opportunities/{opportunity_id}/invoices/{invoice_id}")
+async def delete_invoice(
+    opportunity_id: str,
+    invoice_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete an invoice (broker only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can delete invoices")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    if opportunity.get('created_by') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Find and remove the invoice
+    invoice = next((inv for inv in opportunity.get('investor_invoices', []) if inv.get('id') == invoice_id), None)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Delete file
+    file_path = f"/app{invoice['file_url']}"
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    
+    # Remove from database
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$pull": {"investor_invoices": {"id": invoice_id}}}
+    )
+    
+    return {"message": "Invoice deleted successfully"}
+
+
 @api_router.post("/real-estate-opportunities/{opportunity_id}/investor-payment")
 async def record_investor_payment(
     opportunity_id: str,
