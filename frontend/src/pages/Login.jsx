@@ -111,12 +111,12 @@ export default function Login() {
           }}
         />
         
-        {/* Logo - positioned to overlap header and body */}
+        {/* Logo - positioned to overlap header and body seamlessly */}
         <div 
           style={{
             position: 'absolute',
             left: '50%',
-            top: '30px',
+            top: '15px',
             transform: 'translateX(-50%)',
             zIndex: 10
           }}
@@ -132,7 +132,8 @@ export default function Login() {
               border: 'none',
               outline: 'none',
               boxShadow: 'none',
-              padding: 0
+              padding: 0,
+              backgroundColor: 'transparent'
             }}
           />
         </div>
