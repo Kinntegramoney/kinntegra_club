@@ -939,7 +939,7 @@ export default function RealEstateDetails() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <Users className="h-5 w-5 text-teal-600" />
-                Current Investors ({opp.current_investors || 0})
+                Current Investors ({opp.investors?.length || 0})
               </h2>
               {opp.status === 'available' && remainingPercentage > 0 && (
                 <Button size="sm" variant="outline" onClick={() => setShowAllocateModal(true)}>
