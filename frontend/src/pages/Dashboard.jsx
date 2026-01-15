@@ -618,31 +618,31 @@ export default function Dashboard() {
                 data-testid="quick-action-bonds"
               >
                 <Landmark className="h-8 w-8 text-indigo-500 group-hover:scale-110 transition-transform" />
-                <span className="mt-2 text-sm font-medium text-slate-300">Manage Bonds</span>
+                <span className="mt-2 text-sm font-medium text-gray-700">Manage Bonds</span>
               </button>
               <button
                 onClick={() => navigate("/broker/admin/real-estate")}
-                className="flex flex-col items-center justify-center p-4 bg-slate-800/50 hover:bg-slate-800 rounded-xl border border-slate-700 hover:border-pink-500/50 transition-all group"
+                className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-pink-400 transition-all group"
                 data-testid="quick-action-real-estate"
               >
-                <Building2 className="h-8 w-8 text-pink-400 group-hover:scale-110 transition-transform" />
-                <span className="mt-2 text-sm font-medium text-slate-300">Real Estate</span>
+                <Building2 className="h-8 w-8 text-pink-500 group-hover:scale-110 transition-transform" />
+                <span className="mt-2 text-sm font-medium text-gray-700">Real Estate</span>
               </button>
               <button
                 onClick={() => navigate("/broker/admin/clients")}
-                className="flex flex-col items-center justify-center p-4 bg-slate-800/50 hover:bg-slate-800 rounded-xl border border-slate-700 hover:border-emerald-500/50 transition-all group"
+                className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-emerald-400 transition-all group"
                 data-testid="quick-action-clients"
               >
-                <Users className="h-8 w-8 text-emerald-400 group-hover:scale-110 transition-transform" />
-                <span className="mt-2 text-sm font-medium text-slate-300">Manage Clients</span>
+                <Users className="h-8 w-8 text-emerald-500 group-hover:scale-110 transition-transform" />
+                <span className="mt-2 text-sm font-medium text-gray-700">Manage Clients</span>
               </button>
               <button
                 onClick={() => navigate("/broker/admin/sub-brokers")}
-                className="flex flex-col items-center justify-center p-4 bg-slate-800/50 hover:bg-slate-800 rounded-xl border border-slate-700 hover:border-violet-500/50 transition-all group"
+                className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-violet-400 transition-all group"
                 data-testid="quick-action-subbrokers"
               >
-                <Briefcase className="h-8 w-8 text-violet-400 group-hover:scale-110 transition-transform" />
-                <span className="mt-2 text-sm font-medium text-slate-300">Sub-Brokers</span>
+                <Briefcase className="h-8 w-8 text-violet-500 group-hover:scale-110 transition-transform" />
+                <span className="mt-2 text-sm font-medium text-gray-700">Sub-Brokers</span>
               </button>
             </div>
           </div>
