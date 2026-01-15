@@ -2031,12 +2031,33 @@ class GapSheetGenerator:
         ws.cell(row=3, column=2, value="Value")
         self._style_header(ws, 3, 2)
         
-        # Helper function to format currency with ₹ and commas
+        # Helper function to format currency with ₹ and Indian number system (lakhs, crores)
         def format_inr(amount):
-            if amount >= 0:
-                return f"₹ {amount:,.2f}"
+            """Format amount in Indian numbering system: X,XX,XX,XXX"""
+            is_negative = amount < 0
+            amount = abs(amount)
+            
+            # Split into integer and decimal parts
+            int_part = int(amount)
+            dec_part = round((amount - int_part) * 100)
+            
+            # Format integer part in Indian system
+            s = str(int_part)
+            if len(s) <= 3:
+                formatted = s
             else:
-                return f"-₹ {abs(amount):,.2f}"
+                # Last 3 digits
+                formatted = s[-3:]
+                s = s[:-3]
+                # Then groups of 2
+                while s:
+                    formatted = s[-2:] + ',' + formatted
+                    s = s[:-2]
+            
+            result = f"₹ {formatted}.{dec_part:02d}"
+            if is_negative:
+                result = f"-{result}"
+            return result
         
         ws.cell(row=4, column=1, value="Total Amount Invested")
         ws.cell(row=4, column=2, value=format_inr(total_invested))
