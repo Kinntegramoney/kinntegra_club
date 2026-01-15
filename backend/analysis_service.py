@@ -940,12 +940,9 @@ class GapSheetGenerator:
                 else:
                     return 'Other'
             
-            category = classify_scheme(scheme_name)
-            
             entry = {
                 'folio': folio_data.get('folio', folio_id),
                 'scheme': scheme_name,
-                'category': category,
                 'invested': invested,
                 'withdrawn': withdrawn,
                 'dividend': 0,  # Dividend tracking not in CAS
@@ -963,21 +960,18 @@ class GapSheetGenerator:
         # Sort by Valuation (highest first)
         all_entries.sort(key=lambda x: x['valuation'], reverse=True)
         
-        # Write data rows - new column order matching template with Category
+        # Write data rows - column order matching template
         row = 2
         for entry in all_entries:
             ws.cell(row=row, column=1, value=entry['folio'])
             ws.cell(row=row, column=2, value=entry['scheme'])
             
-            # Category (Column 3)
-            ws.cell(row=row, column=3, value=entry['category'])
-            
-            # Valuation (Column 4)
-            cell = ws.cell(row=row, column=4, value=round(entry['valuation'], 2))
+            # Valuation (Column 3)
+            cell = ws.cell(row=row, column=3, value=round(entry['valuation'], 2))
             cell.number_format = '₹#,##0.00'
             
-            # Cash Withdrawal (Column 5)
-            cell = ws.cell(row=row, column=5, value=round(entry['withdrawn'], 2))
+            # Cash Withdrawal (Column 4)
+            cell = ws.cell(row=row, column=4, value=round(entry['withdrawn'], 2))
             cell.number_format = '₹#,##0.00'
             
             # Dividend Paid (Column 6)
