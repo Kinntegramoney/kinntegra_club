@@ -1150,9 +1150,9 @@ class GapSheetGenerator:
             ws.cell(row=row, column=10, value=round(data['sold_lt_units'], 3) if data['sold_lt_units'] else '')
             ws.cell(row=row, column=11, value=round(data['sold_lt_gain'], 2) if data['sold_lt_gain'] else '')
             ws.cell(row=row, column=12, value=round(data['sold_st_units'], 3) if data['sold_st_units'] else '')
-            ws.cell(row=row, column=12, value=round(data['sold_st_gain'], 2) if data['sold_st_gain'] else '')
-            ws.cell(row=row, column=13, value=data['nav_31jan2018'])
-            ws.cell(row=row, column=14, value=data['gf_triggered'])
+            ws.cell(row=row, column=13, value=round(data['sold_st_gain'], 2) if data['sold_st_gain'] else '')
+            ws.cell(row=row, column=14, value=data['nav_31jan2018'])
+            ws.cell(row=row, column=15, value=data['gf_triggered'])
             row += 1
         
         self._auto_width(ws)
@@ -1906,8 +1906,12 @@ class GapSheetGenerator:
             scheme_name = folio_data.get('scheme', '')
             category = classify_scheme(scheme_name)
             market_value = folio_data.get('market_value', 0)
+            closing_balance = folio_data.get('closing_balance', 0)
             
-            if market_value > 0:
+            # Only include funds with active balance (units > 0) in category breakdown
+            is_active_fund = closing_balance > 0 and market_value > 0
+            
+            if is_active_fund:
                 category_data[category]['current'] += market_value
                 category_data[category]['schemes'] += 1
                 total_current_value += market_value
@@ -1924,7 +1928,7 @@ class GapSheetGenerator:
                     total_withdrawn += amount
                 else:
                     total_invested += amount
-                    if market_value > 0:  # Only count for active holdings
+                    if is_active_fund:  # Only count for active holdings with balance
                         category_data[category]['invested'] += amount
         
         # Summary headers
