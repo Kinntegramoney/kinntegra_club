@@ -1797,22 +1797,18 @@ class GapSheetGenerator:
         self._auto_width(ws)
     
     def _create_xirr_sheet(self, wb: Workbook):
-        """Sheet 6: XIRR - Broker/Adviser wise with Date, Particulars, Amount columns"""
+        """Sheet 6: XIRR - Broker/Adviser wise with Date, Description, Amount columns"""
         ws = wb.create_sheet("XIRR")
         
         # Group transactions by Adviser ARN
         adviser_data = defaultdict(lambda: {
-            'transactions': [],  # List of (date, particulars, amount, folio, scheme)
+            'transactions': [],  # List of (date, description, amount)
             'cashflows': [],     # For XIRR calculation
-            'total_invested': 0,
-            'total_withdrawn': 0,
             'current_value': 0
         })
         
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
             adviser_arn = folio_data.get('advisor', '') or 'NO_ARN'
-            scheme_name = folio_data.get('scheme', '') or ''
-            folio_num = folio_data.get('folio', folio_id)
             closing_balance = folio_data.get('closing_balance', 0)
             current_nav = folio_data.get('current_nav', 0)
             market_value = folio_data.get('market_value', 0)
@@ -1827,7 +1823,8 @@ class GapSheetGenerator:
                     continue
                 
                 amount = trans.get('amount', 0)
-                if amount == 0:
+                units = trans.get('units', 0)
+                if amount == 0 or units == 0:
                     continue
                 
                 try:
@@ -1835,49 +1832,31 @@ class GapSheetGenerator:
                 except:
                     continue
                 
-                trans_type = trans.get('transaction_type', '')
-                
                 if trans.get('is_redemption'):
-                    # Redemption - positive cashflow (money received)
+                    # Unit debit = Sell (positive cashflow - money received)
                     adviser_data[adviser_arn]['transactions'].append({
                         'date': trans['date'],
                         'date_obj': trans_date,
-                        'particulars': f"Redemption - {trans_type}",
-                        'amount': amount,
-                        'folio': folio_num,
-                        'scheme': scheme_name[:40]
+                        'description': 'Sell',
+                        'amount': amount
                     })
                     adviser_data[adviser_arn]['cashflows'].append((trans_date, amount))
-                    adviser_data[adviser_arn]['total_withdrawn'] += amount
                 else:
-                    # Purchase - negative cashflow (money spent)
+                    # Unit credit = Purchase (negative cashflow - money spent)
                     adviser_data[adviser_arn]['transactions'].append({
                         'date': trans['date'],
                         'date_obj': trans_date,
-                        'particulars': f"Purchase - {trans_type}",
-                        'amount': -amount,  # Negative for outflow
-                        'folio': folio_num,
-                        'scheme': scheme_name[:40]
+                        'description': 'Purchase',
+                        'amount': -amount  # Negative for outflow
                     })
                     adviser_data[adviser_arn]['cashflows'].append((trans_date, -amount))
-                    adviser_data[adviser_arn]['total_invested'] += amount
             
-            # Add current value for this folio to adviser's total
+            # Add current value for XIRR calculation (but not as a row)
             if closing_balance > 0 and current_nav > 0:
                 adviser_data[adviser_arn]['current_value'] += market_value
-                # Add final value as positive cashflow
                 adviser_data[adviser_arn]['cashflows'].append((self.report_date, market_value))
-                adviser_data[adviser_arn]['transactions'].append({
-                    'date': self.report_date.strftime('%d-%b-%Y'),
-                    'date_obj': self.report_date,
-                    'particulars': f"Current Value (Balance Units × NAV)",
-                    'amount': market_value,
-                    'folio': folio_num,
-                    'scheme': scheme_name[:40]
-                })
         
         # Write data - each adviser in separate columns
-        row = 1
         col_offset = 0
         
         for adviser_arn, data in adviser_data.items():
@@ -1892,51 +1871,34 @@ class GapSheetGenerator:
             if data['cashflows'] and len(data['cashflows']) >= 2:
                 xirr_pct = calculate_xirr(data['cashflows']) * 100
             
-            # Write adviser header
+            # Write adviser header: Adviser Name (ARN)
             start_col = col_offset + 1
-            ws.cell(row=1, column=start_col, value=f"Adviser: {adviser_arn}")
-            ws.merge_cells(start_row=1, start_column=start_col, end_row=1, end_column=start_col + 3)
-            self._style_header(ws, 1, 4, start_col=start_col)
+            ws.cell(row=1, column=start_col, value=f"Adviser Name ({adviser_arn})")
+            ws.merge_cells(start_row=1, start_column=start_col, end_row=1, end_column=start_col + 2)
+            self._style_header(ws, 1, 3, start_col=start_col)
             
-            # Column headers: Date, Particulars, Folio/Scheme, Amount
-            headers = ["Date", "Particulars", "Folio / Scheme", "Amount"]
+            # Column headers: Date, Description, Amount
+            headers = ["Date", "Description", "Amount"]
             for i, header in enumerate(headers):
                 ws.cell(row=2, column=start_col + i, value=header)
-            self._style_header(ws, 2, 4, start_col=start_col)
+            self._style_header(ws, 2, 3, start_col=start_col)
             
-            # Write transactions
+            # Write transactions (only Purchase and Sell)
             data_row = 3
             for trans in data['transactions']:
                 ws.cell(row=data_row, column=start_col, value=trans['date'])
-                ws.cell(row=data_row, column=start_col + 1, value=trans['particulars'])
-                ws.cell(row=data_row, column=start_col + 2, value=f"{trans['folio']} / {trans['scheme']}")
-                cell = ws.cell(row=data_row, column=start_col + 3, value=round(trans['amount'], 2))
+                ws.cell(row=data_row, column=start_col + 1, value=trans['description'])
+                cell = ws.cell(row=data_row, column=start_col + 2, value=round(trans['amount'], 2))
                 cell.number_format = '₹#,##0.00'
                 data_row += 1
             
-            # Add summary row
+            # Add XIRR at the end
             data_row += 1
-            ws.cell(row=data_row, column=start_col, value="Summary:")
-            ws.cell(row=data_row, column=start_col + 1, value="Total Invested")
-            cell = ws.cell(row=data_row, column=start_col + 3, value=round(data['total_invested'], 2))
-            cell.number_format = '₹#,##0.00'
+            ws.cell(row=data_row, column=start_col, value="XIRR %")
+            ws.cell(row=data_row, column=start_col + 2, value=f"{xirr_pct:.2f}%" if xirr_pct else "N/A")
             
-            data_row += 1
-            ws.cell(row=data_row, column=start_col + 1, value="Total Withdrawn")
-            cell = ws.cell(row=data_row, column=start_col + 3, value=round(data['total_withdrawn'], 2))
-            cell.number_format = '₹#,##0.00'
-            
-            data_row += 1
-            ws.cell(row=data_row, column=start_col + 1, value="Current Value")
-            cell = ws.cell(row=data_row, column=start_col + 3, value=round(data['current_value'], 2))
-            cell.number_format = '₹#,##0.00'
-            
-            data_row += 1
-            ws.cell(row=data_row, column=start_col + 1, value="XIRR %")
-            ws.cell(row=data_row, column=start_col + 3, value=f"{xirr_pct:.2f}%" if xirr_pct else "N/A")
-            
-            # Move to next adviser columns (4 columns + 1 gap)
-            col_offset += 5
+            # Move to next adviser columns (3 columns + 1 gap)
+            col_offset += 4
         
         self._auto_width(ws)
     
