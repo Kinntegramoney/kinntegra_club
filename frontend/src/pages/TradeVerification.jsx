@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
-import { Check, X, Clock, FileText, FileImage, Tag, ChevronDown, ChevronUp, Save, RefreshCw } from "lucide-react";
+import { Check, X, Clock, FileText, FileImage, Tag, ChevronDown, ChevronUp, Save, RefreshCw, Mail, Users, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -25,11 +25,13 @@ export default function TradeVerification() {
   // Reinvestment state
   const [reinvestmentData, setReinvestmentData] = useState(null);
   const [loadingReinvestment, setLoadingReinvestment] = useState(false);
-  const [reinvestmentSection, setReinvestmentSection] = useState("untagged"); // "untagged" or "tagged"
+  const [reinvestmentSection, setReinvestmentSection] = useState("untagged"); // "untagged", "tagged", "byClient"
   const [expandedClients, setExpandedClients] = useState({});
   const [localTags, setLocalTags] = useState({});
   const [customAmounts, setCustomAmounts] = useState({});
   const [savingClient, setSavingClient] = useState(null);
+  const [sendingApproval, setSendingApproval] = useState(null);
+  const [selectedClientEntries, setSelectedClientEntries] = useState({});
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
