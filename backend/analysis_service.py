@@ -931,67 +931,176 @@ class GapSheetGenerator:
         self._auto_width(ws)
     
     def _create_advisor_view_sheet(self, wb: Workbook):
-        """Sheet 3: Advisor View with Longevity"""
+        """Sheet 3: Advisor View with XIRR Performance and Longevity"""
         ws = wb.create_sheet("Advisor View")
         
         headers = [
-            "Group Name", "PAN", "Advisor", "Advisor Longevity", "Asset Class", 
-            "From Date", "To Date", "Amount Invested", "Cash Withdrawal", "Dividend Paid", 
-            "Valuation", "Absolute Gains", "Absolute Return %", "CAGR %", "3 Yr %", "Remarks"
+            "Adviser ARN", "Adviser Name", "Total AUM", "Amount Invested", "Cash Withdrawal",
+            "Absolute Gains", "XIRR %", "Active Folios", "Closed Folios",
+            "First Transaction", "Last Transaction", "Active Longevity", "Past Longevity", 
+            "Total Longevity", "Status"
         ]
         
         for col, header in enumerate(headers, 1):
             ws.cell(row=1, column=col, value=header)
         self._style_header(ws, 1, len(headers))
         
-        # Group by advisor
-        advisor_data = defaultdict(lambda: {'invested': 0, 'withdrawn': 0, 'valuation': 0, 'first_date': None})
+        # Group data by advisor
+        advisor_data = defaultdict(lambda: {
+            'invested': 0, 'withdrawn': 0, 'valuation': 0,
+            'first_date': None, 'last_date': None,
+            'last_active_date': None,  # Last transaction date for active folios
+            'cashflows': [],  # For XIRR calculation
+            'active_folios': 0, 'closed_folios': 0,
+            'folios': []
+        })
         
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
-            arn = folio_data.get('advisor', '') or 'ARN-145633'
+            arn = folio_data.get('advisor', '') or 'NO_ARN'
             transactions = folio_data.get('transactions', [])
+            closing_balance = folio_data.get('closing_balance', 0)
+            market_value = folio_data.get('market_value', 0)
             
-            invested = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
-            withdrawn = sum(t['amount'] for t in transactions if t.get('is_redemption', False))
-            valuation = folio_data.get('market_value', 0)
+            # Filter out rejections for calculations
+            rejections = {}
+            for t in transactions:
+                if 'Rejection' in t.get('transaction_type', ''):
+                    key = (t['date'], t['amount'])
+                    rejections[key] = rejections.get(key, 0) + 1
+            
+            valid_trans = []
+            used_rejections = {}
+            for t in transactions:
+                if 'Rejection' in t.get('transaction_type', ''):
+                    continue
+                key = (t['date'], t['amount'])
+                if key in rejections:
+                    matched = used_rejections.get(key, 0)
+                    if matched < rejections[key]:
+                        used_rejections[key] = matched + 1
+                        continue
+                valid_trans.append(t)
+            
+            invested = sum(t['amount'] for t in valid_trans if not t.get('is_redemption', False))
+            withdrawn = sum(t['amount'] for t in valid_trans if t.get('is_redemption', False))
             
             advisor_data[arn]['invested'] += invested
             advisor_data[arn]['withdrawn'] += withdrawn
-            advisor_data[arn]['valuation'] += valuation
+            advisor_data[arn]['valuation'] += market_value
             
-            # Track earliest transaction
-            for trans in transactions:
+            # Track active vs closed folios
+            if closing_balance > 0 and market_value > 0:
+                advisor_data[arn]['active_folios'] += 1
+            else:
+                advisor_data[arn]['closed_folios'] += 1
+            
+            # Track transaction dates and build cashflows for XIRR
+            for trans in valid_trans:
                 try:
                     trans_date = datetime.strptime(trans['date'], '%d-%b-%Y')
+                    amount = trans['amount']
+                    
+                    # Track first/last dates
                     if advisor_data[arn]['first_date'] is None or trans_date < advisor_data[arn]['first_date']:
                         advisor_data[arn]['first_date'] = trans_date
+                    if advisor_data[arn]['last_date'] is None or trans_date > advisor_data[arn]['last_date']:
+                        advisor_data[arn]['last_date'] = trans_date
+                    
+                    # Track last active date (for active folios)
+                    if closing_balance > 0:
+                        if advisor_data[arn]['last_active_date'] is None or trans_date > advisor_data[arn]['last_active_date']:
+                            advisor_data[arn]['last_active_date'] = trans_date
+                    
+                    # Skip Stamp Duty/STT for XIRR
+                    if trans.get('transaction_type') in ['Stamp Duty', 'STT Paid']:
+                        continue
+                    
+                    # Add to cashflows for XIRR
+                    if trans.get('is_redemption'):
+                        advisor_data[arn]['cashflows'].append((trans_date, amount))
+                    else:
+                        advisor_data[arn]['cashflows'].append((trans_date, -amount))
                 except ValueError:
                     pass
+            
+            # Add current valuation to cashflows if position is active
+            if market_value > 0:
+                advisor_data[arn]['cashflows'].append((self.report_date, market_value))
         
         row = 2
-        for arn, data in advisor_data.items():
-            gains = data['valuation'] - (data['invested'] - data['withdrawn'])
-            return_pct = (gains / (data['invested'] - data['withdrawn']) * 100) if (data['invested'] - data['withdrawn']) > 0 else 0
+        for arn, data in sorted(advisor_data.items()):
+            total_aum = data['valuation']
+            gains = total_aum - (data['invested'] - data['withdrawn'])
+            
+            # Calculate XIRR
+            xirr_pct = 0
+            if data['cashflows']:
+                xirr_rate = calculate_xirr(data['cashflows'])
+                xirr_pct = xirr_rate * 100
+            
+            # Determine status
+            if data['active_folios'] > 0:
+                status = "Active"
+            else:
+                status = "Exited"  # All positions closed
             
             # Calculate longevity
-            longevity = "N/A"
-            if data['first_date']:
+            first_date_str = data['first_date'].strftime('%d-%b-%Y') if data['first_date'] else 'N/A'
+            last_date_str = data['last_date'].strftime('%d-%b-%Y') if data['last_date'] else 'N/A'
+            
+            # Active Longevity: Time from first transaction to report date (if still active)
+            active_longevity = "N/A"
+            if status == "Active" and data['first_date']:
                 days = (self.report_date - data['first_date']).days
                 years = days // 365
                 months = (days % 365) // 30
-                if years > 0:
-                    longevity = f"{years} years {months} months"
-                else:
-                    longevity = f"{months} months"
+                active_longevity = f"{years}y {months}m" if years > 0 else f"{months}m"
             
-            ws.cell(row=row, column=3, value=self._get_advisor_name(arn))
-            ws.cell(row=row, column=4, value=longevity)
-            ws.cell(row=row, column=8, value=round(data['invested'], 2))
-            ws.cell(row=row, column=9, value=round(data['withdrawn'], 2))
-            ws.cell(row=row, column=10, value=0)
-            ws.cell(row=row, column=11, value=round(data['valuation'], 2))
-            ws.cell(row=row, column=12, value=round(gains, 2))
-            ws.cell(row=row, column=13, value=round(return_pct, 4))
+            # Past Longevity: For exited clients, time from first to last transaction
+            past_longevity = "N/A"
+            if status == "Exited" and data['first_date'] and data['last_date']:
+                days = (data['last_date'] - data['first_date']).days
+                years = days // 365
+                months = (days % 365) // 30
+                past_longevity = f"{years}y {months}m" if years > 0 else f"{months}m"
+            
+            # Total Longevity: Full history
+            total_longevity = "N/A"
+            if data['first_date']:
+                end_date = self.report_date if status == "Active" else data['last_date']
+                if end_date:
+                    days = (end_date - data['first_date']).days
+                    years = days // 365
+                    months = (days % 365) // 30
+                    total_longevity = f"{years}y {months}m" if years > 0 else f"{months}m"
+            
+            # Write row with formatting
+            ws.cell(row=row, column=1, value=arn)
+            ws.cell(row=row, column=2, value=self._get_advisor_name(arn))
+            
+            cell = ws.cell(row=row, column=3, value=round(total_aum, 2))
+            cell.number_format = '₹#,##0.00'
+            
+            cell = ws.cell(row=row, column=4, value=round(data['invested'], 2))
+            cell.number_format = '₹#,##0.00'
+            
+            cell = ws.cell(row=row, column=5, value=round(data['withdrawn'], 2))
+            cell.number_format = '₹#,##0.00'
+            
+            cell = ws.cell(row=row, column=6, value=round(gains, 2))
+            cell.number_format = '₹#,##0.00'
+            
+            cell = ws.cell(row=row, column=7, value=round(xirr_pct, 4))
+            cell.number_format = '0.0000"%"'
+            
+            ws.cell(row=row, column=8, value=data['active_folios'])
+            ws.cell(row=row, column=9, value=data['closed_folios'])
+            ws.cell(row=row, column=10, value=first_date_str)
+            ws.cell(row=row, column=11, value=last_date_str)
+            ws.cell(row=row, column=12, value=active_longevity)
+            ws.cell(row=row, column=13, value=past_longevity)
+            ws.cell(row=row, column=14, value=total_longevity)
+            ws.cell(row=row, column=15, value=status)
             row += 1
         
         self._auto_width(ws)
