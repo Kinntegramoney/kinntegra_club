@@ -1128,17 +1128,32 @@ class GapSheetGenerator:
                     
                     purchase_value = units * purchase_nav if purchase_nav else trans.get('amount', 0)
                     current_value = units * current_nav if current_nav else 0
-                    gain_loss = current_value - purchase_value
+                    original_gain_loss = current_value - purchase_value
                     
-                    # Get LT/ST status and tax
+                    # Check for grandfathering (equity funds before Jan 31, 2018)
+                    gf_nav = get_grandfathered_nav(purchase_nav, current_nav, trans_date, fund_type)
+                    gf_applied = gf_nav is not None and gf_nav != purchase_nav and trans_date < GRANDFATHER_DATE
+                    
+                    if gf_applied:
+                        effective_cost_nav = gf_nav
+                        gf_value = units * gf_nav
+                        effective_cost = gf_value
+                        gain_loss_after_gf = current_value - effective_cost
+                    else:
+                        effective_cost_nav = purchase_nav
+                        gf_value = None
+                        effective_cost = purchase_value
+                        gain_loss_after_gf = original_gain_loss
+                    
+                    # Get LT/ST status and tax (use gain after grandfathering)
                     lt_st_status, tax_rate, estimated_tax = get_lt_st_and_tax(
-                        fund_type, trans_date, holding_days, gain_loss
+                        fund_type, trans_date, holding_days, gain_loss_after_gf
                     )
                     
                     # Get financial year of purchase
                     fy = get_financial_year(trans_date)
                     
-                    # Write row
+                    # Write row with grandfathering columns
                     ws.cell(row=row, column=1, value=folio_data.get('folio', folio_id))
                     ws.cell(row=row, column=2, value=scheme_name[:50])
                     ws.cell(row=row, column=3, value=fund_type)
@@ -1148,12 +1163,18 @@ class GapSheetGenerator:
                     ws.cell(row=row, column=7, value=lt_st_status)
                     ws.cell(row=row, column=8, value=round(units, 4))
                     ws.cell(row=row, column=9, value=round(purchase_nav, 4) if purchase_nav else '')
-                    ws.cell(row=row, column=10, value=round(current_nav, 4) if current_nav else '')
-                    ws.cell(row=row, column=11, value=round(purchase_value, 2))
-                    ws.cell(row=row, column=12, value=round(current_value, 2))
-                    ws.cell(row=row, column=13, value=round(gain_loss, 2))
-                    ws.cell(row=row, column=14, value=f"{tax_rate*100:.1f}%")
-                    ws.cell(row=row, column=15, value=round(estimated_tax, 2))
+                    ws.cell(row=row, column=10, value=round(gf_nav, 4) if gf_nav and gf_applied else '')  # Grandfathered NAV
+                    ws.cell(row=row, column=11, value=round(effective_cost_nav, 4) if effective_cost_nav else '')  # Effective Cost NAV
+                    ws.cell(row=row, column=12, value=round(current_nav, 4) if current_nav else '')
+                    ws.cell(row=row, column=13, value=round(purchase_value, 2))
+                    ws.cell(row=row, column=14, value=round(gf_value, 2) if gf_value else '')  # Grandfathered Value
+                    ws.cell(row=row, column=15, value=round(effective_cost, 2))  # Effective Cost
+                    ws.cell(row=row, column=16, value=round(current_value, 2))
+                    ws.cell(row=row, column=17, value=round(original_gain_loss, 2))  # Original Gain/Loss
+                    ws.cell(row=row, column=18, value=round(gain_loss_after_gf, 2))  # Gain/Loss after GF
+                    ws.cell(row=row, column=19, value=f"{tax_rate*100:.1f}%")
+                    ws.cell(row=row, column=20, value=round(estimated_tax, 2))
+                    ws.cell(row=row, column=21, value="Yes" if gf_applied else "No")  # Grandfathering Applied
                     
                     row += 1
                     
