@@ -279,31 +279,22 @@ const Analysis = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <header className="bg-slate-800/50 border-b border-slate-700 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar user={user} />
+      
+      <div className="flex-1 overflow-auto">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => navigate(getBackPath())}
-                className="text-slate-400 hover:text-white"
-                data-testid="back-button"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-white">Portfolio Analysis</h1>
-                <p className="text-sm text-slate-400">Upload CAS PDF and generate Gap Sheet reports</p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Portfolio Analysis</h1>
+              <p className="text-sm text-gray-500 mt-1">Upload CAS PDF and generate Gap Sheet reports</p>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => { fetchAnalyses(); fetchSchemeMasterStatus(); }}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100"
               data-testid="refresh-button"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -311,12 +302,11 @@ const Analysis = () => {
             </Button>
           </div>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="p-6">
         {/* Progress Bar - Show when processing */}
         {processingStatus && (
-          <div className="mb-6 bg-slate-800/50 border border-slate-700 rounded-lg p-4" data-testid="processing-status">
+          <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 shadow-sm" data-testid="processing-status">
             <div className="flex items-center gap-3 mb-2">
               <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
               <span className="text-white font-medium">{processingStatus}</span>
