@@ -704,19 +704,19 @@ class GapSheetGenerator:
         """Generate the Gap Sheet Excel file with all sheets"""
         wb = Workbook()
         
-        # Create all sheets
+        # Create sheets in required order:
+        # 1. Portfolio Performance
+        # 2. MF Transactions
+        # 3. NFT
+        # 4. Advisor View
+        # 5. Tax View
+        # 6. Exit Load
         self._create_portfolio_performance_sheet(wb)
-        self._create_tax_view_sheet(wb)
-        self._create_advisor_view_sheet(wb)
-        self._create_pan_view_sheet(wb)
-        self._create_mf_ageing_sheet(wb)
-        self._create_mutual_fund_holding_sheet(wb)
         self._create_mf_transactions_sheet(wb)
-        self._create_accounts_sheet(wb)
-        self._create_exit_loads_sheet(wb)
-        self._create_other_details_sheet(wb)
         self._create_nft_sheet(wb)
-        self._create_xirr_report_sheet(wb)
+        self._create_advisor_view_sheet(wb)
+        self._create_tax_view_sheet(wb)
+        self._create_exit_loads_sheet(wb)
         
         if 'Sheet' in wb.sheetnames:
             del wb['Sheet']
