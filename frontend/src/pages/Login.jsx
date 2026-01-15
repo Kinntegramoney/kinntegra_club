@@ -321,9 +321,9 @@ export default function Login() {
                lineHeight: '1.6',
                color: '#6B7280'
              }}>
-          <p className="font-semibold" style={{ color: '#374151' }}>Kinntegraa LLC-FZ</p>
-          <p className="mt-1">License No: 1922240.01</p>
-          <p className="mt-1">Business Center, Sharjah Publishing City Free Zone,<br />Sharjah, UAE</p>
+          <p className="font-semibold" style={{ color: '#374151' }}>Kinntegraa L.L.C-FZ</p>
+          <p className="mt-1">License No: 2418465.01</p>
+          <p className="mt-1">Meydan Grandstand, 6th floor, Meydan Road,<br />Nad Al Sheba, Dubai, U.A.E.</p>
         </div>
       </div>
     </div>
