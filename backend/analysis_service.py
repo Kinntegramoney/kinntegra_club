@@ -428,7 +428,64 @@ class CASParser:
                             i += 1
                             continue
                         
-                        if '***' in amount_str or 'KYC' in amount_str:
+                        # Handle Non-Financial Transactions (NFTs) like KYC updates, Nominee registration
+                        # These have format: Date, ***Description***, next date, etc.
+                        if '***' in amount_str:
+                            # Extract the description from ***Description***
+                            nft_match = re.search(r'\*\*\*(.+?)\*\*\*', amount_str)
+                            if nft_match:
+                                nft_type = nft_match.group(1).strip()
+                                transaction = {
+                                    'date': date_str,
+                                    'amount': 0,
+                                    'nav': 0,
+                                    'units': 0,
+                                    'transaction_type': nft_type,
+                                    'balance': 0,
+                                    'folio': current_folio,
+                                    'scheme': current_scheme,
+                                    'isin': current_isin,
+                                    'pan': current_pan,
+                                    'amc': current_amc,
+                                    'advisor': current_advisor,
+                                    'is_redemption': False,
+                                    'is_nft': True  # Mark as non-financial transaction
+                                }
+                                self.transactions.append(transaction)
+                                if current_key in self.folios:
+                                    self.folios[current_key]['transactions'].append(transaction)
+                            i += 1
+                            continue
+                        
+                        # Handle Pledge/Unpledge transactions
+                        # These have format: Date, "Pledged..." or "Unpledge...", units, next date
+                        if amount_str.startswith('Pledged') or amount_str.startswith('Unpledge'):
+                            pledge_type = 'Pledge' if amount_str.startswith('Pledged') else 'Unpledge'
+                            # Try to extract units from nav_str (which contains the units for pledge)
+                            try:
+                                pledge_units = float(nav_str.replace(',', ''))
+                            except ValueError:
+                                pledge_units = 0
+                            
+                            transaction = {
+                                'date': date_str,
+                                'amount': 0,
+                                'nav': 0,
+                                'units': pledge_units,
+                                'transaction_type': pledge_type,
+                                'balance': pledge_units,
+                                'folio': current_folio,
+                                'scheme': current_scheme,
+                                'isin': current_isin,
+                                'pan': current_pan,
+                                'amc': current_amc,
+                                'advisor': current_advisor,
+                                'is_redemption': False,
+                                'is_pledge': True  # Mark as pledge transaction
+                            }
+                            self.transactions.append(transaction)
+                            if current_key in self.folios:
+                                self.folios[current_key]['transactions'].append(transaction)
                             i += 1
                             continue
                         
