@@ -1754,6 +1754,7 @@ class ClientCreate(BaseModel):
     # Personal Details
     name: str
     pan_number: str
+    ucc: Optional[str] = None  # Unique Client Code
     occupation: Optional[str] = None
     date_of_birth: Optional[str] = None
     father_husband_name: Optional[str] = None
@@ -1787,6 +1788,7 @@ class ClientCreate(BaseModel):
 
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
+    ucc: Optional[str] = None  # Unique Client Code
     occupation: Optional[str] = None
     date_of_birth: Optional[str] = None
     father_husband_name: Optional[str] = None
