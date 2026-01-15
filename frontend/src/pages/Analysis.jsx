@@ -20,9 +20,8 @@ import {
   User,
   Database,
   CheckCircle2,
-  Circle,
-  ExternalLink,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -35,17 +34,12 @@ const Analysis = () => {
   const [schemeMasterStatus, setSchemeMasterStatus] = useState(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   
-  // Step-by-step wizard
-  const [currentStep, setCurrentStep] = useState(1);
-  const [processingStatus, setProcessingStatus] = useState('');
-  const [processingProgress, setProcessingProgress] = useState(0);
-  
-  // Upload form state
+  // Upload state
   const [casFile, setCasFile] = useState(null);
   const [casPassword, setCasPassword] = useState('');
-  const [schemeMasterFile, setSchemeMasterFile] = useState(null);
   const [uploadingCAS, setUploadingCAS] = useState(false);
-  const [uploadingSchemeMaster, setUploadingSchemeMaster] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
+  const [processingProgress, setProcessingProgress] = useState(0);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -139,76 +133,19 @@ const Analysis = () => {
           setProcessingProgress(0);
           fetchAnalyses();
           setSelectedAnalysis(data);
-          setCurrentStep(3); // Move to results step
         }, 500);
       } else {
         setProcessingStatus('');
         setProcessingProgress(0);
-        toast.error(data.detail || 'Failed to analyze CAS file');
+        toast.error(data.detail || 'Failed to analyze CAS file. Please check the password.');
       }
     } catch (error) {
       console.error('Error uploading CAS:', error);
       setProcessingStatus('');
       setProcessingProgress(0);
-      toast.error('Error uploading file');
+      toast.error('Error uploading file. Please try again.');
     } finally {
       setUploadingCAS(false);
-    }
-  };
-
-  const handleSchemeMasterUpload = async (e) => {
-    e.preventDefault();
-    
-    if (!schemeMasterFile) {
-      toast.error('Please select a scheme master file');
-      return;
-    }
-
-    setUploadingSchemeMaster(true);
-    setProcessingStatus('Uploading BSE Scheme Master...');
-    setProcessingProgress(20);
-    
-    try {
-      const formData = new FormData();
-      formData.append('file', schemeMasterFile);
-
-      setProcessingStatus('Processing scheme data...');
-      setProcessingProgress(50);
-
-      const response = await fetch(`${API}/api/analysis/upload-scheme-master`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
-
-      setProcessingProgress(90);
-      const data = await response.json();
-
-      if (response.ok) {
-        setProcessingStatus('Scheme master uploaded!');
-        setProcessingProgress(100);
-        
-        setTimeout(() => {
-          toast.success(`${data.schemes_added} new schemes added`);
-          setSchemeMasterFile(null);
-          setProcessingStatus('');
-          setProcessingProgress(0);
-          fetchSchemeMasterStatus();
-        }, 500);
-      } else {
-        setProcessingStatus('');
-        setProcessingProgress(0);
-        toast.error(data.detail || 'Failed to upload scheme master');
-      }
-    } catch (error) {
-      console.error('Error uploading scheme master:', error);
-      setProcessingStatus('');
-      setProcessingProgress(0);
-      toast.error('Error uploading file');
-    } finally {
-      setUploadingSchemeMaster(false);
     }
   };
 
@@ -388,7 +325,7 @@ const Analysis = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Step-by-Step Wizard */}
+          {/* Left Column - Upload Section */}
           <div className="space-y-6">
             {/* Steps Progress */}
             <Card className="bg-slate-800/50 border-slate-700">
@@ -400,24 +337,52 @@ const Analysis = () => {
                   step={1} 
                   title="Upload CAS PDF" 
                   isComplete={analyses.length > 0}
-                  isCurrent={currentStep === 1}
+                  isCurrent={true}
                 />
                 <div className="ml-4 border-l-2 border-slate-600 h-4" />
                 <StepIndicator 
                   step={2} 
-                  title="Upload BSE Scheme Master" 
-                  isComplete={schemeMasterStatus?.exists}
-                  isCurrent={currentStep === 2}
-                />
-                <div className="ml-4 border-l-2 border-slate-600 h-4" />
-                <StepIndicator 
-                  step={3} 
                   title="Download Gap Sheet" 
                   isComplete={false}
-                  isCurrent={currentStep === 3}
+                  isCurrent={selectedAnalysis !== null}
                 />
               </CardContent>
             </Card>
+
+            {/* Scheme Master Status - Info only */}
+            {!schemeMasterStatus?.exists && user?.role === 'broker' && (
+              <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-yellow-300 font-medium">Scheme Master Not Uploaded</p>
+                    <p className="text-yellow-200/70 text-sm mt-1">
+                      For better NAV mapping, upload the BSE Scheme Master file.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 border-yellow-600 text-yellow-400 hover:bg-yellow-600/20"
+                      onClick={() => navigate('/broker/admin/scheme-master')}
+                    >
+                      <Database className="h-4 w-4 mr-2" />
+                      Go to Admin → Scheme Master
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {schemeMasterStatus?.exists && (
+              <div className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg p-3">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    Scheme Master: {schemeMasterStatus.total_schemes?.toLocaleString()} schemes
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Step 1: CAS Upload */}
             <Card className="bg-slate-800/50 border-slate-700" data-testid="cas-upload-card">
@@ -479,106 +444,17 @@ const Analysis = () => {
                 </form>
               </CardContent>
             </Card>
-
-            {/* Step 2: Scheme Master Upload */}
-            <Card className="bg-slate-800/50 border-slate-700" data-testid="scheme-master-card">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-xs font-bold">2</div>
-                  BSE Scheme Master
-                </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Upload BSE scheme master file for accurate NAV mapping
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Download Link */}
-                <div className="bg-slate-700/50 rounded-lg p-3">
-                  <p className="text-sm text-slate-300 mb-2">Download the latest scheme master from:</p>
-                  <a 
-                    href="https://www.bsestarmf.in/RptSchemeMaster.aspx" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    BSE StAR MF - Scheme Master
-                  </a>
-                </div>
-
-                {/* Status */}
-                <div className="bg-slate-700/50 rounded-lg p-3 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Status:</span>
-                    <span className={schemeMasterStatus?.exists ? "text-emerald-400" : "text-yellow-400"}>
-                      {schemeMasterStatus?.exists ? "✓ Available" : "⚠ Not Uploaded"}
-                    </span>
-                  </div>
-                  {schemeMasterStatus?.exists && (
-                    <>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Total Schemes:</span>
-                        <span className="text-white">{schemeMasterStatus.total_schemes?.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Last Upload:</span>
-                        <span className="text-white">{formatDate(schemeMasterStatus.last_upload)}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Upload Form - Broker Only */}
-                {user?.role === 'broker' && (
-                  <form onSubmit={handleSchemeMasterUpload} className="space-y-3">
-                    <div>
-                      <Label htmlFor="scheme-file" className="text-slate-300">Scheme Master File (.txt)</Label>
-                      <Input
-                        id="scheme-file"
-                        type="file"
-                        accept=".txt"
-                        onChange={(e) => setSchemeMasterFile(e.target.files[0])}
-                        className="mt-1 bg-slate-700 border-slate-600 text-white file:bg-slate-600 file:text-white file:border-0"
-                        data-testid="scheme-file-input"
-                      />
-                      {schemeMasterFile && (
-                        <p className="text-sm text-emerald-400 mt-1">✓ {schemeMasterFile.name}</p>
-                      )}
-                    </div>
-                    <Button 
-                      type="submit" 
-                      variant="outline"
-                      className="w-full border-emerald-600 text-emerald-400 hover:bg-emerald-600/20"
-                      disabled={uploadingSchemeMaster || !schemeMasterFile}
-                      data-testid="upload-scheme-button"
-                    >
-                      {uploadingSchemeMaster ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Database className="h-4 w-4 mr-2" />
-                          Upload Scheme Master
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
           </div>
 
           {/* Middle & Right Columns - Results */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Step 3: Selected Analysis Results */}
+            {/* Step 2: Selected Analysis Results */}
             {selectedAnalysis && (
               <Card className="bg-slate-800/50 border-slate-700 border-blue-500/50" data-testid="selected-analysis-card">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-sm font-bold text-white">3</div>
+                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm font-bold text-white">2</div>
                       <div>
                         <CardTitle className="text-white">
                           {selectedAnalysis.filename || 'Analysis Result'}
@@ -630,7 +506,7 @@ const Analysis = () => {
                   {/* Gap Sheet Info */}
                   <div className="mt-4 p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg">
                     <p className="text-sm text-blue-300">
-                      <strong>Gap Sheet includes:</strong> Portfolio Performance, Tax View, Advisor View, PAN View, MF Ageing, Mutual Fund Holding, MF Transactions, Accounts, Exit Loads, Other Details
+                      <strong>Gap Sheet includes 10 sheets:</strong> Portfolio Performance, Tax View, Advisor View, PAN View, MF Ageing, Mutual Fund Holding, MF Transactions, Accounts, Exit Loads, Other Details
                     </p>
                   </div>
                 </CardContent>
