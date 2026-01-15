@@ -170,29 +170,64 @@ export default function TradeVerification() {
     }));
   };
 
-  // Get all entries separated by tagged status (per-entry, not per-client)
-  const getEntriesByTagStatus = () => {
-    if (!reinvestmentData) return { tagged: [], untagged: [] };
+  // Get clients grouped by their tagging status
+  const getClientsByStatus = () => {
+    if (!reinvestmentData?.by_client) return { untagged: [], tagged: [], sent: [] };
     
-    const allEntries = [];
-    reinvestmentData.months.forEach(month => {
-      month.items.forEach(item => {
-        allEntries.push(item);
+    const untagged = []; // Clients with at least one untagged entry
+    const tagged = [];   // Clients with ALL entries tagged but not yet sent for approval
+    const sent = [];     // Clients whose entries have been sent for approval
+    
+    reinvestmentData.by_client.forEach(client => {
+      // Check current tags (including local changes)
+      const entriesWithTags = client.entries.map(entry => ({
+        ...entry,
+        currentTag: localTags[entry.cashflow_id] || entry.reinvestment_tag || 'not_tagged'
+      }));
+      
+      const untaggedEntries = entriesWithTags.filter(e => e.currentTag === 'not_tagged');
+      const taggedEntries = entriesWithTags.filter(e => e.currentTag !== 'not_tagged');
+      const sentEntries = client.entries.filter(e => e.approval_status && e.approval_status !== 'not_sent');
+      
+      // Calculate amounts based on tags
+      let taggedAmount = 0;
+      taggedEntries.forEach(e => {
+        if (e.currentTag === 'other') {
+          taggedAmount += parseFloat(customAmounts[e.cashflow_id] || e.custom_amount || 0);
+        } else if (e.currentTag === 'principal') {
+          taggedAmount += e.principal_net || 0;
+        } else if (e.currentTag === 'interest') {
+          taggedAmount += e.interest_net || 0;
+        } else if (e.currentTag === 'net_amount') {
+          taggedAmount += e.net_amount || 0;
+        }
       });
+      
+      const clientData = {
+        ...client,
+        entries: entriesWithTags,
+        untaggedCount: untaggedEntries.length,
+        taggedCount: taggedEntries.length,
+        sentCount: sentEntries.length,
+        taggedAmount: taggedAmount,
+        allTagged: untaggedEntries.length === 0 && taggedEntries.length > 0,
+        hasSentEntries: sentEntries.length > 0
+      };
+      
+      // Categorize client
+      if (sentEntries.length > 0) {
+        // If any entry has been sent, show in "sent" section
+        sent.push(clientData);
+      } else if (untaggedEntries.length === 0 && taggedEntries.length > 0) {
+        // All entries tagged but not sent
+        tagged.push(clientData);
+      } else if (untaggedEntries.length > 0) {
+        // Has untagged entries
+        untagged.push(clientData);
+      }
     });
     
-    // Separate by tag status
-    const tagged = allEntries.filter(item => {
-      const tag = localTags[item.cashflow_id] || item.reinvestment_tag || 'not_tagged';
-      return tag && tag !== 'not_tagged';
-    });
-    
-    const untagged = allEntries.filter(item => {
-      const tag = localTags[item.cashflow_id] || item.reinvestment_tag || 'not_tagged';
-      return !tag || tag === 'not_tagged';
-    });
-    
-    return { tagged, untagged };
+    return { untagged, tagged, sent };
   };
 
   const getStatusBadge = (status) => {
@@ -216,6 +251,17 @@ export default function TradeVerification() {
       case 'other': return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'not_invest': return 'bg-red-100 text-red-700 border-red-200';
       default: return 'bg-gray-100 text-gray-600 border-gray-200';
+    }
+  };
+
+  const getTagLabel = (tag) => {
+    switch(tag) {
+      case 'principal': return 'Principal';
+      case 'interest': return 'Interest';
+      case 'net_amount': return 'Net Amount';
+      case 'other': return 'Custom';
+      case 'not_invest': return 'Not Invest';
+      default: return 'Not Tagged';
     }
   };
 
