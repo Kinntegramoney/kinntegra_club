@@ -627,3 +627,192 @@ def send_password_reset_email(
     """
     
     return send_email(recipient_email, subject, html_content)
+
+
+def send_reinvestment_approval_email(
+    client_email: str,
+    client_name: str,
+    entries_html: str,
+    total_amount: float,
+    approval_token: str,
+    entries_count: int,
+    base_url: str = "https://kinntegraa.club"
+) -> bool:
+    """Send reinvestment approval request email to client"""
+    
+    approve_url = f"{base_url}/api/reinvestment/approve-via-link?token={approval_token}&action=approve"
+    reject_url = f"{base_url}/api/reinvestment/approve-via-link?token={approval_token}&action=reject"
+    
+    subject = f"Reinvestment Approval Required - {entries_count} Entry(ies) | ₹{total_amount:,.2f}"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #D4A853, #B8860B); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .summary {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4A853; }}
+            .amount {{ font-size: 28px; font-weight: bold; color: #22C55E; }}
+            table {{ width: 100%; border-collapse: collapse; margin: 20px 0; background: white; }}
+            th {{ background: #D4A853; color: white; padding: 12px 8px; text-align: left; }}
+            td {{ padding: 10px 8px; border-bottom: 1px solid #e5e7eb; }}
+            .button {{ display: inline-block; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 10px; }}
+            .approve-btn {{ background: #22C55E; color: white; }}
+            .reject-btn {{ background: #EF4444; color: white; }}
+            .footer {{ text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }}
+            .warning {{ background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1 style="margin: 0;">Reinvestment Approval</h1>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Action Required</p>
+            </div>
+            <div class="content">
+                <p>Dear <strong>{client_name}</strong>,</p>
+                
+                <p>Your broker has tagged the following upcoming cashflows for reinvestment. Please review and approve or reject these entries.</p>
+                
+                <div class="summary">
+                    <p style="margin: 0; color: #6b7280;">Total Reinvestment Amount</p>
+                    <p class="amount" style="margin: 5px 0;">₹{total_amount:,.2f}</p>
+                    <p style="margin: 0; font-size: 14px; color: #6b7280;">{entries_count} entry(ies) pending approval</p>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Opportunity</th>
+                            <th>Expected Date</th>
+                            <th>Tag Type</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {entries_html}
+                    </tbody>
+                </table>
+                
+                <div class="warning">
+                    <strong>⚠️ Important:</strong> By approving, you authorize the reinvestment of these funds into new opportunities selected by your broker. This action cannot be undone.
+                </div>
+                
+                <center style="margin: 30px 0;">
+                    <a href="{approve_url}" class="button approve-btn">✓ APPROVE ALL</a>
+                    <a href="{reject_url}" class="button reject-btn">✗ REJECT ALL</a>
+                </center>
+                
+                <p style="font-size: 12px; color: #6b7280; text-align: center;">
+                    This approval link will expire in 7 days. If you have any questions, please contact your broker.
+                </p>
+                
+                <div class="footer">
+                    <p>&copy; 2025 Kinntegraa. All rights reserved.</p>
+                    <p>License No: 1922240.01</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    plain_content = f"""
+    Reinvestment Approval Required
+    
+    Dear {client_name},
+    
+    Your broker has tagged {entries_count} cashflow(s) for reinvestment.
+    Total Amount: ₹{total_amount:,.2f}
+    
+    To APPROVE: {approve_url}
+    To REJECT: {reject_url}
+    
+    This link expires in 7 days.
+    
+    Best regards,
+    Kinntegraa Team
+    """
+    
+    return send_email(client_email, subject, html_content, plain_content)
+
+
+def send_password_reset_email(
+    recipient_email: str,
+    recipient_name: str,
+    reset_token: str,
+    base_url: str = "https://kinntegraa.club"
+) -> bool:
+    """Send password reset link email"""
+    
+    reset_url = f"{base_url}/forgot-password?token={reset_token}"
+    
+    subject = "Password Reset Request - Kinntegraa"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: #D4A853; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .button {{ display: inline-block; background: #D4A853; color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }}
+            .footer {{ text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }}
+            .warning {{ background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1 style="margin: 0;">Password Reset</h1>
+            </div>
+            <div class="content">
+                <p>Dear <strong>{recipient_name}</strong>,</p>
+                
+                <p>We received a request to reset your password. Click the button below to set a new password and PIN:</p>
+                
+                <center>
+                    <a href="{reset_url}" class="button">Reset Password</a>
+                </center>
+                
+                <div class="warning">
+                    <strong>⚠️ Security Notice:</strong> This link will expire in 1 hour. If you did not request this reset, please ignore this email or contact support.
+                </div>
+                
+                <p style="font-size: 12px; color: #6b7280;">
+                    If the button doesn't work, copy and paste this link into your browser:<br>
+                    <a href="{reset_url}">{reset_url}</a>
+                </p>
+                
+                <div class="footer">
+                    <p>&copy; 2025 Kinntegraa. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    plain_content = f"""
+    Password Reset Request
+    
+    Dear {recipient_name},
+    
+    We received a request to reset your password. Click the link below to set a new password:
+    
+    {reset_url}
+    
+    This link expires in 1 hour.
+    
+    If you did not request this reset, please ignore this email.
+    
+    Best regards,
+    Kinntegraa Team
+    """
+    
+    return send_email(recipient_email, subject, html_content, plain_content)
