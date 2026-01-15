@@ -399,8 +399,8 @@ class CASParser:
                             i += 1
                             continue
                         
-                        # STT Paid transactions - add them as withdrawal costs
-                        # STT is tax paid during redemption, Gap Sheet adds it to Cash Withdrawal
+                        # STT Paid transactions - add them as investment costs
+                        # STT appears as a cost associated with transactions
                         if '*** STT Paid ***' in nav_str:
                             try:
                                 stt_amount = float(amount_str.replace(',', '').replace('(', '-').replace(')', ''))
@@ -418,7 +418,7 @@ class CASParser:
                                         'pan': current_pan,
                                         'amc': current_amc,
                                         'advisor': current_advisor,
-                                        'is_redemption': True  # STT goes to Cash Withdrawal per Gap Sheet
+                                        'is_redemption': False  # STT goes to Amount Invested
                                     }
                                     self.transactions.append(transaction)
                                     if current_key in self.folios:
