@@ -284,8 +284,8 @@ class CASParser:
                         
                         self.transactions.append(transaction)
                         
-                        if current_folio in self.folios:
-                            self.folios[current_folio]['transactions'].append(transaction)
+                        if current_key and current_key in self.folios:
+                            self.folios[current_key]['transactions'].append(transaction)
                         
                     except (ValueError, IndexError):
                         pass
