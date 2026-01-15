@@ -2135,6 +2135,187 @@ class GapSheetGenerator:
                 ws.cell(row=asset_row, column=3, value=f"{allocation:.1f}%")
                 asset_row += 1
         
+        # FY-wise Long Term / Short Term Summary
+        fy_summary_row = asset_row + 3
+        ws.cell(row=fy_summary_row, column=1, value="FINANCIAL YEAR WISE LT/ST SUMMARY")
+        ws.merge_cells(f'A{fy_summary_row}:H{fy_summary_row}')
+        self._style_header(ws, fy_summary_row, 8)
+        
+        # Calculate FY-wise LT/ST breakdown
+        fy_lt_st_data = {}
+        
+        GRANDFATHER_DATE = datetime(2018, 1, 31)
+        
+        def get_financial_year_for_summary(date):
+            if date.month >= 4:
+                return f"{date.year} - {date.year + 1}"
+            else:
+                return f"{date.year - 1} - {date.year}"
+        
+        def is_long_term(fund_type, holding_days, trans_date):
+            """Determine if investment qualifies as Long Term based on fund type and holding period"""
+            if fund_type in ['EQUITY', 'ARBITRAGE', 'HYBRID']:
+                return holding_days > 365
+            else:  # Debt, Liquid
+                # Pre-April 2023 debt had 3-year rule
+                if trans_date < datetime(2023, 4, 1):
+                    return holding_days > 1095  # 3 years
+                else:
+                    return False  # Post-April 2023, no LT for debt
+        
+        def get_fund_type_for_summary(scheme_name):
+            name_lower = scheme_name.lower() if scheme_name else ''
+            if any(x in name_lower for x in ['liquid', 'money market', 'overnight']):
+                return 'LIQUID'
+            elif any(x in name_lower for x in ['debt', 'bond', 'gilt', 'income', 'credit']):
+                return 'DEBT'
+            elif 'arbitrage' in name_lower:
+                return 'ARBITRAGE'
+            elif any(x in name_lower for x in ['hybrid', 'balanced']):
+                return 'HYBRID'
+            else:
+                return 'EQUITY'
+        
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            scheme_name = folio_data.get('scheme', '') or ''
+            fund_type = get_fund_type_for_summary(scheme_name)
+            current_nav = folio_data.get('current_nav', 0)
+            closing_balance = folio_data.get('closing_balance', 0)
+            
+            transactions = folio_data.get('transactions', [])
+            
+            # Find last redemption date for sold investments
+            last_redemption_date = None
+            if closing_balance <= 0:
+                for trans in transactions:
+                    if trans.get('is_redemption'):
+                        try:
+                            redemption_date = datetime.strptime(trans['date'], '%d-%b-%Y')
+                            if last_redemption_date is None or redemption_date > last_redemption_date:
+                                last_redemption_date = redemption_date
+                        except:
+                            pass
+            
+            for trans in transactions:
+                if trans.get('is_redemption') or trans.get('is_nft') or trans.get('is_pledge'):
+                    continue
+                if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
+                    continue
+                
+                try:
+                    trans_date = datetime.strptime(trans['date'], '%d-%b-%Y')
+                    
+                    # Calculate holding period
+                    if closing_balance <= 0 and last_redemption_date:
+                        holding_days = (last_redemption_date - trans_date).days
+                    else:
+                        holding_days = (self.report_date - trans_date).days
+                    
+                    units = trans.get('units', 0)
+                    if units <= 0:
+                        continue
+                    
+                    purchase_nav = trans.get('nav', 0)
+                    purchase_value = units * purchase_nav if purchase_nav else trans.get('amount', 0)
+                    
+                    # Calculate current/sale value
+                    if closing_balance > 0:
+                        current_value = units * current_nav if current_nav else 0
+                    else:
+                        # For sold, use purchase value (actual gain would need sale NAV)
+                        current_value = purchase_value
+                    
+                    gain_loss = current_value - purchase_value
+                    
+                    # Apply grandfathering for pre-2018 equity
+                    if trans_date < GRANDFATHER_DATE and fund_type in ['EQUITY', 'HYBRID', 'ARBITRAGE']:
+                        # Grandfathering could reduce gains
+                        if current_nav and purchase_nav and current_nav > purchase_nav:
+                            gf_nav = purchase_nav + (current_nav - purchase_nav) * 0.3
+                            gf_value = units * gf_nav
+                            gain_loss = current_value - gf_value
+                    
+                    # Determine LT/ST
+                    lt_status = is_long_term(fund_type, holding_days, trans_date)
+                    
+                    # Get FY of transaction
+                    fy = get_financial_year_for_summary(trans_date)
+                    
+                    if fy not in fy_lt_st_data:
+                        fy_lt_st_data[fy] = {
+                            'active_lt_units': 0, 'active_lt_gain': 0,
+                            'active_st_units': 0, 'active_st_gain': 0,
+                            'sold_lt_units': 0, 'sold_lt_gain': 0,
+                            'sold_st_units': 0, 'sold_st_gain': 0
+                        }
+                    
+                    if closing_balance > 0:  # Active holding
+                        if lt_status:
+                            fy_lt_st_data[fy]['active_lt_units'] += units
+                            fy_lt_st_data[fy]['active_lt_gain'] += gain_loss
+                        else:
+                            fy_lt_st_data[fy]['active_st_units'] += units
+                            fy_lt_st_data[fy]['active_st_gain'] += gain_loss
+                    else:  # Sold
+                        if lt_status:
+                            fy_lt_st_data[fy]['sold_lt_units'] += units
+                            fy_lt_st_data[fy]['sold_lt_gain'] += gain_loss
+                        else:
+                            fy_lt_st_data[fy]['sold_st_units'] += units
+                            fy_lt_st_data[fy]['sold_st_gain'] += gain_loss
+                
+                except:
+                    pass
+        
+        # Write FY-wise LT/ST summary headers
+        fy_headers = ["Financial Year", "Active LT Units", "Active LT Gain/Loss", 
+                      "Active ST Units", "Active ST Gain/Loss",
+                      "Sold LT Units", "Sold LT Gain/Loss",
+                      "Sold ST Units", "Sold ST Gain/Loss"]
+        
+        header_row = fy_summary_row + 2
+        for col, header in enumerate(fy_headers, 1):
+            ws.cell(row=header_row, column=col, value=header)
+        self._style_header(ws, header_row, len(fy_headers))
+        
+        # Sort FYs and write data
+        def get_fy_sort_key(fy_str):
+            try:
+                return int(fy_str.split(' - ')[0])
+            except:
+                return 9999
+        
+        data_row = header_row + 1
+        for fy in sorted(fy_lt_st_data.keys(), key=get_fy_sort_key):
+            data = fy_lt_st_data[fy]
+            ws.cell(row=data_row, column=1, value=fy)
+            ws.cell(row=data_row, column=2, value=round(data['active_lt_units'], 3))
+            ws.cell(row=data_row, column=3, value=format_inr(data['active_lt_gain']))
+            ws.cell(row=data_row, column=4, value=round(data['active_st_units'], 3))
+            ws.cell(row=data_row, column=5, value=format_inr(data['active_st_gain']))
+            ws.cell(row=data_row, column=6, value=round(data['sold_lt_units'], 3))
+            ws.cell(row=data_row, column=7, value=format_inr(data['sold_lt_gain']))
+            ws.cell(row=data_row, column=8, value=round(data['sold_st_units'], 3))
+            ws.cell(row=data_row, column=9, value=format_inr(data['sold_st_gain']))
+            data_row += 1
+        
+        # Add totals row
+        total_active_lt_gain = sum(d['active_lt_gain'] for d in fy_lt_st_data.values())
+        total_active_st_gain = sum(d['active_st_gain'] for d in fy_lt_st_data.values())
+        total_sold_lt_gain = sum(d['sold_lt_gain'] for d in fy_lt_st_data.values())
+        total_sold_st_gain = sum(d['sold_st_gain'] for d in fy_lt_st_data.values())
+        
+        ws.cell(row=data_row + 1, column=1, value="TOTAL")
+        ws.cell(row=data_row + 1, column=3, value=format_inr(total_active_lt_gain))
+        ws.cell(row=data_row + 1, column=5, value=format_inr(total_active_st_gain))
+        ws.cell(row=data_row + 1, column=7, value=format_inr(total_sold_lt_gain))
+        ws.cell(row=data_row + 1, column=9, value=format_inr(total_sold_st_gain))
+        
+        # Add note about grandfathering
+        note_row = data_row + 4
+        ws.cell(row=note_row, column=1, value="Note: Long Term gains for pre-31-Jan-2018 equity investments are calculated after grandfathering adjustment.")
+        ws.merge_cells(f'A{note_row}:I{note_row}')
+        
         self._auto_width(ws)
     
     def _create_underlying_holdings_sheet(self, wb: Workbook):
