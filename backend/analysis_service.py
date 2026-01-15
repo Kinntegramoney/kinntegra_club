@@ -2117,78 +2117,115 @@ class GapSheetGenerator:
                     
                     if fy not in fy_lt_st_data:
                         fy_lt_st_data[fy] = {
-                            'active_lt_units': 0, 'active_lt_gain': 0,
-                            'active_st_units': 0, 'active_st_gain': 0,
-                            'sold_lt_units': 0, 'sold_lt_gain': 0,
-                            'sold_st_units': 0, 'sold_st_gain': 0
+                            'active_lt_units': 0, 'active_lt_purchase': 0, 'active_lt_current': 0, 'active_lt_gain': 0,
+                            'active_st_units': 0, 'active_st_purchase': 0, 'active_st_current': 0, 'active_st_gain': 0,
+                            'sold_lt_units': 0, 'sold_lt_purchase': 0, 'sold_lt_sale': 0, 'sold_lt_gain': 0,
+                            'sold_st_units': 0, 'sold_st_purchase': 0, 'sold_st_sale': 0, 'sold_st_gain': 0
                         }
                     
                     if closing_balance > 0:  # Active holding
                         if lt_status:
                             fy_lt_st_data[fy]['active_lt_units'] += units
+                            fy_lt_st_data[fy]['active_lt_purchase'] += purchase_value
+                            fy_lt_st_data[fy]['active_lt_current'] += current_value
                             fy_lt_st_data[fy]['active_lt_gain'] += gain_loss
                         else:
                             fy_lt_st_data[fy]['active_st_units'] += units
+                            fy_lt_st_data[fy]['active_st_purchase'] += purchase_value
+                            fy_lt_st_data[fy]['active_st_current'] += current_value
                             fy_lt_st_data[fy]['active_st_gain'] += gain_loss
                     else:  # Sold
                         if lt_status:
                             fy_lt_st_data[fy]['sold_lt_units'] += units
+                            fy_lt_st_data[fy]['sold_lt_purchase'] += purchase_value
+                            fy_lt_st_data[fy]['sold_lt_sale'] += current_value
                             fy_lt_st_data[fy]['sold_lt_gain'] += gain_loss
                         else:
                             fy_lt_st_data[fy]['sold_st_units'] += units
+                            fy_lt_st_data[fy]['sold_st_purchase'] += purchase_value
+                            fy_lt_st_data[fy]['sold_st_sale'] += current_value
                             fy_lt_st_data[fy]['sold_st_gain'] += gain_loss
                 
                 except:
                     pass
         
-        # Write FY-wise LT/ST summary headers
-        fy_headers = ["Financial Year", "Active LT Units", "Active LT Gain/Loss", 
-                      "Active ST Units", "Active ST Gain/Loss",
-                      "Sold LT Units", "Sold LT Gain/Loss",
-                      "Sold ST Units", "Sold ST Gain/Loss"]
+        # Write FY-wise LT/ST summary headers - with purchase/sale values
+        fy_headers = ["Financial Year", 
+                      "Active LT Purchase", "Active LT Current Value", "Active LT Gain/Loss",
+                      "Active ST Purchase", "Active ST Current Value", "Active ST Gain/Loss",
+                      "Sold LT Purchase", "Sold LT Sale Value", "Sold LT Gain/Loss",
+                      "Sold ST Purchase", "Sold ST Sale Value", "Sold ST Gain/Loss"]
         
         header_row = fy_summary_row + 2
         for col, header in enumerate(fy_headers, 1):
             ws.cell(row=header_row, column=col, value=header)
         self._style_header(ws, header_row, len(fy_headers))
         
-        # Sort FYs and write data
+        # Sort FYs and filter to last 5 years only
         def get_fy_sort_key(fy_str):
             try:
                 return int(fy_str.split(' - ')[0])
             except:
                 return 9999
         
+        sorted_fys = sorted(fy_lt_st_data.keys(), key=get_fy_sort_key, reverse=True)
+        last_5_fys = sorted_fys[:5]  # Get last 5 FYs
+        last_5_fys.reverse()  # Display oldest first
+        
         data_row = header_row + 1
-        for fy in sorted(fy_lt_st_data.keys(), key=get_fy_sort_key):
+        for fy in last_5_fys:
             data = fy_lt_st_data[fy]
             ws.cell(row=data_row, column=1, value=fy)
-            ws.cell(row=data_row, column=2, value=round(data['active_lt_units'], 3))
-            ws.cell(row=data_row, column=3, value=format_inr(data['active_lt_gain']))
-            ws.cell(row=data_row, column=4, value=round(data['active_st_units'], 3))
-            ws.cell(row=data_row, column=5, value=format_inr(data['active_st_gain']))
-            ws.cell(row=data_row, column=6, value=round(data['sold_lt_units'], 3))
-            ws.cell(row=data_row, column=7, value=format_inr(data['sold_lt_gain']))
-            ws.cell(row=data_row, column=8, value=round(data['sold_st_units'], 3))
-            ws.cell(row=data_row, column=9, value=format_inr(data['sold_st_gain']))
+            # Active LT
+            ws.cell(row=data_row, column=2, value=format_inr(data['active_lt_purchase']) if data['active_lt_purchase'] else '')
+            ws.cell(row=data_row, column=3, value=format_inr(data['active_lt_current']) if data['active_lt_current'] else '')
+            ws.cell(row=data_row, column=4, value=format_inr(data['active_lt_gain']) if data['active_lt_gain'] else '')
+            # Active ST
+            ws.cell(row=data_row, column=5, value=format_inr(data['active_st_purchase']) if data['active_st_purchase'] else '')
+            ws.cell(row=data_row, column=6, value=format_inr(data['active_st_current']) if data['active_st_current'] else '')
+            ws.cell(row=data_row, column=7, value=format_inr(data['active_st_gain']) if data['active_st_gain'] else '')
+            # Sold LT
+            ws.cell(row=data_row, column=8, value=format_inr(data['sold_lt_purchase']) if data['sold_lt_purchase'] else '')
+            ws.cell(row=data_row, column=9, value=format_inr(data['sold_lt_sale']) if data['sold_lt_sale'] else '')
+            ws.cell(row=data_row, column=10, value=format_inr(data['sold_lt_gain']) if data['sold_lt_gain'] else '')
+            # Sold ST
+            ws.cell(row=data_row, column=11, value=format_inr(data['sold_st_purchase']) if data['sold_st_purchase'] else '')
+            ws.cell(row=data_row, column=12, value=format_inr(data['sold_st_sale']) if data['sold_st_sale'] else '')
+            ws.cell(row=data_row, column=13, value=format_inr(data['sold_st_gain']) if data['sold_st_gain'] else '')
             data_row += 1
         
-        # Add totals row
-        total_active_lt_gain = sum(d['active_lt_gain'] for d in fy_lt_st_data.values())
-        total_active_st_gain = sum(d['active_st_gain'] for d in fy_lt_st_data.values())
-        total_sold_lt_gain = sum(d['sold_lt_gain'] for d in fy_lt_st_data.values())
-        total_sold_st_gain = sum(d['sold_st_gain'] for d in fy_lt_st_data.values())
+        # Add totals row for last 5 years only
+        total_active_lt_purchase = sum(fy_lt_st_data[fy]['active_lt_purchase'] for fy in last_5_fys)
+        total_active_lt_current = sum(fy_lt_st_data[fy]['active_lt_current'] for fy in last_5_fys)
+        total_active_lt_gain = sum(fy_lt_st_data[fy]['active_lt_gain'] for fy in last_5_fys)
+        total_active_st_purchase = sum(fy_lt_st_data[fy]['active_st_purchase'] for fy in last_5_fys)
+        total_active_st_current = sum(fy_lt_st_data[fy]['active_st_current'] for fy in last_5_fys)
+        total_active_st_gain = sum(fy_lt_st_data[fy]['active_st_gain'] for fy in last_5_fys)
+        total_sold_lt_purchase = sum(fy_lt_st_data[fy]['sold_lt_purchase'] for fy in last_5_fys)
+        total_sold_lt_sale = sum(fy_lt_st_data[fy]['sold_lt_sale'] for fy in last_5_fys)
+        total_sold_lt_gain = sum(fy_lt_st_data[fy]['sold_lt_gain'] for fy in last_5_fys)
+        total_sold_st_purchase = sum(fy_lt_st_data[fy]['sold_st_purchase'] for fy in last_5_fys)
+        total_sold_st_sale = sum(fy_lt_st_data[fy]['sold_st_sale'] for fy in last_5_fys)
+        total_sold_st_gain = sum(fy_lt_st_data[fy]['sold_st_gain'] for fy in last_5_fys)
         
-        ws.cell(row=data_row + 1, column=1, value="TOTAL")
-        ws.cell(row=data_row + 1, column=3, value=format_inr(total_active_lt_gain))
-        ws.cell(row=data_row + 1, column=5, value=format_inr(total_active_st_gain))
-        ws.cell(row=data_row + 1, column=7, value=format_inr(total_sold_lt_gain))
-        ws.cell(row=data_row + 1, column=9, value=format_inr(total_sold_st_gain))
+        ws.cell(row=data_row + 1, column=1, value="TOTAL (Last 5 FYs)")
+        ws.cell(row=data_row + 1, column=2, value=format_inr(total_active_lt_purchase))
+        ws.cell(row=data_row + 1, column=3, value=format_inr(total_active_lt_current))
+        ws.cell(row=data_row + 1, column=4, value=format_inr(total_active_lt_gain))
+        ws.cell(row=data_row + 1, column=5, value=format_inr(total_active_st_purchase))
+        ws.cell(row=data_row + 1, column=6, value=format_inr(total_active_st_current))
+        ws.cell(row=data_row + 1, column=7, value=format_inr(total_active_st_gain))
+        ws.cell(row=data_row + 1, column=8, value=format_inr(total_sold_lt_purchase))
+        ws.cell(row=data_row + 1, column=9, value=format_inr(total_sold_lt_sale))
+        ws.cell(row=data_row + 1, column=10, value=format_inr(total_sold_lt_gain))
+        ws.cell(row=data_row + 1, column=11, value=format_inr(total_sold_st_purchase))
+        ws.cell(row=data_row + 1, column=12, value=format_inr(total_sold_st_sale))
+        ws.cell(row=data_row + 1, column=13, value=format_inr(total_sold_st_gain))
         
         # Add note about grandfathering
         note_row = data_row + 4
-        ws.cell(row=note_row, column=1, value="Note: Long Term gains for pre-31-Jan-2018 equity investments are calculated after grandfathering adjustment.")
-        ws.merge_cells(f'A{note_row}:I{note_row}')
+        ws.cell(row=note_row, column=1, value="Note: Long Term gains for pre-31-Jan-2018 equity investments are calculated after grandfathering adjustment. Showing last 5 financial years only.")
+        ws.merge_cells(f'A{note_row}:M{note_row}')
         
         self._auto_width(ws)
     
