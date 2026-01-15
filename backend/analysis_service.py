@@ -1061,7 +1061,7 @@ class GapSheetGenerator:
         
         def is_long_term(fund_type, holding_days, trans_date):
             """Determine if investment qualifies as Long Term"""
-            if fund_type in ['EQUITY', 'ARBITRAGE', 'HYBRID']:
+            if fund_type == 'EQUITY':  # Includes Arbitrage and Hybrid
                 return holding_days > 365
             else:  # Debt, Liquid
                 if trans_date < datetime(2023, 4, 1):
