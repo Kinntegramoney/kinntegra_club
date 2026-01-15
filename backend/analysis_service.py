@@ -455,10 +455,8 @@ class CASParser:
                             i += 1
                             continue
                         
-                        # Skip rejection transactions (these are reversals, not real transactions)
-                        if 'Rejection' in trans_type_line:
-                            i += 1
-                            continue
+                        # Note: Rejection transactions are handled like redemptions
+                        # They represent reversals of failed SIPs
                         
                         trans_type = trans_type_line.split('-')[0].strip() if '-' in trans_type_line else trans_type_line
                         
