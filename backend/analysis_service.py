@@ -83,7 +83,7 @@ class CASParser:
                         value_line = lines[i + 2].strip().replace(',', '')
                         self.portfolio_summary['total_cost'] = float(cost_line)
                         self.portfolio_summary['total_value'] = float(value_line)
-                    except:
+                    except (ValueError, IndexError):
                         pass
                     break
                 
@@ -101,7 +101,7 @@ class CASParser:
                                     'value': value
                                 }
                             i += 2
-                        except:
+                        except (ValueError, IndexError):
                             pass
             i += 1
     
