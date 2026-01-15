@@ -207,30 +207,30 @@ class CASParser:
             # Detect closing balance
             if 'Closing Unit Balance:' in line:
                 balance_match = re.search(r'Closing Unit Balance:\s*([\d,]+\.\d+)', line)
-                if balance_match and current_folio and current_folio in self.folios:
-                    self.folios[current_folio]['closing_balance'] = float(balance_match.group(1).replace(',', ''))
+                if balance_match and current_key and current_key in self.folios:
+                    self.folios[current_key]['closing_balance'] = float(balance_match.group(1).replace(',', ''))
             
             # Detect cost value
             if 'Total Cost Value:' in line:
                 cost_match = re.search(r'Total Cost Value:\s*([\d,]+\.\d+)', line)
-                if cost_match and current_folio and current_folio in self.folios:
-                    self.folios[current_folio]['cost_value'] = float(cost_match.group(1).replace(',', ''))
+                if cost_match and current_key and current_key in self.folios:
+                    self.folios[current_key]['cost_value'] = float(cost_match.group(1).replace(',', ''))
             
             # Detect current NAV
             if 'NAV on' in line:
                 nav_match = re.search(r'NAV on [^:]+:\s*INR\s*([\d.]+)', line)
-                if nav_match and current_folio and current_folio in self.folios:
-                    self.folios[current_folio]['current_nav'] = float(nav_match.group(1))
+                if nav_match and current_key and current_key in self.folios:
+                    self.folios[current_key]['current_nav'] = float(nav_match.group(1))
             
             # Detect Market Value
             if 'Market Value on' in line:
                 mv_match = re.search(r'Market Value on [^:]+:\s*INR\s*([\d,]+\.\d+)', line)
-                if mv_match and current_folio and current_folio in self.folios:
-                    self.folios[current_folio]['market_value'] = float(mv_match.group(1).replace(',', ''))
+                if mv_match and current_key and current_key in self.folios:
+                    self.folios[current_key]['market_value'] = float(mv_match.group(1).replace(',', ''))
             
             # Detect transaction lines (date format: DD-MMM-YYYY)
             trans_match = re.match(r'^(\d{2}-[A-Za-z]{3}-\d{4})\s*$', line)
-            if trans_match and current_folio:
+            if trans_match and current_key:
                 date_str = trans_match.group(1)
                 
                 if i + 4 < len(lines):
