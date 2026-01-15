@@ -169,7 +169,7 @@ const Analysis = () => {
 
   const handleDownload = async (analysisId, filename) => {
     try {
-      setProcessingStatus('Generating Gap Sheet Excel...');
+      setProcessingStatus('Generating Gap Sheet Reports...');
       setProcessingProgress(30);
       
       const response = await fetch(`${API}/api/analysis/${analysisId}/download`, {
@@ -183,7 +183,8 @@ const Analysis = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `GapSheet_${filename.replace('.pdf', '')}.xlsx`;
+        // Download as ZIP file containing all reports
+        a.download = `GapSheet_${filename.replace('.pdf', '')}.zip`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -193,7 +194,7 @@ const Analysis = () => {
         setTimeout(() => {
           setProcessingStatus('');
           setProcessingProgress(0);
-          toast.success('Gap Sheet downloaded successfully!');
+          toast.success('Gap Sheet reports downloaded! (ZIP contains separate files by PAN)');
         }, 300);
       } else {
         setProcessingStatus('');
