@@ -27,12 +27,12 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 - [x] **8 Sheets generated** (aligned with user's template):
   1. Summary (Portfolio overview + Category-wise breakdown for ACTIVE funds only + FY-wise LT/ST summary)
   2. Portfolio Performance (Reordered: Valuation, Cash Withdrawal, Dividend, Amount Invested, Gains, Return %, CAGR %)
-  3. MF Transactions (all transaction details + MF Ageing column)
+  3. MF Transactions (all transaction details + MF Ageing in absolute days)
   4. NFT (Non-Financial Transactions + Pledge transactions)
   5. Advisor View (XIRR performance, client longevity - active/past)
-  6. Tax View (LT/ST gains by FY, PAN column, Grandfathering for pre-Jan 31 2018 equity)
-  7. Exit Loads (load structure from PDF)
-  8. XIRR (Unit credit=purchase, Unit debit=redemption, Balance×NAV=final value)
+  6. XIRR (Broker/Adviser wise: Date, Particulars, Folio/Scheme, Amount, XIRR %)
+  7. Tax View (LT/ST gains by FY, PAN column, Grandfathering for pre-Jan 31 2018 equity)
+  8. Exit Loads (load structure from PDF)
 
 ### Latest Fixes (January 15, 2026)
 - [x] **PAN Column in Tax View**: Added PAN as first column in Tax View sheet
