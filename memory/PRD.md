@@ -107,4 +107,17 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 
 ---
 
+## UI Updates (January 15, 2026)
+- [x] **Login Page**: Updated firm details - Kinntegrae L.L.C-FZ, License No: 24184465.01, Meydan Grandstand, 6th floor, Meydan Road, Nad Al Sheba, Dubai, U.A.E.
+- [x] **Dashboard Page**: Converted from dark to light theme
+- [x] **Analysis Page**: Converted from dark to light theme for consistency
+
+---
+
+## Known Issues
+- **Production Deployment Not Syncing**: Platform-level issue. All testing must be done on preview environment.
+- **BondDetails Radio Button**: Minor UI bug - selecting approximate amount doesn't clear bond radio selection
+
+---
+
 *Last Updated: January 15, 2026*
