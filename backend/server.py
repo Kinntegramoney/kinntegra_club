@@ -7515,21 +7515,21 @@ async def download_gap_sheet(
         if scheme_master and scheme_master.get('schemes'):
             scheme_mapper = SchemeMapper(scheme_master['schemes'])
         
-        # Generate Gap Sheet
+        # Generate Gap Sheet (ZIP with all reports by PAN and ARN)
         nav_service = NAVService()
         generator = GapSheetGenerator(
             analysis['parsed_data'], 
             nav_service,
             scheme_mapper
         )
-        excel_bytes = generator.generate()
+        zip_bytes = generator.generate_all_reports()
         
-        # Return as downloadable file
-        filename = f"GapSheet_{analysis.get('filename', 'analysis').replace('.pdf', '')}.xlsx"
+        # Return as downloadable ZIP file
+        filename = f"GapSheet_{analysis.get('filename', 'analysis').replace('.pdf', '')}.zip"
         
         return StreamingResponse(
-            io.BytesIO(excel_bytes),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            io.BytesIO(zip_bytes),
+            media_type="application/zip",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
         
