@@ -1647,24 +1647,26 @@ class GapSheetGenerator:
             total_amount = trans_amount + stt_amount + stamp_amount
             ws.cell(row=row, column=14, value=total_amount)
             
-            # Column 15: Balance Units (current closing balance from folio)
-            balance_units = 0
-            if not trans.get('is_redemption'):
-                balance_units = folio_data.get('closing_balance', 0)
-                ws.cell(row=row, column=15, value=balance_units)
+            # Get folio closing balance to determine if this folio has active holdings
+            folio_closing_balance = folio_data.get('closing_balance', 0)
+            has_balance = folio_closing_balance > 0
             
-            # Column 16: Current NAV
+            # Column 15: Balance Units - only show if folio has current balance
+            if has_balance and not trans.get('is_redemption'):
+                ws.cell(row=row, column=15, value=folio_closing_balance)
+            
+            # Column 16: Current NAV - only show if folio has balance
             current_nav = folio_data.get('current_nav', 0)
-            if current_nav > 0:
+            if has_balance and current_nav > 0:
                 ws.cell(row=row, column=16, value=current_nav)
             
-            # Column 17: Current Market Value (Balance Units * Current NAV)
-            if not trans.get('is_redemption') and current_nav > 0 and balance_units > 0:
-                market_value = balance_units * current_nav
+            # Column 17: Current Market Value - only show if folio has balance
+            if has_balance and not trans.get('is_redemption') and current_nav > 0:
+                market_value = folio_closing_balance * current_nav
                 ws.cell(row=row, column=17, value=market_value)
             
-            # Column 18: MF Ageing - calculate age from transaction date to report date
-            if not trans.get('is_redemption') and balance_units > 0:
+            # Column 18: MF Ageing - only for folios with balance
+            if has_balance and not trans.get('is_redemption'):
                 trans_date = parse_date(trans.get('date', ''))
                 if trans_date != datetime.min:
                     days_held = (self.report_date - trans_date).days
@@ -1679,7 +1681,38 @@ class GapSheetGenerator:
                         ageing = f"{months}M {days}D" if days > 0 else f"{months}M"
                         ws.cell(row=row, column=18, value=ageing)
             
-            # Column 19: XIRR (leave blank for now - calculated at folio level)
+            # Column 19: XIRR - only calculate for folios with balance
+            # XIRR uses transaction dates and report date NAV
+            if has_balance and not trans.get('is_redemption'):
+                # Calculate XIRR for this specific folio
+                folio_cashflows = []
+                for ft in folio_data.get('transactions', []):
+                    if ft.get('is_nft') or ft.get('is_pledge'):
+                        continue
+                    if ft.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
+                        continue
+                    try:
+                        ft_date = datetime.strptime(ft['date'], '%d-%b-%Y')
+                        ft_amount = ft.get('amount', 0)
+                        if ft.get('is_redemption'):
+                            folio_cashflows.append((ft_date, ft_amount))
+                        else:
+                            folio_cashflows.append((ft_date, -ft_amount))
+                    except:
+                        pass
+                
+                # Add current value as final cashflow
+                if current_nav > 0 and folio_closing_balance > 0:
+                    final_value = folio_closing_balance * current_nav
+                    folio_cashflows.append((self.report_date, final_value))
+                    
+                    if len(folio_cashflows) >= 2:
+                        try:
+                            xirr_value = calculate_xirr(folio_cashflows) * 100
+                            if -100 < xirr_value < 500:  # Reasonable XIRR range
+                                ws.cell(row=row, column=19, value=f"{xirr_value:.2f}%")
+                        except:
+                            pass
             
             # Column 20: Advisor ARN
             ws.cell(row=row, column=20, value=trans.get('advisor', ''))
