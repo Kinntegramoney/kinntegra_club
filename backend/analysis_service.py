@@ -914,9 +914,42 @@ class GapSheetGenerator:
             scheme_name = folio_data.get('scheme', '') or ''
             advisor_arn = folio_data.get('advisor', '')  # Raw ARN from PDF
             
+            # Classify scheme into category
+            def classify_scheme(name):
+                name_lower = name.lower() if name else ''
+                if 'large cap' in name_lower or 'largecap' in name_lower or 'bluechip' in name_lower:
+                    return 'Large Cap'
+                elif 'mid cap' in name_lower or 'midcap' in name_lower:
+                    return 'Mid Cap'
+                elif 'small cap' in name_lower or 'smallcap' in name_lower:
+                    return 'Small Cap'
+                elif 'flexi' in name_lower or 'flexicap' in name_lower:
+                    return 'Flexi Cap'
+                elif 'multi cap' in name_lower or 'multicap' in name_lower:
+                    return 'Multi Cap'
+                elif 'elss' in name_lower or 'tax saver' in name_lower:
+                    return 'ELSS'
+                elif 'hybrid' in name_lower or 'balanced' in name_lower or 'aggressive' in name_lower or 'conservative' in name_lower:
+                    return 'Hybrid'
+                elif 'liquid' in name_lower or 'money market' in name_lower or 'overnight' in name_lower:
+                    return 'Liquid'
+                elif 'debt' in name_lower or 'bond' in name_lower or 'gilt' in name_lower or 'income' in name_lower or 'credit' in name_lower:
+                    return 'Debt'
+                elif 'arbitrage' in name_lower:
+                    return 'Arbitrage'
+                elif 'index' in name_lower or 'nifty' in name_lower or 'sensex' in name_lower or 'etf' in name_lower:
+                    return 'Index Fund'
+                elif any(x in name_lower for x in ['pharma', 'bank', 'infra', 'technology', 'consumption', 'manufacturing', 'thematic', 'sector']):
+                    return 'Sectoral/Thematic'
+                else:
+                    return 'Other'
+            
+            category = classify_scheme(scheme_name)
+            
             entry = {
                 'folio': folio_data.get('folio', folio_id),
                 'scheme': scheme_name,
+                'category': category,
                 'invested': invested,
                 'withdrawn': withdrawn,
                 'dividend': 0,  # Dividend tracking not in CAS
