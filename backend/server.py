@@ -2470,7 +2470,7 @@ async def get_bulk_upload_template(current_user: dict = Depends(get_current_user
     
     # Headers matching the expected format - Partner Code added for sub-broker linking
     headers = [
-        "Name", "Pan Number", "Contact Number", "Email Address", "Type",
+        "Name", "Pan Number", "UCC", "Contact Number", "Email Address", "Type",
         "Partner Code",  # Sub-broker partner code for auto-linking
         "Father / Husband's Name", "Occupation", "Date of Birth",
         "Address1", "Address2", "City", "State", "Country", "Pincode",
@@ -2489,7 +2489,7 @@ async def get_bulk_upload_template(current_user: dict = Depends(get_current_user
     
     # Add sample row
     sample_data = [
-        "John Doe", "ABCDE1234F", "+91 9876543210", "john@example.com", "Indian Citizen",
+        "John Doe", "ABCDE1234F", "UCC123456", "+91 9876543210", "john@example.com", "Indian Citizen",
         "SB001",  # Sample partner code
         "Father Name", "Business", "1990-01-15",
         "123 Main Street", "Apt 4B", "Mumbai", "Maharashtra", "India", "400001",
