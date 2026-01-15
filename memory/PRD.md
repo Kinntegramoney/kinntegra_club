@@ -42,6 +42,8 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 - [x] **Gain/Loss Calculation**: Updated to include withdrawals/dividends: `(Current + Withdrawn) - Invested`
 - [x] **XIRR % per Category**: Added XIRR calculation for each category in the Summary sheet
 - [x] **Withdrawn/Dividend Column**: New column showing withdrawals per category
+- [x] **Portfolio Performance Reordered**: Columns now match user template (Valuation before Amount Invested)
+- [x] **New XIRR Sheet**: Created with unit credit/debit methodology and balance value calculation
 
 ### Parsing Improvements (January 15, 2026)
 - [x] Fixed scheme name extraction (removes PDF headers like CAMSCASWS)
