@@ -1515,7 +1515,7 @@ class GapSheetGenerator:
         ws = wb.create_sheet("NFT")
         
         headers = [
-            "Date", "Folio Number", "Scheme Name", "Transaction Description"
+            "Date", "PAN", "Folio Number", "Scheme Name", "ISIN", "Transaction Type", "Units"
         ]
         
         for col, header in enumerate(headers, 1):
@@ -1523,11 +1523,25 @@ class GapSheetGenerator:
         self._style_header(ws, 1, len(headers))
         
         row = 2
+        
+        # Add NFT entries from transactions (is_nft=True)
+        for trans in self.parsed_data.get('transactions', []):
+            if trans.get('is_nft') or trans.get('is_pledge'):
+                ws.cell(row=row, column=1, value=trans.get('date', ''))
+                ws.cell(row=row, column=2, value=trans.get('pan', ''))
+                ws.cell(row=row, column=3, value=trans.get('folio', ''))
+                ws.cell(row=row, column=4, value=trans.get('scheme', '')[:50] if trans.get('scheme') else '')
+                ws.cell(row=row, column=5, value=trans.get('isin', ''))
+                ws.cell(row=row, column=6, value=trans.get('transaction_type', ''))
+                ws.cell(row=row, column=7, value=trans.get('units', 0) if trans.get('units') else '')
+                row += 1
+        
+        # Also add original nft_entries for completeness
         for nft in self.parsed_data.get('nft_entries', []):
             ws.cell(row=row, column=1, value=nft.get('date', ''))
-            ws.cell(row=row, column=2, value=nft.get('folio', ''))
-            ws.cell(row=row, column=3, value=nft.get('scheme', '')[:50] if nft.get('scheme') else '')
-            ws.cell(row=row, column=4, value=nft.get('description', ''))
+            ws.cell(row=row, column=3, value=nft.get('folio', ''))
+            ws.cell(row=row, column=4, value=nft.get('scheme', '')[:50] if nft.get('scheme') else '')
+            ws.cell(row=row, column=6, value=nft.get('description', ''))
             row += 1
         
         self._auto_width(ws)
