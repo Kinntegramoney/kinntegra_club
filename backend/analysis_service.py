@@ -811,10 +811,12 @@ class GapSheetGenerator:
         """Sheet 2: Portfolio Performance"""
         ws = wb.create_sheet("Portfolio Performance")
         
-        # New format: Only 12 columns as per requirement
+        # Column order as per user's template:
+        # Folio No., Instrument Name, Valuation, Cash Withdrawal, Dividend Paid, 
+        # Amount Invested, Absolute Gains, Absolute Return %, CAGR %, Closing Units, PAN, Adviser ARN
         headers = [
-            "Folio No.", "Instrument Name", "Amount Invested", "Cash Withdrawal",
-            "Dividend Paid", "Valuation", "Absolute Gains", "Absolute Return %", 
+            "Folio No.", "Instrument Name", "Valuation", "Cash Withdrawal",
+            "Dividend Paid", "Amount Invested", "Absolute Gains", "Absolute Return %", 
             "CAGR %", "Closing Units", "PAN", "Adviser ARN"
         ]
         
@@ -925,40 +927,48 @@ class GapSheetGenerator:
         # Sort by Valuation (highest first)
         all_entries.sort(key=lambda x: x['valuation'], reverse=True)
         
-        # Write data rows (no totals, no subtotals)
+        # Write data rows - new column order matching template
         row = 2
         for entry in all_entries:
             ws.cell(row=row, column=1, value=entry['folio'])
             ws.cell(row=row, column=2, value=entry['scheme'])
             
-            # Amount columns with currency format (₹ with commas)
-            cell = ws.cell(row=row, column=3, value=round(entry['invested'], 2))
+            # Valuation (Column 3)
+            cell = ws.cell(row=row, column=3, value=round(entry['valuation'], 2))
             cell.number_format = '₹#,##0.00'
             
+            # Cash Withdrawal (Column 4)
             cell = ws.cell(row=row, column=4, value=round(entry['withdrawn'], 2))
             cell.number_format = '₹#,##0.00'
             
+            # Dividend Paid (Column 5)
             cell = ws.cell(row=row, column=5, value=round(entry['dividend'], 2))
             cell.number_format = '₹#,##0.00'
             
-            cell = ws.cell(row=row, column=6, value=round(entry['valuation'], 2))
+            # Amount Invested (Column 6)
+            cell = ws.cell(row=row, column=6, value=round(entry['invested'], 2))
             cell.number_format = '₹#,##0.00'
             
+            # Absolute Gains (Column 7)
             cell = ws.cell(row=row, column=7, value=round(entry['gains'], 2))
             cell.number_format = '₹#,##0.00'
             
-            # Percentage columns with % sign
+            # Absolute Return % (Column 8)
             cell = ws.cell(row=row, column=8, value=round(entry['return_pct'], 2))
             cell.number_format = '0.00"%"'
             
+            # CAGR % (Column 9)
             cell = ws.cell(row=row, column=9, value=round(entry['cagr'], 4))
             cell.number_format = '0.0000"%"'
             
-            # Units with commas
+            # Closing Units (Column 10)
             cell = ws.cell(row=row, column=10, value=round(entry['closing_units'], 3))
             cell.number_format = '#,##0.000'
             
+            # PAN (Column 11)
             ws.cell(row=row, column=11, value=entry['pan'])
+            
+            # Adviser ARN (Column 12)
             ws.cell(row=row, column=12, value=entry['advisor_arn'])
             row += 1
         
