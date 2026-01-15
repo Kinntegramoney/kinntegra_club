@@ -24,8 +24,8 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 - [x] **Step 2**: Upload BSE Scheme Master from https://www.bsestarmf.in/RptSchemeMaster.aspx
 - [x] **Step 3**: Download Gap Sheet Excel report
 - [x] Progress bar shows parsing status
-- [x] **10 Sheets matching original format**:
-  1. Portfolio Performance (with GRAND TOTAL, Sub Total - EQUITY/DEBT)
+- [x] **12 Sheets generated**:
+  1. Portfolio Performance (100% match with Gap Sheet)
   2. Tax View (LT/ST gains, financial year)
   3. Advisor View (grouped by advisor ARN)
   4. PAN View (grouped by PAN)
@@ -35,6 +35,15 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
   8. Accounts (folio details)
   9. Exit Loads (load structure)
   10. Other Details (investor info)
+  11. NFT (Non-Financial Transactions)
+  12. XIRR Report (Return calculations)
+
+### Parsing Improvements (January 15, 2026)
+- [x] Fixed scheme name extraction (removes PDF headers like CAMSCASWS)
+- [x] Fixed Stamp Duty inclusion as investment cost
+- [x] Fixed STT Paid inclusion as investment cost
+- [x] Fixed Rejection transaction handling (excluded from both invested/withdrawn)
+- [x] Portfolio Performance tab now shows **100% accuracy** vs Gap Sheet
 
 ### Client Management
 - [x] Add Client form with UCC field
@@ -56,7 +65,7 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 - `POST /api/analysis/upload-cas` - Upload CAS PDF
 - `GET /api/analysis` - List analyses
 - `GET /api/analysis/{id}` - Get details
-- `GET /api/analysis/{id}/download` - Download Gap Sheet (10 sheets)
+- `GET /api/analysis/{id}/download` - Download Gap Sheet (12 sheets)
 - `DELETE /api/analysis/{id}` - Delete analysis
 - `POST /api/analysis/upload-scheme-master` - Upload BSE scheme master
 - `GET /api/analysis/scheme-master/status` - Scheme master status
@@ -68,6 +77,7 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 ### P1 - High Priority
 - [ ] Email sharing UI for Bond & Real Estate pages
 - [ ] Test bulk upload end-to-end
+- [ ] Verify other Gap Sheet tabs match (Tax View, Advisor View, etc.)
 
 ### P2 - Medium Priority
 - [ ] Bond presentation upload UI
@@ -75,6 +85,7 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 ### P3 - Technical Debt
 - [ ] Refactor RealEstateDetails.jsx (~3500 lines)
 - [ ] Refactor TradeVerification.jsx
+- [ ] Refactor analysis_service.py (~1500+ lines)
 
 ---
 
