@@ -503,7 +503,7 @@ class GapSheetGenerator:
                 'pan': folio_data.get('pan', ''),
                 'asset_class': asset_class,
                 'advisor': advisor,
-                'folio': folio_id,
+                'folio': folio_data.get('folio', folio_id),  # Use actual folio, not key
                 'scheme': scheme_name,
                 'type': 'MutualFund',
                 'invested': invested,
