@@ -1138,6 +1138,19 @@ class GapSheetGenerator:
             # Include ALL folios (even with zero balance for historical view)
             transactions = folio_data.get('transactions', [])
             
+            # Find the last redemption date for sold investments
+            last_redemption_date = None
+            if closing_balance <= 0:
+                # Find the latest redemption transaction
+                for trans in transactions:
+                    if trans.get('is_redemption'):
+                        try:
+                            redemption_date = datetime.strptime(trans['date'], '%d-%b-%Y')
+                            if last_redemption_date is None or redemption_date > last_redemption_date:
+                                last_redemption_date = redemption_date
+                        except:
+                            pass
+            
             for trans in transactions:
                 # Only process purchase transactions (not redemptions)
                 if trans.get('is_redemption') or trans.get('is_nft') or trans.get('is_pledge'):
@@ -1147,7 +1160,15 @@ class GapSheetGenerator:
                 
                 try:
                     trans_date = datetime.strptime(trans['date'], '%d-%b-%Y')
-                    holding_days = (self.report_date - trans_date).days
+                    
+                    # For sold investments (balance = 0), holding period is from purchase to sale date
+                    # For active investments, holding period is from purchase to report date
+                    if closing_balance <= 0 and last_redemption_date:
+                        holding_days = (last_redemption_date - trans_date).days
+                        holding_end_date = last_redemption_date
+                    else:
+                        holding_days = (self.report_date - trans_date).days
+                        holding_end_date = self.report_date
                     
                     units = trans.get('units', 0)
                     purchase_nav = trans.get('nav', 0)
