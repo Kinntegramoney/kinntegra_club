@@ -7095,6 +7095,77 @@ async def setup_broker_endpoint():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# Clear all data endpoint - keeps only the admin broker
+@api_router.get("/clear-all-data")
+async def clear_all_data():
+    """Clear all data except the admin broker account"""
+    try:
+        deleted_counts = {}
+        
+        # Delete all users except the admin broker
+        result = await db.users.delete_many({"pan": {"$ne": "ANVPB5297J"}})
+        deleted_counts["users"] = result.deleted_count
+        
+        # Delete all clients
+        result = await db.clients.delete_many({})
+        deleted_counts["clients"] = result.deleted_count
+        
+        # Delete all sub-brokers/partners
+        result = await db.partners.delete_many({})
+        deleted_counts["partners"] = result.deleted_count
+        
+        # Delete all bonds
+        result = await db.bonds.delete_many({})
+        deleted_counts["bonds"] = result.deleted_count
+        
+        # Delete all real estate opportunities
+        result = await db.real_estate_opportunities.delete_many({})
+        deleted_counts["real_estate"] = result.deleted_count
+        
+        # Delete all trades
+        result = await db.trades.delete_many({})
+        deleted_counts["trades"] = result.deleted_count
+        
+        # Delete all holdings
+        result = await db.holdings.delete_many({})
+        deleted_counts["holdings"] = result.deleted_count
+        
+        # Delete all holding cashflows
+        result = await db.holding_cashflows.delete_many({})
+        deleted_counts["holding_cashflows"] = result.deleted_count
+        
+        # Delete all real estate investments
+        result = await db.real_estate_investments.delete_many({})
+        deleted_counts["real_estate_investments"] = result.deleted_count
+        
+        # Delete all currency projections
+        result = await db.currency_projections.delete_many({})
+        deleted_counts["currency_projections"] = result.deleted_count
+        
+        # Delete all password resets
+        result = await db.password_resets.delete_many({})
+        deleted_counts["password_resets"] = result.deleted_count
+        
+        # Delete all activity logs if exists
+        try:
+            result = await db.activity_logs.delete_many({})
+            deleted_counts["activity_logs"] = result.deleted_count
+        except:
+            pass
+        
+        return {
+            "status": "success",
+            "message": "All data cleared except admin broker (ANVPB5297J)",
+            "deleted_counts": deleted_counts,
+            "preserved": {
+                "admin_broker": "ANVPB5297J",
+                "email": "pbisani89@gmail.com"
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Reset broker password endpoint
 @api_router.get("/reset-broker-password")
 async def reset_broker_password():
