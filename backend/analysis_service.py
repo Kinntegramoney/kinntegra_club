@@ -669,8 +669,8 @@ class GapSheetGenerator:
             top=Side(style='thin'), bottom=Side(style='thin')
         )
     
-    def _style_header(self, ws, row, num_cols):
-        for col in range(1, num_cols + 1):
+    def _style_header(self, ws, row, num_cols, start_col=1):
+        for col in range(start_col, start_col + num_cols):
             cell = ws.cell(row=row, column=col)
             cell.fill = self.header_fill
             cell.font = self.header_font
