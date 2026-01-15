@@ -398,7 +398,7 @@ class CASParser:
                         except ValueError:
                             units = 0
                         
-                        if 'Stamp Duty' in trans_type_line or 'STT Paid' in trans_type_line or amount == 0:
+                        if 'STT Paid' in trans_type_line or amount == 0:
                             i += 1
                             continue
                         
