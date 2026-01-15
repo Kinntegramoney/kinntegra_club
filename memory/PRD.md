@@ -86,7 +86,7 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 ### P3 - Technical Debt
 - [ ] Refactor RealEstateDetails.jsx (~3500 lines)
 - [ ] Refactor TradeVerification.jsx
-- [ ] Refactor analysis_service.py (~1500+ lines)
+- [ ] **CRITICAL**: Refactor analysis_service.py (~2500+ lines) - Break into smaller modules
 
 ---
 
