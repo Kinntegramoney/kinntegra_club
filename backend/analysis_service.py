@@ -739,15 +739,13 @@ class GapSheetGenerator:
         # 4. NFT
         # 5. Advisor View
         # 6. Tax View
-        # 7. Underlying Holdings (NEW)
-        # 8. Exit Load
+        # 7. Exit Load
         self._create_summary_sheet(wb)
         self._create_portfolio_performance_sheet(wb)
         self._create_mf_transactions_sheet(wb)
         self._create_nft_sheet(wb)
         self._create_advisor_view_sheet(wb)
         self._create_tax_view_sheet(wb)
-        self._create_underlying_holdings_sheet(wb)
         self._create_exit_loads_sheet(wb)
         
         if 'Sheet' in wb.sheetnames:
