@@ -1921,14 +1921,21 @@ class GapSheetGenerator:
         ws.cell(row=3, column=2, value="Value")
         self._style_header(ws, 3, 2)
         
+        # Helper function to format currency with ₹ and commas
+        def format_inr(amount):
+            if amount >= 0:
+                return f"₹ {amount:,.2f}"
+            else:
+                return f"-₹ {abs(amount):,.2f}"
+        
         ws.cell(row=4, column=1, value="Total Amount Invested")
-        ws.cell(row=4, column=2, value=round(total_invested, 2))
+        ws.cell(row=4, column=2, value=format_inr(total_invested))
         ws.cell(row=5, column=1, value="Total Amount Withdrawn")
-        ws.cell(row=5, column=2, value=round(total_withdrawn, 2))
+        ws.cell(row=5, column=2, value=format_inr(total_withdrawn))
         ws.cell(row=6, column=1, value="Current Portfolio Value")
-        ws.cell(row=6, column=2, value=round(total_current_value, 2))
+        ws.cell(row=6, column=2, value=format_inr(total_current_value))
         ws.cell(row=7, column=1, value="Absolute Gain/Loss")
-        ws.cell(row=7, column=2, value=round(total_current_value + total_withdrawn - total_invested, 2))
+        ws.cell(row=7, column=2, value=format_inr(total_current_value + total_withdrawn - total_invested))
         
         # Category-wise breakdown section
         ws.cell(row=9, column=1, value="CATEGORY-WISE BREAKDOWN")
@@ -1948,9 +1955,9 @@ class GapSheetGenerator:
                 
                 ws.cell(row=row, column=1, value=category)
                 ws.cell(row=row, column=2, value=data['schemes'])
-                ws.cell(row=row, column=3, value=round(data['invested'], 2))
-                ws.cell(row=row, column=4, value=round(data['current'], 2))
-                ws.cell(row=row, column=5, value=round(gain_loss, 2))
+                ws.cell(row=row, column=3, value=format_inr(data['invested']))
+                ws.cell(row=row, column=4, value=format_inr(data['current']))
+                ws.cell(row=row, column=5, value=format_inr(gain_loss))
                 ws.cell(row=row, column=6, value=f"{allocation:.1f}%")
                 row += 1
         
@@ -1974,7 +1981,7 @@ class GapSheetGenerator:
             if value > 0:
                 allocation = (value / total_current_value * 100) if total_current_value > 0 else 0
                 ws.cell(row=asset_row, column=1, value=asset_class)
-                ws.cell(row=asset_row, column=2, value=round(value, 2))
+                ws.cell(row=asset_row, column=2, value=format_inr(value))
                 ws.cell(row=asset_row, column=3, value=f"{allocation:.1f}%")
                 asset_row += 1
         
