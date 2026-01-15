@@ -1355,13 +1355,13 @@ class GapSheetGenerator:
         """Sheet 2: MF Transactions - aligned with template"""
         ws = wb.create_sheet("MF Transactions")
         
-        # Headers matching the template image
+        # Headers matching the template image + MF Ageing
         headers = [
             "Account Identifier", "Instrument Name", "ISIN", "Transaction Date",
             "Transaction Details", "Opening Units", "Units (Debit)", "Units (Credit)",
             "Closing Units", "Price", "Transaction Amount", "STT", "Stamp Duty",
             "Total Amount", "Balance Units", "Current NAV", "Current Market Value",
-            "XIRR", "Advisor ARN", "Advisor Name"
+            "MF Ageing", "XIRR", "Advisor ARN", "Advisor Name"
         ]
         
         for col, header in enumerate(headers, 1):
