@@ -1105,17 +1105,16 @@ class GapSheetGenerator:
             
             return status, tax_rate, estimated_tax
         
-        row = 2
+        # Collect all tax entries first for sorting
+        tax_entries = []
+        
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
             scheme_name = folio_data.get('scheme', '') or ''
             fund_type = get_fund_type(scheme_name)
             current_nav = folio_data.get('current_nav', 0)
             closing_balance = folio_data.get('closing_balance', 0)
             
-            # Skip folios with no balance
-            if closing_balance <= 0:
-                continue
-            
+            # Include ALL folios (even with zero balance for historical view)
             transactions = folio_data.get('transactions', [])
             
             for trans in transactions:
@@ -1136,8 +1135,9 @@ class GapSheetGenerator:
                         continue
                     
                     purchase_value = units * purchase_nav if purchase_nav else trans.get('amount', 0)
-                    current_value = units * current_nav if current_nav else 0
-                    original_gain_loss = current_value - purchase_value
+                    # Only calculate current value if folio has balance
+                    current_value = units * current_nav if (current_nav and closing_balance > 0) else 0
+                    original_gain_loss = current_value - purchase_value if closing_balance > 0 else 0
                     
                     # Check for grandfathering (equity funds before Jan 31, 2018)
                     gf_nav = get_grandfathered_nav(purchase_nav, current_nav, trans_date, fund_type)
