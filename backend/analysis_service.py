@@ -279,9 +279,25 @@ class CASParser:
             if isin_match:
                 current_isin = isin_match.group(1)
                 
+                # Check for advisor on same line
                 advisor_match = re.search(r'\(Advisor:\s*([A-Z0-9\-]+)\)', line)
                 if advisor_match:
                     current_advisor = advisor_match.group(1)
+                else:
+                    # Check if advisor info is split across lines (common in CAS PDFs)
+                    # Look at next line for ARN
+                    if i + 1 < len(lines):
+                        next_line = lines[i + 1].strip()
+                        # Pattern: "ARN-XXXXX)" at start of line
+                        arn_match = re.match(r'^(ARN-[A-Z0-9\-]+)\)', next_line)
+                        if arn_match:
+                            current_advisor = arn_match.group(1)
+                        # Also check for full pattern on next line
+                        elif re.match(r'^[A-Z0-9\-]+\)', next_line):
+                            # Could be PCASON) or similar
+                            arn_only = re.match(r'^([A-Z0-9\-]+)\)', next_line)
+                            if arn_only:
+                                current_advisor = arn_only.group(1)
                 
                 full_line = line
                 if pending_scheme_line and 'ISIN' not in pending_scheme_line:
