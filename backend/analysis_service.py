@@ -968,9 +968,9 @@ class GapSheetGenerator:
         """Sheet 5: Tax View - Matching template format with FY-wise LT/ST breakdown"""
         ws = wb.create_sheet("Tax View")
         
-        # Headers matching the template
+        # Headers matching the template - added PAN
         headers = [
-            "Folio Number", "Instrument Name", "Financial Year", "SchemeType",
+            "PAN", "Folio Number", "Instrument Name", "Financial Year", "SchemeType",
             "Active LT Units", "Active LT (Gain/Loss)",
             "Active ST Units", "Active ST (Gain/Loss)",
             "Sold LT Units", "Sold LT (Gain/Loss)",
@@ -1027,6 +1027,13 @@ class GapSheetGenerator:
             folio_num = folio_data.get('folio', folio_id)
             
             transactions = folio_data.get('transactions', [])
+            
+            # Get PAN from first transaction
+            pan = ''
+            for trans in transactions:
+                if trans.get('pan'):
+                    pan = trans.get('pan')
+                    break
             
             # Find last redemption date
             last_redemption_date = None
