@@ -974,35 +974,35 @@ class GapSheetGenerator:
             cell = ws.cell(row=row, column=4, value=round(entry['withdrawn'], 2))
             cell.number_format = '₹#,##0.00'
             
-            # Dividend Paid (Column 6)
-            cell = ws.cell(row=row, column=6, value=round(entry['dividend'], 2))
+            # Dividend Paid (Column 5)
+            cell = ws.cell(row=row, column=5, value=round(entry['dividend'], 2))
             cell.number_format = '₹#,##0.00'
             
-            # Amount Invested (Column 7)
-            cell = ws.cell(row=row, column=7, value=round(entry['invested'], 2))
+            # Amount Invested (Column 6)
+            cell = ws.cell(row=row, column=6, value=round(entry['invested'], 2))
             cell.number_format = '₹#,##0.00'
             
-            # Absolute Gains (Column 8)
-            cell = ws.cell(row=row, column=8, value=round(entry['gains'], 2))
+            # Absolute Gains (Column 7)
+            cell = ws.cell(row=row, column=7, value=round(entry['gains'], 2))
             cell.number_format = '₹#,##0.00'
             
-            # Absolute Return % (Column 9)
-            cell = ws.cell(row=row, column=9, value=round(entry['return_pct'], 2))
+            # Absolute Return % (Column 8)
+            cell = ws.cell(row=row, column=8, value=round(entry['return_pct'], 2))
             cell.number_format = '0.00"%"'
             
-            # CAGR % (Column 10)
-            cell = ws.cell(row=row, column=10, value=round(entry['cagr'], 4))
+            # CAGR % (Column 9)
+            cell = ws.cell(row=row, column=9, value=round(entry['cagr'], 4))
             cell.number_format = '0.0000"%"'
             
-            # Closing Units (Column 11)
-            cell = ws.cell(row=row, column=11, value=round(entry['closing_units'], 3))
+            # Closing Units (Column 10)
+            cell = ws.cell(row=row, column=10, value=round(entry['closing_units'], 3))
             cell.number_format = '#,##0.000'
             
-            # PAN (Column 12)
-            ws.cell(row=row, column=12, value=entry['pan'])
+            # PAN (Column 11)
+            ws.cell(row=row, column=11, value=entry['pan'])
             
-            # Adviser ARN (Column 13)
-            ws.cell(row=row, column=13, value=entry['advisor_arn'])
+            # Adviser ARN (Column 12)
+            ws.cell(row=row, column=12, value=entry['advisor_arn'])
             row += 1
         
         self._auto_width(ws)
