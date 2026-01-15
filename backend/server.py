@@ -496,7 +496,10 @@ async def create_partner(partner_data: PartnerCreate, background_tasks: Backgrou
         "pincode": partner_data.pincode,
         "created_by": current_user['id'],
         "last_log": None,
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        # Store plain credentials for display to broker (not best practice but per user request)
+        "initial_password": partner_data.password,
+        "initial_pin": partner_data.pin
     }
     await db.partners.insert_one(partner)
     
