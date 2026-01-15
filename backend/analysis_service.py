@@ -1046,16 +1046,16 @@ class GapSheetGenerator:
                 return f"{date.year - 1} - {date.year}"
         
         def get_fund_type(scheme_name):
-            """Determine fund type based on scheme name"""
+            """Determine fund type based on scheme name - Arbitrage and Hybrid treated as EQUITY for tax"""
             scheme_lower = scheme_name.lower() if scheme_name else ''
             if any(x in scheme_lower for x in ['liquid', 'money market', 'overnight']):
                 return 'LIQUID'
             elif any(x in scheme_lower for x in ['debt', 'bond', 'gilt', 'income', 'credit risk', 'dynamic bond', 'corporate bond']):
                 return 'DEBT'
             elif any(x in scheme_lower for x in ['arbitrage']):
-                return 'ARBITRAGE'
+                return 'EQUITY'  # Arbitrage treated as EQUITY for tax purposes
             elif any(x in scheme_lower for x in ['hybrid', 'balanced', 'aggressive', 'conservative', 'dynamic asset']):
-                return 'HYBRID'
+                return 'EQUITY'  # Hybrid treated as EQUITY for tax purposes
             else:
                 return 'EQUITY'
         
