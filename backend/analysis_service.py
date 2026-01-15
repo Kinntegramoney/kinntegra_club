@@ -6,7 +6,7 @@ import fitz  # PyMuPDF
 import re
 import requests
 from datetime import datetime, timezone
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from collections import defaultdict
 import io
 from openpyxl import Workbook
@@ -29,6 +29,7 @@ class CASParser:
         self.transactions = []
         self.folios = {}
         self.portfolio_summary = {}
+        self.investor_info = {}
         
     def parse(self) -> Dict:
         """Parse the CAS PDF and extract all transaction data"""
@@ -47,10 +48,12 @@ class CASParser:
             doc.close()
             
             # Parse the extracted text
+            self._parse_investor_info(full_text)
             self._parse_portfolio_summary(full_text)
             self._parse_folios_and_transactions(full_text)
             
             return {
+                "investor_info": self.investor_info,
                 "portfolio_summary": self.portfolio_summary,
                 "folios": self.folios,
                 "transactions": self.transactions,
@@ -60,6 +63,28 @@ class CASParser:
         except Exception as e:
             logger.error(f"Error parsing CAS PDF: {e}")
             raise
+    
+    def _parse_investor_info(self, text: str):
+        """Extract investor information"""
+        # Extract name
+        name_match = re.search(r'Dear\s+([A-Za-z\s]+),', text)
+        if name_match:
+            self.investor_info['name'] = name_match.group(1).strip()
+        
+        # Extract email
+        email_match = re.search(r'Email Id:\s*([^\s]+@[^\s]+)', text)
+        if email_match:
+            self.investor_info['email'] = email_match.group(1).strip()
+        
+        # Extract mobile
+        mobile_match = re.search(r'Mobile:\s*(\d+)', text)
+        if mobile_match:
+            self.investor_info['mobile'] = mobile_match.group(1)
+        
+        # Extract PAN
+        pan_match = re.search(r'PAN:\s*([A-Z]{5}\d{4}[A-Z])', text)
+        if pan_match:
+            self.investor_info['pan'] = pan_match.group(1)
     
     def _parse_portfolio_summary(self, text: str):
         """Extract portfolio summary from the first page"""
@@ -87,7 +112,7 @@ class CASParser:
                         pass
                     break
                 
-                # Check for AMC line (starts with spaces and contains "Mutual Fund")
+                # Check for AMC line (contains "Mutual Fund")
                 if 'Mutual Fund' in line or 'MF' in line:
                     amc_name = line.strip()
                     # Next two lines should be cost and value
@@ -114,15 +139,20 @@ class CASParser:
         current_scheme = None
         current_isin = None
         current_amc = None
+        current_advisor = None
         
         i = 0
         while i < len(lines):
             line = lines[i].strip()
             
-            # Detect AMC header (e.g., "360 ONE Mutual Fund", "AXIS Mutual Fund")
-            if re.match(r'^[A-Z0-9].*Mutual Fund$', line) or 'Mutual Fund' in line and not line.startswith(' '):
-                if 'Mutual Fund' in line and len(line) < 50:
-                    current_amc = line.strip()
+            # Detect AMC header
+            if re.match(r'^[A-Z0-9].*Mutual Fund$', line) or ('Mutual Fund' in line and len(line) < 50):
+                current_amc = line.strip()
+            
+            # Detect Advisor ARN
+            advisor_match = re.search(r'Advisor:\s*([A-Z0-9\-]+)', line)
+            if advisor_match:
+                current_advisor = advisor_match.group(1)
             
             # Detect PAN
             pan_match = re.search(r'PAN:\s*([A-Z]{5}\d{4}[A-Z])', line)
@@ -130,11 +160,10 @@ class CASParser:
                 current_pan = pan_match.group(1)
             
             # Detect scheme with ISIN
-            # Pattern: SCHEME_CODE-Scheme Name - ISIN: ISINCODE
             isin_match = re.search(r'ISIN:\s*([A-Z0-9]{12})', line)
             if isin_match:
                 current_isin = isin_match.group(1)
-                # Extract scheme name from the line
+                # Extract scheme name
                 scheme_match = re.match(r'^([A-Z0-9]+-[^-]+(?:-[^-]+)*)\s*-\s*ISIN:', line)
                 if scheme_match:
                     current_scheme = scheme_match.group(1).strip()
@@ -151,9 +180,12 @@ class CASParser:
                         'isin': current_isin,
                         'pan': current_pan,
                         'amc': current_amc,
+                        'advisor': current_advisor,
                         'transactions': [],
                         'closing_balance': 0,
-                        'cost_value': 0
+                        'cost_value': 0,
+                        'current_nav': 0,
+                        'market_value': 0
                     }
             
             # Detect closing balance
@@ -180,14 +212,11 @@ class CASParser:
                 if mv_match and current_folio and current_folio in self.folios:
                     self.folios[current_folio]['market_value'] = float(mv_match.group(1).replace(',', ''))
             
-            # Detect transaction lines
-            # Format: DD-MMM-YYYY  Amount  NAV  Units  Transaction Type  Balance
+            # Detect transaction lines (date format: DD-MMM-YYYY)
             trans_match = re.match(r'^(\d{2}-[A-Za-z]{3}-\d{4})\s*$', line)
             if trans_match and current_folio:
                 date_str = trans_match.group(1)
                 
-                # Look for transaction data in next lines
-                # Amount, NAV, Units could be on separate lines
                 if i + 4 < len(lines):
                     try:
                         amount_str = lines[i + 1].strip()
@@ -195,7 +224,7 @@ class CASParser:
                         units_str = lines[i + 3].strip()
                         trans_type_line = lines[i + 4].strip()
                         
-                        # Handle negative amounts (redemptions)
+                        # Handle negative amounts
                         amount_str = amount_str.replace('(', '-').replace(')', '').replace(',', '')
                         units_str = units_str.replace('(', '-').replace(')', '').replace(',', '')
                         
@@ -203,15 +232,14 @@ class CASParser:
                         nav = float(nav_str) if nav_str else 0
                         units = float(units_str) if units_str else 0
                         
-                        # Skip stamp duty and other non-transaction entries
+                        # Skip stamp duty
                         if 'Stamp Duty' in trans_type_line or amount == 0:
                             i += 1
                             continue
                         
-                        # Extract transaction type and balance
                         trans_type = trans_type_line.split('-')[0].strip() if '-' in trans_type_line else trans_type_line
                         
-                        # Try to get balance from subsequent line
+                        # Get balance
                         balance = 0
                         if i + 5 < len(lines):
                             balance_line = lines[i + 5].strip().replace(',', '')
@@ -219,6 +247,8 @@ class CASParser:
                                 balance = float(balance_line)
                             except ValueError:
                                 pass
+                        
+                        is_redemption = amount < 0 or 'Redemption' in trans_type_line
                         
                         transaction = {
                             'date': date_str,
@@ -231,7 +261,9 @@ class CASParser:
                             'scheme': current_scheme,
                             'isin': current_isin,
                             'pan': current_pan,
-                            'is_redemption': amount < 0 or 'Redemption' in trans_type_line
+                            'amc': current_amc,
+                            'advisor': current_advisor,
+                            'is_redemption': is_redemption
                         }
                         
                         self.transactions.append(transaction)
@@ -271,32 +303,17 @@ class NAVService:
         except Exception as e:
             logger.error(f"Error fetching NAV for {scheme_code}: {e}")
             return None
-    
-    @staticmethod
-    def get_nav_history(scheme_code: str, start_date: str = None, end_date: str = None) -> Optional[Dict]:
-        """Get historical NAV data for a scheme"""
-        try:
-            url = f"{MFAPI_BASE_URL}/mf/{scheme_code}"
-            if start_date and end_date:
-                url += f"?startDate={start_date}&endDate={end_date}"
-            response = requests.get(url, timeout=15)
-            if response.status_code == 200:
-                return response.json()
-            return None
-        except Exception as e:
-            logger.error(f"Error fetching NAV history for {scheme_code}: {e}")
-            return None
 
 
 class SchemeMapper:
-    """Maps ISIN/scheme names to MF API scheme codes using scheme master data"""
+    """Maps ISIN/scheme names to MF API scheme codes"""
     
     def __init__(self, scheme_master_data: List[Dict]):
         self.scheme_master = scheme_master_data
         self._build_index()
     
     def _build_index(self):
-        """Build lookup indices for fast searching"""
+        """Build lookup indices"""
         self.isin_index = {}
         self.name_index = {}
         
@@ -304,7 +321,6 @@ class SchemeMapper:
             if scheme.get('isin'):
                 self.isin_index[scheme['isin']] = scheme
             if scheme.get('scheme_name'):
-                # Create normalized name for matching
                 normalized = scheme['scheme_name'].lower().replace(' ', '').replace('-', '')
                 self.name_index[normalized] = scheme
     
@@ -317,55 +333,70 @@ class SchemeMapper:
             normalized = scheme_name.lower().replace(' ', '').replace('-', '')
             if normalized in self.name_index:
                 return self.name_index[normalized].get('scheme_code')
-            
-            # Fuzzy match
-            for key, scheme in self.name_index.items():
-                if normalized in key or key in normalized:
-                    return scheme.get('scheme_code')
         
         return None
 
 
 class GapSheetGenerator:
-    """Generates Gap Sheet Excel report from parsed CAS data"""
+    """Generates Gap Sheet Excel report matching the exact format"""
     
     def __init__(self, parsed_data: Dict, nav_service: NAVService, scheme_mapper: SchemeMapper = None):
         self.parsed_data = parsed_data
         self.nav_service = nav_service
         self.scheme_mapper = scheme_mapper
         self.current_navs = {}
+        
+        # Styling
+        self.header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        self.header_font = Font(color="FFFFFF", bold=True, size=10)
+        self.data_font = Font(size=10)
+        self.thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
     
-    def _fetch_current_navs(self):
-        """Fetch current NAVs for all schemes"""
-        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
-            isin = folio_data.get('isin')
-            scheme_name = folio_data.get('scheme')
-            
-            if isin and isin not in self.current_navs:
-                # Try to get scheme code and fetch NAV
-                scheme_code = None
-                if self.scheme_mapper:
-                    scheme_code = self.scheme_mapper.get_scheme_code(isin=isin, scheme_name=scheme_name)
-                
-                if scheme_code:
-                    nav_data = self.nav_service.get_latest_nav(scheme_code)
-                    if nav_data and nav_data.get('data'):
-                        self.current_navs[isin] = float(nav_data['data'][0]['nav'])
+    def _style_header(self, ws, row, num_cols):
+        """Apply header styling"""
+        for col in range(1, num_cols + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.fill = self.header_fill
+            cell.font = self.header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = self.thin_border
+    
+    def _auto_width(self, ws, min_width=10, max_width=40):
+        """Auto-adjust column widths"""
+        for col in ws.columns:
+            max_length = 0
+            column = col[0].column_letter
+            for cell in col:
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            adjusted_width = min(max(max_length + 2, min_width), max_width)
+            ws.column_dimensions[column].width = adjusted_width
     
     def generate(self) -> bytes:
-        """Generate the Gap Sheet Excel file"""
+        """Generate the Gap Sheet Excel file with all 10 sheets"""
         wb = Workbook()
         
-        # Fetch current NAVs
-        self._fetch_current_navs()
-        
-        # Create sheets
+        # Create all 10 sheets in order
         self._create_portfolio_performance_sheet(wb)
-        self._create_holdings_sheet(wb)
-        self._create_transactions_sheet(wb)
+        self._create_tax_view_sheet(wb)
         self._create_advisor_view_sheet(wb)
+        self._create_pan_view_sheet(wb)
+        self._create_mf_ageing_sheet(wb)
+        self._create_mutual_fund_holding_sheet(wb)
+        self._create_mf_transactions_sheet(wb)
+        self._create_accounts_sheet(wb)
+        self._create_exit_loads_sheet(wb)
+        self._create_other_details_sheet(wb)
         
-        # Remove default sheet if exists
+        # Remove default sheet
         if 'Sheet' in wb.sheetnames:
             del wb['Sheet']
         
@@ -376,213 +407,516 @@ class GapSheetGenerator:
         return output.getvalue()
     
     def _create_portfolio_performance_sheet(self, wb: Workbook):
-        """Create Portfolio Performance sheet"""
+        """Sheet 1: Portfolio Performance"""
         ws = wb.create_sheet("Portfolio Performance", 0)
         
-        # Header styling
-        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-        header_font = Font(color="FFFFFF", bold=True)
-        
         headers = [
-            "PAN", "Folio No.", "Instrument Name", "ISIN", 
-            "Amount Invested", "Current NAV", "Current Units", 
-            "Valuation", "Absolute Gains", "Absolute Return %"
+            "Group Name", "PAN", "Asset Class", "Advisor", "Folio No.", "Instrument Name",
+            "Instrument Type", "From Date", "To Date", "Amount Invested", "Cash Withdrawal",
+            "Dividend Paid", "Valuation", "Absolute Gains", "Absolute Return %", "CAGR %",
+            "3 Yr %", "Inception Date", "Cost Value", "Cost price", "Closing Units",
+            "Realized GL", "Unrealized GL", "Remarks"
         ]
         
         for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col, value=header)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center")
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
         
         row = 2
         total_invested = 0
+        total_withdrawn = 0
         total_valuation = 0
         
+        # Group by asset class (EQUITY/DEBT)
+        equity_data = []
+        debt_data = []
+        
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
-            # Get values from parsed folio data
             closing_balance = folio_data.get('closing_balance', 0)
             cost_value = folio_data.get('cost_value', 0)
             market_value = folio_data.get('market_value', 0)
-            current_nav = folio_data.get('current_nav', 0)
             
-            # Skip folios with no holdings
-            if closing_balance <= 0:
-                continue
+            # Calculate from transactions
+            transactions = folio_data.get('transactions', [])
+            invested = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
+            withdrawn = sum(t['amount'] for t in transactions if t.get('is_redemption', False))
             
-            # Use stored values or calculate from transactions
-            if cost_value == 0:
-                transactions = folio_data.get('transactions', [])
-                invested = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
-                redeemed = sum(t['amount'] for t in transactions if t.get('is_redemption', False))
-                cost_value = invested - redeemed
+            # Get first transaction date
+            inception_date = ''
+            if transactions:
+                inception_date = transactions[0].get('date', '')
             
-            # Get current NAV from stored value or MFapi
-            isin = folio_data.get('isin')
-            if current_nav == 0 and isin in self.current_navs:
-                current_nav = self.current_navs[isin]
-            
-            # Calculate valuation if not stored
-            if market_value == 0 and current_nav > 0:
-                market_value = closing_balance * current_nav
-            
-            # Calculate gains
-            gains = market_value - cost_value
+            gains = market_value - cost_value if cost_value > 0 else 0
             return_pct = (gains / cost_value * 100) if cost_value > 0 else 0
+            unrealized_gl = market_value - cost_value if closing_balance > 0 else 0
+            realized_gl = withdrawn - invested if closing_balance == 0 else 0
             
-            ws.cell(row=row, column=1, value=folio_data.get('pan', ''))
-            ws.cell(row=row, column=2, value=folio_id)
-            ws.cell(row=row, column=3, value=folio_data.get('scheme', ''))
-            ws.cell(row=row, column=4, value=isin)
-            ws.cell(row=row, column=5, value=round(cost_value, 2))
-            ws.cell(row=row, column=6, value=round(current_nav, 4))
-            ws.cell(row=row, column=7, value=round(closing_balance, 3))
-            ws.cell(row=row, column=8, value=round(market_value, 2))
-            ws.cell(row=row, column=9, value=round(gains, 2))
-            ws.cell(row=row, column=10, value=round(return_pct, 2))
+            # Determine asset class based on scheme name
+            scheme_name = folio_data.get('scheme', '') or ''
+            asset_class = 'EQUITY'
+            if any(x in scheme_name.lower() for x in ['liquid', 'debt', 'bond', 'gilt', 'money market']):
+                asset_class = 'DEBT'
             
-            total_invested += cost_value
+            entry = {
+                'group_name': self.parsed_data.get('investor_info', {}).get('name', ''),
+                'pan': folio_data.get('pan', ''),
+                'asset_class': asset_class,
+                'advisor': folio_data.get('advisor', 'KINNTEGRAWEALTHPRIVATELIMITED'),
+                'folio': folio_id,
+                'scheme': scheme_name,
+                'type': 'MutualFund',
+                'invested': invested,
+                'withdrawn': withdrawn,
+                'valuation': market_value,
+                'gains': gains,
+                'return_pct': return_pct,
+                'inception_date': inception_date,
+                'cost_value': cost_value,
+                'closing_units': closing_balance,
+                'realized_gl': realized_gl,
+                'unrealized_gl': unrealized_gl
+            }
+            
+            if asset_class == 'EQUITY':
+                equity_data.append(entry)
+            else:
+                debt_data.append(entry)
+            
+            total_invested += invested
+            total_withdrawn += withdrawn
             total_valuation += market_value
+        
+        # Write Grand Total
+        total_gains = total_valuation - (total_invested - total_withdrawn)
+        total_return = (total_gains / (total_invested - total_withdrawn) * 100) if (total_invested - total_withdrawn) > 0 else 0
+        
+        ws.cell(row=row, column=3, value="GRAND TOTAL")
+        ws.cell(row=row, column=10, value=round(total_invested, 2))
+        ws.cell(row=row, column=11, value=round(total_withdrawn, 2))
+        ws.cell(row=row, column=13, value=round(total_valuation, 2))
+        ws.cell(row=row, column=14, value=round(total_gains, 2))
+        ws.cell(row=row, column=15, value=round(total_return, 4))
+        row += 1
+        
+        # Write Sub Total - EQUITY
+        eq_invested = sum(e['invested'] for e in equity_data)
+        eq_withdrawn = sum(e['withdrawn'] for e in equity_data)
+        eq_valuation = sum(e['valuation'] for e in equity_data)
+        eq_gains = eq_valuation - (eq_invested - eq_withdrawn)
+        eq_return = (eq_gains / (eq_invested - eq_withdrawn) * 100) if (eq_invested - eq_withdrawn) > 0 else 0
+        
+        ws.cell(row=row, column=3, value="Sub Total - EQUITY")
+        ws.cell(row=row, column=10, value=round(eq_invested, 2))
+        ws.cell(row=row, column=11, value=round(eq_withdrawn, 2))
+        ws.cell(row=row, column=13, value=round(eq_valuation, 2))
+        ws.cell(row=row, column=14, value=round(eq_gains, 2))
+        ws.cell(row=row, column=15, value=round(eq_return, 4))
+        row += 1
+        
+        # Write Sub Total - DEBT
+        debt_invested = sum(e['invested'] for e in debt_data)
+        debt_withdrawn = sum(e['withdrawn'] for e in debt_data)
+        debt_valuation = sum(e['valuation'] for e in debt_data)
+        debt_gains = debt_valuation - (debt_invested - debt_withdrawn)
+        debt_return = (debt_gains / (debt_invested - debt_withdrawn) * 100) if (debt_invested - debt_withdrawn) > 0 else 0
+        
+        ws.cell(row=row, column=3, value="Sub Total - DEBT")
+        ws.cell(row=row, column=10, value=round(debt_invested, 2))
+        ws.cell(row=row, column=11, value=round(debt_withdrawn, 2))
+        ws.cell(row=row, column=13, value=round(debt_valuation, 2))
+        ws.cell(row=row, column=14, value=round(debt_gains, 2))
+        ws.cell(row=row, column=15, value=round(debt_return, 4))
+        row += 1
+        
+        # Write individual entries
+        for entry in equity_data + debt_data:
+            ws.cell(row=row, column=2, value=entry['pan'])
+            ws.cell(row=row, column=3, value=entry['asset_class'])
+            ws.cell(row=row, column=4, value=entry['advisor'])
+            ws.cell(row=row, column=5, value=entry['folio'])
+            ws.cell(row=row, column=6, value=entry['scheme'])
+            ws.cell(row=row, column=7, value=entry['type'])
+            ws.cell(row=row, column=10, value=round(entry['invested'], 2))
+            ws.cell(row=row, column=11, value=round(entry['withdrawn'], 2))
+            ws.cell(row=row, column=12, value=0)  # Dividend
+            ws.cell(row=row, column=13, value=round(entry['valuation'], 2))
+            ws.cell(row=row, column=14, value=round(entry['gains'], 2))
+            ws.cell(row=row, column=15, value=round(entry['return_pct'], 4))
+            ws.cell(row=row, column=18, value=entry['inception_date'])
+            ws.cell(row=row, column=19, value=round(entry['cost_value'], 4))
+            ws.cell(row=row, column=21, value=round(entry['closing_units'], 3))
+            ws.cell(row=row, column=22, value=round(entry['realized_gl'], 2))
+            ws.cell(row=row, column=23, value=round(entry['unrealized_gl'], 2))
             row += 1
         
-        # Add totals row
-        total_gains = total_valuation - total_invested
-        total_return = (total_gains / total_invested * 100) if total_invested > 0 else 0
-        
-        ws.cell(row=row, column=1, value="TOTAL")
-        ws.cell(row=row, column=1).font = Font(bold=True)
-        ws.cell(row=row, column=5, value=round(total_invested, 2))
-        ws.cell(row=row, column=8, value=round(total_valuation, 2))
-        ws.cell(row=row, column=9, value=round(total_gains, 2))
-        ws.cell(row=row, column=10, value=round(total_return, 2))
-        
-        # Auto-adjust column widths
-        for col in range(1, len(headers) + 1):
-            ws.column_dimensions[get_column_letter(col)].width = 18
+        self._auto_width(ws)
     
-    def _create_holdings_sheet(self, wb: Workbook):
-        """Create Mutual Fund Holding sheet"""
-        ws = wb.create_sheet("MF Holdings")
+    def _create_tax_view_sheet(self, wb: Workbook):
+        """Sheet 2: Tax View"""
+        ws = wb.create_sheet("Tax View")
         
-        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-        header_font = Font(color="FFFFFF", bold=True)
-        
-        headers = ["PAN", "Folio No.", "Scheme Name", "ISIN", "Units", "NAV", "Value"]
+        headers = [
+            "Folio Number", "Instrument Name", "Financial Year", "SchemeType",
+            "Active LT Units", "Active LT (Gain/Loss)", "Active LT Tax",
+            "Active ST Units", "Active ST (Gain/Loss)", "Active ST Tax",
+            "Sold LT Units", "Sold LT (Gain/Loss)", "Sold LT Tax",
+            "Sold ST Units", "Sold ST (Gain/Loss)", "Sold ST Tax"
+        ]
         
         for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col, value=header)
-            cell.fill = header_fill
-            cell.font = header_font
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
         
         row = 2
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
-            closing_balance = folio_data.get('closing_balance', 0)
+            scheme_name = folio_data.get('scheme', '')
+            asset_class = 'EQUITY'
+            if any(x in (scheme_name or '').lower() for x in ['liquid', 'debt', 'bond']):
+                asset_class = 'LIQUID' if 'liquid' in (scheme_name or '').lower() else 'DEBT'
             
-            if closing_balance <= 0:
-                continue
-            
-            isin = folio_data.get('isin')
-            current_nav = folio_data.get('current_nav', 0)
-            market_value = folio_data.get('market_value', 0)
-            
-            # If NAV not stored, try to get from fetched data
-            if current_nav == 0 and isin in self.current_navs:
-                current_nav = self.current_navs[isin]
-                market_value = closing_balance * current_nav
-            
-            ws.cell(row=row, column=1, value=folio_data.get('pan', ''))
-            ws.cell(row=row, column=2, value=folio_id)
-            ws.cell(row=row, column=3, value=folio_data.get('scheme', ''))
-            ws.cell(row=row, column=4, value=isin)
-            ws.cell(row=row, column=5, value=round(closing_balance, 3))
-            ws.cell(row=row, column=6, value=round(current_nav, 4))
-            ws.cell(row=row, column=7, value=round(market_value, 2))
+            ws.cell(row=row, column=1, value=folio_id)
+            ws.cell(row=row, column=2, value=scheme_name)
+            ws.cell(row=row, column=3, value="2025 - 2026")
+            ws.cell(row=row, column=4, value=asset_class)
+            ws.cell(row=row, column=5, value=folio_data.get('closing_balance', 0))
             row += 1
         
-        for col in range(1, len(headers) + 1):
-            ws.column_dimensions[get_column_letter(col)].width = 20
-    
-    def _create_transactions_sheet(self, wb: Workbook):
-        """Create MF Transactions sheet"""
-        ws = wb.create_sheet("MF Transactions")
-        
-        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-        header_font = Font(color="FFFFFF", bold=True)
-        
-        headers = ["Date", "PAN", "Folio No.", "Scheme Name", "Transaction Type", "Amount", "NAV", "Units", "Balance"]
-        
-        for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col, value=header)
-            cell.fill = header_fill
-            cell.font = header_font
-        
-        row = 2
-        for transaction in self.parsed_data.get('transactions', []):
-            ws.cell(row=row, column=1, value=transaction.get('date', ''))
-            ws.cell(row=row, column=2, value=transaction.get('pan', ''))
-            ws.cell(row=row, column=3, value=transaction.get('folio', ''))
-            ws.cell(row=row, column=4, value=transaction.get('scheme', ''))
-            ws.cell(row=row, column=5, value=transaction.get('transaction_type', ''))
-            ws.cell(row=row, column=6, value=transaction.get('amount', 0))
-            ws.cell(row=row, column=7, value=transaction.get('nav', 0))
-            ws.cell(row=row, column=8, value=transaction.get('units', 0))
-            ws.cell(row=row, column=9, value=transaction.get('balance', 0))
-            row += 1
-        
-        for col in range(1, len(headers) + 1):
-            ws.column_dimensions[get_column_letter(col)].width = 18
+        self._auto_width(ws)
     
     def _create_advisor_view_sheet(self, wb: Workbook):
-        """Create Advisor View sheet"""
+        """Sheet 3: Advisor View"""
         ws = wb.create_sheet("Advisor View")
         
-        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-        header_font = Font(color="FFFFFF", bold=True)
-        
-        headers = ["Advisor", "Amount Invested", "Valuation", "Absolute Gains", "Return %"]
+        headers = [
+            "Group Name", "PAN", "Advisor", "Asset Class", "From Date", "To Date",
+            "Amount Invested", "Cash Withdrawal", "Dividend Paid", "Valuation",
+            "Absolute Gains", "Absolute Return %", "CAGR %", "3 Yr %", "Remarks"
+        ]
         
         for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col, value=header)
-            cell.fill = header_fill
-            cell.font = header_font
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
         
-        # Group by advisor (extracted from scheme names if present)
-        advisor_data = defaultdict(lambda: {'invested': 0, 'valuation': 0})
+        # Group by advisor
+        advisor_data = defaultdict(lambda: {'invested': 0, 'withdrawn': 0, 'valuation': 0})
         
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            advisor = folio_data.get('advisor', 'KINNTEGRAWEALTHPRIVATELIMITED') or 'KINNTEGRAWEALTHPRIVATELIMITED'
             transactions = folio_data.get('transactions', [])
-            if not transactions:
-                continue
             
-            # Try to extract advisor from transaction type or use default
-            advisor = "KINNTEGRAA"  # Default advisor
+            invested = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
+            withdrawn = sum(t['amount'] for t in transactions if t.get('is_redemption', False))
+            valuation = folio_data.get('market_value', 0)
             
-            invested = sum(t['amount'] for t in transactions if 'Purchase' in t.get('transaction_type', ''))
-            redeemed = sum(t['amount'] for t in transactions if 'Redemption' in t.get('transaction_type', ''))
-            net_invested = invested - redeemed
-            
-            current_units = transactions[-1].get('balance', 0)
-            isin = folio_data.get('isin')
-            current_nav = self.current_navs.get(isin, transactions[-1].get('nav', 0))
-            valuation = current_units * current_nav
-            
-            advisor_data[advisor]['invested'] += net_invested
+            advisor_data[advisor]['invested'] += invested
+            advisor_data[advisor]['withdrawn'] += withdrawn
             advisor_data[advisor]['valuation'] += valuation
         
         row = 2
         for advisor, data in advisor_data.items():
-            gains = data['valuation'] - data['invested']
-            return_pct = (gains / data['invested'] * 100) if data['invested'] > 0 else 0
+            gains = data['valuation'] - (data['invested'] - data['withdrawn'])
+            return_pct = (gains / (data['invested'] - data['withdrawn']) * 100) if (data['invested'] - data['withdrawn']) > 0 else 0
             
-            ws.cell(row=row, column=1, value=advisor)
-            ws.cell(row=row, column=2, value=round(data['invested'], 2))
-            ws.cell(row=row, column=3, value=round(data['valuation'], 2))
-            ws.cell(row=row, column=4, value=round(gains, 2))
-            ws.cell(row=row, column=5, value=round(return_pct, 2))
+            ws.cell(row=row, column=3, value=advisor)
+            ws.cell(row=row, column=7, value=round(data['invested'], 2))
+            ws.cell(row=row, column=8, value=round(data['withdrawn'], 2))
+            ws.cell(row=row, column=9, value=0)
+            ws.cell(row=row, column=10, value=round(data['valuation'], 2))
+            ws.cell(row=row, column=11, value=round(gains, 2))
+            ws.cell(row=row, column=12, value=round(return_pct, 4))
             row += 1
         
-        for col in range(1, len(headers) + 1):
-            ws.column_dimensions[get_column_letter(col)].width = 20
+        self._auto_width(ws)
+    
+    def _create_pan_view_sheet(self, wb: Workbook):
+        """Sheet 4: PAN View"""
+        ws = wb.create_sheet("PAN View")
+        
+        headers = [
+            "Group Name", "PAN", "Advisor", "Asset Class", "From Date", "To Date",
+            "Amount Invested", "Cash Withdrawal", "Dividend Paid", "Valuation",
+            "Absolute Gains", "Absolute Return %", "CAGR %", "3 Yr %", "Remarks"
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
+        
+        # Group by PAN and asset class
+        pan_data = defaultdict(lambda: defaultdict(lambda: {'invested': 0, 'withdrawn': 0, 'valuation': 0}))
+        
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            pan = folio_data.get('pan', 'UNKNOWN')
+            scheme_name = folio_data.get('scheme', '') or ''
+            asset_class = 'EQUITY'
+            if any(x in scheme_name.lower() for x in ['liquid', 'debt', 'bond']):
+                asset_class = 'DEBT'
+            
+            transactions = folio_data.get('transactions', [])
+            invested = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
+            withdrawn = sum(t['amount'] for t in transactions if t.get('is_redemption', False))
+            valuation = folio_data.get('market_value', 0)
+            
+            pan_data[pan][asset_class]['invested'] += invested
+            pan_data[pan][asset_class]['withdrawn'] += withdrawn
+            pan_data[pan][asset_class]['valuation'] += valuation
+        
+        row = 2
+        
+        # Grand Total
+        total_invested = sum(sum(ac['invested'] for ac in pan.values()) for pan in pan_data.values())
+        total_withdrawn = sum(sum(ac['withdrawn'] for ac in pan.values()) for pan in pan_data.values())
+        total_valuation = sum(sum(ac['valuation'] for ac in pan.values()) for pan in pan_data.values())
+        total_gains = total_valuation - (total_invested - total_withdrawn)
+        total_return = (total_gains / (total_invested - total_withdrawn) * 100) if (total_invested - total_withdrawn) > 0 else 0
+        
+        ws.cell(row=row, column=1, value="GRAND TOTAL")
+        ws.cell(row=row, column=7, value=round(total_invested, 2))
+        ws.cell(row=row, column=8, value=round(total_withdrawn, 2))
+        ws.cell(row=row, column=10, value=round(total_valuation, 2))
+        ws.cell(row=row, column=11, value=round(total_gains, 2))
+        ws.cell(row=row, column=12, value=round(total_return, 4))
+        row += 1
+        
+        for pan, asset_classes in pan_data.items():
+            # PAN subtotal
+            pan_invested = sum(ac['invested'] for ac in asset_classes.values())
+            pan_withdrawn = sum(ac['withdrawn'] for ac in asset_classes.values())
+            pan_valuation = sum(ac['valuation'] for ac in asset_classes.values())
+            pan_gains = pan_valuation - (pan_invested - pan_withdrawn)
+            pan_return = (pan_gains / (pan_invested - pan_withdrawn) * 100) if (pan_invested - pan_withdrawn) > 0 else 0
+            
+            ws.cell(row=row, column=1, value="SUB TOTAL")
+            ws.cell(row=row, column=2, value=pan)
+            ws.cell(row=row, column=7, value=round(pan_invested, 2))
+            ws.cell(row=row, column=8, value=round(pan_withdrawn, 2))
+            ws.cell(row=row, column=10, value=round(pan_valuation, 2))
+            ws.cell(row=row, column=11, value=round(pan_gains, 2))
+            ws.cell(row=row, column=12, value=round(pan_return, 4))
+            row += 1
+            
+            # Per asset class
+            for asset_class, data in asset_classes.items():
+                gains = data['valuation'] - (data['invested'] - data['withdrawn'])
+                return_pct = (gains / (data['invested'] - data['withdrawn']) * 100) if (data['invested'] - data['withdrawn']) > 0 else 0
+                
+                ws.cell(row=row, column=2, value=pan)
+                ws.cell(row=row, column=4, value=asset_class)
+                ws.cell(row=row, column=7, value=round(data['invested'], 2))
+                ws.cell(row=row, column=8, value=round(data['withdrawn'], 2))
+                ws.cell(row=row, column=10, value=round(data['valuation'], 2))
+                ws.cell(row=row, column=11, value=round(gains, 2))
+                ws.cell(row=row, column=12, value=round(return_pct, 4))
+                row += 1
+        
+        self._auto_width(ws)
+    
+    def _create_mf_ageing_sheet(self, wb: Workbook):
+        """Sheet 5: MF Ageing"""
+        ws = wb.create_sheet("MF Ageing")
+        
+        headers = [
+            "Folio Number", "SchemeId", "ISIN", "Date Of Purchase", "Scheme Name",
+            "Transaction Details", "Purchase Price", "Purchase Units", "Units Unsold",
+            "Date Of Sale", "Sale Price", "Units Sold", "Units Squared", "Age of Units",
+            "SchemeType", "Category", "Type", "NAV 31JAN2018", "Gain(Loss)",
+            "Grandfathering Triggered", "Financial Year", "ExitLoadApplicable",
+            "ExitLoad %", "ExitLoadvalue", "DaystoUnlocking"
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
+        
+        row = 2
+        for trans in self.parsed_data.get('transactions', []):
+            if trans.get('is_redemption'):
+                continue
+            
+            # Calculate age
+            try:
+                purchase_date = datetime.strptime(trans.get('date', ''), '%d-%b-%Y')
+                age_days = (datetime.now() - purchase_date).days
+                category = 'LONGTERM' if age_days > 365 else 'SHORTTERM'
+            except:
+                age_days = 0
+                category = 'SHORTTERM'
+            
+            ws.cell(row=row, column=1, value=trans.get('folio', ''))
+            ws.cell(row=row, column=3, value=trans.get('isin', ''))
+            ws.cell(row=row, column=4, value=trans.get('date', ''))
+            ws.cell(row=row, column=5, value=trans.get('scheme', ''))
+            ws.cell(row=row, column=6, value=trans.get('transaction_type', ''))
+            ws.cell(row=row, column=7, value=trans.get('nav', 0))
+            ws.cell(row=row, column=8, value=trans.get('units', 0))
+            ws.cell(row=row, column=14, value=age_days)
+            ws.cell(row=row, column=15, value='EQUITY')
+            ws.cell(row=row, column=16, value=category)
+            ws.cell(row=row, column=17, value='ACTIVE')
+            ws.cell(row=row, column=21, value='2025 - 2026')
+            row += 1
+        
+        self._auto_width(ws)
+    
+    def _create_mutual_fund_holding_sheet(self, wb: Workbook):
+        """Sheet 6: Mutual Fund Holding"""
+        ws = wb.create_sheet("Mutual Fund Holding")
+        
+        headers = [
+            "Group Name", "Service Provider Name", "Fund Name", "Account Identifier Type",
+            "Account Identifier", "Scheme ID", "Symbol", "ISIN", "Instrument Name",
+            "Instrument Type", "Local Currency", "Opening Units Date", "Opening Units",
+            "Closing Units", "NAV", "Valuation", "Date", "Amount Invested",
+            "Amount WithDrawn", "Face Value / Avg Cost Price", "Dividend Paid",
+            "Dividend Reinvested", "Unrealized Gains", "Absolute Return %", "CAGR %"
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
+        
+        row = 2
+        investor_name = self.parsed_data.get('investor_info', {}).get('name', '')
+        
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            closing_balance = folio_data.get('closing_balance', 0)
+            if closing_balance <= 0:
+                continue
+            
+            ws.cell(row=row, column=1, value=investor_name)
+            ws.cell(row=row, column=2, value=folio_data.get('amc', ''))
+            ws.cell(row=row, column=4, value="Folio Number")
+            ws.cell(row=row, column=5, value=folio_id)
+            ws.cell(row=row, column=8, value=folio_data.get('isin', ''))
+            ws.cell(row=row, column=9, value=folio_data.get('scheme', ''))
+            ws.cell(row=row, column=10, value="Mutual Fund")
+            ws.cell(row=row, column=14, value=closing_balance)
+            ws.cell(row=row, column=15, value=folio_data.get('current_nav', 0))
+            ws.cell(row=row, column=16, value=folio_data.get('market_value', 0))
+            ws.cell(row=row, column=17, value=datetime.now().strftime('%d-%b-%Y'))
+            
+            transactions = folio_data.get('transactions', [])
+            invested = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
+            ws.cell(row=row, column=18, value=invested)
+            
+            row += 1
+        
+        self._auto_width(ws)
+    
+    def _create_mf_transactions_sheet(self, wb: Workbook):
+        """Sheet 7: MF Transactions"""
+        ws = wb.create_sheet("MF Transactions")
+        
+        headers = [
+            "Group Name", "Service Provider Name", "Advisor ARN", "PAN",
+            "Account Identifier Type", "Account Identifier", "Scheme ID",
+            "Instrument Name", "ISIN", "Instrument Type", "Transaction Date",
+            "Transaction Details", "Opening Units", "Units (Debit)", "Units (Credit)",
+            "Closing Units", "Price", "Transaction Amount", "STT", "Stamp Duty",
+            "Brokerage / Unit", "Sold LT Units", "Sold LT Gain(Loss)",
+            "Sold LT withoutIndexation", "Sold LT Tax"
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
+        
+        row = 2
+        for trans in self.parsed_data.get('transactions', []):
+            ws.cell(row=row, column=3, value=trans.get('advisor', ''))
+            ws.cell(row=row, column=5, value="Folio Number")
+            ws.cell(row=row, column=6, value=trans.get('folio', ''))
+            ws.cell(row=row, column=8, value=trans.get('scheme', ''))
+            ws.cell(row=row, column=9, value=trans.get('isin', ''))
+            ws.cell(row=row, column=10, value="Mutual Fund")
+            ws.cell(row=row, column=11, value=trans.get('date', ''))
+            ws.cell(row=row, column=12, value=trans.get('transaction_type', ''))
+            
+            if trans.get('is_redemption'):
+                ws.cell(row=row, column=14, value=trans.get('units', 0))  # Debit
+            else:
+                ws.cell(row=row, column=15, value=trans.get('units', 0))  # Credit
+            
+            ws.cell(row=row, column=16, value=trans.get('balance', 0))
+            ws.cell(row=row, column=17, value=trans.get('nav', 0))
+            ws.cell(row=row, column=18, value=trans.get('amount', 0))
+            row += 1
+        
+        self._auto_width(ws)
+    
+    def _create_accounts_sheet(self, wb: Workbook):
+        """Sheet 8: Accounts"""
+        ws = wb.create_sheet("Accounts")
+        
+        headers = [
+            "Group Name", "Identifier", "Identifier Type", "Despository / RTA",
+            "Account Type", "Mode of Holding", "Tax Status", "Distributor/AMC Name"
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
+        
+        row = 2
+        investor_name = self.parsed_data.get('investor_info', {}).get('name', '')
+        
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            ws.cell(row=row, column=1, value=investor_name)
+            ws.cell(row=row, column=2, value=folio_id)
+            ws.cell(row=row, column=3, value="Folio Number")
+            ws.cell(row=row, column=4, value="CAMS")
+            ws.cell(row=row, column=8, value=folio_data.get('amc', ''))
+            row += 1
+        
+        self._auto_width(ws)
+    
+    def _create_exit_loads_sheet(self, wb: Workbook):
+        """Sheet 9: Exit Loads"""
+        ws = wb.create_sheet("Exit Loads ")
+        
+        headers = [
+            "Folio Number", "Scheme ID", "Scheme Description",
+            "Service Provider Name", "Fund Name", "Load Structure Details"
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
+        
+        row = 2
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            ws.cell(row=row, column=1, value=folio_id)
+            ws.cell(row=row, column=3, value=folio_data.get('scheme', ''))
+            ws.cell(row=row, column=4, value=folio_data.get('amc', ''))
+            ws.cell(row=row, column=6, value="Entry Load is NIL ; Exit Load - Please refer scheme document")
+            row += 1
+        
+        self._auto_width(ws)
+    
+    def _create_other_details_sheet(self, wb: Workbook):
+        """Sheet 10: Other Details"""
+        ws = wb.create_sheet("Other Details")
+        
+        headers = [
+            "Customer ID", "CasId", "Name", "Phone Number", "Email Address",
+            "Address", "Document Date", "Start Date", "End Date",
+            "Document Format", "Reporting Currency"
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
+        
+        investor_info = self.parsed_data.get('investor_info', {})
+        
+        ws.cell(row=2, column=3, value=investor_info.get('name', ''))
+        ws.cell(row=2, column=4, value=investor_info.get('mobile', ''))
+        ws.cell(row=2, column=5, value=investor_info.get('email', ''))
+        ws.cell(row=2, column=8, value="01-Jan-2000")
+        ws.cell(row=2, column=9, value=datetime.now().strftime('%d-%b-%Y'))
+        ws.cell(row=2, column=10, value="CAMS")
+        
+        self._auto_width(ws)
 
 
 def parse_scheme_master_file(file_content: str) -> List[Dict]:
