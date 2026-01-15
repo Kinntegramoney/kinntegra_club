@@ -760,24 +760,34 @@ class GapSheetGenerator:
             # Absolute Return % = Absolute Gains / Amount Invested * 100
             return_pct = (gains / invested * 100) if invested > 0 else 0
             
-            # Calculate CAGR
+            # Calculate CAGR using XIRR (proper method for multiple cash flows)
             cagr = 0
-            if transactions and invested > 0:
-                first_date = None
-                for t in transactions:
+            if valid_trans:
+                # Prepare cash flows for XIRR
+                # Investments are negative (outflows), redemptions/valuation are positive (inflows)
+                cashflows = []
+                for t in valid_trans:
                     try:
                         t_date = datetime.strptime(t['date'], '%d-%b-%Y')
-                        if first_date is None or t_date < first_date:
-                            first_date = t_date
+                        amount = t['amount']
+                        # Skip Stamp Duty and STT for CAGR calculation (they're costs, not investments)
+                        if t.get('transaction_type') in ['Stamp Duty', 'STT Paid']:
+                            continue
+                        if t.get('is_redemption'):
+                            cashflows.append((t_date, amount))  # Positive for redemptions
+                        else:
+                            cashflows.append((t_date, -amount))  # Negative for investments
                     except:
                         pass
-                if first_date:
-                    years = (self.report_date - first_date).days / 365.25
-                    if years > 0:
-                        end_value = market_value if market_value > 0 else withdrawn
-                        start_value = invested - withdrawn if invested > withdrawn else invested
-                        if start_value > 0 and end_value > 0:
-                            cagr = (pow(end_value / start_value, 1 / years) - 1) * 100
+                
+                # Add current valuation as final positive cash flow (if position is open)
+                if market_value > 0:
+                    cashflows.append((self.report_date, market_value))
+                
+                # Calculate XIRR
+                if cashflows:
+                    xirr_rate = calculate_xirr(cashflows)
+                    cagr = xirr_rate * 100  # Convert to percentage
             
             scheme_name = folio_data.get('scheme', '') or ''
             advisor_arn = folio_data.get('advisor', '')  # Raw ARN from PDF
@@ -807,14 +817,34 @@ class GapSheetGenerator:
         for entry in all_entries:
             ws.cell(row=row, column=1, value=entry['folio'])
             ws.cell(row=row, column=2, value=entry['scheme'])
-            ws.cell(row=row, column=3, value=round(entry['invested'], 2))
-            ws.cell(row=row, column=4, value=round(entry['withdrawn'], 2))
-            ws.cell(row=row, column=5, value=round(entry['dividend'], 2))
-            ws.cell(row=row, column=6, value=round(entry['valuation'], 2))
-            ws.cell(row=row, column=7, value=round(entry['gains'], 2))
-            ws.cell(row=row, column=8, value=round(entry['return_pct'], 2))
-            ws.cell(row=row, column=9, value=round(entry['cagr'], 2))
-            ws.cell(row=row, column=10, value=round(entry['closing_units'], 3))
+            
+            # Amount columns with currency format (₹ with commas)
+            cell = ws.cell(row=row, column=3, value=round(entry['invested'], 2))
+            cell.number_format = '₹#,##0.00'
+            
+            cell = ws.cell(row=row, column=4, value=round(entry['withdrawn'], 2))
+            cell.number_format = '₹#,##0.00'
+            
+            cell = ws.cell(row=row, column=5, value=round(entry['dividend'], 2))
+            cell.number_format = '₹#,##0.00'
+            
+            cell = ws.cell(row=row, column=6, value=round(entry['valuation'], 2))
+            cell.number_format = '₹#,##0.00'
+            
+            cell = ws.cell(row=row, column=7, value=round(entry['gains'], 2))
+            cell.number_format = '₹#,##0.00'
+            
+            # Percentage columns
+            cell = ws.cell(row=row, column=8, value=round(entry['return_pct'], 2))
+            cell.number_format = '0.00%' if entry['return_pct'] == 0 else '0.00'
+            
+            cell = ws.cell(row=row, column=9, value=round(entry['cagr'], 4))
+            cell.number_format = '0.0000'
+            
+            # Units with commas
+            cell = ws.cell(row=row, column=10, value=round(entry['closing_units'], 3))
+            cell.number_format = '#,##0.000'
+            
             ws.cell(row=row, column=11, value=entry['pan'])
             ws.cell(row=row, column=12, value=entry['advisor_arn'])
             row += 1
