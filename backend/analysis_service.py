@@ -1572,7 +1572,7 @@ class GapSheetGenerator:
         self._auto_width(ws)
     
     def _create_nft_sheet(self, wb: Workbook):
-        """Sheet 11: NFT (Non-Financial Transactions)"""
+        """Sheet 3: NFT (Non-Financial Transactions) - sorted oldest to newest"""
         ws = wb.create_sheet("NFT")
         
         headers = [
@@ -1583,26 +1583,53 @@ class GapSheetGenerator:
             ws.cell(row=1, column=col, value=header)
         self._style_header(ws, 1, len(headers))
         
-        row = 2
+        # Collect all NFT entries
+        nft_list = []
         
-        # Add NFT entries from transactions (is_nft=True)
+        # Add NFT entries from transactions (is_nft=True or is_pledge=True)
         for trans in self.parsed_data.get('transactions', []):
             if trans.get('is_nft') or trans.get('is_pledge'):
-                ws.cell(row=row, column=1, value=trans.get('date', ''))
-                ws.cell(row=row, column=2, value=trans.get('pan', ''))
-                ws.cell(row=row, column=3, value=trans.get('folio', ''))
-                ws.cell(row=row, column=4, value=trans.get('scheme', '')[:50] if trans.get('scheme') else '')
-                ws.cell(row=row, column=5, value=trans.get('isin', ''))
-                ws.cell(row=row, column=6, value=trans.get('transaction_type', ''))
-                ws.cell(row=row, column=7, value=trans.get('units', 0) if trans.get('units') else '')
-                row += 1
+                nft_list.append({
+                    'date': trans.get('date', ''),
+                    'pan': trans.get('pan', ''),
+                    'folio': trans.get('folio', ''),
+                    'scheme': trans.get('scheme', '')[:50] if trans.get('scheme') else '',
+                    'isin': trans.get('isin', ''),
+                    'type': trans.get('transaction_type', ''),
+                    'units': trans.get('units', 0) if trans.get('units') else ''
+                })
         
-        # Also add original nft_entries for completeness
+        # Also add original nft_entries
         for nft in self.parsed_data.get('nft_entries', []):
-            ws.cell(row=row, column=1, value=nft.get('date', ''))
-            ws.cell(row=row, column=3, value=nft.get('folio', ''))
-            ws.cell(row=row, column=4, value=nft.get('scheme', '')[:50] if nft.get('scheme') else '')
-            ws.cell(row=row, column=6, value=nft.get('description', ''))
+            nft_list.append({
+                'date': nft.get('date', ''),
+                'pan': '',
+                'folio': nft.get('folio', ''),
+                'scheme': nft.get('scheme', '')[:50] if nft.get('scheme') else '',
+                'isin': '',
+                'type': nft.get('description', ''),
+                'units': ''
+            })
+        
+        # Sort by date (oldest to newest)
+        def parse_date(date_str):
+            try:
+                return datetime.strptime(date_str, '%d-%b-%Y')
+            except:
+                return datetime.min
+        
+        nft_list.sort(key=lambda x: parse_date(x.get('date', '')))
+        
+        # Write sorted data
+        row = 2
+        for nft in nft_list:
+            ws.cell(row=row, column=1, value=nft['date'])
+            ws.cell(row=row, column=2, value=nft['pan'])
+            ws.cell(row=row, column=3, value=nft['folio'])
+            ws.cell(row=row, column=4, value=nft['scheme'])
+            ws.cell(row=row, column=5, value=nft['isin'])
+            ws.cell(row=row, column=6, value=nft['type'])
+            ws.cell(row=row, column=7, value=nft['units'])
             row += 1
         
         self._auto_width(ws)
