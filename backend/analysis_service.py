@@ -698,25 +698,18 @@ class GapSheetGenerator:
         """Sheet 1: Portfolio Performance"""
         ws = wb.create_sheet("Portfolio Performance", 0)
         
+        # New format: Only 12 columns as per requirement
         headers = [
-            "Group Name", "PAN", "Asset Class", "Advisor", "Folio No.", "Instrument Name",
-            "Instrument Type", "From Date", "To Date", "Amount Invested", "Cash Withdrawal",
-            "Dividend Paid", "Valuation", "Absolute Gains", "Absolute Return %", "CAGR %",
-            "3 Yr %", "Inception Date", "Cost Value", "Cost price", "Closing Units",
-            "Realized GL", "Unrealized GL", "Remarks"
+            "Folio No.", "Instrument Name", "Amount Invested", "Cash Withdrawal",
+            "Dividend Paid", "Valuation", "Absolute Gains", "Absolute Return %", 
+            "CAGR %", "Closing Units", "PAN", "Adviser ARN"
         ]
         
         for col, header in enumerate(headers, 1):
             ws.cell(row=1, column=col, value=header)
         self._style_header(ws, 1, len(headers))
         
-        row = 2
-        total_invested = 0
-        total_withdrawn = 0
-        total_valuation = 0
-        
-        equity_data = []
-        debt_data = []
+        all_entries = []
         
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
             closing_balance = folio_data.get('closing_balance', 0)
@@ -756,121 +749,74 @@ class GapSheetGenerator:
             invested = sum(t['amount'] for t in valid_trans if not t.get('is_redemption', False))
             withdrawn = sum(t['amount'] for t in valid_trans if t.get('is_redemption', False))
             
-            inception_date = ''
-            if transactions:
-                inception_date = transactions[0].get('date', '')
-            
-            # Calculate gains based on whether position is open or closed
+            # Calculate Absolute Gains and Return
+            # For open positions: gains = valuation - (invested - withdrawn)
+            # For closed positions: gains = withdrawn - invested
             if closing_balance > 0 and market_value > 0:
-                # Open position: unrealized gains
                 gains = market_value - (invested - withdrawn) if invested > 0 else 0
-                return_pct = (gains / (invested - withdrawn) * 100) if (invested - withdrawn) > 0 else 0
-                unrealized_gl = gains
-                realized_gl = 0
             else:
-                # Closed position: realized gains  
                 gains = withdrawn - invested
-                return_pct = (gains / invested * 100) if invested > 0 else 0
-                unrealized_gl = 0
-                realized_gl = gains
+            
+            # Absolute Return % = Absolute Gains / Amount Invested * 100
+            return_pct = (gains / invested * 100) if invested > 0 else 0
+            
+            # Calculate CAGR
+            cagr = 0
+            if transactions and invested > 0:
+                first_date = None
+                for t in transactions:
+                    try:
+                        t_date = datetime.strptime(t['date'], '%d-%b-%Y')
+                        if first_date is None or t_date < first_date:
+                            first_date = t_date
+                    except:
+                        pass
+                if first_date:
+                    years = (self.report_date - first_date).days / 365.25
+                    if years > 0:
+                        end_value = market_value if market_value > 0 else withdrawn
+                        start_value = invested - withdrawn if invested > withdrawn else invested
+                        if start_value > 0 and end_value > 0:
+                            cagr = (pow(end_value / start_value, 1 / years) - 1) * 100
             
             scheme_name = folio_data.get('scheme', '') or ''
-            asset_class = 'EQUITY'
-            if any(x in scheme_name.lower() for x in ['liquid', 'debt', 'bond', 'gilt', 'money market', 'overnight', 'ultra short']):
-                asset_class = 'DEBT'
-            
-            advisor = self._get_advisor_name(folio_data.get('advisor', ''))
+            advisor_arn = folio_data.get('advisor', '')  # Raw ARN from PDF
             
             entry = {
-                'group_name': self.parsed_data.get('investor_info', {}).get('name', ''),
-                'pan': folio_data.get('pan', ''),
-                'asset_class': asset_class,
-                'advisor': advisor,
                 'folio': folio_data.get('folio', folio_id),
                 'scheme': scheme_name,
-                'type': 'MutualFund',
                 'invested': invested,
                 'withdrawn': withdrawn,
+                'dividend': 0,  # Dividend tracking not in CAS
                 'valuation': market_value,
                 'gains': gains,
                 'return_pct': return_pct,
-                'inception_date': inception_date,
-                'cost_value': cost_value,
+                'cagr': cagr,
                 'closing_units': closing_balance,
-                'realized_gl': realized_gl,
-                'unrealized_gl': unrealized_gl
+                'pan': folio_data.get('pan', ''),
+                'advisor_arn': advisor_arn
             }
             
-            if asset_class == 'EQUITY':
-                equity_data.append(entry)
-            else:
-                debt_data.append(entry)
-            
-            total_invested += invested
-            total_withdrawn += withdrawn
-            total_valuation += market_value
+            all_entries.append(entry)
         
-        # Grand Total
-        total_gains = total_valuation - (total_invested - total_withdrawn)
-        total_return = (total_gains / (total_invested - total_withdrawn) * 100) if (total_invested - total_withdrawn) > 0 else 0
+        # Sort by Valuation (highest first)
+        all_entries.sort(key=lambda x: x['valuation'], reverse=True)
         
-        ws.cell(row=row, column=3, value="GRAND TOTAL")
-        ws.cell(row=row, column=10, value=round(total_invested, 2))
-        ws.cell(row=row, column=11, value=round(total_withdrawn, 2))
-        ws.cell(row=row, column=13, value=round(total_valuation, 2))
-        ws.cell(row=row, column=14, value=round(total_gains, 2))
-        ws.cell(row=row, column=15, value=round(total_return, 4))
-        row += 1
-        
-        # Sub Total - EQUITY
-        eq_invested = sum(e['invested'] for e in equity_data)
-        eq_withdrawn = sum(e['withdrawn'] for e in equity_data)
-        eq_valuation = sum(e['valuation'] for e in equity_data)
-        eq_gains = eq_valuation - (eq_invested - eq_withdrawn)
-        eq_return = (eq_gains / (eq_invested - eq_withdrawn) * 100) if (eq_invested - eq_withdrawn) > 0 else 0
-        
-        ws.cell(row=row, column=3, value="Sub Total - EQUITY")
-        ws.cell(row=row, column=10, value=round(eq_invested, 2))
-        ws.cell(row=row, column=11, value=round(eq_withdrawn, 2))
-        ws.cell(row=row, column=13, value=round(eq_valuation, 2))
-        ws.cell(row=row, column=14, value=round(eq_gains, 2))
-        ws.cell(row=row, column=15, value=round(eq_return, 4))
-        row += 1
-        
-        # Sub Total - DEBT
-        debt_invested = sum(e['invested'] for e in debt_data)
-        debt_withdrawn = sum(e['withdrawn'] for e in debt_data)
-        debt_valuation = sum(e['valuation'] for e in debt_data)
-        debt_gains = debt_valuation - (debt_invested - debt_withdrawn)
-        debt_return = (debt_gains / (debt_invested - debt_withdrawn) * 100) if (debt_invested - debt_withdrawn) > 0 else 0
-        
-        ws.cell(row=row, column=3, value="Sub Total - DEBT")
-        ws.cell(row=row, column=10, value=round(debt_invested, 2))
-        ws.cell(row=row, column=11, value=round(debt_withdrawn, 2))
-        ws.cell(row=row, column=13, value=round(debt_valuation, 2))
-        ws.cell(row=row, column=14, value=round(debt_gains, 2))
-        ws.cell(row=row, column=15, value=round(debt_return, 4))
-        row += 1
-        
-        # Individual entries
-        for entry in equity_data + debt_data:
-            ws.cell(row=row, column=2, value=entry['pan'])
-            ws.cell(row=row, column=3, value=entry['asset_class'])
-            ws.cell(row=row, column=4, value=entry['advisor'])
-            ws.cell(row=row, column=5, value=entry['folio'])
-            ws.cell(row=row, column=6, value=entry['scheme'])
-            ws.cell(row=row, column=7, value=entry['type'])
-            ws.cell(row=row, column=10, value=round(entry['invested'], 2))
-            ws.cell(row=row, column=11, value=round(entry['withdrawn'], 2))
-            ws.cell(row=row, column=12, value=0)
-            ws.cell(row=row, column=13, value=round(entry['valuation'], 2))
-            ws.cell(row=row, column=14, value=round(entry['gains'], 2))
-            ws.cell(row=row, column=15, value=round(entry['return_pct'], 4))
-            ws.cell(row=row, column=18, value=entry['inception_date'])
-            ws.cell(row=row, column=19, value=round(entry['cost_value'], 4))
-            ws.cell(row=row, column=21, value=round(entry['closing_units'], 3))
-            ws.cell(row=row, column=22, value=round(entry['realized_gl'], 2))
-            ws.cell(row=row, column=23, value=round(entry['unrealized_gl'], 2))
+        # Write data rows (no totals, no subtotals)
+        row = 2
+        for entry in all_entries:
+            ws.cell(row=row, column=1, value=entry['folio'])
+            ws.cell(row=row, column=2, value=entry['scheme'])
+            ws.cell(row=row, column=3, value=round(entry['invested'], 2))
+            ws.cell(row=row, column=4, value=round(entry['withdrawn'], 2))
+            ws.cell(row=row, column=5, value=round(entry['dividend'], 2))
+            ws.cell(row=row, column=6, value=round(entry['valuation'], 2))
+            ws.cell(row=row, column=7, value=round(entry['gains'], 2))
+            ws.cell(row=row, column=8, value=round(entry['return_pct'], 2))
+            ws.cell(row=row, column=9, value=round(entry['cagr'], 2))
+            ws.cell(row=row, column=10, value=round(entry['closing_units'], 3))
+            ws.cell(row=row, column=11, value=entry['pan'])
+            ws.cell(row=row, column=12, value=entry['advisor_arn'])
             row += 1
         
         self._auto_width(ws)
