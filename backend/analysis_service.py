@@ -468,7 +468,7 @@ class CASParser:
                             except ValueError:
                                 pass
                         
-                        is_redemption = amount < 0 or 'Redemption' in trans_type_line or 'Switch Over Out' in trans_type_line or 'Lateral Shift Out' in trans_type_line
+                        is_redemption = amount < 0 or 'Redemption' in trans_type_line or 'Rejection' in trans_type_line or 'Switch Over Out' in trans_type_line or 'Lateral Shift Out' in trans_type_line
                         
                         # Track first transaction date per advisor
                         if current_advisor:
