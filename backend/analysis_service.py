@@ -257,9 +257,13 @@ class CASParser:
                 current_pan = pan_match.group(1)
             
             # Check for scheme line (may span multiple lines)
-            scheme_code_match = re.match(r'^([A-Z0-9]+)-(.+)', line)
+            # Scheme codes are typically 4+ alphanumeric characters, not dates like Jan-2000
+            scheme_code_match = re.match(r'^([A-Z0-9]{4,})-(.+)', line)
             if scheme_code_match and 'ISIN' not in line and '-Demat' not in line:
-                pending_scheme_line = line
+                # Additional check: exclude date patterns like "Jan-2000", "Nov-2025"
+                first_part = scheme_code_match.group(1)
+                if not re.match(r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$', first_part, re.IGNORECASE):
+                    pending_scheme_line = line
             
             # Detect ISIN
             isin_match = re.search(r'ISIN:\s*([A-Z0-9]{12})', line)
