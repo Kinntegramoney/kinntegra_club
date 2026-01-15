@@ -3097,6 +3097,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                     "client_id": cf['client_id'],
                     "client_name": client['name'] if client else 'Unknown',
                     "client_pan": client.get('pan_number', '') if client else '',
+                    "client_email": client.get('email', '') if client else '',
                     "bond_id": cf['bond_id'],
                     "bond_name": cf.get('bond_name', ''),
                     "trade_id": cf['trade_id'],
@@ -3108,6 +3109,9 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                     "net_amount": cf.get('net_amount', 0),
                     "reinvestment_tag": cf.get('reinvestment_tag', 'not_tagged'),
                     "custom_amount": cf.get('custom_amount'),
+                    "approval_status": cf.get('approval_status', 'not_sent'),  # not_sent, pending, approved, rejected
+                    "client_approved": cf.get('client_approved', False),
+                    "tagged_at": cf.get('tagged_at'),
                     "month": cf_date.strftime("%B %Y")
                 })
         except (ValueError, TypeError):
@@ -3123,6 +3127,31 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         if month not in months:
             months[month] = []
         months[month].append(item)
+    
+    # Group by client for client-wise view
+    by_client = {}
+    for item in upcoming:
+        client_id = item['client_id']
+        if client_id not in by_client:
+            by_client[client_id] = {
+                "client_id": client_id,
+                "client_name": item['client_name'],
+                "client_pan": item['client_pan'],
+                "client_email": item['client_email'],
+                "entries": [],
+                "total_amount": 0,
+                "tagged_count": 0,
+                "pending_approval": 0,
+                "approved_count": 0
+            }
+        by_client[client_id]['entries'].append(item)
+        by_client[client_id]['total_amount'] += item['net_amount']
+        if item['reinvestment_tag'] != 'not_tagged':
+            by_client[client_id]['tagged_count'] += 1
+        if item['approval_status'] == 'pending':
+            by_client[client_id]['pending_approval'] += 1
+        if item['client_approved']:
+            by_client[client_id]['approved_count'] += 1
     
     # Generate next 6 months list
     month_list = []
@@ -3142,6 +3171,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
     
     return {
         "months": month_list,
+        "by_client": list(by_client.values()),
         "total_upcoming": len(upcoming)
     }
 
