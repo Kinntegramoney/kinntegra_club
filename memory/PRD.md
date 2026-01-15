@@ -22,12 +22,12 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 ### Analysis Feature (January 15, 2026 - Updated)
 - [x] **Step 1**: Upload CAS PDF with password protection
 - [x] **Step 2**: Upload BSE Scheme Master from https://www.bsestarmf.in/RptSchemeMaster.aspx
-- [x] **Step 3**: Download Gap Sheet Excel report
+- [x] **Step 3**: Download Gap Sheet (ZIP file with consolidated + per-PAN reports)
 - [x] Progress bar shows parsing status
 - [x] **12 Sheets generated**:
-  1. Portfolio Performance (100% match with Gap Sheet)
+  1. Portfolio Performance (100% match with Gap Sheet, XIRR calculations)
   2. Tax View (LT/ST gains, financial year)
-  3. Advisor View (grouped by advisor ARN)
+  3. Advisor View (XIRR performance, client longevity - active/past)
   4. PAN View (grouped by PAN)
   5. MF Ageing (age of units, LONGTERM/SHORTTERM)
   6. Mutual Fund Holding (closing units, NAV, valuation)
