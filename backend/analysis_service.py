@@ -965,17 +965,17 @@ class GapSheetGenerator:
         self._auto_width(ws)
     
     def _create_tax_view_sheet(self, wb: Workbook):
-        """Sheet 5: Tax View - Indian Financial Year (April to March) with correct LT/ST rules and Grandfathering"""
+        """Sheet 5: Tax View - Matching template format with FY-wise LT/ST breakdown"""
         ws = wb.create_sheet("Tax View")
         
-        # Updated headers with Grandfathering columns
+        # Headers matching the template
         headers = [
-            "Folio Number", "Instrument Name", "Fund Type", "Financial Year",
-            "Purchase Date", "Holding Period (Days)", "LT/ST Status",
-            "Units", "Purchase NAV", "Grandfathered NAV", "Effective Cost NAV",
-            "Current NAV", "Purchase Value", "Grandfathered Value", "Effective Cost",
-            "Current Value", "Gain/Loss (Original)", "Gain/Loss (After GF)", 
-            "Tax Rate", "Estimated Tax", "Grandfathering Applied"
+            "Folio Number", "Instrument Name", "Financial Year", "SchemeType",
+            "Active LT Units", "Active LT (Gain/Loss)",
+            "Active ST Units", "Active ST (Gain/Loss)",
+            "Sold LT Units", "Sold LT (Gain/Loss)",
+            "Sold ST Units", "Sold ST (Gain/Loss)",
+            "NAV 31JAN2018", "Grandfathering Triggered"
         ]
         
         for col, header in enumerate(headers, 1):
@@ -988,9 +988,9 @@ class GapSheetGenerator:
         def get_financial_year(date):
             """Get Indian financial year (April to March) for a given date"""
             if date.month >= 4:  # April onwards
-                return f"FY {date.year}-{date.year + 1}"
+                return f"{date.year} - {date.year + 1}"
             else:  # January to March
-                return f"FY {date.year - 1}-{date.year}"
+                return f"{date.year - 1} - {date.year}"
         
         def get_fund_type(scheme_name):
             """Determine fund type based on scheme name"""
@@ -1006,7 +1006,147 @@ class GapSheetGenerator:
             else:
                 return 'EQUITY'
         
-        def get_grandfathered_nav(purchase_nav, current_nav, purchase_date, fund_type):
+        def is_long_term(fund_type, holding_days, trans_date):
+            """Determine if investment qualifies as Long Term"""
+            if fund_type in ['EQUITY', 'ARBITRAGE', 'HYBRID']:
+                return holding_days > 365
+            else:  # Debt, Liquid
+                if trans_date < datetime(2023, 4, 1):
+                    return holding_days > 1095  # 3 years
+                else:
+                    return False
+        
+        # Aggregate data by folio + FY
+        tax_data = {}
+        
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            scheme_name = folio_data.get('scheme', '') or ''
+            fund_type = get_fund_type(scheme_name)
+            current_nav = folio_data.get('current_nav', 0)
+            closing_balance = folio_data.get('closing_balance', 0)
+            folio_num = folio_data.get('folio', folio_id)
+            
+            transactions = folio_data.get('transactions', [])
+            
+            # Find last redemption date
+            last_redemption_date = None
+            if closing_balance <= 0:
+                for trans in transactions:
+                    if trans.get('is_redemption'):
+                        try:
+                            redemption_date = datetime.strptime(trans['date'], '%d-%b-%Y')
+                            if last_redemption_date is None or redemption_date > last_redemption_date:
+                                last_redemption_date = redemption_date
+                        except:
+                            pass
+            
+            for trans in transactions:
+                if trans.get('is_redemption') or trans.get('is_nft') or trans.get('is_pledge'):
+                    continue
+                if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
+                    continue
+                
+                try:
+                    trans_date = datetime.strptime(trans['date'], '%d-%b-%Y')
+                    
+                    # Calculate holding period
+                    if closing_balance <= 0 and last_redemption_date:
+                        holding_days = (last_redemption_date - trans_date).days
+                    else:
+                        holding_days = (self.report_date - trans_date).days
+                    
+                    units = trans.get('units', 0)
+                    if units <= 0:
+                        continue
+                    
+                    purchase_nav = trans.get('nav', 0)
+                    purchase_value = units * purchase_nav if purchase_nav else trans.get('amount', 0)
+                    current_value = units * current_nav if (current_nav and closing_balance > 0) else 0
+                    gain_loss = current_value - purchase_value if closing_balance > 0 else 0
+                    
+                    # Check grandfathering
+                    gf_triggered = "NO"
+                    nav_31jan2018 = "N.A"
+                    
+                    if trans_date < GRANDFATHER_DATE and fund_type in ['EQUITY', 'HYBRID', 'ARBITRAGE']:
+                        gf_triggered = "YES" if (current_nav and purchase_nav and current_nav > purchase_nav) else "NO : No gain to grandfather"
+                        if current_nav and purchase_nav and current_nav > purchase_nav:
+                            gf_nav = purchase_nav + (current_nav - purchase_nav) * 0.3
+                            nav_31jan2018 = round(gf_nav, 4)
+                            gf_value = units * gf_nav
+                            gain_loss = current_value - gf_value
+                    else:
+                        gf_triggered = "NO : Date of Purchase after 31-Jan-2018"
+                    
+                    # Get FY
+                    fy = get_financial_year(trans_date)
+                    
+                    # Determine LT/ST
+                    lt_status = is_long_term(fund_type, holding_days, trans_date)
+                    
+                    # Create key for aggregation
+                    key = (folio_num, scheme_name[:50], fy, fund_type)
+                    
+                    if key not in tax_data:
+                        tax_data[key] = {
+                            'folio': folio_num,
+                            'scheme': scheme_name[:50],
+                            'fy': fy,
+                            'fund_type': fund_type,
+                            'active_lt_units': 0, 'active_lt_gain': 0,
+                            'active_st_units': 0, 'active_st_gain': 0,
+                            'sold_lt_units': 0, 'sold_lt_gain': 0,
+                            'sold_st_units': 0, 'sold_st_gain': 0,
+                            'nav_31jan2018': nav_31jan2018,
+                            'gf_triggered': gf_triggered
+                        }
+                    
+                    if closing_balance > 0:  # Active
+                        if lt_status:
+                            tax_data[key]['active_lt_units'] += units
+                            tax_data[key]['active_lt_gain'] += gain_loss
+                        else:
+                            tax_data[key]['active_st_units'] += units
+                            tax_data[key]['active_st_gain'] += gain_loss
+                    else:  # Sold
+                        if lt_status:
+                            tax_data[key]['sold_lt_units'] += units
+                            tax_data[key]['sold_lt_gain'] += gain_loss
+                        else:
+                            tax_data[key]['sold_st_units'] += units
+                            tax_data[key]['sold_st_gain'] += gain_loss
+                
+                except:
+                    pass
+        
+        # Sort by FY and write data
+        def get_fy_sort_key(fy_str):
+            try:
+                return int(fy_str.split(' - ')[0])
+            except:
+                return 9999
+        
+        sorted_data = sorted(tax_data.values(), key=lambda x: (get_fy_sort_key(x['fy']), x['scheme']))
+        
+        row = 2
+        for data in sorted_data:
+            ws.cell(row=row, column=1, value=data['folio'])
+            ws.cell(row=row, column=2, value=data['scheme'])
+            ws.cell(row=row, column=3, value=data['fy'])
+            ws.cell(row=row, column=4, value=data['fund_type'])
+            ws.cell(row=row, column=5, value=round(data['active_lt_units'], 3) if data['active_lt_units'] else '')
+            ws.cell(row=row, column=6, value=round(data['active_lt_gain'], 2) if data['active_lt_gain'] else '')
+            ws.cell(row=row, column=7, value=round(data['active_st_units'], 3) if data['active_st_units'] else '')
+            ws.cell(row=row, column=8, value=round(data['active_st_gain'], 2) if data['active_st_gain'] else '')
+            ws.cell(row=row, column=9, value=round(data['sold_lt_units'], 3) if data['sold_lt_units'] else '')
+            ws.cell(row=row, column=10, value=round(data['sold_lt_gain'], 2) if data['sold_lt_gain'] else '')
+            ws.cell(row=row, column=11, value=round(data['sold_st_units'], 3) if data['sold_st_units'] else '')
+            ws.cell(row=row, column=12, value=round(data['sold_st_gain'], 2) if data['sold_st_gain'] else '')
+            ws.cell(row=row, column=13, value=data['nav_31jan2018'])
+            ws.cell(row=row, column=14, value=data['gf_triggered'])
+            row += 1
+        
+        self._auto_width(ws)
             """
             Calculate grandfathered NAV for equity funds purchased before Jan 31, 2018.
             
