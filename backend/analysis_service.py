@@ -357,6 +357,29 @@ class CASParser:
                 if mv_match and current_key and current_key in self.folios:
                     self.folios[current_key]['market_value'] = float(mv_match.group(1).replace(',', ''))
             
+            # Detect Exit Load structure
+            if 'Exit Load' in line or 'Entry Load' in line or 'Load Structure' in line:
+                # Capture the full exit load text
+                exit_load_text = line
+                # Sometimes exit load info spans multiple lines
+                j = i + 1
+                while j < len(lines) and j < i + 5:
+                    next_line = lines[j].strip()
+                    if next_line and not re.match(r'^\d{2}-[A-Za-z]{3}-\d{4}', next_line) and 'Unit Balance' not in next_line:
+                        # Check if this is continuation of exit load info
+                        if any(x in next_line.lower() for x in ['load', 'redemption', 'switch', 'allotment', 'nil', '%']):
+                            exit_load_text += ' ' + next_line
+                            j += 1
+                        else:
+                            break
+                    else:
+                        break
+                
+                if current_key and current_key in self.folios:
+                    # Clean up the exit load text
+                    exit_load_text = exit_load_text.replace('\n', ' ').strip()
+                    self.folios[current_key]['exit_load'] = exit_load_text
+            
             # Detect transaction lines
             trans_match = re.match(r'^(\d{2}-[A-Za-z]{3}-\d{4})\s*$', line)
             if trans_match and current_key:
