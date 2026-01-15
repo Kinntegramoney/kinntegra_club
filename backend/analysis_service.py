@@ -1822,7 +1822,355 @@ class GapSheetGenerator:
         
         self._auto_width(ws)
     
-    def _create_xirr_report_sheet(self, wb: Workbook):
+    def _create_summary_sheet(self, wb: Workbook):
+        """Sheet 1: Summary - Overview of portfolio with category-wise breakdown"""
+        ws = wb.create_sheet("Summary")
+        
+        # Portfolio Summary Section
+        ws.cell(row=1, column=1, value="PORTFOLIO SUMMARY")
+        ws.merge_cells('A1:F1')
+        self._style_header(ws, 1, 6)
+        
+        # Calculate totals
+        total_invested = 0
+        total_current_value = 0
+        total_withdrawn = 0
+        
+        # Category-wise breakdown
+        category_data = {
+            'Large Cap': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Mid Cap': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Small Cap': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Flexi Cap': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Multi Cap': {'invested': 0, 'current': 0, 'schemes': 0},
+            'ELSS': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Hybrid': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Debt': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Liquid': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Arbitrage': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Index Fund': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Sectoral/Thematic': {'invested': 0, 'current': 0, 'schemes': 0},
+            'Other': {'invested': 0, 'current': 0, 'schemes': 0}
+        }
+        
+        def classify_scheme(scheme_name):
+            """Classify scheme into category based on name"""
+            name_lower = scheme_name.lower() if scheme_name else ''
+            
+            if 'large cap' in name_lower or 'largecap' in name_lower or 'bluechip' in name_lower:
+                return 'Large Cap'
+            elif 'mid cap' in name_lower or 'midcap' in name_lower:
+                return 'Mid Cap'
+            elif 'small cap' in name_lower or 'smallcap' in name_lower:
+                return 'Small Cap'
+            elif 'flexi' in name_lower or 'flexicap' in name_lower:
+                return 'Flexi Cap'
+            elif 'multi cap' in name_lower or 'multicap' in name_lower:
+                return 'Multi Cap'
+            elif 'elss' in name_lower or 'tax' in name_lower:
+                return 'ELSS'
+            elif 'hybrid' in name_lower or 'balanced' in name_lower or 'aggressive' in name_lower or 'conservative' in name_lower:
+                return 'Hybrid'
+            elif 'liquid' in name_lower or 'money market' in name_lower or 'overnight' in name_lower:
+                return 'Liquid'
+            elif 'debt' in name_lower or 'bond' in name_lower or 'gilt' in name_lower or 'income' in name_lower or 'credit' in name_lower:
+                return 'Debt'
+            elif 'arbitrage' in name_lower:
+                return 'Arbitrage'
+            elif 'index' in name_lower or 'nifty' in name_lower or 'sensex' in name_lower or 'etf' in name_lower:
+                return 'Index Fund'
+            elif any(x in name_lower for x in ['pharma', 'bank', 'infra', 'technology', 'consumption', 'manufacturing', 'thematic', 'sector']):
+                return 'Sectoral/Thematic'
+            else:
+                return 'Other'
+        
+        # Process folios
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            scheme_name = folio_data.get('scheme', '')
+            category = classify_scheme(scheme_name)
+            market_value = folio_data.get('market_value', 0)
+            
+            if market_value > 0:
+                category_data[category]['current'] += market_value
+                category_data[category]['schemes'] += 1
+                total_current_value += market_value
+            
+            # Calculate invested amount from transactions
+            for trans in folio_data.get('transactions', []):
+                if trans.get('is_nft') or trans.get('is_pledge'):
+                    continue
+                if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
+                    continue
+                
+                amount = trans.get('amount', 0)
+                if trans.get('is_redemption'):
+                    total_withdrawn += amount
+                else:
+                    total_invested += amount
+                    if market_value > 0:  # Only count for active holdings
+                        category_data[category]['invested'] += amount
+        
+        # Summary headers
+        summary_headers = ["Metric", "Value"]
+        ws.cell(row=3, column=1, value="Metric")
+        ws.cell(row=3, column=2, value="Value")
+        self._style_header(ws, 3, 2)
+        
+        ws.cell(row=4, column=1, value="Total Amount Invested")
+        ws.cell(row=4, column=2, value=round(total_invested, 2))
+        ws.cell(row=5, column=1, value="Total Amount Withdrawn")
+        ws.cell(row=5, column=2, value=round(total_withdrawn, 2))
+        ws.cell(row=6, column=1, value="Current Portfolio Value")
+        ws.cell(row=6, column=2, value=round(total_current_value, 2))
+        ws.cell(row=7, column=1, value="Absolute Gain/Loss")
+        ws.cell(row=7, column=2, value=round(total_current_value + total_withdrawn - total_invested, 2))
+        
+        # Category-wise breakdown section
+        ws.cell(row=9, column=1, value="CATEGORY-WISE BREAKDOWN")
+        ws.merge_cells('A9:F9')
+        self._style_header(ws, 9, 6)
+        
+        cat_headers = ["Category", "No. of Schemes", "Amount Invested", "Current Value", "Gain/Loss", "Allocation %"]
+        for col, header in enumerate(cat_headers, 1):
+            ws.cell(row=11, column=col, value=header)
+        self._style_header(ws, 11, len(cat_headers))
+        
+        row = 12
+        for category, data in category_data.items():
+            if data['current'] > 0 or data['invested'] > 0:
+                gain_loss = data['current'] - data['invested']
+                allocation = (data['current'] / total_current_value * 100) if total_current_value > 0 else 0
+                
+                ws.cell(row=row, column=1, value=category)
+                ws.cell(row=row, column=2, value=data['schemes'])
+                ws.cell(row=row, column=3, value=round(data['invested'], 2))
+                ws.cell(row=row, column=4, value=round(data['current'], 2))
+                ws.cell(row=row, column=5, value=round(gain_loss, 2))
+                ws.cell(row=row, column=6, value=f"{allocation:.1f}%")
+                row += 1
+        
+        # Asset Class Summary (Equity vs Debt vs Hybrid)
+        ws.cell(row=row + 2, column=1, value="ASSET CLASS SUMMARY")
+        ws.merge_cells(f'A{row+2}:F{row+2}')
+        self._style_header(ws, row + 2, 6)
+        
+        equity_total = sum(category_data[c]['current'] for c in ['Large Cap', 'Mid Cap', 'Small Cap', 'Flexi Cap', 'Multi Cap', 'ELSS', 'Index Fund', 'Sectoral/Thematic'])
+        debt_total = sum(category_data[c]['current'] for c in ['Debt', 'Liquid'])
+        hybrid_total = sum(category_data[c]['current'] for c in ['Hybrid', 'Arbitrage'])
+        other_total = category_data['Other']['current']
+        
+        asset_headers = ["Asset Class", "Current Value", "Allocation %"]
+        for col, header in enumerate(asset_headers, 1):
+            ws.cell(row=row + 4, column=col, value=header)
+        self._style_header(ws, row + 4, len(asset_headers))
+        
+        asset_row = row + 5
+        for asset_class, value in [('Equity', equity_total), ('Debt', debt_total), ('Hybrid', hybrid_total), ('Other', other_total)]:
+            if value > 0:
+                allocation = (value / total_current_value * 100) if total_current_value > 0 else 0
+                ws.cell(row=asset_row, column=1, value=asset_class)
+                ws.cell(row=asset_row, column=2, value=round(value, 2))
+                ws.cell(row=asset_row, column=3, value=f"{allocation:.1f}%")
+                asset_row += 1
+        
+        self._auto_width(ws)
+    
+    def _create_underlying_holdings_sheet(self, wb: Workbook):
+        """Sheet 7: Underlying Holdings - Classification of MF holdings by market cap"""
+        ws = wb.create_sheet("Underlying Holdings")
+        
+        headers = [
+            "Scheme Name", "ISIN", "Fund Category", "Market Cap Classification",
+            "Estimated Equity %", "Estimated Debt %", "Estimated Cash %",
+            "Large Cap %", "Mid Cap %", "Small Cap %",
+            "Current Value", "Folio Number"
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
+        
+        def get_fund_classification(scheme_name):
+            """
+            Classify fund and estimate underlying asset allocation.
+            Note: Actual holdings should come from fund factsheet/API.
+            These are typical allocations based on fund category.
+            """
+            name_lower = scheme_name.lower() if scheme_name else ''
+            
+            # Default values
+            classification = {
+                'category': 'Unknown',
+                'market_cap': 'Mixed',
+                'equity_pct': 0,
+                'debt_pct': 0,
+                'cash_pct': 0,
+                'large_cap_pct': 0,
+                'mid_cap_pct': 0,
+                'small_cap_pct': 0
+            }
+            
+            # Large Cap funds
+            if 'large cap' in name_lower or 'largecap' in name_lower or 'bluechip' in name_lower:
+                classification = {
+                    'category': 'Large Cap Equity',
+                    'market_cap': 'Large Cap',
+                    'equity_pct': 95, 'debt_pct': 0, 'cash_pct': 5,
+                    'large_cap_pct': 85, 'mid_cap_pct': 10, 'small_cap_pct': 5
+                }
+            # Mid Cap funds
+            elif 'mid cap' in name_lower or 'midcap' in name_lower:
+                classification = {
+                    'category': 'Mid Cap Equity',
+                    'market_cap': 'Mid Cap',
+                    'equity_pct': 95, 'debt_pct': 0, 'cash_pct': 5,
+                    'large_cap_pct': 15, 'mid_cap_pct': 70, 'small_cap_pct': 15
+                }
+            # Small Cap funds
+            elif 'small cap' in name_lower or 'smallcap' in name_lower:
+                classification = {
+                    'category': 'Small Cap Equity',
+                    'market_cap': 'Small Cap',
+                    'equity_pct': 95, 'debt_pct': 0, 'cash_pct': 5,
+                    'large_cap_pct': 5, 'mid_cap_pct': 20, 'small_cap_pct': 75
+                }
+            # Flexi Cap
+            elif 'flexi' in name_lower or 'flexicap' in name_lower:
+                classification = {
+                    'category': 'Flexi Cap Equity',
+                    'market_cap': 'Multi Cap',
+                    'equity_pct': 95, 'debt_pct': 0, 'cash_pct': 5,
+                    'large_cap_pct': 50, 'mid_cap_pct': 30, 'small_cap_pct': 20
+                }
+            # Multi Cap
+            elif 'multi cap' in name_lower or 'multicap' in name_lower:
+                classification = {
+                    'category': 'Multi Cap Equity',
+                    'market_cap': 'Multi Cap',
+                    'equity_pct': 95, 'debt_pct': 0, 'cash_pct': 5,
+                    'large_cap_pct': 40, 'mid_cap_pct': 35, 'small_cap_pct': 25
+                }
+            # ELSS
+            elif 'elss' in name_lower or ('tax' in name_lower and 'saver' in name_lower):
+                classification = {
+                    'category': 'ELSS (Tax Saver)',
+                    'market_cap': 'Multi Cap',
+                    'equity_pct': 95, 'debt_pct': 0, 'cash_pct': 5,
+                    'large_cap_pct': 55, 'mid_cap_pct': 30, 'small_cap_pct': 15
+                }
+            # Index Funds
+            elif 'index' in name_lower or 'nifty 50' in name_lower or 'sensex' in name_lower:
+                if 'nifty 50' in name_lower or 'sensex' in name_lower:
+                    classification = {
+                        'category': 'Index Fund - Large Cap',
+                        'market_cap': 'Large Cap',
+                        'equity_pct': 99, 'debt_pct': 0, 'cash_pct': 1,
+                        'large_cap_pct': 100, 'mid_cap_pct': 0, 'small_cap_pct': 0
+                    }
+                elif 'midcap' in name_lower or 'mid cap' in name_lower:
+                    classification = {
+                        'category': 'Index Fund - Mid Cap',
+                        'market_cap': 'Mid Cap',
+                        'equity_pct': 99, 'debt_pct': 0, 'cash_pct': 1,
+                        'large_cap_pct': 0, 'mid_cap_pct': 100, 'small_cap_pct': 0
+                    }
+                else:
+                    classification = {
+                        'category': 'Index Fund',
+                        'market_cap': 'Large Cap',
+                        'equity_pct': 99, 'debt_pct': 0, 'cash_pct': 1,
+                        'large_cap_pct': 80, 'mid_cap_pct': 15, 'small_cap_pct': 5
+                    }
+            # Hybrid - Aggressive
+            elif 'aggressive' in name_lower or 'equity hybrid' in name_lower:
+                classification = {
+                    'category': 'Hybrid - Aggressive',
+                    'market_cap': 'Multi Cap',
+                    'equity_pct': 70, 'debt_pct': 25, 'cash_pct': 5,
+                    'large_cap_pct': 50, 'mid_cap_pct': 35, 'small_cap_pct': 15
+                }
+            # Hybrid - Balanced/Conservative
+            elif 'balanced' in name_lower or 'conservative' in name_lower or 'hybrid' in name_lower:
+                classification = {
+                    'category': 'Hybrid - Balanced',
+                    'market_cap': 'Multi Cap',
+                    'equity_pct': 50, 'debt_pct': 45, 'cash_pct': 5,
+                    'large_cap_pct': 60, 'mid_cap_pct': 30, 'small_cap_pct': 10
+                }
+            # Arbitrage
+            elif 'arbitrage' in name_lower:
+                classification = {
+                    'category': 'Arbitrage Fund',
+                    'market_cap': 'N/A (Hedged)',
+                    'equity_pct': 65, 'debt_pct': 30, 'cash_pct': 5,
+                    'large_cap_pct': 0, 'mid_cap_pct': 0, 'small_cap_pct': 0
+                }
+            # Liquid
+            elif 'liquid' in name_lower or 'money market' in name_lower or 'overnight' in name_lower:
+                classification = {
+                    'category': 'Liquid Fund',
+                    'market_cap': 'N/A (Debt)',
+                    'equity_pct': 0, 'debt_pct': 95, 'cash_pct': 5,
+                    'large_cap_pct': 0, 'mid_cap_pct': 0, 'small_cap_pct': 0
+                }
+            # Debt funds
+            elif any(x in name_lower for x in ['debt', 'bond', 'gilt', 'income', 'credit', 'corporate bond', 'dynamic bond']):
+                classification = {
+                    'category': 'Debt Fund',
+                    'market_cap': 'N/A (Debt)',
+                    'equity_pct': 0, 'debt_pct': 95, 'cash_pct': 5,
+                    'large_cap_pct': 0, 'mid_cap_pct': 0, 'small_cap_pct': 0
+                }
+            # Sectoral/Thematic
+            elif any(x in name_lower for x in ['pharma', 'bank', 'financial', 'infra', 'technology', 'consumption', 'manufacturing', 'thematic']):
+                classification = {
+                    'category': 'Sectoral/Thematic',
+                    'market_cap': 'Multi Cap',
+                    'equity_pct': 95, 'debt_pct': 0, 'cash_pct': 5,
+                    'large_cap_pct': 60, 'mid_cap_pct': 30, 'small_cap_pct': 10
+                }
+            else:
+                # Default to diversified equity
+                classification = {
+                    'category': 'Diversified Equity',
+                    'market_cap': 'Multi Cap',
+                    'equity_pct': 90, 'debt_pct': 5, 'cash_pct': 5,
+                    'large_cap_pct': 50, 'mid_cap_pct': 30, 'small_cap_pct': 20
+                }
+            
+            return classification
+        
+        row = 2
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            scheme_name = folio_data.get('scheme', '')
+            market_value = folio_data.get('market_value', 0)
+            
+            # Only include active holdings
+            if market_value <= 0:
+                continue
+            
+            classification = get_fund_classification(scheme_name)
+            
+            ws.cell(row=row, column=1, value=scheme_name[:60] if scheme_name else '')
+            ws.cell(row=row, column=2, value=folio_data.get('isin', ''))
+            ws.cell(row=row, column=3, value=classification['category'])
+            ws.cell(row=row, column=4, value=classification['market_cap'])
+            ws.cell(row=row, column=5, value=f"{classification['equity_pct']}%")
+            ws.cell(row=row, column=6, value=f"{classification['debt_pct']}%")
+            ws.cell(row=row, column=7, value=f"{classification['cash_pct']}%")
+            ws.cell(row=row, column=8, value=f"{classification['large_cap_pct']}%")
+            ws.cell(row=row, column=9, value=f"{classification['mid_cap_pct']}%")
+            ws.cell(row=row, column=10, value=f"{classification['small_cap_pct']}%")
+            ws.cell(row=row, column=11, value=round(market_value, 2))
+            ws.cell(row=row, column=12, value=folio_data.get('folio', folio_id))
+            
+            row += 1
+        
+        # Add note about estimates
+        ws.cell(row=row + 2, column=1, value="Note: Market cap allocations are estimated based on fund category. Actual holdings may vary. Please refer to latest fund factsheet for accurate data.")
+        ws.merge_cells(f'A{row+2}:L{row+2}')
+        
+        self._auto_width(ws)
         """Sheet 12: XIRR Report"""
         ws = wb.create_sheet("XIRR Report")
         
