@@ -476,25 +476,27 @@ class GapSheetGenerator:
         
         row = 2
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
-            transactions = folio_data.get('transactions', [])
-            if not transactions:
-                continue
+            closing_balance = folio_data.get('closing_balance', 0)
             
-            current_units = transactions[-1].get('balance', 0)
-            if current_units <= 0:
+            if closing_balance <= 0:
                 continue
             
             isin = folio_data.get('isin')
-            current_nav = self.current_navs.get(isin, transactions[-1].get('nav', 0))
-            value = current_units * current_nav
+            current_nav = folio_data.get('current_nav', 0)
+            market_value = folio_data.get('market_value', 0)
+            
+            # If NAV not stored, try to get from fetched data
+            if current_nav == 0 and isin in self.current_navs:
+                current_nav = self.current_navs[isin]
+                market_value = closing_balance * current_nav
             
             ws.cell(row=row, column=1, value=folio_data.get('pan', ''))
             ws.cell(row=row, column=2, value=folio_id)
             ws.cell(row=row, column=3, value=folio_data.get('scheme', ''))
             ws.cell(row=row, column=4, value=isin)
-            ws.cell(row=row, column=5, value=round(current_units, 3))
+            ws.cell(row=row, column=5, value=round(closing_balance, 3))
             ws.cell(row=row, column=6, value=round(current_nav, 4))
-            ws.cell(row=row, column=7, value=round(value, 2))
+            ws.cell(row=row, column=7, value=round(market_value, 2))
             row += 1
         
         for col in range(1, len(headers) + 1):
