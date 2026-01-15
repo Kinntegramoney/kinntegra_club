@@ -418,8 +418,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Sub-broker AUM */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="subbroker-aum-chart">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-violet-400" />
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Briefcase className="h-5 w-5 text-violet-500" />
                 AUM by Sub-Broker
               </h3>
               <div className="h-[300px]">
@@ -429,23 +429,23 @@ export default function Dashboard() {
                       data={aumDistribution.by_subbroker.slice(0, 8)} 
                       margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis 
                         dataKey="name" 
-                        stroke="#64748b" 
+                        stroke="#6b7280" 
                         angle={-45}
                         textAnchor="end"
                         interval={0}
                         tick={{ fontSize: 11 }}
                         height={60}
                       />
-                      <YAxis stroke="#64748b" tickFormatter={(value) => formatCurrency(value, '')} />
+                      <YAxis stroke="#6b7280" tickFormatter={(value) => formatCurrency(value, '')} />
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: '#1e293b', 
-                          border: '1px solid #334155',
+                          backgroundColor: '#fff', 
+                          border: '1px solid #e5e7eb',
                           borderRadius: '8px',
-                          color: '#fff'
+                          color: '#374151'
                         }}
                         formatter={(value) => formatCurrency(value)}
                       />
@@ -455,7 +455,7 @@ export default function Dashboard() {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-500">
+                  <div className="h-full flex items-center justify-center text-gray-400">
                     <div className="text-center">
                       <Briefcase className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>No sub-broker data available</p>
@@ -464,26 +464,26 @@ export default function Dashboard() {
                 )}
               </div>
               {aumDistribution.by_subbroker?.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-slate-800">
+                <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Total Sub-Brokers</span>
-                    <span className="text-white font-medium">{summary?.sub_brokers?.total || 0}</span>
+                    <span className="text-gray-500">Total Sub-Brokers</span>
+                    <span className="text-gray-800 font-medium">{summary?.sub_brokers?.total || 0}</span>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Monthly Console */}
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-800 p-5" data-testid="monthly-console-chart">
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="monthly-console-chart">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-cyan-400" />
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-cyan-500" />
                   Monthly Console
                 </h3>
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  className="bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                   data-testid="year-selector"
                 >
                   {[2025, 2024, 2023, 2022].map(year => (
