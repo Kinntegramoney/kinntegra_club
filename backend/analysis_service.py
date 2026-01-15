@@ -399,8 +399,32 @@ class CASParser:
                             i += 1
                             continue
                         
-                        # Skip STT Paid transactions (these are already included in redemption amounts)
+                        # Skip STT Paid transactions - add them as investment costs too
+                        # STT is tax paid during redemption, but Gap Sheet treats it as investment cost
                         if '*** STT Paid ***' in nav_str:
+                            try:
+                                stt_amount = float(amount_str.replace(',', '').replace('(', '-').replace(')', ''))
+                                if stt_amount > 0:
+                                    transaction = {
+                                        'date': date_str,
+                                        'amount': abs(stt_amount),
+                                        'nav': 0,
+                                        'units': 0,
+                                        'transaction_type': 'STT Paid',
+                                        'balance': 0,
+                                        'folio': current_folio,
+                                        'scheme': current_scheme,
+                                        'isin': current_isin,
+                                        'pan': current_pan,
+                                        'amc': current_amc,
+                                        'advisor': current_advisor,
+                                        'is_redemption': False  # Treat as investment cost per Gap Sheet
+                                    }
+                                    self.transactions.append(transaction)
+                                    if current_key in self.folios:
+                                        self.folios[current_key]['transactions'].append(transaction)
+                            except ValueError:
+                                pass
                             i += 1
                             continue
                         
