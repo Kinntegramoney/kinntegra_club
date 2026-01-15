@@ -308,8 +308,8 @@ const Analysis = () => {
         {processingStatus && (
           <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 shadow-sm" data-testid="processing-status">
             <div className="flex items-center gap-3 mb-2">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
-              <span className="text-white font-medium">{processingStatus}</span>
+              <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+              <span className="text-gray-700 font-medium">{processingStatus}</span>
             </div>
             <Progress value={processingProgress} className="h-2" />
           </div>
