@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import Sidebar from '../components/Sidebar';
 import { 
   FileUp, 
   Download, 
@@ -13,7 +14,6 @@ import {
   Eye, 
   Upload, 
   FileSpreadsheet,
-  ChevronLeft,
   RefreshCw,
   FileText,
   Calendar,
