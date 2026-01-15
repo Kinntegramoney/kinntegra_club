@@ -1761,23 +1761,20 @@ class GapSheetGenerator:
         self._auto_width(ws)
     
     def _create_xirr_sheet(self, wb: Workbook):
-        """Sheet 9: XIRR - Calculate XIRR for each folio based on unit credits/debits"""
+        """Sheet 6: XIRR - Broker/Adviser wise with Date, Particulars, Amount columns"""
         ws = wb.create_sheet("XIRR")
         
-        headers = [
-            "PAN", "Folio No.", "Instrument Name", "Purchase Date", "Purchase Units",
-            "Purchase NAV", "Purchase Amount", "Redemption Date", "Redemption Units",
-            "Redemption NAV", "Redemption Amount", "Balance Units", "Current NAV",
-            "Current Value", "XIRR %"
-        ]
-        
-        for col, header in enumerate(headers, 1):
-            ws.cell(row=1, column=col, value=header)
-        self._style_header(ws, 1, len(headers))
-        
-        all_entries = []
+        # Group transactions by Adviser ARN
+        adviser_data = defaultdict(lambda: {
+            'transactions': [],  # List of (date, particulars, amount, folio, scheme)
+            'cashflows': [],     # For XIRR calculation
+            'total_invested': 0,
+            'total_withdrawn': 0,
+            'current_value': 0
+        })
         
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            adviser_arn = folio_data.get('advisor', '') or 'NO_ARN'
             scheme_name = folio_data.get('scheme', '') or ''
             folio_num = folio_data.get('folio', folio_id)
             closing_balance = folio_data.get('closing_balance', 0)
@@ -1786,20 +1783,6 @@ class GapSheetGenerator:
             
             transactions = folio_data.get('transactions', [])
             
-            # Get PAN from transactions or investor_info
-            pan = ''
-            for trans in transactions:
-                if trans.get('pan'):
-                    pan = trans.get('pan')
-                    break
-            if not pan:
-                pan = self.parsed_data.get('investor_info', {}).get('pan', '')
-            
-            # Separate purchases (unit credit) and redemptions (unit debit)
-            purchases = []
-            redemptions = []
-            cashflows = []  # For XIRR calculation
-            
             for trans in transactions:
                 # Skip NFT, Pledge, STT, Stamp Duty
                 if trans.get('is_nft') or trans.get('is_pledge'):
@@ -1807,8 +1790,8 @@ class GapSheetGenerator:
                 if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
                     continue
                 
-                units = trans.get('units', 0)
-                if units is None or units == 0:
+                amount = trans.get('amount', 0)
+                if amount == 0:
                     continue
                 
                 try:
@@ -1816,121 +1799,112 @@ class GapSheetGenerator:
                 except:
                     continue
                 
-                nav = trans.get('nav', 0)
-                amount = trans.get('amount', 0)
+                trans_type = trans.get('transaction_type', '')
                 
                 if trans.get('is_redemption'):
-                    # Unit debit = redemption (positive cashflow - money received)
-                    redemptions.append({
+                    # Redemption - positive cashflow (money received)
+                    adviser_data[adviser_arn]['transactions'].append({
                         'date': trans['date'],
-                        'units': abs(units),
-                        'nav': nav,
-                        'amount': amount
+                        'date_obj': trans_date,
+                        'particulars': f"Redemption - {trans_type}",
+                        'amount': amount,
+                        'folio': folio_num,
+                        'scheme': scheme_name[:40]
                     })
-                    cashflows.append((trans_date, amount))  # Positive
+                    adviser_data[adviser_arn]['cashflows'].append((trans_date, amount))
+                    adviser_data[adviser_arn]['total_withdrawn'] += amount
                 else:
-                    # Unit credit = purchase (negative cashflow - money spent)
-                    purchases.append({
+                    # Purchase - negative cashflow (money spent)
+                    adviser_data[adviser_arn]['transactions'].append({
                         'date': trans['date'],
-                        'units': units,
-                        'nav': nav,
-                        'amount': amount
+                        'date_obj': trans_date,
+                        'particulars': f"Purchase - {trans_type}",
+                        'amount': -amount,  # Negative for outflow
+                        'folio': folio_num,
+                        'scheme': scheme_name[:40]
                     })
-                    cashflows.append((trans_date, -amount))  # Negative
+                    adviser_data[adviser_arn]['cashflows'].append((trans_date, -amount))
+                    adviser_data[adviser_arn]['total_invested'] += amount
             
-            # Add current value as final cashflow (balance units * current NAV)
+            # Add current value for this folio to adviser's total
             if closing_balance > 0 and current_nav > 0:
-                cashflows.append((self.report_date, closing_balance * current_nav))
+                adviser_data[adviser_arn]['current_value'] += market_value
+                # Add final value as positive cashflow
+                adviser_data[adviser_arn]['cashflows'].append((self.report_date, market_value))
+                adviser_data[adviser_arn]['transactions'].append({
+                    'date': self.report_date.strftime('%d-%b-%Y'),
+                    'date_obj': self.report_date,
+                    'particulars': f"Current Value (Balance Units × NAV)",
+                    'amount': market_value,
+                    'folio': folio_num,
+                    'scheme': scheme_name[:40]
+                })
+        
+        # Write data - each adviser in separate columns
+        row = 1
+        col_offset = 0
+        
+        for adviser_arn, data in adviser_data.items():
+            if not data['transactions']:
+                continue
             
-            # Calculate XIRR
+            # Sort transactions by date
+            data['transactions'].sort(key=lambda x: x['date_obj'])
+            
+            # Calculate XIRR for this adviser
             xirr_pct = 0.0
-            if cashflows and len(cashflows) >= 2:
-                xirr_pct = calculate_xirr(cashflows) * 100
+            if data['cashflows'] and len(data['cashflows']) >= 2:
+                xirr_pct = calculate_xirr(data['cashflows']) * 100
             
-            # Aggregate purchase and redemption totals
-            total_purchase_units = sum(p['units'] for p in purchases)
-            total_purchase_amount = sum(p['amount'] for p in purchases)
-            total_redemption_units = sum(r['units'] for r in redemptions)
-            total_redemption_amount = sum(r['amount'] for r in redemptions)
+            # Write adviser header
+            start_col = col_offset + 1
+            ws.cell(row=1, column=start_col, value=f"Adviser: {adviser_arn}")
+            ws.merge_cells(start_row=1, start_column=start_col, end_row=1, end_column=start_col + 3)
+            self._style_header(ws, 1, 4, start_col=start_col)
             
-            # Get first purchase date and last redemption date
-            first_purchase_date = purchases[0]['date'] if purchases else ''
-            first_purchase_nav = purchases[0]['nav'] if purchases else 0
-            last_redemption_date = redemptions[-1]['date'] if redemptions else ''
-            last_redemption_nav = redemptions[-1]['nav'] if redemptions else 0
+            # Column headers: Date, Particulars, Folio/Scheme, Amount
+            headers = ["Date", "Particulars", "Folio / Scheme", "Amount"]
+            for i, header in enumerate(headers):
+                ws.cell(row=2, column=start_col + i, value=header)
+            self._style_header(ws, 2, 4, start_col=start_col)
             
-            entry = {
-                'pan': pan,
-                'folio': folio_num,
-                'scheme': scheme_name,
-                'purchase_date': first_purchase_date,
-                'purchase_units': total_purchase_units,
-                'purchase_nav': first_purchase_nav,
-                'purchase_amount': total_purchase_amount,
-                'redemption_date': last_redemption_date,
-                'redemption_units': total_redemption_units,
-                'redemption_nav': last_redemption_nav,
-                'redemption_amount': total_redemption_amount,
-                'balance_units': closing_balance,
-                'current_nav': current_nav,
-                'current_value': market_value,
-                'xirr': xirr_pct
-            }
+            # Write transactions
+            data_row = 3
+            for trans in data['transactions']:
+                ws.cell(row=data_row, column=start_col, value=trans['date'])
+                ws.cell(row=data_row, column=start_col + 1, value=trans['particulars'])
+                ws.cell(row=data_row, column=start_col + 2, value=f"{trans['folio']} / {trans['scheme']}")
+                cell = ws.cell(row=data_row, column=start_col + 3, value=round(trans['amount'], 2))
+                cell.number_format = '₹#,##0.00'
+                data_row += 1
             
-            all_entries.append(entry)
-        
-        # Sort by current value (highest first)
-        all_entries.sort(key=lambda x: x['current_value'], reverse=True)
-        
-        # Write data rows
-        row = 2
-        for entry in all_entries:
-            ws.cell(row=row, column=1, value=entry['pan'])
-            ws.cell(row=row, column=2, value=entry['folio'])
-            ws.cell(row=row, column=3, value=entry['scheme'])
-            ws.cell(row=row, column=4, value=entry['purchase_date'])
-            
-            cell = ws.cell(row=row, column=5, value=round(entry['purchase_units'], 3) if entry['purchase_units'] else '')
-            cell.number_format = '#,##0.000'
-            
-            cell = ws.cell(row=row, column=6, value=round(entry['purchase_nav'], 4) if entry['purchase_nav'] else '')
-            cell.number_format = '#,##0.0000'
-            
-            cell = ws.cell(row=row, column=7, value=round(entry['purchase_amount'], 2) if entry['purchase_amount'] else '')
+            # Add summary row
+            data_row += 1
+            ws.cell(row=data_row, column=start_col, value="Summary:")
+            ws.cell(row=data_row, column=start_col + 1, value="Total Invested")
+            cell = ws.cell(row=data_row, column=start_col + 3, value=round(data['total_invested'], 2))
             cell.number_format = '₹#,##0.00'
             
-            ws.cell(row=row, column=8, value=entry['redemption_date'] if entry['redemption_date'] else '')
-            
-            cell = ws.cell(row=row, column=9, value=round(entry['redemption_units'], 3) if entry['redemption_units'] else '')
-            cell.number_format = '#,##0.000'
-            
-            cell = ws.cell(row=row, column=10, value=round(entry['redemption_nav'], 4) if entry['redemption_nav'] else '')
-            cell.number_format = '#,##0.0000'
-            
-            cell = ws.cell(row=row, column=11, value=round(entry['redemption_amount'], 2) if entry['redemption_amount'] else '')
+            data_row += 1
+            ws.cell(row=data_row, column=start_col + 1, value="Total Withdrawn")
+            cell = ws.cell(row=data_row, column=start_col + 3, value=round(data['total_withdrawn'], 2))
             cell.number_format = '₹#,##0.00'
             
-            cell = ws.cell(row=row, column=12, value=round(entry['balance_units'], 3) if entry['balance_units'] else 0)
-            cell.number_format = '#,##0.000'
-            
-            cell = ws.cell(row=row, column=13, value=round(entry['current_nav'], 4) if entry['current_nav'] else '')
-            cell.number_format = '#,##0.0000'
-            
-            cell = ws.cell(row=row, column=14, value=round(entry['current_value'], 2) if entry['current_value'] else 0)
+            data_row += 1
+            ws.cell(row=data_row, column=start_col + 1, value="Current Value")
+            cell = ws.cell(row=data_row, column=start_col + 3, value=round(data['current_value'], 2))
             cell.number_format = '₹#,##0.00'
             
-            cell = ws.cell(row=row, column=15, value=f"{entry['xirr']:.2f}%" if entry['xirr'] else 'N/A')
+            data_row += 1
+            ws.cell(row=data_row, column=start_col + 1, value="XIRR %")
+            ws.cell(row=data_row, column=start_col + 3, value=f"{xirr_pct:.2f}%" if xirr_pct else "N/A")
             
-            row += 1
-        
-        # Add summary row
-        ws.cell(row=row + 2, column=1, value="XIRR Calculation Methodology:")
-        ws.merge_cells(f'A{row+2}:O{row+2}')
-        ws.cell(row=row + 3, column=1, value="• Unit Credit (Purchase) = Negative Cashflow (Money Spent)")
-        ws.cell(row=row + 4, column=1, value="• Unit Debit (Redemption) = Positive Cashflow (Money Received)")
-        ws.cell(row=row + 5, column=1, value="• Balance Units × Current NAV = Final Positive Cashflow (as of Statement Date)")
+            # Move to next adviser columns (4 columns + 1 gap)
+            col_offset += 5
         
         self._auto_width(ws)
+    
+    def _create_other_details_sheet(self, wb: Workbook):
         """Sheet 10: Other Details"""
         ws = wb.create_sheet("Other Details")
         
