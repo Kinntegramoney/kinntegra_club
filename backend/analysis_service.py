@@ -1091,11 +1091,12 @@ class GapSheetGenerator:
                     # Determine LT/ST
                     lt_status = is_long_term(fund_type, holding_days, trans_date)
                     
-                    # Create key for aggregation
-                    key = (folio_num, scheme_name[:50], fy, fund_type)
+                    # Create key for aggregation - include PAN
+                    key = (pan, folio_num, scheme_name[:50], fy, fund_type)
                     
                     if key not in tax_data:
                         tax_data[key] = {
+                            'pan': pan,
                             'folio': folio_num,
                             'scheme': scheme_name[:50],
                             'fy': fy,
@@ -1137,17 +1138,18 @@ class GapSheetGenerator:
         
         row = 2
         for data in sorted_data:
-            ws.cell(row=row, column=1, value=data['folio'])
-            ws.cell(row=row, column=2, value=data['scheme'])
-            ws.cell(row=row, column=3, value=data['fy'])
-            ws.cell(row=row, column=4, value=data['fund_type'])
-            ws.cell(row=row, column=5, value=round(data['active_lt_units'], 3) if data['active_lt_units'] else '')
-            ws.cell(row=row, column=6, value=round(data['active_lt_gain'], 2) if data['active_lt_gain'] else '')
-            ws.cell(row=row, column=7, value=round(data['active_st_units'], 3) if data['active_st_units'] else '')
-            ws.cell(row=row, column=8, value=round(data['active_st_gain'], 2) if data['active_st_gain'] else '')
-            ws.cell(row=row, column=9, value=round(data['sold_lt_units'], 3) if data['sold_lt_units'] else '')
-            ws.cell(row=row, column=10, value=round(data['sold_lt_gain'], 2) if data['sold_lt_gain'] else '')
-            ws.cell(row=row, column=11, value=round(data['sold_st_units'], 3) if data['sold_st_units'] else '')
+            ws.cell(row=row, column=1, value=data['pan'])
+            ws.cell(row=row, column=2, value=data['folio'])
+            ws.cell(row=row, column=3, value=data['scheme'])
+            ws.cell(row=row, column=4, value=data['fy'])
+            ws.cell(row=row, column=5, value=data['fund_type'])
+            ws.cell(row=row, column=6, value=round(data['active_lt_units'], 3) if data['active_lt_units'] else '')
+            ws.cell(row=row, column=7, value=round(data['active_lt_gain'], 2) if data['active_lt_gain'] else '')
+            ws.cell(row=row, column=8, value=round(data['active_st_units'], 3) if data['active_st_units'] else '')
+            ws.cell(row=row, column=9, value=round(data['active_st_gain'], 2) if data['active_st_gain'] else '')
+            ws.cell(row=row, column=10, value=round(data['sold_lt_units'], 3) if data['sold_lt_units'] else '')
+            ws.cell(row=row, column=11, value=round(data['sold_lt_gain'], 2) if data['sold_lt_gain'] else '')
+            ws.cell(row=row, column=12, value=round(data['sold_st_units'], 3) if data['sold_st_units'] else '')
             ws.cell(row=row, column=12, value=round(data['sold_st_gain'], 2) if data['sold_st_gain'] else '')
             ws.cell(row=row, column=13, value=data['nav_31jan2018'])
             ws.cell(row=row, column=14, value=data['gf_triggered'])
