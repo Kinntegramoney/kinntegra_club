@@ -657,15 +657,20 @@ class GapSheetGenerator:
     def _auto_width(self, ws, min_width=10, max_width=40):
         for col in ws.columns:
             max_length = 0
-            column = col[0].column_letter
+            column = None
             for cell in col:
-                try:
-                    if cell.value:
-                        max_length = max(max_length, len(str(cell.value)))
-                except:
-                    pass
-            adjusted_width = min(max(max_length + 2, min_width), max_width)
-            ws.column_dimensions[column].width = adjusted_width
+                # Skip merged cells
+                if hasattr(cell, 'column_letter'):
+                    if column is None:
+                        column = cell.column_letter
+                    try:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    except:
+                        pass
+            if column:
+                adjusted_width = min(max(max_length + 2, min_width), max_width)
+                ws.column_dimensions[column].width = adjusted_width
     
     def _get_advisor_name(self, arn: str) -> str:
         if not arn:
