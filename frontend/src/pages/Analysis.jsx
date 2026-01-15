@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { 
   FileUp, 
@@ -17,7 +18,11 @@ import {
   FileText,
   Calendar,
   User,
-  Database
+  Database,
+  CheckCircle2,
+  Circle,
+  ExternalLink,
+  Loader2
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -27,15 +32,20 @@ const Analysis = () => {
   const [user, setUser] = useState(null);
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [uploadingCAS, setUploadingCAS] = useState(false);
-  const [uploadingSchemeMaster, setUploadingSchemeMaster] = useState(false);
   const [schemeMasterStatus, setSchemeMasterStatus] = useState(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
+  
+  // Step-by-step wizard
+  const [currentStep, setCurrentStep] = useState(1);
+  const [processingStatus, setProcessingStatus] = useState('');
+  const [processingProgress, setProcessingProgress] = useState(0);
   
   // Upload form state
   const [casFile, setCasFile] = useState(null);
   const [casPassword, setCasPassword] = useState('');
   const [schemeMasterFile, setSchemeMasterFile] = useState(null);
+  const [uploadingCAS, setUploadingCAS] = useState(false);
+  const [uploadingSchemeMaster, setUploadingSchemeMaster] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -95,11 +105,16 @@ const Analysis = () => {
     }
 
     setUploadingCAS(true);
+    setProcessingStatus('Uploading CAS PDF...');
+    setProcessingProgress(10);
     
     try {
       const formData = new FormData();
       formData.append('file', casFile);
       formData.append('password', casPassword);
+
+      setProcessingStatus('Parsing PDF and extracting transactions...');
+      setProcessingProgress(30);
 
       const response = await fetch(`${API}/api/analysis/upload-cas`, {
         method: 'POST',
@@ -109,19 +124,32 @@ const Analysis = () => {
         body: formData
       });
 
+      setProcessingProgress(70);
       const data = await response.json();
 
       if (response.ok) {
-        toast.success('CAS file analyzed successfully!');
-        setCasFile(null);
-        setCasPassword('');
-        fetchAnalyses();
-        setSelectedAnalysis(data);
+        setProcessingStatus('Analysis complete!');
+        setProcessingProgress(100);
+        
+        setTimeout(() => {
+          toast.success(`CAS analyzed: ${data.total_folios} folios, ${data.total_transactions} transactions`);
+          setCasFile(null);
+          setCasPassword('');
+          setProcessingStatus('');
+          setProcessingProgress(0);
+          fetchAnalyses();
+          setSelectedAnalysis(data);
+          setCurrentStep(3); // Move to results step
+        }, 500);
       } else {
+        setProcessingStatus('');
+        setProcessingProgress(0);
         toast.error(data.detail || 'Failed to analyze CAS file');
       }
     } catch (error) {
       console.error('Error uploading CAS:', error);
+      setProcessingStatus('');
+      setProcessingProgress(0);
       toast.error('Error uploading file');
     } finally {
       setUploadingCAS(false);
@@ -137,10 +165,15 @@ const Analysis = () => {
     }
 
     setUploadingSchemeMaster(true);
+    setProcessingStatus('Uploading BSE Scheme Master...');
+    setProcessingProgress(20);
     
     try {
       const formData = new FormData();
       formData.append('file', schemeMasterFile);
+
+      setProcessingStatus('Processing scheme data...');
+      setProcessingProgress(50);
 
       const response = await fetch(`${API}/api/analysis/upload-scheme-master`, {
         method: 'POST',
@@ -150,17 +183,29 @@ const Analysis = () => {
         body: formData
       });
 
+      setProcessingProgress(90);
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(`Scheme master uploaded! ${data.schemes_added} new schemes added.`);
-        setSchemeMasterFile(null);
-        fetchSchemeMasterStatus();
+        setProcessingStatus('Scheme master uploaded!');
+        setProcessingProgress(100);
+        
+        setTimeout(() => {
+          toast.success(`${data.schemes_added} new schemes added`);
+          setSchemeMasterFile(null);
+          setProcessingStatus('');
+          setProcessingProgress(0);
+          fetchSchemeMasterStatus();
+        }, 500);
       } else {
+        setProcessingStatus('');
+        setProcessingProgress(0);
         toast.error(data.detail || 'Failed to upload scheme master');
       }
     } catch (error) {
       console.error('Error uploading scheme master:', error);
+      setProcessingStatus('');
+      setProcessingProgress(0);
       toast.error('Error uploading file');
     } finally {
       setUploadingSchemeMaster(false);
@@ -169,11 +214,14 @@ const Analysis = () => {
 
   const handleDownload = async (analysisId, filename) => {
     try {
-      toast.info('Generating report...');
+      setProcessingStatus('Generating Gap Sheet Excel...');
+      setProcessingProgress(30);
       
       const response = await fetch(`${API}/api/analysis/${analysisId}/download`, {
         headers: getAuthHeaders()
       });
+
+      setProcessingProgress(80);
 
       if (response.ok) {
         const blob = await response.blob();
@@ -185,12 +233,22 @@ const Analysis = () => {
         a.click();
         window.URL.revokeObjectURL(url);
         a.remove();
-        toast.success('Report downloaded successfully!');
+        
+        setProcessingProgress(100);
+        setTimeout(() => {
+          setProcessingStatus('');
+          setProcessingProgress(0);
+          toast.success('Gap Sheet downloaded successfully!');
+        }, 300);
       } else {
+        setProcessingStatus('');
+        setProcessingProgress(0);
         toast.error('Failed to download report');
       }
     } catch (error) {
       console.error('Error downloading:', error);
+      setProcessingStatus('');
+      setProcessingProgress(0);
       toast.error('Error downloading report');
     }
   };
@@ -209,7 +267,7 @@ const Analysis = () => {
       if (response.ok) {
         toast.success('Analysis deleted');
         fetchAnalyses();
-        if (selectedAnalysis?.analysis_id === analysisId) {
+        if (selectedAnalysis?.analysis_id === analysisId || selectedAnalysis?.id === analysisId) {
           setSelectedAnalysis(null);
         }
       } else {
@@ -257,6 +315,31 @@ const Analysis = () => {
     });
   };
 
+  const formatCurrency = (value) => {
+    if (!value) return '₹0';
+    if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)} Cr`;
+    if (value >= 100000) return `₹${(value / 100000).toFixed(1)} L`;
+    return `₹${value.toLocaleString('en-IN')}`;
+  };
+
+  // Step indicator component
+  const StepIndicator = ({ step, title, isComplete, isCurrent }) => (
+    <div className="flex items-center gap-3">
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+        isComplete ? 'bg-emerald-500' : isCurrent ? 'bg-blue-500' : 'bg-slate-600'
+      }`}>
+        {isComplete ? (
+          <CheckCircle2 className="h-5 w-5 text-white" />
+        ) : (
+          <span className="text-white font-medium">{step}</span>
+        )}
+      </div>
+      <span className={`text-sm font-medium ${isCurrent ? 'text-white' : 'text-slate-400'}`}>
+        {title}
+      </span>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
@@ -293,14 +376,54 @@ const Analysis = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Progress Bar - Show when processing */}
+        {processingStatus && (
+          <div className="mb-6 bg-slate-800/50 border border-slate-700 rounded-lg p-4" data-testid="processing-status">
+            <div className="flex items-center gap-3 mb-2">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
+              <span className="text-white font-medium">{processingStatus}</span>
+            </div>
+            <Progress value={processingProgress} className="h-2" />
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Upload Forms */}
+          {/* Left Column - Step-by-Step Wizard */}
           <div className="space-y-6">
-            {/* CAS Upload Card */}
+            {/* Steps Progress */}
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-white text-lg">Analysis Steps</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <StepIndicator 
+                  step={1} 
+                  title="Upload CAS PDF" 
+                  isComplete={analyses.length > 0}
+                  isCurrent={currentStep === 1}
+                />
+                <div className="ml-4 border-l-2 border-slate-600 h-4" />
+                <StepIndicator 
+                  step={2} 
+                  title="Upload BSE Scheme Master" 
+                  isComplete={schemeMasterStatus?.exists}
+                  isCurrent={currentStep === 2}
+                />
+                <div className="ml-4 border-l-2 border-slate-600 h-4" />
+                <StepIndicator 
+                  step={3} 
+                  title="Download Gap Sheet" 
+                  isComplete={false}
+                  isCurrent={currentStep === 3}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Step 1: CAS Upload */}
             <Card className="bg-slate-800/50 border-slate-700" data-testid="cas-upload-card">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
-                  <FileUp className="h-5 w-5 text-blue-400" />
+                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold">1</div>
                   Upload CAS PDF
                 </CardTitle>
                 <CardDescription className="text-slate-400">
@@ -320,7 +443,7 @@ const Analysis = () => {
                       data-testid="cas-file-input"
                     />
                     {casFile && (
-                      <p className="text-sm text-slate-400 mt-1">{casFile.name}</p>
+                      <p className="text-sm text-emerald-400 mt-1">✓ {casFile.name}</p>
                     )}
                   </div>
                   <div>
@@ -343,7 +466,7 @@ const Analysis = () => {
                   >
                     {uploadingCAS ? (
                       <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Analyzing...
                       </>
                     ) : (
@@ -357,45 +480,59 @@ const Analysis = () => {
               </CardContent>
             </Card>
 
-            {/* Scheme Master Upload Card - Broker Only */}
-            {user?.role === 'broker' && (
-              <Card className="bg-slate-800/50 border-slate-700" data-testid="scheme-master-card">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Database className="h-5 w-5 text-emerald-400" />
-                    Scheme Master
-                  </CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Upload BSE scheme master file for NAV mapping
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Status */}
-                  <div className="bg-slate-700/50 rounded-lg p-3 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">Status:</span>
-                      <span className={schemeMasterStatus?.exists ? "text-emerald-400" : "text-yellow-400"}>
-                        {schemeMasterStatus?.exists ? "Available" : "Not Uploaded"}
-                      </span>
-                    </div>
-                    {schemeMasterStatus?.exists && (
-                      <>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-400">Total Schemes:</span>
-                          <span className="text-white">{schemeMasterStatus.total_schemes?.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-400">Last Upload:</span>
-                          <span className="text-white">{formatDate(schemeMasterStatus.last_upload)}</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+            {/* Step 2: Scheme Master Upload */}
+            <Card className="bg-slate-800/50 border-slate-700" data-testid="scheme-master-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-xs font-bold">2</div>
+                  BSE Scheme Master
+                </CardTitle>
+                <CardDescription className="text-slate-400">
+                  Upload BSE scheme master file for accurate NAV mapping
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Download Link */}
+                <div className="bg-slate-700/50 rounded-lg p-3">
+                  <p className="text-sm text-slate-300 mb-2">Download the latest scheme master from:</p>
+                  <a 
+                    href="https://www.bsestarmf.in/RptSchemeMaster.aspx" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    BSE StAR MF - Scheme Master
+                  </a>
+                </div>
 
-                  {/* Upload Form */}
+                {/* Status */}
+                <div className="bg-slate-700/50 rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Status:</span>
+                    <span className={schemeMasterStatus?.exists ? "text-emerald-400" : "text-yellow-400"}>
+                      {schemeMasterStatus?.exists ? "✓ Available" : "⚠ Not Uploaded"}
+                    </span>
+                  </div>
+                  {schemeMasterStatus?.exists && (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Total Schemes:</span>
+                        <span className="text-white">{schemeMasterStatus.total_schemes?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Last Upload:</span>
+                        <span className="text-white">{formatDate(schemeMasterStatus.last_upload)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Upload Form - Broker Only */}
+                {user?.role === 'broker' && (
                   <form onSubmit={handleSchemeMasterUpload} className="space-y-3">
                     <div>
-                      <Label htmlFor="scheme-file" className="text-slate-300">BSE Scheme File (.txt)</Label>
+                      <Label htmlFor="scheme-file" className="text-slate-300">Scheme Master File (.txt)</Label>
                       <Input
                         id="scheme-file"
                         type="file"
@@ -404,6 +541,9 @@ const Analysis = () => {
                         className="mt-1 bg-slate-700 border-slate-600 text-white file:bg-slate-600 file:text-white file:border-0"
                         data-testid="scheme-file-input"
                       />
+                      {schemeMasterFile && (
+                        <p className="text-sm text-emerald-400 mt-1">✓ {schemeMasterFile.name}</p>
+                      )}
                     </div>
                     <Button 
                       type="submit" 
@@ -414,37 +554,39 @@ const Analysis = () => {
                     >
                       {uploadingSchemeMaster ? (
                         <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           Uploading...
                         </>
                       ) : (
                         <>
-                          <Upload className="h-4 w-4 mr-2" />
+                          <Database className="h-4 w-4 mr-2" />
                           Upload Scheme Master
                         </>
                       )}
                     </Button>
                   </form>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Middle Column - Analysis List */}
+          {/* Middle & Right Columns - Results */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Recent Analysis */}
+            {/* Step 3: Selected Analysis Results */}
             {selectedAnalysis && (
               <Card className="bg-slate-800/50 border-slate-700 border-blue-500/50" data-testid="selected-analysis-card">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-white flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-blue-400" />
-                        {selectedAnalysis.filename || 'Analysis Result'}
-                      </CardTitle>
-                      <CardDescription className="text-slate-400">
-                        Analyzed on {formatDate(selectedAnalysis.created_at)}
-                      </CardDescription>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-sm font-bold text-white">3</div>
+                      <div>
+                        <CardTitle className="text-white">
+                          {selectedAnalysis.filename || 'Analysis Result'}
+                        </CardTitle>
+                        <CardDescription className="text-slate-400">
+                          Analyzed on {formatDate(selectedAnalysis.created_at)}
+                        </CardDescription>
+                      </div>
                     </div>
                     <Button
                       size="sm"
@@ -473,16 +615,23 @@ const Analysis = () => {
                     </div>
                     <div className="bg-slate-700/50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-amber-400">
-                        ₹{((selectedAnalysis.portfolio_summary?.total_cost || selectedAnalysis.parsed_data?.portfolio_summary?.total_cost || 0) / 100000).toFixed(1)}L
+                        {formatCurrency(selectedAnalysis.portfolio_summary?.total_cost || selectedAnalysis.parsed_data?.portfolio_summary?.total_cost || 0)}
                       </p>
                       <p className="text-sm text-slate-400">Total Cost</p>
                     </div>
                     <div className="bg-slate-700/50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-purple-400">
-                        ₹{((selectedAnalysis.portfolio_summary?.total_value || selectedAnalysis.parsed_data?.portfolio_summary?.total_value || 0) / 100000).toFixed(1)}L
+                        {formatCurrency(selectedAnalysis.portfolio_summary?.total_value || selectedAnalysis.parsed_data?.portfolio_summary?.total_value || 0)}
                       </p>
                       <p className="text-sm text-slate-400">Current Value</p>
                     </div>
+                  </div>
+                  
+                  {/* Gap Sheet Info */}
+                  <div className="mt-4 p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg">
+                    <p className="text-sm text-blue-300">
+                      <strong>Gap Sheet includes:</strong> Portfolio Performance, Tax View, Advisor View, PAN View, MF Ageing, Mutual Fund Holding, MF Transactions, Accounts, Exit Loads, Other Details
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -502,7 +651,7 @@ const Analysis = () => {
               <CardContent>
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <RefreshCw className="h-6 w-6 animate-spin text-slate-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
                   </div>
                 ) : analyses.length === 0 ? (
                   <div className="text-center py-8">
@@ -516,7 +665,7 @@ const Analysis = () => {
                       <div 
                         key={analysis.id}
                         className={`bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700 transition-colors cursor-pointer ${
-                          selectedAnalysis?.id === analysis.id ? 'ring-2 ring-blue-500' : ''
+                          (selectedAnalysis?.id === analysis.id || selectedAnalysis?.analysis_id === analysis.id) ? 'ring-2 ring-blue-500' : ''
                         }`}
                         onClick={() => handleViewDetails(analysis.id)}
                         data-testid={`analysis-item-${analysis.id}`}
