@@ -82,6 +82,13 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
     }
   };
 
+  const copyToClipboard = (text, field) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+    toast.success("Copied to clipboard!");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -98,12 +105,21 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
         linked_subbroker_id: formData.linked_subbroker_id || null
       };
       
-      await axios.post(`${API}/clients`, submitData, {
+      const response = await axios.post(`${API}/clients`, submitData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      toast.success("Client created successfully");
-      onSuccess();
+      // Show credentials modal with returned credentials
+      const clientData = response.data;
+      setCredentials({
+        name: formData.name,
+        pan: formData.pan_number.toUpperCase(),
+        email: formData.email,
+        password: clientData.default_password || `${formData.pan_number.toUpperCase().slice(-4)}1234`,
+        pin: clientData.default_pin || "1234"
+      });
+      setShowCredentials(true);
+      
     } catch (error) {
       console.error("Error creating client:", error);
       toast.error(error.response?.data?.detail || "Failed to create client");
@@ -111,6 +127,108 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
       setLoading(false);
     }
   };
+
+  const handleCredentialsClose = () => {
+    setShowCredentials(false);
+    onSuccess();
+  };
+
+  // Credentials Modal
+  if (showCredentials) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg w-full max-w-md overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4 text-white">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Check className="h-6 w-6" />
+              Client Created Successfully!
+            </h2>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-800">
+                <p className="font-semibold">Important: Save these credentials!</p>
+                <p>Please share these login details with the client. They will need these to access their profile.</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <h3 className="font-semibold text-gray-700 mb-3">Login Credentials for {credentials.name}</h3>
+              
+              {/* PAN */}
+              <div className="flex items-center justify-between bg-white rounded-md p-3 border">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">PAN (Username)</p>
+                  <p className="font-mono font-semibold text-lg">{credentials.pan}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(credentials.pan, 'pan')}
+                >
+                  {copiedField === 'pan' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+
+              {/* Password */}
+              <div className="flex items-center justify-between bg-white rounded-md p-3 border">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Password</p>
+                  <p className="font-mono font-semibold text-lg">{credentials.password}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(credentials.password, 'password')}
+                >
+                  {copiedField === 'password' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+
+              {/* PIN */}
+              <div className="flex items-center justify-between bg-white rounded-md p-3 border">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">PIN (2-Step Verification)</p>
+                  <p className="font-mono font-semibold text-lg">{credentials.pin}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(credentials.pin, 'pin')}
+                >
+                  {copiedField === 'pin' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+
+              {/* Copy All */}
+              <Button
+                variant="outline"
+                className="w-full mt-2"
+                onClick={() => copyToClipboard(
+                  `Login Credentials for ${credentials.name}\n\nPAN (Username): ${credentials.pan}\nPassword: ${credentials.password}\nPIN: ${credentials.pin}\n\nLogin URL: https://kinntegraa.club/login`,
+                  'all'
+                )}
+              >
+                {copiedField === 'all' ? <Check className="h-4 w-4 mr-2 text-green-500" /> : <Copy className="h-4 w-4 mr-2" />}
+                Copy All Credentials
+              </Button>
+            </div>
+
+            <Button 
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+              onClick={handleCredentialsClose}
+            >
+              I've Saved the Credentials - Close
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
