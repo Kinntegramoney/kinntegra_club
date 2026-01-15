@@ -273,9 +273,9 @@ export default function Dashboard() {
           {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Client Distribution */}
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-800 p-5" data-testid="client-distribution-chart">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <PieChart className="h-5 w-5 text-indigo-400" />
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="client-distribution-chart">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <PieChart className="h-5 w-5 text-indigo-500" />
                 Client Status
               </h3>
               <div className="h-[200px]">
@@ -297,34 +297,34 @@ export default function Dashboard() {
                       </Pie>
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: '#1e293b', 
-                          border: '1px solid #334155',
+                          backgroundColor: '#fff', 
+                          border: '1px solid #e5e7eb',
                           borderRadius: '8px',
-                          color: '#fff'
+                          color: '#374151'
                         }}
                       />
                       <Legend 
-                        wrapperStyle={{ color: '#94a3b8' }}
-                        formatter={(value) => <span className="text-slate-300">{value}</span>}
+                        wrapperStyle={{ color: '#6b7280' }}
+                        formatter={(value) => <span className="text-gray-600">{value}</span>}
                       />
                     </RechartsPie>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-500">
+                  <div className="h-full flex items-center justify-center text-gray-400">
                     No client data available
                   </div>
                 )}
               </div>
               <div className="text-center mt-2">
-                <p className="text-3xl font-bold text-white">{summary?.clients?.total || 0}</p>
-                <p className="text-xs text-slate-400">Total Clients</p>
+                <p className="text-3xl font-bold text-gray-800">{summary?.clients?.total || 0}</p>
+                <p className="text-xs text-gray-500">Total Clients</p>
               </div>
             </div>
 
             {/* AUM Distribution by Asset Class */}
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-800 p-5" data-testid="aum-distribution-chart">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-emerald-400" />
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="aum-distribution-chart">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-emerald-500" />
                 AUM Distribution
               </h3>
               <div className="h-[200px]">
