@@ -240,15 +240,34 @@ class CASParser:
                         units_str = lines[i + 3].strip()
                         trans_type_line = lines[i + 4].strip()
                         
+                        # Skip lines that are clearly not transaction data
+                        if '***' in amount_str or 'KYC' in amount_str:
+                            i += 1
+                            continue
+                        
                         # Handle negative amounts
                         amount_str = amount_str.replace('(', '-').replace(')', '').replace(',', '')
                         units_str = units_str.replace('(', '-').replace(')', '').replace(',', '')
                         
-                        amount = float(amount_str) if amount_str else 0
-                        nav = float(nav_str) if nav_str else 0
-                        units = float(units_str) if units_str else 0
+                        # Try to parse amount
+                        try:
+                            amount = float(amount_str)
+                        except ValueError:
+                            i += 1
+                            continue
                         
-                        # Skip stamp duty
+                        # Try to parse nav and units
+                        try:
+                            nav = float(nav_str.replace(',', ''))
+                        except ValueError:
+                            nav = 0
+                        
+                        try:
+                            units = float(units_str)
+                        except ValueError:
+                            units = 0
+                        
+                        # Skip stamp duty and zero amounts
                         if 'Stamp Duty' in trans_type_line or amount == 0:
                             i += 1
                             continue
@@ -264,7 +283,7 @@ class CASParser:
                             except ValueError:
                                 pass
                         
-                        is_redemption = amount < 0 or 'Redemption' in trans_type_line
+                        is_redemption = amount < 0 or 'Redemption' in trans_type_line or 'Switch Over Out' in trans_type_line or 'Lateral Shift Out' in trans_type_line
                         
                         transaction = {
                             'date': date_str,
@@ -287,7 +306,7 @@ class CASParser:
                         if current_key and current_key in self.folios:
                             self.folios[current_key]['transactions'].append(transaction)
                         
-                    except (ValueError, IndexError):
+                    except Exception:
                         pass
             
             i += 1
