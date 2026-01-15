@@ -48,7 +48,7 @@ class CASParser:
             
             # Parse the extracted text
             self._parse_portfolio_summary(full_text)
-            self._parse_transactions(full_text)
+            self._parse_folios_and_transactions(full_text)
             
             return {
                 "portfolio_summary": self.portfolio_summary,
@@ -63,115 +63,186 @@ class CASParser:
     
     def _parse_portfolio_summary(self, text: str):
         """Extract portfolio summary from the first page"""
-        # Extract AMC-wise summary
-        amc_pattern = r'^\s{6}([A-Za-z\s]+(?:Mutual Fund|MF))\s*\n?\s*([\d,]+\.\d+)\s*\n?\s*([\d,]+\.\d+)'
-        
         lines = text.split('\n')
         in_summary = False
+        i = 0
         
-        for i, line in enumerate(lines):
+        while i < len(lines):
+            line = lines[i].strip()
+            
             if 'PORTFOLIO SUMMARY' in line:
                 in_summary = True
+                i += 1
                 continue
             
-            if in_summary and 'Total' in line:
-                # Extract total
-                total_match = re.search(r'Total\s*([\d,]+\.\d+)\s*([\d,]+\.\d+)', line)
-                if total_match:
-                    self.portfolio_summary['total_cost'] = float(total_match.group(1).replace(',', ''))
-                    self.portfolio_summary['total_value'] = float(total_match.group(2).replace(',', ''))
-                break
-            
             if in_summary:
-                # Match AMC line
-                match = re.match(r'\s*([A-Za-z\s]+(?:Mutual Fund|MF))\s*([\d,]+\.\d+)\s*([\d,]+\.\d+)', line)
-                if match:
-                    amc_name = match.group(1).strip()
-                    cost = float(match.group(2).replace(',', ''))
-                    value = float(match.group(3).replace(',', ''))
-                    if cost > 0 or value > 0:
-                        self.portfolio_summary[amc_name] = {
-                            'cost': cost,
-                            'value': value
-                        }
+                # Check for Total line
+                if line.startswith('Total') and i + 2 < len(lines):
+                    try:
+                        cost_line = lines[i + 1].strip().replace(',', '')
+                        value_line = lines[i + 2].strip().replace(',', '')
+                        self.portfolio_summary['total_cost'] = float(cost_line)
+                        self.portfolio_summary['total_value'] = float(value_line)
+                    except:
+                        pass
+                    break
+                
+                # Check for AMC line (starts with spaces and contains "Mutual Fund")
+                if 'Mutual Fund' in line or 'MF' in line:
+                    amc_name = line.strip()
+                    # Next two lines should be cost and value
+                    if i + 2 < len(lines):
+                        try:
+                            cost = float(lines[i + 1].strip().replace(',', ''))
+                            value = float(lines[i + 2].strip().replace(',', ''))
+                            if cost > 0 or value > 0:
+                                self.portfolio_summary[amc_name] = {
+                                    'cost': cost,
+                                    'value': value
+                                }
+                            i += 2
+                        except:
+                            pass
+            i += 1
     
-    def _parse_transactions(self, text: str):
-        """Extract all transaction details from the PDF"""
-        # Pattern for folio header with scheme info
-        folio_pattern = r'([A-Z0-9]+-[A-Za-z0-9\s\-\(\)]+)\s*-\s*ISIN:\s*([A-Z0-9]+).*?Folio No:\s*([\d\s/]+)'
+    def _parse_folios_and_transactions(self, text: str):
+        """Extract folio and transaction details"""
+        lines = text.split('\n')
         
-        # Pattern for transaction line
-        # Date, Amount, Price, Units, Transaction Type, Balance
-        trans_pattern = r'(\d{2}-[A-Za-z]{3}-\d{4})\s+([\d,]+\.\d+)\s+([\d.]+)\s+([\d,]+\.\d+)\s+([A-Za-z\s\-]+)\s+([\d,]+\.\d+)'
-        
+        current_pan = None
         current_folio = None
         current_scheme = None
         current_isin = None
-        current_pan = None
+        current_amc = None
         
-        lines = text.split('\n')
-        
-        for i, line in enumerate(lines):
-            # Check for PAN
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            # Detect AMC header (e.g., "360 ONE Mutual Fund", "AXIS Mutual Fund")
+            if re.match(r'^[A-Z0-9].*Mutual Fund$', line) or 'Mutual Fund' in line and not line.startswith(' '):
+                if 'Mutual Fund' in line and len(line) < 50:
+                    current_amc = line.strip()
+            
+            # Detect PAN
             pan_match = re.search(r'PAN:\s*([A-Z]{5}\d{4}[A-Z])', line)
             if pan_match:
                 current_pan = pan_match.group(1)
             
-            # Check for folio and scheme
+            # Detect scheme with ISIN
+            # Pattern: SCHEME_CODE-Scheme Name - ISIN: ISINCODE
+            isin_match = re.search(r'ISIN:\s*([A-Z0-9]{12})', line)
+            if isin_match:
+                current_isin = isin_match.group(1)
+                # Extract scheme name from the line
+                scheme_match = re.match(r'^([A-Z0-9]+-[^-]+(?:-[^-]+)*)\s*-\s*ISIN:', line)
+                if scheme_match:
+                    current_scheme = scheme_match.group(1).strip()
+            
+            # Detect Folio No
             folio_match = re.search(r'Folio No:\s*([\d\s/]+)', line)
             if folio_match:
                 current_folio = folio_match.group(1).strip()
-            
-            # Check for ISIN
-            isin_match = re.search(r'ISIN:\s*([A-Z0-9]+)', line)
-            if isin_match:
-                current_isin = isin_match.group(1)
-            
-            # Check for scheme name (line before ISIN usually)
-            scheme_match = re.match(r'^([A-Z0-9]+-[A-Za-z0-9\s\-\(\)]+(?:Growth|IDCW|Dividend|Regular|Direct)[A-Za-z\s\-\(\)]*)', line)
-            if scheme_match:
-                current_scheme = scheme_match.group(1).strip()
-            
-            # Check for transaction
-            trans_match = re.match(r'(\d{2}-[A-Za-z]{3}-\d{4})\s+([\d,]+\.\d+)\s+([\d.]+)\s+([\d,]+\.\d+)\s+(.+?)\s*-?\s*([\d,]+\.\d+)?$', line)
-            if trans_match and current_folio:
-                date_str = trans_match.group(1)
-                amount = float(trans_match.group(2).replace(',', ''))
-                nav = float(trans_match.group(3))
-                units = float(trans_match.group(4).replace(',', ''))
-                trans_type = trans_match.group(5).strip()
-                balance = float(trans_match.group(6).replace(',', '')) if trans_match.group(6) else 0
                 
-                # Skip stamp duty entries
-                if 'Stamp Duty' in trans_type:
-                    continue
-                
-                transaction = {
-                    'date': date_str,
-                    'amount': amount,
-                    'nav': nav,
-                    'units': units,
-                    'transaction_type': trans_type,
-                    'balance': balance,
-                    'folio': current_folio,
-                    'scheme': current_scheme,
-                    'isin': current_isin,
-                    'pan': current_pan
-                }
-                
-                self.transactions.append(transaction)
-                
-                # Store in folios dict
-                if current_folio not in self.folios:
+                # Create folio entry
+                if current_folio and current_folio not in self.folios:
                     self.folios[current_folio] = {
                         'scheme': current_scheme,
                         'isin': current_isin,
                         'pan': current_pan,
-                        'transactions': []
+                        'amc': current_amc,
+                        'transactions': [],
+                        'closing_balance': 0,
+                        'cost_value': 0
                     }
-                self.folios[current_folio]['transactions'].append(transaction)
-        
-        return self.transactions
+            
+            # Detect closing balance
+            if 'Closing Unit Balance:' in line:
+                balance_match = re.search(r'Closing Unit Balance:\s*([\d,]+\.\d+)', line)
+                if balance_match and current_folio and current_folio in self.folios:
+                    self.folios[current_folio]['closing_balance'] = float(balance_match.group(1).replace(',', ''))
+            
+            # Detect cost value
+            if 'Total Cost Value:' in line:
+                cost_match = re.search(r'Total Cost Value:\s*([\d,]+\.\d+)', line)
+                if cost_match and current_folio and current_folio in self.folios:
+                    self.folios[current_folio]['cost_value'] = float(cost_match.group(1).replace(',', ''))
+            
+            # Detect current NAV
+            if 'NAV on' in line:
+                nav_match = re.search(r'NAV on [^:]+:\s*INR\s*([\d.]+)', line)
+                if nav_match and current_folio and current_folio in self.folios:
+                    self.folios[current_folio]['current_nav'] = float(nav_match.group(1))
+            
+            # Detect Market Value
+            if 'Market Value on' in line:
+                mv_match = re.search(r'Market Value on [^:]+:\s*INR\s*([\d,]+\.\d+)', line)
+                if mv_match and current_folio and current_folio in self.folios:
+                    self.folios[current_folio]['market_value'] = float(mv_match.group(1).replace(',', ''))
+            
+            # Detect transaction lines
+            # Format: DD-MMM-YYYY  Amount  NAV  Units  Transaction Type  Balance
+            trans_match = re.match(r'^(\d{2}-[A-Za-z]{3}-\d{4})\s*$', line)
+            if trans_match and current_folio:
+                date_str = trans_match.group(1)
+                
+                # Look for transaction data in next lines
+                # Amount, NAV, Units could be on separate lines
+                if i + 4 < len(lines):
+                    try:
+                        amount_str = lines[i + 1].strip()
+                        nav_str = lines[i + 2].strip()
+                        units_str = lines[i + 3].strip()
+                        trans_type_line = lines[i + 4].strip()
+                        
+                        # Handle negative amounts (redemptions)
+                        amount_str = amount_str.replace('(', '-').replace(')', '').replace(',', '')
+                        units_str = units_str.replace('(', '-').replace(')', '').replace(',', '')
+                        
+                        amount = float(amount_str) if amount_str else 0
+                        nav = float(nav_str) if nav_str else 0
+                        units = float(units_str) if units_str else 0
+                        
+                        # Skip stamp duty and other non-transaction entries
+                        if 'Stamp Duty' in trans_type_line or amount == 0:
+                            i += 1
+                            continue
+                        
+                        # Extract transaction type and balance
+                        trans_type = trans_type_line.split('-')[0].strip() if '-' in trans_type_line else trans_type_line
+                        
+                        # Try to get balance from subsequent line
+                        balance = 0
+                        if i + 5 < len(lines):
+                            balance_line = lines[i + 5].strip().replace(',', '')
+                            try:
+                                balance = float(balance_line)
+                            except:
+                                pass
+                        
+                        transaction = {
+                            'date': date_str,
+                            'amount': abs(amount),
+                            'nav': nav,
+                            'units': abs(units),
+                            'transaction_type': trans_type,
+                            'balance': balance,
+                            'folio': current_folio,
+                            'scheme': current_scheme,
+                            'isin': current_isin,
+                            'pan': current_pan,
+                            'is_redemption': amount < 0 or 'Redemption' in trans_type_line
+                        }
+                        
+                        self.transactions.append(transaction)
+                        
+                        if current_folio in self.folios:
+                            self.folios[current_folio]['transactions'].append(transaction)
+                        
+                    except (ValueError, IndexError):
+                        pass
+            
+            i += 1
 
 
 class NAVService:
