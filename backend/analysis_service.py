@@ -1716,8 +1716,8 @@ class GapSheetGenerator:
         self._auto_width(ws)
     
     def _create_exit_loads_sheet(self, wb: Workbook):
-        """Sheet 9: Exit Loads"""
-        ws = wb.create_sheet("Exit Loads ")
+        """Sheet 8: Exit Loads"""
+        ws = wb.create_sheet("Exit Loads")
         
         headers = [
             "Folio Number", "Scheme ID", "Scheme Description",
