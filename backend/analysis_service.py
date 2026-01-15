@@ -1829,7 +1829,7 @@ class GapSheetGenerator:
     
     def _create_summary_sheet(self, wb: Workbook):
         """Sheet 1: Summary - Overview of portfolio with category-wise breakdown"""
-        ws = wb.create_sheet("Summary")
+        ws = wb.create_sheet("Summary", 0)  # Position 0 to make it first
         
         # Portfolio Summary Section
         ws.cell(row=1, column=1, value="PORTFOLIO SUMMARY")
