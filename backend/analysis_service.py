@@ -217,7 +217,7 @@ class CASParser:
                             balance_line = lines[i + 5].strip().replace(',', '')
                             try:
                                 balance = float(balance_line)
-                            except:
+                            except ValueError:
                                 pass
                         
                         transaction = {
