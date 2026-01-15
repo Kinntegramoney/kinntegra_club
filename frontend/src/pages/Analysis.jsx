@@ -531,19 +531,19 @@ const Analysis = () => {
                     {analyses.map((analysis) => (
                       <div 
                         key={analysis.id}
-                        className={`bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700 transition-colors cursor-pointer ${
-                          (selectedAnalysis?.id === analysis.id || selectedAnalysis?.analysis_id === analysis.id) ? 'ring-2 ring-blue-500' : ''
+                        className={`bg-gray-50 rounded-lg p-4 hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer ${
+                          (selectedAnalysis?.id === analysis.id || selectedAnalysis?.analysis_id === analysis.id) ? 'ring-2 ring-amber-500 bg-amber-50' : ''
                         }`}
                         onClick={() => handleViewDetails(analysis.id)}
                         data-testid={`analysis-item-${analysis.id}`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="font-medium text-white flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-blue-400" />
+                            <h4 className="font-medium text-gray-800 flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-indigo-500" />
                               {analysis.filename}
                             </h4>
-                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
+                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
                                 {formatDate(analysis.created_at)}
@@ -562,7 +562,7 @@ const Analysis = () => {
                                 e.stopPropagation();
                                 handleViewDetails(analysis.id);
                               }}
-                              className="text-slate-400 hover:text-white"
+                              className="text-gray-500 hover:text-gray-700"
                               data-testid={`view-analysis-${analysis.id}`}
                             >
                               <Eye className="h-4 w-4" />
@@ -574,7 +574,7 @@ const Analysis = () => {
                                 e.stopPropagation();
                                 handleDownload(analysis.id, analysis.filename);
                               }}
-                              className="text-emerald-400 hover:text-emerald-300"
+                              className="text-emerald-600 hover:text-emerald-700"
                               data-testid={`download-analysis-${analysis.id}`}
                             >
                               <Download className="h-4 w-4" />
@@ -586,7 +586,7 @@ const Analysis = () => {
                                 e.stopPropagation();
                                 handleDelete(analysis.id);
                               }}
-                              className="text-red-400 hover:text-red-300"
+                              className="text-red-500 hover:text-red-600"
                               data-testid={`delete-analysis-${analysis.id}`}
                             >
                               <Trash2 className="h-4 w-4" />
