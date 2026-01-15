@@ -142,6 +142,7 @@ class CASParser:
         current_amc = None
         current_advisor = None
         current_key = None  # Unique key: folio + isin
+        pending_scheme_line = None  # For multi-line scheme names
         
         i = 0
         while i < len(lines):
@@ -156,8 +157,13 @@ class CASParser:
             if pan_match:
                 current_pan = pan_match.group(1)
             
-            # Detect scheme with ISIN and Advisor
-            # Format: SCHEME_CODE-Scheme Name - ISIN: ISINCODE(Advisor: ARN-XXXXX)
+            # Check for scheme line (starts with scheme code like "PAVAP-" or "IFIFCRG-")
+            # These may span multiple lines before ISIN
+            scheme_code_match = re.match(r'^([A-Z0-9]+)-(.+)', line)
+            if scheme_code_match and 'ISIN' not in line and '-Demat' not in line:
+                pending_scheme_line = line
+            
+            # Detect ISIN (may be on same line or next line after scheme)
             isin_match = re.search(r'ISIN:\s*([A-Z0-9]{12})', line)
             if isin_match:
                 current_isin = isin_match.group(1)
@@ -167,14 +173,23 @@ class CASParser:
                 if advisor_match:
                     current_advisor = advisor_match.group(1)
                 
-                # Extract scheme name - remove the code prefix (e.g., "IFIFCRG-")
-                # Pattern: CODE-Scheme Name - ISIN:
-                scheme_match = re.match(r'^([A-Z0-9]+)-(.+?)\s*-\s*ISIN:', line)
+                # Build full scheme name from pending line + current line if needed
+                full_line = line
+                if pending_scheme_line and 'ISIN' not in pending_scheme_line:
+                    full_line = pending_scheme_line + line
+                
+                # Extract scheme name - remove the code prefix
+                scheme_match = re.match(r'^([A-Z0-9]+)-(.+?)\s*-\s*ISIN:', full_line)
                 if scheme_match:
                     scheme_code = scheme_match.group(1)
                     scheme_name = scheme_match.group(2).strip()
+                    # Clean up scheme name - remove trailing junk
+                    scheme_name = re.sub(r'\s*\(formerly.*$', '', scheme_name)
+                    scheme_name = re.sub(r'\s*-\s*Demat\)?.*$', '', scheme_name)
                     current_scheme_full = f"{scheme_code}-{scheme_name}"
                     current_scheme = scheme_name  # Clean name without code
+                
+                pending_scheme_line = None
             
             # Detect Folio No - this creates a new entry when combined with ISIN
             folio_match = re.search(r'Folio No:\s*([\d\s/]+)', line)
