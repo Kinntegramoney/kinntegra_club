@@ -265,20 +265,8 @@ export default function TradeVerification() {
     }
   };
 
-  const getTagLabel = (tag) => {
-    const labels = {
-      'principal': 'Principal',
-      'interest': 'Interest',
-      'net_amount': 'Net Amount',
-      'other': 'Other (Custom)',
-      'not_invest': 'Not Invest',
-      'not_tagged': 'Not Tagged'
-    };
-    return labels[tag] || tag;
-  };
-
   const formatINR = (amount) => {
-    return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `₹ ${amount?.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || 0}`;
   };
 
   // Save a single entry's tag
