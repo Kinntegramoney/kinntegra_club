@@ -1644,21 +1644,12 @@ class GapSheetGenerator:
                 market_value = folio_closing_balance * current_nav
                 ws.cell(row=row, column=17, value=market_value)
             
-            # Column 18: MF Ageing - only for folios with balance
+            # Column 18: MF Ageing - absolute number of days for folios with balance
             if has_balance and not trans.get('is_redemption'):
                 trans_date = parse_date(trans.get('date', ''))
                 if trans_date != datetime.min:
                     days_held = (self.report_date - trans_date).days
-                    if days_held >= 365:
-                        years = days_held // 365
-                        months = (days_held % 365) // 30
-                        ageing = f"{years}Y {months}M" if months > 0 else f"{years}Y"
-                        ws.cell(row=row, column=18, value=ageing)
-                    else:
-                        months = days_held // 30
-                        days = days_held % 30
-                        ageing = f"{months}M {days}D" if days > 0 else f"{months}M"
-                        ws.cell(row=row, column=18, value=ageing)
+                    ws.cell(row=row, column=18, value=days_held)
             
             # Column 19: XIRR - only calculate for folios with balance
             # XIRR uses transaction dates and report date NAV
