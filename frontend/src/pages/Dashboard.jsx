@@ -559,38 +559,38 @@ export default function Dashboard() {
                 <tbody className="divide-y divide-gray-100">
                   {activityLog.length > 0 ? (
                     activityLog.map((activity, index) => (
-                      <tr key={index} className="hover:bg-slate-800/50 transition-colors">
+                      <tr key={index} className="hover:bg-gray-50 transition-colors">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            {activity.type === 'trade' && <Landmark className="h-4 w-4 text-indigo-400" />}
-                            {activity.type === 'real_estate_investment' && <Building2 className="h-4 w-4 text-pink-400" />}
-                            {activity.type === 'client_created' && <UserPlus className="h-4 w-4 text-emerald-400" />}
-                            <span className="text-sm text-slate-300 capitalize">
+                            {activity.type === 'trade' && <Landmark className="h-4 w-4 text-indigo-500" />}
+                            {activity.type === 'real_estate_investment' && <Building2 className="h-4 w-4 text-pink-500" />}
+                            {activity.type === 'client_created' && <UserPlus className="h-4 w-4 text-emerald-500" />}
+                            <span className="text-sm text-gray-700 capitalize">
                               {activity.type.replace(/_/g, ' ')}
                             </span>
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <p className="text-sm text-slate-300 truncate max-w-xs">{activity.description}</p>
+                          <p className="text-sm text-gray-600 truncate max-w-xs">{activity.description}</p>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-sm font-medium text-white">
+                          <span className="text-sm font-medium text-gray-800">
                             {activity.amount > 0 ? formatCurrency(activity.amount) : '-'}
                           </span>
                         </td>
                         <td className="py-3 px-4">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            activity.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
-                            activity.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
-                            activity.status === 'invested' ? 'bg-indigo-500/20 text-indigo-400' :
-                            activity.status === 'new' ? 'bg-cyan-500/20 text-cyan-400' :
-                            'bg-slate-500/20 text-slate-400'
+                            activity.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                            activity.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                            activity.status === 'invested' ? 'bg-indigo-100 text-indigo-700' :
+                            activity.status === 'new' ? 'bg-cyan-100 text-cyan-700' :
+                            'bg-gray-100 text-gray-600'
                           }`}>
                             {activity.status}
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-sm text-slate-400">
+                          <span className="text-sm text-gray-500">
                             {activity.timestamp ? new Date(activity.timestamp).toLocaleDateString() : '-'}
                           </span>
                         </td>
@@ -598,7 +598,7 @@ export default function Dashboard() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-500">
+                      <td colSpan={5} className="py-8 text-center text-gray-400">
                         No recent activity
                       </td>
                     </tr>
@@ -609,15 +609,15 @@ export default function Dashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-800 p-5">
-            <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <button
                 onClick={() => navigate("/broker/admin/bonds")}
-                className="flex flex-col items-center justify-center p-4 bg-slate-800/50 hover:bg-slate-800 rounded-xl border border-slate-700 hover:border-indigo-500/50 transition-all group"
+                className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-amber-400 transition-all group"
                 data-testid="quick-action-bonds"
               >
-                <Landmark className="h-8 w-8 text-indigo-400 group-hover:scale-110 transition-transform" />
+                <Landmark className="h-8 w-8 text-indigo-500 group-hover:scale-110 transition-transform" />
                 <span className="mt-2 text-sm font-medium text-slate-300">Manage Bonds</span>
               </button>
               <button
