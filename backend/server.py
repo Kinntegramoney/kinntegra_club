@@ -3027,11 +3027,17 @@ async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, curren
 class ReinvestmentTagUpdate(BaseModel):
     reinvestment_tag: str
     custom_amount: Optional[float] = None  # "not_tagged", "principal", "interest", "net_amount", "not_invest"
+    send_approval_email: bool = False  # Whether to send approval email to client
 
 
 class ReinvestmentApproval(BaseModel):
     approved: bool
     notes: Optional[str] = None
+
+
+class SendReinvestmentApprovalRequest(BaseModel):
+    client_id: str
+    cashflow_ids: List[str]
 
 
 @api_router.get("/reinvestment/upcoming")
