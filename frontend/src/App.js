@@ -109,6 +109,14 @@ function App() {
             } 
           />
           <Route 
+            path="/broker/admin/scheme-master" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <AdminSchemeMaster />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/broker/trades" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
