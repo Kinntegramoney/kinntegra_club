@@ -389,34 +389,34 @@ const Analysis = () => {
               <CardContent>
                 <form onSubmit={handleCASUpload} className="space-y-4">
                   <div>
-                    <Label htmlFor="cas-file" className="text-slate-300">CAS PDF File</Label>
+                    <Label htmlFor="cas-file" className="text-gray-700">CAS PDF File</Label>
                     <Input
                       id="cas-file"
                       type="file"
                       accept=".pdf"
                       onChange={(e) => setCasFile(e.target.files[0])}
-                      className="mt-1 bg-slate-700 border-slate-600 text-white file:bg-slate-600 file:text-white file:border-0"
+                      className="mt-1 bg-gray-50 border-gray-300 text-gray-800 file:bg-gray-100 file:text-gray-700 file:border-0"
                       data-testid="cas-file-input"
                     />
                     {casFile && (
-                      <p className="text-sm text-emerald-400 mt-1">✓ {casFile.name}</p>
+                      <p className="text-sm text-emerald-600 mt-1">✓ {casFile.name}</p>
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="cas-password" className="text-slate-300">PDF Password</Label>
+                    <Label htmlFor="cas-password" className="text-gray-700">PDF Password</Label>
                     <Input
                       id="cas-password"
                       type="password"
                       placeholder="Enter PDF password"
                       value={casPassword}
                       onChange={(e) => setCasPassword(e.target.value)}
-                      className="mt-1 bg-slate-700 border-slate-600 text-white placeholder:text-slate-500"
+                      className="mt-1 bg-gray-50 border-gray-300 text-gray-800 placeholder:text-gray-400"
                       data-testid="cas-password-input"
                     />
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-white"
                     disabled={uploadingCAS || !casFile || !casPassword}
                     data-testid="analyze-cas-button"
                   >
@@ -441,16 +441,16 @@ const Analysis = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Step 2: Selected Analysis Results */}
             {selectedAnalysis && (
-              <Card className="bg-slate-800/50 border-slate-700 border-blue-500/50" data-testid="selected-analysis-card">
+              <Card className="bg-white border-gray-200 shadow-sm border-l-4 border-l-amber-500" data-testid="selected-analysis-card">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm font-bold text-white">2</div>
                       <div>
-                        <CardTitle className="text-white">
+                        <CardTitle className="text-gray-800">
                           {selectedAnalysis.filename || 'Analysis Result'}
                         </CardTitle>
-                        <CardDescription className="text-slate-400">
+                        <CardDescription className="text-gray-500">
                           Analyzed on {formatDate(selectedAnalysis.created_at)}
                         </CardDescription>
                       </div>
