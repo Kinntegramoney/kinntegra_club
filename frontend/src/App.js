@@ -233,6 +233,16 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
+          {/* Analysis Route - All Users */}
+          <Route 
+            path="/analysis" 
+            element={
+              <ProtectedRoute allowedRoles={["broker", "sub_broker", "client"]}>
+                <Analysis />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </BrowserRouter>
       <Toaster />
