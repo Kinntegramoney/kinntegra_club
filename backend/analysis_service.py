@@ -1140,7 +1140,7 @@ class GapSheetGenerator:
                     original_gain_loss = current_value - purchase_value if closing_balance > 0 else 0
                     
                     # Check for grandfathering (equity funds before Jan 31, 2018)
-                    gf_nav = get_grandfathered_nav(purchase_nav, current_nav, trans_date, fund_type)
+                    gf_nav = get_grandfathered_nav(purchase_nav, current_nav, trans_date, fund_type) if closing_balance > 0 else None
                     gf_applied = gf_nav is not None and gf_nav != purchase_nav and trans_date < GRANDFATHER_DATE
                     
                     if gf_applied:
@@ -1162,33 +1162,73 @@ class GapSheetGenerator:
                     # Get financial year of purchase
                     fy = get_financial_year(trans_date)
                     
-                    # Write row with grandfathering columns
-                    ws.cell(row=row, column=1, value=folio_data.get('folio', folio_id))
-                    ws.cell(row=row, column=2, value=scheme_name[:50])
-                    ws.cell(row=row, column=3, value=fund_type)
-                    ws.cell(row=row, column=4, value=fy)
-                    ws.cell(row=row, column=5, value=trans['date'])
-                    ws.cell(row=row, column=6, value=holding_days)
-                    ws.cell(row=row, column=7, value=lt_st_status)
-                    ws.cell(row=row, column=8, value=round(units, 4))
-                    ws.cell(row=row, column=9, value=round(purchase_nav, 4) if purchase_nav else '')
-                    ws.cell(row=row, column=10, value=round(gf_nav, 4) if gf_nav and gf_applied else '')  # Grandfathered NAV
-                    ws.cell(row=row, column=11, value=round(effective_cost_nav, 4) if effective_cost_nav else '')  # Effective Cost NAV
-                    ws.cell(row=row, column=12, value=round(current_nav, 4) if current_nav else '')
-                    ws.cell(row=row, column=13, value=round(purchase_value, 2))
-                    ws.cell(row=row, column=14, value=round(gf_value, 2) if gf_value else '')  # Grandfathered Value
-                    ws.cell(row=row, column=15, value=round(effective_cost, 2))  # Effective Cost
-                    ws.cell(row=row, column=16, value=round(current_value, 2))
-                    ws.cell(row=row, column=17, value=round(original_gain_loss, 2))  # Original Gain/Loss
-                    ws.cell(row=row, column=18, value=round(gain_loss_after_gf, 2))  # Gain/Loss after GF
-                    ws.cell(row=row, column=19, value=f"{tax_rate*100:.1f}%")
-                    ws.cell(row=row, column=20, value=round(estimated_tax, 2))
-                    ws.cell(row=row, column=21, value="Yes" if gf_applied else "No")  # Grandfathering Applied
-                    
-                    row += 1
+                    # Store entry for sorting
+                    tax_entries.append({
+                        'folio': folio_data.get('folio', folio_id),
+                        'scheme': scheme_name[:50],
+                        'fund_type': fund_type,
+                        'fy': fy,
+                        'trans_date': trans_date,
+                        'holding_days': holding_days,
+                        'lt_st_status': lt_st_status,
+                        'units': units,
+                        'purchase_nav': purchase_nav,
+                        'gf_nav': gf_nav if gf_applied else None,
+                        'effective_cost_nav': effective_cost_nav,
+                        'current_nav': current_nav if closing_balance > 0 else None,
+                        'purchase_value': purchase_value,
+                        'gf_value': gf_value,
+                        'effective_cost': effective_cost,
+                        'current_value': current_value,
+                        'original_gain_loss': original_gain_loss,
+                        'gain_loss_after_gf': gain_loss_after_gf,
+                        'tax_rate': tax_rate,
+                        'estimated_tax': estimated_tax,
+                        'gf_applied': gf_applied,
+                        'has_balance': closing_balance > 0
+                    })
                     
                 except ValueError:
                     pass
+        
+        # Sort by Financial Year (oldest first) then by date (oldest first)
+        def get_fy_sort_key(fy_str):
+            # Extract start year from "FY 2023-2024" format
+            try:
+                return int(fy_str.split()[1].split('-')[0])
+            except:
+                return 9999
+        
+        tax_entries.sort(key=lambda x: (get_fy_sort_key(x['fy']), x['trans_date']))
+        
+        # Write sorted entries
+        row = 2
+        for entry in tax_entries:
+            ws.cell(row=row, column=1, value=entry['folio'])
+            ws.cell(row=row, column=2, value=entry['scheme'])
+            ws.cell(row=row, column=3, value=entry['fund_type'])
+            ws.cell(row=row, column=4, value=entry['fy'])
+            # Convert date to proper Excel date format
+            ws.cell(row=row, column=5, value=entry['trans_date'])
+            ws.cell(row=row, column=5).number_format = 'DD-MMM-YYYY'
+            ws.cell(row=row, column=6, value=entry['holding_days'])
+            ws.cell(row=row, column=7, value=entry['lt_st_status'])
+            ws.cell(row=row, column=8, value=round(entry['units'], 4))
+            ws.cell(row=row, column=9, value=round(entry['purchase_nav'], 4) if entry['purchase_nav'] else '')
+            ws.cell(row=row, column=10, value=round(entry['gf_nav'], 4) if entry['gf_nav'] else '')
+            ws.cell(row=row, column=11, value=round(entry['effective_cost_nav'], 4) if entry['effective_cost_nav'] else '')
+            ws.cell(row=row, column=12, value=round(entry['current_nav'], 4) if entry['current_nav'] else '')
+            ws.cell(row=row, column=13, value=round(entry['purchase_value'], 2))
+            ws.cell(row=row, column=14, value=round(entry['gf_value'], 2) if entry['gf_value'] else '')
+            ws.cell(row=row, column=15, value=round(entry['effective_cost'], 2))
+            ws.cell(row=row, column=16, value=round(entry['current_value'], 2) if entry['has_balance'] else '')
+            ws.cell(row=row, column=17, value=round(entry['original_gain_loss'], 2) if entry['has_balance'] else '')
+            ws.cell(row=row, column=18, value=round(entry['gain_loss_after_gf'], 2) if entry['has_balance'] else '')
+            ws.cell(row=row, column=19, value=f"{entry['tax_rate']*100:.1f}%")
+            ws.cell(row=row, column=20, value=round(entry['estimated_tax'], 2) if entry['has_balance'] else '')
+            ws.cell(row=row, column=21, value="Yes" if entry['gf_applied'] else "No")
+            
+            row += 1
         
         self._auto_width(ws)
     
