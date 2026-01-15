@@ -1995,11 +1995,11 @@ class GapSheetGenerator:
         ws.cell(row=7, column=2, value=format_inr(total_current_value + total_withdrawn - total_invested))
         
         # Category-wise breakdown section
-        ws.cell(row=9, column=1, value="CATEGORY-WISE BREAKDOWN")
-        ws.merge_cells('A9:F9')
-        self._style_header(ws, 9, 6)
+        ws.cell(row=9, column=1, value="CATEGORY-WISE BREAKDOWN (Active Funds Only)")
+        ws.merge_cells('A9:H9')
+        self._style_header(ws, 9, 8)
         
-        cat_headers = ["Category", "No. of Schemes", "Amount Invested", "Current Value", "Gain/Loss", "Allocation %"]
+        cat_headers = ["Category", "No. of Schemes", "Amount Invested", "Withdrawn/Dividend", "Current Value", "Gain/Loss", "XIRR %", "Allocation %"]
         for col, header in enumerate(cat_headers, 1):
             ws.cell(row=11, column=col, value=header)
         self._style_header(ws, 11, len(cat_headers))
@@ -2007,15 +2007,23 @@ class GapSheetGenerator:
         row = 12
         for category, data in category_data.items():
             if data['current'] > 0 or data['invested'] > 0:
-                gain_loss = data['current'] - data['invested']
+                # Gain/Loss = (Current Value + Withdrawals) - Invested
+                gain_loss = (data['current'] + data['withdrawn']) - data['invested']
                 allocation = (data['current'] / total_current_value * 100) if total_current_value > 0 else 0
+                
+                # Calculate XIRR for this category
+                xirr_pct = 0.0
+                if data['cashflows'] and len(data['cashflows']) >= 2:
+                    xirr_pct = calculate_xirr(data['cashflows']) * 100
                 
                 ws.cell(row=row, column=1, value=category)
                 ws.cell(row=row, column=2, value=data['schemes'])
                 ws.cell(row=row, column=3, value=format_inr(data['invested']))
-                ws.cell(row=row, column=4, value=format_inr(data['current']))
-                ws.cell(row=row, column=5, value=format_inr(gain_loss))
-                ws.cell(row=row, column=6, value=f"{allocation:.1f}%")
+                ws.cell(row=row, column=4, value=format_inr(data['withdrawn']))
+                ws.cell(row=row, column=5, value=format_inr(data['current']))
+                ws.cell(row=row, column=6, value=format_inr(gain_loss))
+                ws.cell(row=row, column=7, value=f"{xirr_pct:.2f}%" if xirr_pct else "N/A")
+                ws.cell(row=row, column=8, value=f"{allocation:.1f}%")
                 row += 1
         
         # Asset Class Summary (Equity vs Debt vs Hybrid)
