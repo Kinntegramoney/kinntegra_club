@@ -319,9 +319,9 @@ const Analysis = () => {
           {/* Left Column - Upload Section */}
           <div className="space-y-6">
             {/* Steps Progress */}
-            <Card className="bg-slate-800/50 border-slate-700">
+            <Card className="bg-white border-gray-200 shadow-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="text-white text-lg">Analysis Steps</CardTitle>
+                <CardTitle className="text-gray-800 text-lg">Analysis Steps</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <StepIndicator 
@@ -330,7 +330,7 @@ const Analysis = () => {
                   isComplete={analyses.length > 0}
                   isCurrent={true}
                 />
-                <div className="ml-4 border-l-2 border-slate-600 h-4" />
+                <div className="ml-4 border-l-2 border-gray-300 h-4" />
                 <StepIndicator 
                   step={2} 
                   title="Download Gap Sheet" 
@@ -342,18 +342,18 @@ const Analysis = () => {
 
             {/* Scheme Master Status - Info only */}
             {!schemeMasterStatus?.exists && user?.role === 'broker' && (
-              <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-lg p-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-yellow-300 font-medium">Scheme Master Not Uploaded</p>
-                    <p className="text-yellow-200/70 text-sm mt-1">
+                    <p className="text-amber-700 font-medium">Scheme Master Not Uploaded</p>
+                    <p className="text-amber-600 text-sm mt-1">
                       For better NAV mapping, upload the BSE Scheme Master file.
                     </p>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="mt-2 border-yellow-600 text-yellow-400 hover:bg-yellow-600/20"
+                      className="mt-2 border-amber-400 text-amber-600 hover:bg-amber-100"
                       onClick={() => navigate('/broker/admin/scheme-master')}
                     >
                       <Database className="h-4 w-4 mr-2" />
@@ -365,8 +365,8 @@ const Analysis = () => {
             )}
 
             {schemeMasterStatus?.exists && (
-              <div className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg p-3">
-                <div className="flex items-center gap-2 text-emerald-400">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 text-emerald-600">
                   <CheckCircle2 className="h-4 w-4" />
                   <span className="text-sm font-medium">
                     Scheme Master: {schemeMasterStatus.total_schemes?.toLocaleString()} schemes
@@ -376,13 +376,13 @@ const Analysis = () => {
             )}
 
             {/* Step 1: CAS Upload */}
-            <Card className="bg-slate-800/50 border-slate-700" data-testid="cas-upload-card">
+            <Card className="bg-white border-gray-200 shadow-sm" data-testid="cas-upload-card">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold">1</div>
+                <CardTitle className="text-gray-800 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold text-white">1</div>
                   Upload CAS PDF
                 </CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-gray-500">
                   Upload your Consolidated Account Statement (password-protected PDF)
                 </CardDescription>
               </CardHeader>
