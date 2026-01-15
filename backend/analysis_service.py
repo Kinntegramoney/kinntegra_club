@@ -1455,8 +1455,10 @@ class GapSheetGenerator:
             ws.cell(row=row, column=14, value=total_amount)
             
             # Column 15: Balance Units (current closing balance from folio)
+            balance_units = 0
             if not trans.get('is_redemption'):
-                ws.cell(row=row, column=15, value=folio_data.get('closing_balance', 0))
+                balance_units = folio_data.get('closing_balance', 0)
+                ws.cell(row=row, column=15, value=balance_units)
             
             # Column 16: Current NAV
             current_nav = folio_data.get('current_nav', 0)
@@ -1464,17 +1466,31 @@ class GapSheetGenerator:
                 ws.cell(row=row, column=16, value=current_nav)
             
             # Column 17: Current Market Value (Balance Units * Current NAV)
-            if not trans.get('is_redemption') and current_nav > 0:
-                balance_units = folio_data.get('closing_balance', 0)
+            if not trans.get('is_redemption') and current_nav > 0 and balance_units > 0:
                 market_value = balance_units * current_nav
-                if market_value > 0:
-                    ws.cell(row=row, column=17, value=market_value)
+                ws.cell(row=row, column=17, value=market_value)
             
-            # Column 18: XIRR (leave blank for now - calculated at folio level)
+            # Column 18: MF Ageing - calculate age from transaction date to report date
+            if not trans.get('is_redemption') and balance_units > 0:
+                trans_date = parse_date(trans.get('date', ''))
+                if trans_date != datetime.min:
+                    days_held = (self.report_date - trans_date).days
+                    if days_held >= 365:
+                        years = days_held // 365
+                        months = (days_held % 365) // 30
+                        ageing = f"{years}Y {months}M" if months > 0 else f"{years}Y"
+                        ws.cell(row=row, column=18, value=ageing)
+                    else:
+                        months = days_held // 30
+                        days = days_held % 30
+                        ageing = f"{months}M {days}D" if days > 0 else f"{months}M"
+                        ws.cell(row=row, column=18, value=ageing)
             
-            # Column 19: Advisor ARN
-            ws.cell(row=row, column=19, value=trans.get('advisor', ''))
-            # Column 20: Advisor Name (leave blank - not available in CAS)
+            # Column 19: XIRR (leave blank for now - calculated at folio level)
+            
+            # Column 20: Advisor ARN
+            ws.cell(row=row, column=20, value=trans.get('advisor', ''))
+            # Column 21: Advisor Name (leave blank - not available in CAS)
             
             row += 1
         
