@@ -818,11 +818,11 @@ class GapSheetGenerator:
         """Sheet 2: Portfolio Performance"""
         ws = wb.create_sheet("Portfolio Performance")
         
-        # Column order as per user's template:
-        # Folio No., Instrument Name, Valuation, Cash Withdrawal, Dividend Paid, 
+        # Column order as per user's template + Category:
+        # Folio No., Instrument Name, Category, Valuation, Cash Withdrawal, Dividend Paid, 
         # Amount Invested, Absolute Gains, Absolute Return %, CAGR %, Closing Units, PAN, Adviser ARN
         headers = [
-            "Folio No.", "Instrument Name", "Valuation", "Cash Withdrawal",
+            "Folio No.", "Instrument Name", "Category", "Valuation", "Cash Withdrawal",
             "Dividend Paid", "Amount Invested", "Absolute Gains", "Absolute Return %", 
             "CAGR %", "Closing Units", "PAN", "Adviser ARN"
         ]
