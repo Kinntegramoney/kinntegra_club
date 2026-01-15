@@ -955,7 +955,9 @@ class GapSheetGenerator:
                 'advisor_arn': advisor_arn
             }
             
-            all_entries.append(entry)
+            # Only include folios with actual data (skip empty folios with only NFT transactions)
+            if invested > 0 or withdrawn > 0 or market_value > 0 or closing_balance > 0:
+                all_entries.append(entry)
         
         # Sort by Valuation (highest first)
         all_entries.sort(key=lambda x: x['valuation'], reverse=True)
