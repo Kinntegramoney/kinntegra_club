@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { TrendingUp, Wallet, ClipboardCheck, User, LogOut, Menu, X, Bell, Building2 } from "lucide-react";
+import { TrendingUp, Wallet, ClipboardCheck, User, LogOut, Menu, X, Bell, Building2, FileBarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
 
@@ -48,6 +48,7 @@ export default function ClientSidebar({ user }) {
     { path: "/client/real-estate", label: "Real Estate", icon: Building2 },
     { path: "/client/holdings", label: "Holdings", icon: Wallet },
     { path: "/client/trades", label: "Trade Verification", icon: ClipboardCheck },
+    { path: "/analysis", label: "Analysis", icon: FileBarChart },
     { path: "/client/profile", label: "Profile", icon: User },
   ];
 
