@@ -1812,12 +1812,11 @@ class GapSheetGenerator:
         self._auto_width(ws)
     
     def _create_exit_loads_sheet(self, wb: Workbook):
-        """Sheet 8: Exit Loads"""
+        """Sheet 8: Exit Loads - parsed from CAS PDF"""
         ws = wb.create_sheet("Exit Loads")
         
         headers = [
-            "Folio Number", "Scheme ID", "Scheme Description",
-            "Service Provider Name", "Fund Name", "Load Structure Details"
+            "Folio Number", "Scheme Name", "ISIN", "AMC", "Exit Load Structure"
         ]
         
         for col, header in enumerate(headers, 1):
@@ -1826,11 +1825,26 @@ class GapSheetGenerator:
         
         row = 2
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            # Only show active holdings
+            if folio_data.get('closing_balance', 0) <= 0:
+                continue
+                
             ws.cell(row=row, column=1, value=folio_data.get('folio', folio_id))
-            ws.cell(row=row, column=3, value=folio_data.get('scheme', '')[:50])
+            ws.cell(row=row, column=2, value=folio_data.get('scheme', '')[:60])
+            ws.cell(row=row, column=3, value=folio_data.get('isin', ''))
             ws.cell(row=row, column=4, value=folio_data.get('amc', ''))
-            ws.cell(row=row, column=6, value="Entry Load is NIL ; Exit Load - Please refer scheme document")
+            
+            # Use parsed exit load or provide default message
+            exit_load = folio_data.get('exit_load', '')
+            if not exit_load:
+                exit_load = "Exit load information not found in CAS - Please refer to scheme document"
+            ws.cell(row=row, column=5, value=exit_load)
+            
             row += 1
+        
+        # Add note about exit loads
+        ws.cell(row=row + 2, column=1, value="Note: Exit load information is extracted from CAS PDF. For latest exit load structure, please refer to the scheme information document or AMC website.")
+        ws.merge_cells(f'A{row+2}:E{row+2}')
         
         self._auto_width(ws)
     
