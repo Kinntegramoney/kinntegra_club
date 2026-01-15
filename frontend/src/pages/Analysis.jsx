@@ -30,7 +30,7 @@ const API = process.env.REACT_APP_BACKEND_URL;
 const StepIndicator = ({ step, title, isComplete, isCurrent }) => (
   <div className="flex items-center gap-3">
     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-      isComplete ? 'bg-emerald-500' : isCurrent ? 'bg-blue-500' : 'bg-slate-600'
+      isComplete ? 'bg-emerald-500' : isCurrent ? 'bg-amber-500' : 'bg-gray-300'
     }`}>
       {isComplete ? (
         <CheckCircle2 className="h-5 w-5 text-white" />
@@ -38,7 +38,7 @@ const StepIndicator = ({ step, title, isComplete, isCurrent }) => (
         <span className="text-white font-medium">{step}</span>
       )}
     </div>
-    <span className={`text-sm font-medium ${isCurrent ? 'text-white' : 'text-slate-400'}`}>
+    <span className={`text-sm font-medium ${isCurrent ? 'text-gray-800' : 'text-gray-500'}`}>
       {title}
     </span>
   </div>
