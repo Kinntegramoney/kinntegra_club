@@ -7527,10 +7527,13 @@ async def download_gap_sheet(
         # Return as downloadable ZIP file
         filename = f"GapSheet_{analysis.get('filename', 'analysis').replace('.pdf', '')}.zip"
         
-        return StreamingResponse(
-            io.BytesIO(zip_bytes),
+        return Response(
+            content=zip_bytes,
             media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Length": str(len(zip_bytes))
+            }
         )
         
     except HTTPException:
