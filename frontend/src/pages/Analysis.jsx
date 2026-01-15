@@ -601,7 +601,8 @@ const Analysis = () => {
             </Card>
           </div>
         </div>
-      </main>
+        </div>
+      </div>
     </div>
   );
 };
