@@ -834,12 +834,12 @@ class GapSheetGenerator:
             cell = ws.cell(row=row, column=7, value=round(entry['gains'], 2))
             cell.number_format = '₹#,##0.00'
             
-            # Percentage columns
+            # Percentage columns with % sign
             cell = ws.cell(row=row, column=8, value=round(entry['return_pct'], 2))
-            cell.number_format = '0.00%' if entry['return_pct'] == 0 else '0.00'
+            cell.number_format = '0.00"%"'
             
             cell = ws.cell(row=row, column=9, value=round(entry['cagr'], 4))
-            cell.number_format = '0.0000'
+            cell.number_format = '0.0000"%"'
             
             # Units with commas
             cell = ws.cell(row=row, column=10, value=round(entry['closing_units'], 3))
