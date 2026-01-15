@@ -400,40 +400,49 @@ class GapSheetGenerator:
         total_valuation = 0
         
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
-            transactions = folio_data.get('transactions', [])
-            if not transactions:
+            # Get values from parsed folio data
+            closing_balance = folio_data.get('closing_balance', 0)
+            cost_value = folio_data.get('cost_value', 0)
+            market_value = folio_data.get('market_value', 0)
+            current_nav = folio_data.get('current_nav', 0)
+            
+            # Skip folios with no holdings
+            if closing_balance <= 0:
                 continue
             
-            # Calculate totals for this folio
-            invested = sum(t['amount'] for t in transactions if 'Purchase' in t.get('transaction_type', ''))
-            redeemed = sum(t['amount'] for t in transactions if 'Redemption' in t.get('transaction_type', ''))
-            net_invested = invested - redeemed
+            # Use stored values or calculate from transactions
+            if cost_value == 0:
+                transactions = folio_data.get('transactions', [])
+                invested = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
+                redeemed = sum(t['amount'] for t in transactions if t.get('is_redemption', False))
+                cost_value = invested - redeemed
             
-            # Get current units (last balance)
-            current_units = transactions[-1].get('balance', 0) if transactions else 0
-            
-            # Get current NAV
+            # Get current NAV from stored value or MFapi
             isin = folio_data.get('isin')
-            current_nav = self.current_navs.get(isin, transactions[-1].get('nav', 0) if transactions else 0)
+            if current_nav == 0 and isin in self.current_navs:
+                current_nav = self.current_navs[isin]
             
-            # Calculate valuation
-            valuation = current_units * current_nav
-            gains = valuation - net_invested
-            return_pct = (gains / net_invested * 100) if net_invested > 0 else 0
+            # Calculate valuation if not stored
+            if market_value == 0 and current_nav > 0:
+                market_value = closing_balance * current_nav
+            
+            # Calculate gains
+            gains = market_value - cost_value
+            return_pct = (gains / cost_value * 100) if cost_value > 0 else 0
             
             ws.cell(row=row, column=1, value=folio_data.get('pan', ''))
             ws.cell(row=row, column=2, value=folio_id)
             ws.cell(row=row, column=3, value=folio_data.get('scheme', ''))
             ws.cell(row=row, column=4, value=isin)
-            ws.cell(row=row, column=5, value=round(net_invested, 2))
+            ws.cell(row=row, column=5, value=round(cost_value, 2))
             ws.cell(row=row, column=6, value=round(current_nav, 4))
-            ws.cell(row=row, column=7, value=round(current_units, 3))
-            ws.cell(row=row, column=8, value=round(valuation, 2))
+            ws.cell(row=row, column=7, value=round(closing_balance, 3))
+            ws.cell(row=row, column=8, value=round(market_value, 2))
             ws.cell(row=row, column=9, value=round(gains, 2))
             ws.cell(row=row, column=10, value=round(return_pct, 2))
             
-            total_invested += net_invested
-            total_valuation += valuation
+            total_invested += cost_value
+            total_valuation += market_value
             row += 1
         
         # Add totals row
