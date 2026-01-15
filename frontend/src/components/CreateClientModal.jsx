@@ -22,6 +22,9 @@ const RELATIONSHIPS = ["Spouse", "Father", "Mother", "Son", "Daughter", "Brother
 
 export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] }) {
   const [loading, setLoading] = useState(false);
+  const [showCredentials, setShowCredentials] = useState(false);
+  const [credentials, setCredentials] = useState({ pan: "", password: "", pin: "", name: "", email: "" });
+  const [copiedField, setCopiedField] = useState(null);
   const [formData, setFormData] = useState({
     // Personal Details
     name: "",
