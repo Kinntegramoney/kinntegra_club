@@ -369,10 +369,9 @@ class CASParser:
                         units_str = lines[i + 3].strip()
                         trans_type_line = lines[i + 4].strip()
                         
-                        # Check if any of the next few lines contain non-financial markers
-                        # This handles cases where STT Paid or Stamp Duty appears in unexpected positions
-                        next_lines = ' '.join([lines[i + j].strip() for j in range(1, 6) if i + j < len(lines)])
-                        if '*** STT Paid ***' in next_lines or '*** Stamp Duty ***' in next_lines:
+                        # Skip if the nav_str line is actually a non-financial marker
+                        # This handles malformed STT/Stamp Duty entries
+                        if '*** STT Paid ***' in nav_str or '*** Stamp Duty ***' in nav_str:
                             i += 1
                             continue
                         
