@@ -657,6 +657,95 @@ class GapSheetGenerator:
         output.seek(0)
         return output.getvalue()
     
+    def generate_all_reports(self) -> bytes:
+        """Generate all reports as a ZIP file containing:
+        - Main consolidated report
+        - Separate files by PAN
+        - Separate files by ARN (Adviser)
+        """
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # 1. Main consolidated report
+            main_report = self.generate()
+            zip_file.writestr("GapSheet_Consolidated.xlsx", main_report)
+            
+            # 2. Generate reports by PAN
+            pan_reports = self._generate_by_pan()
+            for pan, report_bytes in pan_reports.items():
+                safe_pan = pan.replace('/', '_').replace(' ', '')
+                zip_file.writestr(f"By_PAN/GapSheet_{safe_pan}.xlsx", report_bytes)
+            
+            # 3. Generate reports by ARN
+            arn_reports = self._generate_by_arn()
+            for arn, report_bytes in arn_reports.items():
+                safe_arn = arn.replace('/', '_').replace(' ', '_').replace('-', '_')
+                zip_file.writestr(f"By_ARN/GapSheet_{safe_arn}.xlsx", report_bytes)
+        
+        zip_buffer.seek(0)
+        return zip_buffer.getvalue()
+    
+    def _generate_by_pan(self) -> Dict[str, bytes]:
+        """Generate separate reports for each PAN"""
+        # Group folios by PAN
+        pan_folios = defaultdict(dict)
+        pan_transactions = defaultdict(list)
+        
+        for key, folio in self.parsed_data.get('folios', {}).items():
+            pan = folio.get('pan', 'UNKNOWN')
+            pan_folios[pan][key] = folio
+        
+        for trans in self.parsed_data.get('transactions', []):
+            pan = trans.get('pan', 'UNKNOWN')
+            pan_transactions[pan].append(trans)
+        
+        results = {}
+        for pan in pan_folios.keys():
+            subset_data = {
+                'investor_info': self.parsed_data.get('investor_info', {}),
+                'portfolio_summary': self.parsed_data.get('portfolio_summary', {}),
+                'folios': pan_folios[pan],
+                'transactions': pan_transactions[pan],
+                'nft_entries': [n for n in self.parsed_data.get('nft_entries', []) if n.get('pan') == pan],
+                'report_date': self.parsed_data.get('report_date'),
+                'total_transactions': len(pan_transactions[pan])
+            }
+            
+            generator = GapSheetGenerator(subset_data, self.nav_service, self.scheme_mapper)
+            results[pan] = generator.generate()
+        
+        return results
+    
+    def _generate_by_arn(self) -> Dict[str, bytes]:
+        """Generate separate reports for each ARN (Adviser)"""
+        # Group folios by ARN
+        arn_folios = defaultdict(dict)
+        arn_transactions = defaultdict(list)
+        
+        for key, folio in self.parsed_data.get('folios', {}).items():
+            arn = folio.get('advisor', 'NO_ARN') or 'NO_ARN'
+            arn_folios[arn][key] = folio
+        
+        for trans in self.parsed_data.get('transactions', []):
+            arn = trans.get('advisor', 'NO_ARN') or 'NO_ARN'
+            arn_transactions[arn].append(trans)
+        
+        results = {}
+        for arn in arn_folios.keys():
+            subset_data = {
+                'investor_info': self.parsed_data.get('investor_info', {}),
+                'portfolio_summary': self.parsed_data.get('portfolio_summary', {}),
+                'folios': arn_folios[arn],
+                'transactions': arn_transactions[arn],
+                'nft_entries': self.parsed_data.get('nft_entries', []),
+                'report_date': self.parsed_data.get('report_date'),
+                'total_transactions': len(arn_transactions[arn])
+            }
+            
+            generator = GapSheetGenerator(subset_data, self.nav_service, self.scheme_mapper)
+            results[arn] = generator.generate()
+        
+        return results
+    
     def generate_by_pan(self) -> bytes:
         """Generate separate files for different PANs as a ZIP"""
         # Group folios by PAN
