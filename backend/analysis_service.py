@@ -740,6 +740,7 @@ class GapSheetGenerator:
         # 5. Advisor View
         # 6. Tax View
         # 7. Exit Load
+        # 8. XIRR
         self._create_summary_sheet(wb)
         self._create_portfolio_performance_sheet(wb)
         self._create_mf_transactions_sheet(wb)
@@ -747,6 +748,7 @@ class GapSheetGenerator:
         self._create_advisor_view_sheet(wb)
         self._create_tax_view_sheet(wb)
         self._create_exit_loads_sheet(wb)
+        self._create_xirr_sheet(wb)
         
         if 'Sheet' in wb.sheetnames:
             del wb['Sheet']
