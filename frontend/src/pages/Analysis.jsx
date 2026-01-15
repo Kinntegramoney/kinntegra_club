@@ -259,24 +259,6 @@ const Analysis = () => {
     return `₹${value.toLocaleString('en-IN')}`;
   };
 
-  // Step indicator component
-  const StepIndicator = ({ step, title, isComplete, isCurrent }) => (
-    <div className="flex items-center gap-3">
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-        isComplete ? 'bg-emerald-500' : isCurrent ? 'bg-blue-500' : 'bg-slate-600'
-      }`}>
-        {isComplete ? (
-          <CheckCircle2 className="h-5 w-5 text-white" />
-        ) : (
-          <span className="text-white font-medium">{step}</span>
-        )}
-      </div>
-      <span className={`text-sm font-medium ${isCurrent ? 'text-white' : 'text-slate-400'}`}>
-        {title}
-      </span>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
