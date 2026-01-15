@@ -346,41 +346,41 @@ export default function Dashboard() {
                       </Pie>
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: '#1e293b', 
-                          border: '1px solid #334155',
+                          backgroundColor: '#fff', 
+                          border: '1px solid #e5e7eb',
                           borderRadius: '8px',
-                          color: '#fff'
+                          color: '#374151'
                         }}
                         formatter={(value) => formatCurrency(value)}
                       />
                       <Legend 
-                        wrapperStyle={{ color: '#94a3b8' }}
-                        formatter={(value) => <span className="text-slate-300">{value}</span>}
+                        wrapperStyle={{ color: '#6b7280' }}
+                        formatter={(value) => <span className="text-gray-600">{value}</span>}
                       />
                     </RechartsPie>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-500">
+                  <div className="h-full flex items-center justify-center text-gray-400">
                     No AUM data available
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-800">
+              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
                 <div className="text-center">
-                  <p className="text-lg font-bold text-indigo-400">{formatCurrency(summary?.aum?.bonds)}</p>
-                  <p className="text-xs text-slate-400">Bonds</p>
+                  <p className="text-lg font-bold text-indigo-600">{formatCurrency(summary?.aum?.bonds)}</p>
+                  <p className="text-xs text-gray-500">Bonds</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-pink-400">{formatCurrency(summary?.aum?.real_estate)}</p>
-                  <p className="text-xs text-slate-400">Real Estate</p>
+                  <p className="text-lg font-bold text-pink-600">{formatCurrency(summary?.aum?.real_estate)}</p>
+                  <p className="text-xs text-gray-500">Real Estate</p>
                 </div>
               </div>
             </div>
 
             {/* Client Spread by City */}
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-800 p-5" data-testid="client-spread-chart">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-pink-400" />
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="client-spread-chart">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-pink-500" />
                 Client Spread by City
               </h3>
               <div className="h-[280px]">
@@ -391,22 +391,22 @@ export default function Dashboard() {
                       layout="vertical"
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis type="number" stroke="#64748b" />
-                      <YAxis dataKey="city" type="category" stroke="#64748b" width={80} tick={{ fontSize: 12 }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis type="number" stroke="#6b7280" />
+                      <YAxis dataKey="city" type="category" stroke="#6b7280" width={80} tick={{ fontSize: 12 }} />
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: '#1e293b', 
-                          border: '1px solid #334155',
+                          backgroundColor: '#fff', 
+                          border: '1px solid #e5e7eb',
                           borderRadius: '8px',
-                          color: '#fff'
+                          color: '#374151'
                         }}
                       />
                       <Bar dataKey="count" fill={COLORS.primary} radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-500">
+                  <div className="h-full flex items-center justify-center text-gray-400">
                     No location data available
                   </div>
                 )}
@@ -417,7 +417,7 @@ export default function Dashboard() {
           {/* Charts Row 2 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Sub-broker AUM */}
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-800 p-5" data-testid="subbroker-aum-chart">
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="subbroker-aum-chart">
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Briefcase className="h-5 w-5 text-violet-400" />
                 AUM by Sub-Broker
