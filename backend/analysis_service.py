@@ -2251,9 +2251,23 @@ class GapSheetGenerator:
             
             row += 1
         
-        # Add note about estimates
-        ws.cell(row=row + 2, column=1, value="Note: Market cap allocations are estimated based on fund category. Actual holdings may vary. Please refer to latest fund factsheet for accurate data.")
-        ws.merge_cells(f'A{row+2}:L{row+2}')
+        # Add data source notes
+        note_row = row + 2
+        ws.cell(row=note_row, column=1, value="DATA SOURCE & METHODOLOGY:")
+        ws.merge_cells(f'A{note_row}:L{note_row}')
+        
+        ws.cell(row=note_row + 2, column=1, value="• Fund Category: Derived from scheme name analysis (Large Cap, Mid Cap, Small Cap, Flexi Cap, etc.)")
+        ws.cell(row=note_row + 3, column=1, value="• Market Cap Classification: Based on SEBI mutual fund categorization norms")
+        ws.cell(row=note_row + 4, column=1, value="• Asset Allocation %: Estimated based on typical allocations for each fund category as per SEBI norms")
+        ws.cell(row=note_row + 5, column=1, value="• Large/Mid/Small Cap %: Estimated percentages based on fund category (Large Cap >80% large, Mid Cap >65% mid, etc.)")
+        ws.cell(row=note_row + 7, column=1, value="IMPORTANT NOTES:")
+        ws.cell(row=note_row + 8, column=1, value="• Actual underlying stock holdings are NOT available in CAS PDF")
+        ws.cell(row=note_row + 9, column=1, value="• For actual portfolio composition, refer to:")
+        ws.cell(row=note_row + 10, column=1, value="  - Monthly Fund Factsheets (available on AMC websites)")
+        ws.cell(row=note_row + 11, column=1, value="  - AMFI website: www.amfiindia.com")
+        ws.cell(row=note_row + 12, column=1, value="  - Value Research: www.valueresearchonline.com")
+        ws.cell(row=note_row + 13, column=1, value="  - Morningstar India: www.morningstar.in")
+        ws.cell(row=note_row + 14, column=1, value="• ISIN can be used to look up exact portfolio on above sources")
         
         self._auto_width(ws)
 
