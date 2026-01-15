@@ -662,28 +662,25 @@ class GapSheetGenerator:
             market_value = folio_data.get('market_value', 0)
             
             transactions = folio_data.get('transactions', [])
-            invested_from_trans = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
-            withdrawn_from_trans = sum(t['amount'] for t in transactions if t.get('is_redemption', False))
-            
-            if closing_balance > 0 and cost_value > 0:
-                invested = cost_value
-                withdrawn = 0
-            else:
-                invested = invested_from_trans
-                withdrawn = withdrawn_from_trans
+            # Always use sum of transactions for invested/withdrawn (as per Gap Sheet)
+            invested = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
+            withdrawn = sum(t['amount'] for t in transactions if t.get('is_redemption', False))
             
             inception_date = ''
             if transactions:
                 inception_date = transactions[0].get('date', '')
             
+            # Calculate gains based on whether position is open or closed
             if closing_balance > 0 and market_value > 0:
-                gains = market_value - cost_value if cost_value > 0 else 0
-                return_pct = (gains / cost_value * 100) if cost_value > 0 else 0
+                # Open position: unrealized gains
+                gains = market_value - (invested - withdrawn) if invested > 0 else 0
+                return_pct = (gains / (invested - withdrawn) * 100) if (invested - withdrawn) > 0 else 0
                 unrealized_gl = gains
                 realized_gl = 0
             else:
-                gains = withdrawn_from_trans - invested_from_trans
-                return_pct = (gains / invested_from_trans * 100) if invested_from_trans > 0 else 0
+                # Closed position: realized gains  
+                gains = withdrawn - invested
+                return_pct = (gains / invested * 100) if invested > 0 else 0
                 unrealized_gl = 0
                 realized_gl = gains
             
