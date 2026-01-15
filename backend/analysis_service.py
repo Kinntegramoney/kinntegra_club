@@ -725,8 +725,34 @@ class GapSheetGenerator:
             
             transactions = folio_data.get('transactions', [])
             # Always use sum of transactions for invested/withdrawn (as per Gap Sheet)
-            # Exclude rejection transactions entirely - they represent failed SIPs that never happened
-            valid_trans = [t for t in transactions if 'Rejection' not in t.get('transaction_type', '')]
+            # Handle rejections: when a SIP is rejected, both the original SIP and rejection should be excluded
+            
+            # Find rejection transactions
+            rejections = {}
+            for t in transactions:
+                if 'Rejection' in t.get('transaction_type', ''):
+                    key = (t['date'], t['amount'])
+                    rejections[key] = rejections.get(key, 0) + 1
+            
+            # Filter out rejection transactions and their corresponding original SIPs
+            valid_trans = []
+            used_rejections = {}
+            for t in transactions:
+                ttype = t.get('transaction_type', '')
+                if 'Rejection' in ttype:
+                    continue  # Skip rejection entries
+                
+                # Check if there's a matching rejection for this transaction
+                key = (t['date'], t['amount'])
+                if key in rejections:
+                    # Check if we've already matched this rejection
+                    matched = used_rejections.get(key, 0)
+                    if matched < rejections[key]:
+                        used_rejections[key] = matched + 1
+                        continue  # Skip this transaction as it has a matching rejection
+                
+                valid_trans.append(t)
+            
             invested = sum(t['amount'] for t in valid_trans if not t.get('is_redemption', False))
             withdrawn = sum(t['amount'] for t in valid_trans if t.get('is_redemption', False))
             
