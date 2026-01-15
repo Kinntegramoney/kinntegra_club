@@ -430,30 +430,42 @@ class CASParser:
                         
                         # Handle Non-Financial Transactions (NFTs) like KYC updates, Nominee registration
                         # These have format: Date, ***Description***, next date, etc.
+                        # Some NFTs span multiple lines: ***Description on amount_str and closing *** on nav_str
                         if '***' in amount_str:
-                            # Extract the description from ***Description***
+                            # First try single line format: ***Description***
                             nft_match = re.search(r'\*\*\*(.+?)\*\*\*', amount_str)
                             if nft_match:
                                 nft_type = nft_match.group(1).strip()
-                                transaction = {
-                                    'date': date_str,
-                                    'amount': 0,
-                                    'nav': 0,
-                                    'units': 0,
-                                    'transaction_type': nft_type,
-                                    'balance': 0,
-                                    'folio': current_folio,
-                                    'scheme': current_scheme,
-                                    'isin': current_isin,
-                                    'pan': current_pan,
-                                    'amc': current_amc,
-                                    'advisor': current_advisor,
-                                    'is_redemption': False,
-                                    'is_nft': True  # Mark as non-financial transaction
-                                }
-                                self.transactions.append(transaction)
-                                if current_key in self.folios:
-                                    self.folios[current_key]['transactions'].append(transaction)
+                            else:
+                                # Multi-line format: ***Description on amount_str, closing *** on nav_str
+                                # Combine amount_str and nav_str
+                                combined = amount_str + nav_str
+                                nft_match = re.search(r'\*\*\*(.+?)\*\*\*', combined)
+                                if nft_match:
+                                    nft_type = nft_match.group(1).strip()
+                                else:
+                                    # Fallback: extract text between *** markers
+                                    nft_type = amount_str.replace('***', '').strip()
+                            
+                            transaction = {
+                                'date': date_str,
+                                'amount': 0,
+                                'nav': 0,
+                                'units': 0,
+                                'transaction_type': nft_type,
+                                'balance': 0,
+                                'folio': current_folio,
+                                'scheme': current_scheme,
+                                'isin': current_isin,
+                                'pan': current_pan,
+                                'amc': current_amc,
+                                'advisor': current_advisor,
+                                'is_redemption': False,
+                                'is_nft': True  # Mark as non-financial transaction
+                            }
+                            self.transactions.append(transaction)
+                            if current_key in self.folios:
+                                self.folios[current_key]['transactions'].append(transaction)
                             i += 1
                             continue
                         
