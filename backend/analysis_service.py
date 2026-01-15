@@ -661,7 +661,6 @@ class GapSheetGenerator:
         """Generate all reports as a ZIP file containing:
         - Main consolidated report
         - Separate files by PAN
-        - Separate files by ARN (Adviser)
         """
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
@@ -674,12 +673,6 @@ class GapSheetGenerator:
             for pan, report_bytes in pan_reports.items():
                 safe_pan = pan.replace('/', '_').replace(' ', '')
                 zip_file.writestr(f"By_PAN/GapSheet_{safe_pan}.xlsx", report_bytes)
-            
-            # 3. Generate reports by ARN
-            arn_reports = self._generate_by_arn()
-            for arn, report_bytes in arn_reports.items():
-                safe_arn = arn.replace('/', '_').replace(' ', '_').replace('-', '_')
-                zip_file.writestr(f"By_ARN/GapSheet_{safe_arn}.xlsx", report_bytes)
         
         zip_buffer.seek(0)
         return zip_buffer.getvalue()
