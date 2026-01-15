@@ -935,67 +935,187 @@ class GapSheetGenerator:
         self._auto_width(ws)
     
     def _create_tax_view_sheet(self, wb: Workbook):
-        """Sheet 2: Tax View"""
+        """Sheet 5: Tax View - Indian Financial Year (April to March) with correct LT/ST rules"""
         ws = wb.create_sheet("Tax View")
         
         headers = [
-            "Folio Number", "Instrument Name", "Financial Year", "SchemeType",
-            "Active LT Units", "Active LT (Gain/Loss)", "Active LT Tax",
-            "Active ST Units", "Active ST (Gain/Loss)", "Active ST Tax",
-            "Sold LT Units", "Sold LT (Gain/Loss)", "Sold LT Tax",
-            "Sold ST Units", "Sold ST (Gain/Loss)", "Sold ST Tax"
+            "Folio Number", "Instrument Name", "Fund Type", "Financial Year",
+            "Purchase Date", "Holding Period (Days)", "LT/ST Status",
+            "Units", "Purchase NAV", "Current NAV", "Purchase Value",
+            "Current Value", "Gain/Loss", "Tax Rate", "Estimated Tax"
         ]
         
         for col, header in enumerate(headers, 1):
             ws.cell(row=1, column=col, value=header)
         self._style_header(ws, 1, len(headers))
         
+        def get_financial_year(date):
+            """Get Indian financial year (April to March) for a given date"""
+            if date.month >= 4:  # April onwards
+                return f"FY {date.year}-{date.year + 1}"
+            else:  # January to March
+                return f"FY {date.year - 1}-{date.year}"
+        
+        def get_fund_type(scheme_name):
+            """Determine fund type based on scheme name"""
+            scheme_lower = scheme_name.lower() if scheme_name else ''
+            if any(x in scheme_lower for x in ['liquid', 'money market', 'overnight']):
+                return 'LIQUID'
+            elif any(x in scheme_lower for x in ['debt', 'bond', 'gilt', 'income', 'credit risk', 'dynamic bond', 'corporate bond']):
+                return 'DEBT'
+            elif any(x in scheme_lower for x in ['arbitrage']):
+                return 'ARBITRAGE'
+            elif any(x in scheme_lower for x in ['hybrid', 'balanced', 'aggressive', 'conservative', 'dynamic asset']):
+                return 'HYBRID'
+            else:
+                return 'EQUITY'
+        
+        def get_lt_st_and_tax(fund_type, purchase_date, holding_days, gain):
+            """
+            Determine LT/ST status and tax rate based on Indian tax laws:
+            
+            EQUITY funds (>65% equity):
+            - LT: > 12 months (365 days)
+            - STCG: 15% (changed to 20% from July 2024 budget)
+            - LTCG: 10% on gains > ₹1 lakh (changed to 12.5% from July 2024)
+            
+            DEBT funds (<35% equity) - Post April 2023:
+            - No LT benefit for investments after April 1, 2023
+            - Taxed at slab rate
+            
+            DEBT funds - Pre April 2023:
+            - LT: > 36 months (1095 days)
+            - LTCG: 20% with indexation
+            
+            HYBRID funds (35-65% equity):
+            - LT: > 36 months
+            - Similar to debt funds
+            """
+            # Budget 2024 date (July 23, 2024) - new rates applied
+            budget_2024_date = datetime(2024, 7, 23)
+            # Budget 2023 date (April 1, 2023) - debt fund changes
+            budget_2023_date = datetime(2023, 4, 1)
+            
+            is_post_budget_2024 = purchase_date >= budget_2024_date
+            is_post_budget_2023 = purchase_date >= budget_2023_date
+            
+            if fund_type == 'EQUITY' or fund_type == 'ARBITRAGE':
+                # Equity funds: LT after 12 months
+                if holding_days > 365:
+                    status = 'LONG TERM'
+                    if is_post_budget_2024:
+                        tax_rate = 0.125  # 12.5% LTCG (Budget 2024)
+                    else:
+                        tax_rate = 0.10  # 10% LTCG (pre-Budget 2024)
+                else:
+                    status = 'SHORT TERM'
+                    if is_post_budget_2024:
+                        tax_rate = 0.20  # 20% STCG (Budget 2024)
+                    else:
+                        tax_rate = 0.15  # 15% STCG (pre-Budget 2024)
+            
+            elif fund_type in ['DEBT', 'LIQUID']:
+                # Debt funds
+                if is_post_budget_2023:
+                    # Post April 2023 - No LT benefit, taxed at slab
+                    status = 'SLAB RATE' if holding_days > 0 else 'SHORT TERM'
+                    tax_rate = 0.30  # Assuming highest slab
+                else:
+                    # Pre April 2023 - LT after 36 months
+                    if holding_days > 1095:  # 36 months
+                        status = 'LONG TERM'
+                        tax_rate = 0.20  # 20% with indexation
+                    else:
+                        status = 'SHORT TERM'
+                        tax_rate = 0.30  # Slab rate
+            
+            elif fund_type == 'HYBRID':
+                # Hybrid funds - treated like equity if >65% equity allocation
+                # For simplicity, treating as equity-like
+                if holding_days > 365:
+                    status = 'LONG TERM'
+                    tax_rate = 0.125 if is_post_budget_2024 else 0.10
+                else:
+                    status = 'SHORT TERM'
+                    tax_rate = 0.20 if is_post_budget_2024 else 0.15
+            
+            else:
+                # Default to equity rules
+                if holding_days > 365:
+                    status = 'LONG TERM'
+                    tax_rate = 0.10
+                else:
+                    status = 'SHORT TERM'
+                    tax_rate = 0.15
+            
+            # Calculate tax (only on gains)
+            estimated_tax = max(0, gain * tax_rate) if gain > 0 else 0
+            
+            return status, tax_rate, estimated_tax
+        
         row = 2
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
             scheme_name = folio_data.get('scheme', '') or ''
-            asset_class = 'EQUITY'
-            if any(x in scheme_name.lower() for x in ['liquid', 'debt', 'bond']):
-                asset_class = 'LIQUID' if 'liquid' in scheme_name.lower() else 'DEBT'
-            
-            # Calculate LT/ST units based on transaction age
-            transactions = folio_data.get('transactions', [])
-            lt_units = 0
-            st_units = 0
-            lt_gain = 0
-            st_gain = 0
+            fund_type = get_fund_type(scheme_name)
             current_nav = folio_data.get('current_nav', 0)
+            closing_balance = folio_data.get('closing_balance', 0)
+            
+            # Skip folios with no balance
+            if closing_balance <= 0:
+                continue
+            
+            transactions = folio_data.get('transactions', [])
             
             for trans in transactions:
-                if trans.get('is_redemption'):
+                # Only process purchase transactions (not redemptions)
+                if trans.get('is_redemption') or trans.get('is_nft') or trans.get('is_pledge'):
                     continue
+                if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
+                    continue
+                
                 try:
                     trans_date = datetime.strptime(trans['date'], '%d-%b-%Y')
-                    age_days = (self.report_date - trans_date).days
+                    holding_days = (self.report_date - trans_date).days
+                    
                     units = trans.get('units', 0)
                     purchase_nav = trans.get('nav', 0)
                     
-                    gain_per_unit = current_nav - purchase_nav if current_nav and purchase_nav else 0
+                    if units <= 0:
+                        continue
                     
-                    if age_days > 365:
-                        lt_units += units
-                        lt_gain += units * gain_per_unit
-                    else:
-                        st_units += units
-                        st_gain += units * gain_per_unit
+                    purchase_value = units * purchase_nav if purchase_nav else trans.get('amount', 0)
+                    current_value = units * current_nav if current_nav else 0
+                    gain_loss = current_value - purchase_value
+                    
+                    # Get LT/ST status and tax
+                    lt_st_status, tax_rate, estimated_tax = get_lt_st_and_tax(
+                        fund_type, trans_date, holding_days, gain_loss
+                    )
+                    
+                    # Get financial year of purchase
+                    fy = get_financial_year(trans_date)
+                    
+                    # Write row
+                    ws.cell(row=row, column=1, value=folio_data.get('folio', folio_id))
+                    ws.cell(row=row, column=2, value=scheme_name[:50])
+                    ws.cell(row=row, column=3, value=fund_type)
+                    ws.cell(row=row, column=4, value=fy)
+                    ws.cell(row=row, column=5, value=trans['date'])
+                    ws.cell(row=row, column=6, value=holding_days)
+                    ws.cell(row=row, column=7, value=lt_st_status)
+                    ws.cell(row=row, column=8, value=round(units, 4))
+                    ws.cell(row=row, column=9, value=round(purchase_nav, 4) if purchase_nav else '')
+                    ws.cell(row=row, column=10, value=round(current_nav, 4) if current_nav else '')
+                    ws.cell(row=row, column=11, value=round(purchase_value, 2))
+                    ws.cell(row=row, column=12, value=round(current_value, 2))
+                    ws.cell(row=row, column=13, value=round(gain_loss, 2))
+                    ws.cell(row=row, column=14, value=f"{tax_rate*100:.1f}%")
+                    ws.cell(row=row, column=15, value=round(estimated_tax, 2))
+                    
+                    row += 1
+                    
                 except ValueError:
                     pass
-            
-            ws.cell(row=row, column=1, value=folio_data.get('folio', folio_id))
-            ws.cell(row=row, column=2, value=scheme_name[:50])
-            ws.cell(row=row, column=3, value="2025 - 2026")
-            ws.cell(row=row, column=4, value=asset_class)
-            ws.cell(row=row, column=5, value=round(lt_units, 3))
-            ws.cell(row=row, column=6, value=round(lt_gain, 2))
-            ws.cell(row=row, column=7, value=round(lt_gain * 0.125, 2) if lt_gain > 0 else 0)
-            ws.cell(row=row, column=8, value=round(st_units, 3))
-            ws.cell(row=row, column=9, value=round(st_gain, 2))
-            ws.cell(row=row, column=10, value=round(st_gain * 0.2, 2) if st_gain > 0 else 0)
-            row += 1
         
         self._auto_width(ws)
     
