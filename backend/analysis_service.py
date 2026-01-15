@@ -787,8 +787,8 @@ class GapSheetGenerator:
         return results
     
     def _create_portfolio_performance_sheet(self, wb: Workbook):
-        """Sheet 1: Portfolio Performance"""
-        ws = wb.create_sheet("Portfolio Performance", 0)
+        """Sheet 2: Portfolio Performance"""
+        ws = wb.create_sheet("Portfolio Performance")
         
         # New format: Only 12 columns as per requirement
         headers = [
