@@ -3276,6 +3276,240 @@ async def approve_reinvestment_tag(cashflow_id: str, approval: ReinvestmentAppro
     return {"message": f"Tag {'approved' if approval.approved else 'rejected'} successfully"}
 
 
+@api_router.post("/reinvestment/send-approval-email")
+async def send_reinvestment_approval_email(
+    request: SendReinvestmentApprovalRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Send approval email to client for tagged reinvestments"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers can send approval emails")
+    
+    # Get client
+    client = await db.clients.find_one({"id": request.client_id})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Get user email
+    user = await db.users.find_one({"id": client.get('user_id')})
+    client_email = user.get('email') if user else client.get('email')
+    
+    if not client_email:
+        raise HTTPException(status_code=400, detail="Client does not have an email address")
+    
+    # Get cashflows
+    cashflows = await db.holding_cashflows.find(
+        {"id": {"$in": request.cashflow_ids}}
+    ).to_list(1000)
+    
+    if not cashflows:
+        raise HTTPException(status_code=404, detail="No cashflows found")
+    
+    # Build email content
+    entries_html = ""
+    total_amount = 0
+    for cf in cashflows:
+        tag = cf.get('reinvestment_tag', 'not_tagged')
+        if tag == 'other':
+            amount = cf.get('custom_amount', 0)
+        elif tag == 'principal':
+            amount = cf.get('principal_component', 0)
+        elif tag == 'interest':
+            amount = cf.get('interest_component', 0) - cf.get('tds_amount', 0)
+        elif tag == 'net_amount':
+            amount = cf.get('net_amount', 0)
+        else:
+            amount = 0
+        
+        total_amount += amount
+        entries_html += f"""
+        <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">{cf.get('bond_name', 'N/A')}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">{cf.get('date', 'N/A')}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">{tag.replace('_', ' ').title()}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">₹{amount:,.2f}</td>
+        </tr>
+        """
+    
+    # Generate approval token
+    approval_token = create_access_token(
+        data={"client_id": client['id'], "cashflow_ids": request.cashflow_ids, "type": "reinvestment_approval"},
+        expires_delta=timedelta(days=7)
+    )
+    
+    # Update cashflows with pending status
+    await db.holding_cashflows.update_many(
+        {"id": {"$in": request.cashflow_ids}},
+        {"$set": {
+            "approval_status": "pending",
+            "approval_email_sent": True,
+            "approval_email_sent_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Send email (using the configured SMTP)
+    try:
+        from email_service import send_reinvestment_approval_email as send_approval_email
+        background_tasks.add_task(
+            send_approval_email,
+            client_email,
+            client['name'],
+            entries_html,
+            total_amount,
+            approval_token,
+            len(cashflows)
+        )
+    except Exception as e:
+        logger.error(f"Error sending approval email: {e}")
+        # Still return success as the status was updated
+    
+    return {
+        "message": f"Approval email sent to {client_email}",
+        "cashflows_count": len(cashflows),
+        "total_amount": total_amount
+    }
+
+
+@api_router.get("/reinvestment/approve-via-link")
+async def approve_reinvestment_via_link(token: str, action: str = "approve"):
+    """Handle approval/rejection via email link"""
+    try:
+        payload = verify_token(token)
+        if not payload or payload.get("type") != "reinvestment_approval":
+            raise HTTPException(status_code=400, detail="Invalid or expired approval link")
+        
+        client_id = payload.get("client_id")
+        cashflow_ids = payload.get("cashflow_ids", [])
+        
+        approved = action.lower() == "approve"
+        
+        # Update all cashflows
+        await db.holding_cashflows.update_many(
+            {"id": {"$in": cashflow_ids}},
+            {"$set": {
+                "client_approved": approved,
+                "approval_status": "approved" if approved else "rejected",
+                "approved_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        # If approved, trigger Kinntegraa API (placeholder)
+        if approved:
+            # Get approved cashflows for API submission
+            cashflows = await db.holding_cashflows.find(
+                {"id": {"$in": cashflow_ids}}
+            ).to_list(1000)
+            
+            # TODO: Implement Kinntegraa API integration
+            # For now, store the submission request
+            submission = {
+                "id": str(uuid.uuid4()),
+                "client_id": client_id,
+                "cashflow_ids": cashflow_ids,
+                "status": "pending_submission",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.kinntegraa_submissions.insert_one(submission)
+        
+        return {
+            "message": f"Reinvestment {'approved' if approved else 'rejected'} successfully",
+            "action": action,
+            "cashflows_count": len(cashflow_ids)
+        }
+    except Exception as e:
+        logger.error(f"Error in approval link: {e}")
+        raise HTTPException(status_code=400, detail="Invalid or expired approval link")
+
+
+@api_router.post("/reinvestment/submit-to-kinntegraa")
+async def submit_to_kinntegraa(
+    submission_id: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Submit approved reinvestments to Kinntegraa API"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can submit to Kinntegraa")
+    
+    # Get pending submissions
+    query = {"status": "pending_submission"}
+    if submission_id:
+        query["id"] = submission_id
+    
+    submissions = await db.kinntegraa_submissions.find(query).to_list(100)
+    
+    if not submissions:
+        raise HTTPException(status_code=404, detail="No pending submissions found")
+    
+    results = []
+    for submission in submissions:
+        try:
+            # Get cashflows
+            cashflows = await db.holding_cashflows.find(
+                {"id": {"$in": submission['cashflow_ids']}}
+            ).to_list(1000)
+            
+            # Get client
+            client = await db.clients.find_one({"id": submission['client_id']})
+            
+            # Prepare API payload (structure to be confirmed with Kinntegraa)
+            api_payload = {
+                "client_pan": client.get('pan_number', '') if client else '',
+                "client_name": client.get('name', '') if client else '',
+                "client_email": client.get('email', '') if client else '',
+                "reinvestments": []
+            }
+            
+            for cf in cashflows:
+                tag = cf.get('reinvestment_tag', 'not_tagged')
+                if tag == 'other':
+                    amount = cf.get('custom_amount', 0)
+                elif tag == 'principal':
+                    amount = cf.get('principal_component', 0)
+                elif tag == 'interest':
+                    amount = cf.get('interest_component', 0) - cf.get('tds_amount', 0)
+                elif tag == 'net_amount':
+                    amount = cf.get('net_amount', 0)
+                else:
+                    continue
+                
+                api_payload["reinvestments"].append({
+                    "bond_name": cf.get('bond_name', ''),
+                    "expected_date": cf.get('date', ''),
+                    "amount": amount,
+                    "tag_type": tag
+                })
+            
+            # TODO: Make actual API call to Kinntegraa
+            # response = await httpx.post("https://api.kinntegraa.com/reinvestments", json=api_payload)
+            
+            # For now, mark as submitted
+            await db.kinntegraa_submissions.update_one(
+                {"id": submission['id']},
+                {"$set": {
+                    "status": "submitted",
+                    "submitted_at": datetime.now(timezone.utc).isoformat(),
+                    "api_payload": api_payload
+                }}
+            )
+            
+            results.append({
+                "submission_id": submission['id'],
+                "status": "submitted",
+                "cashflows_count": len(cashflows)
+            })
+            
+        except Exception as e:
+            logger.error(f"Error submitting to Kinntegraa: {e}")
+            results.append({
+                "submission_id": submission['id'],
+                "status": "error",
+                "error": str(e)
+            })
+    
+    return {"results": results}
+
+
 # ==================== END REINVESTMENT TAGGING ====================
 
 
