@@ -458,7 +458,7 @@ const Analysis = () => {
                     <Button
                       size="sm"
                       onClick={() => handleDownload(selectedAnalysis.analysis_id || selectedAnalysis.id, selectedAnalysis.filename)}
-                      className="bg-emerald-600 hover:bg-emerald-700"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
                       data-testid="download-report-button"
                     >
                       <Download className="h-4 w-4 mr-2" />
@@ -468,36 +468,36 @@ const Analysis = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-slate-700/50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-blue-400">
+                    <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                      <p className="text-2xl font-bold text-indigo-600">
                         {selectedAnalysis.total_folios || Object.keys(selectedAnalysis.parsed_data?.folios || {}).length || 0}
                       </p>
-                      <p className="text-sm text-slate-400">Folios</p>
+                      <p className="text-sm text-gray-500">Folios</p>
                     </div>
-                    <div className="bg-slate-700/50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-emerald-400">
+                    <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                      <p className="text-2xl font-bold text-emerald-600">
                         {selectedAnalysis.total_transactions || selectedAnalysis.parsed_data?.total_transactions || 0}
                       </p>
-                      <p className="text-sm text-slate-400">Transactions</p>
+                      <p className="text-sm text-gray-500">Transactions</p>
                     </div>
-                    <div className="bg-slate-700/50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-amber-400">
+                    <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                      <p className="text-2xl font-bold text-amber-600">
                         {formatCurrency(selectedAnalysis.portfolio_summary?.total_cost || selectedAnalysis.parsed_data?.portfolio_summary?.total_cost || 0)}
                       </p>
-                      <p className="text-sm text-slate-400">Total Cost</p>
+                      <p className="text-sm text-gray-500">Total Cost</p>
                     </div>
-                    <div className="bg-slate-700/50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-purple-400">
+                    <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                      <p className="text-2xl font-bold text-purple-600">
                         {formatCurrency(selectedAnalysis.portfolio_summary?.total_value || selectedAnalysis.parsed_data?.portfolio_summary?.total_value || 0)}
                       </p>
-                      <p className="text-sm text-slate-400">Current Value</p>
+                      <p className="text-sm text-gray-500">Current Value</p>
                     </div>
                   </div>
                   
                   {/* Gap Sheet Info */}
-                  <div className="mt-4 p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg">
-                    <p className="text-sm text-blue-300">
-                      <strong>Gap Sheet includes 10 sheets:</strong> Portfolio Performance, Tax View, Advisor View, PAN View, MF Ageing, Mutual Fund Holding, MF Transactions, Accounts, Exit Loads, Other Details
+                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-700">
+                      <strong>ZIP Download includes:</strong> Consolidated report + separate files by PAN (Portfolio Performance, Tax View, Advisor View, PAN View, and 8 more sheets)
                     </p>
                   </div>
                 </CardContent>
@@ -505,26 +505,26 @@ const Analysis = () => {
             )}
 
             {/* Analysis History */}
-            <Card className="bg-slate-800/50 border-slate-700" data-testid="analysis-history-card">
+            <Card className="bg-white border-gray-200 shadow-sm" data-testid="analysis-history-card">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <FileSpreadsheet className="h-5 w-5 text-purple-400" />
+                <CardTitle className="text-gray-800 flex items-center gap-2">
+                  <FileSpreadsheet className="h-5 w-5 text-purple-500" />
                   Analysis History
                 </CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-gray-500">
                   Your previous CAS analyses
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                   </div>
                 ) : analyses.length === 0 ? (
                   <div className="text-center py-8">
-                    <FileText className="h-12 w-12 mx-auto text-slate-600 mb-3" />
-                    <p className="text-slate-400">No analyses yet</p>
-                    <p className="text-sm text-slate-500">Upload a CAS PDF to get started</p>
+                    <FileText className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                    <p className="text-gray-500">No analyses yet</p>
+                    <p className="text-sm text-gray-400">Upload a CAS PDF to get started</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
