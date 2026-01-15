@@ -141,6 +141,7 @@ class CASParser:
         current_isin = None
         current_amc = None
         current_advisor = None
+        current_key = None  # Unique key: folio + isin
         
         i = 0
         while i < len(lines):
@@ -175,14 +176,21 @@ class CASParser:
                     current_scheme_full = f"{scheme_code}-{scheme_name}"
                     current_scheme = scheme_name  # Clean name without code
             
-            # Detect Folio No
+            # Detect Folio No - this creates a new entry when combined with ISIN
             folio_match = re.search(r'Folio No:\s*([\d\s/]+)', line)
             if folio_match:
                 current_folio = folio_match.group(1).strip()
                 
-                # Create folio entry
-                if current_folio and current_folio not in self.folios:
-                    self.folios[current_folio] = {
+                # Create unique key using folio + isin
+                if current_isin:
+                    current_key = f"{current_folio}_{current_isin}"
+                else:
+                    current_key = current_folio
+                
+                # Create folio entry if new
+                if current_key and current_key not in self.folios:
+                    self.folios[current_key] = {
+                        'folio': current_folio,
                         'scheme': current_scheme,
                         'scheme_code': current_scheme_full,
                         'isin': current_isin,
@@ -195,14 +203,6 @@ class CASParser:
                         'current_nav': 0,
                         'market_value': 0
                     }
-                elif current_folio in self.folios:
-                    # Update with latest scheme info if folio already exists
-                    if current_scheme:
-                        self.folios[current_folio]['scheme'] = current_scheme
-                    if current_isin:
-                        self.folios[current_folio]['isin'] = current_isin
-                    if current_advisor:
-                        self.folios[current_folio]['advisor'] = current_advisor
             
             # Detect closing balance
             if 'Closing Unit Balance:' in line:
