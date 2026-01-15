@@ -738,22 +738,18 @@ class GapSheetGenerator:
         # 3. MF Transactions
         # 4. NFT
         # Sheet order:
-        # 1. Summary
+        # 1. Summary (Portfolio Summary only)
         # 2. Portfolio Performance
         # 3. MF Transactions
         # 4. NFT
-        # 5. Advisor View
+        # 5. Advisor View (with XIRR, sorted by AUM)
         # 6. XIRR (Broker-wise)
-        # 7. Tax View
-        # 8. Exit Load
         self._create_summary_sheet(wb)
         self._create_portfolio_performance_sheet(wb)
         self._create_mf_transactions_sheet(wb)
         self._create_nft_sheet(wb)
         self._create_advisor_view_sheet(wb)
         self._create_xirr_sheet(wb)
-        self._create_tax_view_sheet(wb)
-        self._create_exit_loads_sheet(wb)
         
         if 'Sheet' in wb.sheetnames:
             del wb['Sheet']
