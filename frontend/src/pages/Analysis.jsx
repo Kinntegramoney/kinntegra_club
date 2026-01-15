@@ -375,6 +375,48 @@ const Analysis = () => {
               </div>
             )}
 
+            {/* How to Request CAS Guide */}
+            <Card className="bg-blue-50 border-blue-200 shadow-sm" data-testid="cas-guide-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-blue-800 flex items-center gap-2 text-base">
+                  <FileText className="h-5 w-5" />
+                  How to Request CAS Statement
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-blue-700 space-y-3">
+                <p className="font-medium">Follow these steps to get your CAS from CAMS:</p>
+                <ol className="list-decimal list-inside space-y-2 ml-2">
+                  <li>
+                    Visit{' '}
+                    <a 
+                      href="https://www.camsonline.com/Investors/Statements/Consolidated-Account-Statement" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline hover:text-blue-800 font-medium"
+                    >
+                      CAMS CAS Portal
+                    </a>
+                  </li>
+                  <li>Select Statement Type: <span className="font-semibold">Detailed</span></li>
+                  <li>Choose Period: <span className="font-semibold">Specific Period</span>
+                    <ul className="list-disc list-inside ml-4 mt-1 text-blue-600">
+                      <li>From Date: <span className="font-semibold">01/01/2000</span></li>
+                      <li>To Date: <span className="font-semibold">Today's Date</span></li>
+                    </ul>
+                  </li>
+                  <li>Folio Listing: <span className="font-semibold">With Zero Balance</span></li>
+                  <li>Email: <span className="font-semibold">Registered email on investments</span></li>
+                  <li>Password: <span className="font-semibold bg-blue-100 px-2 py-0.5 rounded">kinntegra123</span></li>
+                </ol>
+                <div className="bg-blue-100 rounded-lg p-3 mt-3">
+                  <p className="text-blue-800 font-medium flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    After submission, CAMS will email the CAS PDF to the registered email. Upload that PDF below.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Step 1: CAS Upload */}
             <Card className="bg-white border-gray-200 shadow-sm" data-testid="cas-upload-card">
               <CardHeader>
