@@ -449,35 +449,60 @@ class GapSheetGenerator:
         
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
             closing_balance = folio_data.get('closing_balance', 0)
-            cost_value = folio_data.get('cost_value', 0)
+            cost_value = folio_data.get('cost_value', 0)  # This is "Total Cost Value" from PDF
             market_value = folio_data.get('market_value', 0)
             
-            # Calculate from transactions
+            # Calculate invested/withdrawn from transactions
             transactions = folio_data.get('transactions', [])
-            invested = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
-            withdrawn = sum(t['amount'] for t in transactions if t.get('is_redemption', False))
+            invested_from_trans = sum(t['amount'] for t in transactions if not t.get('is_redemption', False))
+            withdrawn_from_trans = sum(t['amount'] for t in transactions if t.get('is_redemption', False))
+            
+            # Use Total Cost Value as "Amount Invested" when available and folio is active
+            # For closed folios (closing_balance = 0), use transaction-based calculation
+            if closing_balance > 0 and cost_value > 0:
+                invested = cost_value
+                withdrawn = 0  # Active folio with cost value means no withdrawal reflected
+            else:
+                invested = invested_from_trans
+                withdrawn = withdrawn_from_trans
             
             # Get first transaction date
             inception_date = ''
             if transactions:
                 inception_date = transactions[0].get('date', '')
             
-            gains = market_value - cost_value if cost_value > 0 else 0
-            return_pct = (gains / cost_value * 100) if cost_value > 0 else 0
-            unrealized_gl = market_value - cost_value if closing_balance > 0 else 0
-            realized_gl = withdrawn - invested if closing_balance == 0 else 0
+            # Calculate gains
+            if closing_balance > 0 and market_value > 0:
+                # Active folio: gains = market value - cost value
+                gains = market_value - cost_value if cost_value > 0 else 0
+                return_pct = (gains / cost_value * 100) if cost_value > 0 else 0
+                unrealized_gl = gains
+                realized_gl = 0
+            else:
+                # Closed folio: realized gains
+                gains = withdrawn_from_trans - invested_from_trans
+                return_pct = (gains / invested_from_trans * 100) if invested_from_trans > 0 else 0
+                unrealized_gl = 0
+                realized_gl = gains
             
             # Determine asset class based on scheme name
             scheme_name = folio_data.get('scheme', '') or ''
             asset_class = 'EQUITY'
-            if any(x in scheme_name.lower() for x in ['liquid', 'debt', 'bond', 'gilt', 'money market']):
+            if any(x in scheme_name.lower() for x in ['liquid', 'debt', 'bond', 'gilt', 'money market', 'overnight', 'ultra short']):
                 asset_class = 'DEBT'
+            
+            # Map advisor ARN to name if known
+            advisor = folio_data.get('advisor', '') or ''
+            if advisor == 'ARN-145633':
+                advisor = 'KINNTEGRAWEALTHPRIVATELIMITED'
+            elif advisor == 'ARN-104917':
+                advisor = 'HUMFAUJIFINANCIALSERVICESPVTLTD'
             
             entry = {
                 'group_name': self.parsed_data.get('investor_info', {}).get('name', ''),
                 'pan': folio_data.get('pan', ''),
                 'asset_class': asset_class,
-                'advisor': folio_data.get('advisor', 'KINNTEGRAWEALTHPRIVATELIMITED'),
+                'advisor': advisor,
                 'folio': folio_id,
                 'scheme': scheme_name,
                 'type': 'MutualFund',
