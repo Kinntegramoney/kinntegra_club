@@ -26,6 +26,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
     // Personal Details
     name: "",
     pan_number: "",
+    ucc: "",  // Unique Client Code
     occupation: "",
     date_of_birth: "",
     father_husband_name: "",
