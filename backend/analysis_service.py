@@ -1299,8 +1299,11 @@ class GapSheetGenerator:
             if market_value > 0:
                 advisor_data[arn]['cashflows'].append((self.report_date, market_value))
         
+        # Sort by AUM (Total AUM descending)
+        sorted_advisors = sorted(advisor_data.items(), key=lambda x: x[1]['valuation'], reverse=True)
+        
         row = 2
-        for arn, data in sorted(advisor_data.items()):
+        for arn, data in sorted_advisors:
             total_aum = data['valuation']
             gains = total_aum - (data['invested'] - data['withdrawn'])
             
