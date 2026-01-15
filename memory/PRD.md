@@ -24,19 +24,20 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 - [x] **Step 2**: Upload BSE Scheme Master from https://www.bsestarmf.in/RptSchemeMaster.aspx
 - [x] **Step 3**: Download Gap Sheet (ZIP file with consolidated + per-PAN reports)
 - [x] Progress bar shows parsing status
-- [x] **12 Sheets generated**:
-  1. Portfolio Performance (100% match with Gap Sheet, XIRR calculations)
-  2. Tax View (LT/ST gains, financial year)
-  3. Advisor View (XIRR performance, client longevity - active/past)
-  4. PAN View (grouped by PAN)
-  5. MF Ageing (age of units, LONGTERM/SHORTTERM)
-  6. Mutual Fund Holding (closing units, NAV, valuation)
-  7. MF Transactions (all transaction details)
-  8. Accounts (folio details)
-  9. Exit Loads (load structure)
-  10. Other Details (investor info)
-  11. NFT (Non-Financial Transactions)
-  12. XIRR Report (Return calculations)
+- [x] **7 Sheets generated** (aligned with user's template):
+  1. Summary (Portfolio overview + Category-wise breakdown for ACTIVE funds only + FY-wise LT/ST summary)
+  2. Portfolio Performance (100% match with Gap Sheet, XIRR calculations)
+  3. MF Transactions (all transaction details + MF Ageing column)
+  4. NFT (Non-Financial Transactions + Pledge transactions)
+  5. Advisor View (XIRR performance, client longevity - active/past)
+  6. Tax View (LT/ST gains by FY, PAN column, Grandfathering for pre-Jan 31 2018 equity)
+  7. Exit Loads (load structure from PDF)
+
+### Latest Fixes (January 15, 2026)
+- [x] **PAN Column in Tax View**: Added PAN as first column in Tax View sheet
+- [x] **Active Funds Filter**: Summary sheet category breakdown now shows only funds with balance > 0
+- [x] **Column Index Bug Fix**: Fixed Tax View column indices for sold ST units/gain
+- [x] **Indian Number Formatting**: ₹ X,XX,XX,XXX format across all sheets
 
 ### Parsing Improvements (January 15, 2026)
 - [x] Fixed scheme name extraction (removes PDF headers like CAMSCASWS)
