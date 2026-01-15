@@ -137,6 +137,7 @@ class CASParser:
         current_pan = None
         current_folio = None
         current_scheme = None
+        current_scheme_full = None
         current_isin = None
         current_amc = None
         current_advisor = None
@@ -149,24 +150,30 @@ class CASParser:
             if re.match(r'^[A-Z0-9].*Mutual Fund$', line) or ('Mutual Fund' in line and len(line) < 50):
                 current_amc = line.strip()
             
-            # Detect Advisor ARN
-            advisor_match = re.search(r'Advisor:\s*([A-Z0-9\-]+)', line)
-            if advisor_match:
-                current_advisor = advisor_match.group(1)
-            
-            # Detect PAN
+            # Detect PAN - comes before scheme info
             pan_match = re.search(r'PAN:\s*([A-Z]{5}\d{4}[A-Z])', line)
             if pan_match:
                 current_pan = pan_match.group(1)
             
-            # Detect scheme with ISIN
+            # Detect scheme with ISIN and Advisor
+            # Format: SCHEME_CODE-Scheme Name - ISIN: ISINCODE(Advisor: ARN-XXXXX)
             isin_match = re.search(r'ISIN:\s*([A-Z0-9]{12})', line)
             if isin_match:
                 current_isin = isin_match.group(1)
-                # Extract scheme name
-                scheme_match = re.match(r'^([A-Z0-9]+-[^-]+(?:-[^-]+)*)\s*-\s*ISIN:', line)
+                
+                # Extract advisor from same line
+                advisor_match = re.search(r'\(Advisor:\s*([A-Z0-9\-]+)\)', line)
+                if advisor_match:
+                    current_advisor = advisor_match.group(1)
+                
+                # Extract scheme name - remove the code prefix (e.g., "IFIFCRG-")
+                # Pattern: CODE-Scheme Name - ISIN:
+                scheme_match = re.match(r'^([A-Z0-9]+)-(.+?)\s*-\s*ISIN:', line)
                 if scheme_match:
-                    current_scheme = scheme_match.group(1).strip()
+                    scheme_code = scheme_match.group(1)
+                    scheme_name = scheme_match.group(2).strip()
+                    current_scheme_full = f"{scheme_code}-{scheme_name}"
+                    current_scheme = scheme_name  # Clean name without code
             
             # Detect Folio No
             folio_match = re.search(r'Folio No:\s*([\d\s/]+)', line)
@@ -177,6 +184,7 @@ class CASParser:
                 if current_folio and current_folio not in self.folios:
                     self.folios[current_folio] = {
                         'scheme': current_scheme,
+                        'scheme_code': current_scheme_full,
                         'isin': current_isin,
                         'pan': current_pan,
                         'amc': current_amc,
@@ -187,6 +195,14 @@ class CASParser:
                         'current_nav': 0,
                         'market_value': 0
                     }
+                elif current_folio in self.folios:
+                    # Update with latest scheme info if folio already exists
+                    if current_scheme:
+                        self.folios[current_folio]['scheme'] = current_scheme
+                    if current_isin:
+                        self.folios[current_folio]['isin'] = current_isin
+                    if current_advisor:
+                        self.folios[current_folio]['advisor'] = current_advisor
             
             # Detect closing balance
             if 'Closing Unit Balance:' in line:
