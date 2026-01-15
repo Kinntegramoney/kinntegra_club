@@ -504,15 +504,15 @@ export default function Dashboard() {
                         <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="month" stroke="#64748b" tick={{ fontSize: 11 }} />
-                    <YAxis stroke="#64748b" tickFormatter={(value) => formatCurrency(value, '')} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="month" stroke="#6b7280" tick={{ fontSize: 11 }} />
+                    <YAxis stroke="#6b7280" tickFormatter={(value) => formatCurrency(value, '')} />
                     <Tooltip 
                       contentStyle={{ 
-                        backgroundColor: '#1e293b', 
-                        border: '1px solid #334155',
+                        backgroundColor: '#fff', 
+                        border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                        color: '#fff'
+                        color: '#374151'
                       }}
                       formatter={(value) => formatCurrency(value)}
                     />
@@ -540,23 +540,23 @@ export default function Dashboard() {
           </div>
 
           {/* Activity Log */}
-          <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl border border-slate-800 p-5" data-testid="activity-log">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <Activity className="h-5 w-5 text-amber-400" />
+          <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="activity-log">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Activity className="h-5 w-5 text-amber-500" />
               Recent Activity
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-800">
-                    <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Type</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Description</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Amount</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Status</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">Time</th>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-gray-100">
                   {activityLog.length > 0 ? (
                     activityLog.map((activity, index) => (
                       <tr key={index} className="hover:bg-slate-800/50 transition-colors">
