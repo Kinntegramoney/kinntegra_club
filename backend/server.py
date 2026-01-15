@@ -4270,7 +4270,7 @@ class BondWithCalculations(BaseModel):
 # Routes
 @api_router.get("/")
 async def root():
-    return {"message": "BondFlow Pro API", "version": "2.4.0", "updated": "2026-01-14T18:30:00Z"}
+    return {"message": "BondFlow Pro API", "version": "2.5.0", "updated": "2026-01-15T07:30:00Z"}
 
 
 @api_router.post("/bonds", response_model=Bond)
