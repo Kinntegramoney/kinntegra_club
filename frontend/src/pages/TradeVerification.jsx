@@ -562,7 +562,7 @@ export default function TradeVerification() {
           {/* Reinvestment Tagging Content */}
           {activeTab === "reinvestment" && (
             <div>
-              {/* Sub-tabs: Untagged / Tagged / By Client */}
+              {/* Sub-tabs: Untagged / Tagged / Sent for Approval */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
                   <button
@@ -573,7 +573,7 @@ export default function TradeVerification() {
                         : "text-gray-600 hover:text-gray-800"
                     }`}
                   >
-                    Untagged ({untagged.length})
+                    Untagged ({untaggedClients.length} clients)
                   </button>
                   <button
                     onClick={() => setReinvestmentSection("tagged")}
@@ -583,18 +583,18 @@ export default function TradeVerification() {
                         : "text-gray-600 hover:text-gray-800"
                     }`}
                   >
-                    Tagged ({tagged.length})
+                    Tagged ({taggedClients.length} clients)
                   </button>
                   <button
-                    onClick={() => setReinvestmentSection("byClient")}
+                    onClick={() => setReinvestmentSection("sent")}
                     className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
-                      reinvestmentSection === "byClient"
+                      reinvestmentSection === "sent"
                         ? "bg-white text-amber-700 shadow-sm"
                         : "text-gray-600 hover:text-gray-800"
                     }`}
                   >
-                    <Users className="h-4 w-4" />
-                    By Client ({clientsData.length})
+                    <Mail className="h-4 w-4" />
+                    Sent for Approval ({sentClients.length})
                   </button>
                 </div>
                 <Button variant="outline" size="sm" onClick={fetchReinvestmentData} className="gap-2">
@@ -605,122 +605,96 @@ export default function TradeVerification() {
 
               {loadingReinvestment ? (
                 <div className="text-center py-12 text-gray-500">Loading reinvestment data...</div>
-              ) : reinvestmentSection === "byClient" ? (
-                /* Client-wise View */
+              ) : (
                 <div className="space-y-4">
-                  {clientsData.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">No clients with upcoming cashflows</p>
-                    </div>
-                  ) : (
-                    clientsData.map((client) => (
-                      <div key={client.client_id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                        {/* Client Header */}
-                        <div 
-                          className="px-4 py-3 bg-gray-50 flex items-center justify-between cursor-pointer hover:bg-gray-100"
-                          onClick={() => setExpandedClients(prev => ({...prev, [client.client_id]: !prev[client.client_id]}))}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                              <span className="text-amber-700 font-semibold">{client.client_name?.charAt(0).toUpperCase()}</span>
+                  {/* UNTAGGED SECTION - Client-wise, must tag all entries */}
+                  {reinvestmentSection === "untagged" && (
+                    untaggedClients.length === 0 ? (
+                      <div className="text-center py-12">
+                        <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
+                        <p className="text-gray-500">All clients have been tagged!</p>
+                        <p className="text-sm text-gray-400 mt-2">Move to "Tagged" section to send for approval</p>
+                      </div>
+                    ) : (
+                      untaggedClients.map((client) => (
+                        <div key={client.client_id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                          {/* Client Header */}
+                          <div 
+                            className="px-4 py-3 bg-amber-50 flex items-center justify-between cursor-pointer hover:bg-amber-100"
+                            onClick={() => setExpandedClients(prev => ({...prev, [client.client_id]: !prev[client.client_id]}))}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center">
+                                <span className="text-amber-800 font-semibold">{client.client_name?.charAt(0).toUpperCase()}</span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-800">{client.client_name}</p>
+                                <p className="text-xs text-gray-500 font-mono">{client.client_pan}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-gray-800">{client.client_name}</p>
-                              <p className="text-xs text-gray-500 font-mono">{client.client_pan} • {client.client_email}</p>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <p className="text-sm text-gray-500">Entries</p>
+                                <p className="font-semibold">{client.entries.length}</p>
+                              </div>
+                              <div className="flex gap-2 text-xs">
+                                <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full">{client.untaggedCount} untagged</span>
+                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">{client.taggedCount} tagged</span>
+                              </div>
+                              {expandedClients[client.client_id] ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                             </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <p className="text-sm text-gray-500">Total Amount</p>
-                              <p className="font-semibold text-green-600">₹{client.total_amount?.toLocaleString('en-IN')}</p>
-                            </div>
-                            <div className="flex gap-2 text-xs">
-                              <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-full">{client.tagged_count} tagged</span>
-                              {client.pending_approval > 0 && (
-                                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">{client.pending_approval} pending</span>
-                              )}
-                              {client.approved_count > 0 && (
-                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">{client.approved_count} approved</span>
-                              )}
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="gap-1"
-                              disabled={sendingApproval === client.client_id || client.tagged_count === 0}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSendApprovalEmail(client.client_id, client.client_name, client.entries);
-                              }}
-                            >
-                              {sendingApproval === client.client_id ? (
-                                <RefreshCw className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <Mail className="h-3 w-3" />
-                              )}
-                              Send Approval
-                            </Button>
-                            {expandedClients[client.client_id] ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                          </div>
-                        </div>
-                        
-                        {/* Client Entries */}
-                        {expandedClients[client.client_id] && (
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead className="bg-gray-50 border-t">
-                                <tr>
-                                  <th className="text-left py-2 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
-                                  <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
-                                  <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
-                                  <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
-                                  <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Custom Amt</th>
-                                  <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                                  <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Action</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {client.entries.map((entry) => (
-                                  <tr key={entry.cashflow_id} className="border-t border-gray-100 hover:bg-gray-50">
-                                    <td className="py-2 px-4 text-sm">{entry.bond_name?.slice(0, 25) || 'N/A'}</td>
-                                    <td className="py-2 px-4 text-center text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yy")}</td>
-                                    <td className="py-2 px-4 text-right text-sm font-mono text-green-600">₹{entry.net_amount?.toLocaleString('en-IN')}</td>
-                                    <td className="py-2 px-4">
-                                      <select
-                                        value={localTags[entry.cashflow_id] || entry.reinvestment_tag || 'not_tagged'}
-                                        onChange={(e) => handleTagChange(entry.cashflow_id, e.target.value)}
-                                        className={`px-2 py-1 text-xs rounded-lg border focus:outline-none ${getTagColor(localTags[entry.cashflow_id] || entry.reinvestment_tag)}`}
-                                        disabled={entry.client_approved}
-                                      >
-                                        <option value="not_tagged">Not Tagged</option>
-                                        <option value="principal">Principal</option>
-                                        <option value="interest">Interest</option>
-                                        <option value="net_amount">Net Amount</option>
-                                        <option value="other">Other (Custom)</option>
-                                        <option value="not_invest">Not Invest</option>
-                                      </select>
-                                    </td>
-                                    <td className="py-2 px-4 text-center">
-                                      {(localTags[entry.cashflow_id] === 'other' || entry.reinvestment_tag === 'other') && (
-                                        <input
-                                          type="number"
-                                          placeholder="Amount"
-                                          value={customAmounts[entry.cashflow_id] || entry.custom_amount || ''}
-                                          onChange={(e) => handleCustomAmountChange(entry.cashflow_id, e.target.value)}
-                                          className="px-2 py-1 text-xs rounded border w-24 text-center"
-                                          disabled={entry.client_approved}
-                                        />
-                                      )}
-                                      {entry.custom_amount && entry.reinvestment_tag === 'other' && !customAmounts[entry.cashflow_id] && (
-                                        <span className="text-xs text-amber-600 font-mono">₹{entry.custom_amount?.toLocaleString('en-IN')}</span>
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-4 text-center">
-                                      {getApprovalStatusBadge(entry.approval_status)}
-                                    </td>
-                                    <td className="py-2 px-4 text-center">
-                                      {!entry.client_approved && (
+                          
+                          {/* Client Entries - Expanded */}
+                          {expandedClients[client.client_id] && (
+                            <div className="border-t">
+                              <table className="w-full">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="text-left py-2 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
+                                    <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
+                                    <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Principal</th>
+                                    <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Interest</th>
+                                    <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Net Amt</th>
+                                    <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
+                                    <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Custom Amt</th>
+                                    <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Save</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {client.entries.map((entry) => (
+                                    <tr key={entry.cashflow_id} className={`border-t hover:bg-gray-50 ${entry.currentTag === 'not_tagged' ? 'bg-red-50/30' : ''}`}>
+                                      <td className="py-2 px-4 text-sm">{entry.bond_name?.slice(0, 20) || 'N/A'}</td>
+                                      <td className="py-2 px-4 text-center text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yy")}</td>
+                                      <td className="py-2 px-4 text-right text-sm font-mono">₹{entry.principal_net?.toLocaleString('en-IN')}</td>
+                                      <td className="py-2 px-4 text-right text-sm font-mono">₹{entry.interest_net?.toLocaleString('en-IN')}</td>
+                                      <td className="py-2 px-4 text-right text-sm font-mono text-green-600 font-medium">₹{entry.net_amount?.toLocaleString('en-IN')}</td>
+                                      <td className="py-2 px-4">
+                                        <select
+                                          value={entry.currentTag}
+                                          onChange={(e) => handleTagChange(entry.cashflow_id, e.target.value)}
+                                          className={`px-2 py-1 text-xs rounded-lg border focus:outline-none w-full ${getTagColor(entry.currentTag)}`}
+                                        >
+                                          <option value="not_tagged">Select Tag</option>
+                                          <option value="principal">Principal</option>
+                                          <option value="interest">Interest</option>
+                                          <option value="net_amount">Net Amount</option>
+                                          <option value="other">Other (Custom)</option>
+                                          <option value="not_invest">Not Invest</option>
+                                        </select>
+                                      </td>
+                                      <td className="py-2 px-4 text-center">
+                                        {entry.currentTag === 'other' && (
+                                          <input
+                                            type="number"
+                                            placeholder="Amount"
+                                            value={customAmounts[entry.cashflow_id] || entry.custom_amount || ''}
+                                            onChange={(e) => handleCustomAmountChange(entry.cashflow_id, e.target.value)}
+                                            className="px-2 py-1 text-xs rounded border w-24 text-center"
+                                          />
+                                        )}
+                                      </td>
+                                      <td className="py-2 px-4 text-center">
                                         <Button
                                           size="sm"
                                           variant="ghost"
@@ -734,134 +708,238 @@ export default function TradeVerification() {
                                             <Save className="h-3 w-3" />
                                           )}
                                         </Button>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              ) : displayEntries.length === 0 ? (
-                <div className="text-center py-12">
-                  <Tag className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">
-                    {reinvestmentSection === "untagged" 
-                      ? "No untagged entries found" 
-                      : "No tagged entries found"}
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Client</th>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Expected Date</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal Net</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest Net</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {displayEntries.map((entry) => (
-                          <tr key={entry.cashflow_id} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                                  <span className="text-amber-700 font-semibold text-sm">
-                                    {entry.client_name?.charAt(0).toUpperCase()}
-                                  </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                              {/* Progress bar */}
+                              <div className="px-4 py-3 bg-gray-50 border-t">
+                                <div className="flex items-center justify-between text-sm mb-2">
+                                  <span className="text-gray-600">Tagging Progress</span>
+                                  <span className="font-medium">{client.taggedCount}/{client.entries.length}</span>
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="font-medium text-gray-800 text-sm truncate">{entry.client_name}</p>
-                                  <p className="text-xs text-gray-500 font-mono">{entry.client_pan}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className="text-sm font-medium text-gray-800">
-                                {entry.bond_name?.slice(0, 20) || 'N/A'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className="text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yyyy")}</span>
-                            </td>
-                            <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(entry.principal_net)}</td>
-                            <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(entry.interest_net)}</td>
-                            <td className="py-3 px-4 text-right font-mono text-sm font-medium text-green-600">{formatINR(entry.net_amount)}</td>
-                            <td className="py-3 px-4">
-                              <div className="flex flex-col gap-2">
-                                <select
-                                  value={localTags[entry.cashflow_id] || 'not_tagged'}
-                                  onChange={(e) => handleTagChange(entry.cashflow_id, e.target.value)}
-                                  className={`px-2 py-1 text-xs rounded-lg border focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getTagColor(localTags[entry.cashflow_id])}`}
-                                >
-                                  <option value="not_tagged">Not Tagged</option>
-                                  <option value="principal">Principal</option>
-                                  <option value="interest">Interest</option>
-                                  <option value="net_amount">Net Amount</option>
-                                  <option value="other">Other (Custom)</option>
-                                  <option value="not_invest">Not Invest</option>
-                                </select>
-                                {localTags[entry.cashflow_id] === 'other' && (
-                                  <input
-                                    type="number"
-                                    placeholder="Enter amount"
-                                    value={customAmounts[entry.cashflow_id] || ''}
-                                    onChange={(e) => handleCustomAmountChange(entry.cashflow_id, e.target.value)}
-                                    className="px-2 py-1 text-xs rounded-lg border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 w-28"
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className="bg-amber-500 h-2 rounded-full transition-all"
+                                    style={{width: `${(client.taggedCount / client.entries.length) * 100}%`}}
                                   />
-                                )}
-                                {entry.custom_amount && localTags[entry.cashflow_id] !== 'other' && entry.reinvestment_tag === 'other' && (
-                                  <span className="text-xs text-amber-600">Custom: {formatINR(entry.custom_amount)}</span>
+                                </div>
+                                {client.allTagged && (
+                                  <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                                    <CheckCircle className="h-3 w-3" /> All entries tagged! Save all to move to Tagged section.
+                                  </p>
                                 )}
                               </div>
-                            </td>
-                            <td className="py-3 px-4 text-center">
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )
+                  )}
+
+                  {/* TAGGED SECTION - Ready to send for approval */}
+                  {reinvestmentSection === "tagged" && (
+                    taggedClients.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Tag className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500">No clients ready for approval</p>
+                        <p className="text-sm text-gray-400 mt-2">Tag all entries for a client in the "Untagged" section first</p>
+                      </div>
+                    ) : (
+                      taggedClients.map((client) => (
+                        <div key={client.client_id} className="bg-white rounded-lg border border-green-200 overflow-hidden">
+                          {/* Client Header */}
+                          <div className="px-4 py-3 bg-green-50 flex items-center justify-between">
+                            <div 
+                              className="flex items-center gap-3 cursor-pointer flex-1"
+                              onClick={() => setExpandedClients(prev => ({...prev, [client.client_id]: !prev[client.client_id]}))}
+                            >
+                              <div className="w-10 h-10 rounded-full bg-green-200 flex items-center justify-center">
+                                <span className="text-green-800 font-semibold">{client.client_name?.charAt(0).toUpperCase()}</span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-800">{client.client_name}</p>
+                                <p className="text-xs text-gray-500 font-mono">{client.client_pan} • {client.client_email}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <p className="text-sm text-gray-500">Tagged Amount</p>
+                                <p className="font-semibold text-green-600">₹{client.taggedAmount?.toLocaleString('en-IN')}</p>
+                              </div>
+                              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                                {client.taggedCount} entries
+                              </span>
                               <Button
                                 size="sm"
-                                variant="outline"
-                                onClick={() => handleSaveEntryTag(entry.cashflow_id)}
-                                disabled={savingClient === entry.cashflow_id}
-                                className="h-8 px-3"
+                                className="gap-2 bg-amber-600 hover:bg-amber-700"
+                                disabled={sendingApproval === client.client_id}
+                                onClick={() => handleSendApprovalEmail(client.client_id, client.client_name, client.entries)}
                               >
-                                {savingClient === entry.cashflow_id ? (
-                                  <RefreshCw className="h-3 w-3 animate-spin" />
+                                {sendingApproval === client.client_id ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
                                 ) : (
-                                  <Save className="h-3 w-3" />
+                                  <Mail className="h-4 w-4" />
                                 )}
+                                Send for Approval
                               </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  {/* Summary Footer */}
-                  <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500">
-                        Showing {displayEntries.length} {reinvestmentSection} entries
-                      </span>
-                      <div className="flex gap-4">
-                        <span className="text-gray-500">
-                          Total: <span className="font-mono font-medium text-green-600">
-                            {formatINR(displayEntries.reduce((sum, e) => sum + e.net_amount, 0))}
-                          </span>
-                        </span>
+                              {expandedClients[client.client_id] ? <ChevronUp className="h-5 w-5 cursor-pointer" onClick={() => setExpandedClients(prev => ({...prev, [client.client_id]: false}))} /> : <ChevronDown className="h-5 w-5 cursor-pointer" onClick={() => setExpandedClients(prev => ({...prev, [client.client_id]: true}))} />}
+                            </div>
+                          </div>
+                          
+                          {/* Expanded entries */}
+                          {expandedClients[client.client_id] && (
+                            <div className="border-t">
+                              <table className="w-full">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="text-left py-2 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
+                                    <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
+                                    <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
+                                    <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
+                                    <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Tagged Amount</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {client.entries.map((entry) => {
+                                    let taggedAmt = 0;
+                                    if (entry.currentTag === 'other') taggedAmt = parseFloat(customAmounts[entry.cashflow_id] || entry.custom_amount || 0);
+                                    else if (entry.currentTag === 'principal') taggedAmt = entry.principal_net;
+                                    else if (entry.currentTag === 'interest') taggedAmt = entry.interest_net;
+                                    else if (entry.currentTag === 'net_amount') taggedAmt = entry.net_amount;
+                                    
+                                    return (
+                                      <tr key={entry.cashflow_id} className="border-t hover:bg-gray-50">
+                                        <td className="py-2 px-4 text-sm">{entry.bond_name?.slice(0, 25) || 'N/A'}</td>
+                                        <td className="py-2 px-4 text-center text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yy")}</td>
+                                        <td className="py-2 px-4 text-right text-sm font-mono">₹{entry.net_amount?.toLocaleString('en-IN')}</td>
+                                        <td className="py-2 px-4 text-center">
+                                          <span className={`px-2 py-1 text-xs rounded-full ${getTagColor(entry.currentTag)}`}>
+                                            {getTagLabel(entry.currentTag)}
+                                          </span>
+                                        </td>
+                                        <td className="py-2 px-4 text-right text-sm font-mono font-medium text-green-600">
+                                          ₹{taggedAmt?.toLocaleString('en-IN')}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )
+                  )}
+
+                  {/* SENT FOR APPROVAL SECTION - Shows status */}
+                  {reinvestmentSection === "sent" && (
+                    sentClients.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Mail className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500">No clients sent for approval yet</p>
+                        <p className="text-sm text-gray-400 mt-2">Tag and send clients from the "Tagged" section</p>
                       </div>
-                    </div>
-                  </div>
+                    ) : (
+                      sentClients.map((client) => {
+                        // Determine overall status
+                        const pendingEntries = client.entries.filter(e => e.approval_status === 'pending');
+                        const approvedEntries = client.entries.filter(e => e.approval_status === 'approved');
+                        const rejectedEntries = client.entries.filter(e => e.approval_status === 'rejected');
+                        
+                        let overallStatus = 'pending';
+                        let statusColor = 'yellow';
+                        if (approvedEntries.length === client.entries.length) {
+                          overallStatus = 'approved';
+                          statusColor = 'green';
+                        } else if (rejectedEntries.length === client.entries.length) {
+                          overallStatus = 'rejected';
+                          statusColor = 'red';
+                        } else if (approvedEntries.length > 0 || rejectedEntries.length > 0) {
+                          overallStatus = 'partial';
+                          statusColor = 'blue';
+                        }
+                        
+                        return (
+                          <div key={client.client_id} className={`bg-white rounded-lg border border-${statusColor}-200 overflow-hidden`}>
+                            {/* Client Header */}
+                            <div className={`px-4 py-3 bg-${statusColor}-50 flex items-center justify-between`}>
+                              <div 
+                                className="flex items-center gap-3 cursor-pointer flex-1"
+                                onClick={() => setExpandedClients(prev => ({...prev, [client.client_id]: !prev[client.client_id]}))}
+                              >
+                                <div className={`w-10 h-10 rounded-full bg-${statusColor}-200 flex items-center justify-center`}>
+                                  <span className={`text-${statusColor}-800 font-semibold`}>{client.client_name?.charAt(0).toUpperCase()}</span>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-800">{client.client_name}</p>
+                                  <p className="text-xs text-gray-500 font-mono">{client.client_pan}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="flex gap-2 text-xs">
+                                  {pendingEntries.length > 0 && (
+                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full flex items-center gap-1">
+                                      <Clock className="h-3 w-3" /> {pendingEntries.length} Pending
+                                    </span>
+                                  )}
+                                  {approvedEntries.length > 0 && (
+                                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
+                                      <Check className="h-3 w-3" /> {approvedEntries.length} Approved
+                                    </span>
+                                  )}
+                                  {rejectedEntries.length > 0 && (
+                                    <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full flex items-center gap-1">
+                                      <X className="h-3 w-3" /> {rejectedEntries.length} Rejected
+                                    </span>
+                                  )}
+                                </div>
+                                {expandedClients[client.client_id] ? <ChevronUp className="h-5 w-5 cursor-pointer" /> : <ChevronDown className="h-5 w-5 cursor-pointer" />}
+                              </div>
+                            </div>
+                            
+                            {/* Expanded entries */}
+                            {expandedClients[client.client_id] && (
+                              <div className="border-t">
+                                <table className="w-full">
+                                  <thead className="bg-gray-50">
+                                    <tr>
+                                      <th className="text-left py-2 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
+                                      <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
+                                      <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
+                                      <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                      <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {client.entries.map((entry) => (
+                                      <tr key={entry.cashflow_id} className="border-t hover:bg-gray-50">
+                                        <td className="py-2 px-4 text-sm">{entry.bond_name?.slice(0, 25) || 'N/A'}</td>
+                                        <td className="py-2 px-4 text-center text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yy")}</td>
+                                        <td className="py-2 px-4 text-center">
+                                          <span className={`px-2 py-1 text-xs rounded-full ${getTagColor(entry.reinvestment_tag)}`}>
+                                            {getTagLabel(entry.reinvestment_tag)}
+                                          </span>
+                                        </td>
+                                        <td className="py-2 px-4 text-right text-sm font-mono font-medium">
+                                          ₹{(entry.custom_amount || entry.net_amount)?.toLocaleString('en-IN')}
+                                        </td>
+                                        <td className="py-2 px-4 text-center">
+                                          {getApprovalStatusBadge(entry.approval_status)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )
+                  )}
                 </div>
               )}
             </div>
