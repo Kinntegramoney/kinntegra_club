@@ -285,14 +285,16 @@ class CASParser:
                 
                 full_line = line
                 if pending_scheme_line and 'ISIN' not in pending_scheme_line:
-                    full_line = pending_scheme_line + line
+                    full_line = pending_scheme_line + ' ' + line
                 
+                # Extract scheme name - everything between scheme code and " - ISIN:"
                 scheme_match = re.match(r'^([A-Z0-9]+)-(.+?)\s*-\s*ISIN:', full_line)
                 if scheme_match:
                     scheme_code = scheme_match.group(1)
                     scheme_name = scheme_match.group(2).strip()
-                    scheme_name = re.sub(r'\s*\(formerly.*$', '', scheme_name)
-                    scheme_name = re.sub(r'\s*-\s*Demat\)?.*$', '', scheme_name)
+                    # Keep the full scheme name including (Non-Demat) and (formerly...) 
+                    # Only remove trailing " - Reinvest" patterns if present
+                    scheme_name = re.sub(r'\s*-\s*Reinvest.*$', '', scheme_name)
                     current_scheme_full = f"{scheme_code}-{scheme_name}"
                     current_scheme = scheme_name
                 
