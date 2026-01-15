@@ -1360,15 +1360,42 @@ class GapSheetGenerator:
             "Account Identifier Type", "Account Identifier", "Scheme ID",
             "Instrument Name", "ISIN", "Instrument Type", "Transaction Date",
             "Transaction Details", "Opening Units", "Units (Debit)", "Units (Credit)",
-            "Closing Units", "Price", "Transaction Amount", "STT", "Stamp Duty"
+            "Closing Units", "Price", "Transaction Amount", "STT", "Stamp Duty", "Total Amount"
         ]
         
         for col, header in enumerate(headers, 1):
             ws.cell(row=1, column=col, value=header)
         self._style_header(ws, 1, len(headers))
         
+        # Build STT lookup: key = (date, folio, isin) -> STT amount
+        stt_lookup = {}
+        for trans in self.parsed_data.get('transactions', []):
+            if trans.get('transaction_type') == 'STT Paid':
+                key = (trans.get('date'), trans.get('folio'), trans.get('isin'))
+                stt_lookup[key] = stt_lookup.get(key, 0) + trans.get('amount', 0)
+        
+        # Build Stamp Duty lookup: key = (date, folio, isin) -> Stamp Duty amount
+        stamp_lookup = {}
+        for trans in self.parsed_data.get('transactions', []):
+            if trans.get('transaction_type') == 'Stamp Duty':
+                key = (trans.get('date'), trans.get('folio'), trans.get('isin'))
+                stamp_lookup[key] = stamp_lookup.get(key, 0) + trans.get('amount', 0)
+        
         row = 2
         for trans in self.parsed_data.get('transactions', []):
+            # Skip NFT entries (move to NFT sheet) - they have blank amounts
+            if trans.get('is_nft'):
+                continue
+            # Skip Pledge entries (move to NFT sheet) - they have blank amounts
+            if trans.get('is_pledge'):
+                continue
+            # Skip STT Paid - merged with related transactions
+            if trans.get('transaction_type') == 'STT Paid':
+                continue
+            # Skip Stamp Duty - merged with related transactions
+            if trans.get('transaction_type') == 'Stamp Duty':
+                continue
+            
             ws.cell(row=row, column=3, value=trans.get('advisor', ''))
             ws.cell(row=row, column=4, value=trans.get('pan', ''))
             ws.cell(row=row, column=5, value="Folio Number")
@@ -1386,7 +1413,24 @@ class GapSheetGenerator:
             
             ws.cell(row=row, column=16, value=trans.get('balance', 0))
             ws.cell(row=row, column=17, value=trans.get('nav', 0))
-            ws.cell(row=row, column=18, value=trans.get('amount', 0))
+            
+            trans_amount = trans.get('amount', 0)
+            ws.cell(row=row, column=18, value=trans_amount)
+            
+            # Add STT if available for this transaction
+            key = (trans.get('date'), trans.get('folio'), trans.get('isin'))
+            stt_amount = stt_lookup.get(key, 0)
+            stamp_amount = stamp_lookup.get(key, 0)
+            
+            if stt_amount > 0:
+                ws.cell(row=row, column=19, value=stt_amount)
+            if stamp_amount > 0:
+                ws.cell(row=row, column=20, value=stamp_amount)
+            
+            # Total Amount = Transaction Amount + STT + Stamp Duty
+            total_amount = trans_amount + stt_amount + stamp_amount
+            ws.cell(row=row, column=21, value=total_amount)
+            
             row += 1
         
         self._auto_width(ws)
