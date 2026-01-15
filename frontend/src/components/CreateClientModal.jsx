@@ -161,6 +161,16 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
                 />
               </div>
               <div className="space-y-2">
+                <Label className="text-xs text-gray-500 uppercase">UCC (Unique Client Code)</Label>
+                <Input
+                  value={formData.ucc}
+                  onChange={(e) => updateField('ucc', e.target.value.toUpperCase())}
+                  placeholder="Unique Client Code"
+                  className="font-mono uppercase"
+                  data-testid="client-ucc"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label className="text-xs text-gray-500 uppercase">Occupation</Label>
                 <Input
                   value={formData.occupation}
