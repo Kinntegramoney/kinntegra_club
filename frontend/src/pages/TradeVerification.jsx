@@ -362,9 +362,7 @@ export default function TradeVerification() {
   if (!user) return null;
 
   const displayTrades = activeTab === 'pending' ? pendingTrades : allTrades;
-  const { tagged, untagged } = getEntriesByTagStatus();
-  const displayEntries = reinvestmentSection === 'tagged' ? tagged : untagged;
-  const clientsData = reinvestmentData?.by_client || [];
+  const { untagged: untaggedClients, tagged: taggedClients, sent: sentClients } = getClientsByStatus();
 
   return (
     <div className="flex h-screen bg-gray-50">
