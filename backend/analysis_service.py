@@ -1982,80 +1982,24 @@ class GapSheetGenerator:
         self._auto_width(ws)
     
     def _create_summary_sheet(self, wb: Workbook):
-        """Sheet 1: Summary - Overview of portfolio with category-wise breakdown"""
+        """Sheet 1: Summary - Portfolio Summary only"""
         ws = wb.create_sheet("Summary", 0)  # Position 0 to make it first
         
         # Portfolio Summary Section
         ws.cell(row=1, column=1, value="PORTFOLIO SUMMARY")
-        ws.merge_cells('A1:F1')
-        self._style_header(ws, 1, 6)
+        ws.merge_cells('A1:B1')
+        self._style_header(ws, 1, 2)
         
         # Calculate totals
         total_invested = 0
         total_current_value = 0
         total_withdrawn = 0
         
-        # Category-wise breakdown with withdrawals and cashflows for XIRR
-        category_data = {
-            'Large Cap': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Mid Cap': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Small Cap': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Flexi Cap': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Multi Cap': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'ELSS': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Hybrid': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Debt': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Liquid': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Arbitrage': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Index Fund': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Sectoral/Thematic': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
-            'Other': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []}
-        }
-        
-        def classify_scheme(scheme_name):
-            """Classify scheme into category based on name"""
-            name_lower = scheme_name.lower() if scheme_name else ''
-            
-            if 'large cap' in name_lower or 'largecap' in name_lower or 'bluechip' in name_lower:
-                return 'Large Cap'
-            elif 'mid cap' in name_lower or 'midcap' in name_lower:
-                return 'Mid Cap'
-            elif 'small cap' in name_lower or 'smallcap' in name_lower:
-                return 'Small Cap'
-            elif 'flexi' in name_lower or 'flexicap' in name_lower:
-                return 'Flexi Cap'
-            elif 'multi cap' in name_lower or 'multicap' in name_lower:
-                return 'Multi Cap'
-            elif 'elss' in name_lower or 'tax' in name_lower:
-                return 'ELSS'
-            elif 'hybrid' in name_lower or 'balanced' in name_lower or 'aggressive' in name_lower or 'conservative' in name_lower:
-                return 'Hybrid'
-            elif 'liquid' in name_lower or 'money market' in name_lower or 'overnight' in name_lower:
-                return 'Liquid'
-            elif 'debt' in name_lower or 'bond' in name_lower or 'gilt' in name_lower or 'income' in name_lower or 'credit' in name_lower:
-                return 'Debt'
-            elif 'arbitrage' in name_lower:
-                return 'Arbitrage'
-            elif 'index' in name_lower or 'nifty' in name_lower or 'sensex' in name_lower or 'etf' in name_lower:
-                return 'Index Fund'
-            elif any(x in name_lower for x in ['pharma', 'bank', 'infra', 'technology', 'consumption', 'manufacturing', 'thematic', 'sector']):
-                return 'Sectoral/Thematic'
-            else:
-                return 'Other'
-        
-        # Process folios
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
-            scheme_name = folio_data.get('scheme', '')
-            category = classify_scheme(scheme_name)
             market_value = folio_data.get('market_value', 0)
             closing_balance = folio_data.get('closing_balance', 0)
             
-            # Only include funds with active balance (units > 0) in category breakdown
-            is_active_fund = closing_balance > 0 and market_value > 0
-            
-            if is_active_fund:
-                category_data[category]['current'] += market_value
-                category_data[category]['schemes'] += 1
+            if closing_balance > 0 and market_value > 0:
                 total_current_value += market_value
             
             # Calculate invested amount and withdrawals from transactions
@@ -2066,56 +2010,31 @@ class GapSheetGenerator:
                     continue
                 
                 amount = trans.get('amount', 0)
-                trans_date = None
-                try:
-                    trans_date = datetime.strptime(trans['date'], '%d-%b-%Y')
-                except:
-                    pass
-                
                 if trans.get('is_redemption'):
                     total_withdrawn += amount
-                    if is_active_fund:
-                        category_data[category]['withdrawn'] += amount
-                        # Redemption is positive cashflow (money received)
-                        if trans_date:
-                            category_data[category]['cashflows'].append((trans_date, amount))
                 else:
                     total_invested += amount
-                    if is_active_fund:
-                        category_data[category]['invested'] += amount
-                        # Investment is negative cashflow (money spent)
-                        if trans_date:
-                            category_data[category]['cashflows'].append((trans_date, -amount))
-            
-            # Add current value as final positive cashflow for XIRR (if active)
-            if is_active_fund and market_value > 0:
-                category_data[category]['cashflows'].append((self.report_date, market_value))
         
         # Summary headers
-        summary_headers = ["Metric", "Value"]
         ws.cell(row=3, column=1, value="Metric")
         ws.cell(row=3, column=2, value="Value")
         self._style_header(ws, 3, 2)
         
-        # Helper function to format currency with ₹ and Indian number system (lakhs, crores)
+        # Helper function to format currency with ₹ and Indian number system
         def format_inr(amount):
             """Format amount in Indian numbering system: X,XX,XX,XXX"""
             is_negative = amount < 0
             amount = abs(amount)
             
-            # Split into integer and decimal parts
             int_part = int(amount)
             dec_part = round((amount - int_part) * 100)
             
-            # Format integer part in Indian system
             s = str(int_part)
             if len(s) <= 3:
                 formatted = s
             else:
-                # Last 3 digits
                 formatted = s[-3:]
                 s = s[:-3]
-                # Then groups of 2
                 while s:
                     formatted = s[-2:] + ',' + formatted
                     s = s[:-2]
@@ -2133,280 +2052,6 @@ class GapSheetGenerator:
         ws.cell(row=6, column=2, value=format_inr(total_current_value))
         ws.cell(row=7, column=1, value="Absolute Gain/Loss")
         ws.cell(row=7, column=2, value=format_inr(total_current_value + total_withdrawn - total_invested))
-        
-        # Category-wise breakdown section
-        ws.cell(row=9, column=1, value="CATEGORY-WISE BREAKDOWN (Active Funds Only)")
-        ws.merge_cells('A9:H9')
-        self._style_header(ws, 9, 8)
-        
-        cat_headers = ["Category", "No. of Schemes", "Amount Invested", "Withdrawn/Dividend", "Current Value", "Gain/Loss", "XIRR %", "Allocation %"]
-        for col, header in enumerate(cat_headers, 1):
-            ws.cell(row=11, column=col, value=header)
-        self._style_header(ws, 11, len(cat_headers))
-        
-        row = 12
-        for category, data in category_data.items():
-            if data['current'] > 0 or data['invested'] > 0:
-                # Gain/Loss = (Current Value + Withdrawals) - Invested
-                gain_loss = (data['current'] + data['withdrawn']) - data['invested']
-                allocation = (data['current'] / total_current_value * 100) if total_current_value > 0 else 0
-                
-                # Calculate XIRR for this category
-                xirr_pct = 0.0
-                if data['cashflows'] and len(data['cashflows']) >= 2:
-                    xirr_pct = calculate_xirr(data['cashflows']) * 100
-                
-                ws.cell(row=row, column=1, value=category)
-                ws.cell(row=row, column=2, value=data['schemes'])
-                ws.cell(row=row, column=3, value=format_inr(data['invested']))
-                ws.cell(row=row, column=4, value=format_inr(data['withdrawn']))
-                ws.cell(row=row, column=5, value=format_inr(data['current']))
-                ws.cell(row=row, column=6, value=format_inr(gain_loss))
-                ws.cell(row=row, column=7, value=f"{xirr_pct:.2f}%" if xirr_pct else "N/A")
-                ws.cell(row=row, column=8, value=f"{allocation:.1f}%")
-                row += 1
-        
-        # Asset Class Summary (Equity vs Debt vs Hybrid)
-        ws.cell(row=row + 2, column=1, value="ASSET CLASS SUMMARY")
-        ws.merge_cells(f'A{row+2}:F{row+2}')
-        self._style_header(ws, row + 2, 6)
-        
-        equity_total = sum(category_data[c]['current'] for c in ['Large Cap', 'Mid Cap', 'Small Cap', 'Flexi Cap', 'Multi Cap', 'ELSS', 'Index Fund', 'Sectoral/Thematic'])
-        debt_total = sum(category_data[c]['current'] for c in ['Debt', 'Liquid'])
-        hybrid_total = sum(category_data[c]['current'] for c in ['Hybrid', 'Arbitrage'])
-        other_total = category_data['Other']['current']
-        
-        asset_headers = ["Asset Class", "Current Value", "Allocation %"]
-        for col, header in enumerate(asset_headers, 1):
-            ws.cell(row=row + 4, column=col, value=header)
-        self._style_header(ws, row + 4, len(asset_headers))
-        
-        asset_row = row + 5
-        for asset_class, value in [('Equity', equity_total), ('Debt', debt_total), ('Hybrid', hybrid_total), ('Other', other_total)]:
-            if value > 0:
-                allocation = (value / total_current_value * 100) if total_current_value > 0 else 0
-                ws.cell(row=asset_row, column=1, value=asset_class)
-                ws.cell(row=asset_row, column=2, value=format_inr(value))
-                ws.cell(row=asset_row, column=3, value=f"{allocation:.1f}%")
-                asset_row += 1
-        
-        # FY-wise Long Term / Short Term Summary
-        fy_summary_row = asset_row + 3
-        ws.cell(row=fy_summary_row, column=1, value="FINANCIAL YEAR WISE LT/ST SUMMARY")
-        ws.merge_cells(f'A{fy_summary_row}:H{fy_summary_row}')
-        self._style_header(ws, fy_summary_row, 8)
-        
-        # Calculate FY-wise LT/ST breakdown
-        fy_lt_st_data = {}
-        
-        GRANDFATHER_DATE = datetime(2018, 1, 31)
-        
-        def get_financial_year_for_summary(date):
-            if date.month >= 4:
-                return f"{date.year} - {date.year + 1}"
-            else:
-                return f"{date.year - 1} - {date.year}"
-        
-        def is_long_term(fund_type, holding_days, trans_date):
-            """Determine if investment qualifies as Long Term based on fund type and holding period"""
-            if fund_type in ['EQUITY', 'ARBITRAGE', 'HYBRID']:
-                return holding_days > 365
-            else:  # Debt, Liquid
-                # Pre-April 2023 debt had 3-year rule
-                if trans_date < datetime(2023, 4, 1):
-                    return holding_days > 1095  # 3 years
-                else:
-                    return False  # Post-April 2023, no LT for debt
-        
-        def get_fund_type_for_summary(scheme_name):
-            name_lower = scheme_name.lower() if scheme_name else ''
-            if any(x in name_lower for x in ['liquid', 'money market', 'overnight']):
-                return 'LIQUID'
-            elif any(x in name_lower for x in ['debt', 'bond', 'gilt', 'income', 'credit']):
-                return 'DEBT'
-            elif 'arbitrage' in name_lower:
-                return 'ARBITRAGE'
-            elif any(x in name_lower for x in ['hybrid', 'balanced']):
-                return 'HYBRID'
-            else:
-                return 'EQUITY'
-        
-        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
-            scheme_name = folio_data.get('scheme', '') or ''
-            fund_type = get_fund_type_for_summary(scheme_name)
-            current_nav = folio_data.get('current_nav', 0)
-            closing_balance = folio_data.get('closing_balance', 0)
-            
-            transactions = folio_data.get('transactions', [])
-            
-            # Find last redemption date for sold investments
-            last_redemption_date = None
-            if closing_balance <= 0:
-                for trans in transactions:
-                    if trans.get('is_redemption'):
-                        try:
-                            redemption_date = datetime.strptime(trans['date'], '%d-%b-%Y')
-                            if last_redemption_date is None or redemption_date > last_redemption_date:
-                                last_redemption_date = redemption_date
-                        except:
-                            pass
-            
-            for trans in transactions:
-                if trans.get('is_redemption') or trans.get('is_nft') or trans.get('is_pledge'):
-                    continue
-                if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
-                    continue
-                
-                try:
-                    trans_date = datetime.strptime(trans['date'], '%d-%b-%Y')
-                    
-                    # Calculate holding period
-                    if closing_balance <= 0 and last_redemption_date:
-                        holding_days = (last_redemption_date - trans_date).days
-                    else:
-                        holding_days = (self.report_date - trans_date).days
-                    
-                    units = trans.get('units', 0)
-                    if units <= 0:
-                        continue
-                    
-                    purchase_nav = trans.get('nav', 0)
-                    purchase_value = units * purchase_nav if purchase_nav else trans.get('amount', 0)
-                    
-                    # Calculate current/sale value
-                    if closing_balance > 0:
-                        current_value = units * current_nav if current_nav else 0
-                    else:
-                        # For sold, use purchase value (actual gain would need sale NAV)
-                        current_value = purchase_value
-                    
-                    gain_loss = current_value - purchase_value
-                    
-                    # Apply grandfathering for pre-2018 equity
-                    if trans_date < GRANDFATHER_DATE and fund_type in ['EQUITY', 'HYBRID', 'ARBITRAGE']:
-                        # Grandfathering could reduce gains
-                        if current_nav and purchase_nav and current_nav > purchase_nav:
-                            gf_nav = purchase_nav + (current_nav - purchase_nav) * 0.3
-                            gf_value = units * gf_nav
-                            gain_loss = current_value - gf_value
-                    
-                    # Determine LT/ST
-                    lt_status = is_long_term(fund_type, holding_days, trans_date)
-                    
-                    # Get FY of transaction
-                    fy = get_financial_year_for_summary(trans_date)
-                    
-                    if fy not in fy_lt_st_data:
-                        fy_lt_st_data[fy] = {
-                            'active_lt_units': 0, 'active_lt_purchase': 0, 'active_lt_current': 0, 'active_lt_gain': 0,
-                            'active_st_units': 0, 'active_st_purchase': 0, 'active_st_current': 0, 'active_st_gain': 0,
-                            'sold_lt_units': 0, 'sold_lt_purchase': 0, 'sold_lt_sale': 0, 'sold_lt_gain': 0,
-                            'sold_st_units': 0, 'sold_st_purchase': 0, 'sold_st_sale': 0, 'sold_st_gain': 0
-                        }
-                    
-                    if closing_balance > 0:  # Active holding
-                        if lt_status:
-                            fy_lt_st_data[fy]['active_lt_units'] += units
-                            fy_lt_st_data[fy]['active_lt_purchase'] += purchase_value
-                            fy_lt_st_data[fy]['active_lt_current'] += current_value
-                            fy_lt_st_data[fy]['active_lt_gain'] += gain_loss
-                        else:
-                            fy_lt_st_data[fy]['active_st_units'] += units
-                            fy_lt_st_data[fy]['active_st_purchase'] += purchase_value
-                            fy_lt_st_data[fy]['active_st_current'] += current_value
-                            fy_lt_st_data[fy]['active_st_gain'] += gain_loss
-                    else:  # Sold
-                        if lt_status:
-                            fy_lt_st_data[fy]['sold_lt_units'] += units
-                            fy_lt_st_data[fy]['sold_lt_purchase'] += purchase_value
-                            fy_lt_st_data[fy]['sold_lt_sale'] += current_value
-                            fy_lt_st_data[fy]['sold_lt_gain'] += gain_loss
-                        else:
-                            fy_lt_st_data[fy]['sold_st_units'] += units
-                            fy_lt_st_data[fy]['sold_st_purchase'] += purchase_value
-                            fy_lt_st_data[fy]['sold_st_sale'] += current_value
-                            fy_lt_st_data[fy]['sold_st_gain'] += gain_loss
-                
-                except:
-                    pass
-        
-        # Write FY-wise LT/ST summary headers - with purchase/sale values
-        fy_headers = ["Financial Year", 
-                      "Active LT Purchase", "Active LT Current Value", "Active LT Gain/Loss",
-                      "Active ST Purchase", "Active ST Current Value", "Active ST Gain/Loss",
-                      "Sold LT Purchase", "Sold LT Sale Value", "Sold LT Gain/Loss",
-                      "Sold ST Purchase", "Sold ST Sale Value", "Sold ST Gain/Loss"]
-        
-        header_row = fy_summary_row + 2
-        for col, header in enumerate(fy_headers, 1):
-            ws.cell(row=header_row, column=col, value=header)
-        self._style_header(ws, header_row, len(fy_headers))
-        
-        # Sort FYs and filter to last 5 years only
-        def get_fy_sort_key(fy_str):
-            try:
-                return int(fy_str.split(' - ')[0])
-            except:
-                return 9999
-        
-        sorted_fys = sorted(fy_lt_st_data.keys(), key=get_fy_sort_key, reverse=True)
-        last_5_fys = sorted_fys[:5]  # Get last 5 FYs
-        last_5_fys.reverse()  # Display oldest first
-        
-        data_row = header_row + 1
-        for fy in last_5_fys:
-            data = fy_lt_st_data[fy]
-            ws.cell(row=data_row, column=1, value=fy)
-            # Active LT
-            ws.cell(row=data_row, column=2, value=format_inr(data['active_lt_purchase']) if data['active_lt_purchase'] else '')
-            ws.cell(row=data_row, column=3, value=format_inr(data['active_lt_current']) if data['active_lt_current'] else '')
-            ws.cell(row=data_row, column=4, value=format_inr(data['active_lt_gain']) if data['active_lt_gain'] else '')
-            # Active ST
-            ws.cell(row=data_row, column=5, value=format_inr(data['active_st_purchase']) if data['active_st_purchase'] else '')
-            ws.cell(row=data_row, column=6, value=format_inr(data['active_st_current']) if data['active_st_current'] else '')
-            ws.cell(row=data_row, column=7, value=format_inr(data['active_st_gain']) if data['active_st_gain'] else '')
-            # Sold LT
-            ws.cell(row=data_row, column=8, value=format_inr(data['sold_lt_purchase']) if data['sold_lt_purchase'] else '')
-            ws.cell(row=data_row, column=9, value=format_inr(data['sold_lt_sale']) if data['sold_lt_sale'] else '')
-            ws.cell(row=data_row, column=10, value=format_inr(data['sold_lt_gain']) if data['sold_lt_gain'] else '')
-            # Sold ST
-            ws.cell(row=data_row, column=11, value=format_inr(data['sold_st_purchase']) if data['sold_st_purchase'] else '')
-            ws.cell(row=data_row, column=12, value=format_inr(data['sold_st_sale']) if data['sold_st_sale'] else '')
-            ws.cell(row=data_row, column=13, value=format_inr(data['sold_st_gain']) if data['sold_st_gain'] else '')
-            data_row += 1
-        
-        # Add totals row for last 5 years only
-        total_active_lt_purchase = sum(fy_lt_st_data[fy]['active_lt_purchase'] for fy in last_5_fys)
-        total_active_lt_current = sum(fy_lt_st_data[fy]['active_lt_current'] for fy in last_5_fys)
-        total_active_lt_gain = sum(fy_lt_st_data[fy]['active_lt_gain'] for fy in last_5_fys)
-        total_active_st_purchase = sum(fy_lt_st_data[fy]['active_st_purchase'] for fy in last_5_fys)
-        total_active_st_current = sum(fy_lt_st_data[fy]['active_st_current'] for fy in last_5_fys)
-        total_active_st_gain = sum(fy_lt_st_data[fy]['active_st_gain'] for fy in last_5_fys)
-        total_sold_lt_purchase = sum(fy_lt_st_data[fy]['sold_lt_purchase'] for fy in last_5_fys)
-        total_sold_lt_sale = sum(fy_lt_st_data[fy]['sold_lt_sale'] for fy in last_5_fys)
-        total_sold_lt_gain = sum(fy_lt_st_data[fy]['sold_lt_gain'] for fy in last_5_fys)
-        total_sold_st_purchase = sum(fy_lt_st_data[fy]['sold_st_purchase'] for fy in last_5_fys)
-        total_sold_st_sale = sum(fy_lt_st_data[fy]['sold_st_sale'] for fy in last_5_fys)
-        total_sold_st_gain = sum(fy_lt_st_data[fy]['sold_st_gain'] for fy in last_5_fys)
-        
-        ws.cell(row=data_row + 1, column=1, value="TOTAL (Last 5 FYs)")
-        ws.cell(row=data_row + 1, column=2, value=format_inr(total_active_lt_purchase))
-        ws.cell(row=data_row + 1, column=3, value=format_inr(total_active_lt_current))
-        ws.cell(row=data_row + 1, column=4, value=format_inr(total_active_lt_gain))
-        ws.cell(row=data_row + 1, column=5, value=format_inr(total_active_st_purchase))
-        ws.cell(row=data_row + 1, column=6, value=format_inr(total_active_st_current))
-        ws.cell(row=data_row + 1, column=7, value=format_inr(total_active_st_gain))
-        ws.cell(row=data_row + 1, column=8, value=format_inr(total_sold_lt_purchase))
-        ws.cell(row=data_row + 1, column=9, value=format_inr(total_sold_lt_sale))
-        ws.cell(row=data_row + 1, column=10, value=format_inr(total_sold_lt_gain))
-        ws.cell(row=data_row + 1, column=11, value=format_inr(total_sold_st_purchase))
-        ws.cell(row=data_row + 1, column=12, value=format_inr(total_sold_st_sale))
-        ws.cell(row=data_row + 1, column=13, value=format_inr(total_sold_st_gain))
-        
-        # Add note about grandfathering
-        note_row = data_row + 4
-        ws.cell(row=note_row, column=1, value="Note: Long Term gains for pre-31-Jan-2018 equity investments are calculated after grandfathering adjustment. Showing last 5 financial years only.")
-        ws.merge_cells(f'A{note_row}:M{note_row}')
         
         self._auto_width(ws)
     
