@@ -1,0 +1,77 @@
+{
+  "summary": "Completed comprehensive testing of the new Analysis tab feature. All 15 backend API tests passed (100%). Frontend UI testing verified all components: CAS PDF upload form, Scheme Master section (broker only), Analysis History with view/download/delete actions, and navigation from sidebar. The feature correctly extracts 77 folios and 1357 transactions from CAS PDF and generates Gap Sheet Excel reports.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Backend: POST /api/analysis/upload-cas - CAS PDF upload with password validation (200 OK)",
+    "Backend: POST /api/analysis/upload-cas - Invalid password returns 400",
+    "Backend: POST /api/analysis/upload-cas - Missing password returns 422",
+    "Backend: GET /api/analysis - List analyses returns array with correct structure",
+    "Backend: GET /api/analysis/{id} - Get analysis details with parsed_data",
+    "Backend: GET /api/analysis/{id} - Invalid ID returns 404",
+    "Backend: GET /api/analysis/{id}/download - Download Gap Sheet Excel file",
+    "Backend: GET /api/analysis/{id}/download - Invalid ID returns 404",
+    "Backend: DELETE /api/analysis/{id} - Delete analysis successfully",
+    "Backend: DELETE /api/analysis/{id} - Invalid ID returns 404",
+    "Backend: POST /api/analysis/upload-scheme-master - Upload scheme master (broker only)",
+    "Backend: GET /api/analysis/scheme-master/status - Returns status with total_schemes",
+    "Backend: All analysis endpoints require authentication (401/403 without token)",
+    "Backend: Parsed data structure validation (folios, transactions, portfolio_summary)",
+    "Frontend: Analysis page loads with correct title 'Portfolio Analysis'",
+    "Frontend: CAS Upload section with file input and password field",
+    "Frontend: Scheme Master section visible for broker (39,926 schemes)",
+    "Frontend: Analysis History shows previous analyses with timestamps",
+    "Frontend: View, Download, Delete buttons on each analysis item",
+    "Frontend: Selected analysis shows statistics (77 folios, 1357 transactions, ₹265.3L cost, ₹289.7L value)",
+    "Frontend: Download Gap Sheet button triggers file download",
+    "Frontend: Back button navigates to dashboard",
+    "Frontend: Refresh button reloads data",
+    "Frontend: All data-testid attributes present for testing",
+    "Frontend: Analysis link visible in broker sidebar"
+  ],
+  "test_report_links": [
+    "/app/tests/test_analysis.py",
+    "/app/test_reports/pytest/analysis_tests.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "CAS PDF parser correctly handles password-protected PDFs using PyMuPDF",
+    "Parsed data includes portfolio_summary, folios (77), and transactions (1357)",
+    "Gap Sheet Excel generation creates 4 sheets: Portfolio Performance, MF Holdings, MF Transactions, Advisor View",
+    "Scheme master with 39,926 schemes uploaded for NAV mapping",
+    "Analysis endpoints properly filter by user_id for non-broker roles",
+    "All interactive elements have data-testid attributes for testing",
+    "Frontend correctly displays statistics from parsed CAS data",
+    "MFapi.in integration for NAV data may timeout occasionally (acceptable per requirements)"
+  ],
+  "updated_files": [
+    "/app/tests/test_analysis.py"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 tests passed)",
+    "frontend": "100% (all UI components verified)"
+  },
+  "test_credentials": {
+    "broker": {
+      "PAN": "ANVPB5297J",
+      "Password": "Laksh@0208",
+      "PIN": "0516"
+    },
+    "test_files": {
+      "cas_pdf": "/app/uploads/analysis/cas_report.pdf",
+      "cas_password": "prima12",
+      "scheme_master": "/app/uploads/analysis/scheme_master.txt"
+    }
+  },
+  "seed_data_creation": "Used existing test files: cas_report.pdf (password: prima12), scheme_master.txt (39,926 schemes). 3 analysis records created during testing.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Analysis feature fully tested and working. Backend has 7 endpoints under /api/analysis/. CAS PDF parsing extracts 77 folios and 1357 transactions. Gap Sheet Excel has 4 sheets. Scheme master with 39,926 schemes uploaded. Analysis page accessible to all user roles (broker, sub_broker, client) via /analysis route. All data-testid attributes in place. Test files located at /app/uploads/analysis/."
+}
