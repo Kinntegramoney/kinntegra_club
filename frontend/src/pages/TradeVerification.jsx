@@ -268,11 +268,57 @@ export default function TradeVerification() {
     }
   };
 
+  // Send approval email to client
+  const handleSendApprovalEmail = async (clientId, clientName, entries) => {
+    const taggedEntries = entries.filter(e => 
+      e.reinvestment_tag && e.reinvestment_tag !== 'not_tagged' && e.approval_status !== 'approved'
+    );
+    
+    if (taggedEntries.length === 0) {
+      toast.error("No tagged entries to send for approval");
+      return;
+    }
+
+    setSendingApproval(clientId);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/reinvestment/send-approval-email`, 
+        {
+          client_id: clientId,
+          cashflow_ids: taggedEntries.map(e => e.cashflow_id)
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      toast.success(`Approval email sent to ${clientName}`);
+      fetchReinvestmentData();
+    } catch (error) {
+      console.error("Error sending approval email:", error);
+      toast.error(error.response?.data?.detail || "Failed to send approval email");
+    } finally {
+      setSendingApproval(null);
+    }
+  };
+
+  // Get approval status badge
+  const getApprovalStatusBadge = (status) => {
+    switch(status) {
+      case 'approved':
+        return <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Approved</span>;
+      case 'pending':
+        return <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1"><Clock className="h-3 w-3" /> Pending</span>;
+      case 'rejected':
+        return <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 flex items-center gap-1"><X className="h-3 w-3" /> Rejected</span>;
+      default:
+        return <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">Not Sent</span>;
+    }
+  };
+
   if (!user) return null;
 
   const displayTrades = activeTab === 'pending' ? pendingTrades : allTrades;
   const { tagged, untagged } = getEntriesByTagStatus();
   const displayEntries = reinvestmentSection === 'tagged' ? tagged : untagged;
+  const clientsData = reinvestmentData?.by_client || [];
 
   return (
     <div className="flex h-screen bg-gray-50">
