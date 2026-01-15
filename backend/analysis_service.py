@@ -1855,21 +1855,21 @@ class GapSheetGenerator:
         total_current_value = 0
         total_withdrawn = 0
         
-        # Category-wise breakdown
+        # Category-wise breakdown with withdrawals and cashflows for XIRR
         category_data = {
-            'Large Cap': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Mid Cap': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Small Cap': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Flexi Cap': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Multi Cap': {'invested': 0, 'current': 0, 'schemes': 0},
-            'ELSS': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Hybrid': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Debt': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Liquid': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Arbitrage': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Index Fund': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Sectoral/Thematic': {'invested': 0, 'current': 0, 'schemes': 0},
-            'Other': {'invested': 0, 'current': 0, 'schemes': 0}
+            'Large Cap': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Mid Cap': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Small Cap': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Flexi Cap': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Multi Cap': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'ELSS': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Hybrid': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Debt': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Liquid': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Arbitrage': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Index Fund': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Sectoral/Thematic': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []},
+            'Other': {'invested': 0, 'current': 0, 'withdrawn': 0, 'schemes': 0, 'cashflows': []}
         }
         
         def classify_scheme(scheme_name):
