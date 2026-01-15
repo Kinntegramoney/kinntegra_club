@@ -369,9 +369,38 @@ class CASParser:
                         units_str = lines[i + 3].strip()
                         trans_type_line = lines[i + 4].strip()
                         
-                        # Skip if the nav_str line is actually a non-financial marker
-                        # This handles malformed STT/Stamp Duty entries
-                        if '*** STT Paid ***' in nav_str or '*** Stamp Duty ***' in nav_str:
+                        # Check if this is a Stamp Duty transaction (special format)
+                        # These have: Date, Amount, *** Stamp Duty ***
+                        if '*** Stamp Duty ***' in nav_str:
+                            # Parse the amount and add as investment cost
+                            try:
+                                stamp_amount = float(amount_str.replace(',', '').replace('(', '-').replace(')', ''))
+                                if stamp_amount > 0:
+                                    transaction = {
+                                        'date': date_str,
+                                        'amount': abs(stamp_amount),
+                                        'nav': 0,
+                                        'units': 0,
+                                        'transaction_type': 'Stamp Duty',
+                                        'balance': 0,
+                                        'folio': current_folio,
+                                        'scheme': current_scheme,
+                                        'isin': current_isin,
+                                        'pan': current_pan,
+                                        'amc': current_amc,
+                                        'advisor': current_advisor,
+                                        'is_redemption': False  # Stamp duty is always an investment cost
+                                    }
+                                    self.transactions.append(transaction)
+                                    if current_key in self.folios:
+                                        self.folios[current_key]['transactions'].append(transaction)
+                            except ValueError:
+                                pass
+                            i += 1
+                            continue
+                        
+                        # Skip STT Paid transactions (these are already included in redemption amounts)
+                        if '*** STT Paid ***' in nav_str:
                             i += 1
                             continue
                         
