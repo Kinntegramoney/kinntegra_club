@@ -1352,15 +1352,16 @@ class GapSheetGenerator:
         self._auto_width(ws)
     
     def _create_mf_transactions_sheet(self, wb: Workbook):
-        """Sheet 7: MF Transactions"""
+        """Sheet 2: MF Transactions - aligned with template"""
         ws = wb.create_sheet("MF Transactions")
         
+        # Headers matching the template image
         headers = [
-            "Group Name", "Service Provider Name", "Advisor ARN", "PAN",
-            "Account Identifier Type", "Account Identifier", "Scheme ID",
-            "Instrument Name", "ISIN", "Instrument Type", "Transaction Date",
+            "Account Identifier", "Instrument Name", "ISIN", "Transaction Date",
             "Transaction Details", "Opening Units", "Units (Debit)", "Units (Credit)",
-            "Closing Units", "Price", "Transaction Amount", "STT", "Stamp Duty", "Total Amount"
+            "Closing Units", "Price", "Transaction Amount", "STT", "Stamp Duty",
+            "Total Amount", "Balance Units", "Current NAV", "Current Market Value",
+            "XIRR", "Advisor ARN", "Advisor Name"
         ]
         
         for col, header in enumerate(headers, 1):
@@ -1381,55 +1382,99 @@ class GapSheetGenerator:
                 key = (trans.get('date'), trans.get('folio'), trans.get('isin'))
                 stamp_lookup[key] = stamp_lookup.get(key, 0) + trans.get('amount', 0)
         
-        row = 2
+        # Build folio data lookup for current NAV and market value
+        folio_lookup = {}
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            folio_lookup[folio_id] = folio_data
+        
+        # Filter and sort transactions (oldest to newest)
+        filtered_trans = []
         for trans in self.parsed_data.get('transactions', []):
-            # Skip NFT entries (move to NFT sheet) - they have blank amounts
-            if trans.get('is_nft'):
+            # Skip NFT, Pledge, STT, Stamp Duty entries
+            if trans.get('is_nft') or trans.get('is_pledge'):
                 continue
-            # Skip Pledge entries (move to NFT sheet) - they have blank amounts
-            if trans.get('is_pledge'):
+            if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
                 continue
-            # Skip STT Paid - merged with related transactions
-            if trans.get('transaction_type') == 'STT Paid':
-                continue
-            # Skip Stamp Duty - merged with related transactions
-            if trans.get('transaction_type') == 'Stamp Duty':
-                continue
+            filtered_trans.append(trans)
+        
+        # Sort by date (oldest to newest)
+        def parse_date(date_str):
+            try:
+                return datetime.strptime(date_str, '%d-%b-%Y')
+            except:
+                return datetime.min
+        
+        filtered_trans.sort(key=lambda x: parse_date(x.get('date', '')))
+        
+        row = 2
+        for trans in filtered_trans:
+            folio = trans.get('folio', '')
+            isin = trans.get('isin', '')
+            folio_key = f"{folio}_{isin}" if isin else folio
+            folio_data = folio_lookup.get(folio_key, {})
             
-            ws.cell(row=row, column=3, value=trans.get('advisor', ''))
-            ws.cell(row=row, column=4, value=trans.get('pan', ''))
-            ws.cell(row=row, column=5, value="Folio Number")
-            ws.cell(row=row, column=6, value=trans.get('folio', ''))
-            ws.cell(row=row, column=8, value=trans.get('scheme', '')[:50])
-            ws.cell(row=row, column=9, value=trans.get('isin', ''))
-            ws.cell(row=row, column=10, value="Mutual Fund")
-            ws.cell(row=row, column=11, value=trans.get('date', ''))
-            ws.cell(row=row, column=12, value=trans.get('transaction_type', ''))
-            
+            # Column 1: Account Identifier (Folio)
+            ws.cell(row=row, column=1, value=folio)
+            # Column 2: Instrument Name (Scheme)
+            ws.cell(row=row, column=2, value=trans.get('scheme', '')[:50] if trans.get('scheme') else '')
+            # Column 3: ISIN
+            ws.cell(row=row, column=3, value=isin)
+            # Column 4: Transaction Date
+            ws.cell(row=row, column=4, value=trans.get('date', ''))
+            # Column 5: Transaction Details
+            ws.cell(row=row, column=5, value=trans.get('transaction_type', ''))
+            # Column 6: Opening Units (leave blank as per template)
+            # Column 7: Units (Debit) - for redemptions
             if trans.get('is_redemption'):
-                ws.cell(row=row, column=14, value=trans.get('units', 0))
+                ws.cell(row=row, column=7, value=trans.get('units', 0))
+            # Column 8: Units (Credit) - for purchases
             else:
-                ws.cell(row=row, column=15, value=trans.get('units', 0))
+                ws.cell(row=row, column=8, value=trans.get('units', 0))
+            # Column 9: Closing Units (balance after transaction)
+            ws.cell(row=row, column=9, value=trans.get('balance', 0))
+            # Column 10: Price (NAV)
+            ws.cell(row=row, column=10, value=trans.get('nav', 0))
             
-            ws.cell(row=row, column=16, value=trans.get('balance', 0))
-            ws.cell(row=row, column=17, value=trans.get('nav', 0))
-            
+            # Column 11: Transaction Amount
             trans_amount = trans.get('amount', 0)
-            ws.cell(row=row, column=18, value=trans_amount)
+            ws.cell(row=row, column=11, value=trans_amount)
             
-            # Add STT if available for this transaction
-            key = (trans.get('date'), trans.get('folio'), trans.get('isin'))
+            # Column 12: STT
+            key = (trans.get('date'), folio, isin)
             stt_amount = stt_lookup.get(key, 0)
-            stamp_amount = stamp_lookup.get(key, 0)
-            
             if stt_amount > 0:
-                ws.cell(row=row, column=19, value=stt_amount)
-            if stamp_amount > 0:
-                ws.cell(row=row, column=20, value=stamp_amount)
+                ws.cell(row=row, column=12, value=stt_amount)
             
-            # Total Amount = Transaction Amount + STT + Stamp Duty
+            # Column 13: Stamp Duty
+            stamp_amount = stamp_lookup.get(key, 0)
+            if stamp_amount > 0:
+                ws.cell(row=row, column=13, value=stamp_amount)
+            
+            # Column 14: Total Amount
             total_amount = trans_amount + stt_amount + stamp_amount
-            ws.cell(row=row, column=21, value=total_amount)
+            ws.cell(row=row, column=14, value=total_amount)
+            
+            # Column 15: Balance Units (current closing balance from folio)
+            if not trans.get('is_redemption'):
+                ws.cell(row=row, column=15, value=folio_data.get('closing_balance', 0))
+            
+            # Column 16: Current NAV
+            current_nav = folio_data.get('current_nav', 0)
+            if current_nav > 0:
+                ws.cell(row=row, column=16, value=current_nav)
+            
+            # Column 17: Current Market Value (Balance Units * Current NAV)
+            if not trans.get('is_redemption') and current_nav > 0:
+                balance_units = folio_data.get('closing_balance', 0)
+                market_value = balance_units * current_nav
+                if market_value > 0:
+                    ws.cell(row=row, column=17, value=market_value)
+            
+            # Column 18: XIRR (leave blank for now - calculated at folio level)
+            
+            # Column 19: Advisor ARN
+            ws.cell(row=row, column=19, value=trans.get('advisor', ''))
+            # Column 20: Advisor Name (leave blank - not available in CAS)
             
             row += 1
         
