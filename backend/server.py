@@ -7051,7 +7051,7 @@ async def setup_broker_endpoint():
         existing_broker = await db.users.find_one({"pan": "ANVPB5297J"})
         
         if existing_broker:
-            # RESET the password and pin to fix any hash issues
+            # RESET the password, pin, role and email to fix any issues
             new_password_hash = get_password_hash("Laksh@0208")
             new_pin_hash = get_password_hash("0516")
             
@@ -7060,17 +7060,20 @@ async def setup_broker_endpoint():
                 {"$set": {
                     "password_hash": new_password_hash,
                     "pin_hash": new_pin_hash,
-                    "email": "pbisani89@gmail.com"
+                    "email": "pbisani89@gmail.com",
+                    "role": "broker",  # Ensure role is main broker (admin)
+                    "name": "Broker Admin"
                 }}
             )
             return {
                 "status": "reset", 
-                "message": "Broker password has been reset successfully",
+                "message": "Broker account has been reset to ADMIN role",
                 "credentials": {
                     "pan": "ANVPB5297J",
                     "password": "Laksh@0208",
                     "pin": "0516",
-                    "email": "pbisani89@gmail.com"
+                    "email": "pbisani89@gmail.com",
+                    "role": "broker (ADMIN)"
                 }
             }
         
@@ -7083,12 +7086,12 @@ async def setup_broker_endpoint():
             "phone": "+91-9999999999",
             "password_hash": get_password_hash("Laksh@0208"),
             "pin_hash": get_password_hash("0516"),
-            "role": "broker",
+            "role": "broker",  # Main broker (admin)
             "is_active": True,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.users.insert_one(broker_data)
-        return {"status": "created", "message": "Broker account created successfully", "pan": "ANVPB5297J"}
+        return {"status": "created", "message": "Broker account created successfully", "pan": "ANVPB5297J", "role": "broker (ADMIN)"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
