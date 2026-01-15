@@ -45,6 +45,8 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 - [x] **Portfolio Performance Reordered**: Columns now match user template (Valuation before Amount Invested)
 - [x] **XIRR Sheet Broker-wise**: Segregated by adviser with Date, Particulars, Folio/Scheme, Amount columns
 - [x] **MF Ageing Absolute Days**: Changed from "1Y 2M" format to absolute number of days
+- [x] **Category Column Added**: Portfolio Performance now includes Category column
+- [x] **Arbitrage/Hybrid as EQUITY**: Tax View shows Arbitrage and Hybrid as EQUITY for tax classification
 
 ### Parsing Improvements (January 15, 2026)
 - [x] Fixed scheme name extraction (removes PDF headers like CAMSCASWS)
