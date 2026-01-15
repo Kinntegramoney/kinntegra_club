@@ -1918,7 +1918,7 @@ class GapSheetGenerator:
                 category_data[category]['schemes'] += 1
                 total_current_value += market_value
             
-            # Calculate invested amount from transactions
+            # Calculate invested amount and withdrawals from transactions
             for trans in folio_data.get('transactions', []):
                 if trans.get('is_nft') or trans.get('is_pledge'):
                     continue
@@ -1926,12 +1926,30 @@ class GapSheetGenerator:
                     continue
                 
                 amount = trans.get('amount', 0)
+                trans_date = None
+                try:
+                    trans_date = datetime.strptime(trans['date'], '%d-%b-%Y')
+                except:
+                    pass
+                
                 if trans.get('is_redemption'):
                     total_withdrawn += amount
+                    if is_active_fund:
+                        category_data[category]['withdrawn'] += amount
+                        # Redemption is positive cashflow (money received)
+                        if trans_date:
+                            category_data[category]['cashflows'].append((trans_date, amount))
                 else:
                     total_invested += amount
-                    if is_active_fund:  # Only count for active holdings with balance
+                    if is_active_fund:
                         category_data[category]['invested'] += amount
+                        # Investment is negative cashflow (money spent)
+                        if trans_date:
+                            category_data[category]['cashflows'].append((trans_date, -amount))
+            
+            # Add current value as final positive cashflow for XIRR (if active)
+            if is_active_fund and market_value > 0:
+                category_data[category]['cashflows'].append((self.report_date, market_value))
         
         # Summary headers
         summary_headers = ["Metric", "Value"]
