@@ -7448,6 +7448,261 @@ async def clear_all_data():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ==================== ANALYSIS ENDPOINTS ====================
+
+@api_router.post("/analysis/upload-cas")
+async def upload_cas_pdf(
+    file: UploadFile = File(...),
+    password: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload and analyze a CAS PDF file"""
+    try:
+        # Read file content
+        content = await file.read()
+        
+        # Parse the PDF
+        parser = CASParser(content, password)
+        parsed_data = parser.parse()
+        
+        # Store analysis result
+        analysis_id = str(uuid.uuid4())
+        analysis_record = {
+            "id": analysis_id,
+            "user_id": current_user['id'],
+            "user_name": current_user['name'],
+            "filename": file.filename,
+            "parsed_data": parsed_data,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "status": "completed"
+        }
+        
+        await db.cas_analyses.insert_one(analysis_record)
+        
+        return {
+            "analysis_id": analysis_id,
+            "filename": file.filename,
+            "portfolio_summary": parsed_data.get('portfolio_summary', {}),
+            "total_folios": len(parsed_data.get('folios', {})),
+            "total_transactions": parsed_data.get('total_transactions', 0),
+            "status": "completed"
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error processing CAS PDF: {e}")
+        raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
+
+
+@api_router.get("/analysis/{analysis_id}/download")
+async def download_gap_sheet(
+    analysis_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Download the generated Gap Sheet Excel file"""
+    try:
+        # Get analysis record
+        analysis = await db.cas_analyses.find_one({"id": analysis_id})
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Get scheme master for mapping
+        scheme_master = await db.scheme_master.find_one({"type": "bse_master"})
+        scheme_mapper = None
+        if scheme_master and scheme_master.get('schemes'):
+            scheme_mapper = SchemeMapper(scheme_master['schemes'])
+        
+        # Generate Gap Sheet
+        nav_service = NAVService()
+        generator = GapSheetGenerator(
+            analysis['parsed_data'], 
+            nav_service,
+            scheme_mapper
+        )
+        excel_bytes = generator.generate()
+        
+        # Return as downloadable file
+        filename = f"GapSheet_{analysis.get('filename', 'analysis').replace('.pdf', '')}.xlsx"
+        
+        return StreamingResponse(
+            io.BytesIO(excel_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating Gap Sheet: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
+
+
+@api_router.get("/analysis/{analysis_id}")
+async def get_analysis_details(
+    analysis_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get detailed analysis results"""
+    try:
+        analysis = await db.cas_analyses.find_one({"id": analysis_id}, {"_id": 0})
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        return analysis
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/analysis")
+async def list_analyses(current_user: dict = Depends(get_current_user)):
+    """List all analyses for the current user (or all for broker)"""
+    try:
+        query = {}
+        if current_user['role'] != 'broker':
+            query['user_id'] = current_user['id']
+        
+        analyses = await db.cas_analyses.find(
+            query,
+            {"_id": 0, "parsed_data": 0}  # Exclude large data from list
+        ).sort("created_at", -1).to_list(100)
+        
+        return analyses
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.delete("/analysis/{analysis_id}")
+async def delete_analysis(
+    analysis_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete an analysis record"""
+    try:
+        analysis = await db.cas_analyses.find_one({"id": analysis_id})
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Only owner or broker can delete
+        if current_user['role'] != 'broker' and analysis['user_id'] != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        await db.cas_analyses.delete_one({"id": analysis_id})
+        
+        return {"message": "Analysis deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Scheme Master Management
+@api_router.post("/analysis/upload-scheme-master")
+async def upload_scheme_master(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload BSE scheme master file (broker only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can upload scheme master")
+    
+    try:
+        content = await file.read()
+        text_content = content.decode('utf-8', errors='ignore')
+        
+        # Parse the scheme master file
+        schemes = parse_scheme_master_file(text_content)
+        
+        if not schemes:
+            raise HTTPException(status_code=400, detail="Could not parse scheme master file")
+        
+        # Update or create scheme master record
+        existing = await db.scheme_master.find_one({"type": "bse_master"})
+        
+        if existing:
+            # Merge new schemes with existing (append unique)
+            existing_isins = {s.get('isin') for s in existing.get('schemes', [])}
+            new_schemes = [s for s in schemes if s.get('isin') not in existing_isins]
+            
+            await db.scheme_master.update_one(
+                {"type": "bse_master"},
+                {
+                    "$push": {"schemes": {"$each": new_schemes}},
+                    "$set": {
+                        "last_upload": datetime.now(timezone.utc).isoformat(),
+                        "last_upload_by": current_user['id'],
+                        "last_filename": file.filename,
+                        "total_schemes": len(existing.get('schemes', [])) + len(new_schemes)
+                    }
+                }
+            )
+            added_count = len(new_schemes)
+        else:
+            await db.scheme_master.insert_one({
+                "type": "bse_master",
+                "schemes": schemes,
+                "total_schemes": len(schemes),
+                "last_upload": datetime.now(timezone.utc).isoformat(),
+                "last_upload_by": current_user['id'],
+                "last_filename": file.filename,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            added_count = len(schemes)
+        
+        return {
+            "message": "Scheme master uploaded successfully",
+            "schemes_added": added_count,
+            "total_schemes_in_file": len(schemes),
+            "filename": file.filename
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading scheme master: {e}")
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+
+
+@api_router.get("/analysis/scheme-master/status")
+async def get_scheme_master_status(current_user: dict = Depends(get_current_user)):
+    """Get scheme master file status"""
+    try:
+        master = await db.scheme_master.find_one(
+            {"type": "bse_master"},
+            {"_id": 0, "schemes": 0}  # Exclude large data
+        )
+        
+        if not master:
+            return {
+                "exists": False,
+                "total_schemes": 0,
+                "last_upload": None
+            }
+        
+        return {
+            "exists": True,
+            "total_schemes": master.get('total_schemes', 0),
+            "last_upload": master.get('last_upload'),
+            "last_filename": master.get('last_filename'),
+            "last_upload_by": master.get('last_upload_by')
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== END ANALYSIS ENDPOINTS ====================
+
+
 # Reset broker password endpoint
 @api_router.get("/reset-broker-password")
 async def reset_broker_password():
