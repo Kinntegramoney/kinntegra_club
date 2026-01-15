@@ -926,6 +926,7 @@ async def bulk_upload_clients(
                 continue
             
             pan = str(row['pan']).upper().strip()
+            ucc = str(row.get('ucc', '')).upper().strip() if not pd.isna(row.get('ucc')) else ""
             
             # Check for duplicates
             existing_pan = await db.users.find_one({"pan": pan})
@@ -949,6 +950,7 @@ async def bulk_upload_clients(
             user = {
                 "id": user_id,
                 "pan": pan,
+                "ucc": ucc,
                 "name": str(row['name']).strip(),
                 "email": str(row.get('email', '')).strip() if not pd.isna(row.get('email')) else "",
                 "phone": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else "",
@@ -965,6 +967,7 @@ async def bulk_upload_clients(
                 "id": user_id,
                 "name": str(row['name']).strip(),
                 "pan": pan,
+                "ucc": ucc,
                 "email": str(row.get('email', '')).strip() if not pd.isna(row.get('email')) else "",
                 "mobile": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else "",
                 "address_line1": str(row.get('address_line_1', '')).strip() if not pd.isna(row.get('address_line_1')) else "",
