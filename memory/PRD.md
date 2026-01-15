@@ -24,14 +24,15 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 - [x] **Step 2**: Upload BSE Scheme Master from https://www.bsestarmf.in/RptSchemeMaster.aspx
 - [x] **Step 3**: Download Gap Sheet (ZIP file with consolidated + per-PAN reports)
 - [x] Progress bar shows parsing status
-- [x] **7 Sheets generated** (aligned with user's template):
+- [x] **8 Sheets generated** (aligned with user's template):
   1. Summary (Portfolio overview + Category-wise breakdown for ACTIVE funds only + FY-wise LT/ST summary)
-  2. Portfolio Performance (100% match with Gap Sheet, XIRR calculations)
+  2. Portfolio Performance (Reordered: Valuation, Cash Withdrawal, Dividend, Amount Invested, Gains, Return %, CAGR %)
   3. MF Transactions (all transaction details + MF Ageing column)
   4. NFT (Non-Financial Transactions + Pledge transactions)
   5. Advisor View (XIRR performance, client longevity - active/past)
   6. Tax View (LT/ST gains by FY, PAN column, Grandfathering for pre-Jan 31 2018 equity)
   7. Exit Loads (load structure from PDF)
+  8. XIRR (Unit credit=purchase, Unit debit=redemption, Balance×NAV=final value)
 
 ### Latest Fixes (January 15, 2026)
 - [x] **PAN Column in Tax View**: Added PAN as first column in Tax View sheet
