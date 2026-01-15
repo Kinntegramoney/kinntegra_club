@@ -38,6 +38,9 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 - [x] **Active Funds Filter**: Summary sheet category breakdown now shows only funds with balance > 0
 - [x] **Column Index Bug Fix**: Fixed Tax View column indices for sold ST units/gain
 - [x] **Indian Number Formatting**: ₹ X,XX,XX,XXX format across all sheets
+- [x] **Gain/Loss Calculation**: Updated to include withdrawals/dividends: `(Current + Withdrawn) - Invested`
+- [x] **XIRR % per Category**: Added XIRR calculation for each category in the Summary sheet
+- [x] **Withdrawn/Dividend Column**: New column showing withdrawals per category
 
 ### Parsing Improvements (January 15, 2026)
 - [x] Fixed scheme name extraction (removes PDF headers like CAMSCASWS)
