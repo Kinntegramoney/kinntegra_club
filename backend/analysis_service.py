@@ -1028,12 +1028,14 @@ class GapSheetGenerator:
             
             transactions = folio_data.get('transactions', [])
             
-            # Get PAN from first transaction
+            # Get PAN from first transaction, fallback to investor_info
             pan = ''
             for trans in transactions:
                 if trans.get('pan'):
                     pan = trans.get('pan')
                     break
+            if not pan:
+                pan = self.parsed_data.get('investor_info', {}).get('pan', '')
             
             # Find last redemption date
             last_redemption_date = None
