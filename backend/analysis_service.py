@@ -257,12 +257,21 @@ class CASParser:
                 current_pan = pan_match.group(1)
             
             # Check for scheme line (may span multiple lines)
-            # Scheme codes are typically 4+ alphanumeric characters, not dates like Jan-2000
+            # Scheme codes are typically 4+ alphanumeric characters ending in letters
+            # Skip PDF headers like "CAMSCASWS-101225161136" and date patterns
             scheme_code_match = re.match(r'^([A-Z0-9]{4,})-(.+)', line)
             if scheme_code_match and 'ISIN' not in line and '-Demat' not in line:
-                # Additional check: exclude date patterns like "Jan-2000", "Nov-2025"
                 first_part = scheme_code_match.group(1)
-                if not re.match(r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$', first_part, re.IGNORECASE):
+                rest_part = scheme_code_match.group(2)
+                # Exclude:
+                # 1. Date patterns like "Jan-2000", "Nov-2025"
+                # 2. PDF headers like "CAMSCASWS-101225161136 Version"
+                # 3. Lines that don't look like fund names (should contain "Fund" or similar keywords)
+                is_date_pattern = re.match(r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$', first_part, re.IGNORECASE)
+                is_pdf_header = 'Version' in rest_part or 'CAMSCASWS' in first_part
+                has_fund_keywords = any(kw in rest_part for kw in ['Fund', 'Plan', 'Growth', 'IDCW', 'Dividend'])
+                
+                if not is_date_pattern and not is_pdf_header and has_fund_keywords:
                     pending_scheme_line = line
             
             # Detect ISIN
