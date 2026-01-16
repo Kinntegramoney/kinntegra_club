@@ -198,16 +198,25 @@ export default function Holdings() {
       
       const result = response.data;
       
-      let message = `Prepayment of ₹${amount.toLocaleString('en-IN')} recorded.`;
-      if (result.cashflows_amended > 0) {
-        message += ` ${result.cashflows_amended} interest payment(s) amended.`;
+      // Show detailed success message with percentage
+      let message = `₹${amount.toLocaleString('en-IN')} (${result.prepayment_percentage?.toFixed(2) || 0}%) principal prepaid.`;
+      if (result.remaining_principal > 0) {
+        message += ` Remaining: ₹${result.remaining_principal?.toLocaleString('en-IN')} (${result.remaining_percentage?.toFixed(2)}%)`;
       }
-      if (result.prorated_interest) {
-        message += ` Current cycle interest prorated: ₹${result.prorated_interest.prorated_interest.toLocaleString('en-IN')}`;
+      if (result.cashflows_amended > 0) {
+        message += ` • ${result.cashflows_amended} payment(s) recalculated`;
+      }
+      if (result.email_sent) {
+        message += ` • Client notified via email`;
       }
       
-      toast.success(message);
+      toast.success(message, { duration: 6000 });
       setShowPrepaymentModal(false);
+      
+      // Show additional info for reinvestment updates
+      if (result.reinvestment_tags_updated > 0) {
+        toast.info(`${result.reinvestment_tags_updated} reinvestment tag(s) marked for review`, { duration: 4000 });
+      }
       
       if (selectedClient) {
         fetchClientHoldings(selectedClient.id);
