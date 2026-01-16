@@ -2161,6 +2161,94 @@ class GapSheetGenerator:
         
         self._auto_width(ws)
     
+    def _create_tds_sheet(self, wb: Workbook):
+        """Sheet: TDS Details - Only created if TDS entries exist"""
+        tds_entries = self.parsed_data.get('tds_entries', [])
+        
+        # Only create sheet if there are TDS entries
+        if not tds_entries:
+            return
+        
+        ws = wb.create_sheet("TDS Details")
+        
+        # Headers
+        headers = [
+            "Date", "PAN", "Folio Number", "Scheme Name", "ISIN",
+            "Transaction Description", "TDS Amount", "Financial Year"
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
+        
+        # Sort TDS entries by date (oldest first)
+        def parse_date(date_str):
+            try:
+                return datetime.strptime(date_str, '%d-%b-%Y')
+            except:
+                return datetime.min
+        
+        sorted_tds = sorted(tds_entries, key=lambda x: parse_date(x.get('date', '')))
+        
+        # Write TDS data
+        row = 2
+        for tds in sorted_tds:
+            ws.cell(row=row, column=1, value=tds.get('date', ''))
+            ws.cell(row=row, column=2, value=tds.get('pan', ''))
+            ws.cell(row=row, column=3, value=tds.get('folio', ''))
+            ws.cell(row=row, column=4, value=tds.get('scheme', '')[:50] if tds.get('scheme') else '')
+            ws.cell(row=row, column=5, value=tds.get('isin', ''))
+            ws.cell(row=row, column=6, value=tds.get('transaction_desc', '')[:60] if tds.get('transaction_desc') else '')
+            ws.cell(row=row, column=7, value=tds.get('amount', 0))
+            ws.cell(row=row, column=8, value=tds.get('financial_year', ''))
+            row += 1
+        
+        # Add FY-wise summary at the bottom
+        if sorted_tds:
+            row += 2  # Skip a row
+            ws.cell(row=row, column=1, value="TDS SUMMARY BY FINANCIAL YEAR")
+            ws.merge_cells(f'A{row}:H{row}')
+            self._style_header(ws, row, 8)
+            
+            row += 1
+            ws.cell(row=row, column=1, value="Financial Year")
+            ws.cell(row=row, column=2, value="Total TDS Amount")
+            ws.cell(row=row, column=3, value="Number of Transactions")
+            self._style_header(ws, row, 3)
+            
+            # Calculate FY-wise totals
+            tds_by_fy = {}
+            for tds in sorted_tds:
+                fy = tds.get('financial_year', 'Unknown')
+                if fy not in tds_by_fy:
+                    tds_by_fy[fy] = {'amount': 0, 'count': 0}
+                tds_by_fy[fy]['amount'] += tds.get('amount', 0)
+                tds_by_fy[fy]['count'] += 1
+            
+            # Sort FYs chronologically
+            sorted_fys = sorted(tds_by_fy.keys(), key=lambda x: x.split()[1] if len(x.split()) > 1 else x)
+            
+            total_amount = 0
+            total_count = 0
+            for fy in sorted_fys:
+                row += 1
+                ws.cell(row=row, column=1, value=fy)
+                ws.cell(row=row, column=2, value=tds_by_fy[fy]['amount'])
+                ws.cell(row=row, column=3, value=tds_by_fy[fy]['count'])
+                total_amount += tds_by_fy[fy]['amount']
+                total_count += tds_by_fy[fy]['count']
+            
+            # Grand total row
+            row += 1
+            ws.cell(row=row, column=1, value="GRAND TOTAL")
+            ws.cell(row=row, column=1).font = Font(bold=True)
+            ws.cell(row=row, column=2, value=total_amount)
+            ws.cell(row=row, column=2).font = Font(bold=True)
+            ws.cell(row=row, column=3, value=total_count)
+            ws.cell(row=row, column=3).font = Font(bold=True)
+        
+        self._auto_width(ws)
+    
     def _create_summary_sheet(self, wb: Workbook):
         """Sheet 1: Summary - Portfolio Summary only"""
         ws = wb.create_sheet("Summary", 0)  # Position 0 to make it first
