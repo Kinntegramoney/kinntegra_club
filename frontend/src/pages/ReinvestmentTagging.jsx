@@ -314,7 +314,7 @@ export default function ReinvestmentTagging() {
                   <div className="text-center py-12">
                     <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
                     <p className="text-gray-500">All clients have been tagged!</p>
-                    <p className="text-sm text-gray-400 mt-2">Move to "Tagged" section to send for approval</p>
+                    <p className="text-sm text-gray-400 mt-2">Move to &ldquo;Tagged&rdquo; section to send for approval</p>
                   </div>
                 ) : (
                   untaggedClients.map((client) => (
