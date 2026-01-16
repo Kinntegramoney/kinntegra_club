@@ -16,7 +16,7 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ### Authentication
 - Two-step login (PAN + Password, then PIN)
-- Role-based access (broker, sub-broker)
+- Role-based access (broker, sub_broker, client)
 
 ### Dashboard
 - Analytics overview (clients, AUM, opportunities)
@@ -24,9 +24,10 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ### Holdings Management ✅
 - View client bond holdings with XIRR
-- Record principal prepayments
+- Record principal prepayments with percentage calculation
 - Automatic interest recalculation on prepayment
 - Bulk repayment update via Excel
+- Email notifications to clients on prepayment
 
 ### Client Management ✅
 - Create/Edit/Delete clients
@@ -40,6 +41,13 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 - Generate multi-sheet Excel reports
 - Client selection mandatory for tracking
 
+### Reinvestment Tagging ✅
+- Tag upcoming cashflows for reinvestment
+- Support for: Principal, Interest, Net Amount, Custom, Not Invest
+- Send for client approval via email
+- Shows prepayment-affected entries with "Revised" badge
+- Displays original vs amended amounts with strikethrough
+
 ### Bulk Upload Features ✅
 - Bonds: Multi-sheet Excel (Bond Details, Financial Details, Units & Limits, Principal Payments)
 - Clients: Multi-sheet Excel with proper PAN field handling
@@ -50,18 +58,39 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
-### 2026-01-16
+### 2026-01-16 (Current Session)
+- **Feature**: Enhanced prepayment with percentage calculation and display
+  - Shows prepayment percentage in success toast (e.g., "₹1,00,000 (10%) principal prepaid")
+  - Shows remaining principal percentage (e.g., "Remaining: ₹9,00,000 (90%)")
+  - Real-time percentage preview in prepayment modal as user enters amount
+- **Feature**: Client email notification on prepayment
+  - Added `send_prepayment_notification_email()` function to email_service.py
+  - Professional HTML template with prepayment details, investment summary, revised schedule
+  - Email includes amount prepaid, percentage, original/remaining principal
+- **Feature**: Reinvestment tags marked for review on prepayment
+  - Affected cashflows flagged with `prepayment_affected` and `reinvestment_tag_needs_update`
+  - Backend API returns count of affected reinvestment tags
+- **Feature**: Reinvestment Tagging page shows prepayment-affected entries
+  - "Revised" badge on amended entries (amber color)
+  - Original amounts shown with strikethrough below current amounts
+  - Added fields: is_amended, prepayment_affected, original_net_amount, amendment_reason
+
+### 2026-01-16 (Previous Fork)
 - **Bug Fix**: Bond bulk upload now reads all 4 Excel sheets and merges by bond_code
 - **Bug Fix**: Client bulk upload now correctly stores `pan_number` field
 - **Feature**: Edit client modal with full form (Personal, Address, Bank, Sub-broker details)
 - **Feature**: Three-dots menu for clients (Resend Credentials, Reset Password, Deactivate, Delete)
 - **Backend**: Added `/api/clients/{id}/resend-credentials`, `/reset-password`, `/deactivate` endpoints
+- **Email Service**: Fixed SMTP connection via `donotreply@kinntegraa.club`
+- **Email Templates**: Redesigned all templates to match website UI/branding
 
 ### Previous Sessions
 - Holdings page major feature set (prepayment, XIRR, bulk upload)
 - Test data creation for Holdings verification
 - UI/UX overhaul (Analysis, Reinv Tag, Logs pages)
 - Client selection mandatory on Analysis page
+- Interest calculation with reducing principal balance
+- "On Maturity" interest frequency option
 
 ---
 
@@ -69,16 +98,16 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ### P0 - Critical
 - Production deployment pipeline (user handles manually via "Save to Github")
-- Email service broken (SMTP unreachable) - credentials shown in UI modal as workaround
 
 ### P1 - High Priority
-- Email service integration (Resend/SendGrid)
+- User verification of all recent features (prepayment, client management, bulk upload)
+- Final verification of CAS analysis report generation
 
 ### P2 - Medium Priority
 - BondDetails radio button UI bug (recurring)
 
-### Technical Debt
-- `server.py` (~3600 lines) - needs router separation
+### Technical Debt - CRITICAL
+- `server.py` (~5000+ lines) - needs router separation
 - `analysis_service.py` (~2500 lines) - needs modularization
 - `RealEstateDetails.jsx` (~3500 lines) - needs component breakdown
 
@@ -90,7 +119,7 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## Database
 - Name: `test_database`
-- Collections: users, clients, trades, cashflows, analyses, bonds
+- Collections: users, clients, trades, cashflows, analyses, bonds, holding_cashflows, prepayment_records
 
 ## Key API Endpoints
 - `/api/clients` - CRUD for clients
@@ -100,3 +129,5 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 - `/api/bulk/bonds` - Bulk upload bonds (multi-sheet)
 - `/api/bulk/clients` - Bulk upload clients
 - `/api/holdings/*` - Holdings management APIs
+- `/api/holdings/trade/{trade_id}/record-prepayment` - Record prepayment with email notification
+- `/api/reinvestment/upcoming` - Get upcoming cashflows with prepayment flags
