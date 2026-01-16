@@ -1635,6 +1635,132 @@ export default function Holdings() {
           </div>
         </div>
       )}
+      
+      {/* Principal Prepayment Modal */}
+      {showPrepaymentModal && prepaymentTrade && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Record Principal Prepayment</h2>
+                <p className="text-sm text-gray-500 mt-1">Enter details for early principal repayment</p>
+              </div>
+              <button 
+                onClick={() => setShowPrepaymentModal(false)} 
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="p-5 space-y-5">
+              {/* Trade Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-medium text-gray-800 mb-2">{modalData?.bond_name}</h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Investment Date:</span>
+                    <span className="font-medium ml-2">{format(new Date(prepaymentTrade.investment_date), "MMM dd, yyyy")}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Invested Amount:</span>
+                    <span className="font-medium ml-2">{formatINR(prepaymentTrade.invested_amount)}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Prepayment Form */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Prepayment Date <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    type="date"
+                    value={prepaymentDate}
+                    onChange={(e) => setPrepaymentDate(e.target.value)}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Date when principal was actually repaid</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Prepaid Principal Amount <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                    <Input
+                      type="number"
+                      value={prepaymentAmount}
+                      onChange={(e) => setPrepaymentAmount(e.target.value)}
+                      placeholder="Enter amount"
+                      className="pl-8"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Amount of principal repaid early</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes (Optional)
+                  </label>
+                  <Input
+                    type="text"
+                    value={prepaymentNotes}
+                    onChange={(e) => setPrepaymentNotes(e.target.value)}
+                    placeholder="Any additional notes..."
+                  />
+                </div>
+              </div>
+              
+              {/* Info Box */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="text-blue-800">
+                    <p className="font-medium mb-1">What happens when you record a prepayment?</p>
+                    <ul className="list-disc list-inside text-xs space-y-1 text-blue-700">
+                      <li>Current cycle interest will be prorated (before & after prepayment date)</li>
+                      <li>All future interest payments will be recalculated based on remaining principal</li>
+                      <li>Original amounts will be preserved and can be reverted if needed</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-3 p-5 border-t border-gray-200 bg-gray-50">
+              <Button
+                variant="outline"
+                onClick={() => setShowPrepaymentModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRecordPrepayment}
+                disabled={recordingPrepayment || !prepaymentDate || !prepaymentAmount}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {recordingPrepayment ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Recording...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Record Prepayment
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
