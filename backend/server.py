@@ -128,18 +128,21 @@ def generate_interest_payment_schedule(
 
 def generate_combined_payment_schedule(
     start_date: str,
+    end_date: str,
     principal: float,
     coupon_rate: float,
     principal_payments: list
 ) -> dict:
     """
     Generate combined payment schedule where:
-    - Interest is paid along with principal on the same dates
+    - Interest is paid MONTHLY from start date (on fixed day of month)
+    - Principal payments follow the schedule from Sheet 4 (may start later)
     - Interest is calculated on REDUCING principal balance
-    - Each payment includes: principal portion, interest portion, and totals
+    - Final payment aligns with maturity date
     
     Args:
         start_date: Bond start date (YYYY-MM-DD)
+        end_date: Bond maturity date (YYYY-MM-DD)
         principal: Total principal amount
         coupon_rate: Annual coupon rate (%)
         principal_payments: List of dicts with 'date' and 'percentage' keys
@@ -147,62 +150,113 @@ def generate_combined_payment_schedule(
     Returns:
         dict with 'interest_payments', 'combined_schedule', and summary
     """
-    if not principal_payments:
-        return {"interest_payments": [], "combined_schedule": [], "total_interest": 0}
+    start = datetime.strptime(start_date, '%Y-%m-%d')
+    end = datetime.strptime(end_date, '%Y-%m-%d')
     
-    # Sort principal payments by date
-    sorted_payments = sorted(principal_payments, key=lambda x: x['date'])
+    # Build a map of principal payment dates to percentages
+    principal_payment_map = {}
+    if principal_payments:
+        for pp in principal_payments:
+            principal_payment_map[pp['date']] = {
+                'percentage': pp.get('percentage', 0),
+                'description': pp.get('description', '')
+            }
     
     combined_schedule = []
     interest_payments = []
     
     outstanding_principal = principal
-    prev_date = datetime.strptime(start_date, '%Y-%m-%d')
+    prev_date = start
     total_interest = 0
     total_principal_paid = 0
+    payment_num = 1
     
-    for payment in sorted_payments:
-        payment_date = datetime.strptime(payment['date'], '%Y-%m-%d')
-        percentage = payment.get('percentage', 0)
+    # Generate monthly payments from start to end
+    while True:
+        # Calculate next payment date (same day each month)
+        current = add_months_fixed_day(start, payment_num)
         
-        # Calculate days since last payment
-        days_in_period = calculate_days_between(prev_date, payment_date)
+        # Check if we've passed the maturity date
+        if current > end:
+            # If there's remaining time, add final payment at maturity
+            if prev_date < end:
+                days_in_period = calculate_days_between(prev_date, end)
+                daily_rate = (coupon_rate / 100) / 365
+                interest_amount = round(outstanding_principal * daily_rate * days_in_period, 2)
+                
+                # Check if there's a principal payment on maturity
+                end_date_str = end.strftime('%Y-%m-%d')
+                principal_pct = 0
+                principal_amt = 0
+                if end_date_str in principal_payment_map:
+                    principal_pct = principal_payment_map[end_date_str]['percentage']
+                    principal_amt = round(principal * (principal_pct / 100), 2)
+                
+                interest_payments.append({
+                    "date": end_date_str,
+                    "amount": interest_amount,
+                    "days": days_in_period,
+                    "outstanding_principal": round(outstanding_principal, 2),
+                    "is_partial": True
+                })
+                
+                combined_schedule.append({
+                    "date": end_date_str,
+                    "description": "Final Payment (Maturity)",
+                    "principal_percentage": principal_pct,
+                    "principal_amount": principal_amt,
+                    "interest_amount": interest_amount,
+                    "total_payment": round(principal_amt + interest_amount, 2),
+                    "outstanding_principal_before": round(outstanding_principal, 2),
+                    "outstanding_principal_after": round(outstanding_principal - principal_amt, 2),
+                    "days_in_period": days_in_period
+                })
+                
+                total_interest += interest_amount
+                total_principal_paid += principal_amt
+            break
         
-        # Calculate interest on current outstanding principal
+        # Calculate interest for this period
+        days_in_period = calculate_days_between(prev_date, current)
         daily_rate = (coupon_rate / 100) / 365
-        interest_amount = outstanding_principal * daily_rate * days_in_period
-        interest_amount = round(interest_amount, 2)
+        interest_amount = round(outstanding_principal * daily_rate * days_in_period, 2)
         
-        # Calculate principal amount for this payment
-        principal_amount = round(principal * (percentage / 100), 2)
+        # Check if there's a principal payment on this date
+        current_date_str = current.strftime('%Y-%m-%d')
+        principal_pct = 0
+        principal_amt = 0
+        description = f"Payment {payment_num}"
         
-        # Create interest payment entry
+        if current_date_str in principal_payment_map:
+            principal_pct = principal_payment_map[current_date_str]['percentage']
+            principal_amt = round(principal * (principal_pct / 100), 2)
+            description = principal_payment_map[current_date_str].get('description', description)
+        
         interest_payments.append({
-            "date": payment['date'],
+            "date": current_date_str,
             "amount": interest_amount,
             "days": days_in_period,
             "outstanding_principal": round(outstanding_principal, 2),
             "is_partial": False
         })
         
-        # Create combined schedule entry
         combined_schedule.append({
-            "date": payment['date'],
-            "description": payment.get('description', f"Payment"),
-            "principal_percentage": percentage,
-            "principal_amount": principal_amount,
+            "date": current_date_str,
+            "description": description,
+            "principal_percentage": principal_pct,
+            "principal_amount": principal_amt,
             "interest_amount": interest_amount,
-            "total_payment": round(principal_amount + interest_amount, 2),
+            "total_payment": round(principal_amt + interest_amount, 2),
             "outstanding_principal_before": round(outstanding_principal, 2),
-            "outstanding_principal_after": round(outstanding_principal - principal_amount, 2),
+            "outstanding_principal_after": round(outstanding_principal - principal_amt, 2),
             "days_in_period": days_in_period
         })
         
-        # Update tracking variables
         total_interest += interest_amount
-        total_principal_paid += principal_amount
-        outstanding_principal -= principal_amount
-        prev_date = payment_date
+        total_principal_paid += principal_amt
+        outstanding_principal -= principal_amt
+        prev_date = current
+        payment_num += 1
     
     return {
         "interest_payments": interest_payments,
