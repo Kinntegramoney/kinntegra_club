@@ -109,6 +109,213 @@ def send_email(
         return False
 
 
+# ==================== EMAIL TEMPLATES ====================
+# Brand Colors matching Kinntegraa website UI:
+# - Primary Gold: #D4A853, #B8860B
+# - Amber/Brown: #78716C, #92400E
+# - Dark Background: #1E1B4B
+# - Green accent: #22C55E
+# - Clean white cards with subtle shadows
+
+def get_email_template_base(content: str, footer_text: str = "") -> str:
+    """Generate base email template with Kinntegraa branding"""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{ 
+                font-family: 'Segoe UI', Arial, sans-serif; 
+                line-height: 1.6; 
+                color: #1f2937; 
+                margin: 0;
+                padding: 0;
+                background-color: #f3f4f6;
+            }}
+            .wrapper {{
+                background-color: #f3f4f6;
+                padding: 40px 20px;
+            }}
+            .container {{ 
+                max-width: 600px; 
+                margin: 0 auto; 
+                background: white;
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }}
+            .header {{ 
+                background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%);
+                color: white; 
+                padding: 30px; 
+                text-align: center;
+            }}
+            .logo {{
+                width: 50px;
+                height: 50px;
+                background: linear-gradient(135deg, #D4A853, #B8860B);
+                border-radius: 12px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+                font-weight: bold;
+                color: white;
+                margin-bottom: 15px;
+            }}
+            .header h1 {{
+                margin: 10px 0 5px 0;
+                font-size: 24px;
+                font-weight: 600;
+            }}
+            .header p {{
+                margin: 0;
+                opacity: 0.85;
+                font-size: 14px;
+            }}
+            .content {{ 
+                padding: 30px; 
+            }}
+            .greeting {{
+                font-size: 16px;
+                margin-bottom: 20px;
+            }}
+            .credentials {{ 
+                background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+                padding: 24px; 
+                border-radius: 12px; 
+                margin: 24px 0;
+                border-left: 4px solid #D4A853;
+            }}
+            .credentials h3 {{
+                margin: 0 0 16px 0;
+                color: #92400E;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }}
+            .credential-item {{ 
+                background: white;
+                padding: 12px 16px;
+                border-radius: 8px;
+                margin: 8px 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }}
+            .credential-label {{ 
+                color: #6b7280; 
+                font-size: 12px; 
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }}
+            .credential-value {{ 
+                font-size: 16px; 
+                font-weight: 600; 
+                color: #1f2937; 
+                font-family: 'Courier New', monospace;
+                background: #f3f4f6;
+                padding: 4px 12px;
+                border-radius: 4px;
+            }}
+            .button {{ 
+                display: inline-block; 
+                background: linear-gradient(135deg, #D4A853, #B8860B);
+                color: white; 
+                padding: 14px 32px; 
+                text-decoration: none; 
+                border-radius: 8px;
+                font-weight: 600;
+                font-size: 14px;
+                box-shadow: 0 2px 4px rgba(212, 168, 83, 0.3);
+            }}
+            .button:hover {{
+                background: linear-gradient(135deg, #B8860B, #92400E);
+            }}
+            .info-box {{
+                background: #EFF6FF;
+                border: 1px solid #BFDBFE;
+                padding: 16px;
+                border-radius: 8px;
+                margin: 20px 0;
+            }}
+            .info-box.warning {{
+                background: #FEF3C7;
+                border-color: #FCD34D;
+            }}
+            .info-box.success {{
+                background: #DCFCE7;
+                border-color: #86EFAC;
+            }}
+            .features {{
+                background: #f9fafb;
+                padding: 20px;
+                border-radius: 12px;
+                margin: 20px 0;
+            }}
+            .feature-item {{
+                padding: 10px 0;
+                border-bottom: 1px solid #e5e7eb;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }}
+            .feature-item:last-child {{
+                border-bottom: none;
+            }}
+            .feature-icon {{
+                color: #22C55E;
+                font-weight: bold;
+            }}
+            .badge {{
+                background: linear-gradient(135deg, #D4A853, #B8860B);
+                color: white;
+                padding: 6px 16px;
+                border-radius: 20px;
+                font-size: 13px;
+                font-weight: 600;
+                display: inline-block;
+            }}
+            .footer {{ 
+                background: #f9fafb;
+                text-align: center; 
+                padding: 24px;
+                color: #6b7280; 
+                font-size: 12px;
+                border-top: 1px solid #e5e7eb;
+            }}
+            .footer p {{
+                margin: 4px 0;
+            }}
+            .social-links {{
+                margin: 16px 0;
+            }}
+            .divider {{
+                height: 1px;
+                background: #e5e7eb;
+                margin: 24px 0;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="wrapper">
+            <div class="container">
+                {content}
+                <div class="footer">
+                    {footer_text}
+                    <p style="margin-top: 12px;">© 2025 Kinntegraa L.L.C-FZ. All rights reserved.</p>
+                    <p>Dubai, UAE</p>
+                    <p style="color: #9ca3af; margin-top: 8px;">This is an automated message. Please do not reply to this email.</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
 def send_welcome_email_client(
     client_name: str,
     client_email: str,
@@ -122,12 +329,71 @@ def send_welcome_email_client(
     
     subject = "Welcome to Kinntegraa - Your Investment Portal Access"
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+    content = f"""
+                <div class="header">
+                    <div class="logo">K</div>
+                    <h1>Welcome to Kinntegraa</h1>
+                    <p>Your Investment Management Portal</p>
+                </div>
+                <div class="content">
+                    <p class="greeting">Dear <strong>{client_name}</strong>,</p>
+                    
+                    <p>Welcome to Kinntegraa! Your investment portal account has been created by <strong>{broker_name}</strong>. You can now access the platform to view opportunities and manage your investments.</p>
+                    
+                    <div class="credentials">
+                        <h3>🔐 Your Login Credentials</h3>
+                        <div class="credential-item">
+                            <span class="credential-label">PAN (Username)</span>
+                            <span class="credential-value">{pan}</span>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">Password</span>
+                            <span class="credential-value">{password}</span>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">PIN (2-Step Verification)</span>
+                            <span class="credential-value">{pin}</span>
+                        </div>
+                    </div>
+                    
+                    <center>
+                        <a href="{login_url}" class="button">Login to Portal →</a>
+                    </center>
+                    
+                    <div class="info-box warning" style="margin-top: 24px;">
+                        <strong>🔒 Security Notice:</strong><br>
+                        Please keep your credentials safe and do not share them with anyone. We recommend changing your password after your first login.
+                    </div>
+                </div>
+    """
+    
+    footer = f"<p>If you have any questions, please contact your broker <strong>{broker_name}</strong>.</p>"
+    
+    html_content = get_email_template_base(content, footer)
+    
+    plain_content = f"""
+    Welcome to Kinntegraa - Your Investment Portal
+    
+    Dear {client_name},
+    
+    Your account has been created by {broker_name}.
+    
+    Login Credentials:
+    - PAN (Username): {pan}
+    - Password: {password}
+    - PIN: {pin}
+    
+    Login URL: {login_url}
+    
+    Please keep your credentials safe and change your password after first login.
+    
+    Best regards,
+    Kinntegraa Team
+    
+    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    """
+    
+    return send_email(client_email, subject, html_content, plain_content)
             .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
             .header {{ background: linear-gradient(135deg, #4F46E5, #7C3AED); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
             .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
