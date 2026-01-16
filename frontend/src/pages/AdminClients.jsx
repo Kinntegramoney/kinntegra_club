@@ -119,6 +119,119 @@ export default function AdminClients() {
     }
   };
 
+  // Edit client functions
+  const handleEditClick = async (client) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/clients/${client.id}/details`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setEditFormData(response.data);
+      setEditingClient(client);
+    } catch (error) {
+      // Fallback to basic client data if details endpoint fails
+      setEditFormData(client);
+      setEditingClient(client);
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API}/clients/${editingClient.id}`, editFormData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Client updated successfully");
+      setEditingClient(null);
+      fetchData();
+    } catch (error) {
+      console.error("Error updating client:", error);
+      toast.error(error.response?.data?.detail || "Failed to update client");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Resend credentials
+  const handleResendCredentials = async (client) => {
+    if (!window.confirm(`Resend login credentials to ${client.name}? This will generate a new password and PIN.`)) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/clients/${client.id}/resend-credentials`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setCredentials(response.data.credentials);
+      setShowCredentialsModal(true);
+      
+      if (response.data.email_sent) {
+        toast.success("Credentials sent to client's email");
+      } else {
+        toast.warning("Email could not be sent. Please share credentials manually.");
+      }
+    } catch (error) {
+      console.error("Error resending credentials:", error);
+      toast.error("Failed to resend credentials");
+    }
+  };
+
+  // Reset password
+  const handleResetPassword = async (client) => {
+    if (!window.confirm(`Reset password for ${client.name}?`)) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/clients/${client.id}/reset-password`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setCredentials({
+        name: client.name,
+        pan: client.pan_number,
+        password: response.data.new_password,
+        email: client.email
+      });
+      setShowCredentialsModal(true);
+      
+      if (response.data.email_sent) {
+        toast.success("New password sent to client's email");
+      } else {
+        toast.warning("Email could not be sent. Please share password manually.");
+      }
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      toast.error("Failed to reset password");
+    }
+  };
+
+  // Deactivate client
+  const handleDeactivate = async (client) => {
+    if (!window.confirm(`Deactivate ${client.name}? They will no longer be able to login.`)) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/clients/${client.id}/deactivate`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Client deactivated successfully");
+      fetchData();
+    } catch (error) {
+      console.error("Error deactivating client:", error);
+      toast.error("Failed to deactivate client");
+    }
+  };
+
+  // Copy to clipboard
+  const copyToClipboard = (text, field) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+    toast.success("Copied to clipboard!");
+  };
+
   const handleLinkSubbroker = async (clientId, subbrokerId) => {
     try {
       const token = localStorage.getItem("token");
