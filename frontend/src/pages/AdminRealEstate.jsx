@@ -21,6 +21,11 @@ export default function AdminRealEstate() {
   const [editingOpportunity, setEditingOpportunity] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Set page title
+  useEffect(() => {
+    document.title = "Kinntegraa | Real Estate";
+  }, []);
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
