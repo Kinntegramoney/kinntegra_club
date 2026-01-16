@@ -1337,27 +1337,19 @@ async def bulk_upload_bonds(
             if not principal_payments:
                 principal_payments = [{"date": end_date, "percentage": 100.0}]
             
-            # Generate interest payments based on frequency
+            # Generate interest payments with fixed day of month and actual days calculation
             frequency = str(row.get('interest_payment_frequency', 'quarterly')).lower().strip() if not pd.isna(row.get('interest_payment_frequency')) else 'quarterly'
-            interest_payments = []
             principal = float(row['principal_amount'])
             coupon_rate_val = float(row['coupon_rate'])
             
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            
-            months_interval = {"monthly": 1, "quarterly": 3, "semi-annual": 6, "annual": 12}.get(frequency, 3)
-            
-            current = start
-            while current < end:
-                current = current + timedelta(days=months_interval * 30)
-                if current <= end:
-                    # Simple interest calculation
-                    interest_amount = (principal * coupon_rate_val / 100) * (months_interval / 12)
-                    interest_payments.append({
-                        "date": current.strftime('%Y-%m-%d'),
-                        "amount": round(interest_amount, 2)
-                    })
+            # Use the new helper function for proper date and interest calculation
+            interest_payments = generate_interest_payment_schedule(
+                start_date=start_date,
+                end_date=end_date,
+                principal=principal,
+                coupon_rate=coupon_rate_val,
+                frequency=frequency
+            )
             
             bond_id = str(uuid.uuid4())
             bond = {
