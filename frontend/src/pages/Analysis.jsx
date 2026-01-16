@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,10 @@ import {
   ArrowRight,
   ExternalLink,
   Clock,
-  FolderOpen
+  FolderOpen,
+  User,
+  UserPlus,
+  Search
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -34,6 +37,12 @@ const Analysis = () => {
   const [schemeMasterStatus, setSchemeMasterStatus] = useState(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
+  
+  // Client selection state
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [loadingClients, setLoadingClients] = useState(false);
   
   // Upload state
   const [casFile, setCasFile] = useState(null);
@@ -53,11 +62,29 @@ const Analysis = () => {
     }
     fetchAnalyses();
     fetchSchemeMasterStatus();
+    fetchClients();
   }, []);
 
   const getAuthHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`
   });
+
+  const fetchClients = async () => {
+    try {
+      setLoadingClients(true);
+      const response = await fetch(`${API}/api/clients`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setClients(data);
+      }
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
 
   const fetchAnalyses = async () => {
     try {
@@ -96,6 +123,11 @@ const Analysis = () => {
   const handleCASUpload = async (e) => {
     e.preventDefault();
     
+    if (!selectedClient) {
+      toast.error('Please select a client first');
+      return;
+    }
+    
     if (!casFile) {
       toast.error('Please select a CAS PDF file');
       return;
@@ -114,6 +146,7 @@ const Analysis = () => {
       const formData = new FormData();
       formData.append('file', casFile);
       formData.append('password', casPassword);
+      formData.append('client_id', selectedClient.id);
 
       setProcessingStatus('Parsing PDF and extracting transactions...');
       setProcessingProgress(30);
@@ -134,7 +167,7 @@ const Analysis = () => {
         setProcessingProgress(100);
         
         setTimeout(() => {
-          toast.success(`CAS analyzed: ${data.total_folios} folios, ${data.total_transactions} transactions`);
+          toast.success(`CAS analyzed for ${selectedClient.name}: ${data.total_folios} folios, ${data.total_transactions} transactions`);
           setCasFile(null);
           setCasPassword('');
           setProcessingStatus('');
@@ -244,6 +277,17 @@ const Analysis = () => {
     return `₹${value.toLocaleString('en-IN')}`;
   };
 
+  // Filter clients based on search query
+  const filteredClients = clients.filter(client => {
+    if (!clientSearchQuery) return true;
+    const query = clientSearchQuery.toLowerCase();
+    return (
+      client.name?.toLowerCase().includes(query) ||
+      client.pan_number?.toLowerCase().includes(query) ||
+      client.email?.toLowerCase().includes(query)
+    );
+  });
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar user={user} />
@@ -259,7 +303,7 @@ const Analysis = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { fetchAnalyses(); fetchSchemeMasterStatus(); }}
+              onClick={() => { fetchAnalyses(); fetchSchemeMasterStatus(); fetchClients(); }}
               className="border-gray-300"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -298,7 +342,7 @@ const Analysis = () => {
                 }`}>
                   {currentStep > 1 ? <CheckCircle2 className="h-6 w-6" /> : '1'}
                 </div>
-                <span className="text-sm mt-2 font-medium text-gray-700">Request CAS</span>
+                <span className="text-sm mt-2 font-medium text-gray-700">Select Client</span>
               </div>
               
               {/* Step 2 */}
@@ -323,84 +367,160 @@ const Analysis = () => {
             </div>
           </div>
 
-          {/* Step 1: Request CAS */}
+          {/* Step 1: Select Client */}
           <Card className={`mb-6 border-2 transition-all ${currentStep === 1 ? 'border-amber-400 shadow-lg' : 'border-gray-200'}`}>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  currentStep === 1 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-600'
-                }`}>1</div>
+                  currentStep === 1 ? 'bg-amber-500 text-white' : selectedClient ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {selectedClient ? <CheckCircle2 className="h-5 w-5" /> : '1'}
+                </div>
                 <div>
-                  <CardTitle className="text-lg">Request CAS from CAMS</CardTitle>
-                  <CardDescription>Get your Consolidated Account Statement via email</CardDescription>
+                  <CardTitle className="text-lg">Select Client</CardTitle>
+                  <CardDescription>Choose the client for this CAS analysis (required for billing)</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="bg-blue-50 rounded-lg p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">1</div>
-                  <div>
-                    <p className="text-gray-700">Visit CAMS CAS Portal</p>
-                    <a 
-                      href="https://www.camsonline.com/Investors/Statements/Consolidated-Account-Statement" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+              {/* Selected Client Display */}
+              {selectedClient && (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">
+                        {selectedClient.name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800">{selectedClient.name}</p>
+                        <p className="text-sm text-gray-500">PAN: {selectedClient.pan_number}</p>
+                        {selectedClient.linked_subbroker_name && (
+                          <p className="text-xs text-blue-600">Sub-Broker: {selectedClient.linked_subbroker_name}</p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setSelectedClient(null); setCurrentStep(1); }}
                     >
-                      Open CAMS Portal <ExternalLink className="h-3 w-3" />
-                    </a>
+                      Change
+                    </Button>
                   </div>
                 </div>
-                
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">2</div>
-                  <p className="text-gray-700">Select: <span className="font-semibold">Detailed Statement</span> → <span className="font-semibold">Specific Period</span></p>
+              )}
+
+              {/* Client Search & Selection */}
+              {!selectedClient && (
+                <div className="space-y-4">
+                  {/* Search Input */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by client name, PAN, or email..."
+                      value={clientSearchQuery}
+                      onChange={(e) => setClientSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  {/* Client List */}
+                  {loadingClients ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      Loading clients...
+                    </div>
+                  ) : filteredClients.length === 0 ? (
+                    <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                      <User className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500 mb-4">
+                        {clients.length === 0 
+                          ? "No clients found. Please create a client first." 
+                          : "No clients match your search."}
+                      </p>
+                      <Link to="/broker/admin/clients">
+                        <Button variant="outline" className="gap-2">
+                          <UserPlus className="h-4 w-4" />
+                          Create New Client
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y">
+                      {filteredClients.map((client) => (
+                        <div
+                          key={client.id}
+                          className="p-3 hover:bg-gray-50 cursor-pointer transition-colors flex items-center justify-between"
+                          onClick={() => { setSelectedClient(client); setCurrentStep(2); }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-semibold text-sm">
+                              {client.name?.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-800 text-sm">{client.name}</p>
+                              <p className="text-xs text-gray-500">PAN: {client.pan_number}</p>
+                            </div>
+                          </div>
+                          {client.linked_subbroker_name && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                              {client.linked_subbroker_name}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Create Client Link */}
+                  {clients.length > 0 && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                      <span>Can't find the client?</span>
+                      <Link to="/broker/admin/clients" className="text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1">
+                        <UserPlus className="h-4 w-4" />
+                        Create New Client
+                      </Link>
+                    </div>
+                  )}
                 </div>
-                
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">3</div>
-                  <div className="text-gray-700">
-                    <p>Enter dates:</p>
-                    <p className="text-sm">From: <span className="font-mono bg-white px-2 py-0.5 rounded">01/01/2000</span> To: <span className="font-mono bg-white px-2 py-0.5 rounded">Today</span></p>
+              )}
+
+              {/* CAMS Instructions (collapsed when client selected) */}
+              {selectedClient && (
+                <div className="mt-4 bg-blue-50 rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-medium text-blue-800 mb-2">How to get CAS from CAMS:</p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">1</div>
+                    <div>
+                      <a 
+                        href="https://www.camsonline.com/Investors/Statements/Consolidated-Account-Statement" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+                      >
+                        Open CAMS Portal <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">2</div>
+                    <p className="text-gray-700 text-sm">Select <span className="font-semibold">Detailed Statement</span> → <span className="font-semibold">Specific Period</span> (01/01/2000 to Today)</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">3</div>
+                    <p className="text-gray-700 text-sm">Folio: <span className="font-semibold">With Zero Balance</span> | Password: <span className="font-mono bg-amber-100 px-1 rounded">kinntegra123</span></p>
                   </div>
                 </div>
-                
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">4</div>
-                  <p className="text-gray-700">Folio Listing: <span className="font-semibold">With Zero Balance</span></p>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">5</div>
-                  <div className="text-gray-700">
-                    <p>Set Password: <span className="font-mono bg-amber-100 px-2 py-0.5 rounded font-semibold">kinntegra123</span></p>
-                    <p className="text-xs text-gray-500 mt-1">(You'll need this to upload the PDF)</p>
-                  </div>
-                </div>
-                
-                <div className="mt-4 p-3 bg-amber-100 rounded-lg flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-600" />
-                  <span className="text-amber-800 text-sm">CAMS will email the CAS PDF within 24 hours</span>
-                </div>
-              </div>
-              
-              <Button 
-                variant="outline" 
-                className="mt-4"
-                onClick={() => setCurrentStep(2)}
-              >
-                I have my CAS PDF <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
+              )}
             </CardContent>
           </Card>
 
           {/* Step 2: Upload CAS PDF */}
-          <Card className={`mb-6 border-2 transition-all ${currentStep === 2 ? 'border-amber-400 shadow-lg' : 'border-gray-200'}`}>
+          <Card className={`mb-6 border-2 transition-all ${currentStep === 2 && selectedClient ? 'border-amber-400 shadow-lg' : 'border-gray-200'}`}>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  currentStep === 2 ? 'bg-amber-500 text-white' : currentStep > 2 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                  currentStep === 2 && selectedClient ? 'bg-amber-500 text-white' : currentStep > 2 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
                 }`}>
                   {currentStep > 2 ? <CheckCircle2 className="h-5 w-5" /> : '2'}
                 </div>
@@ -411,65 +531,70 @@ const Analysis = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCASUpload} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="cas-file" className="text-gray-700 font-medium">CAS PDF File</Label>
-                    <div className="mt-2">
+              {!selectedClient ? (
+                <div className="text-center py-6 text-gray-500">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                  <p>Please select a client first to upload CAS</p>
+                </div>
+              ) : (
+                <form onSubmit={handleCASUpload} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="cas-file" className="text-gray-700 font-medium">CAS PDF File</Label>
+                      <div className="mt-2">
+                        <Input
+                          id="cas-file"
+                          type="file"
+                          accept=".pdf"
+                          onChange={(e) => setCasFile(e.target.files[0])}
+                          className="bg-gray-50 border-gray-300"
+                        />
+                        {casFile && (
+                          <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                            <CheckCircle2 className="h-4 w-4" /> {casFile.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="cas-password" className="text-gray-700 font-medium">PDF Password</Label>
                       <Input
-                        id="cas-file"
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => setCasFile(e.target.files[0])}
-                        className="bg-gray-50 border-gray-300"
-                        disabled={currentStep < 2}
+                        id="cas-password"
+                        type="password"
+                        placeholder="Enter the password you set on CAMS"
+                        value={casPassword}
+                        onChange={(e) => setCasPassword(e.target.value)}
+                        className="mt-2 bg-gray-50 border-gray-300"
                       />
-                      {casFile && (
-                        <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
-                          <CheckCircle2 className="h-4 w-4" /> {casFile.name}
-                        </p>
-                      )}
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="cas-password" className="text-gray-700 font-medium">PDF Password</Label>
-                    <Input
-                      id="cas-password"
-                      type="password"
-                      placeholder="Enter the password you set on CAMS"
-                      value={casPassword}
-                      onChange={(e) => setCasPassword(e.target.value)}
-                      className="mt-2 bg-gray-50 border-gray-300"
-                      disabled={currentStep < 2}
-                    />
-                  </div>
-                </div>
-                <Button 
-                  type="submit" 
-                  className="bg-amber-500 hover:bg-amber-600 text-white"
-                  disabled={uploadingCAS || !casFile || !casPassword || currentStep < 2}
-                >
-                  {uploadingCAS ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Analyze CAS
-                    </>
-                  )}
-                </Button>
-              </form>
+                  <Button 
+                    type="submit" 
+                    className="bg-amber-500 hover:bg-amber-600 text-white"
+                    disabled={uploadingCAS || !casFile || !casPassword}
+                  >
+                    {uploadingCAS ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Analyze CAS for {selectedClient.name}
+                      </>
+                    )}
+                  </Button>
+                </form>
+              )}
 
               {/* Scheme Master Status */}
-              {schemeMasterStatus?.exists ? (
+              {selectedClient && schemeMasterStatus?.exists ? (
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                   <span className="text-green-700 text-sm">Scheme Master loaded: {schemeMasterStatus.total_schemes?.toLocaleString()} schemes</span>
                 </div>
-              ) : user?.role === 'broker' && (
+              ) : selectedClient && user?.role === 'broker' && (
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-amber-600" />
@@ -498,60 +623,39 @@ const Analysis = () => {
             <CardContent>
               {selectedAnalysis ? (
                 <div className="space-y-4">
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="bg-indigo-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-indigo-600">
-                        {selectedAnalysis.total_folios || Object.keys(selectedAnalysis.parsed_data?.folios || {}).length || 0}
-                      </p>
-                      <p className="text-xs text-gray-500">Folios</p>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-green-600">
-                        {selectedAnalysis.total_transactions || selectedAnalysis.parsed_data?.total_transactions || 0}
-                      </p>
-                      <p className="text-xs text-gray-500">Transactions</p>
-                    </div>
-                    <div className="bg-amber-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-amber-600">
-                        {formatCurrency(selectedAnalysis.portfolio_summary?.total_cost || 0)}
-                      </p>
-                      <p className="text-xs text-gray-500">Total Cost</p>
-                    </div>
-                    <div className="bg-purple-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-purple-600">
-                        {formatCurrency(selectedAnalysis.portfolio_summary?.total_value || 0)}
-                      </p>
-                      <p className="text-xs text-gray-500">Current Value</p>
-                    </div>
-                  </div>
-
-                  {/* Download Button */}
                   <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
                     <div className="flex items-center gap-3">
                       <FileSpreadsheet className="h-8 w-8 text-green-600" />
                       <div>
-                        <p className="font-medium text-gray-800">{selectedAnalysis.filename || 'Gap Sheet Report'}</p>
-                        <p className="text-sm text-gray-500">ZIP file with Consolidated + PAN-wise reports</p>
+                        <p className="font-semibold text-gray-800">{selectedAnalysis.filename}</p>
+                        <p className="text-sm text-gray-500">
+                          {selectedAnalysis.total_folios || 0} folios • {selectedAnalysis.total_transactions || 0} transactions
+                        </p>
+                        {selectedAnalysis.client_name && (
+                          <p className="text-xs text-blue-600">Client: {selectedAnalysis.client_name}</p>
+                        )}
                       </div>
                     </div>
                     <Button
                       onClick={() => handleDownload(selectedAnalysis.analysis_id || selectedAnalysis.id, selectedAnalysis.filename)}
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      className="bg-green-600 hover:bg-green-700"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Download ZIP
+                      Download Report
                     </Button>
                   </div>
-
-                  <p className="text-xs text-gray-500 text-center">
-                    Report includes: Summary, Portfolio Performance, MF Transactions, NFT, Advisor View, XIRR, TDS Details (if applicable)
-                  </p>
+                  
+                  <Button 
+                    variant="outline" 
+                    onClick={() => { setSelectedAnalysis(null); setSelectedClient(null); setCurrentStep(1); }}
+                  >
+                    Analyze Another CAS
+                  </Button>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-400">
-                  <FolderOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Upload a CAS PDF to see analysis results</p>
+                <div className="text-center py-6 text-gray-500">
+                  <FolderOpen className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                  <p>Upload a CAS PDF to see analysis results here</p>
                 </div>
               )}
             </CardContent>
@@ -569,7 +673,8 @@ const Analysis = () => {
                     <thead className="bg-gray-50 border-b">
                       <tr>
                         <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Requested By</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Client/Sub-Broker</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Client</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Sub-Broker</th>
                         <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">File Name</th>
                         <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 uppercase">Folios</th>
                         <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -598,8 +703,16 @@ const Analysis = () => {
                             </div>
                           </td>
                           <td className="py-3 px-3">
+                            <div>
+                              <span className="text-sm text-gray-800">{analysis.client_name || '-'}</span>
+                              {analysis.client_pan && (
+                                <p className="text-xs text-gray-500 font-mono">{analysis.client_pan}</p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
                             <span className="text-sm text-gray-600">
-                              {analysis.client_name || analysis.sub_broker_name || '-'}
+                              {analysis.sub_broker_name || '-'}
                             </span>
                           </td>
                           <td className="py-3 px-3">
