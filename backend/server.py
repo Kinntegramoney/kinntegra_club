@@ -23,7 +23,8 @@ from email_service import (
     send_welcome_email_subbroker,
     send_bond_opportunity_email,
     send_real_estate_opportunity_email,
-    send_password_reset_email
+    send_password_reset_email,
+    send_credentials_email
 )
 from analysis_service import (
     CASParser, 
