@@ -74,6 +74,7 @@ class CASParser:
         self.portfolio_summary = {}
         self.investor_info = {}
         self.nft_entries = []  # Non-Financial Transactions
+        self.tds_entries = []  # TDS (Tax Deducted at Source) entries
         self.report_date = None
         
     def parse(self) -> Dict:
