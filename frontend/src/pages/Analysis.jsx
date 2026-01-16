@@ -11,38 +11,20 @@ import {
   FileUp, 
   Download, 
   Trash2, 
-  Eye, 
   Upload, 
   FileSpreadsheet,
   RefreshCw,
   FileText,
-  Calendar,
-  User,
-  Database,
   CheckCircle2,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ArrowRight,
+  ExternalLink,
+  Clock,
+  FolderOpen
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
-
-// Step indicator component - moved outside to avoid re-render issues
-const StepIndicator = ({ step, title, isComplete, isCurrent }) => (
-  <div className="flex items-center gap-3">
-    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-      isComplete ? 'bg-emerald-500' : isCurrent ? 'bg-amber-500' : 'bg-gray-300'
-    }`}>
-      {isComplete ? (
-        <CheckCircle2 className="h-5 w-5 text-white" />
-      ) : (
-        <span className="text-white font-medium">{step}</span>
-      )}
-    </div>
-    <span className={`text-sm font-medium ${isCurrent ? 'text-gray-800' : 'text-gray-500'}`}>
-      {title}
-    </span>
-  </div>
-);
 
 const Analysis = () => {
   const navigate = useNavigate();
@@ -51,6 +33,7 @@ const Analysis = () => {
   const [loading, setLoading] = useState(false);
   const [schemeMasterStatus, setSchemeMasterStatus] = useState(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
+  const [currentStep, setCurrentStep] = useState(1);
   
   // Upload state
   const [casFile, setCasFile] = useState(null);
@@ -85,6 +68,9 @@ const Analysis = () => {
       if (response.ok) {
         const data = await response.json();
         setAnalyses(data);
+        if (data.length > 0) {
+          setCurrentStep(2);
+        }
       }
     } catch (error) {
       console.error('Error fetching analyses:', error);
@@ -155,6 +141,7 @@ const Analysis = () => {
           setProcessingProgress(0);
           fetchAnalyses();
           setSelectedAnalysis(data);
+          setCurrentStep(3);
         }, 500);
       } else {
         setProcessingStatus('');
@@ -187,7 +174,6 @@ const Analysis = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        // Download as ZIP file containing all reports
         a.download = `GapSheet_${filename.replace('.pdf', '')}.zip`;
         document.body.appendChild(a);
         a.click();
@@ -198,7 +184,7 @@ const Analysis = () => {
         setTimeout(() => {
           setProcessingStatus('');
           setProcessingProgress(0);
-          toast.success('Gap Sheet reports downloaded! (ZIP contains separate files by PAN)');
+          toast.success('Gap Sheet reports downloaded!');
         }, 300);
       } else {
         setProcessingStatus('');
@@ -229,6 +215,7 @@ const Analysis = () => {
         fetchAnalyses();
         if (selectedAnalysis?.analysis_id === analysisId || selectedAnalysis?.id === analysisId) {
           setSelectedAnalysis(null);
+          setCurrentStep(1);
         }
       } else {
         toast.error('Failed to delete analysis');
@@ -237,31 +224,6 @@ const Analysis = () => {
       console.error('Error deleting:', error);
       toast.error('Error deleting analysis');
     }
-  };
-
-  const handleViewDetails = async (analysisId) => {
-    try {
-      const response = await fetch(`${API}/api/analysis/${analysisId}`, {
-        headers: getAuthHeaders()
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSelectedAnalysis(data);
-      } else {
-        toast.error('Failed to load analysis details');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error loading details');
-    }
-  };
-
-  const getBackPath = () => {
-    if (!user) return '/login';
-    if (user.role === 'broker') return '/broker/dashboard';
-    if (user.role === 'sub_broker') return '/sub-broker/opportunities';
-    return '/client/opportunities';
   };
 
   const formatDate = (dateStr) => {
@@ -292,14 +254,13 @@ const Analysis = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">Portfolio Analysis</h1>
-              <p className="text-sm text-gray-500 mt-1">Upload CAS PDF and generate Gap Sheet reports</p>
+              <p className="text-sm text-gray-500 mt-1">Generate Gap Sheet reports from CAS PDF</p>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => { fetchAnalyses(); fetchSchemeMasterStatus(); }}
-              className="border-gray-300 text-gray-700 hover:bg-gray-100"
-              data-testid="refresh-button"
+              className="border-gray-300"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
@@ -307,346 +268,339 @@ const Analysis = () => {
           </div>
         </div>
 
-        <div className="p-6">
-        {/* Progress Bar - Show when processing */}
-        {processingStatus && (
-          <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 shadow-sm" data-testid="processing-status">
-            <div className="flex items-center gap-3 mb-2">
-              <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
-              <span className="text-gray-700 font-medium">{processingStatus}</span>
+        <div className="p-6 max-w-5xl mx-auto">
+          {/* Progress Bar - Show when processing */}
+          {processingStatus && (
+            <div className="mb-6 bg-white border border-amber-200 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-3 mb-2">
+                <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+                <span className="text-gray-700 font-medium">{processingStatus}</span>
+              </div>
+              <Progress value={processingProgress} className="h-2" />
             </div>
-            <Progress value={processingProgress} className="h-2" />
+          )}
+
+          {/* Step Progress Indicator */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between relative">
+              {/* Progress Line */}
+              <div className="absolute top-5 left-0 right-0 h-1 bg-gray-200 -z-10">
+                <div 
+                  className="h-full bg-amber-500 transition-all duration-500"
+                  style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' }}
+                />
+              </div>
+              
+              {/* Step 1 */}
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                  currentStep >= 1 ? 'bg-amber-500' : 'bg-gray-300'
+                }`}>
+                  {currentStep > 1 ? <CheckCircle2 className="h-6 w-6" /> : '1'}
+                </div>
+                <span className="text-sm mt-2 font-medium text-gray-700">Request CAS</span>
+              </div>
+              
+              {/* Step 2 */}
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                  currentStep >= 2 ? 'bg-amber-500' : 'bg-gray-300'
+                }`}>
+                  {currentStep > 2 ? <CheckCircle2 className="h-6 w-6" /> : '2'}
+                </div>
+                <span className="text-sm mt-2 font-medium text-gray-700">Upload PDF</span>
+              </div>
+              
+              {/* Step 3 */}
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                  currentStep >= 3 ? 'bg-amber-500' : 'bg-gray-300'
+                }`}>
+                  {currentStep > 3 ? <CheckCircle2 className="h-6 w-6" /> : '3'}
+                </div>
+                <span className="text-sm mt-2 font-medium text-gray-700">Download Report</span>
+              </div>
+            </div>
           </div>
-        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Upload Section */}
-          <div className="space-y-6">
-            {/* Steps Progress */}
-            <Card className="bg-white border-gray-200 shadow-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-gray-800 text-lg">Analysis Steps</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <StepIndicator 
-                  step={1} 
-                  title="Upload CAS PDF" 
-                  isComplete={analyses.length > 0}
-                  isCurrent={true}
-                />
-                <div className="ml-4 border-l-2 border-gray-300 h-4" />
-                <StepIndicator 
-                  step={2} 
-                  title="Download Gap Sheet" 
-                  isComplete={false}
-                  isCurrent={selectedAnalysis !== null}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Scheme Master Status - Info only */}
-            {!schemeMasterStatus?.exists && user?.role === 'broker' && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          {/* Step 1: Request CAS */}
+          <Card className={`mb-6 border-2 transition-all ${currentStep === 1 ? 'border-amber-400 shadow-lg' : 'border-gray-200'}`}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  currentStep === 1 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-600'
+                }`}>1</div>
+                <div>
+                  <CardTitle className="text-lg">Request CAS from CAMS</CardTitle>
+                  <CardDescription>Get your Consolidated Account Statement via email</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-blue-50 rounded-lg p-4 space-y-3">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">1</div>
                   <div>
-                    <p className="text-amber-700 font-medium">Scheme Master Not Uploaded</p>
-                    <p className="text-amber-600 text-sm mt-1">
-                      For better NAV mapping, upload the BSE Scheme Master file.
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 border-amber-400 text-amber-600 hover:bg-amber-100"
-                      onClick={() => navigate('/broker/admin/scheme-master')}
-                    >
-                      <Database className="h-4 w-4 mr-2" />
-                      Go to Admin → Scheme Master
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {schemeMasterStatus?.exists && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 text-emerald-600">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    Scheme Master: {schemeMasterStatus.total_schemes?.toLocaleString()} schemes
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* How to Request CAS Guide */}
-            <Card className="bg-blue-50 border-blue-200 shadow-sm" data-testid="cas-guide-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-blue-800 flex items-center gap-2 text-base">
-                  <FileText className="h-5 w-5" />
-                  How to Request CAS Statement
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-blue-700 space-y-3">
-                <p className="font-medium">Follow these steps to get your CAS from CAMS:</p>
-                <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li>
-                    Visit{' '}
+                    <p className="text-gray-700">Visit CAMS CAS Portal</p>
                     <a 
                       href="https://www.camsonline.com/Investors/Statements/Consolidated-Account-Statement" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-blue-600 underline hover:text-blue-800 font-medium"
+                      className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
                     >
-                      CAMS CAS Portal
+                      Open CAMS Portal <ExternalLink className="h-3 w-3" />
                     </a>
-                  </li>
-                  <li>Select Statement Type: <span className="font-semibold">Detailed</span></li>
-                  <li>Choose Period: <span className="font-semibold">Specific Period</span>
-                    <ul className="list-disc list-inside ml-4 mt-1 text-blue-600">
-                      <li>From Date: <span className="font-semibold">01/01/2000</span></li>
-                      <li>To Date: <span className="font-semibold">Today's Date</span></li>
-                    </ul>
-                  </li>
-                  <li>Folio Listing: <span className="font-semibold">With Zero Balance</span></li>
-                  <li>Email: <span className="font-semibold">Registered email on investments</span></li>
-                  <li>Password: <span className="font-semibold bg-blue-100 px-2 py-0.5 rounded">kinntegra123</span></li>
-                </ol>
-                <div className="bg-blue-100 rounded-lg p-3 mt-3">
-                  <p className="text-blue-800 font-medium flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    After submission, CAMS will email the CAS PDF to the registered email. Upload that PDF below.
-                  </p>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+                
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">2</div>
+                  <p className="text-gray-700">Select: <span className="font-semibold">Detailed Statement</span> → <span className="font-semibold">Specific Period</span></p>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">3</div>
+                  <div className="text-gray-700">
+                    <p>Enter dates:</p>
+                    <p className="text-sm">From: <span className="font-mono bg-white px-2 py-0.5 rounded">01/01/2000</span> To: <span className="font-mono bg-white px-2 py-0.5 rounded">Today</span></p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">4</div>
+                  <p className="text-gray-700">Folio Listing: <span className="font-semibold">With Zero Balance</span></p>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">5</div>
+                  <div className="text-gray-700">
+                    <p>Set Password: <span className="font-mono bg-amber-100 px-2 py-0.5 rounded font-semibold">kinntegra123</span></p>
+                    <p className="text-xs text-gray-500 mt-1">(You'll need this to upload the PDF)</p>
+                  </div>
+                </div>
+                
+                <div className="mt-4 p-3 bg-amber-100 rounded-lg flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  <span className="text-amber-800 text-sm">CAMS will email the CAS PDF within 24 hours</span>
+                </div>
+              </div>
+              
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => setCurrentStep(2)}
+              >
+                I have my CAS PDF <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
 
-            {/* Step 1: CAS Upload */}
-            <Card className="bg-white border-gray-200 shadow-sm" data-testid="cas-upload-card">
-              <CardHeader>
-                <CardTitle className="text-gray-800 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold text-white">1</div>
-                  Upload CAS PDF
-                </CardTitle>
-                <CardDescription className="text-gray-500">
-                  Upload your Consolidated Account Statement (password-protected PDF)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCASUpload} className="space-y-4">
+          {/* Step 2: Upload CAS PDF */}
+          <Card className={`mb-6 border-2 transition-all ${currentStep === 2 ? 'border-amber-400 shadow-lg' : 'border-gray-200'}`}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  currentStep === 2 ? 'bg-amber-500 text-white' : currentStep > 2 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {currentStep > 2 ? <CheckCircle2 className="h-5 w-5" /> : '2'}
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Upload CAS PDF</CardTitle>
+                  <CardDescription>Upload the password-protected PDF from CAMS</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCASUpload} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="cas-file" className="text-gray-700">CAS PDF File</Label>
-                    <Input
-                      id="cas-file"
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => setCasFile(e.target.files[0])}
-                      className="mt-1 bg-gray-50 border-gray-300 text-gray-800 file:bg-gray-100 file:text-gray-700 file:border-0"
-                      data-testid="cas-file-input"
-                    />
-                    {casFile && (
-                      <p className="text-sm text-emerald-600 mt-1">✓ {casFile.name}</p>
-                    )}
+                    <Label htmlFor="cas-file" className="text-gray-700 font-medium">CAS PDF File</Label>
+                    <div className="mt-2">
+                      <Input
+                        id="cas-file"
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => setCasFile(e.target.files[0])}
+                        className="bg-gray-50 border-gray-300"
+                        disabled={currentStep < 2}
+                      />
+                      {casFile && (
+                        <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                          <CheckCircle2 className="h-4 w-4" /> {casFile.name}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div>
-                    <Label htmlFor="cas-password" className="text-gray-700">PDF Password</Label>
+                    <Label htmlFor="cas-password" className="text-gray-700 font-medium">PDF Password</Label>
                     <Input
                       id="cas-password"
                       type="password"
-                      placeholder="Enter PDF password"
+                      placeholder="Enter the password you set on CAMS"
                       value={casPassword}
                       onChange={(e) => setCasPassword(e.target.value)}
-                      className="mt-1 bg-gray-50 border-gray-300 text-gray-800 placeholder:text-gray-400"
-                      data-testid="cas-password-input"
+                      className="mt-2 bg-gray-50 border-gray-300"
+                      disabled={currentStep < 2}
                     />
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-amber-500 hover:bg-amber-600 text-white"
-                    disabled={uploadingCAS || !casFile || !casPassword}
-                    data-testid="analyze-cas-button"
-                  >
-                    {uploadingCAS ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Analyze CAS
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
+                </div>
+                <Button 
+                  type="submit" 
+                  className="bg-amber-500 hover:bg-amber-600 text-white"
+                  disabled={uploadingCAS || !casFile || !casPassword || currentStep < 2}
+                >
+                  {uploadingCAS ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Analyze CAS
+                    </>
+                  )}
+                </Button>
+              </form>
 
-          {/* Middle & Right Columns - Results */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Step 2: Selected Analysis Results */}
-            {selectedAnalysis && (
-              <Card className="bg-white border-gray-200 shadow-sm border-l-4 border-l-amber-500" data-testid="selected-analysis-card">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm font-bold text-white">2</div>
-                      <div>
-                        <CardTitle className="text-gray-800">
-                          {selectedAnalysis.filename || 'Analysis Result'}
-                        </CardTitle>
-                        <CardDescription className="text-gray-500">
-                          Analyzed on {formatDate(selectedAnalysis.created_at)}
-                        </CardDescription>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleDownload(selectedAnalysis.analysis_id || selectedAnalysis.id, selectedAnalysis.filename)}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      data-testid="download-report-button"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download Gap Sheet
-                    </Button>
+              {/* Scheme Master Status */}
+              {schemeMasterStatus?.exists ? (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span className="text-green-700 text-sm">Scheme Master loaded: {schemeMasterStatus.total_schemes?.toLocaleString()} schemes</span>
+                </div>
+              ) : user?.role === 'broker' && (
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                    <span className="text-amber-700 text-sm">Scheme Master not uploaded (optional for better NAV mapping)</span>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Step 3: Download Report / Analysis Results */}
+          <Card className={`mb-6 border-2 transition-all ${currentStep === 3 || selectedAnalysis ? 'border-green-400 shadow-lg' : 'border-gray-200'}`}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  currentStep >= 3 || selectedAnalysis ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {selectedAnalysis ? <CheckCircle2 className="h-5 w-5" /> : '3'}
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Download Gap Sheet Report</CardTitle>
+                  <CardDescription>Your analysis results and downloadable reports</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {selectedAnalysis ? (
+                <div className="space-y-4">
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-indigo-50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-indigo-600">
                         {selectedAnalysis.total_folios || Object.keys(selectedAnalysis.parsed_data?.folios || {}).length || 0}
                       </p>
-                      <p className="text-sm text-gray-500">Folios</p>
+                      <p className="text-xs text-gray-500">Folios</p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
-                      <p className="text-2xl font-bold text-emerald-600">
+                    <div className="bg-green-50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-green-600">
                         {selectedAnalysis.total_transactions || selectedAnalysis.parsed_data?.total_transactions || 0}
                       </p>
-                      <p className="text-sm text-gray-500">Transactions</p>
+                      <p className="text-xs text-gray-500">Transactions</p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                    <div className="bg-amber-50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-amber-600">
-                        {formatCurrency(selectedAnalysis.portfolio_summary?.total_cost || selectedAnalysis.parsed_data?.portfolio_summary?.total_cost || 0)}
+                        {formatCurrency(selectedAnalysis.portfolio_summary?.total_cost || 0)}
                       </p>
-                      <p className="text-sm text-gray-500">Total Cost</p>
+                      <p className="text-xs text-gray-500">Total Cost</p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                    <div className="bg-purple-50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-purple-600">
-                        {formatCurrency(selectedAnalysis.portfolio_summary?.total_value || selectedAnalysis.parsed_data?.portfolio_summary?.total_value || 0)}
+                        {formatCurrency(selectedAnalysis.portfolio_summary?.total_value || 0)}
                       </p>
-                      <p className="text-sm text-gray-500">Current Value</p>
+                      <p className="text-xs text-gray-500">Current Value</p>
                     </div>
                   </div>
-                  
-                  {/* Gap Sheet Info */}
-                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-sm text-amber-700">
-                      <strong>ZIP Download includes:</strong> Consolidated report + separate files by PAN (Portfolio Performance, Tax View, Advisor View, PAN View, and 8 more sheets)
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Analysis History */}
-            <Card className="bg-white border-gray-200 shadow-sm" data-testid="analysis-history-card">
-              <CardHeader>
-                <CardTitle className="text-gray-800 flex items-center gap-2">
-                  <FileSpreadsheet className="h-5 w-5 text-purple-500" />
-                  Analysis History
-                </CardTitle>
-                <CardDescription className="text-gray-500">
-                  Your previous CAS analyses
-                </CardDescription>
+                  {/* Download Button */}
+                  <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-3">
+                      <FileSpreadsheet className="h-8 w-8 text-green-600" />
+                      <div>
+                        <p className="font-medium text-gray-800">{selectedAnalysis.filename || 'Gap Sheet Report'}</p>
+                        <p className="text-sm text-gray-500">ZIP file with Consolidated + PAN-wise reports</p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => handleDownload(selectedAnalysis.analysis_id || selectedAnalysis.id, selectedAnalysis.filename)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download ZIP
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-gray-500 text-center">
+                    Report includes: Summary, Portfolio Performance, MF Transactions, NFT, Advisor View, XIRR, TDS Details (if applicable)
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  <FolderOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Upload a CAS PDF to see analysis results</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Previous Analyses */}
+          {analyses.length > 0 && (
+            <Card className="border-gray-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg text-gray-700">Previous Analyses</CardTitle>
               </CardHeader>
               <CardContent>
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  </div>
-                ) : analyses.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                    <p className="text-gray-500">No analyses yet</p>
-                    <p className="text-sm text-gray-400">Upload a CAS PDF to get started</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {analyses.map((analysis) => (
-                      <div 
-                        key={analysis.id}
-                        className={`bg-gray-50 rounded-lg p-4 hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer ${
-                          (selectedAnalysis?.id === analysis.id || selectedAnalysis?.analysis_id === analysis.id) ? 'ring-2 ring-amber-500 bg-amber-50' : ''
-                        }`}
-                        onClick={() => handleViewDetails(analysis.id)}
-                        data-testid={`analysis-item-${analysis.id}`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-800 flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-indigo-500" />
-                              {analysis.filename}
-                            </h4>
-                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(analysis.created_at)}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                {analysis.user_name}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewDetails(analysis.id);
-                              }}
-                              className="text-gray-500 hover:text-gray-700"
-                              data-testid={`view-analysis-${analysis.id}`}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownload(analysis.id, analysis.filename);
-                              }}
-                              className="text-emerald-600 hover:text-emerald-700"
-                              data-testid={`download-analysis-${analysis.id}`}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(analysis.id);
-                              }}
-                              className="text-red-500 hover:text-red-600"
-                              data-testid={`delete-analysis-${analysis.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                <div className="space-y-2">
+                  {analyses.map((analysis) => (
+                    <div 
+                      key={analysis.id} 
+                      className={`flex items-center justify-between p-3 rounded-lg border ${
+                        (selectedAnalysis?.id === analysis.id || selectedAnalysis?.analysis_id === analysis.id)
+                          ? 'bg-amber-50 border-amber-300'
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      } cursor-pointer transition-colors`}
+                      onClick={() => { setSelectedAnalysis(analysis); setCurrentStep(3); }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <p className="font-medium text-gray-800 text-sm">{analysis.filename}</p>
+                          <p className="text-xs text-gray-500">{formatDate(analysis.created_at)}</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600">
+                          {analysis.total_folios || 0} folios
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(analysis.id); }}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
-          </div>
-        </div>
+          )}
         </div>
       </div>
     </div>
