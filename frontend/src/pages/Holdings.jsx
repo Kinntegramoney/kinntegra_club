@@ -30,6 +30,15 @@ export default function Holdings() {
   const [activeTab, setActiveTab] = useState("summary"); // "summary" or trade index
   const [mainTab, setMainTab] = useState("holdings"); // "holdings", "trades", or "profile"
   const menuRef = useRef(null);
+  
+  // Prepayment modal state
+  const [showPrepaymentModal, setShowPrepaymentModal] = useState(false);
+  const [prepaymentTradeId, setPrepaymentTradeId] = useState(null);
+  const [prepaymentTrade, setPrepaymentTrade] = useState(null);
+  const [prepaymentDate, setPrepaymentDate] = useState("");
+  const [prepaymentAmount, setPrepaymentAmount] = useState("");
+  const [prepaymentNotes, setPrepaymentNotes] = useState("");
+  const [recordingPrepayment, setRecordingPrepayment] = useState(false);
 
   // Set page title
   useEffect(() => {
