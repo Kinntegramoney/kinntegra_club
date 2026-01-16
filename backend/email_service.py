@@ -406,90 +406,82 @@ def send_welcome_email_subbroker(
     broker_name: str,
     login_url: str = "https://kinntegraa.club/login"
 ) -> bool:
-    """Send welcome email to a new sub-broker with login credentials"""
+    """Send welcome email to a new sub-broker (Kinntegraa Club member) with login credentials"""
     
-    subject = "Welcome to Kinntegraa Club - Your Portal Access"
+    subject = "Welcome to Kinntegraa Club - Your Exclusive Member Access"
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #7C3AED, #EC4899); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-            .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
-            .credentials {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7C3AED; }}
-            .credential-item {{ margin: 10px 0; }}
-            .credential-label {{ color: #6b7280; font-size: 12px; text-transform: uppercase; }}
-            .credential-value {{ font-size: 18px; font-weight: bold; color: #1f2937; font-family: monospace; }}
-            .partner-badge {{ background: linear-gradient(135deg, #7C3AED, #EC4899); color: white; display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 14px; }}
-            .button {{ display: inline-block; background: #7C3AED; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin-top: 20px; }}
-            .footer {{ text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }}
-            .features {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }}
-            .feature-item {{ padding: 8px 0; border-bottom: 1px solid #e5e7eb; }}
-            .feature-item:last-child {{ border-bottom: none; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1 style="margin: 0;">Welcome to Kinntegraa Club</h1>
-                <p style="margin: 10px 0 0 0; opacity: 0.9;">Exclusive Member Access</p>
-            </div>
-            <div class="content">
-                <p>Dear <strong>{subbroker_name}</strong>,</p>
-                
-                <p>Congratulations! You have been onboarded as a member by <strong>{broker_name}</strong>.</p>
-                
-                <center>
-                    <span class="partner-badge">Member Code: {partner_code}</span>
-                </center>
-                
-                <div class="credentials">
-                    <h3 style="margin-top: 0; color: #7C3AED;">Your Login Credentials</h3>
-                    <div class="credential-item">
-                        <div class="credential-label">PAN Number (Username)</div>
-                        <div class="credential-value">{pan}</div>
+    content = f"""
+                <div class="header">
+                    <div class="logo">K</div>
+                    <h1>Welcome to Kinntegraa Club</h1>
+                    <p>Exclusive Member Access</p>
+                </div>
+                <div class="content">
+                    <p class="greeting">Dear <strong>{subbroker_name}</strong>,</p>
+                    
+                    <p>Congratulations! You have been onboarded as an exclusive club member by <strong>{broker_name}</strong>.</p>
+                    
+                    <center style="margin: 24px 0;">
+                        <span class="badge">🏆 Member Code: {partner_code}</span>
+                    </center>
+                    
+                    <div class="credentials">
+                        <h3>🔐 Your Login Credentials</h3>
+                        <div class="credential-item">
+                            <span class="credential-label">PAN (Username)</span>
+                            <span class="credential-value">{pan}</span>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">Password</span>
+                            <span class="credential-value">{password}</span>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">PIN (2-Step Verification)</span>
+                            <span class="credential-value">{pin}</span>
+                        </div>
                     </div>
-                    <div class="credential-item">
-                        <div class="credential-label">Password</div>
-                        <div class="credential-value">{password}</div>
+                    
+                    <div class="features">
+                        <h3 style="margin-top: 0; color: #1f2937;">As a Club Member, You Can:</h3>
+                        <div class="feature-item">
+                            <span class="feature-icon">✓</span>
+                            <span>View and share investment opportunities with your clients</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✓</span>
+                            <span>Manage your client portfolio efficiently</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✓</span>
+                            <span>Track investments and returns in real-time</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✓</span>
+                            <span>Access detailed analytics and comprehensive reports</span>
+                        </div>
                     </div>
-                    <div class="credential-item">
-                        <div class="credential-label">PIN (for 2-step verification)</div>
-                        <div class="credential-value">{pin}</div>
+                    
+                    <center>
+                        <a href="{login_url}" class="button">Access Kinntegraa Club →</a>
+                    </center>
+                    
+                    <div class="info-box success" style="margin-top: 24px;">
+                        <strong>🎉 Welcome Aboard!</strong><br>
+                        We're excited to have you as part of the Kinntegraa Club. Start exploring opportunities and grow your client portfolio today!
                     </div>
                 </div>
-                
-                <div class="features">
-                    <h3 style="margin-top: 0;">As a Club Member, You Can:</h3>
-                    <div class="feature-item">✅ View and share investment opportunities with your clients</div>
-                    <div class="feature-item">✅ Manage your client portfolio</div>
-                    <div class="feature-item">✅ Track investments and returns</div>
-                    <div class="feature-item">✅ Access detailed analytics and reports</div>
-                </div>
-                
-                <center>
-                    <a href="{login_url}" class="button">Access Kinntegraa Club</a>
-                </center>
-                
-                <div class="footer">
-                    <p>If you have any questions, please contact {broker_name} or our support team.</p>
-                    <p>&copy; 2025 Kinntegraa Club. All rights reserved.</p>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
     """
     
+    footer = f"<p>If you have any questions, please contact <strong>{broker_name}</strong>.</p>"
+    
+    html_content = get_email_template_base(content, footer)
+    
     plain_content = f"""
-    Welcome to Kinntegraa Club
+    Welcome to Kinntegraa Club - Exclusive Member Access
     
     Dear {subbroker_name},
     
-    Congratulations! You have been onboarded as a member by {broker_name}.
+    Congratulations! You have been onboarded as a club member by {broker_name}.
     
     Member Code: {partner_code}
     
@@ -500,8 +492,16 @@ def send_welcome_email_subbroker(
     
     Login URL: {login_url}
     
+    As a Club Member, You Can:
+    - View and share investment opportunities
+    - Manage your client portfolio
+    - Track investments and returns
+    - Access detailed analytics and reports
+    
     Best regards,
     Kinntegraa Club Team
+    
+    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
     """
     
     return send_email(subbroker_email, subject, html_content, plain_content)
