@@ -1770,8 +1770,23 @@ class GapSheetGenerator:
                     ws.cell(row=row, column=18, value=days_held)
             
             # Column 19: XIRR - use pre-calculated value for this folio
+            # Try multiple key formats to find a match
+            xirr_value = None
             if folio_key in folio_xirr:
-                ws.cell(row=row, column=19, value=folio_xirr[folio_key])
+                xirr_value = folio_xirr[folio_key]
+            else:
+                # Try with just folio number
+                if folio in folio_xirr:
+                    xirr_value = folio_xirr[folio]
+                else:
+                    # Search for any key that starts with this folio
+                    for xirr_key in folio_xirr:
+                        if xirr_key.startswith(folio + '_') or xirr_key == folio:
+                            xirr_value = folio_xirr[xirr_key]
+                            break
+            
+            if xirr_value:
+                ws.cell(row=row, column=19, value=xirr_value)
             
             # Column 20: Advisor ARN
             ws.cell(row=row, column=20, value=trans.get('advisor', ''))
