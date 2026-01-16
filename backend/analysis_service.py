@@ -1850,42 +1850,49 @@ class GapSheetGenerator:
             current_nav = folio_data.get('current_nav', 0)
             has_balance = folio_closing_balance > 0
             
-            # Column 15: Balance Units - only show if folio has current balance
-            if has_balance and not trans.get('is_redemption'):
-                ws.cell(row=row, column=15, value=folio_closing_balance)
+            # Get remaining units for this specific purchase transaction (FIFO calculated)
+            remaining_units = purchase_remaining_units.get((folio_key, trans_idx), 0)
+            has_remaining = remaining_units > 0
             
-            # Column 16: Current NAV - only show if folio has balance
-            if has_balance and current_nav > 0:
+            # Column 15: Balance Units - remaining units from THIS purchase (FIFO)
+            # Only for purchase transactions with remaining units
+            if not trans.get('is_redemption') and has_remaining:
+                ws.cell(row=row, column=15, value=round(remaining_units, 3))
+            
+            # Column 16: Current NAV - only show for purchases with remaining units
+            if not trans.get('is_redemption') and has_remaining and current_nav > 0:
                 ws.cell(row=row, column=16, value=current_nav)
             
-            # Column 17: Current Market Value - only show if folio has balance
-            if has_balance and not trans.get('is_redemption') and current_nav > 0:
-                market_value = folio_closing_balance * current_nav
-                ws.cell(row=row, column=17, value=market_value)
+            # Column 17: Current Market Value - value of remaining units from THIS purchase
+            if not trans.get('is_redemption') and has_remaining and current_nav > 0:
+                market_value = remaining_units * current_nav
+                ws.cell(row=row, column=17, value=round(market_value, 2))
             
-            # Column 18: MF Ageing - absolute number of days for folios with balance
+            # Column 18: MF Ageing - days held for purchases with remaining units
             trans_date = parse_date(trans.get('date', ''))
-            if has_balance and not trans.get('is_redemption') and trans_date != datetime.min:
+            if not trans.get('is_redemption') and has_remaining and trans_date != datetime.min:
                 days_held = (self.report_date - trans_date).days
                 ws.cell(row=row, column=18, value=days_held)
             
             # Column 19: XIRR - Per-transaction XIRR calculation
-            # Only calculate for purchase transactions where units are still held (balance > 0)
+            # Only calculate for purchase transactions where units from THIS purchase are still held
             # XIRR = annualized return from purchase date to report date
-            # Cost = Transaction Amount on purchase date
-            # Current Value = Units purchased * Current NAV on report date
+            # Cost = (Remaining Units / Original Units) * Transaction Amount (proportional cost)
+            # Current Value = Remaining Units * Current NAV on report date
             xirr_value = None
-            if not trans.get('is_redemption') and has_balance and current_nav > 0 and trans_amount > 0:
-                trans_units = trans.get('units', 0)
-                if trans_units > 0 and trans_date != datetime.min:
-                    # Calculate current value of this specific transaction's units
-                    current_value = trans_units * current_nav
+            if not trans.get('is_redemption') and has_remaining and current_nav > 0 and trans_amount > 0:
+                original_units = trans.get('units', 0)
+                if original_units > 0 and trans_date != datetime.min:
+                    # Calculate proportional cost for remaining units
+                    proportional_cost = (remaining_units / original_units) * trans_amount
+                    # Calculate current value of remaining units
+                    current_value = remaining_units * current_nav
                     
                     # XIRR calculation: 
-                    # Cashflow 1: -trans_amount on trans_date (investment/outflow)
+                    # Cashflow 1: -proportional_cost on trans_date (investment/outflow)
                     # Cashflow 2: +current_value on report_date (current value/inflow)
                     cashflows = [
-                        (trans_date, -trans_amount),  # Investment (outflow)
+                        (trans_date, -proportional_cost),  # Investment (outflow)
                         (self.report_date, current_value)  # Current value (inflow)
                     ]
                     
