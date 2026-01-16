@@ -5695,9 +5695,19 @@ async def delete_bond(bond_id: str, current_user: dict = Depends(get_current_use
 
 class BondUpdate(BaseModel):
     name: Optional[str] = None
+    issuer: Optional[str] = None
+    principal_amount: Optional[float] = None
+    coupon_rate: Optional[float] = None
+    primary_irr: Optional[float] = None
     secondary_irr: Optional[float] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    interest_payment_frequency: Optional[str] = None
     total_units: Optional[int] = None
     units_sold: Optional[int] = None
+    face_value: Optional[float] = None
+    credit_rating: Optional[str] = None
+    description: Optional[str] = None
 
 
 @api_router.put("/bonds/{bond_id}")
@@ -5713,17 +5723,21 @@ async def update_bond(bond_id: str, bond_update: BondUpdate, current_user: dict 
     
     # Build update dict with only provided fields
     update_data = {}
-    if bond_update.name is not None:
-        update_data["name"] = bond_update.name
-    if bond_update.secondary_irr is not None:
-        update_data["secondary_irr"] = bond_update.secondary_irr
-    if bond_update.total_units is not None:
-        update_data["total_units"] = bond_update.total_units
-    if bond_update.units_sold is not None:
-        update_data["units_sold"] = bond_update.units_sold
+    updatable_fields = [
+        'name', 'issuer', 'principal_amount', 'coupon_rate', 'primary_irr', 
+        'secondary_irr', 'start_date', 'end_date', 'interest_payment_frequency',
+        'total_units', 'units_sold', 'face_value', 'credit_rating', 'description'
+    ]
+    
+    for field in updatable_fields:
+        value = getattr(bond_update, field, None)
+        if value is not None:
+            update_data[field] = value
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
     
     await db.bonds.update_one({"id": bond_id}, {"$set": update_data})
     
