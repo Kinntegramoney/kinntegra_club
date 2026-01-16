@@ -977,63 +977,46 @@ def send_reinvestment_approval_email(
     return send_email(client_email, subject, html_content, plain_content)
 
 
-def send_password_reset_email(
+def send_password_reset_link_email(
     recipient_email: str,
     recipient_name: str,
     reset_token: str,
     base_url: str = "https://kinntegraa.club"
 ) -> bool:
-    """Send password reset link email"""
+    """Send password reset link email (self-service reset)"""
     
     reset_url = f"{base_url}/forgot-password?token={reset_token}"
     
     subject = "Password Reset Request - Kinntegraa"
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: #D4A853; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-            .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
-            .button {{ display: inline-block; background: #D4A853; color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }}
-            .footer {{ text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }}
-            .warning {{ background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0; border-radius: 4px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1 style="margin: 0;">Password Reset</h1>
-            </div>
-            <div class="content">
-                <p>Dear <strong>{recipient_name}</strong>,</p>
-                
-                <p>We received a request to reset your password. Click the button below to set a new password and PIN:</p>
-                
-                <center>
-                    <a href="{reset_url}" class="button">Reset Password</a>
-                </center>
-                
-                <div class="warning">
-                    <strong>⚠️ Security Notice:</strong> This link will expire in 1 hour. If you did not request this reset, please ignore this email or contact support.
+    content = f"""
+                <div class="header">
+                    <div class="logo">K</div>
+                    <h1>Password Reset Request</h1>
+                    <p>We received your request</p>
                 </div>
-                
-                <p style="font-size: 12px; color: #6b7280;">
-                    If the button doesn't work, copy and paste this link into your browser:<br>
-                    <a href="{reset_url}">{reset_url}</a>
-                </p>
-                
-                <div class="footer">
-                    <p>&copy; 2025 Kinntegraa. All rights reserved.</p>
+                <div class="content">
+                    <p class="greeting">Dear <strong>{recipient_name}</strong>,</p>
+                    
+                    <p>We received a request to reset your password. Click the button below to set a new password and PIN:</p>
+                    
+                    <center style="margin: 30px 0;">
+                        <a href="{reset_url}" class="button">Reset Password →</a>
+                    </center>
+                    
+                    <div class="info-box warning">
+                        <strong>⚠️ Security Notice:</strong><br>
+                        This link will expire in 1 hour. If you did not request this reset, please ignore this email or contact support.
+                    </div>
+                    
+                    <p style="font-size: 12px; color: #6b7280; margin-top: 24px;">
+                        If the button doesn't work, copy and paste this link into your browser:<br>
+                        <a href="{reset_url}" style="color: #D4A853; word-break: break-all;">{reset_url}</a>
+                    </p>
                 </div>
-            </div>
-        </div>
-    </body>
-    </html>
     """
+    
+    html_content = get_email_template_base(content, "")
     
     plain_content = f"""
     Password Reset Request
@@ -1050,6 +1033,8 @@ def send_password_reset_email(
     
     Best regards,
     Kinntegraa Team
+    
+    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
     """
     
     return send_email(recipient_email, subject, html_content, plain_content)
