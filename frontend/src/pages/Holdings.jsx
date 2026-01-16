@@ -114,17 +114,42 @@ export default function Holdings() {
   const handleMarkRepaid = async (cashflowId, isRepaid) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`${API}/holdings/cashflow/${cashflowId}/mark-repaid`, 
+      const response = await axios.put(`${API}/holdings/cashflow/${cashflowId}/mark-repaid`, 
         { is_repaid: isRepaid },
         { headers: { Authorization: `Bearer ${token}` }}
       );
-      toast.success(isRepaid ? "Marked as repaid" : "Marked as pending");
+      
+      // Check if interest was amended due to principal prepayment
+      if (response.data.interest_amended > 0) {
+        toast.success(`Marked as repaid. ${response.data.interest_amended} future interest payment(s) amended due to principal prepayment.`);
+      } else {
+        toast.success(isRepaid ? "Marked as repaid" : "Marked as pending");
+      }
+      
       if (selectedClient) {
         fetchClientHoldings(selectedClient.id);
       }
     } catch (error) {
       console.error("Error updating cashflow:", error);
       toast.error("Failed to update repayment status");
+    }
+  };
+
+  const handleRevertAmendment = async (cashflowId) => {
+    if (!window.confirm('Revert this interest amount to the original value?')) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/holdings/cashflow/${cashflowId}/revert-amendment`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Amendment reverted to original amount");
+      if (selectedClient) {
+        fetchClientHoldings(selectedClient.id);
+      }
+    } catch (error) {
+      console.error("Error reverting amendment:", error);
+      toast.error(error.response?.data?.detail || "Failed to revert amendment");
     }
   };
 
