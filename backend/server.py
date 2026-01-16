@@ -1163,10 +1163,35 @@ async def bulk_upload_bonds(
     import pandas as pd
     
     content = await file.read()
-    df = pd.read_excel(io.BytesIO(content), sheet_name=0)
+    excel_file = io.BytesIO(content)
     
-    # Clean column names
-    df.columns = [col.replace('*', '').replace('(%)', '').strip().lower().replace(' ', '_') for col in df.columns]
+    # Read all sheets from the Excel file
+    try:
+        # Sheet 1: Bond Details
+        df_basic = pd.read_excel(excel_file, sheet_name=0)
+        df_basic.columns = [col.replace('*', '').replace('(%)', '').strip().lower().replace(' ', '_').replace('/', '_') for col in df_basic.columns]
+        
+        # Sheet 2: Financial Details  
+        excel_file.seek(0)
+        df_financial = pd.read_excel(excel_file, sheet_name=1)
+        df_financial.columns = [col.replace('*', '').replace('(%)', '').replace('(INR)', '').strip().lower().replace(' ', '_') for col in df_financial.columns]
+        
+        # Sheet 3: Units & Limits
+        excel_file.seek(0)
+        df_units = pd.read_excel(excel_file, sheet_name=2)
+        df_units.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_units.columns]
+        
+        # Sheet 4: Principal Payments
+        excel_file.seek(0)
+        df_principal = pd.read_excel(excel_file, sheet_name=3)
+        df_principal.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_principal.columns]
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error reading Excel sheets: {str(e)}. Ensure the file has all 4 required sheets.")
+    
+    # Merge dataframes on bond_code
+    df = df_basic.merge(df_financial, on='bond_code', how='left')
+    df = df.merge(df_units, on='bond_code', how='left')
     
     results = {"success": 0, "failed": 0, "errors": [], "created_bonds": []}
     
