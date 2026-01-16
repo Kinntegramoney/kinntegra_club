@@ -143,6 +143,12 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
   - Upload Repayments button to bulk update historical repayments
   - Auto-detects prepaid entries during upload
   - Matches entries by Client PAN + Bond Name + Scheduled Date + Type
+- [x] **Holdings Page - Principal Prepayment & Interest Amendment**:
+  - When principal is prepaid early, **subsequent interest is automatically recalculated** based on remaining principal
+  - Interest Amendment shows: Current amount (with original in strikethrough)
+  - Orange highlight for amended cashflows with "Amended" badge
+  - **Revert** button to restore original interest amounts
+  - Backend APIs: `POST /amend-interest` for manual amendment, `POST /revert-amendment` to undo
 
 ---
 
