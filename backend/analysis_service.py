@@ -1592,6 +1592,44 @@ class GapSheetGenerator:
             ws.cell(row=1, column=col, value=header)
         self._style_header(ws, 1, len(headers))
         
+        # Pre-calculate XIRR for each folio
+        folio_xirr = {}
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            closing_balance = folio_data.get('closing_balance', 0)
+            current_nav = folio_data.get('current_nav', 0)
+            
+            # Calculate XIRR for all folios (active and closed)
+            folio_cashflows = []
+            for ft in folio_data.get('transactions', []):
+                if ft.get('is_nft') or ft.get('is_pledge'):
+                    continue
+                if ft.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
+                    continue
+                try:
+                    ft_date = datetime.strptime(ft['date'], '%d-%b-%Y')
+                    ft_amount = ft.get('amount', 0)
+                    if ft_amount > 0:
+                        if ft.get('is_redemption'):
+                            folio_cashflows.append((ft_date, ft_amount))  # Positive for redemption
+                        else:
+                            folio_cashflows.append((ft_date, -ft_amount))  # Negative for purchase
+                except:
+                    pass
+            
+            # Add current value as final cashflow if holding exists
+            if closing_balance > 0 and current_nav > 0:
+                final_value = closing_balance * current_nav
+                folio_cashflows.append((self.report_date, final_value))
+            
+            # Calculate XIRR if we have enough cashflows
+            if len(folio_cashflows) >= 2:
+                try:
+                    xirr_value = calculate_xirr(folio_cashflows) * 100
+                    if -100 < xirr_value < 500:  # Reasonable XIRR range
+                        folio_xirr[folio_id] = f"{xirr_value:.2f}%"
+                except:
+                    pass
+        
         # Build STT lookup: key = (date, folio, isin) -> STT amount
         stt_lookup = {}
         for trans in self.parsed_data.get('transactions', []):
