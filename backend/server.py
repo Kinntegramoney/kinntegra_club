@@ -24,7 +24,8 @@ from email_service import (
     send_bond_opportunity_email,
     send_real_estate_opportunity_email,
     send_password_reset_email,
-    send_credentials_email
+    send_credentials_email,
+    send_prepayment_notification_email
 )
 from analysis_service import (
     CASParser, 
