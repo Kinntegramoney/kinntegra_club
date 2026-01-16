@@ -177,43 +177,42 @@ def generate_combined_payment_schedule(
         current = add_months_fixed_day(start, payment_num)
         
         # Check if we've passed the maturity date
-        if current > end:
-            # If there's remaining time, add final payment at maturity
-            if prev_date < end:
-                days_in_period = calculate_days_between(prev_date, end)
-                daily_rate = (coupon_rate / 100) / 365
-                interest_amount = round(outstanding_principal * daily_rate * days_in_period, 2)
-                
-                # Check if there's a principal payment on maturity
-                end_date_str = end.strftime('%Y-%m-%d')
-                principal_pct = 0
-                principal_amt = 0
-                if end_date_str in principal_payment_map:
-                    principal_pct = principal_payment_map[end_date_str]['percentage']
-                    principal_amt = round(principal * (principal_pct / 100), 2)
-                
-                interest_payments.append({
-                    "date": end_date_str,
-                    "amount": interest_amount,
-                    "days": days_in_period,
-                    "outstanding_principal": round(outstanding_principal, 2),
-                    "is_partial": True
-                })
-                
-                combined_schedule.append({
-                    "date": end_date_str,
-                    "description": "Final Payment (Maturity)",
-                    "principal_percentage": principal_pct,
-                    "principal_amount": principal_amt,
-                    "interest_amount": interest_amount,
-                    "total_payment": round(principal_amt + interest_amount, 2),
-                    "outstanding_principal_before": round(outstanding_principal, 2),
-                    "outstanding_principal_after": round(outstanding_principal - principal_amt, 2),
-                    "days_in_period": days_in_period
-                })
-                
-                total_interest += interest_amount
-                total_principal_paid += principal_amt
+        if current >= end:
+            # Final payment at maturity date
+            days_in_period = calculate_days_between(prev_date, end)
+            daily_rate = (coupon_rate / 100) / 365
+            interest_amount = round(outstanding_principal * daily_rate * days_in_period, 2)
+            
+            # Check if there's a principal payment on maturity
+            end_date_str = end.strftime('%Y-%m-%d')
+            principal_pct = 0
+            principal_amt = 0
+            if end_date_str in principal_payment_map:
+                principal_pct = principal_payment_map[end_date_str]['percentage']
+                principal_amt = round(principal * (principal_pct / 100), 2)
+            
+            interest_payments.append({
+                "date": end_date_str,
+                "amount": interest_amount,
+                "days": days_in_period,
+                "outstanding_principal": round(outstanding_principal, 2),
+                "is_partial": True
+            })
+            
+            combined_schedule.append({
+                "date": end_date_str,
+                "description": "Final Payment (Maturity)",
+                "principal_percentage": principal_pct,
+                "principal_amount": principal_amt,
+                "interest_amount": interest_amount,
+                "total_payment": round(principal_amt + interest_amount, 2),
+                "outstanding_principal_before": round(outstanding_principal, 2),
+                "outstanding_principal_after": round(outstanding_principal - principal_amt, 2),
+                "days_in_period": days_in_period
+            })
+            
+            total_interest += interest_amount
+            total_principal_paid += principal_amt
             break
         
         # Calculate interest for this period
