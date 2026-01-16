@@ -1034,6 +1034,52 @@ export default function Holdings() {
                   </div>
                 </div>
                 
+                {/* Bulk Repayment Update Section */}
+                <div className="p-4 bg-blue-50 border-b border-blue-100">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-blue-800">Bulk Repayment Update</h4>
+                      <p className="text-xs text-blue-600">Update historical repayments via Excel upload</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleDownloadRepaymentTemplate}
+                        className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                        data-testid="download-repayment-template"
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Template
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleExportCashflows}
+                        disabled={!selectedClient}
+                        className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                        data-testid="export-cashflows"
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Export Cashflows
+                      </Button>
+                      <label className="cursor-pointer">
+                        <input 
+                          type="file" 
+                          accept=".xlsx,.xls" 
+                          onChange={handleBulkRepaymentUpload}
+                          className="hidden"
+                          data-testid="bulk-repayment-upload"
+                        />
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">
+                          <Upload className="h-4 w-4" />
+                          Upload Repayments
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50">
