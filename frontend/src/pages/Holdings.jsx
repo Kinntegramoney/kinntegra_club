@@ -932,6 +932,8 @@ export default function Holdings() {
                         <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest Amount</th>
                         <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">TDS Amount</th>
                         <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Repaid</th>
+                        <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Prepaid</th>
+                        <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">XIRR</th>
                         <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase w-12"></th>
                       </tr>
@@ -948,6 +950,24 @@ export default function Holdings() {
                           <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_interest)}</td>
                           <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_tds)}</td>
                           <td className="py-4 px-4 text-right font-mono text-sm text-green-600">{formatINR(holding.net_repaid)}</td>
+                          <td className="py-4 px-4 text-center">
+                            {holding.prepaid_count > 0 ? (
+                              <span className="inline-flex items-center gap-1 text-blue-600 text-xs font-medium bg-blue-100 px-2 py-1 rounded-full">
+                                {holding.prepaid_count} prepaid
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-xs">-</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            {holding.xirr !== null && holding.xirr !== undefined ? (
+                              <span className={`font-mono text-sm font-medium ${holding.xirr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {holding.xirr.toFixed(2)}%
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-xs">-</span>
+                            )}
+                          </td>
                           <td className="py-4 px-4 text-center">
                             <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${holding.status === 'fully_repaid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                               {holding.status === 'fully_repaid' ? 'Fully Repaid' : 'Active'}
