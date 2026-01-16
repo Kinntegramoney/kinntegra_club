@@ -1157,7 +1157,6 @@ export default function Holdings() {
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
                           <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Type</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest</th>
