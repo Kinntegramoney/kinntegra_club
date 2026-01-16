@@ -1592,29 +1592,47 @@ class GapSheetGenerator:
             ws.cell(row=1, column=col, value=header)
         self._style_header(ws, 1, len(headers))
         
-        # Pre-calculate XIRR for each folio
+        # Pre-calculate XIRR for each folio using BOTH folio transactions AND global transactions
+        # This ensures we capture all transactions even if they weren't properly linked to folio['transactions']
         folio_xirr = {}
+        
+        # First, build a comprehensive cashflow map using global transactions
+        folio_cashflows_map = defaultdict(list)
+        for trans in self.parsed_data.get('transactions', []):
+            if trans.get('is_nft') or trans.get('is_pledge'):
+                continue
+            if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
+                continue
+            
+            folio = trans.get('folio', '')
+            isin = trans.get('isin', '')
+            key = f"{folio}_{isin}" if isin else folio
+            
+            try:
+                ft_date = datetime.strptime(trans['date'], '%d-%b-%Y')
+                ft_amount = trans.get('amount', 0)
+                if ft_amount > 0:
+                    if trans.get('is_redemption'):
+                        folio_cashflows_map[key].append((ft_date, ft_amount))  # Positive for redemption
+                    else:
+                        folio_cashflows_map[key].append((ft_date, -ft_amount))  # Negative for purchase
+            except:
+                pass
+        
+        # Now calculate XIRR for each folio
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
             closing_balance = folio_data.get('closing_balance', 0)
             current_nav = folio_data.get('current_nav', 0)
             
-            # Calculate XIRR for all folios (active and closed)
-            folio_cashflows = []
-            for ft in folio_data.get('transactions', []):
-                if ft.get('is_nft') or ft.get('is_pledge'):
-                    continue
-                if ft.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
-                    continue
-                try:
-                    ft_date = datetime.strptime(ft['date'], '%d-%b-%Y')
-                    ft_amount = ft.get('amount', 0)
-                    if ft_amount > 0:
-                        if ft.get('is_redemption'):
-                            folio_cashflows.append((ft_date, ft_amount))  # Positive for redemption
-                        else:
-                            folio_cashflows.append((ft_date, -ft_amount))  # Negative for purchase
-                except:
-                    pass
+            # Get cashflows from the map - try different key formats
+            folio_cashflows = folio_cashflows_map.get(folio_id, []).copy()
+            
+            # Also try with just the folio number (without ISIN) as a fallback
+            folio_num = folio_data.get('folio', '')
+            if not folio_cashflows and folio_num:
+                for key, cashflows in folio_cashflows_map.items():
+                    if key.startswith(folio_num):
+                        folio_cashflows.extend(cashflows)
             
             # Add current value as final cashflow if holding exists
             if closing_balance > 0 and current_nav > 0:
@@ -1629,6 +1647,16 @@ class GapSheetGenerator:
                         folio_xirr[folio_id] = f"{xirr_value:.2f}%"
                 except:
                     pass
+        
+        # Also store XIRR by normalized folio key (folio_isin) for matching during row generation
+        # This ensures we match transactions regardless of minor key format differences
+        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
+            if folio_id in folio_xirr:
+                folio_num = folio_data.get('folio', '')
+                isin = folio_data.get('isin', '')
+                alt_key = f"{folio_num}_{isin}" if isin else folio_num
+                if alt_key != folio_id:
+                    folio_xirr[alt_key] = folio_xirr[folio_id]
         
         # Build STT lookup: key = (date, folio, isin) -> STT amount
         stt_lookup = {}
