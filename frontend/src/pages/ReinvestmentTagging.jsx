@@ -417,11 +417,41 @@ export default function ReinvestmentTagging() {
                               <span className="text-gray-600">Tagging Progress</span>
                               <span className="font-medium">{client.taggedCount}/{client.entries.length}</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
                               <div 
                                 className="bg-amber-500 h-2 rounded-full transition-all"
                                 style={{ width: `${(client.taggedCount / client.entries.length) * 100}%` }}
                               />
+                            </div>
+                            {/* Save All button - only enabled when ALL entries are tagged */}
+                            <div className="flex items-center justify-between">
+                              {client.allTagged ? (
+                                <p className="text-xs text-green-600 flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" /> All entries tagged - Ready to save!
+                                </p>
+                              ) : (
+                                <p className="text-xs text-amber-600">
+                                  Tag all {client.untaggedCount} remaining entries to save
+                                </p>
+                              )}
+                              <Button
+                                size="sm"
+                                onClick={() => handleSaveAllClientTags(client)}
+                                disabled={!client.allTagged || savingClient === client.client_id}
+                                className={`gap-2 ${client.allTagged ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                              >
+                                {savingClient === client.client_id ? (
+                                  <>
+                                    <RefreshCw className="h-4 w-4 animate-spin" />
+                                    Saving...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Save className="h-4 w-4" />
+                                    Save All Tags
+                                  </>
+                                )}
+                              </Button>
                             </div>
                           </div>
                         </div>
