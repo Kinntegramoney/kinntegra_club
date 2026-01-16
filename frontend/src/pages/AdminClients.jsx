@@ -443,22 +443,56 @@ export default function AdminClients() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => navigate(`/broker/admin/clients/${client.id}`)}
-                                  title="View/Edit client"
-                                  data-testid={`view-client-${client.id}`}
+                                  onClick={() => handleEditClick(client)}
+                                  title="Edit client"
+                                  data-testid={`edit-client-${client.id}`}
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(client.id, client.name)}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  title="Delete/Deactivate client"
-                                  data-testid={`delete-client-${client.id}`}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                
+                                {/* Three dots menu */}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" data-testid={`client-menu-${client.id}`}>
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem 
+                                      onClick={() => handleResendCredentials(client)}
+                                      className="cursor-pointer"
+                                      data-testid={`resend-credentials-${client.id}`}
+                                    >
+                                      <Mail className="h-4 w-4 mr-2" />
+                                      Resend Credentials
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleResetPassword(client)}
+                                      className="cursor-pointer"
+                                      data-testid={`reset-password-${client.id}`}
+                                    >
+                                      <KeyRound className="h-4 w-4 mr-2" />
+                                      Reset Password
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDeactivate(client)}
+                                      className="cursor-pointer text-amber-600"
+                                      data-testid={`deactivate-client-${client.id}`}
+                                    >
+                                      <UserMinus className="h-4 w-4 mr-2" />
+                                      Deactivate Client
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDelete(client.id, client.name)}
+                                      className="cursor-pointer text-red-600"
+                                      data-testid={`delete-client-${client.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete Client
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </>
                             )}
                           </div>
@@ -493,6 +527,260 @@ export default function AdminClients() {
             fetchData();
           }}
         />
+      )}
+
+      {/* Edit Client Modal */}
+      {editingClient && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
+              <h2 className="text-lg font-semibold">Edit Client - {editingClient.name}</h2>
+              <Button variant="ghost" size="sm" onClick={() => setEditingClient(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <form onSubmit={handleEditSubmit} className="p-4 space-y-4">
+              {/* Personal Details */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-gray-700 border-b pb-2">Personal Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Name *</Label>
+                    <Input
+                      value={editFormData.name || ''}
+                      onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>PAN Number</Label>
+                    <Input value={editFormData.pan_number || ''} disabled className="bg-gray-100" />
+                  </div>
+                  <div>
+                    <Label>Email *</Label>
+                    <Input
+                      type="email"
+                      value={editFormData.email || ''}
+                      onChange={(e) => setEditFormData({...editFormData, email: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Mobile *</Label>
+                    <Input
+                      value={editFormData.mobile || ''}
+                      onChange={(e) => setEditFormData({...editFormData, mobile: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>UCC</Label>
+                    <Input
+                      value={editFormData.ucc || ''}
+                      onChange={(e) => setEditFormData({...editFormData, ucc: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Occupation</Label>
+                    <Input
+                      value={editFormData.occupation || ''}
+                      onChange={(e) => setEditFormData({...editFormData, occupation: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Address Details */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-gray-700 border-b pb-2">Address Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label>Address Line 1</Label>
+                    <Input
+                      value={editFormData.address_line1 || ''}
+                      onChange={(e) => setEditFormData({...editFormData, address_line1: e.target.value})}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Address Line 2</Label>
+                    <Input
+                      value={editFormData.address_line2 || ''}
+                      onChange={(e) => setEditFormData({...editFormData, address_line2: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>City</Label>
+                    <Input
+                      value={editFormData.city || ''}
+                      onChange={(e) => setEditFormData({...editFormData, city: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>State</Label>
+                    <Select 
+                      value={editFormData.state || ''} 
+                      onValueChange={(v) => setEditFormData({...editFormData, state: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select State" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INDIAN_STATES.map(state => (
+                          <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Pincode</Label>
+                    <Input
+                      value={editFormData.pincode || ''}
+                      onChange={(e) => setEditFormData({...editFormData, pincode: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Country</Label>
+                    <Input
+                      value={editFormData.country || 'India'}
+                      onChange={(e) => setEditFormData({...editFormData, country: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Bank Details */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-gray-700 border-b pb-2">Bank Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Bank Name</Label>
+                    <Input
+                      value={editFormData.bank_name || ''}
+                      onChange={(e) => setEditFormData({...editFormData, bank_name: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Account Number</Label>
+                    <Input
+                      value={editFormData.account_number || ''}
+                      onChange={(e) => setEditFormData({...editFormData, account_number: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Branch</Label>
+                    <Input
+                      value={editFormData.branch || ''}
+                      onChange={(e) => setEditFormData({...editFormData, branch: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>IFSC Code</Label>
+                    <Input
+                      value={editFormData.ifsc_code || ''}
+                      onChange={(e) => setEditFormData({...editFormData, ifsc_code: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Sub-broker Assignment */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-gray-700 border-b pb-2">Sub-broker Assignment</h3>
+                <div>
+                  <Label>Linked Sub-broker</Label>
+                  <Select 
+                    value={editFormData.linked_subbroker_id || 'none'} 
+                    onValueChange={(v) => setEditFormData({...editFormData, linked_subbroker_id: v === 'none' ? null : v})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Sub-broker" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Sub-broker</SelectItem>
+                      {partners.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Form Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => setEditingClient(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={editLoading} className="bg-amber-700 hover:bg-amber-800">
+                  {editLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Credentials Modal */}
+      {showCredentialsModal && credentials && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4 text-white rounded-t-lg">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <KeyRound className="h-6 w-6" />
+                Client Credentials
+              </h2>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600">
+                Share these credentials with <strong>{credentials.name}</strong>:
+              </p>
+              
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                {/* PAN */}
+                <div className="flex items-center justify-between bg-white rounded-md p-3 border">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase">PAN (Username)</p>
+                    <p className="font-mono font-semibold">{credentials.pan}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(credentials.pan, 'pan')}>
+                    {copiedField === 'pan' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                
+                {/* Password */}
+                <div className="flex items-center justify-between bg-white rounded-md p-3 border">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase">Password</p>
+                    <p className="font-mono font-semibold">{credentials.password}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(credentials.password, 'password')}>
+                    {copiedField === 'password' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                
+                {/* PIN (if available) */}
+                {credentials.pin && (
+                  <div className="flex items-center justify-between bg-white rounded-md p-3 border">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">PIN</p>
+                      <p className="font-mono font-semibold">{credentials.pin}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(credentials.pin, 'pin')}>
+                      {copiedField === 'pin' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end">
+                <Button onClick={() => { setShowCredentialsModal(false); setCredentials(null); }}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
