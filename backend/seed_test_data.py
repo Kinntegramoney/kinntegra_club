@@ -13,14 +13,31 @@ async def seed_test_data():
     
     print("Creating test data for Holdings features...")
     
-    # Get broker ID
-    broker = await db.users.find_one({"pan_number": "ANVPB5297J"})
+    # Get broker ID - check both pan and pan_number fields
+    broker = await db.users.find_one({"$or": [{"pan": "ANVPB5297J"}, {"pan_number": "ANVPB5297J"}]})
     if not broker:
-        print("ERROR: Broker not found!")
-        return
+        print("Broker not found. Creating broker account first...")
+        # Import password hashing
+        from auth import get_password_hash
+        
+        broker = {
+            "id": str(uuid.uuid4()),
+            "pan": "ANVPB5297J",
+            "pan_number": "ANVPB5297J",
+            "name": "Broker Admin",
+            "email": "pbisani89@gmail.com",
+            "phone": "+91-9999999999",
+            "password_hash": get_password_hash("Laksh@0208"),
+            "pin_hash": get_password_hash("0516"),
+            "role": "broker",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(broker)
+        print("Created broker account: ANVPB5297J")
     
     broker_id = broker['id']
-    print(f"Found broker: {broker['name']} ({broker_id})")
+    print(f"Found broker: {broker.get('name', 'Broker')} ({broker_id})")
     
     # Create test clients
     clients_data = [
@@ -33,6 +50,7 @@ async def seed_test_data():
             "address": "Mumbai, Maharashtra",
             "created_by": broker_id,
             "linked_subbroker_id": None,
+            "linked_subbroker_name": None,
             "status": "active",
             "created_at": datetime.now(timezone.utc).isoformat()
         },
@@ -45,19 +63,20 @@ async def seed_test_data():
             "address": "Delhi, NCR",
             "created_by": broker_id,
             "linked_subbroker_id": None,
+            "linked_subbroker_name": None,
             "status": "active",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
     ]
     
-    for client in clients_data:
-        existing = await db.clients.find_one({"pan_number": client['pan_number']})
+    for client_data in clients_data:
+        existing = await db.clients.find_one({"pan_number": client_data['pan_number']})
         if not existing:
-            await db.clients.insert_one(client)
-            print(f"Created client: {client['name']} ({client['pan_number']})")
+            await db.clients.insert_one(client_data)
+            print(f"Created client: {client_data['name']} ({client_data['pan_number']})")
         else:
-            client['id'] = existing['id']
-            print(f"Client already exists: {client['name']}")
+            client_data['id'] = existing['id']
+            print(f"Client already exists: {client_data['name']}")
     
     # Create test bonds
     bonds_data = [
@@ -123,6 +142,7 @@ async def seed_test_data():
             "investment_date": "2025-06-01",
             "status": "approved",
             "created_by": broker_id,
+            "created_by_role": "broker",
             "created_at": datetime.now(timezone.utc).isoformat()
         },
         {
@@ -138,6 +158,7 @@ async def seed_test_data():
             "investment_date": "2025-07-15",
             "status": "approved",
             "created_by": broker_id,
+            "created_by_role": "broker",
             "created_at": datetime.now(timezone.utc).isoformat()
         },
         {
@@ -153,6 +174,7 @@ async def seed_test_data():
             "investment_date": "2025-04-01",
             "status": "approved",
             "created_by": broker_id,
+            "created_by_role": "broker",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
     ]
@@ -170,10 +192,18 @@ async def seed_test_data():
             await db.trades.insert_one(trade)
             print(f"Created trade: {trade['client_name']} - {trade['bond_name']} ({trade['units']} units)")
     
+    # Reload trades
+    trades_data[0] = await db.trades.find_one({"client_id": client1['id'], "bond_id": bond1['id']})
+    trades_data[1] = await db.trades.find_one({"client_id": client1['id'], "bond_id": bond2['id']})
+    trades_data[2] = await db.trades.find_one({"client_id": client2['id'], "bond_id": bond1['id']})
+    
     # Generate cashflows for each trade
     print("\nGenerating cashflows...")
     
     for trade in trades_data:
+        if not trade:
+            continue
+            
         # Check if cashflows exist
         existing_cf = await db.holding_cashflows.find_one({"trade_id": trade['id']})
         if existing_cf:
@@ -182,6 +212,7 @@ async def seed_test_data():
         
         # Get bond details
         bond = await db.bonds.find_one({"id": trade['bond_id']})
+        client = await db.clients.find_one({"id": trade['client_id']})
         
         investment_date = datetime.strptime(trade['investment_date'], "%Y-%m-%d")
         maturity_date = datetime.strptime(bond['maturity_date'], "%Y-%m-%d")
@@ -212,6 +243,8 @@ async def seed_test_data():
                     "tds_amount": tds,
                     "net_amount": round(monthly_interest - tds, 2),
                     "is_repaid": False,
+                    "is_prepaid": False,
+                    "is_amended": False,
                     "created_at": datetime.now(timezone.utc).isoformat()
                 })
                 current_date += timedelta(days=30)
@@ -237,6 +270,8 @@ async def seed_test_data():
                     "tds_amount": tds,
                     "net_amount": round(quarterly_interest - tds, 2),
                     "is_repaid": False,
+                    "is_prepaid": False,
+                    "is_amended": False,
                     "created_at": datetime.now(timezone.utc).isoformat()
                 })
                 current_date += timedelta(days=90)
@@ -259,6 +294,8 @@ async def seed_test_data():
             "tds_amount": final_tds,
             "net_amount": round(principal + final_interest - final_tds, 2),
             "is_repaid": False,
+            "is_prepaid": False,
+            "is_amended": False,
             "created_at": datetime.now(timezone.utc).isoformat()
         })
         
@@ -274,20 +311,25 @@ async def seed_test_data():
         # Insert all cashflows
         if cashflows:
             await db.holding_cashflows.insert_many(cashflows)
-            print(f"Created {len(cashflows)} cashflows for {trade['client_name']} - {trade['bond_name']}")
+            repaid_count = len([c for c in cashflows if c['is_repaid']])
+            pending_count = len([c for c in cashflows if not c['is_repaid']])
+            print(f"Created {len(cashflows)} cashflows for {trade['client_name']} - {trade['bond_name']} ({repaid_count} repaid, {pending_count} pending)")
     
-    print("\n✅ Test data creation complete!")
-    print("\nTest Clients:")
+    print("\n" + "="*60)
+    print("✅ TEST DATA CREATION COMPLETE!")
+    print("="*60)
+    print("\n📊 Test Clients:")
     print("  1. Rahul Sharma (ABCDE1234F)")
-    print("     - HDFC Housing Bond: 5 units, ₹5,00,000")
-    print("     - Tata Capital NCD: 3 units, ₹3,00,000")
-    print("  2. Priya Patel (FGHIJ5678K)")
-    print("     - HDFC Housing Bond: 10 units, ₹10,00,000")
-    print("\nYou can now:")
+    print("     - HDFC Housing Bond: 5 units, ₹5,00,000 (Monthly 12%)")
+    print("     - Tata Capital NCD: 3 units, ₹3,00,000 (Quarterly 10%)")
+    print("\n  2. Priya Patel (FGHIJ5678K)")
+    print("     - HDFC Housing Bond: 10 units, ₹10,00,000 (Monthly 12%)")
+    print("\n🔧 You can now test:")
     print("  - View Holdings page and select a client")
-    print("  - Test bulk repayment upload")
-    print("  - Test principal prepayment recording")
-    print("  - View prorated interest calculations")
+    print("  - View cashflow details with Tentative/Actual dates")
+    print("  - Test 'Record Principal Prepayment' button")
+    print("  - Test bulk repayment upload (download template first)")
+    print("  - View XIRR calculations")
 
 if __name__ == "__main__":
     asyncio.run(seed_test_data())
