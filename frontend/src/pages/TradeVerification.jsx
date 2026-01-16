@@ -425,17 +425,6 @@ export default function TradeVerification() {
             >
               Trade Logs ({allTrades.length})
             </button>
-            <button
-              onClick={() => setActiveTab("reinvestment")}
-              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === "reinvestment" 
-                  ? "border-amber-600 text-amber-600" 
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-              data-testid="tab-reinvestment"
-            >
-              Reinvestment Tagging
-            </button>
           </div>
         </div>
 
