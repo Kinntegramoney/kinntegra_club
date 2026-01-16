@@ -467,6 +467,22 @@ class CASParser:
                             i += 1
                             continue
                         
+                        # Handle TDS on Above - skip these as they're informational, not transactions
+                        # After *** TDS on Above ***, the next line is often a total payout amount like (6,975.00)
+                        # which should not be parsed as a transaction
+                        if '*** TDS on Above ***' in nav_str or '*** TDS on Above ***' in units_str:
+                            i += 1
+                            continue
+                        
+                        # Check if amount_str looks like a TDS total payout (amount in parentheses)
+                        # These appear after TDS entries and look like: (6,975.00), (99,808.00), etc.
+                        # They are NOT actual transaction amounts - skip them
+                        if re.match(r'^\(\d{1,3}(?:,\d{3})*\.\d{2}\)$', amount_str):
+                            # This is a TDS-related payout amount line, not a real transaction
+                            # Skip this entry as it will create a malformed transaction
+                            i += 1
+                            continue
+                        
                         # Handle Non-Financial Transactions (NFTs) like KYC updates, Nominee registration
                         # These have format: Date, ***Description***, next date, etc.
                         # Some NFTs span multiple lines: ***Description on amount_str and closing *** on nav_str
