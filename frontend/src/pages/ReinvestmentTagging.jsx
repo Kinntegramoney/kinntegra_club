@@ -114,6 +114,8 @@ export default function ReinvestmentTagging() {
   };
 
   // Process and categorize clients
+  // IMPORTANT: A client only goes to "Tagged" when ALL entries are tagged (no untagged entries)
+  // If even one entry is untagged, the client stays in "Untagged" section
   const { untaggedClients, taggedClients, sentClients } = useMemo(() => {
     if (!reinvestmentData?.by_client) return { untaggedClients: [], taggedClients: [], sentClients: [] };
     
@@ -136,6 +138,8 @@ export default function ReinvestmentTagging() {
         entries: entriesWithTags,
         untaggedCount,
         taggedCount,
+        totalEntries: entriesWithTags.length,
+        allTagged: untaggedCount === 0 && taggedCount > 0, // All entries must be tagged
         taggedAmount: entriesWithTags
           .filter(e => e.currentTag !== 'not_tagged' && e.currentTag !== 'not_invest')
           .reduce((sum, e) => {
@@ -147,13 +151,18 @@ export default function ReinvestmentTagging() {
           }, 0)
       };
       
+      // Sent section: entries that have been sent for approval
       if (sentCount > 0) {
         sent.push(clientWithStats);
       }
-      if (untaggedCount > 0) {
-        untagged.push(clientWithStats);
-      } else if (taggedCount > 0 && sentCount === 0) {
+      
+      // Tagged section: ALL entries must be tagged (untaggedCount === 0)
+      // If even ONE entry is untagged, the client goes to Untagged section
+      if (untaggedCount === 0 && taggedCount > 0 && sentCount === 0) {
         tagged.push(clientWithStats);
+      } else if (untaggedCount > 0) {
+        // Any untagged entries = client goes to Untagged section
+        untagged.push(clientWithStats);
       }
     });
     
