@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinntegraa - Database Reset</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #D4A853 0%, #B8860B 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            margin: 0 auto 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .warning-box {
+            background: #FEF3C7;
+            border: 1px solid #F59E0B;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .warning-box h3 {
+            color: #92400E;
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .warning-box ul {
+            color: #92400E;
+            font-size: 13px;
+            margin-left: 20px;
+        }
+        .warning-box li {
+            margin-bottom: 4px;
+        }
+        .safe-box {
+            background: #D1FAE5;
+            border: 1px solid #10B981;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .safe-box h3 {
+            color: #065F46;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .safe-box p {
+            color: #065F46;
+            font-size: 13px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #D4A853;
+        }
+        .reset-btn {
+            width: 100%;
+            padding: 14px;
+            background: #DC2626;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .reset-btn:hover {
+            background: #B91C1C;
+        }
+        .reset-btn:disabled {
+            background: #9CA3AF;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 24px;
+            padding: 16px;
+            border-radius: 8px;
+            display: none;
+        }
+        .result.success {
+            display: block;
+            background: #D1FAE5;
+            border: 1px solid #10B981;
+            color: #065F46;
+        }
+        .result.error {
+            display: block;
+            background: #FEE2E2;
+            border: 1px solid #EF4444;
+            color: #991B1B;
+        }
+        .result h4 {
+            margin-bottom: 10px;
+        }
+        .result pre {
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading.show {
+            display: block;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #E5E7EB;
+            border-top-color: #D4A853;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">K</div>
+        <h1>Database Reset Tool</h1>
+        <p class="subtitle">Clear all data and start fresh</p>
+        
+        <div class="warning-box">
+            <h3>⚠️ This will DELETE:</h3>
+            <ul>
+                <li>All clients</li>
+                <li>All bonds & opportunities</li>
+                <li>All real estate listings</li>
+                <li>All trades & cashflows</li>
+                <li>All sub-brokers</li>
+                <li>All analysis reports</li>
+            </ul>
+        </div>
+        
+        <div class="safe-box">
+            <h3>✅ This will be KEPT:</h3>
+            <p>Your broker login account will be preserved. You can still login after reset.</p>
+        </div>
+        
+        <div class="input-group">
+            <label for="serverUrl">Production Server URL</label>
+            <input type="text" id="serverUrl" placeholder="https://your-production-url.com" value="">
+        </div>
+        
+        <div class="input-group">
+            <label for="secretKey">Secret Key</label>
+            <input type="password" id="secretKey" placeholder="Enter the secret key" value="KINNTEGRAA_RESET_2026">
+        </div>
+        
+        <button class="reset-btn" onclick="resetDatabase()">
+            🗑️ Reset Database
+        </button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Resetting database... Please wait.</p>
+        </div>
+        
+        <div class="result" id="result"></div>
+    </div>
+    
+    <script>
+        async function resetDatabase() {
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+            const secretKey = document.getElementById('secretKey').value.trim();
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+            const btn = document.querySelector('.reset-btn');
+            
+            // Validation
+            if (!serverUrl) {
+                alert('Please enter the production server URL');
+                return;
+            }
+            
+            if (!secretKey) {
+                alert('Please enter the secret key');
+                return;
+            }
+            
+            // Confirm
+            const confirm1 = confirm('⚠️ WARNING: This will delete ALL data except your broker account.\n\nAre you sure you want to continue?');
+            if (!confirm1) return;
+            
+            const confirm2 = confirm('🚨 FINAL CONFIRMATION:\n\nType OK to proceed with database reset.\n\nThis action CANNOT be undone!');
+            if (!confirm2) return;
+            
+            // Show loading
+            btn.disabled = true;
+            loadingDiv.classList.add('show');
+            resultDiv.style.display = 'none';
+            
+            try {
+                // Remove trailing slash if present
+                const baseUrl = serverUrl.replace(/\/$/, '');
+                const url = `${baseUrl}/api/admin/reset-database?secret_key=${encodeURIComponent(secretKey)}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Database Reset Successful!</h4>
+                        <p><strong>Deleted:</strong></p>
+                        <pre>${JSON.stringify(data.deleted, null, 2)}</pre>
+                        <p style="margin-top: 10px;"><strong>Preserved:</strong> ${data.preserved.broker_accounts} broker account(s)</p>
+                        <p style="margin-top: 10px; font-size: 12px; color: #666;">Time: ${data.timestamp}</p>
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Reset Failed</h4>
+                        <p>${data.detail || 'Unknown error occurred'}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h4>❌ Connection Error</h4>
+                    <p>Could not connect to the server. Please check:</p>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>The server URL is correct</li>
+                        <li>The server is running</li>
+                        <li>You have internet connection</li>
+                    </ul>
+                    <p style="margin-top: 10px; font-size: 12px;">Error: ${error.message}</p>
+                `;
+            } finally {
+                btn.disabled = false;
+                loadingDiv.classList.remove('show');
+            }
+        }
+    </script>
+</body>
+</html>
