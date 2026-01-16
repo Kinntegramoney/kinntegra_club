@@ -4086,6 +4086,75 @@ async def record_principal_prepayment(
         }}
     )
     
+    # Update reinvestment tags for affected cashflows (mark them as needing review)
+    # Get all future cashflows that were amended
+    amended_cashflows = await db.holding_cashflows.find({
+        "trade_id": trade_id,
+        "is_amended": True,
+        "is_repaid": {"$ne": True}
+    }, {"_id": 0}).to_list(100)
+    
+    # Update reinvestment tags for amended cashflows that had been previously tagged
+    reinv_tags_updated = 0
+    for cf in amended_cashflows:
+        if cf.get('reinvestment_tag') and cf.get('reinvestment_tag') != 'not_tagged':
+            await db.holding_cashflows.update_one(
+                {"id": cf['id']},
+                {"$set": {
+                    "reinvestment_tag_needs_update": True,
+                    "prepayment_affected": True,
+                    "prepayment_date": prepayment_date.isoformat(),
+                    "previous_net_amount": cf.get('original_net_amount') or cf.get('net_amount', 0)
+                }}
+            )
+            reinv_tags_updated += 1
+    
+    # Send email notification to client
+    email_sent = False
+    try:
+        # Get client email and broker details
+        client_full = await db.clients.find_one({"id": trade['client_id']}, {"_id": 0})
+        broker = await db.users.find_one({"id": client_full.get('created_by', '')}, {"_id": 0})
+        broker_name = broker.get('name', 'Your Broker') if broker else 'Your Broker'
+        
+        if client_full and client_full.get('email'):
+            # Get revised cashflows to include in email
+            revised_cfs = await db.holding_cashflows.find({
+                "trade_id": trade_id,
+                "is_repaid": {"$ne": True}
+            }, {"_id": 0}).sort("date", 1).to_list(15)
+            
+            # Send notification email
+            email_sent = send_prepayment_notification_email(
+                client_name=client_full.get('name', 'Valued Investor'),
+                client_email=client_full['email'],
+                bond_name=trade.get('bond_name', bond.get('name', 'N/A')),
+                opportunity_id=bond.get('bond_code', bond.get('id', 'N/A')),
+                prepayment_date=prepayment_date.strftime('%d %b %Y'),
+                prepaid_amount=prepayment.prepaid_amount,
+                prepayment_percentage=prepayment_percentage,
+                original_principal=original_principal,
+                remaining_principal=remaining_principal,
+                remaining_percentage=remaining_percentage,
+                total_prepaid_to_date=total_previously_prepaid + prepayment.prepaid_amount,
+                total_prepaid_percentage=total_prepaid_percentage,
+                revised_cashflows=revised_cfs,
+                broker_name=broker_name
+            )
+            
+            if email_sent:
+                # Log the email notification
+                await db.prepayment_records.update_one(
+                    {"id": prepayment_record['id']},
+                    {"$set": {
+                        "email_sent": True,
+                        "email_sent_at": datetime.now(timezone.utc).isoformat(),
+                        "email_recipient": client_full['email']
+                    }}
+                )
+    except Exception as e:
+        logger.error(f"Failed to send prepayment notification email: {str(e)}")
+    
     return {
         "message": "Principal prepayment recorded successfully",
         "prepayment_id": prepayment_record['id'],
@@ -4097,6 +4166,8 @@ async def record_principal_prepayment(
         "remaining_principal": remaining_principal,
         "remaining_percentage": remaining_percentage,
         "cashflows_amended": amended_count,
+        "reinvestment_tags_updated": reinv_tags_updated,
+        "email_sent": email_sent,
         "prorated_interest": prorated_interest_info
     }
 
