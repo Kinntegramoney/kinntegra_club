@@ -138,7 +138,7 @@ def generate_combined_payment_schedule(
     - Interest is paid MONTHLY from start date (on fixed day of month)
     - Principal payments follow the schedule from Sheet 4 (may start later)
     - Interest is calculated on REDUCING principal balance
-    - Final payment aligns with maturity date
+    - Final payment aligns with maturity date (skips regular payment if too close)
     
     Args:
         start_date: Bond start date (YYYY-MM-DD)
@@ -176,8 +176,11 @@ def generate_combined_payment_schedule(
         # Calculate next payment date (same day each month)
         current = add_months_fixed_day(start, payment_num)
         
-        # Check if we've passed the maturity date
-        if current >= end:
+        # If this payment date is at or past maturity, OR if it's very close to maturity
+        # (within 15 days), make the final payment at maturity instead
+        days_to_maturity = calculate_days_between(current, end)
+        
+        if current >= end or days_to_maturity <= 15:
             # Final payment at maturity date
             days_in_period = calculate_days_between(prev_date, end)
             daily_rate = (coupon_rate / 100) / 365
