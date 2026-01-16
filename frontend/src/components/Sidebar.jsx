@@ -51,7 +51,7 @@ export default function Sidebar({ user }) {
     { path: "/broker/trades", label: "Logs", icon: ClipboardCheck },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
-    { path: "/broker/reinvestment", label: "Reinvestment Tagging", icon: Tag },
+    { path: "/broker/reinvestment", label: "Reinv Tag", icon: Tag },
   ];
 
   // Admin sub-sections
