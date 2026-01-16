@@ -17,6 +17,11 @@ export default function AdminBonds() {
   const [loading, setLoading] = useState(true);
   const [editingBond, setEditingBond] = useState(null);
 
+  // Set page title
+  useEffect(() => {
+    document.title = "Kinntegraa | Bonds";
+  }, []);
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
