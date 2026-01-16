@@ -5828,6 +5828,96 @@ async def root():
     return {"message": "BondFlow Pro API", "version": "2.6.0", "updated": "2026-01-15T08:00:00Z"}
 
 
+# Database Reset Endpoint (Protected)
+RESET_SECRET_KEY = "KINNTEGRAA_RESET_2026"  # Change this in production
+
+@api_router.post("/admin/reset-database")
+async def reset_database(secret_key: str = None):
+    """
+    Reset database - clears all data EXCEPT broker accounts.
+    
+    Usage: POST /api/admin/reset-database?secret_key=KINNTEGRAA_RESET_2026
+    
+    This will delete:
+    - All clients
+    - All user accounts (except brokers)
+    - All trades
+    - All bonds/opportunities
+    - All real estate opportunities
+    - All cashflows
+    - All analyses
+    - All prepayment records
+    
+    Broker accounts are preserved so you can still login.
+    """
+    if secret_key != RESET_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid secret key. Access denied.")
+    
+    try:
+        deleted_counts = {}
+        
+        # 1. Delete all clients
+        result = await db.clients.delete_many({})
+        deleted_counts['clients'] = result.deleted_count
+        
+        # 2. Delete all non-broker users (keep broker accounts)
+        result = await db.users.delete_many({"role": {"$ne": "broker"}})
+        deleted_counts['users (non-broker)'] = result.deleted_count
+        
+        # 3. Delete all trades
+        result = await db.trades.delete_many({})
+        deleted_counts['trades'] = result.deleted_count
+        
+        # 4. Delete all bonds
+        result = await db.bonds.delete_many({})
+        deleted_counts['bonds'] = result.deleted_count
+        
+        # 5. Delete all real estate opportunities
+        result = await db.real_estate.delete_many({})
+        deleted_counts['real_estate'] = result.deleted_count
+        
+        # 6. Delete all holding cashflows
+        result = await db.holding_cashflows.delete_many({})
+        deleted_counts['holding_cashflows'] = result.deleted_count
+        
+        # 7. Delete all cashflows
+        result = await db.cashflows.delete_many({})
+        deleted_counts['cashflows'] = result.deleted_count
+        
+        # 8. Delete all analyses
+        result = await db.analyses.delete_many({})
+        deleted_counts['analyses'] = result.deleted_count
+        
+        # 9. Delete all prepayment records
+        result = await db.prepayment_records.delete_many({})
+        deleted_counts['prepayment_records'] = result.deleted_count
+        
+        # 10. Delete all sub-brokers
+        result = await db.sub_brokers.delete_many({})
+        deleted_counts['sub_brokers'] = result.deleted_count
+        
+        # 11. Delete sub-broker user accounts
+        result = await db.users.delete_many({"role": "sub_broker"})
+        deleted_counts['sub_broker_users'] = result.deleted_count
+        
+        # Get remaining broker count
+        broker_count = await db.users.count_documents({"role": "broker"})
+        
+        return {
+            "success": True,
+            "message": "Database reset successful. Broker accounts preserved.",
+            "deleted": deleted_counts,
+            "preserved": {
+                "broker_accounts": broker_count
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Database reset failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
+
+
 @api_router.post("/bonds", response_model=Bond)
 async def create_bond(bond_input: BondCreate):
     bond_dict = bond_input.model_dump()
