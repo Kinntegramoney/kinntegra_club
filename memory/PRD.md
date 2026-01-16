@@ -130,6 +130,13 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 - [x] **Scheme Master**: Dedicated page at `/broker/admin/scheme-master` with upload and status display
 - [x] **Logs Page**: Enhanced with 3 tabs (Pending Approvals, All Logs, Sent for Approval) + Filter panel (search, type filter for Trades/Reinvestment, status filter)
 - [x] **Sidebar Navigation**: Updated with Logs, Reinv Tag, and Scheme Master under Admin
+- [x] **Holdings Page - Prepaid & XIRR**:
+  - Added **Prepaid** column to show bonds paid early
+  - Added **XIRR** column showing annualized return rate
+  - Cashflow table now shows **Tentative Date** and **Actual Paid Date** columns
+  - Prepaid entries highlighted in blue with "X days early" indicator
+  - Summary modal shows XIRR stat and prepaid summary section
+  - Backend calculates XIRR using scipy.optimize based on investment + actual repayment dates
 
 ---
 
