@@ -333,6 +333,34 @@ export default function TradeVerification() {
     }
   };
 
+  // Send for approval with selected entries
+  const handleSendForApproval = async (client) => {
+    const selectedEntries = selectedClientEntries[client.client_id] || [];
+    if (selectedEntries.length === 0) {
+      toast.error("Please select entries to send for approval");
+      return;
+    }
+
+    setSendingApproval(client.client_id);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/reinvestment/send-approval-email`, 
+        {
+          client_id: client.client_id,
+          cashflow_ids: selectedEntries
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      toast.success(`Approval email sent to ${client.client_name}`);
+      fetchReinvestmentData();
+    } catch (error) {
+      console.error("Error sending approval email:", error);
+      toast.error(error.response?.data?.detail || "Failed to send approval email");
+    } finally {
+      setSendingApproval(null);
+    }
+  };
+
   // Get approval status badge
   const getApprovalStatusBadge = (status) => {
     switch(status) {
