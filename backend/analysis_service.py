@@ -1705,72 +1705,6 @@ class GapSheetGenerator:
             ws.cell(row=1, column=col, value=header)
         self._style_header(ws, 1, len(headers))
         
-        # Pre-calculate XIRR for each folio using BOTH folio transactions AND global transactions
-        # This ensures we capture all transactions even if they weren't properly linked to folio['transactions']
-        folio_xirr = {}
-        
-        # First, build a comprehensive cashflow map using global transactions
-        folio_cashflows_map = defaultdict(list)
-        for trans in self.parsed_data.get('transactions', []):
-            if trans.get('is_nft') or trans.get('is_pledge'):
-                continue
-            if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
-                continue
-            
-            folio = trans.get('folio', '')
-            isin = trans.get('isin', '')
-            key = f"{folio}_{isin}" if isin else folio
-            
-            try:
-                ft_date = datetime.strptime(trans['date'], '%d-%b-%Y')
-                ft_amount = trans.get('amount', 0)
-                if ft_amount > 0:
-                    if trans.get('is_redemption'):
-                        folio_cashflows_map[key].append((ft_date, ft_amount))  # Positive for redemption
-                    else:
-                        folio_cashflows_map[key].append((ft_date, -ft_amount))  # Negative for purchase
-            except:
-                pass
-        
-        # Now calculate XIRR for each folio
-        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
-            closing_balance = folio_data.get('closing_balance', 0)
-            current_nav = folio_data.get('current_nav', 0)
-            
-            # Get cashflows from the map - try different key formats
-            folio_cashflows = folio_cashflows_map.get(folio_id, []).copy()
-            
-            # Also try with just the folio number (without ISIN) as a fallback
-            folio_num = folio_data.get('folio', '')
-            if not folio_cashflows and folio_num:
-                for key, cashflows in folio_cashflows_map.items():
-                    if key.startswith(folio_num):
-                        folio_cashflows.extend(cashflows)
-            
-            # Add current value as final cashflow if holding exists
-            if closing_balance > 0 and current_nav > 0:
-                final_value = closing_balance * current_nav
-                folio_cashflows.append((self.report_date, final_value))
-            
-            # Calculate XIRR if we have enough cashflows
-            if len(folio_cashflows) >= 2:
-                try:
-                    xirr_value = calculate_xirr(folio_cashflows) * 100
-                    if -100 < xirr_value < 500:  # Reasonable XIRR range
-                        folio_xirr[folio_id] = f"{xirr_value:.2f}%"
-                except:
-                    pass
-        
-        # Also store XIRR by normalized folio key (folio_isin) for matching during row generation
-        # This ensures we match transactions regardless of minor key format differences
-        for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
-            if folio_id in folio_xirr:
-                folio_num = folio_data.get('folio', '')
-                isin = folio_data.get('isin', '')
-                alt_key = f"{folio_num}_{isin}" if isin else folio_num
-                if alt_key != folio_id:
-                    folio_xirr[alt_key] = folio_xirr[folio_id]
-        
         # Build STT lookup: key = (date, folio, isin) -> STT amount
         stt_lookup = {}
         for trans in self.parsed_data.get('transactions', []):
@@ -1857,8 +1791,9 @@ class GapSheetGenerator:
             total_amount = trans_amount + stt_amount + stamp_amount
             ws.cell(row=row, column=14, value=total_amount)
             
-            # Get folio closing balance to determine if this folio has active holdings
+            # Get folio closing balance and current NAV
             folio_closing_balance = folio_data.get('closing_balance', 0)
+            current_nav = folio_data.get('current_nav', 0)
             has_balance = folio_closing_balance > 0
             
             # Column 15: Balance Units - only show if folio has current balance
@@ -1866,7 +1801,6 @@ class GapSheetGenerator:
                 ws.cell(row=row, column=15, value=folio_closing_balance)
             
             # Column 16: Current NAV - only show if folio has balance
-            current_nav = folio_data.get('current_nav', 0)
             if has_balance and current_nav > 0:
                 ws.cell(row=row, column=16, value=current_nav)
             
@@ -1876,27 +1810,37 @@ class GapSheetGenerator:
                 ws.cell(row=row, column=17, value=market_value)
             
             # Column 18: MF Ageing - absolute number of days for folios with balance
-            if has_balance and not trans.get('is_redemption'):
-                trans_date = parse_date(trans.get('date', ''))
-                if trans_date != datetime.min:
-                    days_held = (self.report_date - trans_date).days
-                    ws.cell(row=row, column=18, value=days_held)
+            trans_date = parse_date(trans.get('date', ''))
+            if has_balance and not trans.get('is_redemption') and trans_date != datetime.min:
+                days_held = (self.report_date - trans_date).days
+                ws.cell(row=row, column=18, value=days_held)
             
-            # Column 19: XIRR - use pre-calculated value for this folio
-            # Try multiple key formats to find a match
+            # Column 19: XIRR - Per-transaction XIRR calculation
+            # Only calculate for purchase transactions where units are still held (balance > 0)
+            # XIRR = annualized return from purchase date to report date
+            # Cost = Transaction Amount on purchase date
+            # Current Value = Units purchased * Current NAV on report date
             xirr_value = None
-            if folio_key in folio_xirr:
-                xirr_value = folio_xirr[folio_key]
-            else:
-                # Try with just folio number
-                if folio in folio_xirr:
-                    xirr_value = folio_xirr[folio]
-                else:
-                    # Search for any key that starts with this folio
-                    for xirr_key in folio_xirr:
-                        if xirr_key.startswith(folio + '_') or xirr_key == folio:
-                            xirr_value = folio_xirr[xirr_key]
-                            break
+            if not trans.get('is_redemption') and has_balance and current_nav > 0 and trans_amount > 0:
+                trans_units = trans.get('units', 0)
+                if trans_units > 0 and trans_date != datetime.min:
+                    # Calculate current value of this specific transaction's units
+                    current_value = trans_units * current_nav
+                    
+                    # XIRR calculation: 
+                    # Cashflow 1: -trans_amount on trans_date (investment/outflow)
+                    # Cashflow 2: +current_value on report_date (current value/inflow)
+                    cashflows = [
+                        (trans_date, -trans_amount),  # Investment (outflow)
+                        (self.report_date, current_value)  # Current value (inflow)
+                    ]
+                    
+                    try:
+                        xirr_rate = calculate_xirr(cashflows) * 100
+                        if -100 < xirr_rate < 1000:  # Reasonable XIRR range
+                            xirr_value = f"{xirr_rate:.2f}%"
+                    except:
+                        pass
             
             if xirr_value:
                 ws.cell(row=row, column=19, value=xirr_value)
