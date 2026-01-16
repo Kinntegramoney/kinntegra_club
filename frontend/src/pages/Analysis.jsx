@@ -564,39 +564,84 @@ const Analysis = () => {
                 <CardTitle className="text-lg text-gray-700">Previous Analyses</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {analyses.map((analysis) => (
-                    <div 
-                      key={analysis.id} 
-                      className={`flex items-center justify-between p-3 rounded-lg border ${
-                        (selectedAnalysis?.id === analysis.id || selectedAnalysis?.analysis_id === analysis.id)
-                          ? 'bg-amber-50 border-amber-300'
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                      } cursor-pointer transition-colors`}
-                      onClick={() => { setSelectedAnalysis(analysis); setCurrentStep(3); }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="font-medium text-gray-800 text-sm">{analysis.filename}</p>
-                          <p className="text-xs text-gray-500">{formatDate(analysis.created_at)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600">
-                          {analysis.total_folios || 0} folios
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => { e.stopPropagation(); handleDelete(analysis.id); }}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Requested By</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Client/Sub-Broker</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">File Name</th>
+                        <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 uppercase">Folios</th>
+                        <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analyses.map((analysis) => (
+                        <tr 
+                          key={analysis.id} 
+                          className={`border-b hover:bg-gray-50 cursor-pointer transition-colors ${
+                            (selectedAnalysis?.id === analysis.id || selectedAnalysis?.analysis_id === analysis.id)
+                              ? 'bg-amber-50'
+                              : ''
+                          }`}
+                          onClick={() => { setSelectedAnalysis(analysis); setCurrentStep(3); }}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center">
+                                <span className="text-amber-700 text-xs font-semibold">
+                                  {analysis.user_name?.charAt(0).toUpperCase() || 'U'}
+                                </span>
+                              </div>
+                              <span className="text-sm font-medium text-gray-800">{analysis.user_name || 'Unknown'}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="text-sm text-gray-600">
+                              {analysis.client_name || analysis.sub_broker_name || '-'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-gray-400" />
+                              <span className="text-sm text-gray-800 font-medium">{analysis.filename}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <span className="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600">
+                              {analysis.total_folios || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <span className="text-xs text-gray-500">{formatDate(analysis.created_at)}</span>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleDownload(analysis.id, analysis.filename); }}
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 px-2"
+                                title="Download Report"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(analysis.id); }}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 px-2"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </CardContent>
             </Card>
