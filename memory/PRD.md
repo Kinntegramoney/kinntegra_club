@@ -28,20 +28,23 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 - Automatic interest recalculation on prepayment
 - Bulk repayment update via Excel
 
+### Client Management ✅
+- Create/Edit/Delete clients
+- Three-dots menu with: Resend Credentials, Reset Password, Deactivate, Delete
+- Bulk client upload with PAN correctly stored
+- Link clients to sub-brokers
+
 ### Analysis (CAS PDF Processing)
 - Upload password-protected CAS PDFs
 - Parse and extract investment data
 - Generate multi-sheet Excel reports
 - Client selection mandatory for tracking
 
-### Opportunities
-- Add/manage bond and real estate opportunities
-- Bulk upload capabilities
-
-### Admin Features
-- Client management
-- Sub-broker management
-- Bulk upload (clients, sub-brokers, bonds, real estate)
+### Bulk Upload Features ✅
+- Bonds: Multi-sheet Excel (Bond Details, Financial Details, Units & Limits, Principal Payments)
+- Clients: Multi-sheet Excel with proper PAN field handling
+- Sub-brokers: Single sheet upload
+- Real Estate: Multi-sheet upload
 
 ---
 
@@ -49,7 +52,10 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ### 2026-01-16
 - **Bug Fix**: Bond bulk upload now reads all 4 Excel sheets and merges by bond_code
-- **Testing**: Holdings page features verified (100% pass rate)
+- **Bug Fix**: Client bulk upload now correctly stores `pan_number` field
+- **Feature**: Edit client modal with full form (Personal, Address, Bank, Sub-broker details)
+- **Feature**: Three-dots menu for clients (Resend Credentials, Reset Password, Deactivate, Delete)
+- **Backend**: Added `/api/clients/{id}/resend-credentials`, `/reset-password`, `/deactivate` endpoints
 
 ### Previous Sessions
 - Holdings page major feature set (prepayment, XIRR, bulk upload)
@@ -63,7 +69,7 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ### P0 - Critical
 - Production deployment pipeline (user handles manually via "Save to Github")
-- Email service broken (SMTP unreachable)
+- Email service broken (SMTP unreachable) - credentials shown in UI modal as workaround
 
 ### P1 - High Priority
 - Email service integration (Resend/SendGrid)
@@ -72,7 +78,7 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 - BondDetails radio button UI bug (recurring)
 
 ### Technical Debt
-- `server.py` (~3500 lines) - needs router separation
+- `server.py` (~3600 lines) - needs router separation
 - `analysis_service.py` (~2500 lines) - needs modularization
 - `RealEstateDetails.jsx` (~3500 lines) - needs component breakdown
 
@@ -85,3 +91,12 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 ## Database
 - Name: `test_database`
 - Collections: users, clients, trades, cashflows, analyses, bonds
+
+## Key API Endpoints
+- `/api/clients` - CRUD for clients
+- `/api/clients/{id}/resend-credentials` - Reset and resend credentials
+- `/api/clients/{id}/reset-password` - Reset password only
+- `/api/clients/{id}/deactivate` - Soft deactivate client
+- `/api/bulk/bonds` - Bulk upload bonds (multi-sheet)
+- `/api/bulk/clients` - Bulk upload clients
+- `/api/holdings/*` - Holdings management APIs
