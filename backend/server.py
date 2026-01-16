@@ -126,6 +126,93 @@ def generate_interest_payment_schedule(
     return interest_payments
 
 
+def generate_combined_payment_schedule(
+    start_date: str,
+    principal: float,
+    coupon_rate: float,
+    principal_payments: list
+) -> dict:
+    """
+    Generate combined payment schedule where:
+    - Interest is paid along with principal on the same dates
+    - Interest is calculated on REDUCING principal balance
+    - Each payment includes: principal portion, interest portion, and totals
+    
+    Args:
+        start_date: Bond start date (YYYY-MM-DD)
+        principal: Total principal amount
+        coupon_rate: Annual coupon rate (%)
+        principal_payments: List of dicts with 'date' and 'percentage' keys
+    
+    Returns:
+        dict with 'interest_payments', 'combined_schedule', and summary
+    """
+    if not principal_payments:
+        return {"interest_payments": [], "combined_schedule": [], "total_interest": 0}
+    
+    # Sort principal payments by date
+    sorted_payments = sorted(principal_payments, key=lambda x: x['date'])
+    
+    combined_schedule = []
+    interest_payments = []
+    
+    outstanding_principal = principal
+    prev_date = datetime.strptime(start_date, '%Y-%m-%d')
+    total_interest = 0
+    total_principal_paid = 0
+    
+    for payment in sorted_payments:
+        payment_date = datetime.strptime(payment['date'], '%Y-%m-%d')
+        percentage = payment.get('percentage', 0)
+        
+        # Calculate days since last payment
+        days_in_period = calculate_days_between(prev_date, payment_date)
+        
+        # Calculate interest on current outstanding principal
+        daily_rate = (coupon_rate / 100) / 365
+        interest_amount = outstanding_principal * daily_rate * days_in_period
+        interest_amount = round(interest_amount, 2)
+        
+        # Calculate principal amount for this payment
+        principal_amount = round(principal * (percentage / 100), 2)
+        
+        # Create interest payment entry
+        interest_payments.append({
+            "date": payment['date'],
+            "amount": interest_amount,
+            "days": days_in_period,
+            "outstanding_principal": round(outstanding_principal, 2),
+            "is_partial": False
+        })
+        
+        # Create combined schedule entry
+        combined_schedule.append({
+            "date": payment['date'],
+            "description": payment.get('description', f"Payment"),
+            "principal_percentage": percentage,
+            "principal_amount": principal_amount,
+            "interest_amount": interest_amount,
+            "total_payment": round(principal_amount + interest_amount, 2),
+            "outstanding_principal_before": round(outstanding_principal, 2),
+            "outstanding_principal_after": round(outstanding_principal - principal_amount, 2),
+            "days_in_period": days_in_period
+        })
+        
+        # Update tracking variables
+        total_interest += interest_amount
+        total_principal_paid += principal_amount
+        outstanding_principal -= principal_amount
+        prev_date = payment_date
+    
+    return {
+        "interest_payments": interest_payments,
+        "combined_schedule": combined_schedule,
+        "total_interest": round(total_interest, 2),
+        "total_principal": round(total_principal_paid, 2),
+        "total_payout": round(total_interest + total_principal_paid, 2)
+    }
+
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
