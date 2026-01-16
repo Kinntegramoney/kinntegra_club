@@ -1741,38 +1741,9 @@ class GapSheetGenerator:
                     days_held = (self.report_date - trans_date).days
                     ws.cell(row=row, column=18, value=days_held)
             
-            # Column 19: XIRR - only calculate for folios with balance
-            # XIRR uses transaction dates and report date NAV
-            if has_balance and not trans.get('is_redemption'):
-                # Calculate XIRR for this specific folio
-                folio_cashflows = []
-                for ft in folio_data.get('transactions', []):
-                    if ft.get('is_nft') or ft.get('is_pledge'):
-                        continue
-                    if ft.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
-                        continue
-                    try:
-                        ft_date = datetime.strptime(ft['date'], '%d-%b-%Y')
-                        ft_amount = ft.get('amount', 0)
-                        if ft.get('is_redemption'):
-                            folio_cashflows.append((ft_date, ft_amount))
-                        else:
-                            folio_cashflows.append((ft_date, -ft_amount))
-                    except:
-                        pass
-                
-                # Add current value as final cashflow
-                if current_nav > 0 and folio_closing_balance > 0:
-                    final_value = folio_closing_balance * current_nav
-                    folio_cashflows.append((self.report_date, final_value))
-                    
-                    if len(folio_cashflows) >= 2:
-                        try:
-                            xirr_value = calculate_xirr(folio_cashflows) * 100
-                            if -100 < xirr_value < 500:  # Reasonable XIRR range
-                                ws.cell(row=row, column=19, value=f"{xirr_value:.2f}%")
-                        except:
-                            pass
+            # Column 19: XIRR - use pre-calculated value for this folio
+            if folio_key in folio_xirr:
+                ws.cell(row=row, column=19, value=folio_xirr[folio_key])
             
             # Column 20: Advisor ARN
             ws.cell(row=row, column=20, value=trans.get('advisor', ''))
