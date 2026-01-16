@@ -23,6 +23,7 @@ import ClientRealEstateInvestments from "@/pages/ClientRealEstateInvestments";
 import BulkUpload from "@/pages/BulkUpload";
 import Analysis from "@/pages/Analysis";
 import AdminSchemeMaster from "@/pages/AdminSchemeMaster";
+import ReinvestmentTagging from "@/pages/ReinvestmentTagging";
 import { Toaster } from "@/components/ui/sonner";
 
 // Protected Route Component
