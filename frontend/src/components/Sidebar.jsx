@@ -1,17 +1,33 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, Users, Settings, LogOut, ChevronRight, ClipboardCheck, Menu, X, Wallet, FileBarChart } from "lucide-react";
+import { LayoutGrid, TrendingUp, Users, Settings, LogOut, ChevronRight, ChevronDown, ClipboardCheck, Menu, X, Wallet, FileBarChart, UserPlus, Building2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [adminExpanded, setAdminExpanded] = useState(false);
+  const [addUserExpanded, setAddUserExpanded] = useState(false);
+  const [opportunitiesExpanded, setOpportunitiesExpanded] = useState(false);
+  const [bulkUploadExpanded, setBulkUploadExpanded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Close mobile menu on route change
   useEffect(() => {
     setMobileOpen(false);
+  }, [location.pathname]);
+
+  // Auto-expand relevant section based on current path
+  useEffect(() => {
+    if (location.pathname.includes('/sub-brokers') || location.pathname.includes('/clients')) {
+      setAddUserExpanded(true);
+    }
+    if (location.pathname.includes('/bonds') || location.pathname.includes('/real-estate')) {
+      setOpportunitiesExpanded(true);
+    }
+    if (location.pathname.includes('/bulk-upload') || location.pathname.includes('/scheme-master')) {
+      setBulkUploadExpanded(true);
+    }
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -21,23 +37,30 @@ export default function Sidebar({ user }) {
   };
 
   const isActive = (path) => location.pathname === path;
-  const isAdminActive = location.pathname.startsWith("/broker/admin");
+  const isAdminActive = location.pathname.startsWith("/broker/admin") || location.pathname.includes("/bulk-upload");
 
   const menuItems = [
     { path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid },
     { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp },
-    { path: "/broker/trades", label: "Trade Verification", icon: ClipboardCheck },
+    { path: "/broker/trades", label: "Logs", icon: ClipboardCheck },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
   ];
 
-  const adminItems = [
-    { path: "/broker/admin/bonds", label: "Add Bond" },
-    { path: "/broker/admin/real-estate", label: "Add Real Estate" },
-    { path: "/broker/admin/sub-brokers", label: "Add Sub Broker" },
-    { path: "/broker/admin/clients", label: "Add Client" },
+  // Admin sub-sections
+  const addUserItems = [
+    { path: "/broker/admin/sub-brokers", label: "Sub Broker" },
+    { path: "/broker/admin/clients", label: "Client" },
+  ];
+
+  const opportunityItems = [
+    { path: "/broker/admin/bonds", label: "Bonds" },
+    { path: "/broker/admin/real-estate", label: "Real Estate" },
+  ];
+
+  const bulkUploadItems = [
+    { path: "/broker/bulk-upload", label: "Upload Data" },
     { path: "/broker/admin/scheme-master", label: "Scheme Master" },
-    { path: "/broker/bulk-upload", label: "Bulk Upload", highlight: true },
   ];
 
   const SidebarContent = () => (
@@ -93,22 +116,111 @@ export default function Sidebar({ user }) {
           </button>
           
           {adminExpanded && (
-            <div className="ml-4 mt-1 space-y-1">
-              {adminItems.map((item) => (
+            <div className="ml-2 mt-1 space-y-1">
+              {/* Add User Section */}
+              <div>
                 <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`w-full text-left px-3 md:px-4 py-2 rounded-lg text-sm transition-colors ${
-                    isActive(item.path)
+                  onClick={() => setAddUserExpanded(!addUserExpanded)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                    addUserItems.some(item => isActive(item.path))
                       ? 'bg-amber-50 text-amber-700'
-                      : item.highlight 
-                        ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium'
-                        : 'text-gray-600 hover:bg-gray-50'
+                      : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  {item.label}
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    <span>Add User</span>
+                  </div>
+                  {addUserExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                 </button>
-              ))}
+                {addUserExpanded && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {addUserItems.map((item) => (
+                      <button
+                        key={item.path}
+                        onClick={() => navigate(item.path)}
+                        className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                          isActive(item.path)
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Opportunities Section */}
+              <div>
+                <button
+                  onClick={() => setOpportunitiesExpanded(!opportunitiesExpanded)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                    opportunityItems.some(item => isActive(item.path))
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    <span>Opportunities</span>
+                  </div>
+                  {opportunitiesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                </button>
+                {opportunitiesExpanded && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {opportunityItems.map((item) => (
+                      <button
+                        key={item.path}
+                        onClick={() => navigate(item.path)}
+                        className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                          isActive(item.path)
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Bulk Upload Section */}
+              <div>
+                <button
+                  onClick={() => setBulkUploadExpanded(!bulkUploadExpanded)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                    bulkUploadItems.some(item => isActive(item.path))
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    <span>Bulk Upload</span>
+                  </div>
+                  {bulkUploadExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                </button>
+                {bulkUploadExpanded && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {bulkUploadItems.map((item) => (
+                      <button
+                        key={item.path}
+                        onClick={() => navigate(item.path)}
+                        className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                          isActive(item.path)
+                            ? 'bg-indigo-50 text-indigo-700'
+                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
