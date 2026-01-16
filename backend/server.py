@@ -3120,6 +3120,365 @@ async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, curren
     }
 
 
+# ==================== BULK REPAYMENT UPLOAD ====================
+
+@api_router.get("/holdings/repayment-template")
+async def get_repayment_template(current_user: dict = Depends(get_current_user)):
+    """Generate Excel template for bulk repayment updates"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can download repayment template")
+    
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from io import BytesIO
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Repayment Updates"
+    
+    # Header style
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Headers
+    headers = [
+        "Client PAN*", "Bond Name*", "Scheduled Date*", "Type*",
+        "Expected Amount", "Actual Paid Date*", "Actual Amount Received*", "Notes"
+    ]
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+        cell.border = thin_border
+    
+    # Set column widths
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 35
+    ws.column_dimensions['C'].width = 15
+    ws.column_dimensions['D'].width = 12
+    ws.column_dimensions['E'].width = 18
+    ws.column_dimensions['F'].width = 18
+    ws.column_dimensions['G'].width = 22
+    ws.column_dimensions['H'].width = 30
+    
+    # Add instructions sheet
+    ws_inst = wb.create_sheet("Instructions")
+    instructions = [
+        "BULK REPAYMENT UPDATE - INSTRUCTIONS",
+        "",
+        "Required Fields (marked with *):",
+        "1. Client PAN - The PAN number of the client (e.g., ABCDE1234F)",
+        "2. Bond Name - Exact name of the bond as registered in the system",
+        "3. Scheduled Date - Original scheduled payment date (DD-MM-YYYY format)",
+        "4. Type - Either 'interest' or 'principal'",
+        "5. Actual Paid Date - Date when payment was actually received (DD-MM-YYYY)",
+        "6. Actual Amount Received - Amount received (numbers only, no commas)",
+        "",
+        "Optional Fields:",
+        "7. Expected Amount - The originally expected amount (for reference)",
+        "8. Notes - Any notes about this repayment",
+        "",
+        "IMPORTANT:",
+        "- If Actual Paid Date is before Scheduled Date, it will be marked as PREPAID",
+        "- Date format: DD-MM-YYYY (e.g., 15-01-2026)",
+        "- Amount format: Plain numbers (e.g., 50000.00)",
+        "- The system will match entries based on Client PAN + Bond Name + Scheduled Date + Type"
+    ]
+    
+    for row, text in enumerate(instructions, 1):
+        ws_inst.cell(row=row, column=1, value=text)
+    ws_inst.column_dimensions['A'].width = 80
+    
+    # Save to buffer
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=repayment_update_template.xlsx"}
+    )
+
+
+@api_router.post("/holdings/bulk-repayment-upload")
+async def bulk_repayment_upload(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Process bulk repayment updates from Excel file"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can upload repayments")
+    
+    from openpyxl import load_workbook
+    from io import BytesIO
+    
+    try:
+        content = await file.read()
+        wb = load_workbook(BytesIO(content))
+        ws = wb.active
+        
+        results = {
+            "success": 0,
+            "failed": 0,
+            "prepaid": 0,
+            "errors": []
+        }
+        
+        # Skip header row
+        for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            if not row[0]:  # Skip empty rows
+                continue
+            
+            try:
+                client_pan = str(row[0]).strip().upper()
+                bond_name = str(row[1]).strip() if row[1] else None
+                scheduled_date_raw = row[2]
+                cf_type = str(row[3]).strip().lower() if row[3] else None
+                actual_paid_date_raw = row[5]
+                actual_amount = float(row[6]) if row[6] else None
+                notes = str(row[7]).strip() if row[7] else None
+                
+                # Validate required fields
+                if not all([client_pan, bond_name, scheduled_date_raw, cf_type, actual_paid_date_raw, actual_amount]):
+                    results["errors"].append(f"Row {row_num}: Missing required fields")
+                    results["failed"] += 1
+                    continue
+                
+                if cf_type not in ['interest', 'principal']:
+                    results["errors"].append(f"Row {row_num}: Type must be 'interest' or 'principal'")
+                    results["failed"] += 1
+                    continue
+                
+                # Parse dates
+                if isinstance(scheduled_date_raw, datetime):
+                    scheduled_date = scheduled_date_raw
+                else:
+                    try:
+                        scheduled_date = datetime.strptime(str(scheduled_date_raw), "%d-%m-%Y")
+                    except:
+                        try:
+                            scheduled_date = datetime.strptime(str(scheduled_date_raw), "%Y-%m-%d")
+                        except:
+                            results["errors"].append(f"Row {row_num}: Invalid scheduled date format")
+                            results["failed"] += 1
+                            continue
+                
+                if isinstance(actual_paid_date_raw, datetime):
+                    actual_paid_date = actual_paid_date_raw
+                else:
+                    try:
+                        actual_paid_date = datetime.strptime(str(actual_paid_date_raw), "%d-%m-%Y")
+                    except:
+                        try:
+                            actual_paid_date = datetime.strptime(str(actual_paid_date_raw), "%Y-%m-%d")
+                        except:
+                            results["errors"].append(f"Row {row_num}: Invalid actual paid date format")
+                            results["failed"] += 1
+                            continue
+                
+                # Find client
+                client = await db.clients.find_one({"pan_number": client_pan})
+                if not client:
+                    results["errors"].append(f"Row {row_num}: Client with PAN {client_pan} not found")
+                    results["failed"] += 1
+                    continue
+                
+                # Verify access
+                if current_user['role'] == 'broker':
+                    if client.get('created_by') != current_user['id']:
+                        results["errors"].append(f"Row {row_num}: Access denied for client {client_pan}")
+                        results["failed"] += 1
+                        continue
+                else:
+                    if client.get('linked_subbroker_id') != current_user['id']:
+                        results["errors"].append(f"Row {row_num}: Access denied for client {client_pan}")
+                        results["failed"] += 1
+                        continue
+                
+                # Find matching cashflow - use date range for matching (same day)
+                scheduled_date_str = scheduled_date.strftime("%Y-%m-%d")
+                
+                cashflow = await db.holding_cashflows.find_one({
+                    "client_id": client['id'],
+                    "bond_name": {"$regex": f"^{bond_name}$", "$options": "i"},
+                    "date": {"$regex": f"^{scheduled_date_str}"},
+                    "type": cf_type
+                })
+                
+                if not cashflow:
+                    results["errors"].append(f"Row {row_num}: No matching cashflow found for {client_pan}, {bond_name}, {scheduled_date_str}, {cf_type}")
+                    results["failed"] += 1
+                    continue
+                
+                # Detect prepayment
+                is_prepaid = actual_paid_date.date() < scheduled_date.date()
+                days_early = (scheduled_date.date() - actual_paid_date.date()).days if is_prepaid else 0
+                
+                # Update cashflow
+                update_data = {
+                    "is_repaid": True,
+                    "repaid_date": actual_paid_date.isoformat(),
+                    "repaid_actual_amount": actual_amount,
+                    "is_prepaid": is_prepaid,
+                    "days_early": days_early,
+                    "notes": notes,
+                    "marked_by": current_user['id'],
+                    "marked_at": datetime.now(timezone.utc).isoformat(),
+                    "bulk_uploaded": True
+                }
+                
+                await db.holding_cashflows.update_one(
+                    {"id": cashflow['id']},
+                    {"$set": update_data}
+                )
+                
+                results["success"] += 1
+                if is_prepaid:
+                    results["prepaid"] += 1
+                
+            except Exception as e:
+                results["errors"].append(f"Row {row_num}: {str(e)}")
+                results["failed"] += 1
+        
+        return {
+            "message": f"Processed {results['success'] + results['failed']} entries",
+            "success_count": results["success"],
+            "failed_count": results["failed"],
+            "prepaid_count": results["prepaid"],
+            "errors": results["errors"][:20]  # Limit errors to first 20
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing bulk repayment upload: {e}")
+        raise HTTPException(status_code=400, detail=f"Error processing file: {str(e)}")
+
+
+@api_router.get("/holdings/export-cashflows/{client_id}")
+async def export_client_cashflows(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Export all cashflows for a client to Excel (for updating repayments)"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from io import BytesIO
+    
+    # Verify client access
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if current_user['role'] == 'broker':
+        if client.get('created_by') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    elif current_user['role'] == 'sub_broker':
+        if client.get('linked_subbroker_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get all cashflows for this client
+    cashflows = await db.holding_cashflows.find(
+        {"client_id": client_id},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    if not cashflows:
+        raise HTTPException(status_code=404, detail="No cashflows found for this client")
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cashflows"
+    
+    # Header style
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    prepaid_fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+    repaid_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    
+    # Headers
+    headers = [
+        "Client PAN", "Bond Name", "Scheduled Date", "Type",
+        "Expected Amount", "Actual Paid Date", "Actual Amount Received", 
+        "Status", "Prepaid", "Days Early", "Notes"
+    ]
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+    
+    # Data rows
+    for row_num, cf in enumerate(cashflows, 2):
+        ws.cell(row=row_num, column=1, value=client['pan_number'])
+        ws.cell(row=row_num, column=2, value=cf.get('bond_name', ''))
+        
+        # Format scheduled date
+        scheduled_date = cf.get('date', '')
+        if scheduled_date:
+            try:
+                dt = datetime.fromisoformat(scheduled_date.replace('Z', '+00:00'))
+                scheduled_date = dt.strftime("%d-%m-%Y")
+            except:
+                pass
+        ws.cell(row=row_num, column=3, value=scheduled_date)
+        
+        ws.cell(row=row_num, column=4, value=cf.get('type', ''))
+        ws.cell(row=row_num, column=5, value=cf.get('net_amount', 0))
+        
+        # Format actual paid date
+        repaid_date = cf.get('repaid_date', '')
+        if repaid_date:
+            try:
+                dt = datetime.fromisoformat(repaid_date.replace('Z', '+00:00'))
+                repaid_date = dt.strftime("%d-%m-%Y")
+            except:
+                pass
+        ws.cell(row=row_num, column=6, value=repaid_date or '')
+        
+        ws.cell(row=row_num, column=7, value=cf.get('repaid_actual_amount', '') or '')
+        ws.cell(row=row_num, column=8, value='Repaid' if cf.get('is_repaid') else 'Pending')
+        ws.cell(row=row_num, column=9, value='Yes' if cf.get('is_prepaid') else 'No')
+        ws.cell(row=row_num, column=10, value=cf.get('days_early', 0) or 0)
+        ws.cell(row=row_num, column=11, value=cf.get('notes', '') or '')
+        
+        # Highlight prepaid and repaid rows
+        if cf.get('is_prepaid'):
+            for col in range(1, 12):
+                ws.cell(row=row_num, column=col).fill = prepaid_fill
+        elif cf.get('is_repaid'):
+            for col in range(1, 12):
+                ws.cell(row=row_num, column=col).fill = repaid_fill
+    
+    # Set column widths
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 35
+    ws.column_dimensions['C'].width = 15
+    ws.column_dimensions['D'].width = 12
+    ws.column_dimensions['E'].width = 18
+    ws.column_dimensions['F'].width = 18
+    ws.column_dimensions['G'].width = 22
+    ws.column_dimensions['H'].width = 12
+    ws.column_dimensions['I'].width = 10
+    ws.column_dimensions['J'].width = 12
+    ws.column_dimensions['K'].width = 30
+    
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=cashflows_{client['pan_number']}.xlsx"}
+    )
+
+
 # ==================== REINVESTMENT TAGGING ====================
 
 class ReinvestmentTagUpdate(BaseModel):
