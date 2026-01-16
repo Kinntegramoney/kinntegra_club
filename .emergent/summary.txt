@@ -1,102 +1,83 @@
 <analysis>**original_problem_statement:**
-The user initially requested a B2B platform for brokers to manage NCDs and Real Estate. The project's current focus is an Analysis feature that parses a password-protected Consolidated Account Statement (CAS) PDF, enriches the data, and generates a complex, multi-sheet Excel report.
+The user is building a B2B platform for brokers to manage client investments in NCDs and Real Estate. Core features include parsing password-protected CAS PDFs for analysis and generating detailed Excel reports with complex financial calculations (FIFO, XIRR, TDS).
 
-Recent user requests have been highly detailed, focusing on refining this report. This includes:
-- Aligning the Excel report structure with a Gap Sheet template.
-- Correcting transaction classifications (NFT, Pledge, STT, Stamp Duty, Redemptions, TDS).
-- Implementing Indian tax and finance logic (Financial Year, per-transaction XIRR, FIFO for balance units).
-- Adding and refining report sheets like Summary, Portfolio Performance, a custom XIRR sheet, and a TDS Details sheet.
-- Implementing specific UI/UX requests like a step-by-step analysis page, adding/removing/renaming sidebar navigation items, and creating dedicated pages for features previously embedded elsewhere (e.g., Scheme Master, Reinvestment Tagging).
-- Addressing numerous bugs related to data parsing (incorrect ARN codes, misinterpreting TDS amounts as transactions) and calculations (folio-level vs. per-transaction XIRR).
-- Implementing a workaround for a failing email service by displaying user credentials on-screen.
+Recent user requests have driven significant development:
+1.  **UI/UX Overhaul**: Created dedicated pages for Reinv Tag and redesigned Analysis and Logs pages.
+2.  **Usage Tracking**: Made client selection mandatory on the Analysis page for future billing.
+3.  **Holdings Management**: Implemented a large feature set for bond prepayments on the Holdings page, including per-trade XIRR, bulk Excel updates for repayments, and automatic recalculation of subsequent interest payments when principal is prepaid.
+4.  **Client & Bond Management**: Added bulk upload for clients and bonds, with extensive management features (edit, delete, deactivate, resend credentials).
+5.  **Interest Calculation Logic**: Evolved the interest calculation to handle fixed-day-of-month payments, actual days in a period, reducing principal balances, and custom payment schedules.
+6.  **Email Integration**: Fixed the email service and redesigned all templates to match the website's UI.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack platform (React, FastAPI, MongoDB). The core functionality is the CAS analysis feature, driven by the heavily modified  file. This service parses a CAS PDF and generates a ZIP file containing a detailed, multi-sheet Excel report, including PAN-specific breakdowns. The report logic is now highly sophisticated, handling various transaction types, TDS, and complex financial calculations like per-transaction XIRR and FIFO-based balance units.
-
-The frontend has been significantly altered to meet user demands. The  page has been redesigned for a clearer, step-by-step workflow. The main  has been restructured multiple times, with items like Trade Verification being renamed to Logs, and features like Reinvestment Tagging and Scheme Master being broken out into their own dedicated pages. A workaround for a non-functional email server remains, where new user credentials are displayed in a modal.
+The application is a full-stack platform (React, FastAPI, MongoDB) with a rich feature set. The UI includes a step-by-step analysis page, a feature-complete Holdings page, and comprehensive admin sections for managing clients and bonds. The backend supports all frontend features, including complex financial calculations for interest schedules and XIRR. The email service is now fully functional, and templates are branded to match the UI. A critical bug in the bulk bond upload was fixed, and client management functionality was significantly enhanced with edit, delete, and other actions. The interest calculation logic is now robust, handling multiple complex scenarios requested by the user.
 
 **Last working item**:
--   **Last item agent was working**: The agent was in the middle of a major UI/UX overhaul based on user feedback. This involved three related tasks:
-    1.  **Redesign Analysis UI**: Overwriting  with a new, cleaner, step-by-step layout.
-    2.  **Restore Reinvestment Tagging**: Creating a new  page and adding a dedicated link for it in the main sidebar, as requested by the user. This reversed a previous effort to remove this feature.
-    3.  **Dedicated Scheme Master Page**: Moving the scheme master upload functionality into its own page () and updating the sidebar navigation accordingly.
+-   **Last item agent was working**: The user requested that when a principal prepayment is recorded, the system should calculate and display the percentage of the total principal that was prepaid. The agent had begun investigating the existing prepayment functionality in  to add this calculation.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Frontend testing agent. The test should verify:
-    1.  The new step-by-step layout of the Analysis page.
-    2.  A Reinvestment Tagging link is present in the sidebar and navigates to the new  route.
-    3.  The Scheme Master page is accessible via the sidebar under Bulk Upload and functions correctly.
-    4.  The Logs page (formerly Trade Verification) no longer contains UI elements for reinvestment tagging.
+-   **Which testing method agent to use?**: Backend testing agent to verify the API response now includes the percentage, followed by the screenshot tool to verify the UI change on the Holdings page.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Inconsistent state of  (P0)**
-    -   **Description**: The user requested the removal of Reinvestment Tagging from this page. The agent struggled, leaving the file in a messy state. The user then asked for Reinvestment Tagging to be a separate page. The  component (now serving the Logs page) still contains leftover state and logic for reinvestment that needs to be cleanly removed.
+-   **Issue 1: Calculate and display the percentage of principal prepaid (P0)**
+    -   **Description**: Enhance the prepayment feature to calculate and show what percentage of the bond's total principal is being paid off with a prepayment.
     -   **Status**: IN PROGRESS
-    -   **Next debug checklist**:
-        1.  View .
-        2.  Identify and remove all , , and helper functions related to .
-        3.  Remove any conditional rendering logic related to .
-        4.  Ensure the Pending Approvals and Trade Logs tabs still function correctly after the cleanup.
-    -   **Why fix this issue and what will be achieved with the fix?**: To remove dead code, reduce complexity, and prevent future bugs in the Logs page.
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Both
+
+-   **Issue 2: Incomplete UI update on BondDetails page (P2)**
+    -   **Description**: A minor, long-standing UI bug where a radio button selection is not cleared after an action. This has been consistently de-prioritized.
+    -   **Status**: NOT STARTED
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend
 
--   **Issue 2: Email service connection timeout (P1)**
-    -   **Description**: The application cannot send welcome emails because the configured SMTP server () is unreachable. A workaround displays credentials in a UI modal.
-    -   **Status**: BLOCKED (Awaiting user decision on using a 3rd party service like Resend/SendGrid).
-    -   **Is recurring issue?**: Y
-
--   **Issue 3: Incomplete UI update on BondDetails page (P2)**
-    -   **Description**: A minor, long-standing UI bug where a radio button selection isn't cleared.
-    -   **Status**: NOT STARTED
-    -   **Is recurring issue?**: Y
-
--   **Issue 4: Deployment Not Syncing with Production (P0 - CRITICAL BLOCKER)**
-    -   **Description**: Platform-level issue. User handles deployment manually via Save to Github.
+-   **Issue 3: Deployment Not Syncing with Production (P0 - CRITICAL BLOCKER)**
+    -   **Description**: This is a platform-level issue outside the agent's control. The user manages deployment manually via Save to Github.
     -   **Status**: BLOCKED
     -   **Is recurring issue?**: Y
 
 **In progress Task List**:
--   **Task 1: Complete and Verify UI/Navigation Overhaul (P0)**
-    -   **Description**: This is the 
-wtmp begins Fri Jan 16 08:41:41 2026. The agent created/modified , , , , and .
-    -   **Where to resume**: The files are created/modified. The next step is to test the frontend implementation. Use the screenshot tool or frontend testing agent to log in and verify the new navigation structure and page layouts are working as intended.
-    -   **What will be achieved with this?**: Fulfills the user's latest UI/UX requirements for the Analysis, Reinvestment, and Scheme Master features.
+-   **Task 1: Enhance prepayment feature to show percentage**
+    -   **Where to resume**: Modify the  endpoint in . The logic should calculate . The response to the frontend should be updated to include this percentage. Subsequently, update the frontend, likely in , to display this new information, perhaps in the prepayment confirmation modal or in the holdings table.
+    -   **What will be achieved**: When a user records a prepayment, they will see the corresponding percentage of the principal that was paid off, providing better context.
     -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on something**: No
+    -   **Should Test frontend/backend/both after fix?**: Both
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **(P0) Final User Verification of All Recent Fixes**: The user must perform a full review of the latest backend changes, including the per-transaction XIRR, FIFO balance units, Cost Value column, and TDS reporting.
-    -   **(P1) Implement Long-Term Fix for Email Service**: Integrate a reliable third-party email service (e.g., Resend) once the user approves.
-    -   **(P1) Test Bulk Upload Functionality**: Perform end-to-end testing of client, sub-broker, and bond bulk upload features which have not been recently tested.
+    -   **(P0) User Verification**: The user needs to perform a full end-to-end test of all the features implemented in the last session, including:
+        -   The fixed bulk bond and client upload functionality.
+        -   The new client management actions (Edit, Resend Credentials, Reset Password, Deactivate, Delete).
+        -   The new On Maturity interest frequency and the corrected interest calculation logic for reducing balances.
+        -   The fixed back-button navigation.
+    -   **(P1) Final User Verification of CAS Analysis**: A full review of the CAS analysis report generation is still pending user confirmation.
 
 -   **Future Tasks**:
-    -   **(CRITICAL) Refactor **: This file is a ~2500-line monolith and a significant source of technical debt. It must be broken down into smaller, single-responsibility modules (e.g., , , , ).
-    -   **(CRITICAL) Refactor **: Decompose this massive (~3500 lines) component.
-    -   **(HIGH) Refactor **: This component requires significant cleanup after the recent conflicting edits.
+    -   **(CRITICAL) Refactor Backend Monoliths**:  (~2500 lines) and  (~5000+ lines) are critically large and must be broken down into smaller, single-responsibility modules (e.g., routers, services, models).
+    -   **(CRITICAL) Refactor Frontend Monolith**:  (~3500 lines) needs to be decomposed into smaller, reusable components.
 
 **Completed work in this session**
--   **FIFO Balance Units Logic**: Implemented First-In-First-Out (FIFO) logic in  to accurately calculate the remaining units for each specific purchase transaction after accounting for subsequent redemptions.
--   **Cost Value Column**: Added a Cost Value column to the  sheet, calculating the proportional cost of the remaining FIFO balance units.
--   **Per-Transaction XIRR Calculation**: Refactored the XIRR logic in  to calculate a unique XIRR for each individual purchase transaction (from purchase date to report date), providing a more granular performance metric.
--   **Redemption & TDS Parsing Fix**: Corrected a critical bug in the PDF parser () that was misidentifying redemption amounts and TDS payout lines as malformed transactions. The logic now correctly distinguishes between these entries, ensuring redemption transactions appear correctly in the report and TDS data is handled separately.
--   **TDS Feature Implementation**:
-    -   Created a  method to extract all TDS entries from the PDF.
-    -   Added a TDS Details sheet to the Excel report, which is conditionally created only if TDS data exists.
-    -   Added a TDS Summary section to the main Summary sheet, showing a breakdown of total TDS per financial year.
--   **Database Cleanup**: Cleared all data from the database (users, clients, partners, etc.) while preserving the primary broker account () and verified the broker can still log in.
--   **Frontend Navigation & Renaming (Iterative)**:
-    -   Renamed the Trade Verification page and sidebar link to Logs.
-    -   Restructured the Admin sidebar menu into Add User (Sub Broker, Client) and Opportunities (Bonds, Real Estate) sections. This was later updated again in the 
-wtmp begins Fri Jan 16 08:41:41 2026.
+-   **Bug Fix (Bond Bulk Upload)**: Fixed the  endpoint to correctly read and merge data from all 4 sheets of the provided Excel template.
+-   **Feature/Bug Fix (Client Management)**: Overhauled the client admin page ():
+    -   Fixed bulk upload to save the  correctly.
+    -   Implemented a working Edit button that opens a modal pre-filled with client data.
+    -   Added a three-dots menu with actions: Resend Credentials, Reset Password, Deactivate Client, and Delete Client, supported by new backend endpoints.
+-   **Bug Fix (Client Deletion)**: Corrected the delete logic to remove the user from both  and  collections, allowing PAN reuse.
+-   **Bug Fix (Bond Edit Form)**: Rewrote  to display a comprehensive form for editing all bond details, not just a few fields.
+-   **Integration (Email Service)**: Successfully configured SMTP settings in  to send emails from , resolving a long-standing blocker. Added no-reply headers.
+-   **UI/UX (Email Templates)**: Redesigned all email templates in  with new branding (colors, logo, layout) to match the website's UI.
+-   **Feature/Bug Fix (Interest Calculation)**:
+    -   Fixed date drift in interest schedules by using  for robust month-based date arithmetic.
+    -   Implemented logic to calculate interest based on the actual number of days in a period.
+    -   Created a new  function to handle complex schedules with reducing principal balances, ensuring interest is calculated correctly over time.
+    -   Added On Maturity as an interest frequency option.
+-   **Bug Fix (Navigation)**: Corrected back button behavior on , , and  to navigate to  instead of using .
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Incomplete UI update on BondDetails page**: A known, low-priority UI bug where a radio button selection is not cleared when a user types into an adjacent amount field. It has been consistently deprioritized.
+-   **Issue 1: Incomplete UI update on BondDetails page**: A known, low-priority UI bug where a radio button state is not cleared. This has been consistently deprioritized in favor of more critical features.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork**: Incomplete UI update on BondDetails page.
@@ -107,90 +88,90 @@ wtmp begins Fri Jan 16 08:41:41 2026.
 
 
 **Key Technical Concepts**
--   **Advanced PDF Parsing**: Stateful, multi-line, regex-based parsing of financial statements, now capable of distinguishing complex, similar-looking patterns for purchases, redemptions, and TDS entries.
--   **Excel Generation ()**: Creating multi-sheet reports with conditional sheets (TDS), dynamic formatting, and complex layouts.
--   **Financial Logic (FIFO & XIRR)**:
-    -   **FIFO (First-In-First-Out)**: Implemented logic to track remaining units from individual purchase transactions.
-    -   **Per-Transaction XIRR**: Calculating annualized returns for specific cash flows (single purchase to current date) rather than for an entire portfolio.
--   **Component-Based Frontend Development**: Breaking out features (Scheme Master, Reinvestment) from monolithic components into their own dedicated pages and routes.
+-   **Complex Financial Logic**: The agent implemented sophisticated financial logic for interest calculation, including handling reducing principal balances, custom payment schedules that differ from interest cycles, and fixed-day-of-month payments using .
+-   **Multi-sheet Excel Parsing**: The bulk upload logic was refactored to use  to read and merge data from multiple sheets in an Excel file based on a common key ().
+-   **Coordinated Database Operations**: Fixed a critical bug in client deletion by ensuring records are removed from both the  and  collections in MongoDB to maintain data integrity.
+-   **API Design**: Added a suite of new RESTful endpoints for detailed client management, including fetching details for pre-filling forms, updating records, and triggering actions like resending credentials.
+-   **SMTP Integration**: Successfully configured Python's  to connect to an external mail server with SSL, resolving a major application blocker.
 
 **key DB schema**
--   ****: Stores user information, including  and .
--   ****: Stores sub-broker information. Includes  and  fields in plain text as a temporary workaround for the broken email service.
+-   : Stores user credentials (, , ). Records are now correctly deleted when a linked client is deleted.
+-   : Stores detailed client information. Relies on  which is now correctly populated from bulk uploads.
+-   : The schema was enhanced to support a  field for bonds with reducing principal balances, which coexists with the  field used for simpler schedules.
+-   : No new schema changes, but logic in  heavily interacts with this collection for prepayment and XIRR calculations.
+
+**changes in tech stack**
+-   **Added Dependency**:  was added to  to handle complex date calculations for financial schedules.
 
 **All files of reference**
--   : The most critical file, heavily modified to implement all new parsing and calculation logic (TDS, FIFO, per-transaction XIRR, redemption fix).
--   : Overwritten with a new UI for a step-by-step analysis process.
--   : The source of the Logs page. Contains leftover code from the Reinvestment Tagging feature that needs to be removed.
--   : A new page created to house the reinvestment feature.
--   : A new page to provide a dedicated UI for uploading the scheme master file.
--   : Modified multiple times to reflect user's changing navigation preferences.
--   : Modified to add the new route for .
+-   : The monolithic core of the backend. It was heavily modified to implement all new business logic for client management, bond editing, and advanced interest calculations.
+-   : Overhauled to fix the SMTP connection and redesign all email templates to match the new branding.
+-   : The primary file for client management. It was significantly updated to include the edit modal and the three-dots action menu.
+-   : This file was rewritten to provide a comprehensive bond editing experience.
+-   : Modified to add the On Maturity frequency option to the creation form.
+-   : Modified to fix the back button navigation logic.
 
 **Areas that need refactoring**:
--   **CRITICAL**:  is now over 2500 lines and extremely difficult to maintain. It is the highest priority for refactoring.
--   **HIGH**:  is in an inconsistent state with leftover code and needs immediate cleanup.
--   **CRITICAL**:  (~3500 lines) remains a massive component that needs to be broken down.
+-   **CRITICAL**:  has grown to over 5000 lines and is a significant maintenance risk. It needs to be broken down into separate files for routes, services, and Pydantic models.
+-   **CRITICAL**:  (~2500 lines) and  (~3500 lines) remain large monoliths that need to be decomposed.
 
 **key api endpoints**
--    (POST): Endpoint for uploading the CAS PDF and triggering the analysis.
--    (GET): Serves the generated  file.
--    &  (POST): Two-step login process for brokers.
+-    (POST): **MODIFIED** to parse and merge multiple Excel sheets.
+-    (POST): **MODIFIED** to correctly handle the  field.
+-    (DELETE): **MODIFIED** to perform a hard delete from both  and  collections.
+-    (GET): **NEW** endpoint to fetch full client details for pre-filling edit forms.
+-    (PUT): **NEW** endpoint to save edited client details.
+-    (POST): **NEW** endpoint to trigger a credentials email.
+-    (POST): **NEW** endpoint to trigger a password reset.
+-    (PUT): **MODIFIED** to handle updates for all bond fields from the new comprehensive edit modal.
 
 **Critical Info for New Agent**
--   The immediate priority is to complete and test the UI overhaul for the Analysis, Reinvestment, and Scheme Master pages.
--   The component at  is in a messy state. It still contains logic for Reinvestment Tagging even though that feature has been moved to its own page. This file requires careful cleanup.
--   The SMTP email service is **non-functional**. Do not attempt to fix it. A long-term fix (e.g., integrating Resend) is blocked on user input.
--   Deployment is **manual**. The user uses Save to Github and handles deployment themselves.
--   **PDF Password for testing**: 
--   **Broker Login Credentials**:
-    -   PAN: 
-    -   Password: 
-    -   PIN: 
+-   The email service is now fully functional via . The previous workaround of showing credentials in a modal may no longer be necessary, but this should be confirmed.
+-   The interest calculation logic in  is now highly sophisticated and relies on the  library. Any changes to bond schedules must be tested against this logic.
+-   Client deletion is now a hard delete. The Deactivate function should be used for a soft delete to preserve the client's history.
+-   You are resuming work on the prepayment feature. The immediate task is to calculate the prepayment percentage in the backend and display it on the frontend.
 
 **documents and test reports created in this job**
--    (Updated)
--   Various temporary analysis reports and test scripts were created and deleted during the session (e.g., , ).
+-   
+-    (Updated with progress on recent fixes)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.   - **Status: IN PROGRESS** (This is the last working item).
-2.   - **Status: SUPERSEDED** (Agent attempted this, but the user then asked for reinvestment to be brought back as a separate page).
-3.   - **Status: COMPLETED**.
-4.   - **Status: COMPLETED**.
-5.   - **Status: COMPLETED** (FIFO logic implemented).
-6.   - **Status: COMPLETED** (Parsing logic fixed to include redemptions).
-7.   - **Status: COMPLETED** (Per-transaction XIRR implemented).
-8.   - **Status: COMPLETED**.
-9.   (with image showing parsing error) - **Status: COMPLETED** (TDS payout lines were being misread as transactions; this was fixed).
-10.  - **Status: COMPLETED** (Initial XIRR fix, later superseded by per-transaction logic).
+1.  User requested adding On Maturity as an interest frequency option. **Status: COMPLETED**.
+2.  User requested calculating and displaying the percentage of principal prepaid. **Status: IN PROGRESS**.
+3.  User reported three issues: client recreation blocked after deletion, bond edit form incomplete, and client edit form not pre-filled. **Status: COMPLETED**.
+4.  User specified that the final interest payment in a bond's life should be calculated up to the maturity date, even if it's different from the regular cycle date. **Status: COMPLETED**.
+5.  User requested that the back button navigate to the Opportunities page, not the login page. **Status: COMPLETED**.
+6.  User provided a new, more complex requirement for a combined principal and interest schedule with interest calculated on a reducing balance. **Status: COMPLETED**.
+7.  User provided a screenshot with a specific payment schedule, highlighting that principal payments can start later than interest payments. **Status: COMPLETED**.
+8.  User requested that email templates be redesigned to match the website's UI. **Status: COMPLETED**.
+9.  User requested connecting the email service to . **Status: COMPLETED**.
+10. User requested a text change in the sub-broker welcome email from Partner Program to Kinntegraa Club. **Status: COMPLETED**.
 
 **Project Health Check:**
 -   **Broken**:
-    -   Production deployment pipeline (user has a manual workaround).
-    -   Email sending functionality (workaround implemented, core service is down).
+    -   Production deployment pipeline remains a manual process managed by the user.
 -   **Technical Debt**:
-    -    is critically overgrown and a major maintenance risk.
-    -    and  are large, complex frontend components requiring refactoring and cleanup.
-    -   Storing plain-text credentials in the  collection is a security risk that was introduced as a temporary workaround.
+    -   , , and  are critically large and pose a high maintenance risk. Refactoring is urgently needed.
 
 **3rd Party Integrations**
--   **pymupdf**: For parsing PDF files.
--   **openpyxl**: For creating and manipulating  Excel files.
--   **numpy-financial** & **scipy.optimize**: For XIRR calculations.
--   **MFapi.in**: Used via direct API calls to fetch NAV data.
+-   **pymupdf**: PDF parsing.
+-   **openpyxl**: Excel generation and parsing.
+-   **numpy-financial** & **scipy.optimize**: XIRR calculations.
+-   **MFapi.in**: NAV data fetching.
+-   **python-dateutil**: **(New)** For robust date arithmetic in financial calculations.
 
 **Testing status**
--   **Testing agent used after significant changes**: NO
--   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**: None. Testing was performed using ad-hoc Python scripts to parse generated Excel files and  commands.
--   **Known regressions**: None identified.
+-   **Testing agent used after significant changes**: No (last used in a previous fork).
+-   **Troubleshoot agent used after agent stuck in loop**: No.
+-   **Test files created**: None. The agent used a combination of  commands, temporary Python scripts for validation, and UI screenshots to test the numerous fixes and features implemented.
+-   **Known regressions**: None identified in this session.
 
 **Credentials to test flow:**
 -   **Broker Login**:
     -   PAN: 
     -   Password: 
     -   PIN: 
--   **PDF Password**: 
+-   **PDF Password (for Analysis)**: 
 
 **What agent forgot to execute**
--   The agent struggled with the React frontend modifications for the Logs / Trade Verification page. The use of large  blocks failed repeatedly and bloated the file, indicating a poor strategy for DOM manipulation. This led to an inconsistent component state and required the user to repeat and clarify their request, wasting time and context. The agent should have used more targeted edits and verified the file state after each failed attempt before proceeding.</analysis>
+-   The agent did not forget any major tasks. It systematically worked through a long list of user-reported bugs and feature requests. The primary remaining task is to finish the prepayment percentage feature that was just started.</analysis>
