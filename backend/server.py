@@ -74,14 +74,29 @@ def generate_interest_payment_schedule(
     Generate interest payment schedule with:
     - Fixed day of month for each payment
     - Interest calculated based on actual days in each period
+    - Supports: monthly, quarterly, semi-annual, annual, on_maturity
     """
     start = datetime.strptime(start_date, '%Y-%m-%d')
     end = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    # Handle "on maturity" - single payment at end with all accrued interest
+    if frequency.lower() in ['on_maturity', 'on-maturity', 'maturity', 'at_maturity', 'at-maturity']:
+        days_total = calculate_days_between(start, end)
+        daily_rate = (coupon_rate / 100) / 365
+        total_interest = principal * daily_rate * days_total
+        return [{
+            "date": end.strftime('%Y-%m-%d'),
+            "amount": round(total_interest, 2),
+            "days": days_total,
+            "is_partial": False,
+            "payment_type": "on_maturity"
+        }]
     
     months_interval = {
         "monthly": 1, 
         "quarterly": 3, 
         "semi-annual": 6, 
+        "semi_annual": 6,
         "annual": 12
     }.get(frequency.lower(), 3)
     
