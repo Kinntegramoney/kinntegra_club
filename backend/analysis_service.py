@@ -1900,6 +1900,10 @@ class GapSheetGenerator:
             remaining_units = purchase_remaining_units.get((folio_key, trans_idx), 0)
             has_remaining = remaining_units > 0
             
+            # Validate current_nav - NAV of 1 or very small values are likely parsing errors
+            # Most mutual fund NAVs range from 10 to 10000
+            valid_nav = current_nav > 1 and current_nav < 100000
+            
             # Column 15: Balance Units - remaining units from THIS purchase (FIFO)
             # Only for purchase transactions with remaining units
             if not trans.get('is_redemption') and has_remaining:
@@ -1913,12 +1917,12 @@ class GapSheetGenerator:
                     cost_value = (remaining_units / original_units) * trans_amount
                     ws.cell(row=row, column=16, value=round(cost_value, 2))
             
-            # Column 17: Current NAV - only show for purchases with remaining units
-            if not trans.get('is_redemption') and has_remaining and current_nav > 0:
+            # Column 17: Current NAV - only show for purchases with remaining units and valid NAV
+            if not trans.get('is_redemption') and has_remaining and valid_nav:
                 ws.cell(row=row, column=17, value=current_nav)
             
             # Column 18: Current Market Value - value of remaining units from THIS purchase
-            if not trans.get('is_redemption') and has_remaining and current_nav > 0:
+            if not trans.get('is_redemption') and has_remaining and valid_nav:
                 market_value = remaining_units * current_nav
                 ws.cell(row=row, column=18, value=round(market_value, 2))
             
@@ -1934,7 +1938,7 @@ class GapSheetGenerator:
             # Cost = (Remaining Units / Original Units) * Transaction Amount (proportional cost)
             # Current Value = Remaining Units * Current NAV on report date
             xirr_value = None
-            if not trans.get('is_redemption') and has_remaining and current_nav > 0 and trans_amount > 0:
+            if not trans.get('is_redemption') and has_remaining and valid_nav and trans_amount > 0:
                 original_units = trans.get('units', 0)
                 if original_units > 0 and trans_date != datetime.min:
                     # Calculate proportional cost for remaining units
