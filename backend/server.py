@@ -3112,12 +3112,231 @@ async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, curren
         {"$set": update_data}
     )
     
+    # If this is a principal prepayment, recalculate subsequent interest
+    interest_amended = 0
+    if update.is_repaid and is_prepaid and cashflow.get('principal_component', 0) > 0:
+        interest_amended = await recalculate_interest_after_prepayment(
+            trade_id=cashflow['trade_id'],
+            prepayment_date=actual_date,
+            prepaid_principal=cashflow.get('principal_component', 0),
+            current_user_id=current_user['id']
+        )
+    
     return {
         "message": "Cashflow updated successfully", 
         "is_repaid": update.is_repaid,
         "is_prepaid": is_prepaid,
-        "days_early": days_early
+        "days_early": days_early,
+        "interest_amended": interest_amended
     }
+
+
+async def recalculate_interest_after_prepayment(trade_id: str, prepayment_date: datetime, prepaid_principal: float, current_user_id: str) -> int:
+    """
+    Recalculate interest for all future cashflows after a principal prepayment.
+    Returns the number of interest entries amended.
+    """
+    # Get all cashflows for this trade
+    all_cashflows = await db.holding_cashflows.find(
+        {"trade_id": trade_id},
+        {"_id": 0}
+    ).to_list(100)
+    
+    if not all_cashflows:
+        return 0
+    
+    # Get trade and bond details
+    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+    if not trade:
+        return 0
+    
+    bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
+    if not bond:
+        return 0
+    
+    # Calculate total original principal for this trade
+    original_principal = bond.get('principal_amount', 0) * trade.get('units', 0)
+    
+    # Calculate total principal already repaid (including this prepayment)
+    repaid_principal = sum(
+        cf.get('principal_component', 0) 
+        for cf in all_cashflows 
+        if cf.get('is_repaid')
+    )
+    
+    # Remaining principal after prepayment
+    remaining_principal = original_principal - repaid_principal
+    
+    if remaining_principal < 0:
+        remaining_principal = 0
+    
+    # Calculate the reduction ratio
+    if original_principal > 0:
+        reduction_ratio = remaining_principal / original_principal
+    else:
+        reduction_ratio = 1.0
+    
+    amended_count = 0
+    
+    # Update all future interest payments
+    for cf in all_cashflows:
+        cf_date = datetime.fromisoformat(cf['date'].replace('Z', '+00:00')) if 'T' in cf['date'] else datetime.strptime(cf['date'], '%Y-%m-%d')
+        
+        # Only amend future interest payments that haven't been repaid
+        if cf_date.date() > prepayment_date.date() and not cf.get('is_repaid') and cf.get('interest_component', 0) > 0:
+            original_interest = cf.get('original_interest_component') or cf.get('interest_component', 0)
+            original_tds = cf.get('original_tds_amount') or cf.get('tds_amount', 0)
+            original_net = cf.get('original_net_amount') or cf.get('net_amount', 0)
+            
+            # Calculate amended amounts based on remaining principal
+            amended_interest = round(original_interest * reduction_ratio, 2)
+            amended_tds = round(amended_interest * 0.10, 2)  # 10% TDS
+            amended_net = round(amended_interest - amended_tds + cf.get('principal_component', 0), 2)
+            
+            await db.holding_cashflows.update_one(
+                {"id": cf['id']},
+                {"$set": {
+                    # Store original values if not already stored
+                    "original_interest_component": original_interest,
+                    "original_tds_amount": original_tds,
+                    "original_net_amount": original_net,
+                    "original_gross_amount": cf.get('original_gross_amount') or cf.get('gross_amount', 0),
+                    # Update to amended values
+                    "interest_component": amended_interest,
+                    "tds_amount": amended_tds,
+                    "gross_amount": round(amended_interest + cf.get('principal_component', 0), 2),
+                    "net_amount": amended_net,
+                    "is_amended": True,
+                    "amendment_reason": f"Principal prepayment of ₹{prepaid_principal:,.2f} on {prepayment_date.strftime('%d-%m-%Y')}",
+                    "amendment_date": datetime.now(timezone.utc).isoformat(),
+                    "amended_by": current_user_id,
+                    "remaining_principal_ratio": round(reduction_ratio, 4)
+                }}
+            )
+            amended_count += 1
+    
+    return amended_count
+
+
+@api_router.post("/holdings/cashflow/{cashflow_id}/amend-interest")
+async def amend_cashflow_interest(
+    cashflow_id: str, 
+    amended_interest: float = Body(..., embed=True),
+    reason: str = Body(None, embed=True),
+    current_user: dict = Depends(get_current_user)
+):
+    """Manually amend interest amount for a cashflow entry"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can amend cashflows")
+    
+    cashflow = await db.holding_cashflows.find_one({"id": cashflow_id})
+    if not cashflow:
+        raise HTTPException(status_code=404, detail="Cashflow entry not found")
+    
+    # Verify access
+    client = await db.clients.find_one({"id": cashflow['client_id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if current_user['role'] == 'broker':
+        if client.get('created_by') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    else:
+        if client.get('linked_subbroker_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Store original values if not already stored
+    original_interest = cashflow.get('original_interest_component') or cashflow.get('interest_component', 0)
+    original_tds = cashflow.get('original_tds_amount') or cashflow.get('tds_amount', 0)
+    original_net = cashflow.get('original_net_amount') or cashflow.get('net_amount', 0)
+    original_gross = cashflow.get('original_gross_amount') or cashflow.get('gross_amount', 0)
+    
+    # Calculate new TDS and net amounts
+    new_tds = round(amended_interest * 0.10, 2)
+    principal = cashflow.get('principal_component', 0)
+    new_gross = round(amended_interest + principal, 2)
+    new_net = round(amended_interest - new_tds + principal, 2)
+    
+    await db.holding_cashflows.update_one(
+        {"id": cashflow_id},
+        {"$set": {
+            "original_interest_component": original_interest,
+            "original_tds_amount": original_tds,
+            "original_net_amount": original_net,
+            "original_gross_amount": original_gross,
+            "interest_component": amended_interest,
+            "tds_amount": new_tds,
+            "gross_amount": new_gross,
+            "net_amount": new_net,
+            "is_amended": True,
+            "amendment_reason": reason or "Manual amendment",
+            "amendment_date": datetime.now(timezone.utc).isoformat(),
+            "amended_by": current_user['id']
+        }}
+    )
+    
+    return {
+        "message": "Interest amended successfully",
+        "original_interest": original_interest,
+        "amended_interest": amended_interest,
+        "new_tds": new_tds,
+        "new_net": new_net
+    }
+
+
+@api_router.post("/holdings/cashflow/{cashflow_id}/revert-amendment")
+async def revert_cashflow_amendment(cashflow_id: str, current_user: dict = Depends(get_current_user)):
+    """Revert an amended cashflow back to original values"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can revert amendments")
+    
+    cashflow = await db.holding_cashflows.find_one({"id": cashflow_id})
+    if not cashflow:
+        raise HTTPException(status_code=404, detail="Cashflow entry not found")
+    
+    if not cashflow.get('is_amended'):
+        raise HTTPException(status_code=400, detail="This cashflow has not been amended")
+    
+    # Verify access
+    client = await db.clients.find_one({"id": cashflow['client_id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if current_user['role'] == 'broker':
+        if client.get('created_by') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    else:
+        if client.get('linked_subbroker_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Revert to original values
+    original_interest = cashflow.get('original_interest_component', cashflow.get('interest_component', 0))
+    original_tds = cashflow.get('original_tds_amount', cashflow.get('tds_amount', 0))
+    original_net = cashflow.get('original_net_amount', cashflow.get('net_amount', 0))
+    original_gross = cashflow.get('original_gross_amount', cashflow.get('gross_amount', 0))
+    
+    await db.holding_cashflows.update_one(
+        {"id": cashflow_id},
+        {
+            "$set": {
+                "interest_component": original_interest,
+                "tds_amount": original_tds,
+                "net_amount": original_net,
+                "gross_amount": original_gross,
+                "is_amended": False,
+                "reverted_at": datetime.now(timezone.utc).isoformat(),
+                "reverted_by": current_user['id']
+            },
+            "$unset": {
+                "amendment_reason": "",
+                "amendment_date": "",
+                "amended_by": "",
+                "remaining_principal_ratio": ""
+            }
+        }
+    )
+    
+    return {"message": "Amendment reverted successfully"}
 
 
 # ==================== BULK REPAYMENT UPLOAD ====================
