@@ -1195,18 +1195,54 @@ async def bulk_upload_bonds(
     
     results = {"success": 0, "failed": 0, "errors": [], "created_bonds": []}
     
+    # Group principal payments by bond_code
+    principal_payments_map = {}
+    for _, prow in df_principal.iterrows():
+        bc = str(prow.get('bond_code', '')).strip()
+        if bc and not pd.isna(bc):
+            if bc not in principal_payments_map:
+                principal_payments_map[bc] = []
+            payment_date = prow.get('payment_date')
+            percentage = prow.get('percentage')
+            if not pd.isna(payment_date) and not pd.isna(percentage):
+                try:
+                    date_str = pd.to_datetime(payment_date).strftime('%Y-%m-%d')
+                    principal_payments_map[bc].append({
+                        "date": date_str,
+                        "percentage": float(percentage),
+                        "description": str(prow.get('payment_description', '')) if not pd.isna(prow.get('payment_description')) else ''
+                    })
+                except:
+                    pass
+    
     for idx, row in df.iterrows():
         try:
-            # Validate required fields
-            required = ['bond_code', 'bond_name', 'principal_amount', 'coupon_rate', 
-                       'primary_irr', 'secondary_irr', 'start_date', 'maturity_date']
-            missing = [f for f in required if pd.isna(row.get(f))]
+            # Validate required fields - check both possible column name formats
+            bond_code_col = 'bond_code'
+            bond_name_col = 'bond_name'
+            principal_col = 'principal_amount' if 'principal_amount' in row.index else 'principal_amount_(inr)'
+            coupon_col = 'coupon_rate' if 'coupon_rate' in row.index else 'coupon_rate_'
+            primary_irr_col = 'primary_irr' if 'primary_irr' in row.index else 'primary_irr_'
+            secondary_irr_col = 'secondary_irr' if 'secondary_irr' in row.index else 'secondary_irr_'
+            
+            required_checks = [
+                ('bond_code', row.get(bond_code_col)),
+                ('bond_name', row.get(bond_name_col)),
+                ('principal_amount', row.get(principal_col)),
+                ('coupon_rate', row.get(coupon_col)),
+                ('primary_irr', row.get(primary_irr_col)),
+                ('secondary_irr', row.get(secondary_irr_col)),
+                ('start_date', row.get('start_date')),
+                ('maturity_date', row.get('maturity_date'))
+            ]
+            
+            missing = [name for name, val in required_checks if pd.isna(val)]
             if missing:
                 results['errors'].append(f"Row {idx+2}: Missing required fields: {', '.join(missing)}")
                 results['failed'] += 1
                 continue
             
-            bond_code = str(row['bond_code']).strip()
+            bond_code = str(row[bond_code_col]).strip()
             
             # Check for duplicate bond code
             existing = await db.bonds.find_one({"bond_code": bond_code})
@@ -1219,14 +1255,17 @@ async def bulk_upload_bonds(
             start_date = pd.to_datetime(row['start_date']).strftime('%Y-%m-%d')
             end_date = pd.to_datetime(row['maturity_date']).strftime('%Y-%m-%d')
             
-            # Generate simple principal payment (100% at maturity)
-            principal_payments = [{"date": end_date, "percentage": 100.0}]
+            # Get principal payments from Sheet 4 or default to 100% at maturity
+            principal_payments = principal_payments_map.get(bond_code, [{"date": end_date, "percentage": 100.0}])
+            if not principal_payments:
+                principal_payments = [{"date": end_date, "percentage": 100.0}]
             
             # Generate interest payments based on frequency
-            frequency = str(row.get('interest_frequency', 'quarterly')).lower().strip()
+            freq_col = 'interest_payment_frequency' if 'interest_payment_frequency' in row.index else 'interest_frequency'
+            frequency = str(row.get(freq_col, 'quarterly')).lower().strip() if not pd.isna(row.get(freq_col)) else 'quarterly'
             interest_payments = []
-            principal = float(row['principal_amount'])
-            coupon_rate = float(row['coupon_rate'])
+            principal = float(row[principal_col])
+            coupon_rate = float(row[coupon_col])
             
             start = datetime.strptime(start_date, '%Y-%m-%d')
             end = datetime.strptime(end_date, '%Y-%m-%d')
@@ -1244,22 +1283,30 @@ async def bulk_upload_bonds(
                         "amount": round(interest_amount, 2)
                     })
             
+            # Get additional optional fields
+            total_units_col = 'total_units' if 'total_units' in row.index else 'total_units'
+            issuer_col = 'issuer_company_name' if 'issuer_company_name' in row.index else 'issuer'
+            
             bond_id = str(uuid.uuid4())
             bond = {
                 "id": bond_id,
                 "bond_code": bond_code,
-                "name": str(row['bond_name']).strip(),
+                "name": str(row[bond_name_col]).strip(),
                 "principal_amount": principal,
                 "coupon_rate": coupon_rate,
-                "primary_irr": float(row['primary_irr']),
-                "secondary_irr": float(row['secondary_irr']),
+                "primary_irr": float(row[primary_irr_col]),
+                "secondary_irr": float(row[secondary_irr_col]),
                 "start_date": start_date,
                 "end_date": end_date,
-                "total_units": int(row.get('total_units', 1)) if not pd.isna(row.get('total_units')) else 1,
+                "total_units": int(row.get(total_units_col, 1)) if not pd.isna(row.get(total_units_col)) else 1,
                 "units_sold": 0,
                 "interest_payment_frequency": frequency,
                 "principal_payments": principal_payments,
                 "interest_payments": interest_payments,
+                "issuer": str(row.get(issuer_col, '')) if not pd.isna(row.get(issuer_col)) else '',
+                "credit_rating": str(row.get('credit_rating', '')) if not pd.isna(row.get('credit_rating')) else '',
+                "description": str(row.get('description', '')) if not pd.isna(row.get('description')) else '',
+                "face_value": float(row.get('face_value_per_unit', 0)) if not pd.isna(row.get('face_value_per_unit')) else 0,
                 "created_by": current_user['id'],
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
