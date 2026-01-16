@@ -32,6 +32,16 @@ export default function AdminClients() {
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [linkingClient, setLinkingClient] = useState(null);
+  
+  // Edit modal state
+  const [editingClient, setEditingClient] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
+  
+  // Credentials modal state
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [credentials, setCredentials] = useState(null);
+  const [copiedField, setCopiedField] = useState(null);
 
   // Set page title
   useEffect(() => {
