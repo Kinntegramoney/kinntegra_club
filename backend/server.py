@@ -4043,7 +4043,11 @@ async def record_principal_prepayment(
             )
             amended_count += 1
     
-    # Record the prepayment
+    # Record the prepayment with percentage calculation
+    prepayment_percentage = round((prepayment.prepaid_amount / original_principal) * 100, 2) if original_principal > 0 else 0
+    total_prepaid_percentage = round(((total_previously_prepaid + prepayment.prepaid_amount) / original_principal) * 100, 2) if original_principal > 0 else 0
+    remaining_percentage = round((remaining_principal / original_principal) * 100, 2) if original_principal > 0 else 0
+    
     prepayment_record = {
         "id": str(uuid.uuid4()),
         "trade_id": trade_id,
@@ -4052,9 +4056,13 @@ async def record_principal_prepayment(
         "bond_name": trade['bond_name'],
         "prepayment_date": prepayment_date.isoformat(),
         "prepaid_amount": prepayment.prepaid_amount,
+        "prepayment_percentage": prepayment_percentage,  # Percentage of this prepayment
         "original_principal": original_principal,
         "principal_before_prepayment": principal_before_this_prepayment,
         "remaining_principal": remaining_principal,
+        "remaining_percentage": remaining_percentage,  # Remaining principal percentage
+        "total_prepaid_to_date": total_previously_prepaid + prepayment.prepaid_amount,
+        "total_prepaid_percentage": total_prepaid_percentage,  # Total prepaid percentage
         "notes": prepayment.notes,
         "recorded_by": current_user['id'],
         "recorded_at": datetime.now(timezone.utc).isoformat(),
@@ -4063,13 +4071,15 @@ async def record_principal_prepayment(
     
     await db.prepayment_records.insert_one(prepayment_record)
     
-    # Update trade with prepayment info
+    # Update trade with prepayment info including percentages
     await db.trades.update_one(
         {"id": trade_id},
         {"$set": {
             "has_prepayment": True,
             "total_prepaid_principal": total_previously_prepaid + prepayment.prepaid_amount,
+            "total_prepaid_percentage": total_prepaid_percentage,
             "remaining_principal": remaining_principal,
+            "remaining_principal_percentage": remaining_percentage,
             "last_prepayment_date": prepayment_date.isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
@@ -4079,7 +4089,12 @@ async def record_principal_prepayment(
         "message": "Principal prepayment recorded successfully",
         "prepayment_id": prepayment_record['id'],
         "prepaid_amount": prepayment.prepaid_amount,
+        "prepayment_percentage": prepayment_percentage,
+        "original_principal": original_principal,
+        "total_prepaid_to_date": total_previously_prepaid + prepayment.prepaid_amount,
+        "total_prepaid_percentage": total_prepaid_percentage,
         "remaining_principal": remaining_principal,
+        "remaining_percentage": remaining_percentage,
         "cashflows_amended": amended_count,
         "prorated_interest": prorated_interest_info
     }
