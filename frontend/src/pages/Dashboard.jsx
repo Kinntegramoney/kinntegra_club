@@ -77,6 +77,11 @@ export default function Dashboard() {
   const [monthlyStats, setMonthlyStats] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
+  // Set page title
+  useEffect(() => {
+    document.title = "Kinntegraa | Dashboard";
+  }, []);
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
