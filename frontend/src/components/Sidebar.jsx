@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, Users, Settings, LogOut, ChevronRight, ChevronDown, ClipboardCheck, Menu, X, Wallet, FileBarChart, UserPlus, Building2, Upload } from "lucide-react";
+import { LayoutGrid, TrendingUp, Users, Settings, LogOut, ChevronRight, ChevronDown, ClipboardCheck, Menu, X, Wallet, FileBarChart, UserPlus, Building2, Upload, Tag, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar({ user }) {
@@ -21,12 +21,18 @@ export default function Sidebar({ user }) {
   useEffect(() => {
     if (location.pathname.includes('/sub-brokers') || location.pathname.includes('/clients')) {
       setAddUserExpanded(true);
+      setAdminExpanded(true);
     }
-    if (location.pathname.includes('/bonds') || location.pathname.includes('/real-estate')) {
+    if (location.pathname.includes('/admin/bonds') || location.pathname.includes('/admin/real-estate')) {
       setOpportunitiesExpanded(true);
+      setAdminExpanded(true);
     }
-    if (location.pathname.includes('/bulk-upload') || location.pathname.includes('/scheme-master')) {
+    if (location.pathname.includes('/bulk-upload')) {
       setBulkUploadExpanded(true);
+      setAdminExpanded(true);
+    }
+    if (location.pathname.includes('/scheme-master')) {
+      setAdminExpanded(true);
     }
   }, [location.pathname]);
 
@@ -45,6 +51,7 @@ export default function Sidebar({ user }) {
     { path: "/broker/trades", label: "Logs", icon: ClipboardCheck },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
+    { path: "/broker/reinvestment", label: "Reinvestment Tagging", icon: Tag },
   ];
 
   // Admin sub-sections
@@ -60,7 +67,6 @@ export default function Sidebar({ user }) {
 
   const bulkUploadItems = [
     { path: "/broker/bulk-upload", label: "Upload Data" },
-    { path: "/broker/admin/scheme-master", label: "Scheme Master" },
   ];
 
   const SidebarContent = () => (
@@ -186,6 +192,19 @@ export default function Sidebar({ user }) {
                   </div>
                 )}
               </div>
+
+              {/* Scheme Master - Direct Link */}
+              <button
+                onClick={() => navigate('/broker/admin/scheme-master')}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  isActive('/broker/admin/scheme-master')
+                    ? 'bg-amber-50 text-amber-700'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Database className="h-4 w-4" />
+                <span>Scheme Master</span>
+              </button>
 
               {/* Bulk Upload Section */}
               <div>
