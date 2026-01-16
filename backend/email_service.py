@@ -44,7 +44,7 @@ def send_email(
     bcc: Optional[List[str]] = None
 ) -> bool:
     """
-    Send an email using SMTP SSL
+    Send an email using SMTP SSL (outgoing only, no incoming mail)
     
     Args:
         to_email: Recipient email address
@@ -66,6 +66,14 @@ def send_email(
         message["Subject"] = subject
         message["From"] = f"{config['from_name']} <{config['from_address']}>"
         message["To"] = to_email
+        
+        # Set Reply-To to discourage replies (no-reply address)
+        message["Reply-To"] = config['from_address']
+        
+        # Add headers to indicate this is an automated/no-reply email
+        message["X-Auto-Response-Suppress"] = "All"
+        message["Auto-Submitted"] = "auto-generated"
+        message["Precedence"] = "bulk"
         
         if cc:
             message["Cc"] = ", ".join(cc)
