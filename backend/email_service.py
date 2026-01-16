@@ -1088,13 +1088,12 @@ def send_prepayment_notification_email(
         for cf in revised_cashflows[:10]:  # Limit to 10 entries
             cf_date = cf.get('date', 'N/A')
             cf_type = cf.get('type', 'interest').capitalize()
-            original_amt = cf.get('original_interest_component') or cf.get('interest_component', 0)
             revised_amt = cf.get('interest_component', 0)
             is_amended = cf.get('is_amended', False)
             
             change_indicator = ""
             if is_amended:
-                change_indicator = f'<span style="color: #EF4444; font-size: 11px;"> (↓ Reduced)</span>'
+                change_indicator = '<span style="color: #EF4444; font-size: 11px;"> (↓ Reduced)</span>'
             
             rows_html += f"""
             <tr style="border-bottom: 1px solid #e5e7eb;">
