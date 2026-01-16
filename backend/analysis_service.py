@@ -635,6 +635,97 @@ class CASParser:
         # Store first transaction dates
         self.advisor_first_trans = first_trans_date
 
+    def _parse_tds(self, text: str):
+        """Parse TDS (Tax Deducted at Source) entries from CAS"""
+        lines = text.split('\n')
+        
+        # Track current context
+        current_folio = None
+        current_scheme = None
+        current_isin = None
+        current_pan = None
+        current_amc = None
+        
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            # Track PAN
+            pan_match = re.search(r'PAN:\s*([A-Z]{5}\d{4}[A-Z])', line)
+            if pan_match:
+                current_pan = pan_match.group(1)
+            
+            # Track AMC
+            amc_match = re.search(r'^([A-Za-z\s]+(?:Mutual Fund|MF))$', line)
+            if amc_match:
+                current_amc = amc_match.group(1).strip()
+            
+            # Track Folio
+            folio_match = re.search(r'Folio No:\s*([\d\s/]+)', line)
+            if folio_match:
+                current_folio = folio_match.group(1).strip()
+            
+            # Track Scheme - look for ISIN pattern
+            isin_match = re.search(r'(INF[A-Z0-9]{9})', line)
+            if isin_match:
+                current_isin = isin_match.group(1)
+                # Get scheme name from line above or current line
+                if i > 0 and not lines[i-1].strip().startswith('Folio'):
+                    scheme_line = lines[i-1].strip()
+                    if scheme_line and not re.match(r'^\d', scheme_line):
+                        current_scheme = scheme_line[:100]
+            
+            # Detect TDS entry: "*** TDS on Above ***"
+            if '*** TDS on Above ***' in line:
+                # TDS structure:
+                # Line i-4: Transaction description (e.g., "Redemption - Instalment 1/916...")
+                # Line i-3: Balance after transaction
+                # Line i-2: Date (DD-MMM-YYYY)
+                # Line i-1: TDS Amount
+                # Line i: *** TDS on Above ***
+                
+                if i >= 2:
+                    try:
+                        tds_amount_str = lines[i-1].strip()
+                        date_str = lines[i-2].strip()
+                        
+                        # Get transaction description if available
+                        trans_desc = ''
+                        if i >= 4:
+                            trans_desc = lines[i-4].strip()
+                            if not trans_desc or trans_desc.isdigit() or re.match(r'^[\d,\.]+$', trans_desc):
+                                trans_desc = lines[i-5].strip() if i >= 5 else ''
+                        
+                        # Parse TDS amount
+                        tds_amount = float(tds_amount_str.replace(',', ''))
+                        
+                        # Validate date format
+                        if re.match(r'\d{2}-[A-Za-z]{3}-\d{4}', date_str) and tds_amount > 0:
+                            # Determine Financial Year
+                            from datetime import datetime
+                            tds_date = datetime.strptime(date_str, '%d-%b-%Y')
+                            if tds_date.month >= 4:
+                                fy = f"FY {tds_date.year}-{str(tds_date.year + 1)[2:]}"
+                            else:
+                                fy = f"FY {tds_date.year - 1}-{str(tds_date.year)[2:]}"
+                            
+                            tds_entry = {
+                                'date': date_str,
+                                'amount': tds_amount,
+                                'transaction_desc': trans_desc,
+                                'folio': current_folio,
+                                'scheme': current_scheme,
+                                'isin': current_isin,
+                                'pan': current_pan,
+                                'amc': current_amc,
+                                'financial_year': fy
+                            }
+                            self.tds_entries.append(tds_entry)
+                    except (ValueError, IndexError):
+                        pass
+            
+            i += 1
+
 
 class NAVService:
     """Service to fetch NAV data"""
