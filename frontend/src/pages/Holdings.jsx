@@ -1585,16 +1585,21 @@ export default function Holdings() {
                             </td>
                           </tr>
                         ))}
-                                className={`text-xs ${cf.is_repaid ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}`}
-                                data-testid={`mark-repaid-${cf.id}`}
-                              >
-                                {cf.is_repaid ? <><X className="h-3 w-3 mr-1" /> Undo</> : <><Check className="h-3 w-3 mr-1" /> Mark Repaid</>}
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
                       </tbody>
                     </table>
+                  </div>
+                  
+                  {/* Record Prepayment Button */}
+                  <div className="mt-4 flex justify-between items-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openPrepaymentModal(modalData.trades[activeTab])}
+                      className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+                    >
+                      <DollarSign className="h-4 w-4" />
+                      Record Principal Prepayment
+                    </Button>
                   </div>
                   
                   {/* Transaction Summary Footer */}
