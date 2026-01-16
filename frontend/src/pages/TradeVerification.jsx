@@ -361,7 +361,7 @@ export default function TradeVerification() {
         <div className="bg-white border-b border-gray-200 px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800" data-testid="trade-verification-title">Trade Verification</h1>
+              <h1 className="text-2xl font-bold text-gray-800" data-testid="trade-verification-title">Logs</h1>
               <p className="text-sm text-gray-500 mt-1">Review and approve trade requests from sub-brokers</p>
             </div>
             <div className="flex items-center gap-2">
@@ -384,7 +384,7 @@ export default function TradeVerification() {
               }`}
               data-testid="tab-pending"
             >
-              Pending ({pendingTrades.length})
+              Pending Approvals ({pendingTrades.length})
             </button>
             <button
               onClick={() => setActiveTab("all")}
@@ -395,19 +395,7 @@ export default function TradeVerification() {
               }`}
               data-testid="tab-all"
             >
-              All Trades ({allTrades.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("reinvestment")}
-              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors flex items-center gap-2 ${
-                activeTab === "reinvestment" 
-                  ? "border-amber-600 text-amber-600" 
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-              data-testid="tab-reinvestment"
-            >
-              <Tag className="h-4 w-4" />
-              Reinvestment Tagging
+              Trade Logs ({allTrades.length})
             </button>
           </div>
         </div>
