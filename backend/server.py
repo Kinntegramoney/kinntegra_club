@@ -33,6 +33,97 @@ from analysis_service import (
     SchemeMapper,
     parse_scheme_master_file
 )
+from dateutil.relativedelta import relativedelta
+from calendar import monthrange
+
+
+# ==================== DATE AND INTEREST CALCULATION HELPERS ====================
+
+def add_months_fixed_day(start_date: datetime, months: int) -> datetime:
+    """
+    Add months to a date while keeping the same day of month.
+    If the day doesn't exist in the target month (e.g., Jan 31 + 1 month), 
+    use the last day of the target month.
+    """
+    target_month = start_date.month + months
+    target_year = start_date.year + (target_month - 1) // 12
+    target_month = ((target_month - 1) % 12) + 1
+    
+    # Get the last day of target month
+    last_day_of_month = monthrange(target_year, target_month)[1]
+    
+    # Use the original day or last day if original doesn't exist
+    target_day = min(start_date.day, last_day_of_month)
+    
+    return datetime(target_year, target_month, target_day)
+
+
+def calculate_days_between(date1: datetime, date2: datetime) -> int:
+    """Calculate actual days between two dates"""
+    return abs((date2 - date1).days)
+
+
+def generate_interest_payment_schedule(
+    start_date: str,
+    end_date: str,
+    principal: float,
+    coupon_rate: float,
+    frequency: str = "quarterly"
+) -> list:
+    """
+    Generate interest payment schedule with:
+    - Fixed day of month for each payment
+    - Interest calculated based on actual days in each period
+    """
+    start = datetime.strptime(start_date, '%Y-%m-%d')
+    end = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    months_interval = {
+        "monthly": 1, 
+        "quarterly": 3, 
+        "semi-annual": 6, 
+        "annual": 12
+    }.get(frequency.lower(), 3)
+    
+    interest_payments = []
+    current = start
+    prev_date = start
+    
+    while True:
+        # Add months while keeping the same day
+        current = add_months_fixed_day(start, len(interest_payments) + 1) if months_interval == 1 else \
+                  add_months_fixed_day(start, (len(interest_payments) + 1) * months_interval)
+        
+        if current > end:
+            # Check if we need a final partial period payment at maturity
+            if prev_date < end and prev_date != start:
+                # Calculate interest for remaining days
+                days_in_period = calculate_days_between(prev_date, end)
+                daily_rate = (coupon_rate / 100) / 365
+                interest_amount = principal * daily_rate * days_in_period
+                interest_payments.append({
+                    "date": end.strftime('%Y-%m-%d'),
+                    "amount": round(interest_amount, 2),
+                    "days": days_in_period,
+                    "is_partial": True
+                })
+            break
+        
+        # Calculate interest based on actual days in this period
+        days_in_period = calculate_days_between(prev_date, current)
+        daily_rate = (coupon_rate / 100) / 365
+        interest_amount = principal * daily_rate * days_in_period
+        
+        interest_payments.append({
+            "date": current.strftime('%Y-%m-%d'),
+            "amount": round(interest_amount, 2),
+            "days": days_in_period,
+            "is_partial": False
+        })
+        
+        prev_date = current
+    
+    return interest_payments
 
 
 ROOT_DIR = Path(__file__).parent
