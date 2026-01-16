@@ -2056,6 +2056,120 @@ async def reactivate_client(client_id: str, current_user: dict = Depends(get_cur
     return {"message": "Client reactivated successfully"}
 
 
+@api_router.post("/clients/{client_id}/resend-credentials")
+async def resend_client_credentials(client_id: str, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Resend login credentials to client (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can resend credentials")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Generate new password and PIN
+    new_password = client['pan_number'][-4:] + str(uuid.uuid4().hex[:4])
+    new_pin = str(uuid.uuid4().int)[:4]
+    
+    # Update user credentials
+    await db.users.update_one(
+        {"pan": client['pan_number']},
+        {"$set": {
+            "password_hash": get_password_hash(new_password),
+            "pin_hash": get_password_hash(new_pin)
+        }}
+    )
+    
+    # Try to send email (may fail if SMTP not configured)
+    try:
+        background_tasks.add_task(
+            send_credentials_email,
+            email=client['email'],
+            name=client['name'],
+            pan=client['pan_number'],
+            password=new_password,
+            pin=new_pin
+        )
+        email_sent = True
+    except Exception as e:
+        logger.error(f"Failed to send credentials email: {e}")
+        email_sent = False
+    
+    return {
+        "message": "Credentials reset successfully",
+        "email_sent": email_sent,
+        "credentials": {
+            "pan": client['pan_number'],
+            "password": new_password,
+            "pin": new_pin,
+            "email": client['email'],
+            "name": client['name']
+        }
+    }
+
+
+@api_router.post("/clients/{client_id}/reset-password")
+async def reset_client_password(client_id: str, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Reset client password (brokers only) - generates a new password"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can reset passwords")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Generate new password
+    new_password = client['pan_number'][-4:] + str(uuid.uuid4().hex[:4])
+    
+    # Update user password
+    await db.users.update_one(
+        {"pan": client['pan_number']},
+        {"$set": {"password_hash": get_password_hash(new_password)}}
+    )
+    
+    # Try to send email
+    try:
+        background_tasks.add_task(
+            send_password_reset_email,
+            email=client['email'],
+            name=client['name'],
+            new_password=new_password
+        )
+        email_sent = True
+    except Exception as e:
+        logger.error(f"Failed to send password reset email: {e}")
+        email_sent = False
+    
+    return {
+        "message": "Password reset successfully",
+        "email_sent": email_sent,
+        "new_password": new_password
+    }
+
+
+@api_router.post("/clients/{client_id}/deactivate")
+async def deactivate_client(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Deactivate a client (soft delete - brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can deactivate clients")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {"is_active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Also deactivate the user account
+    await db.users.update_one(
+        {"pan": client['pan_number']},
+        {"$set": {"is_active": False}}
+    )
+    
+    return {"message": "Client deactivated successfully"}
+
+
 @api_router.post("/clients/{client_id}/link-subbroker")
 async def link_client_to_subbroker(client_id: str, subbroker_id: str, current_user: dict = Depends(get_current_user)):
     """Link a client to a sub-broker (brokers only)"""
