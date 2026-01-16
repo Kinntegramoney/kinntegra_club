@@ -1691,6 +1691,7 @@ export default function Holdings() {
                     value={prepaymentDate}
                     onChange={(e) => setPrepaymentDate(e.target.value)}
                     className="w-full"
+                    data-testid="prepayment-date-input"
                   />
                   <p className="text-xs text-gray-500 mt-1">Date when principal was actually repaid</p>
                 </div>
@@ -1707,10 +1708,37 @@ export default function Holdings() {
                       onChange={(e) => setPrepaymentAmount(e.target.value)}
                       placeholder="Enter amount"
                       className="pl-8"
+                      data-testid="prepayment-amount-input"
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Amount of principal repaid early</p>
                 </div>
+                
+                {/* Percentage Preview */}
+                {prepaymentAmount && parseFloat(prepaymentAmount) > 0 && prepaymentTrade?.invested_amount > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4" data-testid="prepayment-percentage-preview">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-green-700 font-medium uppercase">Prepayment Percentage</p>
+                        <p className="text-2xl font-bold text-green-700">
+                          {((parseFloat(prepaymentAmount) / prepaymentTrade.invested_amount) * 100).toFixed(2)}%
+                        </p>
+                        <p className="text-xs text-green-600">
+                          of total principal (₹{prepaymentTrade.invested_amount?.toLocaleString('en-IN')})
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-green-700 font-medium uppercase">Remaining After</p>
+                        <p className="text-lg font-semibold text-green-700">
+                          ₹{(prepaymentTrade.invested_amount - parseFloat(prepaymentAmount)).toLocaleString('en-IN')}
+                        </p>
+                        <p className="text-xs text-green-600">
+                          ({(100 - ((parseFloat(prepaymentAmount) / prepaymentTrade.invested_amount) * 100)).toFixed(2)}% remaining)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1721,6 +1749,7 @@ export default function Holdings() {
                     value={prepaymentNotes}
                     onChange={(e) => setPrepaymentNotes(e.target.value)}
                     placeholder="Any additional notes..."
+                    data-testid="prepayment-notes-input"
                   />
                 </div>
               </div>
@@ -1734,7 +1763,8 @@ export default function Holdings() {
                     <ul className="list-disc list-inside text-xs space-y-1 text-blue-700">
                       <li>Current cycle interest will be prorated (before & after prepayment date)</li>
                       <li>All future interest payments will be recalculated based on remaining principal</li>
-                      <li>Original amounts will be preserved and can be reverted if needed</li>
+                      <li>Client will receive an email notification with revised schedule</li>
+                      <li>Reinvestment tags for affected payments will be marked for review</li>
                     </ul>
                   </div>
                 </div>
