@@ -362,12 +362,35 @@ export default function ReinvestmentTagging() {
                             </thead>
                             <tbody>
                               {client.entries.map((entry) => (
-                                <tr key={entry.cashflow_id} className={`border-t hover:bg-gray-50 ${entry.currentTag === 'not_tagged' ? 'bg-red-50/30' : ''}`}>
-                                  <td className="py-2 px-4 text-sm">{entry.bond_name?.slice(0, 20) || 'N/A'}</td>
+                                <tr key={entry.cashflow_id} className={`border-t hover:bg-gray-50 ${entry.currentTag === 'not_tagged' ? 'bg-red-50/30' : ''} ${entry.prepayment_affected ? 'bg-amber-50/50' : ''}`}>
+                                  <td className="py-2 px-4 text-sm">
+                                    <div className="flex items-center gap-1">
+                                      {entry.bond_name?.slice(0, 20) || 'N/A'}
+                                      {entry.is_amended && (
+                                        <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded" title={entry.amendment_reason || 'Amount revised due to prepayment'}>
+                                          Revised
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
                                   <td className="py-2 px-4 text-center text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yy")}</td>
                                   <td className="py-2 px-4 text-right text-sm font-mono">₹{entry.principal_net?.toLocaleString('en-IN')}</td>
-                                  <td className="py-2 px-4 text-right text-sm font-mono">₹{entry.interest_net?.toLocaleString('en-IN')}</td>
-                                  <td className="py-2 px-4 text-right text-sm font-mono text-green-600 font-medium">₹{entry.net_amount?.toLocaleString('en-IN')}</td>
+                                  <td className="py-2 px-4 text-right text-sm font-mono">
+                                    <div className="flex flex-col items-end">
+                                      <span>₹{entry.interest_net?.toLocaleString('en-IN')}</span>
+                                      {entry.original_interest_component && entry.original_interest_component !== entry.interest_net && (
+                                        <span className="text-[10px] text-gray-400 line-through">₹{(entry.original_interest_component - (entry.original_interest_component * 0.1))?.toLocaleString('en-IN')}</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-2 px-4 text-right text-sm font-mono text-green-600 font-medium">
+                                    <div className="flex flex-col items-end">
+                                      <span>₹{entry.net_amount?.toLocaleString('en-IN')}</span>
+                                      {entry.original_net_amount && entry.original_net_amount !== entry.net_amount && (
+                                        <span className="text-[10px] text-gray-400 line-through">₹{entry.original_net_amount?.toLocaleString('en-IN')}</span>
+                                      )}
+                                    </div>
+                                  </td>
                                   <td className="py-2 px-4">
                                     <select
                                       value={entry.currentTag}
