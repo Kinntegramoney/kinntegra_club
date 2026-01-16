@@ -1334,20 +1334,48 @@ export default function Holdings() {
               {typeof activeTab === 'number' && modalData.trades[activeTab] && (
                 <div className="p-5">
                   {/* Transaction Summary */}
-                  <div className="px-4 py-3 bg-amber-50/50 border border-amber-100 rounded-lg mb-5 flex items-center gap-6 text-sm">
-                    <div>
-                      <span className="text-gray-500">Purchase Date:</span>
-                      <span className="font-medium ml-2">{format(new Date(modalData.trades[activeTab].investment_date), "MMMM dd, yyyy")}</span>
+                  <div className="px-4 py-3 bg-amber-50/50 border border-amber-100 rounded-lg mb-5 flex items-center justify-between flex-wrap gap-4 text-sm">
+                    <div className="flex items-center gap-6">
+                      <div>
+                        <span className="text-gray-500">Purchase Date:</span>
+                        <span className="font-medium ml-2">{format(new Date(modalData.trades[activeTab].investment_date), "MMMM dd, yyyy")}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Units:</span>
+                        <span className="font-medium ml-2">{modalData.trades[activeTab].units}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Invested:</span>
+                        <span className="font-medium ml-2">{formatINR(modalData.trades[activeTab].invested_amount)}</span>
+                      </div>
+                      {modalData.trades[activeTab].xirr !== null && modalData.trades[activeTab].xirr !== undefined && (
+                        <div>
+                          <span className="text-gray-500">XIRR:</span>
+                          <span className={`font-medium ml-2 ${modalData.trades[activeTab].xirr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {modalData.trades[activeTab].xirr.toFixed(2)}%
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <span className="text-gray-500">Units:</span>
-                      <span className="font-medium ml-2">{modalData.trades[activeTab].units}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Invested:</span>
-                      <span className="font-medium ml-2">{formatINR(modalData.trades[activeTab].invested_amount)}</span>
-                    </div>
+                    {modalData.trades[activeTab].prepaid_count > 0 && (
+                      <span className="inline-flex items-center gap-1 text-blue-700 text-xs font-medium bg-blue-100 px-2 py-1 rounded">
+                        {modalData.trades[activeTab].prepaid_count} Prepaid
+                      </span>
+                    )}
                   </div>
+                  
+                  {/* Amended Interest Notice */}
+                  {modalData.trades[activeTab].cashflows.some(cf => cf.is_amended) && (
+                    <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-orange-800 text-sm font-medium">
+                        <AlertCircle className="h-4 w-4" />
+                        Interest Amended Due to Principal Prepayment
+                      </div>
+                      <p className="text-xs text-orange-600 mt-1">
+                        Some interest payments have been recalculated based on reduced outstanding principal. Original amounts shown in brackets.
+                      </p>
+                    </div>
+                  )}
                   
                   {/* Cashflow Table for this transaction */}
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1367,16 +1395,50 @@ export default function Holdings() {
                       </thead>
                       <tbody>
                         {modalData.trades[activeTab].cashflows.map((cf) => (
-                          <tr key={cf.id} className={`border-b border-gray-100 ${cf.is_prepaid ? 'bg-blue-50' : cf.is_repaid ? 'bg-green-50' : ''}`}>
+                          <tr key={cf.id} className={`border-b border-gray-100 ${cf.is_amended ? 'bg-orange-50' : cf.is_prepaid ? 'bg-blue-50' : cf.is_repaid ? 'bg-green-50' : ''}`}>
                             <td className="py-3 px-4">
-                              <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${cf.type === 'interest' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                                {cf.type === 'interest' ? 'Interest' : 'Principal'}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${cf.type === 'interest' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                                  {cf.type === 'interest' ? 'Interest' : 'Principal'}
+                                </span>
+                                {cf.is_amended && (
+                                  <span className="inline-block px-1.5 py-0.5 text-xs font-medium rounded bg-orange-200 text-orange-700" title={cf.amendment_reason}>
+                                    Amended
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.principal_component)}</td>
-                            <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.interest_component)}</td>
-                            <td className="py-3 px-4 text-right font-mono text-sm text-red-600">{formatINR(cf.tds_amount)}</td>
-                            <td className="py-3 px-4 text-right font-mono text-sm font-medium">{formatINR(cf.net_amount)}</td>
+                            <td className="py-3 px-4 text-right font-mono text-sm">
+                              {cf.is_amended && cf.original_interest_component ? (
+                                <div>
+                                  <span className="font-medium">{formatINR(cf.interest_component)}</span>
+                                  <span className="text-xs text-gray-400 line-through block">({formatINR(cf.original_interest_component)})</span>
+                                </div>
+                              ) : (
+                                formatINR(cf.interest_component)
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono text-sm text-red-600">
+                              {cf.is_amended && cf.original_tds_amount ? (
+                                <div>
+                                  <span>{formatINR(cf.tds_amount)}</span>
+                                  <span className="text-xs text-gray-400 line-through block">({formatINR(cf.original_tds_amount)})</span>
+                                </div>
+                              ) : (
+                                formatINR(cf.tds_amount)
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono text-sm font-medium">
+                              {cf.is_amended && cf.original_net_amount ? (
+                                <div>
+                                  <span>{formatINR(cf.net_amount)}</span>
+                                  <span className="text-xs text-gray-400 line-through block">({formatINR(cf.original_net_amount)})</span>
+                                </div>
+                              ) : (
+                                formatINR(cf.net_amount)
+                              )}
+                            </td>
                             <td className="py-3 px-4 text-center font-mono text-sm text-gray-600">
                               {format(new Date(cf.date), "MMM dd, yyyy")}
                             </td>
@@ -1399,15 +1461,38 @@ export default function Holdings() {
                                 <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
                                   <Check className="h-3 w-3" /> Repaid
                                 </span>
+                              ) : cf.is_amended ? (
+                                <span className="text-orange-600 text-xs font-medium">Amended</span>
                               ) : (
                                 <span className="text-amber-600 text-xs font-medium">Pending</span>
                               )}
                             </td>
                             <td className="py-3 px-4 text-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleMarkRepaid(cf.id, !cf.is_repaid)}
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleMarkRepaid(cf.id, !cf.is_repaid)}
+                                  className={`text-xs ${cf.is_repaid ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}`}
+                                  data-testid={`mark-repaid-${cf.id}`}
+                                >
+                                  {cf.is_repaid ? <><X className="h-3 w-3 mr-1" /> Undo</> : <><Check className="h-3 w-3 mr-1" /> Repaid</>}
+                                </Button>
+                                {cf.is_amended && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRevertAmendment(cf.id)}
+                                    className="text-xs text-orange-600 hover:text-orange-700"
+                                    title="Revert to original amount"
+                                  >
+                                    Revert
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
                                 className={`text-xs ${cf.is_repaid ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}`}
                                 data-testid={`mark-repaid-${cf.id}`}
                               >
