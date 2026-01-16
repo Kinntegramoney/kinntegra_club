@@ -743,6 +743,50 @@ class NAVService:
         except Exception as e:
             logger.error(f"Error fetching NAV for {scheme_code}: {e}")
             return None
+    
+    @staticmethod
+    def get_nav_for_date(scheme_code: str, target_date: datetime) -> Optional[float]:
+        """
+        Fetch NAV for a specific date or the closest available date before it.
+        MF API returns historical data, so we fetch all and find the right date.
+        """
+        try:
+            response = requests.get(f"{MFAPI_BASE_URL}/mf/{scheme_code}", timeout=15)
+            if response.status_code == 200:
+                data = response.json()
+                nav_data = data.get('data', [])
+                
+                if not nav_data:
+                    return None
+                
+                # NAV data is sorted with most recent first
+                # Find the NAV for target_date or the closest date before it
+                target_str = target_date.strftime('%d-%m-%Y')
+                
+                for entry in nav_data:
+                    try:
+                        entry_date_str = entry.get('date', '')
+                        entry_nav = float(entry.get('nav', 0))
+                        
+                        # Parse the date from API (format: DD-MM-YYYY)
+                        entry_date = datetime.strptime(entry_date_str, '%d-%m-%Y')
+                        
+                        # If this entry is on or before target date, use it
+                        if entry_date <= target_date:
+                            return entry_nav
+                    except (ValueError, TypeError):
+                        continue
+                
+                # If no date found before target, return the oldest available
+                if nav_data:
+                    try:
+                        return float(nav_data[-1].get('nav', 0))
+                    except:
+                        pass
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching historical NAV for {scheme_code}: {e}")
+            return None
 
 
 class SchemeMapper:
