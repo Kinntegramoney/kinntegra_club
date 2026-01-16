@@ -162,6 +162,64 @@ export default function Holdings() {
     }
   };
 
+  const openPrepaymentModal = (trade) => {
+    setPrepaymentTradeId(trade.trade_id);
+    setPrepaymentTrade(trade);
+    setPrepaymentDate("");
+    setPrepaymentAmount("");
+    setPrepaymentNotes("");
+    setShowPrepaymentModal(true);
+  };
+
+  const handleRecordPrepayment = async () => {
+    if (!prepaymentDate || !prepaymentAmount) {
+      toast.error("Please enter prepayment date and amount");
+      return;
+    }
+    
+    const amount = parseFloat(prepaymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid prepayment amount");
+      return;
+    }
+    
+    setRecordingPrepayment(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/holdings/trade/${prepaymentTradeId}/record-prepayment`,
+        {
+          prepayment_date: prepaymentDate,
+          prepaid_amount: amount,
+          notes: prepaymentNotes || null
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      const result = response.data;
+      
+      let message = `Prepayment of ₹${amount.toLocaleString('en-IN')} recorded.`;
+      if (result.cashflows_amended > 0) {
+        message += ` ${result.cashflows_amended} interest payment(s) amended.`;
+      }
+      if (result.prorated_interest) {
+        message += ` Current cycle interest prorated: ₹${result.prorated_interest.prorated_interest.toLocaleString('en-IN')}`;
+      }
+      
+      toast.success(message);
+      setShowPrepaymentModal(false);
+      
+      if (selectedClient) {
+        fetchClientHoldings(selectedClient.id);
+      }
+    } catch (error) {
+      console.error("Error recording prepayment:", error);
+      toast.error(error.response?.data?.detail || "Failed to record prepayment");
+    } finally {
+      setRecordingPrepayment(false);
+    }
+  };
+
   const handleDownloadExcel = async () => {
     if (!selectedClient) return;
     
