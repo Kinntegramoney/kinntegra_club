@@ -3066,11 +3066,22 @@ async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, curren
         if client.get('linked_subbroker_id') != current_user['id']:
             raise HTTPException(status_code=403, detail="Access denied")
     
-    # Update cashflow
+    # Update cashflow - detect if this is a prepayment
+    scheduled_date = datetime.fromisoformat(cashflow['date'].replace('Z', '+00:00')) if 'T' in cashflow['date'] else datetime.strptime(cashflow['date'], '%Y-%m-%d')
+    
+    actual_date_str = update.repaid_date or datetime.now(timezone.utc).isoformat()
+    actual_date = datetime.fromisoformat(actual_date_str.replace('Z', '+00:00')) if 'T' in actual_date_str else datetime.strptime(actual_date_str, '%Y-%m-%d')
+    
+    # Prepayment: if actual date is before scheduled date
+    is_prepaid = actual_date.date() < scheduled_date.date() if update.is_repaid else False
+    days_early = (scheduled_date.date() - actual_date.date()).days if is_prepaid else 0
+    
     update_data = {
         "is_repaid": update.is_repaid,
-        "repaid_date": update.repaid_date or datetime.now(timezone.utc).isoformat(),
+        "repaid_date": actual_date_str,
         "repaid_actual_amount": update.repaid_amount,
+        "is_prepaid": is_prepaid,
+        "days_early": days_early,
         "notes": update.notes,
         "marked_by": current_user['id'],
         "marked_at": datetime.now(timezone.utc).isoformat()
@@ -3079,13 +3090,20 @@ async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, curren
     if not update.is_repaid:
         update_data["repaid_date"] = None
         update_data["repaid_actual_amount"] = None
+        update_data["is_prepaid"] = False
+        update_data["days_early"] = 0
     
     await db.holding_cashflows.update_one(
         {"id": cashflow_id},
         {"$set": update_data}
     )
     
-    return {"message": "Cashflow updated successfully", "is_repaid": update.is_repaid}
+    return {
+        "message": "Cashflow updated successfully", 
+        "is_repaid": update.is_repaid,
+        "is_prepaid": is_prepaid,
+        "days_early": days_early
+    }
 
 
 # ==================== REINVESTMENT TAGGING ====================
