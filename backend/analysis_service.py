@@ -857,8 +857,53 @@ class GapSheetGenerator:
                 return f"{months} months"
         return "N/A"
     
+    def _fetch_missing_navs(self):
+        """Fetch current NAV from MF API for folios where NAV is missing or 0"""
+        if not self.scheme_mapper:
+            logger.warning("No scheme mapper available, cannot fetch NAVs")
+            return
+        
+        for folio_key, folio_data in self.parsed_data.get('folios', {}).items():
+            current_nav = folio_data.get('current_nav', 0)
+            
+            # Skip if NAV is already valid (greater than 0 and less than 100000)
+            if current_nav and current_nav > 0 and current_nav < 100000:
+                continue
+            
+            # Try to get scheme code from ISIN or scheme name
+            isin = folio_data.get('isin', '')
+            scheme_name = folio_data.get('scheme', '')
+            
+            scheme_code = self.scheme_mapper.get_scheme_code(isin=isin, scheme_name=scheme_name)
+            
+            if scheme_code:
+                nav_data = self.nav_service.get_latest_nav(scheme_code)
+                if nav_data and nav_data.get('data'):
+                    try:
+                        latest_nav = float(nav_data['data'][0].get('nav', 0))
+                        if latest_nav > 0:
+                            folio_data['current_nav'] = latest_nav
+                            folio_data['nav_fetched_from_api'] = True
+                            logger.info(f"Fetched NAV {latest_nav} for {scheme_name[:30]} from API")
+                    except (IndexError, KeyError, ValueError) as e:
+                        logger.warning(f"Failed to parse NAV response for {scheme_name[:30]}: {e}")
+            else:
+                # If we couldn't find scheme code, try to calculate NAV from market value and units
+                market_value = folio_data.get('market_value', 0)
+                closing_balance = folio_data.get('closing_balance', 0)
+                
+                if market_value > 0 and closing_balance > 0:
+                    calculated_nav = market_value / closing_balance
+                    if calculated_nav > 0 and calculated_nav < 100000:  # Sanity check
+                        folio_data['current_nav'] = round(calculated_nav, 4)
+                        folio_data['nav_calculated_from_mv'] = True
+                        logger.info(f"Calculated NAV {calculated_nav:.4f} for {scheme_name[:30]} from market value")
+
     def generate(self) -> bytes:
         """Generate the Gap Sheet Excel file with all sheets"""
+        # First, try to fetch missing NAVs
+        self._fetch_missing_navs()
+        
         wb = Workbook()
         
         # Sheet order:
