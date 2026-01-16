@@ -2046,6 +2046,62 @@ async def delete_client(client_id: str, current_user: dict = Depends(get_current
     return {"message": "Client deleted successfully. PAN can now be reused.", "soft_delete": False}
 
 
+@api_router.get("/clients/{client_id}/details")
+async def get_client_details(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Get full client details for editing (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can view client details")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    return client
+
+
+@api_router.put("/clients/{client_id}")
+async def update_client(client_id: str, client_data: dict, current_user: dict = Depends(get_current_user)):
+    """Update client details (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can update clients")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Fields that can be updated (PAN cannot be changed)
+    updatable_fields = [
+        'name', 'email', 'mobile', 'ucc', 'occupation',
+        'address_line1', 'address_line2', 'city', 'state', 'country', 'pincode',
+        'bank_name', 'account_number', 'branch', 'ifsc_code',
+        'linked_subbroker_id'
+    ]
+    
+    update_data = {}
+    for field in updatable_fields:
+        if field in client_data:
+            update_data[field] = client_data[field]
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": update_data}
+    )
+    
+    # Also update email in users collection if changed
+    if 'email' in update_data and client.get('pan_number'):
+        await db.users.update_one(
+            {"pan": client['pan_number']},
+            {"$set": {"email": update_data['email']}}
+        )
+    
+    return {"message": "Client updated successfully"}
+
+
 @api_router.post("/clients/{client_id}/reactivate")
 async def reactivate_client(client_id: str, current_user: dict = Depends(get_current_user)):
     """Reactivate an inactive client (brokers only)"""
