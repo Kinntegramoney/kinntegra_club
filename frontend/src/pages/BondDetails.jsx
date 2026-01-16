@@ -326,7 +326,7 @@ export default function BondDetails() {
                 data-testid="back-to-dashboard-from-details"
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate(-1)}
+                onClick={() => navigate("/broker/opportunities")}
                 className="text-primary-foreground hover:bg-primary-foreground/10"
               >
                 <ArrowLeft className="h-4 w-4" />
