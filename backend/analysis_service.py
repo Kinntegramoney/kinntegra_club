@@ -2233,6 +2233,44 @@ class GapSheetGenerator:
         ws.cell(row=7, column=1, value="Absolute Gain/Loss")
         ws.cell(row=7, column=2, value=format_inr(total_current_value + total_withdrawn - total_invested))
         
+        # TDS Summary Section - Only show if TDS entries exist
+        tds_entries = self.parsed_data.get('tds_entries', [])
+        if tds_entries:
+            # Calculate TDS by Financial Year
+            tds_by_fy = {}
+            total_tds = 0
+            for tds in tds_entries:
+                fy = tds.get('financial_year', 'Unknown')
+                amount = tds.get('amount', 0)
+                tds_by_fy[fy] = tds_by_fy.get(fy, 0) + amount
+                total_tds += amount
+            
+            # Add TDS Summary section starting at row 9
+            row = 9
+            ws.cell(row=row, column=1, value="TDS SUMMARY (Year-wise)")
+            ws.merge_cells(f'A{row}:B{row}')
+            self._style_header(ws, row, 2)
+            
+            row += 2
+            ws.cell(row=row, column=1, value="Financial Year")
+            ws.cell(row=row, column=2, value="TDS Deducted")
+            self._style_header(ws, row, 2)
+            
+            # Sort FYs chronologically
+            sorted_fys = sorted(tds_by_fy.keys(), key=lambda x: x.split()[1] if len(x.split()) > 1 else x)
+            
+            for fy in sorted_fys:
+                row += 1
+                ws.cell(row=row, column=1, value=fy)
+                ws.cell(row=row, column=2, value=format_inr(tds_by_fy[fy]))
+            
+            # Total TDS row
+            row += 1
+            ws.cell(row=row, column=1, value="Total TDS")
+            ws.cell(row=row, column=1).font = Font(bold=True)
+            ws.cell(row=row, column=2, value=format_inr(total_tds))
+            ws.cell(row=row, column=2).font = Font(bold=True)
+        
         self._auto_width(ws)
     
     def _create_underlying_holdings_sheet(self, wb: Workbook):
