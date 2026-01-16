@@ -60,6 +60,10 @@ const Analysis = () => {
   const [processingProgress, setProcessingProgress] = useState(0);
 
   useEffect(() => {
+    document.title = "Kinntegraa | Analysis";
+  }, []);
+
+  useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
       setUser(JSON.parse(userData));
