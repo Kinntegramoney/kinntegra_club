@@ -907,6 +907,7 @@ class GapSheetGenerator:
         # Group folios by PAN
         pan_folios = defaultdict(dict)
         pan_transactions = defaultdict(list)
+        pan_tds = defaultdict(list)
         
         for key, folio in self.parsed_data.get('folios', {}).items():
             pan = folio.get('pan', 'UNKNOWN')
@@ -916,6 +917,10 @@ class GapSheetGenerator:
             pan = trans.get('pan', 'UNKNOWN')
             pan_transactions[pan].append(trans)
         
+        for tds in self.parsed_data.get('tds_entries', []):
+            pan = tds.get('pan', 'UNKNOWN')
+            pan_tds[pan].append(tds)
+        
         results = {}
         for pan in pan_folios.keys():
             subset_data = {
@@ -924,6 +929,7 @@ class GapSheetGenerator:
                 'folios': pan_folios[pan],
                 'transactions': pan_transactions[pan],
                 'nft_entries': [n for n in self.parsed_data.get('nft_entries', []) if n.get('pan') == pan],
+                'tds_entries': pan_tds[pan],
                 'report_date': self.parsed_data.get('report_date'),
                 'total_transactions': len(pan_transactions[pan])
             }
