@@ -25,6 +25,11 @@ export default function AdminSubBrokers() {
   const [editingPartner, setEditingPartner] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
 
+  // Set page title
+  useEffect(() => {
+    document.title = "Kinntegraa | Sub-Brokers";
+  }, []);
+
   const copyToClipboard = (text, field) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
