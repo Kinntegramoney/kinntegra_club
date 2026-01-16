@@ -1696,11 +1696,12 @@ class GapSheetGenerator:
         ws = wb.create_sheet("MF Transactions")
         
         # Headers matching the template image + MF Ageing
+        # Added "Cost Value" column after "Balance Units" to show cost of remaining units
         headers = [
             "Account Identifier", "Instrument Name", "ISIN", "Transaction Date",
             "Transaction Details", "Opening Units", "Units (Debit)", "Units (Credit)",
             "Closing Units", "Price", "Transaction Amount", "STT", "Stamp Duty",
-            "Total Amount", "Balance Units", "Current NAV", "Current Market Value",
+            "Total Amount", "Balance Units", "Cost Value", "Current NAV", "Current Market Value",
             "MF Ageing", "XIRR", "Advisor ARN", "Advisor Name"
         ]
         
