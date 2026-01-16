@@ -1727,10 +1727,9 @@ class GapSheetGenerator:
         for folio_id, folio_data in self.parsed_data.get('folios', {}).items():
             folio_lookup[folio_id] = folio_data
         
-        # Filter and sort transactions (oldest to newest)
+        # Filter transactions (excluding NFT, Pledge, STT, Stamp Duty)
         filtered_trans = []
         for trans in self.parsed_data.get('transactions', []):
-            # Skip NFT, Pledge, STT, Stamp Duty entries
             if trans.get('is_nft') or trans.get('is_pledge'):
                 continue
             if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
@@ -1746,8 +1745,60 @@ class GapSheetGenerator:
         
         filtered_trans.sort(key=lambda x: parse_date(x.get('date', '')))
         
-        row = 2
+        # Calculate remaining units for each purchase using FIFO (First In First Out)
+        # Group transactions by folio+isin
+        folio_transactions = defaultdict(list)
         for trans in filtered_trans:
+            folio = trans.get('folio', '')
+            isin = trans.get('isin', '')
+            key = f"{folio}_{isin}" if isin else folio
+            folio_transactions[key].append(trans)
+        
+        # For each folio, calculate remaining units per purchase (FIFO)
+        purchase_remaining_units = {}  # key = (folio_key, trans_index) -> remaining_units
+        
+        for folio_key, transactions in folio_transactions.items():
+            # Sort transactions by date
+            sorted_trans = sorted(transactions, key=lambda x: parse_date(x.get('date', '')))
+            
+            # Track purchases with their remaining units
+            purchases = []  # List of {'index': original_index, 'units': remaining_units, 'date': date}
+            
+            for idx, trans in enumerate(sorted_trans):
+                trans_units = trans.get('units', 0)
+                
+                if trans.get('is_redemption'):
+                    # Redemption: deplete oldest purchases first (FIFO)
+                    units_to_redeem = trans_units
+                    for purchase in purchases:
+                        if units_to_redeem <= 0:
+                            break
+                        if purchase['units'] > 0:
+                            deducted = min(purchase['units'], units_to_redeem)
+                            purchase['units'] -= deducted
+                            units_to_redeem -= deducted
+                else:
+                    # Purchase: add to the list
+                    purchases.append({
+                        'index': idx,
+                        'units': trans_units,
+                        'date': trans.get('date', ''),
+                        'original_units': trans_units
+                    })
+            
+            # Store remaining units for each purchase
+            for purchase in purchases:
+                # Find the original transaction index in filtered_trans
+                for i, trans in enumerate(filtered_trans):
+                    t_folio = trans.get('folio', '')
+                    t_isin = trans.get('isin', '')
+                    t_key = f"{t_folio}_{t_isin}" if t_isin else t_folio
+                    if t_key == folio_key and trans.get('date') == purchase['date'] and trans.get('units') == purchase['original_units'] and not trans.get('is_redemption'):
+                        purchase_remaining_units[(folio_key, i)] = purchase['units']
+                        break
+        
+        row = 2
+        for trans_idx, trans in enumerate(filtered_trans):
             folio = trans.get('folio', '')
             isin = trans.get('isin', '')
             folio_key = f"{folio}_{isin}" if isin else folio
