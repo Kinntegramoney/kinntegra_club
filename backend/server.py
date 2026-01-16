@@ -4652,7 +4652,14 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                     "approval_status": cf.get('approval_status', 'not_sent'),  # not_sent, pending, approved, rejected
                     "client_approved": cf.get('client_approved', False),
                     "tagged_at": cf.get('tagged_at'),
-                    "month": cf_date.strftime("%B %Y")
+                    "month": cf_date.strftime("%B %Y"),
+                    # Prepayment-related fields
+                    "is_amended": cf.get('is_amended', False),
+                    "prepayment_affected": cf.get('prepayment_affected', False),
+                    "reinvestment_tag_needs_update": cf.get('reinvestment_tag_needs_update', False),
+                    "original_net_amount": cf.get('original_net_amount'),
+                    "original_interest_component": cf.get('original_interest_component'),
+                    "amendment_reason": cf.get('amendment_reason', '')
                 })
         except (ValueError, TypeError):
             continue
