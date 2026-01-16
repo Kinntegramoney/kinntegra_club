@@ -117,31 +117,48 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 
 ---
 
-## UI Updates (January 15, 2026)
+## UI Updates (January 16, 2026)
 - [x] **Login Page**: Updated firm details - Kinntegrae L.L.C-FZ, License No: 24184465.01, Meydan Grandstand, 6th floor, Meydan Road, Nad Al Sheba, Dubai, U.A.E.
 - [x] **Dashboard Page**: Converted from dark to light theme
-- [x] **Analysis Page**: Converted from dark to light theme for consistency
+- [x] **Analysis Page**: Redesigned with 3-step workflow (Request CAS → Upload PDF → Download Report)
+- [x] **Reinvestment Tagging**: Moved to dedicated page at `/broker/reinvestment` with 3 tabs (Untagged, Tagged, Sent for Approval)
+- [x] **Scheme Master**: Dedicated page at `/broker/admin/scheme-master` with upload and status display
+- [x] **Trade Verification → Logs**: Renamed and cleaned up - now only shows Pending Approvals and Trade Logs tabs
+- [x] **Sidebar Navigation**: Updated with Logs, Reinvestment Tagging, and Scheme Master under Admin
 
 ---
 
 ## Known Issues
 - **Production Deployment Not Syncing**: Platform-level issue. All testing must be done on preview environment.
+- **Email Service**: SMTP connection to mail.kinntegraa.club times out. Workaround: credentials displayed in UI modal for new users.
 - **BondDetails Radio Button**: Minor UI bug - selecting approximate amount doesn't clear bond radio selection
 
 ---
 
-**Last working item**:
--   **Last item agent was working**: Fixed the bug where the `XIRR` column in the `MF Transactions` sheet was not being populated at the PAN level. The issue was that the XIRR calculation was using `folio_data.get('transactions', [])` which didn't always contain all transactions. The fix now uses the global transactions list (`parsed_data.get('transactions', [])`) grouped by folio/ISIN key, ensuring all transactions are captured.
--   **Status**: COMPLETED (January 16, 2025)
--   **Agent Testing Done**: Y
--   **Testing Results**: 
-    - Consolidated: 998 rows, 100% XIRR coverage with 43 unique values
-    - AEHPB8060L: 998 rows, 100% XIRR coverage
-    - AEPPB4263D: 16 rows, 100% XIRR coverage
-    - AAAFC4780F: 10 rows, 100% XIRR coverage
-    - ARBPB3894P: 0 financial transactions (only NFT entries) - correct behavior
--   **User Testing Done**: PENDING
+## Last Working Item (January 16, 2026)
+- **Task**: UI/Navigation Overhaul
+  - Redesigned Analysis page with step-by-step workflow
+  - Created dedicated Reinvestment Tagging page (`/broker/reinvestment`)
+  - Created dedicated Scheme Master page (`/broker/admin/scheme-master`)
+  - Renamed Trade Verification to Logs and removed reinvestment-related code
+  - Updated sidebar navigation
+- **Status**: COMPLETED
+- **Testing Done**: Y (100% pass rate - 9/9 tests)
+- **Test Report**: `/app/test_reports/iteration_9.json`
 
 ---
 
-*Last Updated: January 15, 2026*
+## Upcoming Tasks
+- [ ] Final user verification of recent backend fixes (FIFO, per-transaction XIRR, TDS)
+- [ ] Integrate reliable email service (Resend/SendGrid) - awaiting user approval
+- [ ] Test bulk upload functionality end-to-end
+
+## Future/Backlog Tasks
+- [ ] **CRITICAL**: Refactor `analysis_service.py` (~2500+ lines)
+- [ ] **HIGH**: Refactor `RealEstateDetails.jsx` (~3500 lines)
+- [ ] Bond presentation upload UI
+- [ ] Email sharing UI for Bond & Real Estate pages
+
+---
+
+*Last Updated: January 16, 2026*
