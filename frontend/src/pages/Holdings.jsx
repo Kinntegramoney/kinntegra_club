@@ -157,6 +157,102 @@ export default function Holdings() {
     }
   };
 
+  const handleDownloadRepaymentTemplate = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/holdings/repayment-template`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `repayment_update_template.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Repayment template downloaded");
+    } catch (error) {
+      console.error("Error downloading template:", error);
+      toast.error("Failed to download template");
+    }
+  };
+
+  const handleExportCashflows = async () => {
+    if (!selectedClient) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/holdings/export-cashflows/${selectedClient.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cashflows_${selectedClient.pan_number}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Cashflows exported");
+    } catch (error) {
+      console.error("Error exporting cashflows:", error);
+      toast.error("Failed to export cashflows");
+    }
+  };
+
+  const handleBulkRepaymentUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await axios.post(`${API}/holdings/bulk-repayment-upload`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      const result = response.data;
+      
+      if (result.success_count > 0) {
+        toast.success(`Updated ${result.success_count} repayments (${result.prepaid_count} prepaid)`);
+        if (selectedClient) {
+          fetchClientHoldings(selectedClient.id);
+        }
+      }
+      
+      if (result.failed_count > 0) {
+        toast.error(`${result.failed_count} entries failed. Check console for details.`);
+        console.error("Bulk upload errors:", result.errors);
+      }
+      
+      // Clear the file input
+      e.target.value = '';
+      
+    } catch (error) {
+      console.error("Error uploading repayments:", error);
+      toast.error(error.response?.data?.detail || "Failed to upload repayments");
+      e.target.value = '';
+    }
+  };
+
   const openCashflowModal = (holding) => {
     setModalData(holding);
     setActiveTab("summary");
