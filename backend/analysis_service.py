@@ -1860,22 +1860,30 @@ class GapSheetGenerator:
             if not trans.get('is_redemption') and has_remaining:
                 ws.cell(row=row, column=15, value=round(remaining_units, 3))
             
-            # Column 16: Current NAV - only show for purchases with remaining units
-            if not trans.get('is_redemption') and has_remaining and current_nav > 0:
-                ws.cell(row=row, column=16, value=current_nav)
+            # Column 16: Cost Value - cost of remaining balance units
+            # Cost Value = (Remaining Units / Original Units) * Transaction Amount
+            if not trans.get('is_redemption') and has_remaining and trans_amount > 0:
+                original_units = trans.get('units', 0)
+                if original_units > 0:
+                    cost_value = (remaining_units / original_units) * trans_amount
+                    ws.cell(row=row, column=16, value=round(cost_value, 2))
             
-            # Column 17: Current Market Value - value of remaining units from THIS purchase
+            # Column 17: Current NAV - only show for purchases with remaining units
+            if not trans.get('is_redemption') and has_remaining and current_nav > 0:
+                ws.cell(row=row, column=17, value=current_nav)
+            
+            # Column 18: Current Market Value - value of remaining units from THIS purchase
             if not trans.get('is_redemption') and has_remaining and current_nav > 0:
                 market_value = remaining_units * current_nav
-                ws.cell(row=row, column=17, value=round(market_value, 2))
+                ws.cell(row=row, column=18, value=round(market_value, 2))
             
-            # Column 18: MF Ageing - days held for purchases with remaining units
+            # Column 19: MF Ageing - days held for purchases with remaining units
             trans_date = parse_date(trans.get('date', ''))
             if not trans.get('is_redemption') and has_remaining and trans_date != datetime.min:
                 days_held = (self.report_date - trans_date).days
-                ws.cell(row=row, column=18, value=days_held)
+                ws.cell(row=row, column=19, value=days_held)
             
-            # Column 19: XIRR - Per-transaction XIRR calculation
+            # Column 20: XIRR - Per-transaction XIRR calculation
             # Only calculate for purchase transactions where units from THIS purchase are still held
             # XIRR = annualized return from purchase date to report date
             # Cost = (Remaining Units / Original Units) * Transaction Amount (proportional cost)
@@ -1905,11 +1913,11 @@ class GapSheetGenerator:
                         pass
             
             if xirr_value:
-                ws.cell(row=row, column=19, value=xirr_value)
+                ws.cell(row=row, column=20, value=xirr_value)
             
-            # Column 20: Advisor ARN
-            ws.cell(row=row, column=20, value=trans.get('advisor', ''))
-            # Column 21: Advisor Name (leave blank - not available in CAS)
+            # Column 21: Advisor ARN
+            ws.cell(row=row, column=21, value=trans.get('advisor', ''))
+            # Column 22: Advisor Name (leave blank - not available in CAS)
             
             row += 1
         
