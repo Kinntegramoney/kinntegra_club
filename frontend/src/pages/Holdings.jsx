@@ -1163,14 +1163,15 @@ export default function Holdings() {
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">TDS</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Tentative Date</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Actual Paid</th>
                           <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
                           <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {modalData.trades[activeTab].cashflows.map((cf) => (
-                          <tr key={cf.id} className={`border-b border-gray-100 ${cf.is_repaid ? 'bg-green-50' : ''}`}>
-                            <td className="py-3 px-4 font-mono text-sm">{format(new Date(cf.date), "MMM dd, yyyy")}</td>
+                          <tr key={cf.id} className={`border-b border-gray-100 ${cf.is_prepaid ? 'bg-blue-50' : cf.is_repaid ? 'bg-green-50' : ''}`}>
                             <td className="py-3 px-4">
                               <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${cf.type === 'interest' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                                 {cf.type === 'interest' ? 'Interest' : 'Principal'}
@@ -1180,8 +1181,25 @@ export default function Holdings() {
                             <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.interest_component)}</td>
                             <td className="py-3 px-4 text-right font-mono text-sm text-red-600">{formatINR(cf.tds_amount)}</td>
                             <td className="py-3 px-4 text-right font-mono text-sm font-medium">{formatINR(cf.net_amount)}</td>
+                            <td className="py-3 px-4 text-center font-mono text-sm text-gray-600">
+                              {format(new Date(cf.date), "MMM dd, yyyy")}
+                            </td>
+                            <td className="py-3 px-4 text-center font-mono text-sm">
+                              {cf.is_repaid && cf.repaid_date ? (
+                                <span className={cf.is_prepaid ? 'text-blue-600 font-medium' : 'text-green-600'}>
+                                  {format(new Date(cf.repaid_date), "MMM dd, yyyy")}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
                             <td className="py-3 px-4 text-center">
-                              {cf.is_repaid ? (
+                              {cf.is_prepaid ? (
+                                <span className="inline-flex items-center gap-1 text-blue-600 text-xs font-medium bg-blue-100 px-2 py-0.5 rounded">
+                                  <Check className="h-3 w-3" /> Prepaid
+                                  {cf.days_early > 0 && <span className="text-blue-500">({cf.days_early}d early)</span>}
+                                </span>
+                              ) : cf.is_repaid ? (
                                 <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
                                   <Check className="h-3 w-3" /> Repaid
                                 </span>
