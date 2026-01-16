@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -11,12 +13,46 @@ const API = `${BACKEND_URL}/api`;
 
 export default function EditBondModal({ bond, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
-    name: bond.name || "",
-    secondary_irr: bond.secondary_irr || "",
-    total_units: bond.total_units || 1,
-    units_sold: bond.units_sold || 0
+    name: "",
+    bond_code: "",
+    issuer: "",
+    principal_amount: "",
+    coupon_rate: "",
+    primary_irr: "",
+    secondary_irr: "",
+    start_date: "",
+    end_date: "",
+    interest_payment_frequency: "quarterly",
+    total_units: 1,
+    units_sold: 0,
+    face_value: "",
+    credit_rating: "",
+    description: ""
   });
   const [loading, setLoading] = useState(false);
+
+  // Prefill form with bond data
+  useEffect(() => {
+    if (bond) {
+      setFormData({
+        name: bond.name || "",
+        bond_code: bond.bond_code || "",
+        issuer: bond.issuer || "",
+        principal_amount: bond.principal_amount || "",
+        coupon_rate: bond.coupon_rate || "",
+        primary_irr: bond.primary_irr || "",
+        secondary_irr: bond.secondary_irr || "",
+        start_date: bond.start_date ? bond.start_date.split('T')[0] : "",
+        end_date: bond.end_date ? bond.end_date.split('T')[0] : "",
+        interest_payment_frequency: bond.interest_payment_frequency || "quarterly",
+        total_units: bond.total_units || 1,
+        units_sold: bond.units_sold || 0,
+        face_value: bond.face_value || "",
+        credit_rating: bond.credit_rating || "",
+        description: bond.description || ""
+      });
+    }
+  }, [bond]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,9 +67,19 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
       const token = localStorage.getItem("token");
       await axios.put(`${API}/bonds/${bond.id}`, {
         name: formData.name,
-        secondary_irr: parseFloat(formData.secondary_irr),
-        total_units: parseInt(formData.total_units),
-        units_sold: parseInt(formData.units_sold)
+        issuer: formData.issuer,
+        principal_amount: parseFloat(formData.principal_amount) || 0,
+        coupon_rate: parseFloat(formData.coupon_rate) || 0,
+        primary_irr: parseFloat(formData.primary_irr) || 0,
+        secondary_irr: parseFloat(formData.secondary_irr) || 0,
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        interest_payment_frequency: formData.interest_payment_frequency,
+        total_units: parseInt(formData.total_units) || 1,
+        units_sold: parseInt(formData.units_sold) || 0,
+        face_value: parseFloat(formData.face_value) || 0,
+        credit_rating: formData.credit_rating,
+        description: formData.description
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -50,9 +96,9 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md overflow-hidden">
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
           <h2 className="text-xl font-bold text-gray-800">Edit Bond</h2>
           <button 
             onClick={onClose} 
@@ -64,57 +110,202 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-xs text-gray-500 uppercase">Bond Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              data-testid="edit-bond-name"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="secondary_irr" className="text-xs text-gray-500 uppercase">Secondary IRR (%)</Label>
-            <Input
-              id="secondary_irr"
-              type="number"
-              step="0.01"
-              value={formData.secondary_irr}
-              onChange={(e) => setFormData({...formData, secondary_irr: e.target.value})}
-              data-testid="edit-bond-irr"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="total_units" className="text-xs text-gray-500 uppercase">Total Units</Label>
-              <Input
-                id="total_units"
-                type="number"
-                min="1"
-                value={formData.total_units}
-                onChange={(e) => setFormData({...formData, total_units: e.target.value})}
-                data-testid="edit-bond-total-units"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="units_sold" className="text-xs text-gray-500 uppercase">Units Sold</Label>
-              <Input
-                id="units_sold"
-                type="number"
-                min="0"
-                max={formData.total_units}
-                value={formData.units_sold}
-                onChange={(e) => setFormData({...formData, units_sold: e.target.value})}
-                data-testid="edit-bond-units-sold"
-              />
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Basic Info */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-gray-700 border-b pb-2">Basic Information</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label htmlFor="name">Bond Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  data-testid="edit-bond-name"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="bond_code">Bond Code</Label>
+                <Input
+                  id="bond_code"
+                  value={formData.bond_code}
+                  disabled
+                  className="bg-gray-100"
+                />
+              </div>
+              <div>
+                <Label htmlFor="issuer">Issuer</Label>
+                <Input
+                  id="issuer"
+                  value={formData.issuer}
+                  onChange={(e) => setFormData({...formData, issuer: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="credit_rating">Credit Rating</Label>
+                <Input
+                  id="credit_rating"
+                  value={formData.credit_rating}
+                  onChange={(e) => setFormData({...formData, credit_rating: e.target.value})}
+                  placeholder="e.g., AAA, AA+, A"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
+          {/* Financial Details */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-gray-700 border-b pb-2">Financial Details</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="principal_amount">Principal Amount (₹)</Label>
+                <Input
+                  id="principal_amount"
+                  type="number"
+                  value={formData.principal_amount}
+                  onChange={(e) => setFormData({...formData, principal_amount: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="face_value">Face Value per Unit (₹)</Label>
+                <Input
+                  id="face_value"
+                  type="number"
+                  value={formData.face_value}
+                  onChange={(e) => setFormData({...formData, face_value: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="coupon_rate">Coupon Rate (%)</Label>
+                <Input
+                  id="coupon_rate"
+                  type="number"
+                  step="0.01"
+                  value={formData.coupon_rate}
+                  onChange={(e) => setFormData({...formData, coupon_rate: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="primary_irr">Primary IRR (%)</Label>
+                <Input
+                  id="primary_irr"
+                  type="number"
+                  step="0.01"
+                  value={formData.primary_irr}
+                  onChange={(e) => setFormData({...formData, primary_irr: e.target.value})}
+                  data-testid="edit-bond-primary-irr"
+                />
+              </div>
+              <div>
+                <Label htmlFor="secondary_irr">Secondary IRR (%)</Label>
+                <Input
+                  id="secondary_irr"
+                  type="number"
+                  step="0.01"
+                  value={formData.secondary_irr}
+                  onChange={(e) => setFormData({...formData, secondary_irr: e.target.value})}
+                  data-testid="edit-bond-irr"
+                />
+              </div>
+              <div>
+                <Label htmlFor="interest_payment_frequency">Interest Frequency</Label>
+                <Select 
+                  value={formData.interest_payment_frequency} 
+                  onValueChange={(v) => setFormData({...formData, interest_payment_frequency: v})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="semi-annual">Semi-Annual</SelectItem>
+                    <SelectItem value="annual">Annual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-gray-700 border-b pb-2">Timeline</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start_date">Start Date</Label>
+                <Input
+                  id="start_date"
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="end_date">Maturity Date</Label>
+                <Input
+                  id="end_date"
+                  type="date"
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Units */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-gray-700 border-b pb-2">Units & Availability</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="total_units">Total Units</Label>
+                <Input
+                  id="total_units"
+                  type="number"
+                  min="1"
+                  value={formData.total_units}
+                  onChange={(e) => setFormData({...formData, total_units: e.target.value})}
+                  data-testid="edit-bond-total-units"
+                />
+              </div>
+              <div>
+                <Label htmlFor="units_sold">Units Sold</Label>
+                <Input
+                  id="units_sold"
+                  type="number"
+                  min="0"
+                  max={formData.total_units}
+                  value={formData.units_sold}
+                  onChange={(e) => setFormData({...formData, units_sold: e.target.value})}
+                  data-testid="edit-bond-units-sold"
+                />
+              </div>
+            </div>
+            <div className="bg-gray-50 p-3 rounded-md text-sm">
+              <span className="text-gray-600">Available Units: </span>
+              <span className="font-semibold text-green-600">
+                {(parseInt(formData.total_units) || 0) - (parseInt(formData.units_sold) || 0)}
+              </span>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-gray-700 border-b pb-2">Additional Info</h3>
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                rows={3}
+                placeholder="Enter bond description or notes..."
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="pt-4 flex justify-end gap-3 border-t">
             <Button
               type="button"
               variant="outline"
