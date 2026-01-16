@@ -120,7 +120,7 @@ export default function BulkUpload() {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/broker/opportunities")}
               className="text-white hover:bg-white/20"
             >
               <ArrowLeft className="h-4 w-4" />
