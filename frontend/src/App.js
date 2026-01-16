@@ -253,6 +253,16 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
+          {/* Reinvestment Tagging Route - Broker Only */}
+          <Route 
+            path="/broker/reinvestment" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <ReinvestmentTagging />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </BrowserRouter>
       <Toaster />

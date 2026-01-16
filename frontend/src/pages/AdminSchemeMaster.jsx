@@ -127,10 +127,10 @@ const AdminSchemeMaster = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar user={user} />
       
-      <main className="flex-1 p-4 md:p-8 ml-0 md:ml-64">
+      <main className="flex-1 overflow-auto p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-8">
