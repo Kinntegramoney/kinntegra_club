@@ -1080,7 +1080,7 @@ export default function Holdings() {
               {activeTab === "summary" && (
                 <div className="p-5">
                   {/* Summary Stats */}
-                  <div className="grid grid-cols-4 gap-4 mb-5">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-5">
                     <div className="bg-gray-50 rounded-lg p-4">
                       <p className="text-xs text-gray-500 uppercase">Total Investment</p>
                       <p className="text-lg font-semibold text-gray-800">{formatINR(modalData.invested_amount)}</p>
@@ -1099,7 +1099,26 @@ export default function Holdings() {
                       <p className="text-xs text-amber-600 uppercase">Payment Dates</p>
                       <p className="text-lg font-semibold text-amber-700">{consolidatedCashflows.length}</p>
                     </div>
+                    <div className="bg-purple-50 rounded-lg p-4">
+                      <p className="text-xs text-purple-600 uppercase">XIRR</p>
+                      <p className="text-lg font-semibold text-purple-700">
+                        {modalData.xirr !== null && modalData.xirr !== undefined ? `${modalData.xirr.toFixed(2)}%` : '-'}
+                      </p>
+                    </div>
                   </div>
+                  
+                  {/* Prepaid Summary (if any) */}
+                  {modalData.prepaid_count > 0 && (
+                    <div className="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Check className="h-5 w-5 text-blue-600" />
+                        <span className="font-semibold text-blue-800">Prepaid Bonds Detected</span>
+                      </div>
+                      <p className="text-sm text-blue-700">
+                        {modalData.prepaid_count} payment(s) received early • Total Prepaid: {formatINR(modalData.prepaid_amount)}
+                      </p>
+                    </div>
+                  )}
                   
                   {/* Consolidated Cashflows Table */}
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
