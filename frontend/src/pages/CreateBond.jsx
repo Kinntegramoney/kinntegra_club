@@ -233,7 +233,7 @@ export default function CreateBond() {
               data-testid="back-to-dashboard"
               variant="ghost"
               size="sm"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/broker/opportunities")}
               className="text-primary-foreground hover:bg-primary-foreground/10"
             >
               <ArrowLeft className="h-4 w-4" />
