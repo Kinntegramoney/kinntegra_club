@@ -2091,7 +2091,9 @@ class GapSheetGenerator:
                     adviser_data[adviser_arn]['cashflows'].append((trans_date, -amount))
             
             # Add current value for XIRR calculation (but not as a row)
-            if closing_balance > 0 and current_nav > 0:
+            # Validate NAV - must be greater than 1 to be considered valid
+            valid_nav = current_nav > 1 and current_nav < 100000
+            if closing_balance > 0 and valid_nav:
                 adviser_data[adviser_arn]['current_value'] += market_value
                 adviser_data[adviser_arn]['cashflows'].append((self.report_date, market_value))
         
