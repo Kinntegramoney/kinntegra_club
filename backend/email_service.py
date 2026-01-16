@@ -212,7 +212,7 @@ def send_welcome_email_subbroker(
 ) -> bool:
     """Send welcome email to a new sub-broker with login credentials"""
     
-    subject = "Welcome to Kinntegraa Partner Program - Your Portal Access"
+    subject = "Welcome to Kinntegraa Club - Your Portal Access"
     
     html_content = f"""
     <!DOCTYPE html>
@@ -238,16 +238,16 @@ def send_welcome_email_subbroker(
     <body>
         <div class="container">
             <div class="header">
-                <h1 style="margin: 0;">Welcome to Kinntegraa</h1>
-                <p style="margin: 10px 0 0 0; opacity: 0.9;">Partner Program</p>
+                <h1 style="margin: 0;">Welcome to Kinntegraa Club</h1>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Exclusive Member Access</p>
             </div>
             <div class="content">
                 <p>Dear <strong>{subbroker_name}</strong>,</p>
                 
-                <p>Congratulations! You have been onboarded as a partner by <strong>{broker_name}</strong>.</p>
+                <p>Congratulations! You have been onboarded as a member by <strong>{broker_name}</strong>.</p>
                 
                 <center>
-                    <span class="partner-badge">Partner Code: {partner_code}</span>
+                    <span class="partner-badge">Member Code: {partner_code}</span>
                 </center>
                 
                 <div class="credentials">
@@ -267,7 +267,7 @@ def send_welcome_email_subbroker(
                 </div>
                 
                 <div class="features">
-                    <h3 style="margin-top: 0;">As a Partner, You Can:</h3>
+                    <h3 style="margin-top: 0;">As a Club Member, You Can:</h3>
                     <div class="feature-item">✅ View and share investment opportunities with your clients</div>
                     <div class="feature-item">✅ Manage your client portfolio</div>
                     <div class="feature-item">✅ Track investments and returns</div>
@@ -275,12 +275,12 @@ def send_welcome_email_subbroker(
                 </div>
                 
                 <center>
-                    <a href="{login_url}" class="button">Access Partner Portal</a>
+                    <a href="{login_url}" class="button">Access Kinntegraa Club</a>
                 </center>
                 
                 <div class="footer">
                     <p>If you have any questions, please contact {broker_name} or our support team.</p>
-                    <p>&copy; 2025 Kinntegraa. All rights reserved.</p>
+                    <p>&copy; 2025 Kinntegraa Club. All rights reserved.</p>
                 </div>
             </div>
         </div>
@@ -289,13 +289,13 @@ def send_welcome_email_subbroker(
     """
     
     plain_content = f"""
-    Welcome to Kinntegraa Partner Program
+    Welcome to Kinntegraa Club
     
     Dear {subbroker_name},
     
-    Congratulations! You have been onboarded as a partner by {broker_name}.
+    Congratulations! You have been onboarded as a member by {broker_name}.
     
-    Partner Code: {partner_code}
+    Member Code: {partner_code}
     
     Login Credentials:
     - PAN (Username): {pan}
@@ -305,7 +305,7 @@ def send_welcome_email_subbroker(
     Login URL: {login_url}
     
     Best regards,
-    Kinntegraa Team
+    Kinntegraa Club Team
     """
     
     return send_email(subbroker_email, subject, html_content, plain_content)
