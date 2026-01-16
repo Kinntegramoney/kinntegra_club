@@ -120,10 +120,12 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 - [x] **Login Page**: Updated firm details - Kinntegrae L.L.C-FZ, License No: 24184465.01, Meydan Grandstand, 6th floor, Meydan Road, Nad Al Sheba, Dubai, U.A.E.
 - [x] **Dashboard Page**: Converted from dark to light theme
 - [x] **Analysis Page**: Redesigned with 3-step workflow (Request CAS → Upload PDF → Download Report)
-- [x] **Reinvestment Tagging**: Moved to dedicated page at `/broker/reinvestment` with 3 tabs (Untagged, Tagged, Sent for Approval)
+- [x] **Analysis - Previous Analyses**: Enhanced table with Requested By, Client/Sub-Broker, File Name columns + Download button
+- [x] **Reinv Tag**: Renamed from "Reinvestment Tagging", moved to dedicated page at `/broker/reinvestment`
+- [x] **Reinv Tag Logic Fix**: Client only moves to "Tagged" when ALL entries are tagged. Save All button only enabled when all entries tagged.
 - [x] **Scheme Master**: Dedicated page at `/broker/admin/scheme-master` with upload and status display
-- [x] **Trade Verification → Logs**: Renamed and cleaned up - now only shows Pending Approvals and Trade Logs tabs
-- [x] **Sidebar Navigation**: Updated with Logs, Reinvestment Tagging, and Scheme Master under Admin
+- [x] **Logs Page**: Enhanced with 3 tabs (Pending Approvals, All Logs, Sent for Approval) + Filter panel (search, type, status)
+- [x] **Sidebar Navigation**: Updated with Logs, Reinv Tag, and Scheme Master under Admin
 
 ---
 
