@@ -31,6 +31,11 @@ export default function Holdings() {
   const [mainTab, setMainTab] = useState("holdings"); // "holdings", "trades", or "profile"
   const menuRef = useRef(null);
 
+  // Set page title
+  useEffect(() => {
+    document.title = "Kinntegraa | Holdings";
+  }, []);
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
