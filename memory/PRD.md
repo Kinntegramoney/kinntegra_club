@@ -145,10 +145,21 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
   - Matches entries by Client PAN + Bond Name + Scheduled Date + Type
 - [x] **Holdings Page - Principal Prepayment & Interest Amendment**:
   - When principal is prepaid early, **subsequent interest is automatically recalculated** based on remaining principal
+  - **Prorated interest calculation**: For mid-cycle prepayments, interest is split:
+    - Days before prepayment: calculated on original principal
+    - Days after prepayment: calculated on reduced principal
   - Interest Amendment shows: Current amount (with original in strikethrough)
   - Orange highlight for amended cashflows with "Amended" badge
+  - **"Record Principal Prepayment" button** in transaction view to enter:
+    - Prepayment date
+    - Prepaid amount
+    - Notes
   - **Revert** button to restore original interest amounts
-  - Backend APIs: `POST /amend-interest` for manual amendment, `POST /revert-amendment` to undo
+  - Backend APIs: 
+    - `POST /holdings/trade/{id}/record-prepayment` - Records prepayment with prorated interest
+    - `GET /holdings/trade/{id}/prepayments` - View prepayment history
+    - `POST /holdings/cashflow/{id}/amend-interest` - Manual amendment
+    - `POST /holdings/cashflow/{id}/revert-amendment` - Undo amendment
 
 ---
 
