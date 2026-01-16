@@ -1038,3 +1038,219 @@ def send_password_reset_link_email(
     """
     
     return send_email(recipient_email, subject, html_content, plain_content)
+
+
+def send_prepayment_notification_email(
+    client_name: str,
+    client_email: str,
+    bond_name: str,
+    opportunity_id: str,
+    prepayment_date: str,
+    prepaid_amount: float,
+    prepayment_percentage: float,
+    original_principal: float,
+    remaining_principal: float,
+    remaining_percentage: float,
+    total_prepaid_to_date: float,
+    total_prepaid_percentage: float,
+    revised_cashflows: list = None,
+    broker_name: str = "Your Broker"
+) -> bool:
+    """
+    Send notification to client when a principal prepayment is recorded.
+    
+    Args:
+        client_name: Name of the client
+        client_email: Email address of the client
+        bond_name: Name of the bond/opportunity
+        opportunity_id: Unique identifier of the bond
+        prepayment_date: Date of the prepayment
+        prepaid_amount: Amount of principal prepaid in this transaction
+        prepayment_percentage: Percentage of total principal prepaid in this transaction
+        original_principal: Original total principal amount
+        remaining_principal: Remaining principal after this prepayment
+        remaining_percentage: Percentage of principal remaining
+        total_prepaid_to_date: Total principal prepaid to date (including previous prepayments)
+        total_prepaid_percentage: Total percentage prepaid to date
+        revised_cashflows: List of revised future cashflows (optional)
+        broker_name: Name of the broker
+    
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    
+    subject = f"Principal Prepayment Recorded - {bond_name}"
+    
+    # Build revised schedule HTML if cashflows provided
+    revised_schedule_html = ""
+    if revised_cashflows and len(revised_cashflows) > 0:
+        rows_html = ""
+        for cf in revised_cashflows[:10]:  # Limit to 10 entries
+            cf_date = cf.get('date', 'N/A')
+            cf_type = cf.get('type', 'interest').capitalize()
+            original_amt = cf.get('original_interest_component') or cf.get('interest_component', 0)
+            revised_amt = cf.get('interest_component', 0)
+            is_amended = cf.get('is_amended', False)
+            
+            change_indicator = ""
+            if is_amended:
+                change_indicator = f'<span style="color: #EF4444; font-size: 11px;"> (↓ Reduced)</span>'
+            
+            rows_html += f"""
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px 12px; font-size: 13px;">{cf_date}</td>
+                <td style="padding: 10px 12px; font-size: 13px;">{cf_type}</td>
+                <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-size: 13px;">
+                    ₹{revised_amt:,.2f}{change_indicator}
+                </td>
+            </tr>
+            """
+        
+        revised_schedule_html = f"""
+            <div style="margin-top: 24px;">
+                <h3 style="color: #1f2937; margin: 0 0 12px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    📅 Revised Payment Schedule
+                </h3>
+                <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+                    Future interest payments have been recalculated based on your reduced principal balance.
+                </p>
+                <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 8px; overflow: hidden;">
+                    <thead>
+                        <tr style="background: #f3f4f6;">
+                            <th style="padding: 10px 12px; text-align: left; font-size: 12px; color: #6b7280; text-transform: uppercase;">Date</th>
+                            <th style="padding: 10px 12px; text-align: left; font-size: 12px; color: #6b7280; text-transform: uppercase;">Type</th>
+                            <th style="padding: 10px 12px; text-align: right; font-size: 12px; color: #6b7280; text-transform: uppercase;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows_html}
+                    </tbody>
+                </table>
+                <p style="font-size: 11px; color: #9ca3af; margin-top: 8px; font-style: italic;">
+                    * Only showing next 10 scheduled payments. Log in to your portal for complete schedule.
+                </p>
+            </div>
+        """
+    
+    content = f"""
+                <div class="header">
+                    <div class="logo">K</div>
+                    <h1>Principal Prepayment</h1>
+                    <p>Your investment has been updated</p>
+                </div>
+                <div class="content">
+                    <p class="greeting">Dear <strong>{client_name}</strong>,</p>
+                    
+                    <p>A principal prepayment has been recorded for your investment. Here are the details:</p>
+                    
+                    <div class="credentials">
+                        <h3>📋 Prepayment Details</h3>
+                        <div class="credential-item">
+                            <span class="credential-label">Opportunity ID</span>
+                            <span class="credential-value">{opportunity_id}</span>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">Opportunity</span>
+                            <span class="credential-value" style="font-family: inherit; font-size: 14px;">{bond_name}</span>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">Prepayment Date</span>
+                            <span class="credential-value">{prepayment_date}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #DCFCE7 0%, #BBF7D0 100%); padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #22C55E;">
+                        <h3 style="margin: 0 0 16px 0; color: #166534; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            💰 Amount Received
+                        </h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 16px; border-radius: 8px; margin-bottom: 12px;">
+                            <div>
+                                <span style="color: #6b7280; font-size: 12px; display: block;">Principal Prepaid</span>
+                                <span style="font-size: 24px; font-weight: 700; color: #166534;">₹{prepaid_amount:,.2f}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="color: #6b7280; font-size: 12px; display: block;">Of Total Principal</span>
+                                <span style="font-size: 24px; font-weight: 700; color: #166534;">{prepayment_percentage:.2f}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 16px 0; color: #1f2937; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            📊 Investment Summary
+                        </h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div style="background: white; padding: 12px; border-radius: 8px;">
+                                <span style="color: #6b7280; font-size: 11px; text-transform: uppercase; display: block;">Original Principal</span>
+                                <span style="font-size: 16px; font-weight: 600; color: #1f2937;">₹{original_principal:,.2f}</span>
+                            </div>
+                            <div style="background: white; padding: 12px; border-radius: 8px;">
+                                <span style="color: #6b7280; font-size: 11px; text-transform: uppercase; display: block;">Total Prepaid</span>
+                                <span style="font-size: 16px; font-weight: 600; color: #166534;">₹{total_prepaid_to_date:,.2f}</span>
+                                <span style="font-size: 11px; color: #6b7280;"> ({total_prepaid_percentage:.2f}%)</span>
+                            </div>
+                            <div style="background: white; padding: 12px; border-radius: 8px; grid-column: span 2;">
+                                <span style="color: #6b7280; font-size: 11px; text-transform: uppercase; display: block;">Remaining Principal</span>
+                                <span style="font-size: 18px; font-weight: 700; color: #D4A853;">₹{remaining_principal:,.2f}</span>
+                                <span style="font-size: 12px; color: #6b7280;"> ({remaining_percentage:.2f}% remaining)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {revised_schedule_html}
+                    
+                    <div class="info-box" style="margin-top: 24px;">
+                        <strong>ℹ️ What this means:</strong><br>
+                        <ul style="margin: 10px 0 0 0; padding-left: 20px; font-size: 13px; color: #374151;">
+                            <li>Your principal has been partially returned early</li>
+                            <li>Future interest payments will be calculated on the reduced principal amount</li>
+                            <li>Your overall returns may be lower than originally projected</li>
+                            <li>Any reinvestment tags for affected payments have been updated</li>
+                        </ul>
+                    </div>
+                    
+                    <center style="margin-top: 24px;">
+                        <a href="https://kinntegraa.club/login" class="button">View Full Details →</a>
+                    </center>
+                </div>
+    """
+    
+    footer = f"<p>If you have any questions, please contact your broker <strong>{broker_name}</strong> or reach out to us at <a href='mailto:care@kinntegraa.com' style='color: #D4A853;'>care@kinntegraa.com</a></p>"
+    
+    html_content = get_email_template_base(content, footer)
+    
+    plain_content = f"""
+    Principal Prepayment Notification
+    
+    Dear {client_name},
+    
+    A principal prepayment has been recorded for your investment:
+    
+    Opportunity: {bond_name}
+    Opportunity ID: {opportunity_id}
+    Prepayment Date: {prepayment_date}
+    
+    AMOUNT RECEIVED:
+    - Principal Prepaid: ₹{prepaid_amount:,.2f} ({prepayment_percentage:.2f}% of total)
+    
+    INVESTMENT SUMMARY:
+    - Original Principal: ₹{original_principal:,.2f}
+    - Total Prepaid to Date: ₹{total_prepaid_to_date:,.2f} ({total_prepaid_percentage:.2f}%)
+    - Remaining Principal: ₹{remaining_principal:,.2f} ({remaining_percentage:.2f}%)
+    
+    WHAT THIS MEANS:
+    - Your principal has been partially returned early
+    - Future interest payments will be calculated on the reduced principal
+    - Your reinvestment tags for affected payments have been updated
+    
+    Log in to your portal for full details: https://kinntegraa.club/login
+    
+    If you have questions, please contact your broker {broker_name}.
+    
+    Best regards,
+    Kinntegraa Team
+    
+    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    """
+    
+    return send_email(client_email, subject, html_content, plain_content)
