@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
@@ -22,6 +22,11 @@ export default function Login() {
   const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [tempToken, setTempToken] = useState("");
+
+  // Set page title
+  useEffect(() => {
+    document.title = "Kinntegraa | Login";
+  }, []);
 
   const handleStep1Submit = async (e) => {
     e.preventDefault();
