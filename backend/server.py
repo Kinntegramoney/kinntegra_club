@@ -5751,20 +5751,28 @@ class Bond(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     bond_code: str = ""  # Unique bond identifier code
     name: str
-    start_date: str
-    end_date: str
-    principal_amount: float
-    coupon_rate: float
-    primary_irr: float
-    secondary_irr: float
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    principal_amount: float = 0
+    coupon_rate: Optional[float] = None
+    primary_irr: Optional[float] = None
+    secondary_irr: Optional[float] = None
     minimum_units: int = 1  # Minimum units per order
-    principal_payments: List[PrincipalPayment]
-    interest_payment_frequency: str
-    interest_payments: List[InterestPayment]
+    principal_payments: Optional[List[PrincipalPayment]] = []
+    interest_payment_frequency: Optional[str] = None
+    interest_payments: Optional[List[InterestPayment]] = []
     total_units: int = 1
     units_sold: int = 0
     status: Optional[str] = None  # Computed: 'available', 'funded', 'closed'
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Legacy fields for backward compatibility
+    face_value: Optional[float] = None
+    interest_rate: Optional[float] = None
+    interest_frequency: Optional[str] = None
+    maturity_date: Optional[str] = None
+    rating: Optional[str] = None
+    issuer: Optional[str] = None
+    created_by: Optional[str] = None
 
 
 class SecondaryMarketCalculation(BaseModel):
