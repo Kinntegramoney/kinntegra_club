@@ -769,58 +769,41 @@ def send_password_reset_email(
     
     subject = "Kinntegraa - Your Password Has Been Reset"
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: #EF4444; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-            .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
-            .credentials {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #EF4444; }}
-            .credential-item {{ margin: 10px 0; }}
-            .credential-label {{ color: #6b7280; font-size: 12px; text-transform: uppercase; }}
-            .credential-value {{ font-size: 18px; font-weight: bold; color: #1f2937; font-family: monospace; }}
-            .button {{ display: inline-block; background: #4F46E5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin-top: 20px; }}
-            .footer {{ text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1 style="margin: 0;">🔐 Password Reset</h1>
-            </div>
-            <div class="content">
-                <p>Dear <strong>{recipient_name}</strong>,</p>
-                
-                <p>Your password has been reset. Here are your new credentials:</p>
-                
-                <div class="credentials">
-                    <div class="credential-item">
-                        <div class="credential-label">New Password</div>
-                        <div class="credential-value">{new_password}</div>
+    content = f"""
+                <div class="header">
+                    <div class="logo">K</div>
+                    <h1>Password Reset</h1>
+                    <p>Your credentials have been updated</p>
+                </div>
+                <div class="content">
+                    <p class="greeting">Dear <strong>{recipient_name}</strong>,</p>
+                    
+                    <p>Your password has been reset successfully. Here are your new login credentials:</p>
+                    
+                    <div class="credentials">
+                        <h3>🔐 New Credentials</h3>
+                        <div class="credential-item">
+                            <span class="credential-label">New Password</span>
+                            <span class="credential-value">{new_password}</span>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">New PIN</span>
+                            <span class="credential-value">{new_pin}</span>
+                        </div>
                     </div>
-                    <div class="credential-item">
-                        <div class="credential-label">New PIN</div>
-                        <div class="credential-value">{new_pin}</div>
+                    
+                    <center>
+                        <a href="https://kinntegraa.club/login" class="button">Login Now →</a>
+                    </center>
+                    
+                    <div class="info-box warning" style="margin-top: 24px;">
+                        <strong>⚠️ Security Alert:</strong><br>
+                        If you did not request this password reset, please contact support immediately.
                     </div>
                 </div>
-                
-                <center>
-                    <a href="https://kinntegraa.club/login" class="button">Login Now</a>
-                </center>
-                
-                <p style="margin-top: 20px; color: #EF4444;"><strong>⚠️ Important:</strong> If you did not request this password reset, please contact support immediately.</p>
-                
-                <div class="footer">
-                    <p>&copy; 2025 Kinntegraa. All rights reserved.</p>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
     """
+    
+    html_content = get_email_template_base(content, "")
     
     return send_email(recipient_email, subject, html_content)
 
@@ -836,18 +819,51 @@ def send_credentials_email(
     
     subject = "Kinntegraa - Your Login Credentials"
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #D4A853, #B8860B); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-            .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
-            .credentials {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4A853; }}
-            .credential-item {{ margin: 15px 0; }}
-            .credential-label {{ color: #6b7280; font-size: 12px; text-transform: uppercase; }}
+    content = f"""
+                <div class="header">
+                    <div class="logo">K</div>
+                    <h1>Your Login Credentials</h1>
+                    <p>Access your investment portal</p>
+                </div>
+                <div class="content">
+                    <p class="greeting">Dear <strong>{name}</strong>,</p>
+                    
+                    <p>Here are your login credentials for the Kinntegraa platform:</p>
+                    
+                    <div class="credentials">
+                        <h3>🔐 Login Credentials</h3>
+                        <div class="credential-item">
+                            <span class="credential-label">PAN (Username)</span>
+                            <span class="credential-value">{pan}</span>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">Password</span>
+                            <span class="credential-value">{password}</span>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">PIN (2-Step Verification)</span>
+                            <span class="credential-value">{pin}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="info-box" style="margin-bottom: 24px;">
+                        <strong>🔒 Security Tips:</strong>
+                        <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                            <li>Change your password after first login</li>
+                            <li>Never share your credentials with anyone</li>
+                            <li>Use a strong, unique password</li>
+                        </ul>
+                    </div>
+                    
+                    <center>
+                        <a href="https://kinntegraa.club/login" class="button">Login Now →</a>
+                    </center>
+                </div>
+    """
+    
+    html_content = get_email_template_base(content, "")
+    
+    return send_email(email, subject, html_content)
             .credential-value {{ font-size: 18px; font-weight: bold; color: #1f2937; font-family: monospace; }}
             .button {{ display: inline-block; background: #4F46E5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin-top: 20px; }}
             .footer {{ text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }}
