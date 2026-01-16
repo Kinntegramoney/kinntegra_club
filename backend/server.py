@@ -7458,10 +7458,23 @@ async def clear_all_data():
 async def upload_cas_pdf(
     file: UploadFile = File(...),
     password: str = Form(...),
+    client_id: str = Form(...),
     current_user: dict = Depends(get_current_user)
 ):
     """Upload and analyze a CAS PDF file"""
     try:
+        # Validate client exists and get details for billing
+        client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found. Please select a valid client.")
+        
+        # Get sub-broker info if client is linked to one
+        sub_broker_id = client.get('linked_subbroker_id')
+        sub_broker_name = None
+        if sub_broker_id:
+            sub_broker = await db.partners.find_one({"id": sub_broker_id}, {"_id": 0, "name": 1})
+            sub_broker_name = sub_broker.get('name') if sub_broker else None
+        
         # Read file content
         content = await file.read()
         
@@ -7469,12 +7482,17 @@ async def upload_cas_pdf(
         parser = CASParser(content, password)
         parsed_data = parser.parse()
         
-        # Store analysis result
+        # Store analysis result with client and sub-broker info for billing
         analysis_id = str(uuid.uuid4())
         analysis_record = {
             "id": analysis_id,
             "user_id": current_user['id'],
             "user_name": current_user['name'],
+            "client_id": client_id,
+            "client_name": client.get('name'),
+            "client_pan": client.get('pan_number'),
+            "sub_broker_id": sub_broker_id,
+            "sub_broker_name": sub_broker_name,
             "filename": file.filename,
             "parsed_data": parsed_data,
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -7486,6 +7504,8 @@ async def upload_cas_pdf(
         return {
             "analysis_id": analysis_id,
             "filename": file.filename,
+            "client_name": client.get('name'),
+            "sub_broker_name": sub_broker_name,
             "portfolio_summary": parsed_data.get('portfolio_summary', {}),
             "total_folios": len(parsed_data.get('folios', {})),
             "total_transactions": parsed_data.get('total_transactions', 0),
