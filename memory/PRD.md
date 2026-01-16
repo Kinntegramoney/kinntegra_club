@@ -130,4 +130,18 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
 
 ---
 
+**Last working item**:
+-   **Last item agent was working**: Fixed the bug where the `XIRR` column in the `MF Transactions` sheet was not being populated at the PAN level. The issue was that the XIRR calculation was using `folio_data.get('transactions', [])` which didn't always contain all transactions. The fix now uses the global transactions list (`parsed_data.get('transactions', [])`) grouped by folio/ISIN key, ensuring all transactions are captured.
+-   **Status**: COMPLETED (January 16, 2025)
+-   **Agent Testing Done**: Y
+-   **Testing Results**: 
+    - Consolidated: 998 rows, 100% XIRR coverage with 43 unique values
+    - AEHPB8060L: 998 rows, 100% XIRR coverage
+    - AEPPB4263D: 16 rows, 100% XIRR coverage
+    - AAAFC4780F: 10 rows, 100% XIRR coverage
+    - ARBPB3894P: 0 financial transactions (only NFT entries) - correct behavior
+-   **User Testing Done**: PENDING
+
+---
+
 *Last Updated: January 15, 2026*
