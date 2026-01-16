@@ -233,6 +233,9 @@ export default function Holdings() {
           repaid_tds: 0,
           net_repaid: 0,
           upcoming_expected: 0,
+          prepaid_count: 0,
+          prepaid_amount: 0,
+          xirr: null,
           trades: []
         };
       }
@@ -247,12 +250,25 @@ export default function Holdings() {
       consolidated[bondId].repaid_tds += holding.repaid_tds;
       consolidated[bondId].net_repaid += holding.net_repaid;
       consolidated[bondId].upcoming_expected += holding.upcoming_expected;
+      consolidated[bondId].prepaid_count += holding.prepaid_count || 0;
+      consolidated[bondId].prepaid_amount += holding.prepaid_amount || 0;
+      
+      // Use the XIRR from the holding if available
+      if (holding.xirr !== null && holding.xirr !== undefined) {
+        // If multiple trades, we'll use the weighted average or just take the first non-null
+        if (consolidated[bondId].xirr === null) {
+          consolidated[bondId].xirr = holding.xirr;
+        }
+      }
       
       consolidated[bondId].trades.push({
         trade_id: holding.trade_id,
         units: holding.units,
         investment_date: holding.investment_date,
         invested_amount: holding.invested_amount,
+        prepaid_count: holding.prepaid_count || 0,
+        prepaid_amount: holding.prepaid_amount || 0,
+        xirr: holding.xirr,
         cashflows: holding.cashflows.sort((a, b) => new Date(a.date) - new Date(b.date))
       });
     });
