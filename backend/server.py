@@ -1484,13 +1484,14 @@ async def bulk_upload_bonds(
             coupon_rate_val = float(row['coupon_rate'])
             
             # Check if we have custom principal payment schedule from Sheet 4
-            # If yes, use combined schedule (interest paid with principal on reducing balance)
+            # If yes, use combined schedule (interest paid monthly, principal per schedule)
             # If no, use standard interest schedule based on frequency
             
-            if bond_code in principal_payments_map and len(principal_payments_map[bond_code]) > 1:
-                # Use combined payment schedule - interest calculated on reducing principal
+            if bond_code in principal_payments_map and len(principal_payments_map[bond_code]) > 0:
+                # Use combined payment schedule - monthly interest, principal per schedule
                 schedule_result = generate_combined_payment_schedule(
                     start_date=start_date,
+                    end_date=end_date,
                     principal=principal,
                     coupon_rate=coupon_rate_val,
                     principal_payments=principal_payments
