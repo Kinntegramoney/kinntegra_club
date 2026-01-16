@@ -976,7 +976,7 @@ async def bulk_upload_clients(
             client = {
                 "id": user_id,
                 "name": str(row['name']).strip(),
-                "pan": pan,
+                "pan_number": pan,  # Use pan_number to match client schema
                 "ucc": ucc,
                 "email": str(row.get('email', '')).strip() if not pd.isna(row.get('email')) else "",
                 "mobile": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else "",
