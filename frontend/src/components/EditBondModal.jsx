@@ -222,6 +222,7 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
                     <SelectItem value="quarterly">Quarterly</SelectItem>
                     <SelectItem value="semi-annual">Semi-Annual</SelectItem>
                     <SelectItem value="annual">Annual</SelectItem>
+                    <SelectItem value="on_maturity">On Maturity</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
