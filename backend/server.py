@@ -2015,7 +2015,7 @@ async def update_client(client_id: str, client_update: ClientUpdate, current_use
 
 @api_router.delete("/clients/{client_id}")
 async def delete_client(client_id: str, current_user: dict = Depends(get_current_user)):
-    """Soft delete a client (brokers only) - marks as inactive if has trades"""
+    """Hard delete a client (brokers only) - removes from both clients and users collections"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can delete clients")
     
@@ -2027,16 +2027,23 @@ async def delete_client(client_id: str, current_user: dict = Depends(get_current
     trades = await db.trades.find({"client_id": client_id, "status": "approved"}).to_list(1)
     
     if trades:
-        # Soft delete - mark as inactive
-        await db.clients.update_one(
-            {"id": client_id},
-            {"$set": {"is_active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}}
+        # Cannot hard delete - client has trades
+        raise HTTPException(
+            status_code=400, 
+            detail="Cannot delete client with confirmed trades. Use 'Deactivate' instead to disable the account."
         )
-        return {"message": "Client marked as inactive (has confirmed trades)", "soft_delete": True}
-    else:
-        # Hard delete - no confirmed trades
-        await db.clients.delete_one({"id": client_id})
-        return {"message": "Client deleted successfully", "soft_delete": False}
+    
+    # Hard delete - remove from both collections to allow PAN reuse
+    pan_number = client.get('pan_number')
+    
+    # Delete from clients collection
+    await db.clients.delete_one({"id": client_id})
+    
+    # Also delete from users collection to allow recreation with same PAN
+    if pan_number:
+        await db.users.delete_one({"pan": pan_number})
+    
+    return {"message": "Client deleted successfully. PAN can now be reused.", "soft_delete": False}
 
 
 @api_router.post("/clients/{client_id}/reactivate")
