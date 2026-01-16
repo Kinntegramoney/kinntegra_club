@@ -3003,6 +3003,17 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         repaid_interest = sum(cf.get('interest_component', 0) for cf in stored_cashflows if cf.get('is_repaid'))
         repaid_tds = sum(cf.get('tds_amount', 0) for cf in stored_cashflows if cf.get('is_repaid'))
         
+        # Calculate prepaid info
+        prepaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_prepaid')]
+        prepaid_amount = sum(cf.get('repaid_actual_amount', 0) or cf.get('net_amount', 0) for cf in prepaid_cashflows)
+        
+        # Calculate XIRR for this holding
+        holding_xirr = calculate_holding_xirr(
+            trade['investment_date'], 
+            investment_amount, 
+            stored_cashflows
+        )
+        
         holdings.append({
             "trade_id": trade['id'],
             "bond_id": trade['bond_id'],
@@ -3019,6 +3030,9 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "repaid_tds": round(repaid_tds, 2),
             "net_repaid": round(repaid_amount, 2),
             "upcoming_expected": round(upcoming_amount, 2),
+            "prepaid_count": len(prepaid_cashflows),
+            "prepaid_amount": round(prepaid_amount, 2),
+            "xirr": holding_xirr,
             "cashflows": stored_cashflows,
             "status": "active" if upcoming_amount > 0 else "fully_repaid"
         })
