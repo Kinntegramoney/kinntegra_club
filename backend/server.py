@@ -1217,32 +1217,17 @@ async def bulk_upload_bonds(
     
     for idx, row in df.iterrows():
         try:
-            # Validate required fields - check both possible column name formats
-            bond_code_col = 'bond_code'
-            bond_name_col = 'bond_name'
-            principal_col = 'principal_amount' if 'principal_amount' in row.index else 'principal_amount_(inr)'
-            coupon_col = 'coupon_rate' if 'coupon_rate' in row.index else 'coupon_rate_'
-            primary_irr_col = 'primary_irr' if 'primary_irr' in row.index else 'primary_irr_'
-            secondary_irr_col = 'secondary_irr' if 'secondary_irr' in row.index else 'secondary_irr_'
+            # Validate required fields - using standardized column names after cleaning
+            required_fields = ['bond_code', 'bond_name', 'principal_amount', 'coupon_rate', 
+                              'primary_irr', 'secondary_irr', 'start_date', 'maturity_date']
             
-            required_checks = [
-                ('bond_code', row.get(bond_code_col)),
-                ('bond_name', row.get(bond_name_col)),
-                ('principal_amount', row.get(principal_col)),
-                ('coupon_rate', row.get(coupon_col)),
-                ('primary_irr', row.get(primary_irr_col)),
-                ('secondary_irr', row.get(secondary_irr_col)),
-                ('start_date', row.get('start_date')),
-                ('maturity_date', row.get('maturity_date'))
-            ]
-            
-            missing = [name for name, val in required_checks if pd.isna(val)]
+            missing = [f for f in required_fields if f not in row.index or pd.isna(row.get(f))]
             if missing:
                 results['errors'].append(f"Row {idx+2}: Missing required fields: {', '.join(missing)}")
                 results['failed'] += 1
                 continue
             
-            bond_code = str(row[bond_code_col]).strip()
+            bond_code = str(row['bond_code']).strip()
             
             # Check for duplicate bond code
             existing = await db.bonds.find_one({"bond_code": bond_code})
