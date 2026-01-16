@@ -17,6 +17,11 @@ export default function Opportunities() {
   const [realEstateOpps, setRealEstateOpps] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Set page title
+  useEffect(() => {
+    document.title = "Kinntegraa | Opportunities";
+  }, []);
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
