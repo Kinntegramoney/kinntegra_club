@@ -24,6 +24,11 @@ export default function AdminClients() {
   const [searchQuery, setSearchQuery] = useState("");
   const [linkingClient, setLinkingClient] = useState(null);
 
+  // Set page title
+  useEffect(() => {
+    document.title = "Kinntegraa | Clients";
+  }, []);
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
