@@ -86,6 +86,45 @@ export default function ReinvestmentTagging() {
     }
   };
 
+  // Save all tags for a client - only when ALL entries are tagged
+  const handleSaveAllClientTags = async (client) => {
+    // Check if all entries are tagged
+    const allTagged = client.entries.every(e => {
+      const tag = localTags[e.cashflow_id] || e.currentTag;
+      return tag && tag !== 'not_tagged';
+    });
+    
+    if (!allTagged) {
+      toast.error("Please tag all entries before saving");
+      return;
+    }
+
+    setSavingClient(client.client_id);
+    try {
+      // Save all tags for this client
+      await Promise.all(
+        client.entries.map(entry => 
+          axios.put(`${API}/reinvestment/tag/${entry.cashflow_id}`, 
+            { 
+              reinvestment_tag: localTags[entry.cashflow_id] || entry.currentTag,
+              custom_amount: (localTags[entry.cashflow_id] || entry.currentTag) === 'other' 
+                ? parseFloat(customAmounts[entry.cashflow_id] || entry.custom_amount) 
+                : null
+            },
+            getAuthHeaders()
+          )
+        )
+      );
+      toast.success(`All tags saved for ${client.client_name}`);
+      fetchReinvestmentData();
+    } catch (error) {
+      console.error("Error saving tags:", error);
+      toast.error("Failed to save tags");
+    } finally {
+      setSavingClient(null);
+    }
+  };
+
   const handleSendForApproval = async (client) => {
     const selectedEntries = selectedClientEntries[client.client_id] || [];
     if (selectedEntries.length === 0) {
