@@ -479,12 +479,15 @@ class CASParser:
                         
                         # Check if amount_str looks like a TDS total payout (amount in parentheses)
                         # These appear after TDS entries and look like: (6,975.00), (99,808.00), etc.
-                        # They are NOT actual transaction amounts - skip them
+                        # BUT amounts in parentheses are also valid for redemptions!
+                        # Only skip if the trans_type_line (4 lines ahead) does NOT contain "Redemption"
                         if re.match(r'^\(\d{1,3}(?:,\d{3})*\.\d{2}\)$', amount_str):
-                            # This is a TDS-related payout amount line, not a real transaction
-                            # Skip this entry as it will create a malformed transaction
-                            i += 1
-                            continue
+                            # Check if this is a valid redemption transaction or a TDS payout line
+                            # For redemptions, trans_type_line will contain "Redemption"
+                            if 'Redemption' not in trans_type_line and 'Switch' not in trans_type_line:
+                                # This is likely a TDS-related payout amount line, not a real transaction
+                                i += 1
+                                continue
                         
                         # Handle Non-Financial Transactions (NFTs) like KYC updates, Nominee registration
                         # These have format: Date, ***Description***, next date, etc.
