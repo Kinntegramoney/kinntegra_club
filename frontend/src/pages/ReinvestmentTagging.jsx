@@ -254,7 +254,7 @@ export default function ReinvestmentTagging() {
             <div>
               <h1 className="text-2xl font-bold text-gray-800" data-testid="reinvestment-title">
                 <Tag className="h-6 w-6 inline-block mr-2 text-amber-500" />
-                Reinvestment Tagging
+                Reinv Tag
               </h1>
               <p className="text-sm text-gray-500 mt-1">Tag upcoming cashflows for reinvestment and send for client approval</p>
             </div>
