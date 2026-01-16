@@ -99,6 +99,7 @@ class CASParser:
             self._parse_portfolio_summary(full_text)
             self._parse_folios_and_transactions(full_text)
             self._parse_nft(full_text)
+            self._parse_tds(full_text)
             
             return {
                 "investor_info": self.investor_info,
@@ -106,6 +107,7 @@ class CASParser:
                 "folios": self.folios,
                 "transactions": self.transactions,
                 "nft_entries": self.nft_entries,
+                "tds_entries": self.tds_entries,
                 "report_date": self.report_date,
                 "total_transactions": len(self.transactions)
             }
