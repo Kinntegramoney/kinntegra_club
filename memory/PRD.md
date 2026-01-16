@@ -137,6 +137,12 @@ B2B platform for brokers to manage secondary market Non-Convertible Debentures (
   - Prepaid entries highlighted in blue with "X days early" indicator
   - Summary modal shows XIRR stat and prepaid summary section
   - Backend calculates XIRR using scipy.optimize based on investment + actual repayment dates
+- [x] **Holdings Page - Bulk Repayment Upload**:
+  - Download template button for Excel format
+  - Export Cashflows button to download current client's cashflows
+  - Upload Repayments button to bulk update historical repayments
+  - Auto-detects prepaid entries during upload
+  - Matches entries by Client PAN + Bond Name + Scheduled Date + Type
 
 ---
 
