@@ -1424,19 +1424,35 @@ async def bulk_upload_bonds(
             if not principal_payments:
                 principal_payments = [{"date": end_date, "percentage": 100.0}]
             
-            # Generate interest payments with fixed day of month and actual days calculation
+            # Get financial details
             frequency = str(row.get('interest_payment_frequency', 'quarterly')).lower().strip() if not pd.isna(row.get('interest_payment_frequency')) else 'quarterly'
             principal = float(row['principal_amount'])
             coupon_rate_val = float(row['coupon_rate'])
             
-            # Use the new helper function for proper date and interest calculation
-            interest_payments = generate_interest_payment_schedule(
-                start_date=start_date,
-                end_date=end_date,
-                principal=principal,
-                coupon_rate=coupon_rate_val,
-                frequency=frequency
-            )
+            # Check if we have custom principal payment schedule from Sheet 4
+            # If yes, use combined schedule (interest paid with principal on reducing balance)
+            # If no, use standard interest schedule based on frequency
+            
+            if bond_code in principal_payments_map and len(principal_payments_map[bond_code]) > 1:
+                # Use combined payment schedule - interest calculated on reducing principal
+                schedule_result = generate_combined_payment_schedule(
+                    start_date=start_date,
+                    principal=principal,
+                    coupon_rate=coupon_rate_val,
+                    principal_payments=principal_payments
+                )
+                interest_payments = schedule_result['interest_payments']
+                combined_schedule = schedule_result['combined_schedule']
+            else:
+                # Use standard interest payment schedule based on frequency
+                interest_payments = generate_interest_payment_schedule(
+                    start_date=start_date,
+                    end_date=end_date,
+                    principal=principal,
+                    coupon_rate=coupon_rate_val,
+                    frequency=frequency
+                )
+                combined_schedule = None
             
             bond_id = str(uuid.uuid4())
             bond = {
@@ -1454,6 +1470,7 @@ async def bulk_upload_bonds(
                 "interest_payment_frequency": frequency,
                 "principal_payments": principal_payments,
                 "interest_payments": interest_payments,
+                "combined_schedule": combined_schedule,  # New field for combined principal+interest schedule
                 "issuer": str(row.get('issuer_company_name', '')) if not pd.isna(row.get('issuer_company_name')) else '',
                 "credit_rating": str(row.get('credit_rating', '')) if not pd.isna(row.get('credit_rating')) else '',
                 "description": str(row.get('description', '')) if not pd.isna(row.get('description')) else '',
