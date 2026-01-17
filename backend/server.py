@@ -5643,6 +5643,19 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         # Clear portfolio category if not investing
         update_data['portfolio_category'] = None
     
+    # Handle target UCC for reinvestment
+    if update.target_ucc:
+        # Validate that the UCC belongs to the client
+        client_ucc_list = client.get('ucc_list', [])
+        if not client_ucc_list and client.get('ucc'):
+            client_ucc_list = [client.get('ucc')]
+        if update.target_ucc.upper() not in [u.upper() for u in client_ucc_list]:
+            raise HTTPException(status_code=400, detail=f"UCC '{update.target_ucc}' does not belong to this client")
+        update_data['target_ucc'] = update.target_ucc.upper()
+    elif update.reinvestment_tag in ['not_tagged', 'not_invest']:
+        # Clear target UCC if not investing
+        update_data['target_ucc'] = None
+    
     # If broker/sub-broker is tagging, set pending approval
     if current_user['role'] in ['broker', 'sub_broker'] and update.reinvestment_tag not in ['not_tagged']:
         update_data['client_approved'] = False
@@ -5657,7 +5670,8 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         "message": "Tag updated successfully", 
         "reinvestment_tag": update.reinvestment_tag, 
         "custom_amount": update.custom_amount,
-        "portfolio_category": update.portfolio_category
+        "portfolio_category": update.portfolio_category,
+        "target_ucc": update.target_ucc
     }
 
 
