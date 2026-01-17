@@ -858,6 +858,128 @@ async def reactivate_partner(partner_id: str, current_user: dict = Depends(get_c
     return {"message": "Sub-broker reactivated successfully"}
 
 
+@api_router.post("/partners/{partner_id}/deactivate")
+async def deactivate_partner(partner_id: str, current_user: dict = Depends(get_current_user)):
+    """Deactivate a sub-broker (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can deactivate partners")
+    
+    partner = await db.partners.find_one({"id": partner_id, "created_by": current_user['id']})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    
+    await db.partners.update_one(
+        {"id": partner_id},
+        {"$set": {"is_active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    await db.users.update_one(
+        {"id": partner_id},
+        {"$set": {"is_active": False}}
+    )
+    
+    return {"message": "Sub-broker deactivated successfully"}
+
+
+@api_router.post("/partners/{partner_id}/resend-credentials")
+async def resend_partner_credentials(
+    partner_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Resend login credentials email to sub-broker (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can resend credentials")
+    
+    partner = await db.partners.find_one({"id": partner_id, "created_by": current_user['id']})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    
+    if not partner.get('email'):
+        raise HTTPException(status_code=400, detail="Sub-broker does not have an email address")
+    
+    # Get stored credentials
+    initial_password = partner.get('initial_password')
+    initial_pin = partner.get('initial_pin')
+    
+    if not initial_password or not initial_pin:
+        raise HTTPException(
+            status_code=400, 
+            detail="Original credentials not stored. Please use Reset Password instead."
+        )
+    
+    # Send email in background
+    background_tasks.add_task(
+        send_welcome_email_subbroker,
+        subbroker_name=partner['name'],
+        subbroker_email=partner['email'],
+        pan=partner['pan'],
+        password=initial_password,
+        pin=initial_pin,
+        partner_code=partner.get('partner_code', ''),
+        broker_name=current_user.get('name', 'Admin')
+    )
+    
+    return {"message": f"Credentials sent to {partner['email']}"}
+
+
+@api_router.post("/partners/{partner_id}/reset-password")
+async def reset_partner_password(
+    partner_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Reset password for a sub-broker and send email (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can reset passwords")
+    
+    partner = await db.partners.find_one({"id": partner_id, "created_by": current_user['id']})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    
+    # Generate new password and PIN
+    new_password = generate_password()
+    new_pin = generate_pin()
+    
+    # Update user credentials
+    await db.users.update_one(
+        {"id": partner_id},
+        {"$set": {
+            "password_hash": get_password_hash(new_password),
+            "pin_hash": get_password_hash(new_pin)
+        }}
+    )
+    
+    # Update stored credentials in partner record
+    await db.partners.update_one(
+        {"id": partner_id},
+        {"$set": {
+            "initial_password": new_password,
+            "initial_pin": new_pin,
+            "password_reset_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Send email if partner has email
+    if partner.get('email'):
+        background_tasks.add_task(
+            send_welcome_email_subbroker,
+            subbroker_name=partner['name'],
+            subbroker_email=partner['email'],
+            pan=partner['pan'],
+            password=new_password,
+            pin=new_pin,
+            partner_code=partner.get('partner_code', ''),
+            broker_name=current_user.get('name', 'Admin')
+        )
+        return {"message": f"Password reset and sent to {partner['email']}"}
+    else:
+        return {
+            "message": "Password reset successfully",
+            "new_password": new_password,
+            "new_pin": new_pin
+        }
+
+
 # ==================== BULK UPLOAD ENDPOINTS ====================
 
 @api_router.get("/bulk/template/sub-brokers")
