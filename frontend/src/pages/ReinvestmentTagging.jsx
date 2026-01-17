@@ -89,6 +89,10 @@ export default function ReinvestmentTagging() {
     setPortfolioCategories(prev => ({ ...prev, [cashflowId]: category }));
   };
 
+  const handleTargetUccChange = (cashflowId, ucc) => {
+    setTargetUccs(prev => ({ ...prev, [cashflowId]: ucc }));
+  };
+
   const handleSaveEntryTag = async (cashflowId) => {
     setSavingClient(cashflowId);
     try {
@@ -96,7 +100,8 @@ export default function ReinvestmentTagging() {
         { 
           reinvestment_tag: localTags[cashflowId],
           custom_amount: localTags[cashflowId] === 'other' ? parseFloat(customAmounts[cashflowId]) : null,
-          portfolio_category: portfolioCategories[cashflowId] || null
+          portfolio_category: portfolioCategories[cashflowId] || null,
+          target_ucc: targetUccs[cashflowId] || null
         },
         getAuthHeaders()
       );
