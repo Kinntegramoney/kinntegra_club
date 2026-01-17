@@ -217,6 +217,18 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label htmlFor="cutoff_days">Cut-off Days</Label>
+                <Input
+                  id="cutoff_days"
+                  type="number"
+                  value={formData.cutoff_days}
+                  onChange={(e) => setFormData({...formData, cutoff_days: e.target.value})}
+                  placeholder="15"
+                  title="Days before payment date to consider as missed for secondary market"
+                />
+                <p className="text-xs text-gray-500 mt-1">For secondary market calc</p>
+              </div>
             </div>
           </div>
 
