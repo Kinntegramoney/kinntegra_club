@@ -1622,6 +1622,7 @@ async def bulk_upload_clients(
             }
             await db.clients.insert_one(client)
             results['success'] += 1
+            results['created'] += 1
             
         except Exception as e:
             results['errors'].append(f"Row {idx+2}: {str(e)}")
