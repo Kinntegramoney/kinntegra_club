@@ -1540,12 +1540,22 @@ async def bulk_upload_clients(
                     update_data['linked_subbroker_id'] = linked_subbroker_id
                 
                 # Update UCCs - merge with existing (add new ones, keep existing)
-                existing_uccs = existing_client.get('ucc_list', [])
-                if not existing_uccs and existing_client.get('ucc'):
-                    existing_uccs = [existing_client.get('ucc')]
+                # Handle case where ucc_list is None or doesn't exist
+                existing_uccs = existing_client.get('ucc_list') or []
+                if not existing_uccs:
+                    # Check for old single ucc field
+                    old_ucc = existing_client.get('ucc')
+                    if old_ucc:
+                        existing_uccs = [old_ucc]
+                    else:
+                        existing_uccs = []
                 
+                # Filter out None values and merge
+                existing_uccs = [u for u in existing_uccs if u]
                 merged_uccs = list(set(existing_uccs + ucc_list))[:5]  # Merge and limit to 5
-                if set(merged_uccs) != set(existing_uccs):
+                
+                # Always update ucc_list if client doesn't have it or if there are new UCCs
+                if not existing_client.get('ucc_list') or set(merged_uccs) != set(existing_uccs):
                     update_data['ucc_list'] = merged_uccs
                 
                 if update_data:
