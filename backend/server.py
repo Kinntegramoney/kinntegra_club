@@ -1323,9 +1323,9 @@ async def bulk_upload_clients(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Bulk upload clients from Excel file"""
-    if current_user['role'] != 'broker':
-        raise HTTPException(status_code=403, detail="Only brokers can bulk upload clients")
+    """Bulk upload clients from Excel file with multiple sheets"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can bulk upload clients")
     
     if not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
@@ -1333,14 +1333,69 @@ async def bulk_upload_clients(
     import pandas as pd
     
     content = await file.read()
-    df = pd.read_excel(io.BytesIO(content), sheet_name=0)
+    excel_file = io.BytesIO(content)
     
-    # Clean column names
-    df.columns = [col.replace('*', '').strip().lower().replace(' ', '_').replace('-', '_') for col in df.columns]
+    # Read all sheets
+    try:
+        df_personal = pd.read_excel(excel_file, sheet_name=0)  # Personal Details
+        excel_file.seek(0)
+        df_address = pd.read_excel(excel_file, sheet_name=1)   # Address Details
+        excel_file.seek(0)
+        df_bank = pd.read_excel(excel_file, sheet_name=2)      # Bank Details
+        excel_file.seek(0)
+        df_nominee = pd.read_excel(excel_file, sheet_name=3)   # Nominee Details
+        excel_file.seek(0)
+        df_subbroker = pd.read_excel(excel_file, sheet_name=4) # Sub-Broker Assignment
+    except Exception as e:
+        # If sheets don't exist, fallback to single sheet parsing
+        excel_file.seek(0)
+        df_personal = pd.read_excel(excel_file, sheet_name=0)
+        df_address = pd.DataFrame()
+        df_bank = pd.DataFrame()
+        df_nominee = pd.DataFrame()
+        df_subbroker = pd.DataFrame()
+    
+    # Clean column names for all dataframes
+    def clean_columns(df):
+        if not df.empty:
+            df.columns = [col.replace('*', '').strip().lower().replace(' ', '_').replace('-', '_').replace('/', '_') for col in df.columns]
+        return df
+    
+    df_personal = clean_columns(df_personal)
+    df_address = clean_columns(df_address)
+    df_bank = clean_columns(df_bank)
+    df_nominee = clean_columns(df_nominee)
+    df_subbroker = clean_columns(df_subbroker)
+    
+    # Create lookup dictionaries by PAN for other sheets
+    address_by_pan = {}
+    bank_by_pan = {}
+    nominee_by_pan = {}
+    subbroker_by_pan = {}
+    
+    if not df_address.empty and 'pan' in df_address.columns:
+        for _, row in df_address.iterrows():
+            if not pd.isna(row.get('pan')):
+                address_by_pan[str(row['pan']).upper().strip()] = row
+    
+    if not df_bank.empty and 'pan' in df_bank.columns:
+        for _, row in df_bank.iterrows():
+            if not pd.isna(row.get('pan')):
+                bank_by_pan[str(row['pan']).upper().strip()] = row
+    
+    if not df_nominee.empty and 'pan' in df_nominee.columns:
+        for _, row in df_nominee.iterrows():
+            if not pd.isna(row.get('pan')):
+                nominee_by_pan[str(row['pan']).upper().strip()] = row
+    
+    if not df_subbroker.empty and 'pan' in df_subbroker.columns:
+        for _, row in df_subbroker.iterrows():
+            if not pd.isna(row.get('pan')):
+                subbroker_by_pan[str(row['pan']).upper().strip()] = row
     
     results = {"success": 0, "failed": 0, "errors": []}
     
-    for idx, row in df.iterrows():
+    for idx, row in df_personal.iterrows():
         try:
             # Validate required fields
             if pd.isna(row.get('name')) or pd.isna(row.get('pan')):
@@ -1389,15 +1444,107 @@ async def bulk_upload_clients(
                 results['failed'] += 1
                 continue
             
-            # Find linked sub-broker if provided
+            # Get data from other sheets using PAN lookup
+            address_row = address_by_pan.get(pan, {})
+            bank_row = bank_by_pan.get(pan, {})
+            nominee_row = nominee_by_pan.get(pan, {})
+            subbroker_row = subbroker_by_pan.get(pan, {})
+            
+            # Find linked sub-broker if provided (from sheet 5 or personal sheet)
             linked_subbroker_id = None
-            sub_broker_code = row.get('sub_broker_code')
-            if not pd.isna(sub_broker_code) and sub_broker_code:
+            sub_broker_code = None
+            
+            # Check sub-broker sheet first, then personal sheet
+            if isinstance(subbroker_row, pd.Series) and not pd.isna(subbroker_row.get('sub_broker_code')):
+                sub_broker_code = subbroker_row.get('sub_broker_code')
+            elif not pd.isna(row.get('sub_broker_code')):
+                sub_broker_code = row.get('sub_broker_code')
+            
+            if sub_broker_code:
                 sub_broker = await db.partners.find_one({"partner_code": str(sub_broker_code).strip()})
                 if sub_broker:
                     linked_subbroker_id = sub_broker['id']
                 else:
                     results['errors'].append(f"Row {idx+2}: Sub-broker code {sub_broker_code} not found (client will be created without link)")
+            
+            # For sub-broker uploads, link to themselves if no sub-broker specified
+            if current_user['role'] == 'sub_broker' and not linked_subbroker_id:
+                linked_subbroker_id = current_user['id']
+            
+            # Helper function to safely get value from row
+            def get_val(data, key, default=''):
+                if isinstance(data, pd.Series):
+                    val = data.get(key)
+                    if pd.isna(val):
+                        return default
+                    return str(val).strip()
+                elif isinstance(data, dict):
+                    return data.get(key, default)
+                return default
+            
+            # Create user
+            user_id = str(uuid.uuid4())
+            user = {
+                "id": user_id,
+                "pan": pan,
+                "ucc_list": ucc_list,
+                "name": str(row['name']).strip(),
+                "email": get_val(row, 'email'),
+                "phone": get_val(row, 'mobile'),
+                "password_hash": get_password_hash(get_val(row, 'password', 'password123')),
+                "pin_hash": get_password_hash(get_val(row, 'pin', '1234')),
+                "role": "client",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.users.insert_one(user)
+            
+            # Create client record with all fields from all sheets
+            client = {
+                "id": user_id,
+                "name": str(row['name']).strip(),
+                "pan_number": pan,
+                "ucc_list": ucc_list,
+                "email": get_val(row, 'email'),
+                "mobile": get_val(row, 'mobile'),
+                # Personal details from sheet 1
+                "date_of_birth": get_val(row, 'date_of_birth'),
+                "occupation": get_val(row, 'occupation'),
+                "father_husband_name": get_val(row, 'father_husband_name'),
+                "demat_account_no": get_val(row, 'demat_account_no'),
+                # Address details from sheet 2
+                "address_line1": get_val(address_row, 'address_line_1'),
+                "address_line2": get_val(address_row, 'address_line_2'),
+                "city": get_val(address_row, 'city'),
+                "state": get_val(address_row, 'state'),
+                "country": get_val(address_row, 'country', 'India'),
+                "pincode": get_val(address_row, 'pincode'),
+                # Bank details from sheet 3
+                "bank_name": get_val(bank_row, 'bank_name'),
+                "account_number": get_val(bank_row, 'account_number'),
+                "branch": get_val(bank_row, 'branch'),
+                "ifsc_code": get_val(bank_row, 'ifsc_code'),
+                # Nominee details from sheet 4
+                "nominee_name": get_val(nominee_row, 'nominee_name'),
+                "nominee_dob": get_val(nominee_row, 'nominee_dob'),
+                "nominee_mobile": get_val(nominee_row, 'nominee_mobile'),
+                "nominee_relationship": get_val(nominee_row, 'relationship'),
+                # Sub-broker assignment
+                "linked_subbroker_id": linked_subbroker_id,
+                "created_by": current_user['id'],
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "bond_allocations": [],
+                "real_estate_investments": []
+            }
+            await db.clients.insert_one(client)
+            results['success'] += 1
+            
+        except Exception as e:
+            results['errors'].append(f"Row {idx+2}: {str(e)}")
+            results['failed'] += 1
+    
+    return results
             
             # Create user
             user_id = str(uuid.uuid4())
