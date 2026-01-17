@@ -421,14 +421,20 @@ export default function ReinvestmentTagging() {
                                   <td className="py-2 px-4 text-sm">
                                     <div className="flex flex-col gap-0.5">
                                       <div className="flex items-center gap-1">
-                                        {entry.bond_name?.slice(0, 20) || 'N/A'}
+                                        {entry.bond_name?.slice(0, 20) || (
+                                          (entry.currentPortfolio || entry.portfolio_category) 
+                                            ? <span className="text-purple-700 font-medium">
+                                                Portfolio - {PORTFOLIO_OPTIONS.find(p => p.value === (entry.currentPortfolio || entry.portfolio_category))?.label || (entry.currentPortfolio || entry.portfolio_category)}
+                                              </span>
+                                            : 'N/A'
+                                        )}
                                         {entry.is_amended && (
                                           <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded" title={entry.amendment_reason || 'Amount revised due to prepayment'}>
                                             Revised
                                           </span>
                                         )}
                                       </div>
-                                      {(entry.currentPortfolio || entry.portfolio_category) && (
+                                      {entry.bond_name && (entry.currentPortfolio || entry.portfolio_category) && (
                                         <span className="text-xs text-purple-600 font-medium">
                                           Portfolio: {PORTFOLIO_OPTIONS.find(p => p.value === (entry.currentPortfolio || entry.portfolio_category))?.label || (entry.currentPortfolio || entry.portfolio_category)}
                                         </span>
