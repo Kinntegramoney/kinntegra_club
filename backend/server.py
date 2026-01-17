@@ -2874,6 +2874,29 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can create clients")
     
+    # Validate UCC list
+    if not client_data.ucc_list or len(client_data.ucc_list) == 0:
+        raise HTTPException(status_code=400, detail="At least one UCC is required")
+    
+    if len(client_data.ucc_list) > 5:
+        raise HTTPException(status_code=400, detail="Maximum 5 UCCs allowed per client")
+    
+    # Clean and uppercase UCCs
+    ucc_list = [ucc.strip().upper() for ucc in client_data.ucc_list if ucc.strip()]
+    
+    if len(ucc_list) == 0:
+        raise HTTPException(status_code=400, detail="At least one valid UCC is required")
+    
+    # Check for duplicate UCCs in the submitted list
+    if len(ucc_list) != len(set(ucc_list)):
+        raise HTTPException(status_code=400, detail="Duplicate UCCs are not allowed")
+    
+    # Check if any UCC already exists in the system (UCCs must be unique across all clients)
+    for ucc in ucc_list:
+        existing_ucc = await db.clients.find_one({"ucc_list": ucc})
+        if existing_ucc:
+            raise HTTPException(status_code=400, detail=f"UCC '{ucc}' is already assigned to another client")
+    
     # Check if client with same PAN already exists
     existing = await db.clients.find_one({"pan_number": client_data.pan_number.upper()})
     if existing:
@@ -2888,6 +2911,7 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
     client_id = str(uuid.uuid4())
     client_dict['id'] = client_id
     client_dict['pan_number'] = client_dict['pan_number'].upper()
+    client_dict['ucc_list'] = ucc_list  # Store cleaned UCC list
     client_dict['created_by'] = current_user['id']
     client_dict['created_at'] = datetime.now(timezone.utc).isoformat()
     client_dict['bond_allocations'] = []
