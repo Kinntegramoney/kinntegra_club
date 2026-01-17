@@ -1652,7 +1652,8 @@ async def bulk_upload_bonds(
                 "principal_payments": principal_payments,
                 "interest_payments": interest_payments,
                 "combined_schedule": combined_schedule,  # Auto-generated combined schedule
-                "cashflows_per_unit": cashflows_per_unit,  # NEW: Exact cashflows per unit from Excel
+                "cashflows_per_unit": cashflows_per_unit,  # Exact cashflows per unit from Excel
+                "cutoff_days": int(row.get('cutoff_days', 15)) if not pd.isna(row.get('cutoff_days')) else 15,  # Default 15 days
                 "issuer": str(row.get('issuer_company_name', '')) if not pd.isna(row.get('issuer_company_name')) else '',
                 "description": str(row.get('description', '')) if not pd.isna(row.get('description')) else '',
                 "face_value": float(row.get('face_value_per_unit', 0)) if not pd.isna(row.get('face_value_per_unit')) else 0,
