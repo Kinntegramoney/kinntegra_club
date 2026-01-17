@@ -1603,6 +1603,7 @@ async def bulk_upload_bonds(
             
             # Check if we have exact cashflows per unit (preferred for secondary market bonds)
             cashflows_per_unit = cashflows_per_unit_map.get(bond_code, [])
+            print(f"DEBUG: Bond {bond_code} - cashflows_per_unit has {len(cashflows_per_unit)} entries")
             
             bond = {
                 "id": bond_id,
