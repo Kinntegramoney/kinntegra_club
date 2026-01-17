@@ -46,9 +46,11 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 ### Reinvestment Tagging ✅
 - Tag upcoming cashflows for reinvestment
 - Support for: Principal, Interest, Net Amount, Custom, Not Invest
+- **Target UCC selection** for reinvestment (dropdown shows client's UCCs)
 - Send for client approval via email
 - Shows prepayment-affected entries with "Revised" badge
 - Displays original vs amended amounts with strikethrough
+- Untag functionality to move items back to untagged
 
 ### Bulk Upload Features ✅
 - Bonds: Multi-sheet Excel (Bond Details, Financial Details, Units & Limits, Principal Payments)
