@@ -81,13 +81,18 @@ export default function ReinvestmentTagging() {
     setCustomAmounts(prev => ({ ...prev, [cashflowId]: amount }));
   };
 
+  const handlePortfolioCategoryChange = (cashflowId, category) => {
+    setPortfolioCategories(prev => ({ ...prev, [cashflowId]: category }));
+  };
+
   const handleSaveEntryTag = async (cashflowId) => {
     setSavingClient(cashflowId);
     try {
       await axios.put(`${API}/reinvestment/tag/${cashflowId}`, 
         { 
           reinvestment_tag: localTags[cashflowId],
-          custom_amount: localTags[cashflowId] === 'other' ? parseFloat(customAmounts[cashflowId]) : null
+          custom_amount: localTags[cashflowId] === 'other' ? parseFloat(customAmounts[cashflowId]) : null,
+          portfolio_category: portfolioCategories[cashflowId] || null
         },
         getAuthHeaders()
       );
