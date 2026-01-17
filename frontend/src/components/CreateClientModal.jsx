@@ -25,11 +25,11 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
   const [showCredentials, setShowCredentials] = useState(false);
   const [credentials, setCredentials] = useState({ pan: "", password: "", pin: "", name: "", email: "" });
   const [copiedField, setCopiedField] = useState(null);
+  const [uccList, setUccList] = useState([""]); // Start with one empty UCC field
   const [formData, setFormData] = useState({
     // Personal Details
     name: "",
     pan_number: "",
-    ucc: "",  // Unique Client Code
     occupation: "",
     date_of_birth: "",
     father_husband_name: "",
@@ -66,6 +66,30 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
     // Linked Sub-broker
     linked_subbroker_id: ""
   });
+
+  // UCC management functions
+  const addUccField = () => {
+    if (uccList.length < 5) {
+      setUccList([...uccList, ""]);
+    } else {
+      toast.error("Maximum 5 UCCs allowed per client");
+    }
+  };
+
+  const removeUccField = (index) => {
+    if (uccList.length > 1) {
+      const newList = uccList.filter((_, i) => i !== index);
+      setUccList(newList);
+    } else {
+      toast.error("At least one UCC is required");
+    }
+  };
+
+  const updateUcc = (index, value) => {
+    const newList = [...uccList];
+    newList[index] = value.toUpperCase();
+    setUccList(newList);
+  };
 
   // Document file states
   const [documents, setDocuments] = useState({
