@@ -5425,6 +5425,7 @@ class ReinvestmentTagUpdate(BaseModel):
     custom_amount: Optional[float] = None  # "not_tagged", "principal", "interest", "net_amount", "not_invest"
     send_approval_email: bool = False  # Whether to send approval email to client
     portfolio_category: Optional[str] = None  # "wealth", "tax", "short_term", "commodities", "retirement", "children_education"
+    target_ucc: Optional[str] = None  # Target UCC for reinvestment
 
 
 class ReinvestmentApproval(BaseModel):
