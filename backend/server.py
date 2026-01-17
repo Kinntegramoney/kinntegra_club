@@ -2397,66 +2397,156 @@ async def bulk_upload_historical_trades(
     return results
 
 
-def calculate_secondary_market_price(bond: dict, investment_date_str: str) -> float:
+def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: str, investment_amount: float = None, irr: float = None) -> dict:
     """
-    Calculate the price per unit for secondary market purchase.
-    Based on remaining cashflows and target IRR.
+    Calculate secondary market price per unit and units for a given investment.
+    Uses cashflows_per_unit for accurate calculation.
+    
+    Args:
+        bond: Bond document with cashflows_per_unit
+        investment_date_str: Date of investment (YYYY-MM-DD)
+        investment_amount: Amount being invested (optional, for unit calculation)
+        irr: IRR to use for discounting (optional, defaults to bond's secondary_irr)
+    
+    Returns:
+        dict with price_per_unit, calculated_units, remaining_cashflows, etc.
     """
-    try:
-        investment_date = datetime.fromisoformat(investment_date_str)
+    investment_date = datetime.fromisoformat(investment_date_str.split('T')[0].split(' ')[0])
+    
+    # Use provided IRR or bond's secondary IRR
+    if irr is None:
+        irr = bond.get('secondary_irr', bond.get('primary_irr', 12))
+    irr_decimal = irr / 100
+    
+    # Get cashflows per unit
+    cashflows_per_unit = bond.get('cashflows_per_unit', [])
+    
+    result = {
+        "investment_date": investment_date_str,
+        "irr_used": irr,
+        "face_value_per_unit": bond.get('face_value', bond.get('principal_amount', 0) / max(bond.get('total_units', 1), 1)),
+        "total_cashflows_in_bond": len(cashflows_per_unit),
+        "remaining_cashflows": 0,
+        "missed_cashflows": 0,
+        "remaining_cashflows_detail": [],
+        "missed_cashflows_detail": [],
+        "total_remaining_interest_per_unit": 0,
+        "total_remaining_principal_per_unit": 0,
+        "total_remaining_cashflow_per_unit": 0,
+        "present_value_per_unit": 0,
+        "price_per_unit": 0,
+        "calculated_units": 0,
+        "investment_amount": investment_amount
+    }
+    
+    if not cashflows_per_unit:
+        # Fallback to face value if no cashflows defined
+        result["price_per_unit"] = result["face_value_per_unit"]
+        if investment_amount:
+            result["calculated_units"] = round(investment_amount / result["price_per_unit"], 2)
+        result["warning"] = "No cashflows_per_unit defined. Using face value."
+        return result
+    
+    # Separate remaining and missed cashflows
+    pv_total = 0
+    
+    for cf in cashflows_per_unit:
+        cf_date_str = cf['date'].split('T')[0].split(' ')[0]
+        cf_date = datetime.fromisoformat(cf_date_str)
+        interest = cf.get('interest_per_unit', 0)
+        principal = cf.get('principal_per_unit', 0)
+        total_cf = interest + principal
         
-        principal_amount = bond.get('principal_amount', 0)
-        total_units = bond.get('total_units', 1)
-        face_value = principal_amount / total_units if total_units > 0 else principal_amount
-        
-        # If face_value is explicitly set, use that
-        if bond.get('face_value'):
-            face_value = bond['face_value']
-        
-        secondary_irr = bond.get('secondary_irr', bond.get('primary_irr', 12)) / 100
-        
-        # Get remaining cashflows after investment date
-        remaining_interest = 0
-        remaining_principal = 0
-        
-        for ip in bond.get('interest_payments', []):
-            ip_date = datetime.fromisoformat(ip['date'])
-            if ip_date > investment_date:
-                remaining_interest += ip.get('amount', 0)
-        
-        for pp in bond.get('principal_payments', []):
-            pp_date = datetime.fromisoformat(pp['date'])
-            if pp_date > investment_date:
-                remaining_principal += (principal_amount / total_units) * pp.get('percentage', 0) / 100
-        
-        total_inflows = remaining_interest + remaining_principal
-        
-        # Simple price calculation: Face value adjusted for time to maturity
-        # If no payments scheduled, use face value
-        if total_inflows == 0:
-            return face_value
-        
-        # Get maturity date for time calculation
-        end_date_str = bond.get('end_date')
-        if end_date_str:
-            end_date = datetime.fromisoformat(end_date_str)
-            days_to_maturity = (end_date - investment_date).days
+        if cf_date > investment_date:
+            # Remaining cashflow - calculate PV
+            days = (cf_date - investment_date).days
+            years = days / 365
+            discount_factor = 1 / ((1 + irr_decimal) ** years)
+            pv = total_cf * discount_factor
+            pv_total += pv
             
-            if days_to_maturity <= 0:
-                return face_value
-            
-            # Present value calculation with IRR
-            years_to_maturity = days_to_maturity / 365
-            discount_factor = 1 / ((1 + secondary_irr) ** years_to_maturity)
-            price_per_unit = total_inflows * discount_factor
-            
-            return max(price_per_unit, face_value * 0.5)  # Floor at 50% of face value
-        
-        return face_value
-        
-    except Exception:
-        # Fallback to face value
-        return bond.get('face_value', bond.get('principal_amount', 100000) / bond.get('total_units', 1))
+            result["remaining_cashflows"] += 1
+            result["total_remaining_interest_per_unit"] += interest
+            result["total_remaining_principal_per_unit"] += principal
+            result["remaining_cashflows_detail"].append({
+                "date": cf_date_str,
+                "interest": round(interest, 2),
+                "principal": round(principal, 2),
+                "total": round(total_cf, 2),
+                "days_from_investment": days,
+                "discount_factor": round(discount_factor, 6),
+                "present_value": round(pv, 2)
+            })
+        else:
+            # Missed cashflow - already paid to primary holder
+            result["missed_cashflows"] += 1
+            result["missed_cashflows_detail"].append({
+                "date": cf_date_str,
+                "interest": round(interest, 2),
+                "principal": round(principal, 2),
+                "total": round(total_cf, 2),
+                "status": "Paid to primary holder"
+            })
+    
+    result["total_remaining_cashflow_per_unit"] = result["total_remaining_interest_per_unit"] + result["total_remaining_principal_per_unit"]
+    result["present_value_per_unit"] = round(pv_total, 2)
+    result["price_per_unit"] = round(pv_total, 2)
+    
+    # Calculate units if investment amount provided
+    if investment_amount and pv_total > 0:
+        result["calculated_units"] = round(investment_amount / pv_total, 4)
+    
+    # Calculate discount from face value
+    if result["face_value_per_unit"] > 0:
+        result["discount_from_face_value"] = round(result["face_value_per_unit"] - result["price_per_unit"], 2)
+        result["discount_percentage"] = round((result["discount_from_face_value"] / result["face_value_per_unit"]) * 100, 2)
+    
+    return result
+
+
+@api_router.post("/bonds/calculate-secondary-price")
+async def calculate_secondary_price(
+    bond_code: str,
+    investment_date: str,
+    investment_amount: float = None,
+    irr: float = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Calculate the secondary market price per unit and units for a given investment.
+    
+    This endpoint helps determine:
+    - How many units a secondary buyer gets for their investment
+    - What price per unit they're paying
+    - Which cashflows they missed (paid to primary holder)
+    - Which cashflows they will receive
+    """
+    # Find the bond
+    bond = await db.bonds.find_one({"bond_code": bond_code.upper()}, {"_id": 0})
+    if not bond:
+        # Try by ID
+        bond = await db.bonds.find_one({"id": bond_code}, {"_id": 0})
+    
+    if not bond:
+        raise HTTPException(status_code=404, detail=f"Bond with code '{bond_code}' not found")
+    
+    if not bond.get('cashflows_per_unit'):
+        raise HTTPException(
+            status_code=400, 
+            detail="Bond does not have cashflows_per_unit defined. Please upload bond with exact cashflow schedule."
+        )
+    
+    result = calculate_secondary_market_price_and_units(
+        bond=bond,
+        investment_date_str=investment_date,
+        investment_amount=investment_amount,
+        irr=irr
+    )
+    
+    result["bond_code"] = bond.get('bond_code')
+    result["bond_name"] = bond.get('name')
+    
+    return result
 
 
 class PartnerUpdate(BaseModel):
