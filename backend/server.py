@@ -5782,7 +5782,6 @@ class Bond(BaseModel):
     interest_rate: Optional[float] = None
     interest_frequency: Optional[str] = None
     maturity_date: Optional[str] = None
-    rating: Optional[str] = None
     issuer: Optional[str] = None
     created_by: Optional[str] = None
 
