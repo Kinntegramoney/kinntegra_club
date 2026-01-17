@@ -204,6 +204,15 @@ export default function BulkUpload() {
                         <li>• Default schedule if none provided</li>
                       </>
                     )}
+                    {activeTab === "historical-trades" && (
+                      <>
+                        <li>• Deal ID (Bond Code) - must exist in system</li>
+                        <li>• Investment Date, Investor Name</li>
+                        <li>• Units purchased and Purchase Price</li>
+                        <li>• Validates against system-calculated price</li>
+                        <li>• Creates trade and generates cashflows</li>
+                      </>
+                    )}
                   </ul>
                 </div>
 
