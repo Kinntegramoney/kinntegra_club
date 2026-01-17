@@ -714,11 +714,13 @@ export default function ReinvestmentTagging() {
                                 </td>
                                 <td className="py-2 px-4 text-center">
                                   <button
-                                    onClick={() => handleTagChange(client.client_id, entry.cashflow_id, 'not_tagged')}
-                                    className="px-2 py-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors"
+                                    onClick={() => handleUntag(entry.cashflow_id)}
+                                    disabled={savingClient === entry.cashflow_id}
+                                    className="px-2 py-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     title="Remove tag and move back to Untagged"
+                                    data-testid={`untag-btn-${entry.cashflow_id}`}
                                   >
-                                    Untag
+                                    {savingClient === entry.cashflow_id ? 'Untagging...' : 'Untag'}
                                   </button>
                                 </td>
                               </tr>
