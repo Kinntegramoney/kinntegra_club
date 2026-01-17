@@ -58,7 +58,14 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
-### 2026-01-16 (Current Session)
+### 2026-01-17 (Current Session)
+- **Feature**: Removed "Credit Rating" field from bond creation and bulk upload
+  - Backend: Cleaned BondCreate, Bond, BondUpdate Pydantic models (no credit_rating)
+  - Backend: Bulk template no longer includes Credit Rating column
+  - Frontend: Removed credit_rating from EditBondModal.jsx (form state, payload, UI)
+  - Verified: Bond creation and bulk upload work correctly without credit_rating
+
+### 2026-01-16 (Previous Session)
 - **Feature**: Enhanced prepayment with percentage calculation and display
   - Shows prepayment percentage in success toast (e.g., "₹1,00,000 (10%) principal prepaid")
   - Shows remaining principal percentage (e.g., "Remaining: ₹9,00,000 (90%)")
