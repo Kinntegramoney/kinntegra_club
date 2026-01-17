@@ -22,6 +22,18 @@ export default function ReinvestmentTagging() {
   const [expandedClients, setExpandedClients] = useState({});
   const [selectedClientEntries, setSelectedClientEntries] = useState({});
   const [sendingApproval, setSendingApproval] = useState(null);
+  const [portfolioCategories, setPortfolioCategories] = useState({});
+
+  // Portfolio category options
+  const PORTFOLIO_OPTIONS = [
+    { value: '', label: 'Select Portfolio' },
+    { value: 'wealth', label: 'Wealth' },
+    { value: 'tax', label: 'Tax Saving' },
+    { value: 'short_term', label: 'Short Term' },
+    { value: 'commodities', label: 'Commodities' },
+    { value: 'retirement', label: 'Retirement' },
+    { value: 'children_education', label: "Children's Education" }
+  ];
 
   useEffect(() => {
     document.title = "Kinntegraa | Reinvestment Tagging";
