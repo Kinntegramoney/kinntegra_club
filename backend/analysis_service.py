@@ -1920,10 +1920,12 @@ class GapSheetGenerator:
             # Get remaining units for this transaction (for purchases)
             remaining_units = purchase_remaining_units.get((folio_key, trans_idx), 0)
             
-            # Skip entries with zero balance units (fully sold purchases)
-            # Only skip purchase transactions that have been fully redeemed
-            if not trans.get('is_redemption') and remaining_units <= 0:
-                # Check if this was a purchase that got fully redeemed
+            # Skip ALL redemption transactions - they appear in the Sold Units tab
+            if trans.get('is_redemption'):
+                continue
+            
+            # Skip purchase transactions with zero balance units (fully sold)
+            if remaining_units <= 0:
                 trans_units = trans.get('units', 0)
                 if trans_units > 0:
                     # This was a purchase but has 0 remaining - skip it
