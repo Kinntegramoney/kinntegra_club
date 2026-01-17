@@ -6168,7 +6168,6 @@ class BondUpdate(BaseModel):
     total_units: Optional[int] = None
     units_sold: Optional[int] = None
     face_value: Optional[float] = None
-    credit_rating: Optional[str] = None
     description: Optional[str] = None
 
 
@@ -6188,7 +6187,7 @@ async def update_bond(bond_id: str, bond_update: BondUpdate, current_user: dict 
     updatable_fields = [
         'name', 'issuer', 'principal_amount', 'coupon_rate', 'primary_irr', 
         'secondary_irr', 'start_date', 'end_date', 'interest_payment_frequency',
-        'total_units', 'units_sold', 'face_value', 'credit_rating', 'description'
+        'total_units', 'units_sold', 'face_value', 'description'
     ]
     
     for field in updatable_fields:
