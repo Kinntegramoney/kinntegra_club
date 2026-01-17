@@ -1345,7 +1345,6 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
         "• Bond Code*: Unique identifier (e.g., ABC-NCD-2025)",
         "• Bond Name*: Full name of the bond issue",
         "• Issuer/Company Name: Company issuing the bond",
-        "• Credit Rating: Rating from CRISIL/ICRA/CARE (e.g., AA+, A1+)",
         "• Start Date*: Bond issue date (YYYY-MM-DD)",
         "• Maturity Date*: Final maturity date (YYYY-MM-DD)",
         "• Description: Additional details about the bond",
