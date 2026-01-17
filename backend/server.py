@@ -2837,7 +2837,7 @@ class ClientCreate(BaseModel):
 
 class ClientUpdate(BaseModel):
     name: Optional[str] = None
-    ucc: Optional[str] = None  # Unique Client Code
+    ucc_list: Optional[List[str]] = None  # List of Unique Client Codes (1-5, must be unique across system)
     occupation: Optional[str] = None
     date_of_birth: Optional[str] = None
     father_husband_name: Optional[str] = None
