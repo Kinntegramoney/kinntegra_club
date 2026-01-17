@@ -23,20 +23,111 @@ export default function BulkUpload() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState(null);
+  
+  // Scheme Master state
+  const [schemeMasterStatus, setSchemeMasterStatus] = useState(null);
+  const [schemeMasterFile, setSchemeMasterFile] = useState(null);
+  const [schemeUploading, setSchemeUploading] = useState(false);
+  const [schemeProcessingStatus, setSchemeProcessingStatus] = useState('');
+  const [schemeProcessingProgress, setSchemeProcessingProgress] = useState(0);
+  const [loadingSchemeMaster, setLoadingSchemeMaster] = useState(false);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ["sub-brokers", "clients", "bonds", "real-estate", "historical-trades"].includes(tab)) {
+    if (tab && ["sub-brokers", "clients", "bonds", "real-estate", "historical-trades", "scheme-master"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
+  
+  // Fetch scheme master status when tab is scheme-master
+  useEffect(() => {
+    if (activeTab === 'scheme-master') {
+      fetchSchemeMasterStatus();
+    }
+  }, [activeTab]);
+
+  const fetchSchemeMasterStatus = async () => {
+    try {
+      setLoadingSchemeMaster(true);
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/analysis/scheme-master/status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSchemeMasterStatus(response.data);
+    } catch (error) {
+      console.error('Error fetching scheme master status:', error);
+    } finally {
+      setLoadingSchemeMaster(false);
+    }
+  };
+
+  const handleSchemeMasterUpload = async (e) => {
+    e.preventDefault();
+    
+    if (!schemeMasterFile) {
+      toast.error('Please select a scheme master file');
+      return;
+    }
+
+    setSchemeUploading(true);
+    setSchemeProcessingStatus('Uploading BSE Scheme Master...');
+    setSchemeProcessingProgress(20);
+    
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('file', schemeMasterFile);
+
+      setSchemeProcessingStatus('Processing scheme data...');
+      setSchemeProcessingProgress(50);
+
+      const response = await axios.post(`${API}/analysis/upload-scheme-master`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setSchemeProcessingProgress(90);
+
+      setSchemeProcessingStatus('Scheme master uploaded successfully!');
+      setSchemeProcessingProgress(100);
+      
+      setTimeout(() => {
+        toast.success(`${response.data.schemes_added} new schemes added (${response.data.total_schemes_in_file} total in file)`);
+        setSchemeMasterFile(null);
+        setSchemeProcessingStatus('');
+        setSchemeProcessingProgress(0);
+        fetchSchemeMasterStatus();
+      }, 500);
+    } catch (error) {
+      console.error('Error uploading scheme master:', error);
+      setSchemeProcessingStatus('');
+      setSchemeProcessingProgress(0);
+      toast.error(error.response?.data?.detail || 'Error uploading file');
+    } finally {
+      setSchemeUploading(false);
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   const tabs = [
     { id: "sub-brokers", label: "Sub Brokers", icon: Users, color: "indigo" },
     { id: "clients", label: "Clients", icon: Users, color: "purple" },
     { id: "bonds", label: "Bonds", icon: TrendingUp, color: "green" },
     { id: "real-estate", label: "Real Estate", icon: Building2, color: "orange" },
-    { id: "historical-trades", label: "Historical Trades", icon: History, color: "amber" }
+    { id: "historical-trades", label: "Historical Trades", icon: History, color: "amber" },
+    { id: "scheme-master", label: "Scheme Master", icon: Database, color: "blue" }
   ];
 
   const downloadTemplate = async (type) => {
