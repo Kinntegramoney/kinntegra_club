@@ -62,6 +62,20 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
+### 2026-01-17 (Current Session - Bulk Upload & Sub-Broker Permissions)
+- **Feature**: Bulk upload now reads ALL 5 sheets from Excel template
+  - Personal Details (with UCC1-UCC5)
+  - Address Details
+  - Bank Details  
+  - Nominee Details
+  - Sub-Broker Assignment
+  - Data merged by PAN across all sheets
+- **Feature**: Sub-brokers can now create and update clients
+  - POST /api/clients allows sub_broker role
+  - PUT /api/clients/{id} allows sub_broker for linked clients
+  - Clients created by sub-broker auto-link to them
+- **Testing**: 12/12 backend tests passed (1 skipped - no sub-broker account)
+
 ### 2026-01-17 (Current Session - Multiple UCCs Feature)
 - **Feature**: Multiple UCCs per client (up to 5)
   - Backend: Changed `ucc: str` to `ucc_list: List[str]` in ClientCreate/ClientUpdate models
