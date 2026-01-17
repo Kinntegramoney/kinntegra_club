@@ -31,8 +31,10 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ### Client Management ✅
 - Create/Edit/Delete clients
+- **Multiple UCCs per client** (up to 5, minimum 1 required)
+- UCCs must be unique across all clients (one UCC cannot belong to multiple clients)
 - Three-dots menu with: Resend Credentials, Reset Password, Deactivate, Delete
-- Bulk client upload with PAN correctly stored
+- Bulk client upload with UCC1-UCC5 columns
 - Link clients to sub-brokers
 
 ### Analysis (CAS PDF Processing)
