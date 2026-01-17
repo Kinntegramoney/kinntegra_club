@@ -2043,18 +2043,61 @@ class GapSheetGenerator:
         """Sheet: Sold Units - Shows all redeemed/sold transactions with profit calculation"""
         ws = wb.create_sheet("Sold Units")
         
-        # Headers for sold units
+        # Headers for sold units - added Financial Year and Capital Gain Treatment
         headers = [
             "Account Identifier", "Instrument Name", "ISIN", 
             "Purchase Date", "Purchase NAV", "Units Purchased", "Purchase Amount",
             "Sale Date", "Sale NAV", "Units Sold", "Sale Amount",
-            "Holding Days", "Profit/Loss", "Profit %", "Annualized Return %",
+            "Holding Days", "Financial Year", "Capital Gain Treatment",
+            "Profit/Loss", "Profit %", "Annualized Return %",
             "Advisor ARN"
         ]
         
         for col, header in enumerate(headers, 1):
             ws.cell(row=1, column=col, value=header)
         self._style_header(ws, 1, len(headers))
+        
+        # Helper function to get Financial Year from sale date
+        def get_financial_year(sale_date):
+            """Returns financial year string like 'FY 2024-25' based on sale date"""
+            if not sale_date:
+                return "N/A"
+            # Indian FY runs from April 1 to March 31
+            if sale_date.month >= 4:
+                return f"FY {sale_date.year}-{str(sale_date.year + 1)[2:]}"
+            else:
+                return f"FY {sale_date.year - 1}-{str(sale_date.year)[2:]}"
+        
+        # Helper function to determine capital gain treatment
+        def get_capital_gain_treatment(holding_days, scheme_name):
+            """
+            Determine if capital gain is Long Term or Short Term.
+            For Equity MFs: >12 months (365 days) = LTCG
+            For Debt MFs: >36 months (1095 days) = LTCG (pre-2023 rule)
+            """
+            if holding_days <= 0:
+                return "N/A"
+            
+            # Check if it's an equity fund (rough heuristic based on scheme name)
+            equity_keywords = ['equity', 'index', 'nifty', 'sensex', 'midcap', 'smallcap', 
+                               'large cap', 'multi cap', 'flexi cap', 'bluechip', 'elss', 
+                               'tax saver', 'focused', 'growth', 'value']
+            debt_keywords = ['debt', 'liquid', 'money market', 'ultra short', 'overnight',
+                             'gilt', 'bond', 'income', 'credit risk', 'banking', 'corporate bond',
+                             'dynamic bond', 'fixed maturity', 'fmp']
+            
+            scheme_lower = (scheme_name or '').lower()
+            
+            is_equity = any(kw in scheme_lower for kw in equity_keywords)
+            is_debt = any(kw in scheme_lower for kw in debt_keywords)
+            
+            # Default to equity if can't determine (more common)
+            if is_debt and not is_equity:
+                # Debt fund: LTCG after 36 months
+                return "Long Term" if holding_days > 1095 else "Short Term"
+            else:
+                # Equity fund: LTCG after 12 months
+                return "Long Term" if holding_days > 365 else "Short Term"
         
         # Collect all redemption transactions
         redemptions = []
