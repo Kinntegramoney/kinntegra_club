@@ -928,11 +928,8 @@ const Analysis = () => {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b">
                       <tr>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Requested By</th>
                         <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Client</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">Sub-Broker</th>
                         <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">File Name</th>
-                        <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 uppercase">Folios</th>
                         <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 uppercase">Date</th>
                         <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
                       </tr>
@@ -949,41 +946,65 @@ const Analysis = () => {
                           onClick={() => { setSelectedAnalysis(analysis); setCurrentStep(3); }}
                         >
                           <td className="py-3 px-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center">
-                                <span className="text-amber-700 text-xs font-semibold">
-                                  {analysis.user_name?.charAt(0).toUpperCase() || 'U'}
-                                </span>
+                            <div className="group relative">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                                  <span className="text-amber-700 text-sm font-semibold">
+                                    {analysis.client_name?.charAt(0).toUpperCase() || 'C'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium text-gray-800 cursor-help">{analysis.client_name || '-'}</span>
+                                  {analysis.client_pan && (
+                                    <p className="text-xs text-gray-500 font-mono">{analysis.client_pan}</p>
+                                  )}
+                                </div>
                               </div>
-                              <span className="text-sm font-medium text-gray-800">{analysis.user_name || 'Unknown'}</span>
+                              
+                              {/* Hover tooltip for Requested By and Sub-Broker */}
+                              <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[200px]">
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                                      <span className="text-blue-700 text-xs font-semibold">
+                                        {analysis.user_name?.charAt(0).toUpperCase() || 'U'}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500">Requested By</p>
+                                      <p className="text-sm font-medium text-gray-800">{analysis.user_name || 'Unknown'}</p>
+                                    </div>
+                                  </div>
+                                  {analysis.sub_broker_name && (
+                                    <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+                                      <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
+                                        <span className="text-purple-700 text-xs font-semibold">
+                                          {analysis.sub_broker_name?.charAt(0).toUpperCase() || 'S'}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Sub-Broker</p>
+                                        <p className="text-sm font-medium text-gray-800">{analysis.sub_broker_name}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <div>
-                              <span className="text-sm text-gray-800">{analysis.client_name || '-'}</span>
-                              {analysis.client_pan && (
-                                <p className="text-xs text-gray-500 font-mono">{analysis.client_pan}</p>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="text-sm text-gray-600">
-                              {analysis.sub_broker_name || '-'}
-                            </span>
                           </td>
                           <td className="py-3 px-3">
                             <div className="flex items-center gap-2">
                               <FileText className="h-4 w-4 text-gray-400" />
-                              <span className="text-sm text-gray-800 font-medium">{analysis.filename}</span>
+                              <span className="text-sm text-gray-800 font-medium truncate max-w-[300px]" title={analysis.filename}>
+                                {analysis.filename}
+                              </span>
                             </div>
                           </td>
                           <td className="py-3 px-3 text-center">
-                            <span className="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600">
-                              {analysis.total_folios || 0}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <span className="text-xs text-gray-500">{formatDate(analysis.created_at)}</span>
+                            <div>
+                              <span className="text-sm text-gray-700 block">{formatDate(analysis.created_at).split(',')[0]}</span>
+                              <span className="text-xs text-gray-500">{formatDate(analysis.created_at).split(',')[1]}</span>
+                            </div>
                           </td>
                           <td className="py-3 px-3 text-center">
                             <div className="flex items-center justify-center gap-1">
