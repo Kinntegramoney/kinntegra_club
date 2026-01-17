@@ -23,7 +23,8 @@ export default function CreateBondModal({ onClose, onSuccess }) {
     secondary_irr: "",
     interest_payment_frequency: "quarterly",
     total_units: "1",
-    minimum_units: "1"
+    minimum_units: "1",
+    cutoff_days: "15"
   });
 
   const [principalPayments, setPrincipalPayments] = useState([{ date: "", percentage: "" }]);
