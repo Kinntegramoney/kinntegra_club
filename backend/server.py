@@ -2216,23 +2216,21 @@ async def bulk_upload_historical_trades(
                 results['failed'] += 1
                 continue
             
-            # Calculate expected price per unit based on bond data and investment date
-            # For secondary market calculation, we need to calculate the price
-            expected_price_per_unit = calculate_secondary_market_price(bond, investment_date_str)
-            expected_total = round(expected_price_per_unit * units)
+            # OPTION A: Trust user-provided Units and Investment Amount
+            # For secondary market purchases, price varies based on negotiation, accrued interest, etc.
+            # We accept the user's data as-is and calculate price per unit from it
             uploaded_total = round(purchase_price)
+            price_per_unit = uploaded_total / units if units > 0 else 0
             
-            # Compare rounded amounts
-            tolerance = max(10, uploaded_total * 0.001)  # 0.1% tolerance or ₹10, whichever is higher
-            
-            if abs(expected_total - uploaded_total) > tolerance:
-                results['errors'].append(
-                    f"Row {row_num}: Amount mismatch for {investor_name} - {deal_id}. "
-                    f"Uploaded: ₹{uploaded_total:,.0f}, Expected: ₹{expected_total:,.0f}, "
-                    f"Difference: ₹{abs(expected_total - uploaded_total):,.0f}"
-                )
+            # Basic sanity check: units should be positive and amount should be reasonable
+            if units <= 0:
+                results['errors'].append(f"Row {row_num}: Invalid units ({units}). Must be positive.")
                 results['failed'] += 1
-                results['validation_summary']['mismatched_amounts'] += 1
+                continue
+            
+            if uploaded_total <= 0:
+                results['errors'].append(f"Row {row_num}: Invalid investment amount ({uploaded_total}). Must be positive.")
+                results['failed'] += 1
                 continue
             
             results['validation_summary']['matched_amounts'] += 1
