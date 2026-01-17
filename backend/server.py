@@ -2262,7 +2262,7 @@ async def bulk_upload_historical_trades(
                 "client_pan": client.get('pan_number'),
                 "units": units,
                 "investment_date": investment_date_str,
-                "calculated_price": expected_price_per_unit,
+                "calculated_price": price_per_unit,  # Actual price per unit from user data
                 "total_amount": uploaded_total,
                 "payment_reference": row.get('notes', '') if pd.notna(row.get('notes')) else None,
                 "payment_notes": f"Historical import - IFA: {row.get('ifa_name', 'N/A') if pd.notna(row.get('ifa_name')) else 'N/A'}",
