@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, Users, Settings, LogOut, ChevronRight, ChevronDown, ClipboardCheck, Menu, X, Wallet, FileBarChart, UserPlus, Building2, Upload, Tag, Database } from "lucide-react";
+import { LayoutGrid, TrendingUp, Users, Settings, LogOut, ChevronRight, ChevronDown, ClipboardCheck, Menu, X, Wallet, FileBarChart, UserPlus, Building2, Upload, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [adminExpanded, setAdminExpanded] = useState(false);
-  const [addUserExpanded, setAddUserExpanded] = useState(false);
+  const [userExpanded, setUserExpanded] = useState(false);
   const [opportunitiesExpanded, setOpportunitiesExpanded] = useState(false);
-  const [bulkUploadExpanded, setBulkUploadExpanded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Close mobile menu on route change
@@ -20,18 +19,13 @@ export default function Sidebar({ user }) {
   // Auto-expand relevant section based on current path
   useEffect(() => {
     if (location.pathname.includes('/sub-brokers') || location.pathname.includes('/clients')) {
-      setAddUserExpanded(true);
-      setAdminExpanded(true);
+      setUserExpanded(true);
     }
     if (location.pathname.includes('/admin/bonds') || location.pathname.includes('/admin/real-estate')) {
       setOpportunitiesExpanded(true);
       setAdminExpanded(true);
     }
     if (location.pathname.includes('/bulk-upload')) {
-      setBulkUploadExpanded(true);
-      setAdminExpanded(true);
-    }
-    if (location.pathname.includes('/scheme-master')) {
       setAdminExpanded(true);
     }
   }, [location.pathname]);
@@ -43,7 +37,10 @@ export default function Sidebar({ user }) {
   };
 
   const isActive = (path) => location.pathname === path;
-  const isAdminActive = location.pathname.startsWith("/broker/admin") || location.pathname.includes("/bulk-upload");
+  const isAdminActive = location.pathname.startsWith("/broker/admin/bonds") || 
+                        location.pathname.startsWith("/broker/admin/real-estate") || 
+                        location.pathname.includes("/bulk-upload");
+  const isUserActive = location.pathname.includes('/sub-brokers') || location.pathname.includes('/clients');
 
   const menuItems = [
     { path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -54,19 +51,16 @@ export default function Sidebar({ user }) {
     { path: "/broker/reinvestment", label: "Reinv Tag", icon: Tag },
   ];
 
-  // Admin sub-sections
-  const addUserItems = [
+  // User sub-sections (top-level)
+  const userItems = [
     { path: "/broker/admin/sub-brokers", label: "Sub Broker" },
     { path: "/broker/admin/clients", label: "Client" },
   ];
 
+  // Admin sub-sections
   const opportunityItems = [
     { path: "/broker/admin/bonds", label: "Bonds" },
     { path: "/broker/admin/real-estate", label: "Real Estate" },
-  ];
-
-  const bulkUploadItems = [
-    { path: "/broker/bulk-upload", label: "Upload Data" },
   ];
 
   const SidebarContent = () => (
