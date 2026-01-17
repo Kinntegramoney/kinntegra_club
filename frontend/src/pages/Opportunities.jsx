@@ -241,10 +241,31 @@ export default function Opportunities() {
       <Sidebar user={user} />
       
       <div className="flex-1 overflow-auto">
-        {/* Header */}
+        {/* Header with Add Buttons */}
         <div className="bg-white border-b border-gray-200 px-8 py-6">
-          <h1 className="text-2xl font-bold text-gray-800">Opportunities</h1>
-          <p className="text-sm text-gray-500 mt-1">All investment opportunities - Bonds and Real Estate</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Opportunities</h1>
+              <p className="text-sm text-gray-500 mt-1">All investment opportunities - Bonds and Real Estate</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button 
+                onClick={() => navigate("/broker/admin/bonds")} 
+                className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Add Bonds
+              </Button>
+              <Button 
+                onClick={() => navigate("/broker/admin/real-estate")} 
+                variant="outline"
+                className="border-teal-500 text-teal-600 hover:bg-teal-50 gap-2"
+              >
+                <Building2 className="h-4 w-4" />
+                Add Real Estate
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Tabs by Status */}
