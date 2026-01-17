@@ -1557,6 +1557,7 @@ async def bulk_upload_clients(
                         await db.users.update_one({"pan": pan}, {"$set": {"ucc_list": update_data['ucc_list']}})
                     
                     results['success'] += 1
+                    results['updated'] += 1
                     results['errors'].append(f"Row {idx+2}: PAN {pan} - Updated {len(update_data)} fields")
                 else:
                     results['errors'].append(f"Row {idx+2}: PAN {pan} - No new data to update (all fields already filled)")
