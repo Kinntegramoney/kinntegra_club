@@ -22,7 +22,7 @@ export default function BulkUpload() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ["sub-brokers", "clients", "bonds", "real-estate"].includes(tab)) {
+    if (tab && ["sub-brokers", "clients", "bonds", "real-estate", "historical-trades"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -31,7 +31,8 @@ export default function BulkUpload() {
     { id: "sub-brokers", label: "Sub Brokers", icon: Users, color: "indigo" },
     { id: "clients", label: "Clients", icon: Users, color: "purple" },
     { id: "bonds", label: "Bonds", icon: TrendingUp, color: "green" },
-    { id: "real-estate", label: "Real Estate", icon: Building2, color: "orange" }
+    { id: "real-estate", label: "Real Estate", icon: Building2, color: "orange" },
+    { id: "historical-trades", label: "Historical Trades", icon: History, color: "amber" }
   ];
 
   const downloadTemplate = async (type) => {
