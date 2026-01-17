@@ -3927,8 +3927,8 @@ def generate_client_cashflows(trade: dict, bond: dict) -> List[dict]:
     units = trade['units']
     cashflows = []
     
-    # Cutoff days for secondary market - payments within this period are considered missed
-    cutoff_days = trade.get('cutoff_days', 15)
+    # Cutoff days for secondary market - use trade's value, then bond's value, then default 15
+    cutoff_days = trade.get('cutoff_days', bond.get('cutoff_days', 15))
     from datetime import timedelta
     cutoff_date = investment_date + timedelta(days=cutoff_days)
     
