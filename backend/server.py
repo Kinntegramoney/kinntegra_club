@@ -2522,6 +2522,7 @@ async def calculate_secondary_price(
     investment_date: str,
     investment_amount: float = None,
     irr: float = None,
+    cutoff_days: int = 15,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -2532,6 +2533,13 @@ async def calculate_secondary_price(
     - What price per unit they're paying
     - Which cashflows they missed (paid to primary holder)
     - Which cashflows they will receive
+    
+    Args:
+        bond_code: Bond code or ID
+        investment_date: Date of investment (YYYY-MM-DD)
+        investment_amount: Amount being invested (optional)
+        irr: IRR for discounting (optional, defaults to bond's secondary_irr)
+        cutoff_days: Payments within this many days after investment are missed (default 15)
     """
     # Find the bond
     bond = await db.bonds.find_one({"bond_code": bond_code.upper()}, {"_id": 0})
@@ -2552,7 +2560,8 @@ async def calculate_secondary_price(
         bond=bond,
         investment_date_str=investment_date,
         investment_amount=investment_amount,
-        irr=irr
+        irr=irr,
+        cutoff_days=cutoff_days
     )
     
     result["bond_code"] = bond.get('bond_code')
