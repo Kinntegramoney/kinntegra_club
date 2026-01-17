@@ -574,12 +574,51 @@ export default function AdminClients() {
                       required
                     />
                   </div>
-                  <div>
-                    <Label>UCC</Label>
-                    <Input
-                      value={editFormData.ucc || ''}
-                      onChange={(e) => setEditFormData({...editFormData, ucc: e.target.value})}
-                    />
+                  <div className="col-span-2">
+                    <Label>UCCs</Label>
+                    <div className="space-y-2">
+                      {(editFormData.uccs || [editFormData.ucc || '']).map((ucc, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            value={ucc}
+                            onChange={(e) => {
+                              const newUccs = [...(editFormData.uccs || [editFormData.ucc || ''])];
+                              newUccs[index] = e.target.value;
+                              setEditFormData({...editFormData, uccs: newUccs});
+                            }}
+                            placeholder={`UCC ${index + 1}`}
+                          />
+                          {index > 0 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const newUccs = [...(editFormData.uccs || [editFormData.ucc || ''])];
+                                newUccs.splice(index, 1);
+                                setEditFormData({...editFormData, uccs: newUccs});
+                              }}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const currentUccs = editFormData.uccs || [editFormData.ucc || ''];
+                          setEditFormData({...editFormData, uccs: [...currentUccs, '']});
+                        }}
+                        className="w-full"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add UCC
+                      </Button>
+                    </div>
                   </div>
                   <div>
                     <Label>Occupation</Label>
