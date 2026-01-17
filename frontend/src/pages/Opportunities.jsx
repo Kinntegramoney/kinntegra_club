@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
+import CreateBondModal from "@/components/CreateBondModal";
+import CreateRealEstateModal from "@/components/CreateRealEstateModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, TrendingUp } from "lucide-react";
+import { Building2, MapPin, TrendingUp, Plus } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -16,6 +18,8 @@ export default function Opportunities() {
   const [bonds, setBonds] = useState([]);
   const [realEstateOpps, setRealEstateOpps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showBondModal, setShowBondModal] = useState(false);
+  const [showRealEstateModal, setShowRealEstateModal] = useState(false);
 
   // Set page title
   useEffect(() => {
