@@ -3719,10 +3719,13 @@ def generate_client_cashflows(trade: dict, bond: dict) -> List[dict]:
             })
     
     # Get remaining principal payments after investment date
+    total_units = bond.get('total_units', 1)
+    principal_per_unit = bond['principal_amount'] / total_units if total_units > 0 else bond['principal_amount']
+    
     for pp in bond.get('principal_payments', []):
         pp_date = datetime.fromisoformat(pp['date'])
         if pp_date > investment_date:
-            principal_amount = (bond['principal_amount'] * pp['percentage'] / 100) * units
+            principal_amount = principal_per_unit * (pp['percentage'] / 100) * units
             
             # Check if there's already a cashflow on this date (combine with interest)
             existing = next((cf for cf in cashflows if cf['date'] == pp['date']), None)
