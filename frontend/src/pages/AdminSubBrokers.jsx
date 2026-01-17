@@ -4,14 +4,9 @@ import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreatePartnerModal from "@/components/CreatePartnerModal";
 import EditPartnerModal from "@/components/EditPartnerModal";
-import { Plus, Edit2, Trash2, RefreshCw, UserX, Upload, Copy, Check, Key, MoreVertical, Mail, KeyRound, UserMinus } from "lucide-react";
+import { Plus, Edit2, Trash2, RefreshCw, UserX, Upload, MoreVertical, Mail, KeyRound, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +25,6 @@ export default function AdminSubBrokers() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPartner, setEditingPartner] = useState(null);
-  const [copiedField, setCopiedField] = useState(null);
 
   // Set page title
   useEffect(() => {
