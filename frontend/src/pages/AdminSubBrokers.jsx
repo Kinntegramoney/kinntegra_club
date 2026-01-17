@@ -110,6 +110,61 @@ export default function AdminSubBrokers() {
     }
   };
 
+  const handleResendCredentials = async (partner) => {
+    if (!partner.email) {
+      toast.error("No email address found for this sub-broker");
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/partners/${partner.id}/resend-credentials`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(`Login credentials sent to ${partner.email}`);
+    } catch (error) {
+      console.error("Error resending credentials:", error);
+      toast.error(error.response?.data?.detail || "Failed to resend credentials");
+    }
+  };
+
+  const handleResetPassword = async (partner) => {
+    if (!window.confirm(`Reset password for "${partner.name}"? A new password will be generated and emailed to ${partner.email || 'the sub-broker'}.`)) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/partners/${partner.id}/reset-password`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.new_password) {
+        toast.success(`Password reset! New password: ${response.data.new_password}`, { duration: 10000 });
+      } else {
+        toast.success("Password reset successfully. New credentials emailed to sub-broker.");
+      }
+      fetchPartners();
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      toast.error(error.response?.data?.detail || "Failed to reset password");
+    }
+  };
+
+  const handleDeactivate = async (partner) => {
+    if (!window.confirm(`Deactivate sub-broker "${partner.name}"? They will no longer be able to login.`)) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/partners/${partner.id}/deactivate`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Sub-broker deactivated successfully");
+      fetchPartners();
+    } catch (error) {
+      console.error("Error deactivating partner:", error);
+      toast.error(error.response?.data?.detail || "Failed to deactivate sub-broker");
+    }
+  };
+
   if (!user) return null;
 
   return (
