@@ -1175,7 +1175,7 @@ async def download_client_template(current_user: dict = Depends(get_current_user
     ws_personal = wb.active
     ws_personal.title = "Personal Details"
     
-    personal_headers = ["Name*", "PAN*", "UCC", "Email*", "Mobile*", "Password*", "PIN*", 
+    personal_headers = ["Name*", "PAN*", "UCC1*", "UCC2", "UCC3", "UCC4", "UCC5", "Email*", "Mobile*", "Password*", "PIN*", 
                        "Date of Birth", "Occupation", "Father/Husband Name", "Demat Account No"]
     for col, header in enumerate(personal_headers, 1):
         cell = ws_personal.cell(row=1, column=col, value=header)
@@ -1185,7 +1185,7 @@ async def download_client_template(current_user: dict = Depends(get_current_user
         ws_personal.column_dimensions[get_column_letter(col)].width = 18
     
     # Sample row
-    personal_sample = ["Jane Smith", "PQRST5678U", "UCC123456", "jane@example.com", "9876543213", 
+    personal_sample = ["Jane Smith", "PQRST5678U", "UCC123456", "UCC123457", "", "", "", "jane@example.com", "9876543213", 
                       "password123", "1234", "1990-05-15", "Business", "John Smith", "1234567890123456"]
     for col, value in enumerate(personal_sample, 1):
         ws_personal.cell(row=2, column=col, value=value)
