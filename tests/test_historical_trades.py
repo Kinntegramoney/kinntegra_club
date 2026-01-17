@@ -58,6 +58,15 @@ def api_client(auth_token):
 @pytest.fixture(scope="module")
 def test_bond(api_client):
     """Create a test bond with proper bond_code for historical trades testing"""
+    # First check if bond already exists
+    bonds_response = api_client.get(f"{BASE_URL}/api/bonds")
+    if bonds_response.status_code == 200:
+        bonds = bonds_response.json()
+        existing_bond = next((b for b in bonds if b.get('bond_code') == 'TEST-HIST-001'), None)
+        if existing_bond:
+            yield existing_bond
+            return
+    
     bond_data = {
         "bond_code": "TEST-HIST-001",
         "name": "Test Historical Bond",
@@ -70,8 +79,8 @@ def test_bond(api_client):
         "total_units": 100,
         "minimum_units": 1,
         "interest_payment_frequency": "quarterly",
-        "face_value": 10000,
-        "issuer": "Test Issuer Corp"
+        "principal_payments": [{"date": "2027-01-01", "percentage": 100.0}],
+        "interest_payments": []
     }
     
     response = api_client.post(f"{BASE_URL}/api/bonds", json=bond_data)
@@ -79,17 +88,6 @@ def test_bond(api_client):
     if response.status_code == 201:
         bond = response.json()
         yield bond
-        # Cleanup: Delete the test bond
-        api_client.delete(f"{BASE_URL}/api/bonds/{bond['id']}")
-    elif response.status_code == 400 and "already exists" in response.text.lower():
-        # Bond already exists, fetch it
-        bonds_response = api_client.get(f"{BASE_URL}/api/bonds")
-        bonds = bonds_response.json()
-        existing_bond = next((b for b in bonds if b.get('bond_code') == 'TEST-HIST-001'), None)
-        if existing_bond:
-            yield existing_bond
-        else:
-            pytest.skip("Could not find or create test bond")
     else:
         pytest.skip(f"Could not create test bond: {response.status_code} - {response.text}")
 
