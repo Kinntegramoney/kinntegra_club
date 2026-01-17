@@ -7026,6 +7026,142 @@ async def download_presentation(
     )
 
 
+# Passport Details for Real Estate Investors
+class PassportDetails(BaseModel):
+    passport_number: Optional[str] = None
+    date_of_issue: Optional[str] = None
+    date_of_expiry: Optional[str] = None
+    place_of_issue: Optional[str] = None
+    country_of_issue: Optional[str] = None
+    address_on_passport: Optional[str] = None
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/investor/{investor_id}/passport")
+async def update_investor_passport(
+    opportunity_id: str,
+    investor_id: str,
+    passport: PassportDetails,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update passport details for an investor in a real estate opportunity"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id})
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    investors = opportunity.get('investors', [])
+    investor_found = False
+    
+    for inv in investors:
+        if inv['id'] == investor_id:
+            inv['passport_details'] = passport.model_dump()
+            inv['passport_updated_at'] = datetime.now(timezone.utc).isoformat()
+            investor_found = True
+            break
+    
+    if not investor_found:
+        raise HTTPException(status_code=404, detail="Investor not found")
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"investors": investors, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Passport details updated successfully"}
+
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/investor/{investor_id}/passport-upload")
+async def upload_passport_document(
+    opportunity_id: str,
+    investor_id: str,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload passport document for an investor"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id})
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    # Validate file type
+    allowed_types = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Only PDF and image files are allowed")
+    
+    # Create uploads directory if not exists
+    import os
+    upload_dir = "/app/uploads/passports"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Save file
+    file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'pdf'
+    saved_filename = f"{investor_id}_{uuid.uuid4()}.{file_ext}"
+    file_path = f"{upload_dir}/{saved_filename}"
+    
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    
+    # Update investor record
+    investors = opportunity.get('investors', [])
+    for inv in investors:
+        if inv['id'] == investor_id:
+            inv['passport_document'] = {
+                'filename': file.filename,
+                'saved_filename': saved_filename,
+                'content_type': file.content_type,
+                'uploaded_at': datetime.now(timezone.utc).isoformat()
+            }
+            break
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"investors": investors, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Passport document uploaded successfully", "filename": saved_filename}
+
+
+@api_router.get("/real-estate-opportunities/{opportunity_id}/investor/{investor_id}/passport-download")
+async def download_passport_document(
+    opportunity_id: str,
+    investor_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Download passport document for an investor"""
+    from fastapi.responses import FileResponse
+    import os
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id})
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    investors = opportunity.get('investors', [])
+    investor = next((inv for inv in investors if inv['id'] == investor_id), None)
+    
+    if not investor:
+        raise HTTPException(status_code=404, detail="Investor not found")
+    
+    passport_doc = investor.get('passport_document')
+    if not passport_doc:
+        raise HTTPException(status_code=404, detail="No passport document uploaded")
+    
+    file_path = f"/app/uploads/passports/{passport_doc['saved_filename']}"
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found on server")
+    
+    return FileResponse(
+        path=file_path,
+        filename=passport_doc['filename'],
+        media_type=passport_doc['content_type']
+    )
+
+
 @api_router.post("/real-estate-opportunities/{opportunity_id}/invest")
 async def invest_in_opportunity(
     opportunity_id: str,
