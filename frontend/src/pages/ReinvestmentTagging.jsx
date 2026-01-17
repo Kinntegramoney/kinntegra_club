@@ -744,8 +744,16 @@ export default function ReinvestmentTagging() {
                                   <tr key={entry.cashflow_id} className="border-t">
                                     <td className="py-2 px-4 text-sm">
                                       <div className="flex flex-col gap-0.5">
-                                        <span>{entry.bond_name?.slice(0, 25) || 'N/A'}</span>
-                                        {(entry.currentPortfolio || entry.portfolio_category) && (
+                                        <span>
+                                          {entry.bond_name?.slice(0, 25) || (
+                                            (entry.currentPortfolio || entry.portfolio_category) 
+                                              ? <span className="text-purple-700 font-medium">
+                                                  Portfolio - {PORTFOLIO_OPTIONS.find(p => p.value === (entry.currentPortfolio || entry.portfolio_category))?.label || (entry.currentPortfolio || entry.portfolio_category)}
+                                                </span>
+                                              : 'N/A'
+                                          )}
+                                        </span>
+                                        {entry.bond_name && (entry.currentPortfolio || entry.portfolio_category) && (
                                           <span className="text-xs text-purple-600 font-medium">
                                             Portfolio: {PORTFOLIO_OPTIONS.find(p => p.value === (entry.currentPortfolio || entry.portfolio_category))?.label || (entry.currentPortfolio || entry.portfolio_category)}
                                           </span>
