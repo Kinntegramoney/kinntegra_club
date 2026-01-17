@@ -342,7 +342,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
                 </div>
 
                 {/* Units & Frequency */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <div>
                     <Label htmlFor="total_units">Total Units</Label>
                     <Input
@@ -382,6 +382,20 @@ export default function CreateBondModal({ onClose, onSuccess }) {
                         <SelectItem value="on_maturity">On Maturity</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="cutoff_days">Cut-off Days</Label>
+                    <Input
+                      id="cutoff_days"
+                      name="cutoff_days"
+                      type="number"
+                      value={formData.cutoff_days}
+                      onChange={handleInputChange}
+                      placeholder="15"
+                      className="mt-1"
+                      title="Days before payment date to consider as missed for secondary market"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">For secondary market calc</p>
                   </div>
                 </div>
               </div>
