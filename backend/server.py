@@ -1393,7 +1393,7 @@ async def bulk_upload_clients(
             if not pd.isna(row.get('pan')):
                 subbroker_by_pan[str(row['pan']).upper().strip()] = row
     
-    results = {"success": 0, "failed": 0, "errors": []}
+    results = {"success": 0, "failed": 0, "updated": 0, "created": 0, "errors": []}
     
     for idx, row in df_personal.iterrows():
         try:
