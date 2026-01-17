@@ -79,7 +79,15 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
     - Units and Investment Amount must be positive
   - On success: Creates trade record, updates bond units_sold, generates cashflows
   - Frontend: Added "Historical Trades" tab in BulkUpload.jsx with amber theme
-  - Bug fix: Corrected cashflow principal calculation for multi-unit bonds
+
+- **Feature**: Exact Cashflows Per Unit for Secondary Market Bonds
+  - Updated Bond Bulk Upload template with new **"Cashflows Per Unit"** sheet (Sheet 5)
+  - Columns: Bond Code, Payment Date, Interest Per Unit, Principal Per Unit
+  - When provided, system uses EXACT values instead of calculated amounts
+  - `generate_client_cashflows()` now prioritizes `cashflows_per_unit` field
+  - Cashflows are filtered to only include payments AFTER client's investment date
+  - Client amounts = per-unit amounts × units
+  - **Verified**: System generates cashflows matching Excel exactly (e.g., June 24 Interest: ₹70,776.30 vs Excel ₹70,776.26)
 
 ### 2026-01-16 (Previous Session)
 - **Feature**: Enhanced prepayment with percentage calculation and display
