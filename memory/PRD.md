@@ -58,7 +58,20 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
-### 2026-01-17 (Current Session - Latest)
+### 2026-01-17 (Current Session - Reinvestment Tagging Fix)
+- **Bug Fix**: Reinvestment Tagging page Deal ID display
+  - Backend: Added `bond_code` field to `/api/reinvestment/upcoming` response
+  - Fetches bond_code from trade document or bond document as fallback
+  - "Deal ID" column now shows actual bond codes (e.g., "CDUCIC01") instead of "N/A"
+- **Feature**: Untag button functionality
+  - Added `handleUntag()` function in ReinvestmentTagging.jsx
+  - Calls API to reset tag to 'not_tagged' and clear portfolio_category
+  - Fixed incorrect button handler (was calling handleTagChange with wrong params)
+  - Button shows loading state during untag operation
+- **Testing**: All 14 pytest tests passed (100% success rate)
+  - Test file: `/app/tests/test_reinvestment_tagging.py`
+
+### 2026-01-17 (Current Session - Earlier)
 - **UI Refactor**: Completely restructured sidebar navigation
   - Removed nested "User" and "Admin" menus
   - Made "Sub Broker" and "Client" separate top-level tabs
