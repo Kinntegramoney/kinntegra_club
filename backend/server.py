@@ -3049,6 +3049,10 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
     client_dict['verification_status'] = 'pending'  # pending, verified
     client_dict['verification_token'] = str(uuid.uuid4())
     
+    # If sub-broker is creating, auto-link the client to them
+    if current_user['role'] == 'sub_broker':
+        client_dict['linked_subbroker_id'] = current_user['id']
+    
     # Generate default credentials (client will change on first login)
     default_password = client_data.pan_number.upper()[-4:] + "1234"  # Last 4 chars of PAN + 1234
     default_pin = "1234"
