@@ -1119,29 +1119,33 @@ class GapSheetGenerator:
             total_redemptions = 0
             holdings_by_type = {'Equity': 0, 'Debt': 0, 'Hybrid': 0, 'Other': 0}
             
-            equity_keywords = ['equity', 'index', 'nifty', 'sensex', 'midcap', 'smallcap', 'large cap', 
-                              'flexi cap', 'bluechip', 'elss', 'tax saver', 'focused', 'value', 'growth fund']
-            debt_keywords = ['debt', 'liquid', 'money market', 'ultra short', 'overnight', 'gilt', 
-                            'bond', 'income', 'credit risk', 'corporate bond', 'fmp']
-            hybrid_keywords = ['hybrid', 'balanced', 'aggressive', 'conservative', 'arbitrage', 'multi asset']
-            
             for folio_key, folio_data in folios.items():
-                scheme_name = folio_data.get('scheme', '').lower()
+                scheme_name = folio_data.get('scheme', '')
+                isin = folio_data.get('isin', '')
                 market_value = folio_data.get('market_value', 0)
                 cost_value = folio_data.get('cost_value', 0)
                 
                 total_market_value += market_value
                 total_investment += cost_value
                 
-                # Categorize
-                if any(k in scheme_name for k in equity_keywords):
-                    holdings_by_type['Equity'] += market_value
-                elif any(k in scheme_name for k in debt_keywords):
-                    holdings_by_type['Debt'] += market_value
-                elif any(k in scheme_name for k in hybrid_keywords):
-                    holdings_by_type['Hybrid'] += market_value
+                # Use scheme mapper to get asset category from scheme master
+                if self.scheme_mapper:
+                    category = self.scheme_mapper.get_asset_category(isin=isin, scheme_name=scheme_name)
                 else:
-                    holdings_by_type['Other'] += market_value
+                    # Fallback to keyword matching if no scheme mapper
+                    name_lower = scheme_name.lower()
+                    if any(k in name_lower for k in ['equity', 'index', 'nifty', 'sensex', 'midcap', 'smallcap', 
+                                                      'large cap', 'flexi cap', 'bluechip', 'elss', 'tax saver']):
+                        category = 'Equity'
+                    elif any(k in name_lower for k in ['debt', 'liquid', 'money market', 'overnight', 'gilt', 
+                                                        'bond', 'income', 'credit risk', 'fmp']):
+                        category = 'Debt'
+                    elif any(k in name_lower for k in ['hybrid', 'balanced', 'arbitrage', 'multi asset']):
+                        category = 'Hybrid'
+                    else:
+                        category = 'Other'
+                
+                holdings_by_type[category] += market_value
             
             total_gains = total_market_value - total_investment
             gain_percentage = (total_gains / total_investment * 100) if total_investment > 0 else 0
