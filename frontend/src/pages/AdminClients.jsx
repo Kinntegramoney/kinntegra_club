@@ -126,11 +126,27 @@ export default function AdminClients() {
       const response = await axios.get(`${API}/clients/${client.id}/details`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setEditFormData(response.data);
+      
+      // Convert UCC string to array for editing
+      const clientData = { ...response.data };
+      if (clientData.ucc && typeof clientData.ucc === 'string') {
+        clientData.uccs = clientData.ucc.split(',').map(ucc => ucc.trim()).filter(ucc => ucc !== '');
+      } else if (!clientData.ucc) {
+        clientData.uccs = [''];
+      }
+      
+      setEditFormData(clientData);
       setEditingClient(client);
     } catch (error) {
       // Fallback to basic client data if details endpoint fails
-      setEditFormData(client);
+      const clientData = { ...client };
+      if (clientData.ucc && typeof clientData.ucc === 'string') {
+        clientData.uccs = clientData.ucc.split(',').map(ucc => ucc.trim()).filter(ucc => ucc !== '');
+      } else if (!clientData.ucc) {
+        clientData.uccs = [''];
+      }
+      
+      setEditFormData(clientData);
       setEditingClient(client);
     }
   };
