@@ -28,11 +28,11 @@ export default function ReinvestmentTagging() {
   const PORTFOLIO_OPTIONS = [
     { value: '', label: 'Select Portfolio' },
     { value: 'wealth', label: 'Wealth' },
-    { value: 'tax', label: 'Tax Saving' },
+    { value: 'tax', label: 'Tax' },
     { value: 'short_term', label: 'Short Term' },
     { value: 'commodities', label: 'Commodities' },
-    { value: 'retirement', label: 'Retirement' },
-    { value: 'children_education', label: "Children's Education" }
+    { value: 'bonds', label: 'Bonds' },
+    { value: 'real_estate', label: 'Real Estate' }
   ];
 
   useEffect(() => {
