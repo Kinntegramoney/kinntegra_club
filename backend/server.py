@@ -6422,7 +6422,8 @@ class Bond(BaseModel):
     principal_payments: Optional[List[PrincipalPayment]] = []
     interest_payment_frequency: Optional[str] = None
     interest_payments: Optional[List[InterestPayment]] = []
-    cashflows_per_unit: Optional[List[dict]] = []  # NEW: Exact cashflows per unit for secondary market bonds
+    cashflows_per_unit: Optional[List[dict]] = []  # Exact cashflows per unit for secondary market bonds
+    cutoff_days: int = 15  # Days after investment where payments are still missed (for secondary market)
     total_units: int = 1
     units_sold: int = 0
     status: Optional[str] = None  # Computed: 'available', 'funded', 'closed'
