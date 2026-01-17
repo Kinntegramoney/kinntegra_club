@@ -139,15 +139,6 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
                   onChange={(e) => setFormData({...formData, issuer: e.target.value})}
                 />
               </div>
-              <div>
-                <Label htmlFor="credit_rating">Credit Rating</Label>
-                <Input
-                  id="credit_rating"
-                  value={formData.credit_rating}
-                  onChange={(e) => setFormData({...formData, credit_rating: e.target.value})}
-                  placeholder="e.g., AAA, AA+, A"
-                />
-              </div>
             </div>
           </div>
 
