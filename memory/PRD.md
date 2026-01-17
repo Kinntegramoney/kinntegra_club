@@ -185,6 +185,18 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 - Name: `test_database`
 - Collections: users, clients, trades, cashflows, analyses, bonds, holding_cashflows, prepayment_records
 
+## Navigation Structure (Updated 2026-01-17)
+- **Dashboard** - Analytics overview
+- **Opportunities** - View all + hover to Add Bond/Real Estate
+- **Logs** - Trade logs
+- **Holdings** - Client holdings
+- **Analysis** - CAS PDF analysis with dashboard
+- **Reinv Tag** - Reinvestment tagging
+- **Sub Broker** - Top-level sub-broker management
+- **Client** - Top-level client management
+- **Upload** - Bulk upload for all data types (including Scheme Master)
+- **Settings** - Platform settings
+
 ## Key API Endpoints
 - `/api/clients` - CRUD for clients
 - `/api/bulk/template/historical-trades` - Download Excel template for historical trades
