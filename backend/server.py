@@ -1592,6 +1592,10 @@ async def bulk_upload_bonds(
                 combined_schedule = None
             
             bond_id = str(uuid.uuid4())
+            
+            # Check if we have exact cashflows per unit (preferred for secondary market bonds)
+            cashflows_per_unit = cashflows_per_unit_map.get(bond_code, [])
+            
             bond = {
                 "id": bond_id,
                 "bond_code": bond_code,
@@ -1607,7 +1611,8 @@ async def bulk_upload_bonds(
                 "interest_payment_frequency": frequency,
                 "principal_payments": principal_payments,
                 "interest_payments": interest_payments,
-                "combined_schedule": combined_schedule,  # New field for combined principal+interest schedule
+                "combined_schedule": combined_schedule,  # Auto-generated combined schedule
+                "cashflows_per_unit": cashflows_per_unit,  # NEW: Exact cashflows per unit from Excel
                 "issuer": str(row.get('issuer_company_name', '')) if not pd.isna(row.get('issuer_company_name')) else '',
                 "description": str(row.get('description', '')) if not pd.isna(row.get('description')) else '',
                 "face_value": float(row.get('face_value_per_unit', 0)) if not pd.isna(row.get('face_value_per_unit')) else 0,
