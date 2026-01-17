@@ -237,16 +237,16 @@ export default function ReinvestmentTagging() {
       
       // Tagged section: ALL entries must be complete (tag + portfolio)
       // If even ONE entry is incomplete, the client goes to Untagged section
-      if (untaggedCount === 0 && taggedCount > 0 && sentCount === 0) {
+      if (incompleteCount === 0 && completeCount > 0 && sentCount === 0) {
         tagged.push(clientWithStats);
-      } else if (untaggedCount > 0) {
-        // Any untagged entries = client goes to Untagged section
+      } else if (incompleteCount > 0 || sentCount === 0) {
+        // Any incomplete entries = client goes to Untagged section
         untagged.push(clientWithStats);
       }
     });
     
     return { untaggedClients: untagged, taggedClients: tagged, sentClients: sent };
-  }, [reinvestmentData, localTags, customAmounts]);
+  }, [reinvestmentData, localTags, customAmounts, portfolioCategories]);
 
   const getTagColor = (tag) => {
     switch(tag) {
