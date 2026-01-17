@@ -254,23 +254,39 @@ export default function Opportunities() {
             </div>
             <div className="flex items-center gap-3">
               <Button 
-                onClick={() => navigate("/broker/admin/bonds")} 
+                onClick={() => setShowBondModal(true)} 
                 className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
               >
-                <TrendingUp className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
                 Add Bonds
               </Button>
               <Button 
-                onClick={() => navigate("/broker/admin/real-estate")} 
+                onClick={() => setShowRealEstateModal(true)} 
                 variant="outline"
                 className="border-teal-500 text-teal-600 hover:bg-teal-50 gap-2"
               >
-                <Building2 className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
                 Add Real Estate
               </Button>
             </div>
           </div>
         </div>
+
+        {/* Bond Modal */}
+        {showBondModal && (
+          <CreateBondModal 
+            onClose={() => setShowBondModal(false)} 
+            onSuccess={fetchData}
+          />
+        )}
+
+        {/* Real Estate Modal */}
+        {showRealEstateModal && (
+          <CreateRealEstateModal 
+            onClose={() => setShowRealEstateModal(false)} 
+            onSuccess={fetchData}
+          />
+        )}
 
         {/* Tabs by Status */}
         <div className="p-8">
