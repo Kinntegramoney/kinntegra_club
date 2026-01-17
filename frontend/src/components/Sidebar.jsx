@@ -55,72 +55,15 @@ export default function Sidebar({ user }) {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 md:p-4 space-y-1 overflow-y-auto">
-        {/* Dashboard */}
-        <button
-          onClick={() => navigate("/broker/dashboard")}
-          className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
-            isActive("/broker/dashboard")
-              ? 'bg-amber-50 text-amber-700'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <LayoutGrid className="h-5 w-5 flex-shrink-0" />
-          <span className="font-medium text-sm md:text-base">Dashboard</span>
-        </button>
-
-        {/* Opportunities with Add buttons */}
-        <div className="relative">
-          <button
-            onClick={() => navigate("/broker/opportunities")}
-            onMouseEnter={() => setShowOpportunityDropdown(true)}
-            onMouseLeave={() => setShowOpportunityDropdown(false)}
-            className={`w-full flex items-center justify-between px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
-              isOpportunitiesActive
-                ? 'bg-amber-50 text-amber-700'
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-5 w-5 flex-shrink-0" />
-              <span className="font-medium text-sm md:text-base">Opportunities</span>
-            </div>
-            <Plus className="h-4 w-4 opacity-50" />
-          </button>
-          
-          {/* Dropdown for Add Bond / Add Real Estate */}
-          {showOpportunityDropdown && (
-            <div 
-              className="absolute left-full top-0 ml-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50 min-w-[160px]"
-              onMouseEnter={() => setShowOpportunityDropdown(true)}
-              onMouseLeave={() => setShowOpportunityDropdown(false)}
-            >
-              <button
-                onClick={() => navigate("/broker/admin/bonds")}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
-              >
-                <Landmark className="h-4 w-4" />
-                <span>Add Bond</span>
-              </button>
-              <button
-                onClick={() => navigate("/broker/admin/real-estate")}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
-              >
-                <Building2 className="h-4 w-4" />
-                <span>Add Real Estate</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Rest of menu items */}
-        {menuItems.slice(1).map((item) => {
+        {menuItems.map((item) => {
           const Icon = item.icon;
+          const active = item.active !== undefined ? item.active : isActive(item.path);
           return (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
               className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
-                isActive(item.path)
+                active
                   ? 'bg-amber-50 text-amber-700'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
@@ -130,19 +73,6 @@ export default function Sidebar({ user }) {
             </button>
           );
         })}
-
-        {/* Admin - minimal, just settings type */}
-        <button
-          onClick={() => navigate("/broker/admin/settings")}
-          className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
-            isActive("/broker/admin/settings")
-              ? 'bg-amber-50 text-amber-700'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          <Settings className="h-5 w-5 flex-shrink-0" />
-          <span className="font-medium text-sm md:text-base">Settings</span>
-        </button>
       </nav>
 
       {/* Logout Button */}
