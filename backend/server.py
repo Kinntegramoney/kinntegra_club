@@ -1544,7 +1544,6 @@ async def bulk_upload_bonds(
                 "interest_payments": interest_payments,
                 "combined_schedule": combined_schedule,  # New field for combined principal+interest schedule
                 "issuer": str(row.get('issuer_company_name', '')) if not pd.isna(row.get('issuer_company_name')) else '',
-                "credit_rating": str(row.get('credit_rating', '')) if not pd.isna(row.get('credit_rating')) else '',
                 "description": str(row.get('description', '')) if not pd.isna(row.get('description')) else '',
                 "face_value": float(row.get('face_value_per_unit', 0)) if not pd.isna(row.get('face_value_per_unit')) else 0,
                 "created_by": current_user['id'],
