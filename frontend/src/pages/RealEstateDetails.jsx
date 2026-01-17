@@ -3548,3 +3548,226 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
     </div>
   );
 }
+
+
+// Passport Details Modal Component
+function PassportDetailsModal({ opportunity, investor, onClose, onSuccess }) {
+  const [passportNumber, setPassportNumber] = useState(investor?.passport_details?.passport_number || '');
+  const [dateOfIssue, setDateOfIssue] = useState(investor?.passport_details?.date_of_issue || '');
+  const [dateOfExpiry, setDateOfExpiry] = useState(investor?.passport_details?.date_of_expiry || '');
+  const [placeOfIssue, setPlaceOfIssue] = useState(investor?.passport_details?.place_of_issue || '');
+  const [countryOfIssue, setCountryOfIssue] = useState(investor?.passport_details?.country_of_issue || '');
+  const [addressOnPassport, setAddressOnPassport] = useState(investor?.passport_details?.address_on_passport || '');
+  const [passportFile, setPassportFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Save passport details
+      await axios.post(
+        `${API}/real-estate-opportunities/${opportunity.id}/investor/${investor.id}/passport`,
+        {
+          passport_number: passportNumber,
+          date_of_issue: dateOfIssue,
+          date_of_expiry: dateOfExpiry,
+          place_of_issue: placeOfIssue,
+          country_of_issue: countryOfIssue,
+          address_on_passport: addressOnPassport
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Upload passport document if selected
+      if (passportFile) {
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', passportFile);
+        
+        await axios.post(
+          `${API}/real-estate-opportunities/${opportunity.id}/investor/${investor.id}/passport-upload`,
+          formData,
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            } 
+          }
+        );
+      }
+      
+      toast.success("Passport details saved successfully");
+      onSuccess();
+    } catch (error) {
+      console.error("Error saving passport details:", error);
+      toast.error(error.response?.data?.detail || "Failed to save passport details");
+    } finally {
+      setLoading(false);
+      setUploading(false);
+    }
+  };
+
+  const handleDownloadPassport = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${API}/real-estate-opportunities/${opportunity.id}/investor/${investor.id}/passport-download`,
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob'
+        }
+      );
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', investor?.passport_document?.filename || 'passport.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      toast.error("Failed to download passport document");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
+          <div>
+            <h2 className="text-lg font-semibold text-indigo-900">Passport Details</h2>
+            <p className="text-sm text-indigo-600">{investor?.client_name}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/50 rounded-lg"><X className="h-5 w-5" /></button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Label>Passport Number *</Label>
+              <Input
+                value={passportNumber}
+                onChange={(e) => setPassportNumber(e.target.value.toUpperCase())}
+                placeholder="Enter passport number"
+                required
+                data-testid="passport-number-input"
+              />
+            </div>
+            
+            <div>
+              <Label>Date of Issue *</Label>
+              <Input
+                type="date"
+                value={dateOfIssue}
+                onChange={(e) => setDateOfIssue(e.target.value)}
+                required
+                data-testid="passport-issue-date-input"
+              />
+            </div>
+            
+            <div>
+              <Label>Date of Expiry *</Label>
+              <Input
+                type="date"
+                value={dateOfExpiry}
+                onChange={(e) => setDateOfExpiry(e.target.value)}
+                required
+                data-testid="passport-expiry-date-input"
+              />
+            </div>
+            
+            <div>
+              <Label>Place of Issue</Label>
+              <Input
+                value={placeOfIssue}
+                onChange={(e) => setPlaceOfIssue(e.target.value)}
+                placeholder="City/State"
+                data-testid="passport-place-input"
+              />
+            </div>
+            
+            <div>
+              <Label>Country of Issue *</Label>
+              <Input
+                value={countryOfIssue}
+                onChange={(e) => setCountryOfIssue(e.target.value)}
+                placeholder="e.g., India, UAE"
+                required
+                data-testid="passport-country-input"
+              />
+            </div>
+            
+            <div className="col-span-2">
+              <Label>Address on Passport</Label>
+              <Textarea
+                value={addressOnPassport}
+                onChange={(e) => setAddressOnPassport(e.target.value)}
+                placeholder="Full address as printed on passport"
+                rows={3}
+                data-testid="passport-address-input"
+              />
+            </div>
+            
+            {/* Passport Upload */}
+            <div className="col-span-2">
+              <Label>Upload Passport Copy</Label>
+              <div className="mt-1 flex items-center gap-3">
+                <label className="flex-1 cursor-pointer">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-indigo-400 transition-colors">
+                    <div className="flex items-center justify-center gap-2 text-gray-500">
+                      <Upload className="h-5 w-5" />
+                      <span className="text-sm">
+                        {passportFile ? passportFile.name : 'Click to upload PDF or image'}
+                      </span>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={(e) => setPassportFile(e.target.files[0])}
+                    data-testid="passport-file-input"
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Accepted: PDF, JPG, PNG (Max 10MB)</p>
+              
+              {/* Show existing passport document */}
+              {investor?.passport_document && (
+                <div className="mt-2 flex items-center gap-2 p-2 bg-green-50 rounded-lg">
+                  <FileText className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-green-700 flex-1">{investor.passport_document.filename}</span>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={handleDownloadPassport}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button 
+              type="submit" 
+              disabled={loading || uploading} 
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+              data-testid="save-passport-btn"
+            >
+              {loading ? "Saving..." : uploading ? "Uploading..." : "Save Details"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
