@@ -127,11 +127,13 @@ export default function AdminClients() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // Convert UCC string to array for editing
+      // Load UCC list for editing (handle both old ucc and new ucc_list)
       const clientData = { ...response.data };
-      if (clientData.ucc && typeof clientData.ucc === 'string') {
-        clientData.uccs = clientData.ucc.split(',').map(ucc => ucc.trim()).filter(ucc => ucc !== '');
-      } else if (!clientData.ucc) {
+      if (clientData.ucc_list && Array.isArray(clientData.ucc_list) && clientData.ucc_list.length > 0) {
+        clientData.uccs = [...clientData.ucc_list];
+      } else if (clientData.ucc && typeof clientData.ucc === 'string') {
+        clientData.uccs = [clientData.ucc];
+      } else {
         clientData.uccs = [''];
       }
       
@@ -140,9 +142,11 @@ export default function AdminClients() {
     } catch (error) {
       // Fallback to basic client data if details endpoint fails
       const clientData = { ...client };
-      if (clientData.ucc && typeof clientData.ucc === 'string') {
-        clientData.uccs = clientData.ucc.split(',').map(ucc => ucc.trim()).filter(ucc => ucc !== '');
-      } else if (!clientData.ucc) {
+      if (clientData.ucc_list && Array.isArray(clientData.ucc_list) && clientData.ucc_list.length > 0) {
+        clientData.uccs = [...clientData.ucc_list];
+      } else if (clientData.ucc && typeof clientData.ucc === 'string') {
+        clientData.uccs = [clientData.ucc];
+      } else {
         clientData.uccs = [''];
       }
       
