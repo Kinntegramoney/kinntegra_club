@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Upload, Download, FileSpreadsheet, Users, Building2, 
-  TrendingUp, CheckCircle2, XCircle, AlertCircle, ArrowLeft
+  TrendingUp, CheckCircle2, XCircle, AlertCircle, ArrowLeft, History
 } from "lucide-react";
 import { toast } from "sonner";
 
