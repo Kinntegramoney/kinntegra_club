@@ -23,6 +23,7 @@ export default function ReinvestmentTagging() {
   const [selectedClientEntries, setSelectedClientEntries] = useState({});
   const [sendingApproval, setSendingApproval] = useState(null);
   const [portfolioCategories, setPortfolioCategories] = useState({});
+  const [targetUccs, setTargetUccs] = useState({}); // Track selected UCC for each cashflow
 
   // Portfolio category options
   const PORTFOLIO_OPTIONS = [
