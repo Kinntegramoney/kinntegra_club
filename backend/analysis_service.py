@@ -2039,6 +2039,231 @@ class GapSheetGenerator:
         
         self._auto_width(ws)
     
+    def _create_sold_units_sheet(self, wb: Workbook):
+        """Sheet: Sold Units - Shows all redeemed/sold transactions with profit calculation"""
+        ws = wb.create_sheet("Sold Units")
+        
+        # Headers for sold units
+        headers = [
+            "Account Identifier", "Instrument Name", "ISIN", 
+            "Purchase Date", "Purchase NAV", "Units Purchased", "Purchase Amount",
+            "Sale Date", "Sale NAV", "Units Sold", "Sale Amount",
+            "Holding Days", "Profit/Loss", "Profit %", "Annualized Return %",
+            "Advisor ARN"
+        ]
+        
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        self._style_header(ws, 1, len(headers))
+        
+        # Collect all redemption transactions
+        redemptions = []
+        purchases_by_folio = {}  # folio_key -> list of purchases
+        
+        # First pass: collect all purchases by folio
+        for folio_key, folio_data in self.parsed_data.get('folios', {}).items():
+            purchases = []
+            for trans in folio_data.get('transactions', []):
+                if trans.get('is_nft') or trans.get('is_pledge'):
+                    continue
+                if trans.get('transaction_type') in ['STT Paid', 'Stamp Duty']:
+                    continue
+                if not trans.get('is_redemption'):
+                    purchases.append(trans)
+            
+            # Sort purchases by date (oldest first) for FIFO matching
+            def parse_date(date_str):
+                try:
+                    return datetime.strptime(date_str, '%d-%b-%Y')
+                except:
+                    return datetime.min
+            
+            purchases.sort(key=lambda x: parse_date(x.get('date', '')))
+            purchases_by_folio[folio_key] = purchases
+        
+        # Second pass: match redemptions to purchases using FIFO
+        sold_entries = []
+        
+        for folio_key, folio_data in self.parsed_data.get('folios', {}).items():
+            scheme_name = folio_data.get('scheme', '')
+            isin = folio_data.get('isin', '')
+            folio_num = folio_data.get('folio', folio_key)
+            
+            # Get purchases for this folio
+            available_purchases = []
+            for p in purchases_by_folio.get(folio_key, []):
+                available_purchases.append({
+                    'date': p.get('date'),
+                    'nav': p.get('nav', 0),
+                    'units': p.get('units', 0),
+                    'amount': p.get('amount', 0),
+                    'remaining_units': p.get('units', 0),
+                    'advisor': p.get('advisor', '')
+                })
+            
+            # Process redemptions
+            for trans in folio_data.get('transactions', []):
+                if not trans.get('is_redemption'):
+                    continue
+                if trans.get('is_nft') or trans.get('is_pledge'):
+                    continue
+                
+                sale_date_str = trans.get('date', '')
+                sale_nav = trans.get('nav', 0)
+                units_to_sell = abs(trans.get('units', 0))
+                sale_amount = abs(trans.get('amount', 0))
+                
+                try:
+                    sale_date = datetime.strptime(sale_date_str, '%d-%b-%Y')
+                except:
+                    sale_date = None
+                
+                # Match with purchases using FIFO
+                remaining_to_sell = units_to_sell
+                
+                for purchase in available_purchases:
+                    if remaining_to_sell <= 0:
+                        break
+                    if purchase['remaining_units'] <= 0:
+                        continue
+                    
+                    # Calculate how many units from this purchase are sold
+                    units_from_this_purchase = min(remaining_to_sell, purchase['remaining_units'])
+                    
+                    if units_from_this_purchase > 0:
+                        # Calculate purchase details for these units
+                        purchase_nav = purchase['nav']
+                        purchase_amount = (units_from_this_purchase / purchase['units']) * purchase['amount'] if purchase['units'] > 0 else 0
+                        
+                        # Calculate sale amount for these units
+                        sale_amount_portion = (units_from_this_purchase / units_to_sell) * sale_amount if units_to_sell > 0 else 0
+                        
+                        # Calculate holding period
+                        try:
+                            purchase_date = datetime.strptime(purchase['date'], '%d-%b-%Y')
+                            holding_days = (sale_date - purchase_date).days if sale_date else 0
+                        except:
+                            purchase_date = None
+                            holding_days = 0
+                        
+                        # Calculate profit/loss
+                        profit_loss = sale_amount_portion - purchase_amount
+                        profit_pct = (profit_loss / purchase_amount * 100) if purchase_amount > 0 else 0
+                        
+                        # Calculate annualized return
+                        annualized_return = 0
+                        if holding_days > 0 and purchase_amount > 0:
+                            try:
+                                annualized_return = ((sale_amount_portion / purchase_amount) ** (365 / holding_days) - 1) * 100
+                            except:
+                                pass
+                        
+                        sold_entries.append({
+                            'folio': folio_num,
+                            'scheme': scheme_name,
+                            'isin': isin,
+                            'purchase_date': purchase['date'],
+                            'purchase_nav': purchase_nav,
+                            'units_purchased': units_from_this_purchase,
+                            'purchase_amount': purchase_amount,
+                            'sale_date': sale_date_str,
+                            'sale_nav': sale_nav,
+                            'units_sold': units_from_this_purchase,
+                            'sale_amount': sale_amount_portion,
+                            'holding_days': holding_days,
+                            'profit_loss': profit_loss,
+                            'profit_pct': profit_pct,
+                            'annualized_return': annualized_return,
+                            'advisor': purchase['advisor']
+                        })
+                        
+                        # Update remaining units
+                        purchase['remaining_units'] -= units_from_this_purchase
+                        remaining_to_sell -= units_from_this_purchase
+        
+        # Sort entries by sale date
+        def parse_date(date_str):
+            try:
+                return datetime.strptime(date_str, '%d-%b-%Y')
+            except:
+                return datetime.min
+        
+        sold_entries.sort(key=lambda x: parse_date(x.get('sale_date', '')))
+        
+        # Write data
+        row = 2
+        total_profit = 0
+        total_purchase = 0
+        total_sale = 0
+        
+        # Styling for profit/loss
+        profit_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+        loss_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+        profit_font = Font(color="006100")
+        loss_font = Font(color="9C0006")
+        
+        for entry in sold_entries:
+            ws.cell(row=row, column=1, value=entry['folio'])
+            ws.cell(row=row, column=2, value=entry['scheme'][:50] if entry['scheme'] else '')
+            ws.cell(row=row, column=3, value=entry['isin'])
+            ws.cell(row=row, column=4, value=entry['purchase_date'])
+            ws.cell(row=row, column=5, value=entry['purchase_nav'])
+            ws.cell(row=row, column=6, value=round(entry['units_purchased'], 3))
+            ws.cell(row=row, column=7, value=round(entry['purchase_amount'], 2))
+            ws.cell(row=row, column=8, value=entry['sale_date'])
+            ws.cell(row=row, column=9, value=entry['sale_nav'])
+            ws.cell(row=row, column=10, value=round(entry['units_sold'], 3))
+            ws.cell(row=row, column=11, value=round(entry['sale_amount'], 2))
+            ws.cell(row=row, column=12, value=entry['holding_days'])
+            
+            # Profit/Loss with conditional formatting
+            profit_cell = ws.cell(row=row, column=13, value=round(entry['profit_loss'], 2))
+            pct_cell = ws.cell(row=row, column=14, value=f"{entry['profit_pct']:.2f}%")
+            
+            if entry['profit_loss'] >= 0:
+                profit_cell.fill = profit_fill
+                profit_cell.font = profit_font
+                pct_cell.fill = profit_fill
+                pct_cell.font = profit_font
+            else:
+                profit_cell.fill = loss_fill
+                profit_cell.font = loss_font
+                pct_cell.fill = loss_fill
+                pct_cell.font = loss_font
+            
+            ws.cell(row=row, column=15, value=f"{entry['annualized_return']:.2f}%")
+            ws.cell(row=row, column=16, value=entry['advisor'])
+            
+            # Accumulate totals
+            total_profit += entry['profit_loss']
+            total_purchase += entry['purchase_amount']
+            total_sale += entry['sale_amount']
+            
+            row += 1
+        
+        # Add summary row
+        if sold_entries:
+            row += 1
+            ws.cell(row=row, column=1, value="TOTAL")
+            ws.cell(row=row, column=1).font = Font(bold=True)
+            ws.cell(row=row, column=7, value=round(total_purchase, 2))
+            ws.cell(row=row, column=7).font = Font(bold=True)
+            ws.cell(row=row, column=11, value=round(total_sale, 2))
+            ws.cell(row=row, column=11).font = Font(bold=True)
+            
+            total_profit_cell = ws.cell(row=row, column=13, value=round(total_profit, 2))
+            total_profit_cell.font = Font(bold=True)
+            if total_profit >= 0:
+                total_profit_cell.fill = profit_fill
+            else:
+                total_profit_cell.fill = loss_fill
+            
+            if total_purchase > 0:
+                total_pct_cell = ws.cell(row=row, column=14, value=f"{(total_profit / total_purchase * 100):.2f}%")
+                total_pct_cell.font = Font(bold=True)
+        
+        self._auto_width(ws)
+    
     def _create_accounts_sheet(self, wb: Workbook):
         """Sheet 8: Accounts"""
         ws = wb.create_sheet("Accounts")
