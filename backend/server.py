@@ -5475,8 +5475,8 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         try:
             cf_date = datetime.fromisoformat(cf['date']).date()
             if today <= cf_date <= six_months_later:
-                # Get client details
-                client = await db.clients.find_one({"id": cf['client_id']}, {"_id": 0, "name": 1, "pan_number": 1})
+                # Get client details including ucc_list
+                client = await db.clients.find_one({"id": cf['client_id']}, {"_id": 0, "name": 1, "pan_number": 1, "email": 1, "ucc_list": 1, "ucc": 1})
                 
                 # Get trade details
                 trade = await db.trades.find_one({"id": cf['trade_id']}, {"_id": 0})
@@ -5496,12 +5496,18 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                     bond = await db.bonds.find_one({"id": cf['bond_id']}, {"_id": 0, "bond_code": 1})
                     bond_code = bond.get('bond_code', '') if bond else ''
                 
+                # Get client's UCC list (handle both old single ucc and new ucc_list)
+                client_ucc_list = client.get('ucc_list', []) if client else []
+                if not client_ucc_list and client and client.get('ucc'):
+                    client_ucc_list = [client.get('ucc')]  # Convert old single UCC to list
+                
                 upcoming.append({
                     "cashflow_id": cf['id'],
                     "client_id": cf['client_id'],
                     "client_name": client['name'] if client else 'Unknown',
                     "client_pan": client.get('pan_number', '') if client else '',
                     "client_email": client.get('email', '') if client else '',
+                    "client_ucc_list": client_ucc_list,  # Client's available UCCs for reinvestment
                     "bond_id": cf['bond_id'],
                     "bond_name": cf.get('bond_name', ''),
                     "bond_code": bond_code,  # Added bond_code (Deal ID)
@@ -5515,6 +5521,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                     "reinvestment_tag": cf.get('reinvestment_tag', 'not_tagged'),
                     "custom_amount": cf.get('custom_amount'),
                     "portfolio_category": cf.get('portfolio_category'),
+                    "target_ucc": cf.get('target_ucc'),  # Selected UCC for reinvestment
                     "approval_status": cf.get('approval_status', 'not_sent'),  # not_sent, pending, approved, rejected
                     "client_approved": cf.get('client_approved', False),
                     "tagged_at": cf.get('tagged_at'),
