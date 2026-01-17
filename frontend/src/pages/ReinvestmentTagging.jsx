@@ -409,8 +409,10 @@ export default function ReinvestmentTagging() {
                               </tr>
                             </thead>
                             <tbody>
-                              {client.entries.map((entry) => (
-                                <tr key={entry.cashflow_id} className={`border-t hover:bg-gray-50 ${entry.currentTag === 'not_tagged' ? 'bg-red-50/30' : ''} ${entry.prepayment_affected ? 'bg-amber-50/50' : ''}`}>
+                              {client.entries.map((entry) => {
+                                const needsPortfolio = entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest' && !entry.currentPortfolio;
+                                return (
+                                <tr key={entry.cashflow_id} className={`border-t hover:bg-gray-50 ${entry.currentTag === 'not_tagged' ? 'bg-red-50/30' : ''} ${needsPortfolio ? 'bg-yellow-50/50' : ''} ${entry.prepayment_affected ? 'bg-amber-50/50' : ''} ${entry.isComplete ? 'bg-green-50/30' : ''}`}>
                                   <td className="py-2 px-4 text-sm">
                                     <div className="flex items-center gap-1">
                                       {entry.bond_name?.slice(0, 20) || 'N/A'}
