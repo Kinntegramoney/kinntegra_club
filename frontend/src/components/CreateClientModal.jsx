@@ -121,11 +121,26 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
       return;
     }
 
+    // Validate UCC list - at least one is required
+    const validUccs = uccList.filter(ucc => ucc.trim() !== "");
+    if (validUccs.length === 0) {
+      toast.error("At least one UCC is required");
+      return;
+    }
+
+    // Check for duplicate UCCs
+    const uniqueUccs = [...new Set(validUccs)];
+    if (uniqueUccs.length !== validUccs.length) {
+      toast.error("Duplicate UCCs are not allowed");
+      return;
+    }
+
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
       const submitData = {
         ...formData,
+        ucc_list: validUccs,  // Send as array
         linked_subbroker_id: formData.linked_subbroker_id || null
       };
       
