@@ -378,6 +378,7 @@ export default function ReinvestmentTagging() {
                                 <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Net Amt</th>
                                 <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
                                 <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Custom Amt</th>
+                                <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Portfolio</th>
                                 <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Save</th>
                               </tr>
                             </thead>
