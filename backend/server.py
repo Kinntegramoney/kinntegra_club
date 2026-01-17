@@ -293,6 +293,19 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+# Helper functions for password/PIN generation
+def generate_password(length=10):
+    """Generate a random password with letters, digits, and special chars"""
+    import random
+    import string
+    chars = string.ascii_letters + string.digits + "@#$%"
+    return ''.join(random.choice(chars) for _ in range(length))
+
+def generate_pin(length=4):
+    """Generate a random numeric PIN"""
+    import random
+    return ''.join(str(random.randint(0, 9)) for _ in range(length))
+
 # Create the main app without a prefix
 app = FastAPI()
 
