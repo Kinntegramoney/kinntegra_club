@@ -5406,6 +5406,12 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                     if not client or client.get('linked_subbroker_id') != current_user['id']:
                         continue
                 
+                # Get bond_code from trade or bond document
+                bond_code = trade.get('bond_code', '') if trade else ''
+                if not bond_code and cf.get('bond_id'):
+                    bond = await db.bonds.find_one({"id": cf['bond_id']}, {"_id": 0, "bond_code": 1})
+                    bond_code = bond.get('bond_code', '') if bond else ''
+                
                 upcoming.append({
                     "cashflow_id": cf['id'],
                     "client_id": cf['client_id'],
@@ -5414,6 +5420,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                     "client_email": client.get('email', '') if client else '',
                     "bond_id": cf['bond_id'],
                     "bond_name": cf.get('bond_name', ''),
+                    "bond_code": bond_code,  # Added bond_code (Deal ID)
                     "trade_id": cf['trade_id'],
                     "amount_invested": trade.get('total_amount', 0) if trade else 0,
                     "units": trade.get('units', 0) if trade else 0,
