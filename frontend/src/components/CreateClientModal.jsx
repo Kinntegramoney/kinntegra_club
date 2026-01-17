@@ -320,16 +320,51 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500 uppercase">UCC (Unique Client Code)</Label>
-                <Input
-                  value={formData.ucc}
-                  onChange={(e) => updateField('ucc', e.target.value.toUpperCase())}
-                  placeholder="Unique Client Code"
-                  className="font-mono uppercase"
-                  data-testid="client-ucc"
-                />
+              
+              {/* Multiple UCCs Section */}
+              <div className="space-y-2 col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-gray-500 uppercase">UCC (Unique Client Codes) * - Max 5</Label>
+                  {uccList.length < 5 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={addUccField}
+                      className="h-6 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add UCC
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {uccList.map((ucc, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        value={ucc}
+                        onChange={(e) => updateUcc(index, e.target.value)}
+                        placeholder={`UCC ${index + 1}${index === 0 ? ' *' : ''}`}
+                        className="font-mono uppercase"
+                        data-testid={`client-ucc-${index + 1}`}
+                      />
+                      {uccList.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeUccField(index)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400">At least one UCC is required. Each UCC must be unique across all clients.</p>
               </div>
+              
               <div className="space-y-2">
                 <Label className="text-xs text-gray-500 uppercase">Occupation</Label>
                 <Input
