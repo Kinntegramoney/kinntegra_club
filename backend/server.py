@@ -1425,10 +1425,10 @@ async def bulk_upload_clients(
                 results['failed'] += 1
                 continue
             
-            # Check if any UCC already exists in the system
+            # Check if any UCC already exists for a DIFFERENT client (not current PAN)
             ucc_conflict = False
             for ucc in ucc_list:
-                existing_ucc = await db.clients.find_one({"ucc_list": ucc})
+                existing_ucc = await db.clients.find_one({"ucc_list": ucc, "pan_number": {"$ne": pan}})
                 if existing_ucc:
                     results['errors'].append(f"Row {idx+2}: UCC '{ucc}' is already assigned to another client")
                     ucc_conflict = True
@@ -1437,12 +1437,9 @@ async def bulk_upload_clients(
                 results['failed'] += 1
                 continue
             
-            # Check for duplicates
-            existing_pan = await db.users.find_one({"pan": pan})
-            if existing_pan:
-                results['errors'].append(f"Row {idx+2}: PAN {pan} already exists")
-                results['failed'] += 1
-                continue
+            # Check if client with this PAN already exists - if so, UPDATE instead of CREATE
+            existing_client = await db.clients.find_one({"pan_number": pan})
+            existing_user = await db.users.find_one({"pan": pan})
             
             # Get data from other sheets using PAN lookup
             address_row = address_by_pan.get(pan, {})
@@ -1465,7 +1462,7 @@ async def bulk_upload_clients(
                 if sub_broker:
                     linked_subbroker_id = sub_broker['id']
                 else:
-                    results['errors'].append(f"Row {idx+2}: Sub-broker code {sub_broker_code} not found (client will be created without link)")
+                    results['errors'].append(f"Row {idx+2}: Sub-broker code {sub_broker_code} not found (client will be created/updated without link)")
             
             # For sub-broker uploads, link to themselves if no sub-broker specified
             if current_user['role'] == 'sub_broker' and not linked_subbroker_id:
@@ -1481,6 +1478,91 @@ async def bulk_upload_clients(
                 elif isinstance(data, dict):
                     return data.get(key, default)
                 return default
+            
+            if existing_client:
+                # UPDATE existing client - only update fields that are empty/missing and have new values
+                update_data = {}
+                
+                # Helper to check if field should be updated (empty in DB, has value in upload)
+                def should_update(db_val, new_val):
+                    if not new_val:  # No new value provided
+                        return False
+                    if not db_val or db_val == '':  # DB field is empty
+                        return True
+                    return False
+                
+                # Personal details
+                if should_update(existing_client.get('occupation'), get_val(row, 'occupation')):
+                    update_data['occupation'] = get_val(row, 'occupation')
+                if should_update(existing_client.get('date_of_birth'), get_val(row, 'date_of_birth')):
+                    update_data['date_of_birth'] = get_val(row, 'date_of_birth')
+                if should_update(existing_client.get('father_husband_name'), get_val(row, 'father_husband_name')):
+                    update_data['father_husband_name'] = get_val(row, 'father_husband_name')
+                if should_update(existing_client.get('demat_account_no'), get_val(row, 'demat_account_no')):
+                    update_data['demat_account_no'] = get_val(row, 'demat_account_no')
+                
+                # Address details from sheet 2
+                if should_update(existing_client.get('address_line1'), get_val(address_row, 'address_line_1')):
+                    update_data['address_line1'] = get_val(address_row, 'address_line_1')
+                if should_update(existing_client.get('address_line2'), get_val(address_row, 'address_line_2')):
+                    update_data['address_line2'] = get_val(address_row, 'address_line_2')
+                if should_update(existing_client.get('city'), get_val(address_row, 'city')):
+                    update_data['city'] = get_val(address_row, 'city')
+                if should_update(existing_client.get('state'), get_val(address_row, 'state')):
+                    update_data['state'] = get_val(address_row, 'state')
+                if should_update(existing_client.get('country'), get_val(address_row, 'country')):
+                    update_data['country'] = get_val(address_row, 'country')
+                if should_update(existing_client.get('pincode'), get_val(address_row, 'pincode')):
+                    update_data['pincode'] = get_val(address_row, 'pincode')
+                
+                # Bank details from sheet 3
+                if should_update(existing_client.get('bank_name'), get_val(bank_row, 'bank_name')):
+                    update_data['bank_name'] = get_val(bank_row, 'bank_name')
+                if should_update(existing_client.get('account_number'), get_val(bank_row, 'account_number')):
+                    update_data['account_number'] = get_val(bank_row, 'account_number')
+                if should_update(existing_client.get('branch'), get_val(bank_row, 'branch')):
+                    update_data['branch'] = get_val(bank_row, 'branch')
+                if should_update(existing_client.get('ifsc_code'), get_val(bank_row, 'ifsc_code')):
+                    update_data['ifsc_code'] = get_val(bank_row, 'ifsc_code')
+                
+                # Nominee details from sheet 4
+                if should_update(existing_client.get('nominee_name'), get_val(nominee_row, 'nominee_name')):
+                    update_data['nominee_name'] = get_val(nominee_row, 'nominee_name')
+                if should_update(existing_client.get('nominee_dob'), get_val(nominee_row, 'nominee_dob')):
+                    update_data['nominee_dob'] = get_val(nominee_row, 'nominee_dob')
+                if should_update(existing_client.get('nominee_mobile'), get_val(nominee_row, 'nominee_mobile')):
+                    update_data['nominee_mobile'] = get_val(nominee_row, 'nominee_mobile')
+                if should_update(existing_client.get('nominee_relationship'), get_val(nominee_row, 'relationship')):
+                    update_data['nominee_relationship'] = get_val(nominee_row, 'relationship')
+                
+                # Sub-broker assignment
+                if should_update(existing_client.get('linked_subbroker_id'), linked_subbroker_id):
+                    update_data['linked_subbroker_id'] = linked_subbroker_id
+                
+                # Update UCCs - merge with existing (add new ones, keep existing)
+                existing_uccs = existing_client.get('ucc_list', [])
+                if not existing_uccs and existing_client.get('ucc'):
+                    existing_uccs = [existing_client.get('ucc')]
+                
+                merged_uccs = list(set(existing_uccs + ucc_list))[:5]  # Merge and limit to 5
+                if set(merged_uccs) != set(existing_uccs):
+                    update_data['ucc_list'] = merged_uccs
+                
+                if update_data:
+                    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+                    await db.clients.update_one({"pan_number": pan}, {"$set": update_data})
+                    
+                    # Also update user record if exists
+                    if existing_user and 'ucc_list' in update_data:
+                        await db.users.update_one({"pan": pan}, {"$set": {"ucc_list": update_data['ucc_list']}})
+                    
+                    results['success'] += 1
+                    results['errors'].append(f"Row {idx+2}: PAN {pan} - Updated {len(update_data)} fields")
+                else:
+                    results['errors'].append(f"Row {idx+2}: PAN {pan} - No new data to update (all fields already filled)")
+                    results['success'] += 1  # Count as success since client exists
+                
+                continue  # Skip creation, we've updated
             
             # Create user
             user_id = str(uuid.uuid4())
