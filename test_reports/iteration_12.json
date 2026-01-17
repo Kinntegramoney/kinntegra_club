@@ -1,0 +1,68 @@
+{
+  "summary": "Completed testing of Reinvestment Tagging page fixes. All 3 requested features are working correctly: 1) Deal ID (bond_code) displays in Untagged section, 2) Portfolio Type displays in Tagged section, 3) Untag button works and moves entries back to Untagged.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "PUT /api/reinvestment/tag/{cashflow_id}",
+        "issue": "When broker tags an entry, approval_status is automatically set to 'pending' (line 5556-5558). This causes entries to go to 'Sent for Approval' section instead of 'Tagged' section. Consider adding a separate 'send for approval' action.",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Backend: GET /api/reinvestment/upcoming returns 200 OK",
+    "Backend: Response has correct structure (months, by_client, total_upcoming)",
+    "Backend: Each cashflow entry has 'bond_code' field (Deal ID)",
+    "Backend: Each cashflow entry has 'portfolio_category' field",
+    "Backend: PUT /api/reinvestment/tag/{cashflow_id} - tag with principal works",
+    "Backend: PUT /api/reinvestment/tag/{cashflow_id} - tag with interest works",
+    "Backend: PUT /api/reinvestment/tag/{cashflow_id} - tag with net_amount works",
+    "Backend: PUT /api/reinvestment/tag/{cashflow_id} - tag with custom amount works",
+    "Backend: PUT /api/reinvestment/tag/{cashflow_id} - tag with not_invest works",
+    "Backend: PUT /api/reinvestment/tag/{cashflow_id} - untag (set to not_tagged) works",
+    "Backend: Untag clears portfolio_category and custom_amount",
+    "Backend: Tag non-existent cashflow returns 404",
+    "Backend: Tagged entry appears correctly in API response",
+    "Frontend: Login flow works (PAN + Password, then PIN)",
+    "Frontend: Reinvestment Tagging page loads at /broker/reinvestment",
+    "Frontend: Untagged section shows 'Deal ID' column header",
+    "Frontend: Deal ID column displays bond_code (e.g., 'CDUCIC01')",
+    "Frontend: Tagged section shows 'Portfolio' column header",
+    "Frontend: Portfolio column displays portfolio type (e.g., 'Wealth')",
+    "Frontend: Tagged section shows 'Action' column with 'Untag' button",
+    "Frontend: Untag button works - moves entry back to Untagged section"
+  ],
+  "test_report_links": [
+    "/app/tests/test_reinvestment_tagging.py",
+    "/app/test_reports/pytest/reinvestment_tagging_tests.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "The backend automatically sets approval_status to 'pending' when a broker tags an entry. This is intentional but may cause confusion as entries go directly to 'Sent for Approval' instead of 'Tagged' section.",
+    "The handleUntag function (line 110-137) correctly calls the API with reinvestment_tag: 'not_tagged', portfolio_category: null, custom_amount: null"
+  ],
+  "updated_files": [
+    "/app/tests/test_reinvestment_tagging.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 pytest tests passed)",
+    "frontend": "100% (All UI features verified)"
+  },
+  "test_credentials": {
+    "broker": {
+      "PAN": "ANVPB5297J",
+      "Password": "Laksh@0208",
+      "PIN": "0516"
+    }
+  },
+  "seed_data_creation": "Used existing test data: Test Historical Client (PAN: TESTHIST01) with 6 cashflow entries from bond CDUCIC01. Entries were tagged/untagged during testing and reset to not_tagged at end.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Reinvestment Tagging feature is fully functional. Key points: 1) Deal ID shows bond_code in Untagged section, 2) Portfolio Type shows in Tagged section, 3) Untag button works. Note: When broker tags an entry, it automatically gets approval_status='pending' which moves it to 'Sent for Approval' section. To test 'Tagged' section, you need to manually set approval_status='not_sent' in the database."
+}
