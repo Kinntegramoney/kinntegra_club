@@ -974,14 +974,16 @@ class GapSheetGenerator:
         # Sheet order:
         # 1. Summary (Portfolio Summary + TDS Summary if TDS exists)
         # 2. Portfolio Performance
-        # 3. MF Transactions
-        # 4. NFT
-        # 5. Advisor View (with XIRR, sorted by AUM)
-        # 6. XIRR (Broker-wise)
-        # 7. TDS Details (only if TDS entries exist)
+        # 3. MF Transactions (remaining/held units only)
+        # 4. Sold Units (all redeemed/sold transactions with profit calculation)
+        # 5. NFT
+        # 6. Advisor View (with XIRR, sorted by AUM)
+        # 7. XIRR (Broker-wise)
+        # 8. TDS Details (only if TDS entries exist)
         self._create_summary_sheet(wb)
         self._create_portfolio_performance_sheet(wb)
         self._create_mf_transactions_sheet(wb)
+        self._create_sold_units_sheet(wb)  # New sheet for sold units
         self._create_nft_sheet(wb)
         self._create_advisor_view_sheet(wb)
         self._create_xirr_sheet(wb)
