@@ -22,6 +22,7 @@ import ClientProfile from "@/pages/ClientProfile";
 import ClientRealEstateInvestments from "@/pages/ClientRealEstateInvestments";
 import BulkUpload from "@/pages/BulkUpload";
 import Analysis from "@/pages/Analysis";
+import AnalysisDashboard from "@/pages/AnalysisDashboard";
 import AdminSchemeMaster from "@/pages/AdminSchemeMaster";
 import ReinvestmentTagging from "@/pages/ReinvestmentTagging";
 import { Toaster } from "@/components/ui/sonner";
