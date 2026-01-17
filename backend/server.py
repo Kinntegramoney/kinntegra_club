@@ -3014,6 +3014,34 @@ async def update_client(client_id: str, client_update: ClientUpdate, current_use
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
     
+    # Validate UCC list if provided
+    if 'ucc_list' in update_data:
+        ucc_list = update_data['ucc_list']
+        
+        if not ucc_list or len(ucc_list) == 0:
+            raise HTTPException(status_code=400, detail="At least one UCC is required")
+        
+        if len(ucc_list) > 5:
+            raise HTTPException(status_code=400, detail="Maximum 5 UCCs allowed per client")
+        
+        # Clean and uppercase UCCs
+        ucc_list = [ucc.strip().upper() for ucc in ucc_list if ucc.strip()]
+        
+        if len(ucc_list) == 0:
+            raise HTTPException(status_code=400, detail="At least one valid UCC is required")
+        
+        # Check for duplicate UCCs in the submitted list
+        if len(ucc_list) != len(set(ucc_list)):
+            raise HTTPException(status_code=400, detail="Duplicate UCCs are not allowed")
+        
+        # Check if any UCC already exists in the system (excluding current client)
+        for ucc in ucc_list:
+            existing_ucc = await db.clients.find_one({"ucc_list": ucc, "id": {"$ne": client_id}})
+            if existing_ucc:
+                raise HTTPException(status_code=400, detail=f"UCC '{ucc}' is already assigned to another client")
+        
+        update_data['ucc_list'] = ucc_list
+    
     await db.clients.update_one({"id": client_id}, {"$set": update_data})
     
     updated_client = await db.clients.find_one({"id": client_id}, {"_id": 0})
