@@ -376,16 +376,46 @@ export default function AdminSubBrokers() {
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(partner.id, partner.name)}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  data-testid={`delete-partner-${partner.id}`}
-                                  title="Delete/Deactivate sub-broker"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                
+                                {/* 3-dots dropdown menu */}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      data-testid={`more-options-${partner.id}`}
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem 
+                                      onClick={() => handleResendCredentials(partner)}
+                                      className="cursor-pointer"
+                                      data-testid={`resend-credentials-${partner.id}`}
+                                    >
+                                      <Mail className="h-4 w-4 mr-2" />
+                                      Resend Credentials
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleResetPassword(partner)}
+                                      className="cursor-pointer"
+                                      data-testid={`reset-password-${partner.id}`}
+                                    >
+                                      <KeyRound className="h-4 w-4 mr-2" />
+                                      Reset Password
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDeactivate(partner)}
+                                      className="cursor-pointer text-red-600 focus:text-red-600"
+                                      data-testid={`deactivate-partner-${partner.id}`}
+                                    >
+                                      <UserMinus className="h-4 w-4 mr-2" />
+                                      Deactivate
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </>
                             )}
                           </div>
