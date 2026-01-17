@@ -10174,6 +10174,12 @@ async def get_analysis_dashboard(
         parsed_data = analysis.get('parsed_data', {})
         folios = parsed_data.get('folios', {})
         
+        # Get scheme master for type categorization
+        scheme_master = await db.scheme_master.find_one({"type": "bse_master"})
+        scheme_mapper = None
+        if scheme_master and scheme_master.get('schemes'):
+            scheme_mapper = SchemeMapper(scheme_master['schemes'])
+        
         # Calculate dashboard metrics
         total_investment = 0
         total_current_value = 0
@@ -10183,17 +10189,9 @@ async def get_analysis_dashboard(
         holdings_by_type = {'Equity': 0, 'Debt': 0, 'Hybrid': 0, 'Other': 0}
         monthly_investments = {}
         
-        equity_keywords = ['equity', 'index', 'nifty', 'sensex', 'midcap', 'smallcap', 
-                          'large cap', 'multi cap', 'flexi cap', 'bluechip', 'elss', 
-                          'tax saver', 'focused', 'value', 'growth fund']
-        debt_keywords = ['debt', 'liquid', 'money market', 'ultra short', 'overnight',
-                        'gilt', 'bond', 'income', 'credit risk', 'banking', 'corporate bond',
-                        'dynamic bond', 'fixed maturity', 'fmp', 'floating rate']
-        hybrid_keywords = ['hybrid', 'balanced', 'aggressive', 'conservative', 'arbitrage',
-                          'equity savings', 'multi asset', 'asset allocation']
-        
         for folio_key, folio_data in folios.items():
             scheme_name = folio_data.get('scheme', '')
+            isin = folio_data.get('isin', '')
             closing_balance = folio_data.get('closing_balance', 0)
             current_nav = folio_data.get('current_nav', 0)
             market_value = folio_data.get('market_value', 0)
@@ -10202,17 +10200,29 @@ async def get_analysis_dashboard(
             if not market_value and closing_balance > 0 and current_nav > 1:
                 market_value = closing_balance * current_nav
             
-            scheme_lower = scheme_name.lower()
-            
-            # Categorize by fund type
-            if any(kw in scheme_lower for kw in equity_keywords):
-                fund_type = 'Equity'
-            elif any(kw in scheme_lower for kw in debt_keywords):
-                fund_type = 'Debt'
-            elif any(kw in scheme_lower for kw in hybrid_keywords):
-                fund_type = 'Hybrid'
+            # Categorize by fund type using scheme master
+            if scheme_mapper:
+                fund_type = scheme_mapper.get_asset_category(isin=isin, scheme_name=scheme_name)
             else:
-                fund_type = 'Other'
+                # Fallback to keyword matching if no scheme master
+                scheme_lower = scheme_name.lower()
+                equity_keywords = ['equity', 'index', 'nifty', 'sensex', 'midcap', 'smallcap', 
+                                  'large cap', 'multi cap', 'flexi cap', 'bluechip', 'elss', 
+                                  'tax saver', 'focused', 'value', 'growth fund']
+                debt_keywords = ['debt', 'liquid', 'money market', 'ultra short', 'overnight',
+                                'gilt', 'bond', 'income', 'credit risk', 'banking', 'corporate bond',
+                                'dynamic bond', 'fixed maturity', 'fmp', 'floating rate']
+                hybrid_keywords = ['hybrid', 'balanced', 'aggressive', 'conservative', 'arbitrage',
+                                  'equity savings', 'multi asset', 'asset allocation']
+                
+                if any(kw in scheme_lower for kw in equity_keywords):
+                    fund_type = 'Equity'
+                elif any(kw in scheme_lower for kw in debt_keywords):
+                    fund_type = 'Debt'
+                elif any(kw in scheme_lower for kw in hybrid_keywords):
+                    fund_type = 'Hybrid'
+                else:
+                    fund_type = 'Other'
             
             holdings_by_type[fund_type] += market_value
             
