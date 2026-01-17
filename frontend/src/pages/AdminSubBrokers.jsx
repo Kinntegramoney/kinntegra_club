@@ -4,7 +4,7 @@ import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreatePartnerModal from "@/components/CreatePartnerModal";
 import EditPartnerModal from "@/components/EditPartnerModal";
-import { Plus, Edit2, Trash2, RefreshCw, UserX, Upload, Copy, Check, Key } from "lucide-react";
+import { Plus, Edit2, Trash2, RefreshCw, UserX, Upload, Copy, Check, Key, MoreVertical, Mail, KeyRound, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -12,6 +12,13 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
