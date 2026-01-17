@@ -925,19 +925,50 @@ export default function RealEstateDetails() {
                       <span className="font-medium text-gray-800">{investor.client_name || `Investor ${idx + 1}`}</span>
                       <Badge variant="outline">{investor.share_percentage || 25}%</Badge>
                     </div>
-                    <p className="text-xs text-gray-500 mb-3">Share: AED {formatCurrency(opp.total_cost * (investor.share_percentage || 25) / 100)}</p>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        setSelectedInvestorForXirr(investor);
-                        setShowXirrComparisonModal(true);
-                      }}
-                    >
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      View Report
-                    </Button>
+                    <p className="text-xs text-gray-500 mb-2">Share: AED {formatCurrency(opp.total_cost * (investor.share_percentage || 25) / 100)}</p>
+                    
+                    {/* Passport Status */}
+                    <div className="mb-3">
+                      {investor.passport_details?.passport_number ? (
+                        <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>Passport: {investor.passport_details.passport_number}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                          <Clock className="h-3 w-3" />
+                          <span>Passport details pending</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedInvestorForPassport(investor);
+                          setShowPassportModal(true);
+                        }}
+                        data-testid={`passport-btn-${idx}`}
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        Passport
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedInvestorForXirr(investor);
+                          setShowXirrComparisonModal(true);
+                        }}
+                      >
+                        <BarChart3 className="h-4 w-4 mr-1" />
+                        XIRR
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
