@@ -790,7 +790,7 @@ class NAVService:
 
 
 class SchemeMapper:
-    """Maps ISIN/scheme names to MF API scheme codes"""
+    """Maps ISIN/scheme names to MF API scheme codes and scheme types"""
     
     def __init__(self, scheme_master_data: List[Dict]):
         self.scheme_master = scheme_master_data
@@ -815,6 +815,56 @@ class SchemeMapper:
             if normalized in self.name_index:
                 return self.name_index[normalized].get('scheme_code')
         return None
+    
+    def get_scheme_type(self, isin: str = None, scheme_name: str = None) -> Optional[str]:
+        """Get the scheme type from scheme master"""
+        scheme_data = None
+        if isin and isin in self.isin_index:
+            scheme_data = self.isin_index[isin]
+        elif scheme_name:
+            normalized = scheme_name.lower().replace(' ', '').replace('-', '')
+            if normalized in self.name_index:
+                scheme_data = self.name_index[normalized]
+        
+        if scheme_data:
+            return scheme_data.get('scheme_type', '')
+        return None
+    
+    def get_asset_category(self, isin: str = None, scheme_name: str = None) -> str:
+        """Categorize scheme into Equity, Debt, Hybrid, or Other based on scheme_type from master"""
+        scheme_type = self.get_scheme_type(isin, scheme_name)
+        
+        if not scheme_type:
+            # Fallback to name-based detection if scheme type not found
+            name_lower = (scheme_name or '').lower()
+            if any(k in name_lower for k in ['equity', 'index', 'nifty', 'sensex', 'midcap', 'smallcap', 
+                                              'large cap', 'flexi cap', 'bluechip', 'elss', 'tax saver']):
+                return 'Equity'
+            elif any(k in name_lower for k in ['debt', 'liquid', 'money market', 'overnight', 'gilt', 
+                                                'bond', 'income', 'credit risk', 'fmp']):
+                return 'Debt'
+            elif any(k in name_lower for k in ['hybrid', 'balanced', 'arbitrage', 'multi asset']):
+                return 'Hybrid'
+            return 'Other'
+        
+        # Map scheme_type to category
+        scheme_type_lower = scheme_type.lower()
+        
+        # Equity types
+        if any(t in scheme_type_lower for t in ['equity', 'elss', 'index', 'etf', 'growth']):
+            return 'Equity'
+        
+        # Debt types
+        if any(t in scheme_type_lower for t in ['debt', 'liquid', 'money market', 'income', 'gilt', 
+                                                 'bond', 'credit', 'overnight', 'fmp', 'floating']):
+            return 'Debt'
+        
+        # Hybrid types  
+        if any(t in scheme_type_lower for t in ['hybrid', 'balanced', 'arbitrage', 'aggressive', 
+                                                 'conservative', 'dynamic']):
+            return 'Hybrid'
+        
+        return 'Other'
 
 
 class GapSheetGenerator:
