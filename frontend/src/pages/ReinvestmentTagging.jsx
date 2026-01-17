@@ -55,17 +55,20 @@ export default function ReinvestmentTagging() {
       const response = await axios.get(`${API}/reinvestment/upcoming`, getAuthHeaders());
       setReinvestmentData(response.data);
       
-      // Initialize local tags and portfolio categories from data
+      // Initialize local tags, portfolio categories, and target UCCs from data
       const tags = {};
       const portfolios = {};
+      const uccs = {};
       response.data?.by_client?.forEach(client => {
         client.entries.forEach(item => {
           tags[item.cashflow_id] = item.reinvestment_tag || 'not_tagged';
           portfolios[item.cashflow_id] = item.portfolio_category || '';
+          uccs[item.cashflow_id] = item.target_ucc || '';
         });
       });
       setLocalTags(tags);
       setPortfolioCategories(portfolios);
+      setTargetUccs(uccs);
     } catch (error) {
       console.error("Error fetching reinvestment data:", error);
       toast.error("Failed to load reinvestment data");
