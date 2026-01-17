@@ -2105,7 +2105,7 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
     
     headers = [
         "Deal ID*", "Investment Date*", "Investor Name*", "Investor PAN",
-        "Units*", "Purchase Price*", "IFA Name", "Notes"
+        "Units*", "Purchase Price*", "Cutoff Days", "IFA Name", "Notes"
     ]
     
     header_fill = PatternFill(start_color="B45309", end_color="B45309", fill_type="solid")
@@ -2120,8 +2120,8 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
     
     # Sample data rows
     sample_data = [
-        ["CDNRE001", "2025-04-30", "FALI ADI UNWALLA", "ABCDE1234F", 34, 3916923.08, "Kinntegraa L.L.C-FZ", "Initial investment"],
-        ["CDNRE001", "2025-05-02", "ANINHA ILDA DACUNHA", "XYZPQ5678G", 43, 4956833, "Kinntegraa L.L.C-FZ", ""],
+        ["CDNRE001", "2025-04-30", "FALI ADI UNWALLA", "ABCDE1234F", 34, 3916923.08, 15, "Kinntegraa L.L.C-FZ", "Initial investment"],
+        ["CDNRE001", "2025-05-02", "ANINHA ILDA DACUNHA", "XYZPQ5678G", 43, 4956833, 15, "Kinntegraa L.L.C-FZ", ""],
     ]
     
     for row_idx, row_data in enumerate(sample_data, 2):
