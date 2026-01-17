@@ -1012,7 +1012,10 @@ const Analysis = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={(e) => { e.stopPropagation(); setSelectedAnalysis(analysis); setCurrentStep(3); }}
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  window.open(`/analysis/dashboard/${analysis.id}`, '_blank');
+                                }}
                                 className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8 px-2"
                                 title="View Dashboard"
                               >
