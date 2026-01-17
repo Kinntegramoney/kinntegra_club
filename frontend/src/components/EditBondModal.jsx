@@ -26,7 +26,6 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
     total_units: 1,
     units_sold: 0,
     face_value: "",
-    credit_rating: "",
     description: ""
   });
   const [loading, setLoading] = useState(false);
@@ -48,7 +47,6 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
         total_units: bond.total_units || 1,
         units_sold: bond.units_sold || 0,
         face_value: bond.face_value || "",
-        credit_rating: bond.credit_rating || "",
         description: bond.description || ""
       });
     }
@@ -78,7 +76,6 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
         total_units: parseInt(formData.total_units) || 1,
         units_sold: parseInt(formData.units_sold) || 0,
         face_value: parseFloat(formData.face_value) || 0,
-        credit_rating: formData.credit_rating,
         description: formData.description
       }, {
         headers: { Authorization: `Bearer ${token}` }
