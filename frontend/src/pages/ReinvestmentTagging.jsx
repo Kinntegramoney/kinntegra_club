@@ -108,14 +108,21 @@ export default function ReinvestmentTagging() {
 
   // Save all tags for a client - only when ALL entries are tagged
   const handleSaveAllClientTags = async (client) => {
-    // Check if all entries are tagged
-    const allTagged = client.entries.every(e => {
+    // Check if all entries are complete (tagged + portfolio)
+    const allComplete = client.entries.every(e => {
       const tag = localTags[e.cashflow_id] || e.currentTag;
-      return tag && tag !== 'not_tagged';
+      const portfolio = portfolioCategories[e.cashflow_id] || e.portfolio_category || '';
+      
+      // Entry is complete if:
+      // 1. It's 'not_invest' (no portfolio needed), OR
+      // 2. It has both tag and portfolio
+      if (!tag || tag === 'not_tagged') return false;
+      if (tag === 'not_invest') return true;
+      return !!portfolio;
     });
     
-    if (!allTagged) {
-      toast.error("Please tag all entries before saving");
+    if (!allComplete) {
+      toast.error("Please complete both Tag and Portfolio for all entries before saving");
       return;
     }
 
