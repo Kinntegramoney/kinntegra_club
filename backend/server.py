@@ -3873,9 +3873,14 @@ def generate_client_cashflows(trade: dict, bond: dict) -> List[dict]:
     otherwise falls back to calculated cashflows.
     Returns list of cashflow entries with repayment status.
     """
-    investment_date = datetime.fromisoformat(trade['investment_date'])
+    investment_date = datetime.fromisoformat(trade['investment_date'].split('T')[0].split(' ')[0])
     units = trade['units']
     cashflows = []
+    
+    # Cutoff days for secondary market - payments within this period are considered missed
+    cutoff_days = trade.get('cutoff_days', 15)
+    from datetime import timedelta
+    cutoff_date = investment_date + timedelta(days=cutoff_days)
     
     # Check if bond has exact cashflows per unit (preferred for secondary market)
     cashflows_per_unit = bond.get('cashflows_per_unit', [])
@@ -3883,10 +3888,11 @@ def generate_client_cashflows(trade: dict, bond: dict) -> List[dict]:
     if cashflows_per_unit:
         # Use EXACT cashflows per unit from bond definition
         for cf in cashflows_per_unit:
-            cf_date = datetime.fromisoformat(cf['date'])
+            cf_date_str = cf['date'].split('T')[0].split(' ')[0]
+            cf_date = datetime.fromisoformat(cf_date_str)
             
-            # Only include cashflows AFTER investment date
-            if cf_date > investment_date:
+            # Only include cashflows AFTER cutoff date (payments within cutoff are missed)
+            if cf_date > cutoff_date:
                 interest_per_unit = cf.get('interest_per_unit', 0)
                 principal_per_unit = cf.get('principal_per_unit', 0)
                 
@@ -3903,7 +3909,7 @@ def generate_client_cashflows(trade: dict, bond: dict) -> List[dict]:
                     "id": str(uuid.uuid4()),
                     "trade_id": trade['id'],
                     "type": "combined" if (gross_interest > 0 and principal_amount > 0) else ("interest" if gross_interest > 0 else "principal"),
-                    "date": cf['date'],
+                    "date": cf_date_str,
                     "gross_amount": round(total_gross, 2),
                     "tds_amount": round(tds, 2),
                     "net_amount": round(net_amount, 2),
