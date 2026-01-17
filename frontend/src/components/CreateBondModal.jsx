@@ -162,6 +162,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
         secondary_irr: parseFloat(formData.secondary_irr),
         total_units: parseInt(formData.total_units),
         minimum_units: parseInt(formData.minimum_units) || 1,
+        cutoff_days: formData.cutoff_days ? parseInt(formData.cutoff_days) : 15,
         units_sold: 0,
         principal_payments: principalPayments.map(p => ({
           date: p.date,
