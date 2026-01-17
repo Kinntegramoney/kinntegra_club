@@ -1463,7 +1463,7 @@ export default function RealEstateDetails() {
           onSuccess={() => {
             setShowPassportModal(false);
             setSelectedInvestorForPassport(null);
-            fetchOpportunity();
+            fetchData();
           }}
         />
       )}
