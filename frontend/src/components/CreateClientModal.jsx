@@ -261,7 +261,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
               className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
               onClick={handleCredentialsClose}
             >
-              I've Saved the Credentials - Close
+              I&apos;ve Saved the Credentials - Close
             </Button>
           </div>
         </div>
