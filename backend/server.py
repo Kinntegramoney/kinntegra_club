@@ -3001,9 +3001,9 @@ class ClientBondAllocation(BaseModel):
 
 @api_router.post("/clients")
 async def create_client(client_data: ClientCreate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
-    """Create a new client (brokers only)"""
-    if current_user['role'] != 'broker':
-        raise HTTPException(status_code=403, detail="Only brokers can create clients")
+    """Create a new client (brokers and sub-brokers)"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can create clients")
     
     # Validate UCC list
     if not client_data.ucc_list or len(client_data.ucc_list) == 0:
