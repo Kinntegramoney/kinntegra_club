@@ -9371,6 +9371,156 @@ async def get_analysis_details(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/analysis/{analysis_id}/dashboard")
+async def get_analysis_dashboard(
+    analysis_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get dashboard data for an analysis - formatted for visualization"""
+    try:
+        analysis = await db.cas_analyses.find_one({"id": analysis_id}, {"_id": 0})
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        parsed_data = analysis.get('parsed_data', {})
+        folios = parsed_data.get('folios', {})
+        
+        # Calculate dashboard metrics
+        total_investment = 0
+        total_current_value = 0
+        total_redemptions = 0
+        advisor_breakdown = {}
+        scheme_breakdown = []
+        holdings_by_type = {'Equity': 0, 'Debt': 0, 'Hybrid': 0, 'Other': 0}
+        monthly_investments = {}
+        
+        equity_keywords = ['equity', 'index', 'nifty', 'sensex', 'midcap', 'smallcap', 
+                          'large cap', 'multi cap', 'flexi cap', 'bluechip', 'elss', 
+                          'tax saver', 'focused', 'value', 'growth fund']
+        debt_keywords = ['debt', 'liquid', 'money market', 'ultra short', 'overnight',
+                        'gilt', 'bond', 'income', 'credit risk', 'banking', 'corporate bond',
+                        'dynamic bond', 'fixed maturity', 'fmp', 'floating rate']
+        hybrid_keywords = ['hybrid', 'balanced', 'aggressive', 'conservative', 'arbitrage',
+                          'equity savings', 'multi asset', 'asset allocation']
+        
+        for folio_key, folio_data in folios.items():
+            scheme_name = folio_data.get('scheme', '')
+            closing_balance = folio_data.get('closing_balance', 0)
+            current_nav = folio_data.get('current_nav', 0)
+            market_value = folio_data.get('market_value', 0)
+            
+            # If market_value not available, calculate from NAV
+            if not market_value and closing_balance > 0 and current_nav > 1:
+                market_value = closing_balance * current_nav
+            
+            scheme_lower = scheme_name.lower()
+            
+            # Categorize by fund type
+            if any(kw in scheme_lower for kw in equity_keywords):
+                fund_type = 'Equity'
+            elif any(kw in scheme_lower for kw in debt_keywords):
+                fund_type = 'Debt'
+            elif any(kw in scheme_lower for kw in hybrid_keywords):
+                fund_type = 'Hybrid'
+            else:
+                fund_type = 'Other'
+            
+            holdings_by_type[fund_type] += market_value
+            
+            # Process transactions
+            for trans in folio_data.get('transactions', []):
+                amount = abs(trans.get('amount', 0))
+                advisor = trans.get('advisor', 'Direct')
+                trans_date = trans.get('date', '')
+                
+                if trans.get('is_redemption'):
+                    total_redemptions += amount
+                else:
+                    total_investment += amount
+                    
+                    # Advisor breakdown
+                    if advisor not in advisor_breakdown:
+                        advisor_breakdown[advisor] = {'invested': 0, 'schemes': set()}
+                    advisor_breakdown[advisor]['invested'] += amount
+                    advisor_breakdown[advisor]['schemes'].add(scheme_name[:30])
+                    
+                    # Monthly investments trend
+                    try:
+                        from datetime import datetime
+                        dt = datetime.strptime(trans_date, '%d-%b-%Y')
+                        month_key = dt.strftime('%Y-%m')
+                        if month_key not in monthly_investments:
+                            monthly_investments[month_key] = 0
+                        monthly_investments[month_key] += amount
+                    except:
+                        pass
+            
+            # Add to scheme breakdown if has balance
+            if closing_balance > 0 and market_value > 0:
+                total_current_value += market_value
+                scheme_breakdown.append({
+                    'name': scheme_name[:40] + ('...' if len(scheme_name) > 40 else ''),
+                    'full_name': scheme_name,
+                    'folio': folio_data.get('folio', folio_key),
+                    'units': round(closing_balance, 3),
+                    'nav': round(current_nav, 4) if current_nav > 1 else None,
+                    'value': round(market_value, 2),
+                    'type': fund_type
+                })
+        
+        # Sort scheme breakdown by value
+        scheme_breakdown.sort(key=lambda x: x['value'], reverse=True)
+        
+        # Format advisor breakdown
+        advisor_list = []
+        for advisor, data in advisor_breakdown.items():
+            advisor_list.append({
+                'name': advisor if advisor else 'Direct',
+                'invested': round(data['invested'], 2),
+                'schemes_count': len(data['schemes'])
+            })
+        advisor_list.sort(key=lambda x: x['invested'], reverse=True)
+        
+        # Format monthly trend (last 12 months)
+        sorted_months = sorted(monthly_investments.keys())[-12:]
+        monthly_trend = [
+            {'month': m, 'amount': monthly_investments.get(m, 0)}
+            for m in sorted_months
+        ]
+        
+        # Calculate gains
+        total_gains = total_current_value - total_investment + total_redemptions
+        gain_percentage = (total_gains / total_investment * 100) if total_investment > 0 else 0
+        
+        return {
+            "analysis_id": analysis_id,
+            "client_name": analysis.get('client_name'),
+            "filename": analysis.get('filename'),
+            "created_at": analysis.get('created_at'),
+            "summary": {
+                "total_investment": round(total_investment, 2),
+                "total_current_value": round(total_current_value, 2),
+                "total_redemptions": round(total_redemptions, 2),
+                "total_gains": round(total_gains, 2),
+                "gain_percentage": round(gain_percentage, 2),
+                "total_folios": len(folios),
+                "active_schemes": len([s for s in scheme_breakdown if s['value'] > 0])
+            },
+            "holdings_by_type": holdings_by_type,
+            "top_holdings": scheme_breakdown[:10],
+            "all_holdings": scheme_breakdown,
+            "advisor_breakdown": advisor_list[:10],
+            "monthly_trend": monthly_trend
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating dashboard: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/analysis")
 async def list_analyses(current_user: dict = Depends(get_current_user)):
     """List all analyses for the current user (or all for broker)"""
