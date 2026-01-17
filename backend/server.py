@@ -2366,8 +2366,10 @@ async def bulk_upload_historical_trades(
                 results['failed'] += 1
                 continue
             
-            # Get cutoff days from row if provided, else default to 15
-            cutoff_days = int(row.get('cutoff_days', 15)) if pd.notna(row.get('cutoff_days')) else 15
+            # Get cutoff days: first from row, then from bond, then default 15
+            cutoff_days = bond.get('cutoff_days', 15)  # Use bond's default
+            if pd.notna(row.get('cutoff_days')):
+                cutoff_days = int(row.get('cutoff_days'))  # Override with row value if provided
             
             # Create the trade
             trade_id = str(uuid.uuid4())
