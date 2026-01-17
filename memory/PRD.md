@@ -58,7 +58,22 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
-### 2026-01-17 (Current Session - Continued)
+### 2026-01-17 (Current Session - Latest)
+- **UI Refactor**: Completely restructured sidebar navigation
+  - Removed nested "User" and "Admin" menus
+  - Made "Sub Broker" and "Client" separate top-level tabs
+  - Moved "Bulk Upload" from Admin to top-level "Upload" 
+  - Added "Opportunities" with hover dropdown for "Add Bond" / "Add Real Estate"
+  - Simplified navigation with all items at top level
+  - Added "Settings" as top-level menu item
+
+- **Analysis Page Updates**:
+  - Removed "Folios" column from Previous Analyses table
+  - Added hover tooltip on Client name showing "Requested By" and "Sub-Broker" details
+  - Reduced table columns: Client, File Name, Date, Actions
+  - Dashboard section already available after analysis completion
+
+### 2026-01-17 (Current Session - Earlier)
 - **UI Cleanup**: Reorganized sidebar navigation
   - Moved "Add User" from Admin submenu to top-level "User" menu
   - "User" menu now contains Sub Broker and Client sub-items
