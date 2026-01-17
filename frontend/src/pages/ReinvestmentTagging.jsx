@@ -384,9 +384,14 @@ export default function ReinvestmentTagging() {
                             <p className="text-sm text-gray-500">Entries</p>
                             <p className="font-semibold">{client.entries.length}</p>
                           </div>
-                          <div className="flex gap-2 text-xs">
-                            <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full">{client.untaggedCount} untagged</span>
-                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">{client.taggedCount} tagged</span>
+                          <div className="flex gap-2 text-xs flex-wrap">
+                            {client.untaggedCount > 0 && (
+                              <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full">{client.untaggedCount} untagged</span>
+                            )}
+                            {client.incompleteCount > 0 && client.incompleteCount !== client.untaggedCount && (
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">{client.incompleteCount - client.untaggedCount} need portfolio</span>
+                            )}
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">{client.completeCount} complete</span>
                           </div>
                           {expandedClients[client.client_id] ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                         </div>
