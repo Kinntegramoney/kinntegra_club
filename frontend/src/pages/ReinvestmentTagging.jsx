@@ -450,12 +450,15 @@ export default function ReinvestmentTagging() {
                                 <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
                                 <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Custom Amt</th>
                                 <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Portfolio</th>
+                                <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Target UCC</th>
                                 <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Save</th>
                               </tr>
                             </thead>
                             <tbody>
                               {client.entries.map((entry) => {
                                 const needsPortfolio = entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest' && !entry.currentPortfolio;
+                                // Get client's UCC list for this entry
+                                const clientUccList = entry.client_ucc_list || [];
                                 return (
                                 <tr key={entry.cashflow_id} className={`border-t hover:bg-gray-50 ${entry.currentTag === 'not_tagged' ? 'bg-red-50/30' : ''} ${needsPortfolio ? 'bg-yellow-50/50' : ''} ${entry.prepayment_affected ? 'bg-amber-50/50' : ''} ${entry.isComplete ? 'bg-green-50/30' : ''}`}>
                                   <td className="py-2 px-4 text-sm">
@@ -528,6 +531,24 @@ export default function ReinvestmentTagging() {
                                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                                         ))}
                                       </select>
+                                    )}
+                                  </td>
+                                  <td className="py-2 px-4 text-center">
+                                    {entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest' && clientUccList.length > 0 && (
+                                      <select
+                                        value={targetUccs[entry.cashflow_id] || entry.target_ucc || ''}
+                                        onChange={(e) => handleTargetUccChange(entry.cashflow_id, e.target.value)}
+                                        className="px-2 py-1 text-xs rounded-lg border focus:outline-none bg-blue-50 border-blue-200 text-blue-800"
+                                        data-testid={`ucc-select-${entry.cashflow_id}`}
+                                      >
+                                        <option value="">Select UCC</option>
+                                        {clientUccList.map(ucc => (
+                                          <option key={ucc} value={ucc}>{ucc}</option>
+                                        ))}
+                                      </select>
+                                    )}
+                                    {clientUccList.length === 0 && entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest' && (
+                                      <span className="text-xs text-gray-400">No UCCs</span>
                                     )}
                                   </td>
                                   <td className="py-2 px-4 text-center">
