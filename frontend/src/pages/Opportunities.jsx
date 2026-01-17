@@ -4,10 +4,11 @@ import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreateBondModal from "@/components/CreateBondModal";
 import CreateRealEstateModal from "@/components/CreateRealEstateModal";
+import EditBondModal from "@/components/EditBondModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, TrendingUp, Plus } from "lucide-react";
+import { Building2, MapPin, TrendingUp, Plus, Pencil } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
