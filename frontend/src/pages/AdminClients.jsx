@@ -140,7 +140,17 @@ export default function AdminClients() {
     setEditLoading(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`${API}/clients/${editingClient.id}`, editFormData, {
+      
+      // Prepare form data with UCCs handling
+      const submitData = { ...editFormData };
+      if (editFormData.uccs) {
+        // Filter out empty UCCs and join them
+        const validUccs = editFormData.uccs.filter(ucc => ucc.trim() !== '');
+        submitData.ucc = validUccs.length > 0 ? validUccs.join(',') : '';
+        delete submitData.uccs; // Remove the temporary uccs array
+      }
+      
+      await axios.put(`${API}/clients/${editingClient.id}`, submitData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Client updated successfully");
