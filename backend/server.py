@@ -1331,12 +1331,34 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
         for col, value in enumerate(sample, 1):
             ws_principal.cell(row=row_idx, column=col, value=value)
     
+    # Sheet 5: Cashflows Per Unit (NEW - for exact cashflow schedules)
+    ws_cashflows = wb.create_sheet("Cashflows Per Unit")
+    
+    cashflow_headers = ["Bond Code*", "Payment Date*", "Interest Per Unit*", "Principal Per Unit*"]
+    for col, header in enumerate(cashflow_headers, 1):
+        cell = ws_cashflows.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="0891B2", end_color="0891B2", fill_type="solid")  # Cyan
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_cashflows.column_dimensions[get_column_letter(col)].width = 22
+    
+    # Sample cashflows (like CDUCIC01 bond)
+    cashflow_samples = [
+        ["ABC-NCD-2025", "2025-04-24", 5308.22, 27777.78],
+        ["ABC-NCD-2025", "2025-05-24", 4851.60, 27777.78],
+        ["ABC-NCD-2025", "2025-06-24", 4718.42, 27777.78],
+        ["ABC-NCD-2025", "2025-07-24", 4280.82, 27777.78],
+    ]
+    for row_idx, sample in enumerate(cashflow_samples, 2):
+        for col, value in enumerate(sample, 1):
+            ws_cashflows.cell(row=row_idx, column=col, value=value)
+    
     # Instructions sheet
     ws_instructions = wb.create_sheet("Instructions")
     instructions = [
         "BULK BOND UPLOAD INSTRUCTIONS",
         "",
-        "This template has 4 data sheets. Fill all required sheets.",
+        "This template has 5 data sheets. Fill required sheets.",
         "Bond Code is used to link data across sheets.",
         "",
         "═══════════════════════════════════════════════════════════════",
@@ -1366,20 +1388,30 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
         "• Interest Frequency: quarterly, monthly, semi-annual, annual",
         "",
         "═══════════════════════════════════════════════════════════════",
-        "SHEET 4 - Principal Payments (Red) - REQUIRED",
+        "SHEET 4 - Principal Payments (Red) - OPTIONAL if Sheet 5 used",
         "═══════════════════════════════════════════════════════════════",
         "• Add principal repayment schedule",
         "• Total percentages must equal 100%",
         "• Can have multiple payments (partial + final)",
+        "• SKIP this sheet if using 'Cashflows Per Unit' (Sheet 5)",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 5 - Cashflows Per Unit (Cyan) - RECOMMENDED",
+        "═══════════════════════════════════════════════════════════════",
+        "• Exact interest and principal amounts PER UNIT for each date",
+        "• Use this for PRECISE cashflow matching",
+        "• Copy from your bond's actual repayment schedule",
+        "• System will use these EXACT values for client cashflows",
+        "• When used, Sheet 4 is ignored",
         "",
         "═══════════════════════════════════════════════════════════════",
         "IMPORTANT NOTES",
         "═══════════════════════════════════════════════════════════════",
         "1. Bond Code must be unique and match across all sheets",
-        "2. Principal payments must sum to exactly 100%",
-        "3. Interest payments will be auto-generated based on frequency",
+        "2. Use Sheet 5 (Cashflows Per Unit) for secondary market bonds",
+        "3. Sheet 5 values are EXACT - system won't recalculate",
         "4. Maximum 50 bonds per upload",
-        "5. Presentations can be uploaded after bond creation",
+        "5. Historical trades will use Sheet 5 cashflows × client units",
     ]
     for row, text in enumerate(instructions, 1):
         cell = ws_instructions.cell(row=row, column=1, value=text)
