@@ -1545,53 +1545,6 @@ async def bulk_upload_clients(
             results['failed'] += 1
     
     return results
-            
-            # Create user
-            user_id = str(uuid.uuid4())
-            user = {
-                "id": user_id,
-                "pan": pan,
-                "ucc_list": ucc_list,  # Store UCC list in user record too
-                "name": str(row['name']).strip(),
-                "email": str(row.get('email', '')).strip() if not pd.isna(row.get('email')) else "",
-                "phone": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else "",
-                "password_hash": get_password_hash(str(row.get('password', 'password123'))),
-                "pin_hash": get_password_hash(str(row.get('pin', '1234'))),
-                "role": "client",
-                "is_active": True,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            await db.users.insert_one(user)
-            
-            # Create client record
-            client = {
-                "id": user_id,
-                "name": str(row['name']).strip(),
-                "pan_number": pan,  # Use pan_number to match client schema
-                "ucc_list": ucc_list,  # Store as list
-                "email": str(row.get('email', '')).strip() if not pd.isna(row.get('email')) else "",
-                "mobile": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else "",
-                "address_line1": str(row.get('address_line_1', '')).strip() if not pd.isna(row.get('address_line_1')) else "",
-                "address_line2": str(row.get('address_line_2', '')).strip() if not pd.isna(row.get('address_line_2')) else "",
-                "city": str(row.get('city', '')).strip() if not pd.isna(row.get('city')) else "",
-                "state": str(row.get('state', '')).strip() if not pd.isna(row.get('state')) else "",
-                "country": str(row.get('country', 'India')).strip() if not pd.isna(row.get('country')) else "India",
-                "pincode": str(row.get('pincode', '')).strip() if not pd.isna(row.get('pincode')) else "",
-                "linked_subbroker_id": linked_subbroker_id,
-                "created_by": current_user['id'],
-                "is_active": True,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "bond_allocations": [],
-                "real_estate_investments": []
-            }
-            await db.clients.insert_one(client)
-            results['success'] += 1
-            
-        except Exception as e:
-            results['errors'].append(f"Row {idx+2}: {str(e)}")
-            results['failed'] += 1
-    
-    return results
 
 
 @api_router.get("/bulk/template/bonds")
