@@ -106,6 +106,36 @@ export default function ReinvestmentTagging() {
     }
   };
 
+  // Untag an entry - reset tag and portfolio, move back to Untagged section
+  const handleUntag = async (cashflowId) => {
+    setSavingClient(cashflowId);
+    try {
+      await axios.put(`${API}/reinvestment/tag/${cashflowId}`, 
+        { 
+          reinvestment_tag: 'not_tagged',
+          custom_amount: null,
+          portfolio_category: null
+        },
+        getAuthHeaders()
+      );
+      // Update local state
+      setLocalTags(prev => ({ ...prev, [cashflowId]: 'not_tagged' }));
+      setPortfolioCategories(prev => ({ ...prev, [cashflowId]: '' }));
+      setCustomAmounts(prev => {
+        const newAmounts = { ...prev };
+        delete newAmounts[cashflowId];
+        return newAmounts;
+      });
+      toast.success("Entry untagged successfully");
+      fetchReinvestmentData();
+    } catch (error) {
+      console.error("Error untagging entry:", error);
+      toast.error("Failed to untag entry");
+    } finally {
+      setSavingClient(null);
+    }
+  };
+
   // Save all tags for a client - only when ALL entries are tagged
   const handleSaveAllClientTags = async (client) => {
     // Check if all entries are complete (tagged + portfolio)
