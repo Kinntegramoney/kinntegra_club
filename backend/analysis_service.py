@@ -1917,6 +1917,18 @@ class GapSheetGenerator:
             folio_key = f"{folio}_{isin}" if isin else folio
             folio_data = folio_lookup.get(folio_key, {})
             
+            # Get remaining units for this transaction (for purchases)
+            remaining_units = purchase_remaining_units.get((folio_key, trans_idx), 0)
+            
+            # Skip entries with zero balance units (fully sold purchases)
+            # Only skip purchase transactions that have been fully redeemed
+            if not trans.get('is_redemption') and remaining_units <= 0:
+                # Check if this was a purchase that got fully redeemed
+                trans_units = trans.get('units', 0)
+                if trans_units > 0:
+                    # This was a purchase but has 0 remaining - skip it
+                    continue
+            
             # Column 1: Account Identifier (Folio)
             ws.cell(row=row, column=1, value=folio)
             # Column 2: Instrument Name (Scheme)
