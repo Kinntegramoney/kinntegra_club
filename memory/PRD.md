@@ -62,6 +62,20 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
+### 2026-01-17 (Current Session - Multiple UCCs Feature)
+- **Feature**: Multiple UCCs per client (up to 5)
+  - Backend: Changed `ucc: str` to `ucc_list: List[str]` in ClientCreate/ClientUpdate models
+  - Added UCC uniqueness validation (UCCs cannot be shared across clients)
+  - At least 1 UCC required, maximum 5 allowed
+  - Frontend: Dynamic UCC input fields with Add/Remove buttons in Create/Edit Client modals
+  - Bulk upload template updated with UCC1-UCC5 columns
+- **Feature**: Target UCC selection in Reinvestment Tagging
+  - Backend: Added `target_ucc` field to reinvestment tag update
+  - Added `client_ucc_list` to reinvestment/upcoming response
+  - Frontend: Target UCC dropdown appears when entry is tagged (shows client's available UCCs)
+- **Bug Fix**: Removed duplicate `update_client` endpoint that was overriding proper UCC validation
+- **Testing**: 14/14 backend tests passed, all frontend UI tests verified
+
 ### 2026-01-17 (Current Session - Reinvestment Tagging Fix)
 - **Bug Fix**: Reinvestment Tagging page Deal ID display
   - Backend: Added `bond_code` field to `/api/reinvestment/upcoming` response
