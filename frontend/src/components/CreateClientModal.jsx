@@ -384,11 +384,11 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs text-gray-500 uppercase">Father/Husband's Name</Label>
+                <Label className="text-xs text-gray-500 uppercase">Father/Husband&apos;s Name</Label>
                 <Input
                   value={formData.father_husband_name}
                   onChange={(e) => updateField('father_husband_name', e.target.value)}
-                  placeholder="Father/Husband's Name"
+                  placeholder="Father/Husband Name"
                   data-testid="client-father-name"
                 />
               </div>
