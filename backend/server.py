@@ -913,6 +913,7 @@ async def download_subbroker_template(current_user: dict = Depends(get_current_u
 @api_router.post("/bulk/sub-brokers")
 async def bulk_upload_subbrokers(
     file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
     current_user: dict = Depends(get_current_user)
 ):
     """Bulk upload sub-brokers from Excel file"""
@@ -930,7 +931,7 @@ async def bulk_upload_subbrokers(
     # Clean column names
     df.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df.columns]
     
-    results = {"success": 0, "failed": 0, "errors": []}
+    results = {"success": 0, "failed": 0, "errors": [], "created_subbrokers": []}
     
     for idx, row in df.iterrows():
         try:
@@ -942,6 +943,8 @@ async def bulk_upload_subbrokers(
             
             pan = str(row['pan']).upper().strip()
             partner_code = str(row['partner_code']).strip()
+            name = str(row['name']).strip()
+            email = str(row.get('email', '')).strip() if not pd.isna(row.get('email')) else ''
             
             # Check for duplicates
             existing_pan = await db.users.find_one({"pan": pan})
@@ -956,16 +959,20 @@ async def bulk_upload_subbrokers(
                 results['failed'] += 1
                 continue
             
+            # Generate password and PIN
+            password = str(row.get('password', '')).strip() if not pd.isna(row.get('password')) else generate_password()
+            pin = str(row.get('pin', '')).strip() if not pd.isna(row.get('pin')) else generate_pin()
+            
             # Create user
             user_id = str(uuid.uuid4())
             user = {
                 "id": user_id,
                 "pan": pan,
-                "name": str(row['name']).strip(),
-                "email": str(row.get('email', '')).strip(),
-                "phone": str(row.get('mobile', '')).strip(),
-                "password_hash": get_password_hash(str(row.get('password', 'password123'))),
-                "pin_hash": get_password_hash(str(row.get('pin', '1234'))),
+                "name": name,
+                "email": email,
+                "phone": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else '',
+                "password_hash": get_password_hash(password),
+                "pin_hash": get_password_hash(pin),
                 "role": "sub_broker",
                 "is_active": True,
                 "created_at": datetime.now(timezone.utc).isoformat()
@@ -975,11 +982,11 @@ async def bulk_upload_subbrokers(
             # Create partner record
             partner = {
                 "id": user_id,
-                "name": str(row['name']).strip(),
+                "name": name,
                 "pan": pan,
                 "partner_code": partner_code,
-                "email": str(row.get('email', '')).strip(),
-                "mobile": str(row.get('mobile', '')).strip(),
+                "email": email,
+                "mobile": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else '',
                 "color": "#4F46E5",
                 "address_line1": str(row.get('address_line_1', '')).strip() if not pd.isna(row.get('address_line_1')) else "",
                 "address_line2": str(row.get('address_line_2', '')).strip() if not pd.isna(row.get('address_line_2')) else "",
@@ -992,7 +999,27 @@ async def bulk_upload_subbrokers(
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             await db.partners.insert_one(partner)
+            
             results['success'] += 1
+            results['created_subbrokers'].append({
+                "name": name,
+                "pan": pan,
+                "partner_code": partner_code,
+                "email": email
+            })
+            
+            # Send welcome email to sub-broker (if email provided)
+            if email and background_tasks:
+                background_tasks.add_task(
+                    send_welcome_email_subbroker,
+                    subbroker_name=name,
+                    subbroker_email=email,
+                    pan=pan,
+                    password=password,
+                    pin=pin,
+                    partner_code=partner_code,
+                    broker_name=current_user.get('name', 'Admin')
+                )
             
         except Exception as e:
             results['errors'].append(f"Row {idx+2}: {str(e)}")
