@@ -1012,6 +1012,15 @@ const Analysis = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={(e) => { e.stopPropagation(); setSelectedAnalysis(analysis); setCurrentStep(3); }}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8 px-2"
+                                title="View Dashboard"
+                              >
+                                <LayoutDashboard className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={(e) => { e.stopPropagation(); handleDownload(analysis.id, analysis.filename); }}
                                 className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8 px-2"
                                 title="Download Report"
