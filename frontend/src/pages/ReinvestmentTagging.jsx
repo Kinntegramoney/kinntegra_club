@@ -496,18 +496,18 @@ export default function ReinvestmentTagging() {
                                     </Button>
                                   </td>
                                 </tr>
-                              ))}
+                              )})}
                             </tbody>
                           </table>
                           <div className="px-4 py-3 bg-gray-50 border-t">
                             <div className="flex items-center justify-between text-sm mb-2">
-                              <span className="text-gray-600">Tagging Progress</span>
-                              <span className="font-medium">{client.taggedCount}/{client.entries.length}</span>
+                              <span className="text-gray-600">Completion Progress</span>
+                              <span className="font-medium">{client.completeCount}/{client.entries.length}</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
                               <div 
-                                className="bg-amber-500 h-2 rounded-full transition-all"
-                                style={{ width: `${(client.taggedCount / client.entries.length) * 100}%` }}
+                                className="bg-green-500 h-2 rounded-full transition-all"
+                                style={{ width: `${(client.completeCount / client.entries.length) * 100}%` }}
                               />
                             </div>
                             {/* Save All button - only enabled when ALL entries are tagged */}
