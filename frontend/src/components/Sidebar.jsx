@@ -1,33 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, Users, Settings, LogOut, ChevronRight, ChevronDown, ClipboardCheck, Menu, X, Wallet, FileBarChart, UserPlus, Building2, Upload, Tag } from "lucide-react";
+import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, Plus, Building2, Landmark, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [adminExpanded, setAdminExpanded] = useState(false);
-  const [userExpanded, setUserExpanded] = useState(false);
-  const [opportunitiesExpanded, setOpportunitiesExpanded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showOpportunityDropdown, setShowOpportunityDropdown] = useState(false);
 
   // Close mobile menu on route change
   useEffect(() => {
     setMobileOpen(false);
-  }, [location.pathname]);
-
-  // Auto-expand relevant section based on current path
-  useEffect(() => {
-    if (location.pathname.includes('/sub-brokers') || location.pathname.includes('/clients')) {
-      setUserExpanded(true);
-    }
-    if (location.pathname.includes('/admin/bonds') || location.pathname.includes('/admin/real-estate')) {
-      setOpportunitiesExpanded(true);
-      setAdminExpanded(true);
-    }
-    if (location.pathname.includes('/bulk-upload')) {
-      setAdminExpanded(true);
-    }
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -37,30 +21,20 @@ export default function Sidebar({ user }) {
   };
 
   const isActive = (path) => location.pathname === path;
-  const isAdminActive = location.pathname.startsWith("/broker/admin/bonds") || 
-                        location.pathname.startsWith("/broker/admin/real-estate") || 
-                        location.pathname.includes("/bulk-upload");
-  const isUserActive = location.pathname.includes('/sub-brokers') || location.pathname.includes('/clients');
+  const isOpportunitiesActive = location.pathname.startsWith("/broker/admin/bonds") || 
+                                location.pathname.startsWith("/broker/admin/real-estate") ||
+                                location.pathname === "/broker/opportunities";
 
+  // Main menu items - all top-level
   const menuItems = [
     { path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid },
-    { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp },
     { path: "/broker/trades", label: "Logs", icon: ClipboardCheck },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
     { path: "/broker/reinvestment", label: "Reinv Tag", icon: Tag },
-  ];
-
-  // User sub-sections (top-level)
-  const userItems = [
-    { path: "/broker/admin/sub-brokers", label: "Sub Broker" },
-    { path: "/broker/admin/clients", label: "Client" },
-  ];
-
-  // Admin sub-sections
-  const opportunityItems = [
-    { path: "/broker/admin/bonds", label: "Bonds" },
-    { path: "/broker/admin/real-estate", label: "Real Estate" },
+    { path: "/broker/admin/sub-brokers", label: "Sub Broker", icon: Users },
+    { path: "/broker/admin/clients", label: "Client", icon: UserCheck },
+    { path: "/broker/bulk-upload", label: "Upload", icon: Upload },
   ];
 
   const SidebarContent = () => (
@@ -80,7 +54,65 @@ export default function Sidebar({ user }) {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 md:p-4 space-y-1 overflow-y-auto">
-        {menuItems.map((item) => {
+        {/* Dashboard */}
+        <button
+          onClick={() => navigate("/broker/dashboard")}
+          className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
+            isActive("/broker/dashboard")
+              ? 'bg-amber-50 text-amber-700'
+              : 'text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <LayoutGrid className="h-5 w-5 flex-shrink-0" />
+          <span className="font-medium text-sm md:text-base">Dashboard</span>
+        </button>
+
+        {/* Opportunities with Add buttons */}
+        <div className="relative">
+          <button
+            onClick={() => navigate("/broker/opportunities")}
+            onMouseEnter={() => setShowOpportunityDropdown(true)}
+            onMouseLeave={() => setShowOpportunityDropdown(false)}
+            className={`w-full flex items-center justify-between px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
+              isOpportunitiesActive
+                ? 'bg-amber-50 text-amber-700'
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-5 w-5 flex-shrink-0" />
+              <span className="font-medium text-sm md:text-base">Opportunities</span>
+            </div>
+            <Plus className="h-4 w-4 opacity-50" />
+          </button>
+          
+          {/* Dropdown for Add Bond / Add Real Estate */}
+          {showOpportunityDropdown && (
+            <div 
+              className="absolute left-full top-0 ml-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50 min-w-[160px]"
+              onMouseEnter={() => setShowOpportunityDropdown(true)}
+              onMouseLeave={() => setShowOpportunityDropdown(false)}
+            >
+              <button
+                onClick={() => navigate("/broker/admin/bonds")}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+              >
+                <Landmark className="h-4 w-4" />
+                <span>Add Bond</span>
+              </button>
+              <button
+                onClick={() => navigate("/broker/admin/real-estate")}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+              >
+                <Building2 className="h-4 w-4" />
+                <span>Add Real Estate</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Rest of menu items */}
+        {menuItems.slice(1).map((item) => {
           const Icon = item.icon;
           return (
             <button
@@ -98,119 +130,26 @@ export default function Sidebar({ user }) {
           );
         })}
 
-        {/* User Menu - Top Level */}
-        <div>
-          <button
-            onClick={() => setUserExpanded(!userExpanded)}
-            className={`w-full flex items-center justify-between px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
-              isUserActive
-                ? 'bg-amber-50 text-amber-700'
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 flex-shrink-0" />
-              <span className="font-medium text-sm md:text-base">User</span>
-            </div>
-            <ChevronRight className={`h-4 w-4 transition-transform ${userExpanded ? 'rotate-90' : ''}`} />
-          </button>
-          
-          {userExpanded && (
-            <div className="ml-8 mt-1 space-y-1">
-              {userItems.map((item) => (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                    isActive(item.path)
-                      ? 'bg-amber-50 text-amber-700'
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Admin Menu */}
-        <div>
-          <button
-            onClick={() => setAdminExpanded(!adminExpanded)}
-            className={`w-full flex items-center justify-between px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
-              isAdminActive
-                ? 'bg-amber-50 text-amber-700'
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Settings className="h-5 w-5 flex-shrink-0" />
-              <span className="font-medium text-sm md:text-base">Admin</span>
-            </div>
-            <ChevronRight className={`h-4 w-4 transition-transform ${adminExpanded ? 'rotate-90' : ''}`} />
-          </button>
-          
-          {adminExpanded && (
-            <div className="ml-2 mt-1 space-y-1">
-              {/* Opportunities Section */}
-              <div>
-                <button
-                  onClick={() => setOpportunitiesExpanded(!opportunitiesExpanded)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                    opportunityItems.some(item => isActive(item.path))
-                      ? 'bg-amber-50 text-amber-700'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    <span>Opportunities</span>
-                  </div>
-                  {opportunitiesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                </button>
-                {opportunitiesExpanded && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    {opportunityItems.map((item) => (
-                      <button
-                        key={item.path}
-                        onClick={() => navigate(item.path)}
-                        className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                          isActive(item.path)
-                            ? 'bg-amber-50 text-amber-700'
-                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Bulk Upload - Direct Link */}
-              <button
-                onClick={() => navigate('/broker/bulk-upload')}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive('/broker/bulk-upload')
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Upload className="h-4 w-4" />
-                <span>Bulk Upload</span>
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Admin - minimal, just settings type */}
+        <button
+          onClick={() => navigate("/broker/admin/settings")}
+          className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
+            isActive("/broker/admin/settings")
+              ? 'bg-amber-50 text-amber-700'
+              : 'text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <Settings className="h-5 w-5 flex-shrink-0" />
+          <span className="font-medium text-sm md:text-base">Settings</span>
+        </button>
       </nav>
 
-      {/* Logout */}
+      {/* Logout Button */}
       <div className="p-3 md:p-4 border-t border-gray-200">
         <Button
-          onClick={handleLogout}
           variant="ghost"
-          className="w-full justify-start text-gray-700 hover:bg-gray-50"
+          onClick={handleLogout}
+          className="w-full justify-start text-gray-600 hover:text-red-600 hover:bg-red-50"
         >
           <LogOut className="h-5 w-5 mr-3" />
           Logout
@@ -223,11 +162,10 @@ export default function Sidebar({ user }) {
     <>
       {/* Mobile Menu Button */}
       <button
-        onClick={() => setMobileOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-40 p-2 bg-white rounded-lg shadow-md border border-gray-200"
-        data-testid="mobile-menu-btn"
+        onClick={() => setMobileOpen(!mobileOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md"
       >
-        <Menu className="h-5 w-5 text-gray-700" />
+        {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </button>
 
       {/* Mobile Overlay */}
@@ -238,25 +176,19 @@ export default function Sidebar({ user }) {
         />
       )}
 
-      {/* Mobile Sidebar */}
-      <div className={`md:hidden fixed inset-y-0 left-0 w-64 bg-white z-50 transform transition-transform duration-300 ${
+      {/* Sidebar - Mobile */}
+      <aside className={`md:hidden fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-xl transform transition-transform duration-200 ${
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        <button
-          onClick={() => setMobileOpen(false)}
-          className="absolute top-4 right-4 p-1 text-gray-500 hover:text-gray-700"
-        >
-          <X className="h-5 w-5" />
-        </button>
-        <div className="flex flex-col h-full">
+        <div className="h-full flex flex-col">
           <SidebarContent />
         </div>
-      </div>
+      </aside>
 
-      {/* Desktop Sidebar */}
-      <div className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col h-screen">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col h-screen sticky top-0">
         <SidebarContent />
-      </div>
+      </aside>
     </>
   );
 }
