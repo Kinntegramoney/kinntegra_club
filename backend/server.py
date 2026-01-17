@@ -1266,7 +1266,7 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
     ws_basic = wb.active
     ws_basic.title = "Bond Details"
     
-    basic_headers = ["Bond Code*", "Bond Name*", "Issuer/Company Name", "Credit Rating", 
+    basic_headers = ["Bond Code*", "Bond Name*", "Issuer/Company Name", 
                      "Start Date*", "Maturity Date*", "Description"]
     for col, header in enumerate(basic_headers, 1):
         cell = ws_basic.cell(row=1, column=col, value=header)
@@ -1275,7 +1275,7 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
         cell.alignment = Alignment(horizontal="center", wrap_text=True)
         ws_basic.column_dimensions[get_column_letter(col)].width = 20
     
-    basic_sample = ["ABC-NCD-2025", "ABC Corp NCD 2025", "ABC Corporation Ltd", "AA+", 
+    basic_sample = ["ABC-NCD-2025", "ABC Corp NCD 2025", "ABC Corporation Ltd", 
                    "2025-01-15", "2027-01-15", "Secured NCD with quarterly interest"]
     for col, value in enumerate(basic_sample, 1):
         ws_basic.cell(row=2, column=col, value=value)
