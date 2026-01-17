@@ -1468,8 +1468,16 @@ async def bulk_upload_bonds(
         df_principal = pd.read_excel(excel_file, sheet_name=3)
         df_principal.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_principal.columns]
         
+        # Sheet 5: Cashflows Per Unit (optional but recommended)
+        excel_file.seek(0)
+        try:
+            df_cashflows = pd.read_excel(excel_file, sheet_name=4)
+            df_cashflows.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_cashflows.columns]
+        except:
+            df_cashflows = pd.DataFrame()  # Empty if sheet doesn't exist
+        
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error reading Excel sheets: {str(e)}. Ensure the file has all 4 required sheets.")
+        raise HTTPException(status_code=400, detail=f"Error reading Excel sheets: {str(e)}. Ensure the file has the required sheets.")
     
     # Merge dataframes on bond_code
     df = df_basic.merge(df_financial, on='bond_code', how='left')
