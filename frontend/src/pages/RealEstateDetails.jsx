@@ -1450,6 +1450,23 @@ export default function RealEstateDetails() {
           }}
         />
       )}
+      
+      {/* Passport Details Modal */}
+      {showPassportModal && selectedInvestorForPassport && (
+        <PassportDetailsModal
+          opportunity={opp}
+          investor={selectedInvestorForPassport}
+          onClose={() => {
+            setShowPassportModal(false);
+            setSelectedInvestorForPassport(null);
+          }}
+          onSuccess={() => {
+            setShowPassportModal(false);
+            setSelectedInvestorForPassport(null);
+            fetchOpportunity();
+          }}
+        />
+      )}
     </div>
   );
 }
