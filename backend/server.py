@@ -4650,6 +4650,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                     "net_amount": cf.get('net_amount', 0),
                     "reinvestment_tag": cf.get('reinvestment_tag', 'not_tagged'),
                     "custom_amount": cf.get('custom_amount'),
+                    "portfolio_category": cf.get('portfolio_category'),
                     "approval_status": cf.get('approval_status', 'not_sent'),  # not_sent, pending, approved, rejected
                     "client_approved": cf.get('client_approved', False),
                     "tagged_at": cf.get('tagged_at'),
