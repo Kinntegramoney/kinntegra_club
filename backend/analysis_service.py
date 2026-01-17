@@ -1001,6 +1001,7 @@ class GapSheetGenerator:
         """Generate all reports as a ZIP file containing:
         - Main consolidated report
         - Separate files by PAN
+        - Dashboard summary PDF
         """
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
@@ -1013,9 +1014,256 @@ class GapSheetGenerator:
             for pan, report_bytes in pan_reports.items():
                 safe_pan = pan.replace('/', '_').replace(' ', '')
                 zip_file.writestr(f"By_PAN/GapSheet_{safe_pan}.xlsx", report_bytes)
+            
+            # 3. Generate Dashboard Summary PDF
+            dashboard_pdf = self._generate_dashboard_pdf()
+            if dashboard_pdf:
+                zip_file.writestr("Dashboard_Summary.pdf", dashboard_pdf)
         
         zip_buffer.seek(0)
         return zip_buffer.getvalue()
+    
+    def _generate_dashboard_pdf(self) -> Optional[bytes]:
+        """Generate a PDF with portfolio dashboard summary"""
+        try:
+            # Create a PDF document
+            doc = fitz.open()
+            
+            # A4 size
+            page = doc.new_page(width=595, height=842)
+            
+            # Colors
+            header_color = (0.267, 0.447, 0.769)  # Blue
+            text_color = (0.2, 0.2, 0.2)
+            accent_color = (0.922, 0.588, 0.094)  # Amber
+            green_color = (0.133, 0.545, 0.133)
+            red_color = (0.698, 0.133, 0.133)
+            
+            y_pos = 40
+            
+            # Title
+            page.insert_text(
+                (40, y_pos),
+                "Portfolio Analysis Dashboard",
+                fontsize=20,
+                fontname="helv",
+                color=header_color
+            )
+            y_pos += 35
+            
+            # Report date
+            report_date_str = self.report_date.strftime('%d-%b-%Y') if self.report_date else 'N/A'
+            page.insert_text(
+                (40, y_pos),
+                f"Report Date: {report_date_str}",
+                fontsize=10,
+                fontname="helv",
+                color=text_color
+            )
+            y_pos += 30
+            
+            # Calculate metrics
+            folios = self.parsed_data.get('folios', {})
+            total_investment = 0
+            total_market_value = 0
+            total_redemptions = 0
+            holdings_by_type = {'Equity': 0, 'Debt': 0, 'Hybrid': 0, 'Other': 0}
+            
+            equity_keywords = ['equity', 'index', 'nifty', 'sensex', 'midcap', 'smallcap', 'large cap', 
+                              'flexi cap', 'bluechip', 'elss', 'tax saver', 'focused', 'value', 'growth fund']
+            debt_keywords = ['debt', 'liquid', 'money market', 'ultra short', 'overnight', 'gilt', 
+                            'bond', 'income', 'credit risk', 'corporate bond', 'fmp']
+            hybrid_keywords = ['hybrid', 'balanced', 'aggressive', 'conservative', 'arbitrage', 'multi asset']
+            
+            for folio_key, folio_data in folios.items():
+                scheme_name = folio_data.get('scheme', '').lower()
+                market_value = folio_data.get('market_value', 0)
+                cost_value = folio_data.get('cost_value', 0)
+                
+                total_market_value += market_value
+                total_investment += cost_value
+                
+                # Categorize
+                if any(k in scheme_name for k in equity_keywords):
+                    holdings_by_type['Equity'] += market_value
+                elif any(k in scheme_name for k in debt_keywords):
+                    holdings_by_type['Debt'] += market_value
+                elif any(k in scheme_name for k in hybrid_keywords):
+                    holdings_by_type['Hybrid'] += market_value
+                else:
+                    holdings_by_type['Other'] += market_value
+            
+            total_gains = total_market_value - total_investment
+            gain_percentage = (total_gains / total_investment * 100) if total_investment > 0 else 0
+            
+            # Summary Box
+            page.draw_rect(fitz.Rect(40, y_pos, 555, y_pos + 100), color=(0.95, 0.95, 0.95), fill=(0.95, 0.95, 0.95))
+            page.draw_rect(fitz.Rect(40, y_pos, 555, y_pos + 100), color=(0.8, 0.8, 0.8), width=0.5)
+            
+            # Summary metrics
+            metrics = [
+                ("Total Investment", f"₹{total_investment:,.0f}"),
+                ("Current Value", f"₹{total_market_value:,.0f}"),
+                ("Total Gains", f"₹{total_gains:,.0f}"),
+                ("Return %", f"{gain_percentage:.2f}%")
+            ]
+            
+            box_width = (555 - 40) / 4
+            for i, (label, value) in enumerate(metrics):
+                x = 40 + (i * box_width) + 10
+                page.insert_text(
+                    (x, y_pos + 25),
+                    label,
+                    fontsize=9,
+                    fontname="helv",
+                    color=(0.5, 0.5, 0.5)
+                )
+                value_color = green_color if 'Gains' in label and total_gains >= 0 else red_color if 'Gains' in label else text_color
+                if 'Return' in label:
+                    value_color = green_color if gain_percentage >= 0 else red_color
+                page.insert_text(
+                    (x, y_pos + 50),
+                    value,
+                    fontsize=14,
+                    fontname="helv",
+                    color=value_color
+                )
+            
+            y_pos += 120
+            
+            # Asset Allocation Section
+            page.insert_text(
+                (40, y_pos),
+                "Asset Allocation",
+                fontsize=14,
+                fontname="helv",
+                color=header_color
+            )
+            y_pos += 25
+            
+            allocation_colors = {
+                'Equity': (0.2, 0.4, 0.8),
+                'Debt': (0.2, 0.6, 0.3),
+                'Hybrid': (0.5, 0.3, 0.7),
+                'Other': (0.6, 0.6, 0.6)
+            }
+            
+            total_value = sum(holdings_by_type.values())
+            for asset_type, value in holdings_by_type.items():
+                if value > 0:
+                    pct = (value / total_value * 100) if total_value > 0 else 0
+                    bar_width = (pct / 100) * 400
+                    
+                    page.insert_text(
+                        (40, y_pos),
+                        f"{asset_type}:",
+                        fontsize=10,
+                        fontname="helv",
+                        color=text_color
+                    )
+                    
+                    # Draw bar
+                    page.draw_rect(
+                        fitz.Rect(110, y_pos - 10, 110 + bar_width, y_pos + 2),
+                        color=allocation_colors.get(asset_type, (0.5, 0.5, 0.5)),
+                        fill=allocation_colors.get(asset_type, (0.5, 0.5, 0.5))
+                    )
+                    
+                    page.insert_text(
+                        (520, y_pos),
+                        f"{pct:.1f}%",
+                        fontsize=10,
+                        fontname="helv",
+                        color=text_color
+                    )
+                    y_pos += 25
+            
+            y_pos += 20
+            
+            # Top Holdings Section
+            page.insert_text(
+                (40, y_pos),
+                "Top 10 Holdings",
+                fontsize=14,
+                fontname="helv",
+                color=header_color
+            )
+            y_pos += 25
+            
+            # Sort folios by market value
+            sorted_folios = sorted(
+                folios.items(),
+                key=lambda x: x[1].get('market_value', 0),
+                reverse=True
+            )[:10]
+            
+            # Table headers
+            headers = ["Scheme Name", "Units", "Value"]
+            col_widths = [300, 80, 100]
+            x_pos = 40
+            for header, width in zip(headers, col_widths):
+                page.insert_text(
+                    (x_pos, y_pos),
+                    header,
+                    fontsize=9,
+                    fontname="helv",
+                    color=(0.4, 0.4, 0.4)
+                )
+                x_pos += width
+            y_pos += 15
+            
+            # Draw line
+            page.draw_line(fitz.Point(40, y_pos - 5), fitz.Point(520, y_pos - 5), color=(0.8, 0.8, 0.8), width=0.5)
+            
+            for folio_key, folio_data in sorted_folios:
+                scheme_name = folio_data.get('scheme', 'Unknown')[:45]
+                units = folio_data.get('closing_balance', 0)
+                value = folio_data.get('market_value', 0)
+                
+                x_pos = 40
+                page.insert_text(
+                    (x_pos, y_pos),
+                    scheme_name,
+                    fontsize=9,
+                    fontname="helv",
+                    color=text_color
+                )
+                page.insert_text(
+                    (x_pos + 300, y_pos),
+                    f"{units:,.2f}",
+                    fontsize=9,
+                    fontname="helv",
+                    color=text_color
+                )
+                page.insert_text(
+                    (x_pos + 380, y_pos),
+                    f"₹{value:,.0f}",
+                    fontsize=9,
+                    fontname="helv",
+                    color=text_color
+                )
+                y_pos += 18
+                
+                if y_pos > 780:  # Page overflow
+                    break
+            
+            # Footer
+            page.insert_text(
+                (40, 820),
+                f"Generated by Kinntegraa | {datetime.now().strftime('%d-%b-%Y %H:%M')}",
+                fontsize=8,
+                fontname="helv",
+                color=(0.6, 0.6, 0.6)
+            )
+            
+            # Save PDF to bytes
+            pdf_bytes = doc.tobytes()
+            doc.close()
+            return pdf_bytes
+            
+        except Exception as e:
+            logger.error(f"Error generating dashboard PDF: {e}")
+            return None
     
     def _generate_by_pan(self) -> Dict[str, bytes]:
         """Generate separate reports for each PAN"""
