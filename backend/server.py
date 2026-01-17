@@ -3758,67 +3758,108 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
 def generate_client_cashflows(trade: dict, bond: dict) -> List[dict]:
     """
     Generate cashflow schedule for a client based on their trade and bond details.
+    Uses exact cashflows_per_unit if available (for secondary market bonds),
+    otherwise falls back to calculated cashflows.
     Returns list of cashflow entries with repayment status.
     """
     investment_date = datetime.fromisoformat(trade['investment_date'])
     units = trade['units']
     cashflows = []
     
-    # Get remaining interest payments after investment date
-    for ip in bond.get('interest_payments', []):
-        ip_date = datetime.fromisoformat(ip['date'])
-        if ip_date > investment_date:
-            gross_interest = ip['amount'] * units
-            tds = gross_interest * 0.10  # 10% TDS
-            net_interest = gross_interest - tds
-            
-            cashflows.append({
-                "id": str(uuid.uuid4()),
-                "trade_id": trade['id'],
-                "type": "interest",
-                "date": ip['date'],
-                "gross_amount": round(gross_interest, 2),
-                "tds_amount": round(tds, 2),
-                "net_amount": round(net_interest, 2),
-                "principal_component": 0,
-                "interest_component": round(gross_interest, 2),
-                "is_repaid": False,
-                "repaid_date": None,
-                "repaid_actual_amount": None,
-                "notes": None
-            })
+    # Check if bond has exact cashflows per unit (preferred for secondary market)
+    cashflows_per_unit = bond.get('cashflows_per_unit', [])
     
-    # Get remaining principal payments after investment date
-    total_units = bond.get('total_units', 1)
-    principal_per_unit = bond['principal_amount'] / total_units if total_units > 0 else bond['principal_amount']
-    
-    for pp in bond.get('principal_payments', []):
-        pp_date = datetime.fromisoformat(pp['date'])
-        if pp_date > investment_date:
-            principal_amount = principal_per_unit * (pp['percentage'] / 100) * units
+    if cashflows_per_unit:
+        # Use EXACT cashflows per unit from bond definition
+        for cf in cashflows_per_unit:
+            cf_date = datetime.fromisoformat(cf['date'])
             
-            # Check if there's already a cashflow on this date (combine with interest)
-            existing = next((cf for cf in cashflows if cf['date'] == pp['date']), None)
-            if existing:
-                existing['principal_component'] = round(principal_amount, 2)
-                existing['gross_amount'] = round(existing['gross_amount'] + principal_amount, 2)
-                existing['net_amount'] = round(existing['net_amount'] + principal_amount, 2)
-            else:
+            # Only include cashflows AFTER investment date
+            if cf_date > investment_date:
+                interest_per_unit = cf.get('interest_per_unit', 0)
+                principal_per_unit = cf.get('principal_per_unit', 0)
+                
+                # Calculate amounts for this client's units
+                gross_interest = interest_per_unit * units
+                principal_amount = principal_per_unit * units
+                total_gross = gross_interest + principal_amount
+                
+                # TDS on interest only
+                tds = gross_interest * 0.10  # 10% TDS
+                net_amount = total_gross - tds
+                
                 cashflows.append({
                     "id": str(uuid.uuid4()),
                     "trade_id": trade['id'],
-                    "type": "principal",
-                    "date": pp['date'],
-                    "gross_amount": round(principal_amount, 2),
-                    "tds_amount": 0,
-                    "net_amount": round(principal_amount, 2),
+                    "type": "combined" if (gross_interest > 0 and principal_amount > 0) else ("interest" if gross_interest > 0 else "principal"),
+                    "date": cf['date'],
+                    "gross_amount": round(total_gross, 2),
+                    "tds_amount": round(tds, 2),
+                    "net_amount": round(net_amount, 2),
                     "principal_component": round(principal_amount, 2),
-                    "interest_component": 0,
+                    "interest_component": round(gross_interest, 2),
                     "is_repaid": False,
                     "repaid_date": None,
                     "repaid_actual_amount": None,
                     "notes": None
                 })
+    else:
+        # Fallback: Use calculated cashflows from interest_payments and principal_payments
+        # Get remaining interest payments after investment date
+        for ip in bond.get('interest_payments', []):
+            ip_date = datetime.fromisoformat(ip['date'])
+            if ip_date > investment_date:
+                gross_interest = ip['amount'] * units
+                tds = gross_interest * 0.10  # 10% TDS
+                net_interest = gross_interest - tds
+                
+                cashflows.append({
+                    "id": str(uuid.uuid4()),
+                    "trade_id": trade['id'],
+                    "type": "interest",
+                    "date": ip['date'],
+                    "gross_amount": round(gross_interest, 2),
+                    "tds_amount": round(tds, 2),
+                    "net_amount": round(net_interest, 2),
+                    "principal_component": 0,
+                    "interest_component": round(gross_interest, 2),
+                    "is_repaid": False,
+                    "repaid_date": None,
+                    "repaid_actual_amount": None,
+                    "notes": None
+                })
+        
+        # Get remaining principal payments after investment date
+        total_units = bond.get('total_units', 1)
+        principal_per_unit = bond['principal_amount'] / total_units if total_units > 0 else bond['principal_amount']
+        
+        for pp in bond.get('principal_payments', []):
+            pp_date = datetime.fromisoformat(pp['date'])
+            if pp_date > investment_date:
+                principal_amount = principal_per_unit * (pp['percentage'] / 100) * units
+                
+                # Check if there's already a cashflow on this date (combine with interest)
+                existing = next((cf for cf in cashflows if cf['date'] == pp['date']), None)
+                if existing:
+                    existing['principal_component'] = round(principal_amount, 2)
+                    existing['gross_amount'] = round(existing['gross_amount'] + principal_amount, 2)
+                    existing['net_amount'] = round(existing['net_amount'] + principal_amount, 2)
+                else:
+                    cashflows.append({
+                        "id": str(uuid.uuid4()),
+                        "trade_id": trade['id'],
+                        "type": "principal",
+                        "date": pp['date'],
+                        "gross_amount": round(principal_amount, 2),
+                        "tds_amount": 0,
+                        "net_amount": round(principal_amount, 2),
+                        "principal_component": round(principal_amount, 2),
+                        "interest_component": 0,
+                        "is_repaid": False,
+                        "repaid_date": None,
+                        "repaid_actual_amount": None,
+                        "notes": None
+                    })
     
     # Sort by date
     cashflows.sort(key=lambda x: x['date'])
