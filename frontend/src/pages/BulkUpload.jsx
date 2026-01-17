@@ -319,6 +319,45 @@ export default function BulkUpload() {
                       </div>
                     </div>
                   )}
+
+                  {results.created_trades && results.created_trades.length > 0 && (
+                    <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                      <p className="font-medium text-amber-800 mb-2">Created Trades:</p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {results.created_trades.map((trade, idx) => (
+                          <div key={idx} className="bg-white rounded p-2 border border-amber-100 text-sm">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className="font-medium text-gray-800">{trade.client}</span>
+                                <span className="text-gray-500 mx-2">→</span>
+                                <span className="text-amber-700">{trade.bond}</span>
+                              </div>
+                              <Badge className="bg-amber-100 text-amber-700">{trade.units} units</Badge>
+                            </div>
+                            <div className="text-gray-500 mt-1">
+                              ₹{trade.amount?.toLocaleString()} on {trade.investment_date}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {results.validation_summary && (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <p className="font-medium text-blue-800 mb-2">Validation Summary:</p>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Total Rows:</span>
+                          <span className="ml-2 font-medium">{results.validation_summary.total_rows}</span>
+                        </div>
+                        <div>
+                          <span className="text-green-600">Amount Matched:</span>
+                          <span className="ml-2 font-medium text-green-700">{results.validation_summary.matched_amounts}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
