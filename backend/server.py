@@ -2322,6 +2322,9 @@ async def bulk_upload_historical_trades(
                 results['failed'] += 1
                 continue
             
+            # Get cutoff days from row if provided, else default to 15
+            cutoff_days = int(row.get('cutoff_days', 15)) if pd.notna(row.get('cutoff_days')) else 15
+            
             # Create the trade
             trade_id = str(uuid.uuid4())
             trade_dict = {
@@ -2336,6 +2339,7 @@ async def bulk_upload_historical_trades(
                 "investment_date": investment_date_str,
                 "calculated_price": price_per_unit,  # Actual price per unit from user data
                 "total_amount": uploaded_total,
+                "cutoff_days": cutoff_days,  # For secondary market cashflow calculation
                 "payment_reference": row.get('notes', '') if pd.notna(row.get('notes')) else None,
                 "payment_notes": f"Historical import - IFA: {row.get('ifa_name', 'N/A') if pd.notna(row.get('ifa_name')) else 'N/A'}",
                 "status": "approved",
