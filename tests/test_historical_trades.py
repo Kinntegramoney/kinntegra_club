@@ -95,12 +95,20 @@ def test_bond(api_client):
 @pytest.fixture(scope="module")
 def test_client(api_client):
     """Create a test client for historical trades testing"""
+    # First check if client already exists
+    clients_response = api_client.get(f"{BASE_URL}/api/clients")
+    if clients_response.status_code == 200:
+        clients = clients_response.json()
+        existing_client = next((c for c in clients if c.get('pan_number') == 'TESTHIST01' or c.get('name') == 'Test Historical Client'), None)
+        if existing_client:
+            yield existing_client
+            return
+    
     client_data = {
         "name": "Test Historical Client",
         "email": "test.historical@example.com",
-        "phone": "9999888877",
-        "pan_number": "TESTHIST01",
-        "address": "Test Address, Mumbai"
+        "mobile": "9999888877",
+        "pan_number": "TESTHIST01"
     }
     
     response = api_client.post(f"{BASE_URL}/api/clients", json=client_data)
@@ -108,17 +116,6 @@ def test_client(api_client):
     if response.status_code == 201:
         client = response.json()
         yield client
-        # Cleanup: Delete the test client
-        api_client.delete(f"{BASE_URL}/api/clients/{client['id']}")
-    elif response.status_code == 400 and ("already exists" in response.text.lower() or "duplicate" in response.text.lower()):
-        # Client already exists, fetch it
-        clients_response = api_client.get(f"{BASE_URL}/api/clients")
-        clients = clients_response.json()
-        existing_client = next((c for c in clients if c.get('pan_number') == 'TESTHIST01' or c.get('name') == 'Test Historical Client'), None)
-        if existing_client:
-            yield existing_client
-        else:
-            pytest.skip("Could not find or create test client")
     else:
         pytest.skip(f"Could not create test client: {response.status_code} - {response.text}")
 
