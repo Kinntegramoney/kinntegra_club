@@ -2019,6 +2019,376 @@ async def bulk_upload_real_estate(
     return results
 
 
+# ==================== BULK HISTORICAL TRADES UPLOAD ====================
+
+@api_router.get("/bulk/template/historical-trades")
+async def download_historical_trades_template(current_user: dict = Depends(get_current_user)):
+    """Download Excel template for bulk historical client bond investments upload"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can download templates")
+    
+    wb = Workbook()
+    
+    # Main sheet: Historical Investments
+    ws = wb.active
+    ws.title = "Historical Investments"
+    
+    headers = [
+        "Deal ID*", "Investment Date*", "Investor Name*", "Investor PAN",
+        "Units*", "Purchase Price*", "IFA Name", "Notes"
+    ]
+    
+    header_fill = PatternFill(start_color="B45309", end_color="B45309", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws.column_dimensions[get_column_letter(col)].width = 20
+    
+    # Sample data rows
+    sample_data = [
+        ["CDNRE001", "2025-04-30", "FALI ADI UNWALLA", "ABCDE1234F", 34, 3916923.08, "Kinntegraa L.L.C-FZ", "Initial investment"],
+        ["CDNRE001", "2025-05-02", "ANINHA ILDA DACUNHA", "XYZPQ5678G", 43, 4956833, "Kinntegraa L.L.C-FZ", ""],
+    ]
+    
+    for row_idx, row_data in enumerate(sample_data, 2):
+        for col, value in enumerate(row_data, 1):
+            ws.cell(row=row_idx, column=col, value=value)
+    
+    # Instructions sheet
+    ws_instructions = wb.create_sheet("Instructions")
+    instructions = [
+        "BULK HISTORICAL TRADES UPLOAD INSTRUCTIONS",
+        "",
+        "Upload historical client bond investments to reconcile with system calculations.",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "REQUIRED FIELDS",
+        "═══════════════════════════════════════════════════════════════",
+        "• Deal ID*: Bond code (must match existing bond in system)",
+        "• Investment Date*: Date client invested (YYYY-MM-DD format)",
+        "• Investor Name*: Client name (must match existing client)",
+        "• Units*: Number of units purchased",
+        "• Purchase Price*: Actual amount invested by client",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "OPTIONAL FIELDS",
+        "═══════════════════════════════════════════════════════════════",
+        "• Investor PAN: Client PAN (helps match client more accurately)",
+        "• IFA Name: Name of the introducing advisor",
+        "• Notes: Any additional notes about the trade",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "VALIDATION RULES",
+        "═══════════════════════════════════════════════════════════════",
+        "1. Deal ID must exist in the system as a valid bond code",
+        "2. Investor must exist as a client in the system",
+        "3. Purchase Price is validated against system-calculated price",
+        "4. Amounts are rounded to nearest whole number for comparison",
+        "5. Investment creates cashflow schedule automatically",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "ERROR HANDLING",
+        "═══════════════════════════════════════════════════════════════",
+        "• If Purchase Price doesn't match expected amount, upload fails",
+        "• Review 'Expected Amount' in error to find discrepancy",
+        "• Ensure bond details (IRR, dates) are correct in system",
+    ]
+    
+    for row, text in enumerate(instructions, 1):
+        cell = ws_instructions.cell(row=row, column=1, value=text)
+        if text.startswith("═") or text.startswith("REQUIRED") or text.startswith("OPTIONAL") or \
+           text.startswith("VALIDATION") or text.startswith("ERROR") or text.startswith("BULK"):
+            cell.font = Font(bold=True)
+        ws_instructions.column_dimensions['A'].width = 70
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=historical_trades_template.xlsx"}
+    )
+
+
+@api_router.post("/bulk/historical-trades")
+async def bulk_upload_historical_trades(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bulk upload historical client bond investments.
+    Validates that uploaded purchase price matches system-calculated expected amount.
+    Creates trades and generates cashflow schedules.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can bulk upload historical trades")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    import pandas as pd
+    
+    content = await file.read()
+    
+    try:
+        # Read the main sheet
+        df = pd.read_excel(io.BytesIO(content), sheet_name=0)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error reading Excel file: {str(e)}")
+    
+    # Normalize column names
+    df.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df.columns]
+    
+    # Required columns check
+    required_cols = ['deal_id', 'investment_date', 'investor_name', 'units', 'purchase_price']
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing_cols)}")
+    
+    results = {
+        "success": 0,
+        "failed": 0,
+        "errors": [],
+        "created_trades": [],
+        "validation_summary": {
+            "total_rows": len(df),
+            "matched_amounts": 0,
+            "mismatched_amounts": 0
+        }
+    }
+    
+    # Get all bonds and clients for lookup
+    all_bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
+    all_clients = await db.clients.find({"created_by": current_user['id']}, {"_id": 0}).to_list(1000)
+    
+    # Create lookup dictionaries
+    bond_lookup = {b.get('bond_code', '').strip().upper(): b for b in all_bonds if b.get('bond_code')}
+    client_by_name = {c['name'].strip().upper(): c for c in all_clients}
+    client_by_pan = {c.get('pan_number', '').strip().upper(): c for c in all_clients if c.get('pan_number')}
+    
+    for idx, row in df.iterrows():
+        row_num = idx + 2  # Excel row number (1-indexed + header)
+        
+        try:
+            # Skip empty rows
+            if pd.isna(row.get('deal_id')) or pd.isna(row.get('investor_name')):
+                continue
+            
+            deal_id = str(row['deal_id']).strip().upper()
+            investor_name = str(row['investor_name']).strip().upper()
+            investor_pan = str(row.get('investor_pan', '')).strip().upper() if pd.notna(row.get('investor_pan')) else None
+            units = int(row['units'])
+            purchase_price = float(row['purchase_price'])
+            
+            # Parse investment date
+            investment_date = row['investment_date']
+            if isinstance(investment_date, str):
+                investment_date = datetime.fromisoformat(investment_date.replace('/', '-'))
+            elif hasattr(investment_date, 'isoformat'):
+                pass  # Already a datetime
+            else:
+                raise ValueError(f"Invalid date format: {investment_date}")
+            
+            investment_date_str = investment_date.strftime('%Y-%m-%d')
+            
+            # Find the bond
+            bond = bond_lookup.get(deal_id)
+            if not bond:
+                results['errors'].append(f"Row {row_num}: Bond with code '{deal_id}' not found in system")
+                results['failed'] += 1
+                continue
+            
+            # Find the client (try PAN first, then name)
+            client = None
+            if investor_pan:
+                client = client_by_pan.get(investor_pan)
+            if not client:
+                client = client_by_name.get(investor_name)
+            
+            if not client:
+                results['errors'].append(f"Row {row_num}: Client '{investor_name}' (PAN: {investor_pan or 'N/A'}) not found in system")
+                results['failed'] += 1
+                continue
+            
+            # Calculate expected price per unit based on bond data and investment date
+            # For secondary market calculation, we need to calculate the price
+            expected_price_per_unit = calculate_secondary_market_price(bond, investment_date_str)
+            expected_total = round(expected_price_per_unit * units)
+            uploaded_total = round(purchase_price)
+            
+            # Compare rounded amounts
+            tolerance = max(10, uploaded_total * 0.001)  # 0.1% tolerance or ₹10, whichever is higher
+            
+            if abs(expected_total - uploaded_total) > tolerance:
+                results['errors'].append(
+                    f"Row {row_num}: Amount mismatch for {investor_name} - {deal_id}. "
+                    f"Uploaded: ₹{uploaded_total:,.0f}, Expected: ₹{expected_total:,.0f}, "
+                    f"Difference: ₹{abs(expected_total - uploaded_total):,.0f}"
+                )
+                results['failed'] += 1
+                results['validation_summary']['mismatched_amounts'] += 1
+                continue
+            
+            results['validation_summary']['matched_amounts'] += 1
+            
+            # Check for duplicate trade
+            existing_trade = await db.trades.find_one({
+                "bond_id": bond['id'],
+                "client_id": client['id'],
+                "investment_date": investment_date_str,
+                "units": units
+            })
+            
+            if existing_trade:
+                results['errors'].append(
+                    f"Row {row_num}: Duplicate trade - {investor_name} already has {units} units of {deal_id} on {investment_date_str}"
+                )
+                results['failed'] += 1
+                continue
+            
+            # Create the trade
+            trade_id = str(uuid.uuid4())
+            trade_dict = {
+                "id": trade_id,
+                "bond_id": bond['id'],
+                "bond_name": bond['name'],
+                "bond_code": bond.get('bond_code', deal_id),
+                "client_id": client['id'],
+                "client_name": client['name'],
+                "client_pan": client.get('pan_number'),
+                "units": units,
+                "investment_date": investment_date_str,
+                "calculated_price": expected_price_per_unit,
+                "total_amount": uploaded_total,
+                "payment_reference": row.get('notes', '') if pd.notna(row.get('notes')) else None,
+                "payment_notes": f"Historical import - IFA: {row.get('ifa_name', 'N/A') if pd.notna(row.get('ifa_name')) else 'N/A'}",
+                "status": "approved",
+                "created_by": current_user['id'],
+                "created_by_name": current_user.get('name', 'System'),
+                "created_by_role": "broker",
+                "broker_notes": "Bulk historical import",
+                "approved_by": current_user['id'],
+                "approved_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_historical": True
+            }
+            
+            await db.trades.insert_one(trade_dict)
+            
+            # Update bond units sold
+            await db.bonds.update_one(
+                {"id": bond['id']},
+                {"$inc": {"units_sold": units}}
+            )
+            
+            # Add to client's bond allocations
+            allocation = {
+                "bond_id": bond['id'],
+                "bond_name": bond['name'],
+                "units_blocked": units,
+                "units_paid": units,
+                "status": "fully_paid",
+                "trade_id": trade_id,
+                "allocated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.clients.update_one(
+                {"id": client['id']},
+                {"$push": {"bond_allocations": allocation}}
+            )
+            
+            # Generate and store cashflows
+            cashflows = generate_client_cashflows(trade_dict, bond)
+            if cashflows:
+                for cf in cashflows:
+                    cf['client_id'] = client['id']
+                    cf['bond_id'] = bond['id']
+                await db.holding_cashflows.insert_many(cashflows)
+            
+            results['success'] += 1
+            results['created_trades'].append({
+                "trade_id": trade_id,
+                "client": client['name'],
+                "bond": bond['name'],
+                "units": units,
+                "amount": uploaded_total,
+                "investment_date": investment_date_str
+            })
+            
+        except Exception as e:
+            results['errors'].append(f"Row {row_num}: {str(e)}")
+            results['failed'] += 1
+    
+    return results
+
+
+def calculate_secondary_market_price(bond: dict, investment_date_str: str) -> float:
+    """
+    Calculate the price per unit for secondary market purchase.
+    Based on remaining cashflows and target IRR.
+    """
+    try:
+        investment_date = datetime.fromisoformat(investment_date_str)
+        
+        principal_amount = bond.get('principal_amount', 0)
+        total_units = bond.get('total_units', 1)
+        face_value = principal_amount / total_units if total_units > 0 else principal_amount
+        
+        # If face_value is explicitly set, use that
+        if bond.get('face_value'):
+            face_value = bond['face_value']
+        
+        secondary_irr = bond.get('secondary_irr', bond.get('primary_irr', 12)) / 100
+        
+        # Get remaining cashflows after investment date
+        remaining_interest = 0
+        remaining_principal = 0
+        
+        for ip in bond.get('interest_payments', []):
+            ip_date = datetime.fromisoformat(ip['date'])
+            if ip_date > investment_date:
+                remaining_interest += ip.get('amount', 0)
+        
+        for pp in bond.get('principal_payments', []):
+            pp_date = datetime.fromisoformat(pp['date'])
+            if pp_date > investment_date:
+                remaining_principal += (principal_amount / total_units) * pp.get('percentage', 0) / 100
+        
+        total_inflows = remaining_interest + remaining_principal
+        
+        # Simple price calculation: Face value adjusted for time to maturity
+        # If no payments scheduled, use face value
+        if total_inflows == 0:
+            return face_value
+        
+        # Get maturity date for time calculation
+        end_date_str = bond.get('end_date')
+        if end_date_str:
+            end_date = datetime.fromisoformat(end_date_str)
+            days_to_maturity = (end_date - investment_date).days
+            
+            if days_to_maturity <= 0:
+                return face_value
+            
+            # Present value calculation with IRR
+            years_to_maturity = days_to_maturity / 365
+            discount_factor = 1 / ((1 + secondary_irr) ** years_to_maturity)
+            price_per_unit = total_inflows * discount_factor
+            
+            return max(price_per_unit, face_value * 0.5)  # Floor at 50% of face value
+        
+        return face_value
+        
+    except Exception:
+        # Fallback to face value
+        return bond.get('face_value', bond.get('principal_amount', 100000) / bond.get('total_units', 1))
+
+
 class PartnerUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
