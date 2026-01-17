@@ -41,6 +41,8 @@ export default function RealEstateDetails() {
   const [showCurrencySettingsModal, setShowCurrencySettingsModal] = useState(false);
   const [showXirrComparisonModal, setShowXirrComparisonModal] = useState(false);
   const [selectedInvestorForXirr, setSelectedInvestorForXirr] = useState(null);
+  const [showPassportModal, setShowPassportModal] = useState(false);
+  const [selectedInvestorForPassport, setSelectedInvestorForPassport] = useState(null);
   
   // XIRR Calculator state
   const [xirrSaleStage, setXirrSaleStage] = useState(100); // % of payment completed when sold
