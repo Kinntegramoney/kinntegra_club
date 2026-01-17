@@ -174,8 +174,10 @@ export default function ReinvestmentTagging() {
   };
 
   // Process and categorize clients
-  // IMPORTANT: A client only goes to "Tagged" when ALL entries are tagged (no untagged entries)
-  // If even one entry is untagged, the client stays in "Untagged" section
+  // IMPORTANT: A client only goes to "Tagged" when ALL entries are:
+  //   1. Tagged (not 'not_tagged')
+  //   2. Have portfolio category selected (except for 'not_invest' entries)
+  // If even one entry is incomplete, the client stays in "Untagged" section
   const { untaggedClients, taggedClients, sentClients } = useMemo(() => {
     if (!reinvestmentData?.by_client) return { untaggedClients: [], taggedClients: [], sentClients: [] };
     
@@ -184,22 +186,39 @@ export default function ReinvestmentTagging() {
     const sent = [];
     
     reinvestmentData.by_client.forEach(client => {
-      const entriesWithTags = client.entries.map(entry => ({
-        ...entry,
-        currentTag: localTags[entry.cashflow_id] || entry.reinvestment_tag || 'not_tagged'
-      }));
+      const entriesWithTags = client.entries.map(entry => {
+        const currentTag = localTags[entry.cashflow_id] || entry.reinvestment_tag || 'not_tagged';
+        const currentPortfolio = portfolioCategories[entry.cashflow_id] || entry.portfolio_category || '';
+        
+        // An entry is "complete" if:
+        // 1. It's tagged as 'not_invest' (no portfolio needed), OR
+        // 2. It has a tag AND a portfolio category
+        const isComplete = currentTag === 'not_invest' || 
+          (currentTag !== 'not_tagged' && (currentTag === 'not_invest' || currentPortfolio));
+        
+        return {
+          ...entry,
+          currentTag,
+          currentPortfolio,
+          isComplete
+        };
+      });
       
       const untaggedCount = entriesWithTags.filter(e => e.currentTag === 'not_tagged').length;
+      const incompleteCount = entriesWithTags.filter(e => !e.isComplete).length;
       const taggedCount = entriesWithTags.filter(e => e.currentTag !== 'not_tagged').length;
+      const completeCount = entriesWithTags.filter(e => e.isComplete).length;
       const sentCount = entriesWithTags.filter(e => e.approval_status && e.approval_status !== 'not_sent').length;
       
       const clientWithStats = {
         ...client,
         entries: entriesWithTags,
         untaggedCount,
+        incompleteCount,
         taggedCount,
+        completeCount,
         totalEntries: entriesWithTags.length,
-        allTagged: untaggedCount === 0 && taggedCount > 0, // All entries must be tagged
+        allComplete: incompleteCount === 0 && completeCount > 0, // All entries must be complete (tag + portfolio)
         taggedAmount: entriesWithTags
           .filter(e => e.currentTag !== 'not_tagged' && e.currentTag !== 'not_invest')
           .reduce((sum, e) => {
@@ -216,8 +235,8 @@ export default function ReinvestmentTagging() {
         sent.push(clientWithStats);
       }
       
-      // Tagged section: ALL entries must be tagged (untaggedCount === 0)
-      // If even ONE entry is untagged, the client goes to Untagged section
+      // Tagged section: ALL entries must be complete (tag + portfolio)
+      // If even ONE entry is incomplete, the client goes to Untagged section
       if (untaggedCount === 0 && taggedCount > 0 && sentCount === 0) {
         tagged.push(clientWithStats);
       } else if (untaggedCount > 0) {
