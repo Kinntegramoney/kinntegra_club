@@ -69,14 +69,17 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
   - New template download: `GET /api/bulk/template/historical-trades`
   - Template columns: Deal ID, Investment Date, Investor Name, Investor PAN, Units, Purchase Price, IFA Name, Notes
   - Bulk upload endpoint: `POST /api/bulk/historical-trades`
+  - **Option A Implementation**: Trust user-provided Units and Investment Amount
+    - Secondary market purchases at discount are fully supported
+    - Price per unit calculated as: Investment Amount ÷ Units
+    - No strict price validation (negotiated prices vary)
   - Validations:
     - Bond code must exist in system
     - Client must exist (matched by name or PAN)
-    - Purchase price validated against system-calculated secondary market price (rounded, 0.1% tolerance)
-    - Mismatches throw descriptive error with expected vs uploaded amounts
+    - Units and Investment Amount must be positive
   - On success: Creates trade record, updates bond units_sold, generates cashflows
   - Frontend: Added "Historical Trades" tab in BulkUpload.jsx with amber theme
-  - Bug fix: Corrected cashflow principal calculation for multi-unit bonds (was using total principal instead of per-unit)
+  - Bug fix: Corrected cashflow principal calculation for multi-unit bonds
 
 ### 2026-01-16 (Previous Session)
 - **Feature**: Enhanced prepayment with percentage calculation and display
