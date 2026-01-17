@@ -26,7 +26,8 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
     total_units: 1,
     units_sold: 0,
     face_value: "",
-    description: ""
+    description: "",
+    cutoff_days: 15
   });
   const [loading, setLoading] = useState(false);
 
@@ -47,7 +48,8 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
         total_units: bond.total_units || 1,
         units_sold: bond.units_sold || 0,
         face_value: bond.face_value || "",
-        description: bond.description || ""
+        description: bond.description || "",
+        cutoff_days: bond.cutoff_days ?? 15
       });
     }
   }, [bond]);
