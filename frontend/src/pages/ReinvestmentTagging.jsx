@@ -402,7 +402,7 @@ export default function ReinvestmentTagging() {
                           <table className="w-full">
                             <thead className="bg-gray-50">
                               <tr>
-                                <th className="text-left py-2 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
+                                <th className="text-left py-2 px-4 text-xs font-medium text-gray-500 uppercase">Deal ID</th>
                                 <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
                                 <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Principal</th>
                                 <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Interest</th>
