@@ -6266,6 +6266,7 @@ class Bond(BaseModel):
     principal_payments: Optional[List[PrincipalPayment]] = []
     interest_payment_frequency: Optional[str] = None
     interest_payments: Optional[List[InterestPayment]] = []
+    cashflows_per_unit: Optional[List[dict]] = []  # NEW: Exact cashflows per unit for secondary market bonds
     total_units: int = 1
     units_sold: int = 0
     status: Optional[str] = None  # Computed: 'available', 'funded', 'closed'
