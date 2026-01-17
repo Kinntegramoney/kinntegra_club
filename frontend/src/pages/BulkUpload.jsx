@@ -200,7 +200,8 @@ export default function BulkUpload() {
       "clients": { bg: "bg-purple-600", light: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
       "bonds": { bg: "bg-green-600", light: "bg-green-50", text: "text-green-600", border: "border-green-200" },
       "real-estate": { bg: "bg-orange-600", light: "bg-orange-50", text: "text-orange-600", border: "border-orange-200" },
-      "historical-trades": { bg: "bg-amber-700", light: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" }
+      "historical-trades": { bg: "bg-amber-700", light: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+      "scheme-master": { bg: "bg-blue-600", light: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" }
     };
     return colors[tabId] || colors["sub-brokers"];
   };
