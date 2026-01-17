@@ -248,6 +248,39 @@ const Analysis = () => {
     }
   };
 
+  const fetchDashboard = async (analysisId) => {
+    setLoadingDashboard(true);
+    try {
+      const response = await fetch(`${API}/api/analysis/${analysisId}/dashboard`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDashboardData(data);
+      } else {
+        console.error('Failed to fetch dashboard');
+        setDashboardData(null);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard:', error);
+      setDashboardData(null);
+    } finally {
+      setLoadingDashboard(false);
+    }
+  };
+
+  // Fetch dashboard when analysis is selected
+  useEffect(() => {
+    if (selectedAnalysis) {
+      const id = selectedAnalysis.analysis_id || selectedAnalysis.id;
+      if (id) {
+        fetchDashboard(id);
+      }
+    } else {
+      setDashboardData(null);
+    }
+  }, [selectedAnalysis]);
+
   const handleDelete = async (analysisId) => {
     if (!window.confirm('Are you sure you want to delete this analysis?')) {
       return;
