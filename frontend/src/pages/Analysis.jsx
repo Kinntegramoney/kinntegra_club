@@ -61,6 +61,11 @@ const Analysis = () => {
   const [uploadingCAS, setUploadingCAS] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [processingProgress, setProcessingProgress] = useState(0);
+  
+  // Dashboard state
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [showAllHoldings, setShowAllHoldings] = useState(false);
 
   useEffect(() => {
     document.title = "Kinntegraa | Analysis";
