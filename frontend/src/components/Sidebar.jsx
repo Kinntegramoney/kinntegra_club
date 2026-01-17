@@ -98,6 +98,42 @@ export default function Sidebar({ user }) {
           );
         })}
 
+        {/* User Menu - Top Level */}
+        <div>
+          <button
+            onClick={() => setUserExpanded(!userExpanded)}
+            className={`w-full flex items-center justify-between px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
+              isUserActive
+                ? 'bg-amber-50 text-amber-700'
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 flex-shrink-0" />
+              <span className="font-medium text-sm md:text-base">User</span>
+            </div>
+            <ChevronRight className={`h-4 w-4 transition-transform ${userExpanded ? 'rotate-90' : ''}`} />
+          </button>
+          
+          {userExpanded && (
+            <div className="ml-8 mt-1 space-y-1">
+              {userItems.map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                    isActive(item.path)
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Admin Menu */}
         <div>
           <button
@@ -117,41 +153,6 @@ export default function Sidebar({ user }) {
           
           {adminExpanded && (
             <div className="ml-2 mt-1 space-y-1">
-              {/* Add User Section */}
-              <div>
-                <button
-                  onClick={() => setAddUserExpanded(!addUserExpanded)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                    addUserItems.some(item => isActive(item.path))
-                      ? 'bg-amber-50 text-amber-700'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    <span>Add User</span>
-                  </div>
-                  {addUserExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                </button>
-                {addUserExpanded && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    {addUserItems.map((item) => (
-                      <button
-                        key={item.path}
-                        onClick={() => navigate(item.path)}
-                        className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                          isActive(item.path)
-                            ? 'bg-amber-50 text-amber-700'
-                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               {/* Opportunities Section */}
               <div>
                 <button
@@ -187,53 +188,18 @@ export default function Sidebar({ user }) {
                 )}
               </div>
 
-              {/* Scheme Master - Direct Link */}
+              {/* Bulk Upload - Direct Link */}
               <button
-                onClick={() => navigate('/broker/admin/scheme-master')}
+                onClick={() => navigate('/broker/bulk-upload')}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive('/broker/admin/scheme-master')
-                    ? 'bg-amber-50 text-amber-700'
+                  isActive('/broker/bulk-upload')
+                    ? 'bg-indigo-50 text-indigo-700'
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <Database className="h-4 w-4" />
-                <span>Scheme Master</span>
+                <Upload className="h-4 w-4" />
+                <span>Bulk Upload</span>
               </button>
-
-              {/* Bulk Upload Section */}
-              <div>
-                <button
-                  onClick={() => setBulkUploadExpanded(!bulkUploadExpanded)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                    bulkUploadItems.some(item => isActive(item.path))
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    <span>Bulk Upload</span>
-                  </div>
-                  {bulkUploadExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                </button>
-                {bulkUploadExpanded && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    {bulkUploadItems.map((item) => (
-                      <button
-                        key={item.path}
-                        onClick={() => navigate(item.path)}
-                        className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                          isActive(item.path)
-                            ? 'bg-indigo-50 text-indigo-700'
-                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
