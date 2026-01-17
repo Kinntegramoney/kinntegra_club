@@ -161,14 +161,16 @@ export default function AdminClients() {
     try {
       const token = localStorage.getItem("token");
       
-      // Prepare form data with UCCs handling
+      // Prepare form data with UCCs handling - send as ucc_list array
       const submitData = { ...editFormData };
       if (editFormData.uccs) {
-        // Filter out empty UCCs and join them
-        const validUccs = editFormData.uccs.filter(ucc => ucc.trim() !== '');
-        submitData.ucc = validUccs.length > 0 ? validUccs.join(',') : '';
+        // Filter out empty UCCs
+        const validUccs = editFormData.uccs.filter(ucc => ucc && ucc.trim() !== '');
+        submitData.ucc_list = validUccs.length > 0 ? validUccs : [''];
         delete submitData.uccs; // Remove the temporary uccs array
       }
+      // Remove old ucc field if present
+      delete submitData.ucc;
       
       await axios.put(`${API}/clients/${editingClient.id}`, submitData, {
         headers: { Authorization: `Bearer ${token}` }
