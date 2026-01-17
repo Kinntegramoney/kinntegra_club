@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, Plus, Building2, Landmark, Settings } from "lucide-react";
+import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [showOpportunityDropdown, setShowOpportunityDropdown] = useState(false);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -28,6 +27,7 @@ export default function Sidebar({ user }) {
   // Main menu items - all top-level
   const menuItems = [
     { path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid },
+    { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
     { path: "/broker/trades", label: "Logs", icon: ClipboardCheck },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
@@ -35,6 +35,7 @@ export default function Sidebar({ user }) {
     { path: "/broker/admin/sub-brokers", label: "Sub Broker", icon: Users },
     { path: "/broker/admin/clients", label: "Client", icon: UserCheck },
     { path: "/broker/bulk-upload", label: "Upload", icon: Upload },
+    { path: "/broker/admin/settings", label: "Settings", icon: Settings },
   ];
 
   const SidebarContent = () => (
