@@ -78,7 +78,8 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
         total_units: parseInt(formData.total_units) || 1,
         units_sold: parseInt(formData.units_sold) || 0,
         face_value: parseFloat(formData.face_value) || 0,
-        description: formData.description
+        description: formData.description,
+        cutoff_days: parseInt(formData.cutoff_days) || 15
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
