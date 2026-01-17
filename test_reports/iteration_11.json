@@ -1,0 +1,64 @@
+{
+  "summary": "Completed testing of Bulk Historical Trades Upload feature. Backend API tests: 9/9 passed. Frontend UI verification: All elements present and functional. Found 1 bug in cashflow generation calculation.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/bulk/historical-trades",
+        "issue": "Cashflow principal amount calculation bug - uses total bond principal instead of per-unit principal. Line 3725 in server.py calculates `bond['principal_amount'] * pp['percentage'] / 100 * units` but should be `(bond['principal_amount'] / bond.get('total_units', 1)) * (pp['percentage'] / 100) * units`. This causes cashflows to be 100x larger than expected for bonds with 100 units.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/bulk/template/historical-trades - Template downloads successfully (200 OK, 6689 bytes)",
+    "Template has correct headers: Deal ID, Investment Date, Investor Name, Investor PAN, Units, Purchase Price, IFA Name, Notes",
+    "POST /api/bulk/historical-trades - Rejects non-existent bond codes with descriptive error",
+    "POST /api/bulk/historical-trades - Rejects non-existent clients with descriptive error",
+    "POST /api/bulk/historical-trades - Rejects amount mismatches with expected vs uploaded amounts",
+    "POST /api/bulk/historical-trades - Rejects missing required columns (400 error)",
+    "POST /api/bulk/historical-trades - Rejects non-Excel files (400 error)",
+    "POST /api/bulk/historical-trades - Creates trade successfully when amount matches",
+    "POST /api/bulk/historical-trades - Returns validation_summary with total_rows, matched_amounts, mismatched_amounts",
+    "Frontend - Historical Trades tab visible and active (amber color)",
+    "Frontend - Download Historical Trades Template button present",
+    "Frontend - Upload area functional",
+    "Frontend - Template info shows correct fields (Deal ID, Investment Date, etc.)",
+    "Frontend - Validation info present ('Validates against system-calculated price')"
+  ],
+  "test_report_links": [
+    "/app/tests/test_historical_trades.py",
+    "/app/test_reports/pytest/historical_trades_tests.xml"
+  ],
+  "action_items": [
+    "FIX CRITICAL: Update line 3725 in server.py to divide principal_amount by total_units before multiplying by units. Current: `principal_amount = (bond['principal_amount'] * pp['percentage'] / 100) * units`. Should be: `principal_amount = (bond['principal_amount'] / bond.get('total_units', 1)) * (pp['percentage'] / 100) * units`"
+  ],
+  "critical_code_review_comments": [
+    "Bug in generate_client_cashflows() at line 3725 - principal calculation doesn't account for total_units, causing cashflows to be total_units times larger than expected",
+    "The secondary market price calculation (calculate_secondary_market_price) correctly divides by total_units at line 3360, but cashflow generation doesn't",
+    "Consider adding unit tests for cashflow generation with multi-unit bonds"
+  ],
+  "updated_files": [
+    "/app/tests/test_historical_trades.py"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 API tests passed)",
+    "frontend": "100% (All UI elements verified)"
+  },
+  "test_credentials": {
+    "broker": {
+      "PAN": "ANVPB5297J",
+      "Password": "Laksh@0208",
+      "PIN": "0516"
+    }
+  },
+  "seed_data_creation": "Created test bond (TEST-HIST-001) and test client (Test Historical Client, PAN: TESTHIST01) for testing. One historical trade was created during testing.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Historical trades bulk upload feature is working. Template download works. Upload validates: bond existence, client existence, amount matching (with 0.1% or ₹10 tolerance). Trade creation works but cashflow generation has a bug - principal amounts are calculated incorrectly for multi-unit bonds. Test data: Bond TEST-HIST-001 (100 units, ₹1M principal), Client 'Test Historical Client' (PAN: TESTHIST01). Expected price per unit on 2025-06-15 is ~₹8,391."
+}
