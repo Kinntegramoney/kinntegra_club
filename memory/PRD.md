@@ -62,6 +62,14 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
+### 2026-01-17 (Current Session - Bulk Upload Upsert)
+- **Feature**: Bulk upload now supports UPDATE existing clients
+  - Re-uploading a file with existing PAN will update missing fields instead of rejecting
+  - Only empty/missing fields are updated (existing data is preserved)
+  - Response now includes: success, failed, updated, created counts
+  - UCC check now only rejects if UCC belongs to a DIFFERENT client
+- **Testing**: Manual testing verified create -> update workflow works correctly
+
 ### 2026-01-17 (Current Session - Bulk Upload & Sub-Broker Permissions)
 - **Feature**: Bulk upload now reads ALL 5 sheets from Excel template
   - Personal Details (with UCC1-UCC5)
