@@ -305,11 +305,29 @@ export default function Opportunities() {
           />
         )}
 
+        {/* Edit Bond Modal */}
+        {editingBond && (
+          <EditBondModal 
+            bond={editingBond}
+            onClose={() => setEditingBond(null)} 
+            onSuccess={() => { setEditingBond(null); fetchData(); }}
+          />
+        )}
+
         {/* Real Estate Modal */}
         {showRealEstateModal && (
           <CreateRealEstateModal 
             onClose={() => setShowRealEstateModal(false)} 
             onSuccess={fetchData}
+          />
+        )}
+
+        {/* Edit Real Estate Modal */}
+        {editingRealEstate && (
+          <CreateRealEstateModal 
+            opportunity={editingRealEstate}
+            onClose={() => setEditingRealEstate(null)} 
+            onSuccess={() => { setEditingRealEstate(null); fetchData(); }}
           />
         )}
 
