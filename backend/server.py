@@ -1349,7 +1349,38 @@ async def bulk_upload_clients(
                 continue
             
             pan = str(row['pan']).upper().strip()
-            ucc = str(row.get('ucc', '')).upper().strip() if not pd.isna(row.get('ucc')) else ""
+            
+            # Collect up to 5 UCCs
+            ucc_list = []
+            for i in range(1, 6):
+                ucc_key = f'ucc{i}'
+                ucc_val = row.get(ucc_key)
+                if not pd.isna(ucc_val) and str(ucc_val).strip():
+                    ucc_list.append(str(ucc_val).strip().upper())
+            
+            # At least one UCC is required
+            if len(ucc_list) == 0:
+                results['errors'].append(f"Row {idx+2}: At least one UCC is required")
+                results['failed'] += 1
+                continue
+            
+            # Check for duplicate UCCs in the submitted list
+            if len(ucc_list) != len(set(ucc_list)):
+                results['errors'].append(f"Row {idx+2}: Duplicate UCCs are not allowed")
+                results['failed'] += 1
+                continue
+            
+            # Check if any UCC already exists in the system
+            ucc_conflict = False
+            for ucc in ucc_list:
+                existing_ucc = await db.clients.find_one({"ucc_list": ucc})
+                if existing_ucc:
+                    results['errors'].append(f"Row {idx+2}: UCC '{ucc}' is already assigned to another client")
+                    ucc_conflict = True
+                    break
+            if ucc_conflict:
+                results['failed'] += 1
+                continue
             
             # Check for duplicates
             existing_pan = await db.users.find_one({"pan": pan})
@@ -1373,7 +1404,7 @@ async def bulk_upload_clients(
             user = {
                 "id": user_id,
                 "pan": pan,
-                "ucc": ucc,
+                "ucc_list": ucc_list,  # Store UCC list in user record too
                 "name": str(row['name']).strip(),
                 "email": str(row.get('email', '')).strip() if not pd.isna(row.get('email')) else "",
                 "phone": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else "",
@@ -1390,7 +1421,7 @@ async def bulk_upload_clients(
                 "id": user_id,
                 "name": str(row['name']).strip(),
                 "pan_number": pan,  # Use pan_number to match client schema
-                "ucc": ucc,
+                "ucc_list": ucc_list,  # Store as list
                 "email": str(row.get('email', '')).strip() if not pd.isna(row.get('email')) else "",
                 "mobile": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else "",
                 "address_line1": str(row.get('address_line_1', '')).strip() if not pd.isna(row.get('address_line_1')) else "",
