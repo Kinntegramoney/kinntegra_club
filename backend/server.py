@@ -1340,7 +1340,7 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
     ws_units = wb.create_sheet("Units & Limits")
     
     units_headers = ["Bond Code*", "Total Units*", "Minimum Units per Order", 
-                    "Interest Payment Frequency"]
+                    "Interest Payment Frequency", "Cutoff Days"]
     for col, header in enumerate(units_headers, 1):
         cell = ws_units.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
@@ -1348,7 +1348,7 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
         cell.alignment = Alignment(horizontal="center", wrap_text=True)
         ws_units.column_dimensions[get_column_letter(col)].width = 25
     
-    units_sample = ["ABC-NCD-2025", 10, 1, "quarterly"]
+    units_sample = ["ABC-NCD-2025", 10, 1, "quarterly", 15]
     for col, value in enumerate(units_sample, 1):
         ws_units.cell(row=2, column=col, value=value)
     
