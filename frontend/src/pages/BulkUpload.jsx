@@ -374,6 +374,9 @@ export default function BulkUpload() {
                 <p className="font-medium">Data Validation</p>
                 <p>• Ensure all required fields are filled</p>
                 <p>• Check for duplicate entries (PAN, codes)</p>
+                {activeTab === "historical-trades" && (
+                  <p>• Bond codes must exist in the system</p>
+                )}
               </div>
               <div>
                 <p className="font-medium">Date Format</p>
@@ -385,6 +388,9 @@ export default function BulkUpload() {
                 <p>• Sub Brokers: Max 100 per upload</p>
                 <p>• Bonds: Max 50 per upload</p>
                 <p>• Real Estate: Max 30 per upload</p>
+                {activeTab === "historical-trades" && (
+                  <p>• Purchase prices are validated against system calculations</p>
+                )}
               </div>
             </div>
           </div>
