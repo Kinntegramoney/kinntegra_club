@@ -143,6 +143,8 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## Key API Endpoints
 - `/api/clients` - CRUD for clients
+- `/api/bulk/template/historical-trades` - Download Excel template for historical trades
+- `/api/bulk/historical-trades` - Bulk upload historical client bond investments
 - `/api/clients/{id}/resend-credentials` - Reset and resend credentials
 - `/api/clients/{id}/reset-password` - Reset password only
 - `/api/clients/{id}/deactivate` - Soft deactivate client
