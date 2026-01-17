@@ -58,7 +58,25 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
-### 2026-01-17 (Current Session)
+### 2026-01-17 (Current Session - Continued)
+- **UI Cleanup**: Reorganized sidebar navigation
+  - Moved "Add User" from Admin submenu to top-level "User" menu
+  - "User" menu now contains Sub Broker and Client sub-items
+  - Simplified Admin menu structure (Opportunities, Bulk Upload only)
+
+- **UI Cleanup**: Removed credential hover display on Sub-Broker page
+  - Removed HoverCard component that showed login credentials on hover
+  - Sub-broker names now display as plain text without credential reveal
+  - Credentials can still be resent via the 3-dots action menu
+
+- **Feature**: Consolidated Scheme Master into Bulk Upload page
+  - Added "Scheme Master" as 6th tab in BulkUpload.jsx
+  - Shows current status (total schemes, last upload date)
+  - Includes BSE StAR MF download instructions with external link
+  - File upload functionality for SCHMSTRPHY.txt files
+  - Removed separate Scheme Master page from Admin menu
+
+### 2026-01-17 (Earlier in Session)
 - **Feature**: Removed "Credit Rating" field from bond creation and bulk upload
   - Backend: Cleaned BondCreate, Bond, BondUpdate Pydantic models (no credit_rating)
   - Backend: Bulk template no longer includes Credit Rating column
