@@ -2261,10 +2261,20 @@ class GapSheetGenerator:
             ws.cell(row=row, column=10, value=round(entry['units_sold'], 3))
             ws.cell(row=row, column=11, value=round(entry['sale_amount'], 2))
             ws.cell(row=row, column=12, value=entry['holding_days'])
+            ws.cell(row=row, column=13, value=entry['financial_year'])
+            
+            # Capital Gain Treatment with color coding
+            cg_cell = ws.cell(row=row, column=14, value=entry['capital_gain_treatment'])
+            if entry['capital_gain_treatment'] == 'Long Term':
+                cg_cell.fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+                cg_cell.font = Font(color="375623")
+            elif entry['capital_gain_treatment'] == 'Short Term':
+                cg_cell.fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
+                cg_cell.font = Font(color="974706")
             
             # Profit/Loss with conditional formatting
-            profit_cell = ws.cell(row=row, column=13, value=round(entry['profit_loss'], 2))
-            pct_cell = ws.cell(row=row, column=14, value=f"{entry['profit_pct']:.2f}%")
+            profit_cell = ws.cell(row=row, column=15, value=round(entry['profit_loss'], 2))
+            pct_cell = ws.cell(row=row, column=16, value=f"{entry['profit_pct']:.2f}%")
             
             if entry['profit_loss'] >= 0:
                 profit_cell.fill = profit_fill
@@ -2277,8 +2287,8 @@ class GapSheetGenerator:
                 pct_cell.fill = loss_fill
                 pct_cell.font = loss_font
             
-            ws.cell(row=row, column=15, value=f"{entry['annualized_return']:.2f}%")
-            ws.cell(row=row, column=16, value=entry['advisor'])
+            ws.cell(row=row, column=17, value=f"{entry['annualized_return']:.2f}%")
+            ws.cell(row=row, column=18, value=entry['advisor'])
             
             # Accumulate totals
             total_profit += entry['profit_loss']
@@ -2297,7 +2307,7 @@ class GapSheetGenerator:
             ws.cell(row=row, column=11, value=round(total_sale, 2))
             ws.cell(row=row, column=11).font = Font(bold=True)
             
-            total_profit_cell = ws.cell(row=row, column=13, value=round(total_profit, 2))
+            total_profit_cell = ws.cell(row=row, column=15, value=round(total_profit, 2))
             total_profit_cell.font = Font(bold=True)
             if total_profit >= 0:
                 total_profit_cell.fill = profit_fill
@@ -2305,7 +2315,7 @@ class GapSheetGenerator:
                 total_profit_cell.fill = loss_fill
             
             if total_purchase > 0:
-                total_pct_cell = ws.cell(row=row, column=14, value=f"{(total_profit / total_purchase * 100):.2f}%")
+                total_pct_cell = ws.cell(row=row, column=16, value=f"{(total_profit / total_purchase * 100):.2f}%")
                 total_pct_cell.font = Font(bold=True)
         
         self._auto_width(ws)
