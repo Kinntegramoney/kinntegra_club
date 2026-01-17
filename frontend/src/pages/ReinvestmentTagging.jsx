@@ -421,25 +421,15 @@ export default function ReinvestmentTagging() {
                                   <td className="py-2 px-4 text-sm">
                                     <div className="flex flex-col gap-0.5">
                                       <div className="flex items-center gap-1">
-                                        {entry.bond_name?.slice(0, 20) || (
-                                          (entry.currentPortfolio || entry.portfolio_category) 
-                                            ? <span className="text-purple-700 font-medium">
-                                                Portfolio - {PORTFOLIO_OPTIONS.find(p => p.value === (entry.currentPortfolio || entry.portfolio_category))?.label || (entry.currentPortfolio || entry.portfolio_category)}
-                                              </span>
-                                            : (entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest')
-                                              ? <span className="text-purple-600">Portfolio</span>
-                                              : 'N/A'
-                                        )}
+                                        <span className="font-mono text-gray-700">{entry.bond_code || entry.deal_id || 'N/A'}</span>
                                         {entry.is_amended && (
                                           <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded" title={entry.amendment_reason || 'Amount revised due to prepayment'}>
                                             Revised
                                           </span>
                                         )}
                                       </div>
-                                      {entry.bond_name && (entry.currentPortfolio || entry.portfolio_category) && (
-                                        <span className="text-xs text-purple-600 font-medium">
-                                          Portfolio: {PORTFOLIO_OPTIONS.find(p => p.value === (entry.currentPortfolio || entry.portfolio_category))?.label || (entry.currentPortfolio || entry.portfolio_category)}
-                                        </span>
+                                      {entry.bond_name && (
+                                        <span className="text-xs text-gray-500">{entry.bond_name.slice(0, 25)}</span>
                                       )}
                                     </div>
                                   </td>
