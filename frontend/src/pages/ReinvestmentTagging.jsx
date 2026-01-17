@@ -129,7 +129,8 @@ export default function ReinvestmentTagging() {
               reinvestment_tag: localTags[entry.cashflow_id] || entry.currentTag,
               custom_amount: (localTags[entry.cashflow_id] || entry.currentTag) === 'other' 
                 ? parseFloat(customAmounts[entry.cashflow_id] || entry.custom_amount) 
-                : null
+                : null,
+              portfolio_category: portfolioCategories[entry.cashflow_id] || entry.portfolio_category || null
             },
             getAuthHeaders()
           )
