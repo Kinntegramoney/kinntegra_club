@@ -656,7 +656,16 @@ export default function ReinvestmentTagging() {
                                     />
                                   )}
                                 </td>
-                                <td className="py-2 px-4 text-sm">{entry.bond_name?.slice(0, 25) || 'N/A'}</td>
+                                <td className="py-2 px-4 text-sm">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span>{entry.bond_name?.slice(0, 25) || 'N/A'}</span>
+                                    {(entry.currentPortfolio || entry.portfolio_category) && (
+                                      <span className="text-xs text-purple-600 font-medium">
+                                        Portfolio: {PORTFOLIO_OPTIONS.find(p => p.value === (entry.currentPortfolio || entry.portfolio_category))?.label || (entry.currentPortfolio || entry.portfolio_category)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
                                 <td className="py-2 px-4 text-center text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yy")}</td>
                                 <td className="py-2 px-4 text-center">
                                   <span className={`px-2 py-1 text-xs rounded-lg border ${getTagColor(entry.currentTag)}`}>
