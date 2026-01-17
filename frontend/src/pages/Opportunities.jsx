@@ -21,6 +21,8 @@ export default function Opportunities() {
   const [loading, setLoading] = useState(true);
   const [showBondModal, setShowBondModal] = useState(false);
   const [showRealEstateModal, setShowRealEstateModal] = useState(false);
+  const [editingBond, setEditingBond] = useState(null);
+  const [editingRealEstate, setEditingRealEstate] = useState(null);
 
   // Set page title
   useEffect(() => {
