@@ -2397,7 +2397,7 @@ async def bulk_upload_historical_trades(
     return results
 
 
-def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: str, investment_amount: float = None, irr: float = None) -> dict:
+def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: str, investment_amount: float = None, irr: float = None, cutoff_days: int = 15) -> dict:
     """
     Calculate secondary market price per unit and units for a given investment.
     Uses cashflows_per_unit for accurate calculation.
@@ -2407,6 +2407,7 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
         investment_date_str: Date of investment (YYYY-MM-DD)
         investment_amount: Amount being invested (optional, for unit calculation)
         irr: IRR to use for discounting (optional, defaults to bond's secondary_irr)
+        cutoff_days: Payments within this many days after investment are considered missed (default 15)
     
     Returns:
         dict with price_per_unit, calculated_units, remaining_cashflows, etc.
@@ -2418,11 +2419,17 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
         irr = bond.get('secondary_irr', bond.get('primary_irr', 12))
     irr_decimal = irr / 100
     
+    # Calculate cutoff date - payments on or before this date are considered missed
+    from datetime import timedelta
+    cutoff_date = investment_date + timedelta(days=cutoff_days)
+    
     # Get cashflows per unit
     cashflows_per_unit = bond.get('cashflows_per_unit', [])
     
     result = {
         "investment_date": investment_date_str,
+        "cutoff_days": cutoff_days,
+        "cutoff_date": cutoff_date.strftime('%Y-%m-%d'),
         "irr_used": irr,
         "face_value_per_unit": bond.get('face_value', bond.get('principal_amount', 0) / max(bond.get('total_units', 1), 1)),
         "total_cashflows_in_bond": len(cashflows_per_unit),
@@ -2433,6 +2440,8 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
         "total_remaining_interest_per_unit": 0,
         "total_remaining_principal_per_unit": 0,
         "total_remaining_cashflow_per_unit": 0,
+        "total_missed_interest_per_unit": 0,
+        "total_missed_principal_per_unit": 0,
         "present_value_per_unit": 0,
         "price_per_unit": 0,
         "calculated_units": 0,
@@ -2457,8 +2466,21 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
         principal = cf.get('principal_per_unit', 0)
         total_cf = interest + principal
         
-        if cf_date > investment_date:
-            # Remaining cashflow - calculate PV
+        # Payment is missed if it's on or before the cutoff date
+        if cf_date <= cutoff_date:
+            # Missed cashflow - already paid/committed to primary holder
+            result["missed_cashflows"] += 1
+            result["total_missed_interest_per_unit"] += interest
+            result["total_missed_principal_per_unit"] += principal
+            result["missed_cashflows_detail"].append({
+                "date": cf_date_str,
+                "interest": round(interest, 2),
+                "principal": round(principal, 2),
+                "total": round(total_cf, 2),
+                "status": "Paid to primary holder"
+            })
+        else:
+            # Remaining cashflow - calculate PV from investment date
             days = (cf_date - investment_date).days
             years = days / 365
             discount_factor = 1 / ((1 + irr_decimal) ** years)
@@ -2476,16 +2498,6 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
                 "days_from_investment": days,
                 "discount_factor": round(discount_factor, 6),
                 "present_value": round(pv, 2)
-            })
-        else:
-            # Missed cashflow - already paid to primary holder
-            result["missed_cashflows"] += 1
-            result["missed_cashflows_detail"].append({
-                "date": cf_date_str,
-                "interest": round(interest, 2),
-                "principal": round(principal, 2),
-                "total": round(total_cf, 2),
-                "status": "Paid to primary holder"
             })
     
     result["total_remaining_cashflow_per_unit"] = result["total_remaining_interest_per_unit"] + result["total_remaining_principal_per_unit"]
