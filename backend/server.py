@@ -4764,6 +4764,13 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         # Clear custom amount if not "other"
         update_data['custom_amount'] = None
     
+    # Handle portfolio category
+    if update.portfolio_category:
+        update_data['portfolio_category'] = update.portfolio_category
+    elif update.reinvestment_tag in ['not_tagged', 'not_invest']:
+        # Clear portfolio category if not investing
+        update_data['portfolio_category'] = None
+    
     # If broker/sub-broker is tagging, set pending approval
     if current_user['role'] in ['broker', 'sub_broker'] and update.reinvestment_tag not in ['not_tagged']:
         update_data['client_approved'] = False
@@ -4774,7 +4781,12 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         {"$set": update_data}
     )
     
-    return {"message": "Tag updated successfully", "reinvestment_tag": update.reinvestment_tag, "custom_amount": update.custom_amount}
+    return {
+        "message": "Tag updated successfully", 
+        "reinvestment_tag": update.reinvestment_tag, 
+        "custom_amount": update.custom_amount,
+        "portfolio_category": update.portfolio_category
+    }
 
 
 @api_router.put("/reinvestment/approve/{cashflow_id}")
