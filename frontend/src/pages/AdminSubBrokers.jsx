@@ -31,13 +31,6 @@ export default function AdminSubBrokers() {
     document.title = "Kinntegraa | Sub-Brokers";
   }, []);
 
-  const copyToClipboard = (text, field) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-    toast.success("Copied to clipboard!");
-  };
-
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
