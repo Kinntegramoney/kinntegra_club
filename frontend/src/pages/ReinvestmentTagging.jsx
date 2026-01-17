@@ -439,6 +439,20 @@ export default function ReinvestmentTagging() {
                                     )}
                                   </td>
                                   <td className="py-2 px-4 text-center">
+                                    {entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest' && (
+                                      <select
+                                        value={portfolioCategories[entry.cashflow_id] || entry.portfolio_category || ''}
+                                        onChange={(e) => handlePortfolioCategoryChange(entry.cashflow_id, e.target.value)}
+                                        className="px-2 py-1 text-xs rounded-lg border focus:outline-none bg-purple-50 border-purple-200 text-purple-800"
+                                        data-testid={`portfolio-select-${entry.cashflow_id}`}
+                                      >
+                                        {PORTFOLIO_OPTIONS.map(opt => (
+                                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                      </select>
+                                    )}
+                                  </td>
+                                  <td className="py-2 px-4 text-center">
                                     <Button
                                       size="sm"
                                       variant="ghost"
