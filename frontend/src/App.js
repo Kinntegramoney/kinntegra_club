@@ -255,6 +255,16 @@ function App() {
             } 
           />
           
+          {/* Analysis Dashboard - Opens in new tab */}
+          <Route 
+            path="/analysis/dashboard/:analysisId" 
+            element={
+              <ProtectedRoute allowedRoles={["broker", "sub_broker", "client"]}>
+                <AnalysisDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Reinvestment Tagging Route - Broker Only */}
           <Route 
             path="/broker/reinvestment" 
