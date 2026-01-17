@@ -122,9 +122,20 @@ export default function Opportunities() {
           </div>
         </div>
 
-        <Button variant="outline" size="sm" className="w-full" onClick={() => navigate(`/bonds/${bond.id}`)}>
-          View Details
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/bonds/${bond.id}`)}>
+            View Details
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+            onClick={(e) => { e.stopPropagation(); setEditingBond(bond); }}
+            title="Edit Bond"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     );
   };
