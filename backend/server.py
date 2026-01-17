@@ -1505,21 +1505,17 @@ async def bulk_upload_bonds(
                 except:
                     pass
     
-    # Group cashflows per unit by bond_code (NEW - for exact cashflow schedules)
+    # Group cashflows per unit by bond_code (for exact cashflow schedules)
     cashflows_per_unit_map = {}
     if not df_cashflows.empty:
-        print(f"DEBUG: Processing cashflows sheet with {len(df_cashflows)} rows")
-        print(f"DEBUG: Columns: {df_cashflows.columns.tolist()}")
         for _, crow in df_cashflows.iterrows():
             bc = str(crow.get('bond_code', '')).strip()
-            print(f"DEBUG: Processing row for bond_code: '{bc}'")
             if bc and not pd.isna(bc):
                 if bc not in cashflows_per_unit_map:
                     cashflows_per_unit_map[bc] = []
                 payment_date = crow.get('payment_date')
                 interest = crow.get('interest_per_unit')
                 principal = crow.get('principal_per_unit')
-                print(f"DEBUG: date={payment_date}, interest={interest}, principal={principal}")
                 if not pd.isna(payment_date):
                     try:
                         date_str = pd.to_datetime(payment_date).strftime('%Y-%m-%d')
@@ -1528,15 +1524,11 @@ async def bulk_upload_bonds(
                             "interest_per_unit": float(interest) if not pd.isna(interest) else 0,
                             "principal_per_unit": float(principal) if not pd.isna(principal) else 0
                         })
-                        print(f"DEBUG: Added cashflow for {bc}: {date_str}")
-                    except Exception as e:
-                        print(f"DEBUG: Exception parsing cashflow: {e}")
+                    except:
+                        pass
         # Sort each bond's cashflows by date
         for bc in cashflows_per_unit_map:
             cashflows_per_unit_map[bc].sort(key=lambda x: x['date'])
-        print(f"DEBUG: Final cashflows_per_unit_map keys: {list(cashflows_per_unit_map.keys())}")
-    else:
-        print("DEBUG: df_cashflows is empty")
     
     for idx, row in df.iterrows():
         try:
