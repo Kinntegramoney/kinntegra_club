@@ -1426,6 +1426,8 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
         "• Total Units*: Number of units available (default: 1)",
         "• Minimum Units: Minimum purchase quantity (default: 1)",
         "• Interest Frequency: quarterly, monthly, semi-annual, annual",
+        "• Cutoff Days: Days after investment when payments are missed (default: 15)",
+        "  - For secondary market: payments within cutoff period go to primary holder",
         "",
         "═══════════════════════════════════════════════════════════════",
         "SHEET 4 - Principal Payments (Red) - OPTIONAL if Sheet 5 used",
