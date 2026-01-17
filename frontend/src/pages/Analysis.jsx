@@ -24,7 +24,18 @@ import {
   FolderOpen,
   User,
   UserPlus,
-  Search
+  Search,
+  TrendingUp,
+  TrendingDown,
+  PieChart,
+  BarChart3,
+  Wallet,
+  IndianRupee,
+  Building2,
+  Users,
+  ChevronDown,
+  ChevronUp,
+  Eye
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
