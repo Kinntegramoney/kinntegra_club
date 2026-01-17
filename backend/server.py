@@ -2148,6 +2148,9 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
         "OPTIONAL FIELDS",
         "═══════════════════════════════════════════════════════════════",
         "• Investor PAN: Client PAN (helps match client more accurately)",
+        "• Cutoff Days: Days after investment where payments are still missed (default: 15)",
+        "  - E.g., Investment on May 13, Cutoff=15 → Payments until May 28 are missed",
+        "  - Use this to handle secondary market timing
         "• IFA Name: Name of the introducing advisor",
         "• Notes: Any additional notes about the trade",
         "",
