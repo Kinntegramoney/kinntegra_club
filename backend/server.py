@@ -3132,13 +3132,18 @@ async def get_client(client_id: str, current_user: dict = Depends(get_current_us
 
 @api_router.put("/clients/{client_id}")
 async def update_client(client_id: str, client_update: ClientUpdate, current_user: dict = Depends(get_current_user)):
-    """Update a client (brokers only)"""
-    if current_user['role'] != 'broker':
-        raise HTTPException(status_code=403, detail="Only brokers can update clients")
+    """Update a client (brokers and sub-brokers)"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can update clients")
     
-    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    # Brokers can update any client they created, sub-brokers can update linked clients
+    if current_user['role'] == 'broker':
+        client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    else:  # sub_broker
+        client = await db.clients.find_one({"id": client_id, "linked_subbroker_id": current_user['id']})
+    
     if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+        raise HTTPException(status_code=404, detail="Client not found or access denied")
     
     update_data = {k: v for k, v in client_update.model_dump().items() if v is not None}
     
@@ -3172,6 +3177,8 @@ async def update_client(client_id: str, client_update: ClientUpdate, current_use
                 raise HTTPException(status_code=400, detail=f"UCC '{ucc}' is already assigned to another client")
         
         update_data['ucc_list'] = ucc_list
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
     
     await db.clients.update_one({"id": client_id}, {"$set": update_data})
     
