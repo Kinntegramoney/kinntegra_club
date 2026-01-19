@@ -7393,12 +7393,6 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
                 return 29
             return 28
     
-    # Recalculate interest amounts with full precision based on days in month
-    # This ensures exact match with Excel calculations
-    def recalc_interest(ip_date, remaining_principal):
-        days_in_month = get_days_in_prev_month(ip_date)
-        return remaining_principal * coupon_rate_decimal * days_in_month / 365
-    
     # Find last and next interest payment dates relative to settlement
     past_payments = []
     future_payments = []
@@ -7410,14 +7404,9 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
     for ip in interest_payments:
         ip_date = datetime.fromisoformat(ip['date'])
         
-        # Calculate remaining principal at this date
-        remaining_principal = face_value
-        for pp_date, pp_pct in sorted(principal_payment_dates.items()):
-            if pp_date < ip_date:
-                remaining_principal -= face_value * pp_pct
-        
-        # Recalculate interest with full precision
-        interest_amount = recalc_interest(ip_date, remaining_principal)
+        # Use the stored interest amount directly from the bond data
+        # This ensures we use the exact values that were uploaded/calculated during bond creation
+        interest_amount = ip.get('amount', 0)
         
         if ip_date <= settlement_date:
             past_payments.append((ip_date, interest_amount))
