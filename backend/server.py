@@ -7030,54 +7030,65 @@ async def get_bond(bond_id: str):
     if not bond:
         raise HTTPException(status_code=404, detail="Bond not found")
     
-    if isinstance(bond['created_at'], str):
+    if isinstance(bond.get('created_at'), str):
         bond['created_at'] = datetime.fromisoformat(bond['created_at'])
+    elif not bond.get('created_at'):
+        bond['created_at'] = datetime.now(timezone.utc)
     
     # Calculate and add status
     bond['status'] = calculate_bond_status(bond)
     
-    if isinstance(bond['created_at'], str):
-        bond['created_at'] = datetime.fromisoformat(bond['created_at'])
+    # Ensure required fields have default values
+    bond.setdefault('interest_payments', [])
+    bond.setdefault('principal_payments', [])
+    bond.setdefault('principal_amount', 0)
+    bond.setdefault('description', None)
     
     # Calculate total cashflows for primary buyer
-    total_cashflows = sum([ip.get('amount', 0) for ip in bond['interest_payments']])
-    total_cashflows += bond['principal_amount']  # Principal returned
+    interest_payments = bond.get('interest_payments', [])
+    total_cashflows = sum([ip.get('amount', 0) for ip in interest_payments if isinstance(ip, dict)])
+    total_cashflows += bond.get('principal_amount', 0)  # Principal returned
     
     # Calculate actual IRR achieved by primary buyer
+    calculated_irr = None
     try:
-        dates = [datetime.fromisoformat(bond['start_date'])]
-        cashflows = [-bond['principal_amount']]  # Initial investment
-        
-        # Add interest payments
-        for ip in bond['interest_payments']:
-            dates.append(datetime.fromisoformat(ip['date']))
-            cashflows.append(ip['amount'])
-        
-        # Add principal payments
-        for pp in bond['principal_payments']:
-            dates.append(datetime.fromisoformat(pp['date']))
-            cashflows.append(bond['principal_amount'] * pp['percentage'] / 100)
-        
-        # Sort by date
-        combined = sorted(zip(dates, cashflows), key=lambda x: x[0])
-        dates = [c[0] for c in combined]
-        cashflows = [c[1] for c in combined]
-        
-        # Combine cashflows on same date
-        date_cashflow_map = {}
-        for d, cf in zip(dates, cashflows):
-            if d in date_cashflow_map:
-                date_cashflow_map[d] += cf
-            else:
-                date_cashflow_map[d] = cf
-        
-        dates = sorted(date_cashflow_map.keys())
-        cashflows = [date_cashflow_map[d] for d in dates]
-        
-        calculated_irr = calculate_xirr(dates, cashflows)
-        if calculated_irr:
-            calculated_irr = calculated_irr * 100  # Convert to percentage
-    except:
+        if bond.get('start_date') and interest_payments:
+            dates = [datetime.fromisoformat(bond['start_date'])]
+            cashflows = [-bond.get('principal_amount', 0)]  # Initial investment
+            
+            # Add interest payments
+            for ip in interest_payments:
+                if isinstance(ip, dict) and ip.get('date'):
+                    dates.append(datetime.fromisoformat(ip['date']))
+                    cashflows.append(ip.get('amount', 0))
+            
+            # Add principal payments
+            principal_payments = bond.get('principal_payments', [])
+            for pp in principal_payments:
+                if isinstance(pp, dict) and pp.get('date'):
+                    dates.append(datetime.fromisoformat(pp['date']))
+                    cashflows.append(bond.get('principal_amount', 0) * pp.get('percentage', 0) / 100)
+            
+            # Sort by date
+            combined = sorted(zip(dates, cashflows), key=lambda x: x[0])
+            dates = [c[0] for c in combined]
+            cashflows = [c[1] for c in combined]
+            
+            # Combine cashflows on same date
+            date_cashflow_map = {}
+            for d, cf in zip(dates, cashflows):
+                if d in date_cashflow_map:
+                    date_cashflow_map[d] += cf
+                else:
+                    date_cashflow_map[d] = cf
+            
+            dates = sorted(date_cashflow_map.keys())
+            cashflows = [date_cashflow_map[d] for d in dates]
+            
+            calculated_irr = calculate_xirr(dates, cashflows)
+            if calculated_irr:
+                calculated_irr = calculated_irr * 100  # Convert to percentage
+    except Exception:
         calculated_irr = None
     
     return {
