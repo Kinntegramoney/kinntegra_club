@@ -7287,21 +7287,64 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
     # Default is 15 days if not specified
     record_day_convention = bond.get('cutoff_days', bond.get('record_day_convention', 15))
     
+    # Get coupon rate for recalculating interest with full precision
+    coupon_rate_decimal = bond.get('coupon_rate', 0) / 100
+    
+    # Helper function to calculate days in previous month
+    def get_days_in_prev_month(date):
+        if date.month == 1:
+            prev_month = 12
+            prev_year = date.year - 1
+        else:
+            prev_month = date.month - 1
+            prev_year = date.year
+        
+        # Days in month
+        if prev_month in [1, 3, 5, 7, 8, 10, 12]:
+            return 31
+        elif prev_month in [4, 6, 9, 11]:
+            return 30
+        else:  # February
+            # Check for leap year
+            if (prev_year % 4 == 0 and prev_year % 100 != 0) or (prev_year % 400 == 0):
+                return 29
+            return 28
+    
+    # Recalculate interest amounts with full precision based on days in month
+    # This ensures exact match with Excel calculations
+    def recalc_interest(ip_date, remaining_principal):
+        days_in_month = get_days_in_prev_month(ip_date)
+        return remaining_principal * coupon_rate_decimal * days_in_month / 365
+    
     # Find last and next interest payment dates relative to settlement
     past_payments = []
     future_payments = []
     
+    # Track remaining principal for interest calculation
+    # Principal reduces after each principal payment
+    principal_payment_dates = {datetime.fromisoformat(pp['date']): pp['percentage'] / 100 for pp in principal_payments}
+    
     for ip in interest_payments:
         ip_date = datetime.fromisoformat(ip['date'])
+        
+        # Calculate remaining principal at this date
+        remaining_principal = face_value
+        for pp_date, pp_pct in sorted(principal_payment_dates.items()):
+            if pp_date < ip_date:
+                remaining_principal -= face_value * pp_pct
+        
+        # Recalculate interest with full precision
+        interest_amount = recalc_interest(ip_date, remaining_principal)
+        
         if ip_date <= settlement_date:
-            past_payments.append((ip_date, ip['amount']))
+            past_payments.append((ip_date, interest_amount))
         else:
             # Check if buyer will receive this payment based on record date
             # Record date = Payment date - record_day_convention
             record_date = ip_date - timedelta(days=record_day_convention)
             if settlement_date <= record_date:
                 # Buyer will receive this payment (settled on or before record date)
-                future_payments.append((ip_date, ip['amount']))
+                future_payments.append((ip_date, interest_amount))
             # else: Buyer won't receive this payment (settled after record date)
     
     past_payments.sort(key=lambda x: x[0], reverse=True)
@@ -7318,16 +7361,12 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
         days_in_period = 1  # Avoid division by zero
     
     # Calculate Accrued Interest
-    # Using simple day-count: (Days since last payment / Days in year) * Coupon Rate * Face Value
-    # Or proportionally: (Days since last payment / Days in period) * Period Interest Amount
-    
-    # Method 1: Proportional to period (more accurate for irregular periods)
     if future_payments:
         next_interest_amount = future_payments[0][1]
         accrued_interest_per_unit = (days_since_last / days_in_period) * next_interest_amount if days_in_period > 0 else 0
     else:
         # No future interest payments, calculate based on daily rate
-        daily_rate = coupon_rate / 365
+        daily_rate = coupon_rate_decimal / 365
         accrued_interest_per_unit = face_value * daily_rate * days_since_last
     
     # Round accrued interest
@@ -7336,18 +7375,18 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
     # Calculate Clean Price using XNPV formula
     # Clean Price = PV of future cashflows that the BUYER will receive at Secondary IRR
     # Note: Only includes interest payments where settlement is on/before record date
-    clean_price_pv = 0
+    clean_price_pv = 0.0
     remaining_interest_count = 0
     remaining_principal_count = 0
-    total_remaining_interest = 0
-    total_remaining_principal = 0
+    total_remaining_interest = 0.0
+    total_remaining_principal = 0.0
     
     # Add future interest payments to PV calculation (only those buyer will receive)
     for ip_date, ip_amount in future_payments:
         days_to_payment = (ip_date - settlement_date).days
-        years_to_payment = days_to_payment / 365
-        discount_factor = 1 / ((1 + secondary_irr) ** years_to_payment)
-        clean_price_pv += ip_amount * discount_factor
+        years_to_payment = days_to_payment / 365.0
+        discount_factor = (1 + secondary_irr) ** years_to_payment
+        clean_price_pv += ip_amount / discount_factor
         remaining_interest_count += 1
         total_remaining_interest += ip_amount
     
