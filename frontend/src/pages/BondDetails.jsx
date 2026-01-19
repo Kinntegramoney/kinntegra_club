@@ -792,72 +792,8 @@ export default function BondDetails() {
 
             {calculation && selectedUnits && (
               <div className="mt-6 pt-6 border-t border-border">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Units Selected</p>
-                    <p className="text-2xl font-mono font-bold">{calculation.units_requested}</p>
-                  </div>
-                  <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Price per Unit</p>
-                    <p className="text-2xl font-mono font-bold text-accent" data-testid="price-per-unit">₹{calculation.price_per_unit.toLocaleString('en-IN')}</p>
-                  </div>
-                  <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Total Investment</p>
-                    <p className="text-2xl font-mono font-bold text-accent" data-testid="total-price">₹{calculation.total_price.toLocaleString('en-IN')}</p>
-                  </div>
-                  <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Days to Maturity</p>
-                    <p className="text-2xl font-mono font-bold">{calculation.days_to_maturity}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-                  <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Remaining Principal</p>
-                    <p className="text-lg font-mono font-medium">₹{(calculation.remaining_principal * calculation.units_requested).toLocaleString('en-IN')}</p>
-                  </div>
-                  <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Remaining Interest</p>
-                    <p className="text-lg font-mono font-medium">₹{(calculation.remaining_interest * calculation.units_requested).toLocaleString('en-IN')}</p>
-                  </div>
-                  <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">TDS @ {calculation.tds_rate}%</p>
-                    <p className="text-lg font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.units_requested * calculation.tds_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                  </div>
-                  <div className="metric-card rounded-md bg-white">
-                    <p className="text-xs text-muted-foreground mb-1">Net Receivable</p>
-                    <p className="text-lg font-mono font-medium text-success">
-                      ₹{((calculation.remaining_principal * calculation.units_requested) + (calculation.remaining_interest * calculation.units_requested * (1 - calculation.tds_rate / 100))).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 p-4 bg-white border border-border rounded-md">
-                  <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-success" />
-                    Investment Summary
-                  </h3>
-                  <div className="space-y-1 text-sm">
-                    <p>Total investment: <span className="font-mono font-medium text-accent">₹{calculation.total_price.toLocaleString('en-IN')}</span> for <span className="font-mono font-medium">{calculation.units_requested}</span> unit(s) on {format(new Date(calculation.investment_date), "MMM dd, yyyy")}</p>
-                    <p>Gross future inflows: <span className="font-mono font-medium">₹{(calculation.total_inflows * calculation.units_requested).toLocaleString('en-IN')}</span></p>
-                    <p>Less: TDS deduction: <span className="font-mono font-medium text-destructive">₹{(calculation.remaining_interest * calculation.units_requested * calculation.tds_rate / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> (10% on interest)</p>
-                    <p>Net amount in hand: <span className="font-mono font-medium text-success">₹{((calculation.remaining_principal * calculation.units_requested) + (calculation.remaining_interest * calculation.units_requested * (1 - calculation.tds_rate / 100))).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
-                    <p className="pt-2 border-t border-border mt-2">Gross IRR: <span className="font-mono font-medium text-accent">{calculation.secondary_buyer_irr}%</span> (before TDS)</p>
-                  </div>
-                  <div className="mt-4">
-                    <Button
-                      data-testid="download-cashflow-btn"
-                      onClick={downloadCashflow}
-                      disabled={downloading}
-                      className="btn-scale bg-primary text-primary-foreground"
-                    >
-                      {downloading ? "Downloading..." : "Download Monthly Cashflow (CSV)"}
-                    </Button>
-                  </div>
-                </div>
-
                 {/* Book Units Section */}
-                <div className="mt-6 p-4 md:p-6 bg-amber-50 border border-amber-200 rounded-md">
+                <div className="p-4 md:p-6 bg-amber-50 border border-amber-200 rounded-md">
                   <h3 className="font-semibold mb-4 flex items-center gap-2 text-base md:text-lg">
                     <ShoppingCart className="h-5 w-5 text-amber-600" />
                     {user?.role === 'client' ? 'Book Units' : 'Book Units for Client'}
