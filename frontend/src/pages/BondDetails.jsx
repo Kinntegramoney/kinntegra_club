@@ -172,6 +172,44 @@ export default function BondDetails() {
     }
   };
 
+  // Enhanced secondary market calculation
+  const calculateEnhancedPrice = async (units = 1) => {
+    if (!settlementDate) {
+      toast.error("Please select a settlement date");
+      return;
+    }
+
+    setCalculatingEnhanced(true);
+    try {
+      const response = await axios.post(`${API}/bonds/${id}/calculate-enhanced`, {
+        settlement_date: settlementDate,
+        units: units
+      });
+      setEnhancedCalculation(response.data);
+      // Also set for booking section compatibility
+      setCalculation({
+        investment_date: settlementDate,
+        units_requested: units,
+        price_per_unit: response.data.dirty_price_per_unit,
+        total_price: response.data.total_dirty_price,
+        remaining_principal: response.data.total_remaining_principal / units,
+        remaining_interest: response.data.total_remaining_interest / units,
+        total_inflows: response.data.total_future_cashflows / units,
+        secondary_buyer_irr: response.data.secondary_irr,
+        days_to_maturity: response.data.days_to_maturity,
+        units_available: response.data.units_available,
+        tds_rate: 10.0
+      });
+      setSelectedUnits(units);
+      setInvestmentDate(settlementDate);
+    } catch (error) {
+      console.error("Error calculating enhanced price:", error);
+      toast.error(error.response?.data?.detail || "Failed to calculate price");
+    } finally {
+      setCalculatingEnhanced(false);
+    }
+  };
+
   const downloadCashflow = async () => {
     if (!calculation || !selectedUnits) {
       toast.error("Please calculate price first");
