@@ -381,6 +381,14 @@ export default function BondDetails() {
                 </p>
               </div>
             </div>
+            
+            {/* Bond Description */}
+            {bondData.description && (
+              <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Description</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{bondData.description}</p>
+              </div>
+            )}
           </div>
 
           {/* Cashflow Timeline */}
