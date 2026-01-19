@@ -416,6 +416,37 @@ export default function BondDetails() {
             </div>
           </div>
         )}
+
+        {/* Pricing Calculator Download */}
+        {bondData.calculator_file_url && (
+          <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Calculator className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-blue-800">Pricing Calculator Available</p>
+                  <p className="text-xs text-blue-600">
+                    Cut-off Days: {bondData.cutoff_days || 15} days before payment date
+                  </p>
+                </div>
+              </div>
+              <a 
+                href={`${API}${bondData.calculator_file_url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                data-testid="download-calculator-btn"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Excel
+              </a>
+            </div>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Bond Summary */}
