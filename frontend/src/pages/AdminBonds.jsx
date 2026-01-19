@@ -314,6 +314,170 @@ export default function AdminBonds() {
           }}
         />
       )}
+
+      {/* Price Verification Modal */}
+      {verifyingBond && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Verify Bond Pricing</h2>
+                <p className="text-sm text-gray-500">{verifyingBond.name} ({verifyingBond.bond_code})</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setVerifyingBond(null);
+                  setVerificationFile(null);
+                  setVerificationResult(null);
+                }} 
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <span className="text-2xl">&times;</span>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-medium text-blue-800 mb-2">Instructions</h3>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• Upload an Excel file with pricing data for the next 2 months</li>
+                  <li>• Excel should have columns: <strong>Date</strong> and <strong>Price</strong> (or Expected Price)</li>
+                  <li>• System will compare each date&apos;s calculated price with your expected price</li>
+                  <li>• <strong>All prices must match exactly</strong> for the bond to be activated</li>
+                </ul>
+              </div>
+
+              {/* File Upload */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700">
+                  Upload Verification Excel
+                </label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setVerificationFile(e.target.files[0])}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+                  data-testid="verification-file-input"
+                />
+                {verificationFile && (
+                  <p className="text-sm text-green-600">Selected: {verificationFile.name}</p>
+                )}
+              </div>
+
+              {/* Verify Button */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleVerifyPricing}
+                  disabled={!verificationFile || verificationLoading}
+                  className="bg-blue-600 hover:bg-blue-700"
+                  data-testid="verify-pricing-btn"
+                >
+                  {verificationLoading ? "Verifying..." : "Verify Pricing"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleActivateBond(verifyingBond.id)}
+                  className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                  data-testid="manual-activate-btn"
+                >
+                  Activate Without Verification
+                </Button>
+              </div>
+
+              {/* Verification Results */}
+              {verificationResult && (
+                <div className="space-y-4">
+                  {/* Summary */}
+                  <div className={`p-4 rounded-lg border ${verificationResult.verification_passed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      {verificationResult.verification_passed ? (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <span className="text-red-600 text-xl">✗</span>
+                      )}
+                      <h3 className={`font-semibold ${verificationResult.verification_passed ? 'text-green-800' : 'text-red-800'}`}>
+                        {verificationResult.verification_passed ? 'Verification Passed!' : 'Verification Failed'}
+                      </h3>
+                    </div>
+                    <p className={`text-sm ${verificationResult.verification_passed ? 'text-green-700' : 'text-red-700'}`}>
+                      {verificationResult.message}
+                    </p>
+                    <div className="mt-2 flex gap-4 text-sm">
+                      <span className={verificationResult.verification_passed ? 'text-green-700' : 'text-gray-600'}>
+                        Total Dates: {verificationResult.summary.total_dates_checked}
+                      </span>
+                      <span className="text-green-600">
+                        Matched: {verificationResult.summary.matched}
+                      </span>
+                      {verificationResult.summary.mismatched > 0 && (
+                        <span className="text-red-600">
+                          Mismatched: {verificationResult.summary.mismatched}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Detailed Results Table */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-2 px-3 font-medium text-gray-600">Row</th>
+                          <th className="text-left py-2 px-3 font-medium text-gray-600">Date</th>
+                          <th className="text-right py-2 px-3 font-medium text-gray-600">Expected</th>
+                          <th className="text-right py-2 px-3 font-medium text-gray-600">System</th>
+                          <th className="text-right py-2 px-3 font-medium text-gray-600">Diff</th>
+                          <th className="text-center py-2 px-3 font-medium text-gray-600">Match</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {verificationResult.comparison_details.map((item, idx) => (
+                          <tr key={idx} className={`border-t ${item.match ? '' : 'bg-red-50'}`}>
+                            <td className="py-2 px-3 text-gray-500">{item.row}</td>
+                            <td className="py-2 px-3">{item.date}</td>
+                            <td className="py-2 px-3 text-right font-mono">
+                              {item.expected_price?.toLocaleString() || '-'}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono">
+                              {item.system_price?.toLocaleString() || '-'}
+                            </td>
+                            <td className={`py-2 px-3 text-right font-mono ${item.difference !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {item.difference !== undefined ? item.difference.toLocaleString() : (item.error || '-')}
+                            </td>
+                            <td className="py-2 px-3 text-center">
+                              {item.match ? (
+                                <CheckCircle className="h-4 w-4 text-green-600 inline" />
+                              ) : (
+                                <span className="text-red-600">✗</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setVerifyingBond(null);
+                  setVerificationFile(null);
+                  setVerificationResult(null);
+                }}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
