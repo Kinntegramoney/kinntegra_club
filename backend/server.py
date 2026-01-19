@@ -1636,6 +1636,21 @@ async def bulk_upload_clients(
     return results
 
 
+@api_router.get("/templates/pricing-calculator")
+async def download_pricing_calculator_template(current_user: dict = Depends(get_current_user)):
+    """Download the corrected bond pricing calculator Excel template with proper record date logic"""
+    template_path = "uploads/templates/Bond_Pricing_Calculator_Corrected.xlsx"
+    
+    if not os.path.exists(template_path):
+        raise HTTPException(status_code=404, detail="Pricing calculator template not found")
+    
+    return FileResponse(
+        template_path,
+        filename="Bond_Pricing_Calculator_Corrected.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
 @api_router.get("/bulk/template/bonds")
 async def download_bond_template(current_user: dict = Depends(get_current_user)):
     """Download Excel template for bulk bond upload with all fields"""
