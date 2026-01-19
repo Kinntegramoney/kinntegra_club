@@ -979,6 +979,34 @@ export default function RealEstateDetails() {
                         XIRR
                       </Button>
                     </div>
+                    {/* Edit/Remove buttons for broker */}
+                    {user?.role === 'broker' && (
+                      <div className="flex gap-2 mt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          onClick={() => {
+                            setSelectedInvestorForEdit(investor);
+                            setShowEditInvestorModal(true);
+                          }}
+                          data-testid={`edit-investor-btn-${idx}`}
+                        >
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          Edit %
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleRemoveInvestor(investor)}
+                          data-testid={`remove-investor-btn-${idx}`}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
