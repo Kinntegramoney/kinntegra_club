@@ -9194,13 +9194,17 @@ async def confirm_participation(
         "$push": {"investors": participation_record},
         "$set": {
             "current_investors": new_investor_count,
-            "total_invested": new_total_invested
+            "total_invested": new_total_invested,
+            "invested_percentage": new_total_allocated,
+            "remaining_percentage": 100 - new_total_allocated
         }
     }
     
-    # Mark as fully invested if all spots filled or 100% allocated
-    if new_investor_count >= max_investors or new_total_allocated >= 100:
+    # Mark as fully invested ONLY when 100% is allocated
+    if new_total_allocated >= 99.99:
         update_data["$set"]["status"] = "fully_invested"
+    elif new_total_allocated > 0:
+        update_data["$set"]["status"] = "partially_invested"
     
     await db.real_estate_opportunities.update_one(
         {"id": opportunity_id},
