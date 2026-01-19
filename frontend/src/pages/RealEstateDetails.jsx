@@ -565,6 +565,14 @@ export default function RealEstateDetails() {
                 <p className="font-semibold text-teal-800">{opp.status === 'available' ? 'Available' : opp.status === 'fully_invested' ? 'Fully Invested' : 'Closed'}</p>
               </div>
             </div>
+            
+            {/* Property Description */}
+            {opp.description && (
+              <div className="mt-4 bg-gray-50 rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-2">Description</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{opp.description}</p>
+              </div>
+            )}
           </div>
 
           {/* Financial Summary */}
