@@ -269,25 +269,30 @@ export default function SubBrokerOpportunities() {
           <Tabs defaultValue="available" className="w-full">
             <TabsList className="mb-6">
               <TabsTrigger value="available" className="px-8" data-testid="tab-available">
-                Available ({availableBonds.length})
+                Available ({totalAvailable})
               </TabsTrigger>
               <TabsTrigger value="funded" className="px-8" data-testid="tab-funded">
-                Funded ({fundedBonds.length})
+                Funded/Sold ({totalFunded})
               </TabsTrigger>
               <TabsTrigger value="closed" className="px-8" data-testid="tab-closed">
-                Closed ({closedBonds.length})
+                Closed ({totalClosed})
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="available">
               {loading ? (
                 <p className="text-center text-gray-500 py-12">Loading...</p>
-              ) : availableBonds.length === 0 ? (
+              ) : totalAvailable === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-gray-500">No available opportunities at the moment</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Real Estate Properties */}
+                  {availableRealEstate.map(property => (
+                    <RealEstateCard key={property.id} property={property} status="available" />
+                  ))}
+                  {/* Bonds */}
                   {availableBonds.map(bond => (
                     <BondCard key={bond.id} bond={bond} status="available" />
                   ))}
@@ -298,12 +303,17 @@ export default function SubBrokerOpportunities() {
             <TabsContent value="funded">
               {loading ? (
                 <p className="text-center text-gray-500 py-12">Loading...</p>
-              ) : fundedBonds.length === 0 ? (
+              ) : totalFunded === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-500">No funded bonds yet</p>
+                  <p className="text-gray-500">No funded/sold opportunities yet</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Sold Real Estate */}
+                  {soldRealEstate.map(property => (
+                    <RealEstateCard key={property.id} property={property} status="sold" />
+                  ))}
+                  {/* Funded Bonds */}
                   {fundedBonds.map(bond => (
                     <BondCard key={bond.id} bond={bond} status="funded" />
                   ))}
