@@ -735,6 +735,21 @@ export default function BondDetails() {
                       <p className="text-2xl font-mono font-bold text-white">
                         ₹{enhancedCalculation.total_clean_price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
+                      {/* Stamp Duty and Final Total */}
+                      <div className="mt-3 pt-3 border-t border-emerald-400/50 space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-emerald-100">Stamp Duty (0.0001%)</span>
+                          <span className="text-white font-mono" data-testid="stamp-duty-display">
+                            ₹{(enhancedCalculation.stamp_duty || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-base font-bold">
+                          <span className="text-emerald-100">Total Consideration</span>
+                          <span className="text-white font-mono" data-testid="total-consideration-display">
+                            ₹{(enhancedCalculation.total_consideration || enhancedCalculation.total_clean_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
