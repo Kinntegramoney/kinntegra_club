@@ -7467,6 +7467,7 @@ class BondUpdate(BaseModel):
     units_sold: Optional[int] = None
     face_value: Optional[float] = None
     description: Optional[str] = None
+    cutoff_days: Optional[int] = None  # Days before payment that determines record date
 
 
 @api_router.put("/bonds/{bond_id}")
@@ -7485,7 +7486,7 @@ async def update_bond(bond_id: str, bond_update: BondUpdate, current_user: dict 
     updatable_fields = [
         'name', 'bond_code', 'issuer', 'principal_amount', 'coupon_rate', 'primary_irr', 
         'secondary_irr', 'start_date', 'end_date', 'interest_payment_frequency',
-        'total_units', 'units_sold', 'face_value', 'description'
+        'total_units', 'units_sold', 'face_value', 'description', 'cutoff_days'
     ]
     
     for field in updatable_fields:
