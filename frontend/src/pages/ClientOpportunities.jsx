@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import ClientSidebar from "@/components/ClientSidebar";
-import { TrendingUp, Calendar, DollarSign, Percent, ChevronRight } from "lucide-react";
+import { TrendingUp, Calendar, DollarSign, Percent, ChevronRight, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -14,6 +14,7 @@ export default function ClientOpportunities() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [bonds, setBonds] = useState([]);
+  const [realEstateOpportunities, setRealEstateOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,18 +31,26 @@ export default function ClientOpportunities() {
     }
     
     setUser(parsedUser);
-    fetchBonds();
+    fetchAllOpportunities();
   }, [navigate]);
 
-  const fetchBonds = async () => {
+  const fetchAllOpportunities = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/client/opportunities`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setBonds(response.data);
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      // Fetch both bonds and real estate in parallel
+      const [bondsRes, realEstateRes] = await Promise.all([
+        axios.get(`${API}/client/opportunities`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API}/real-estate-opportunities`, { headers }).catch(() => ({ data: [] }))
+      ]);
+      
+      setBonds(bondsRes.data || []);
+      // Filter real estate for available ones
+      const availableRE = (realEstateRes.data || []).filter(p => p.status === 'available' || !p.status);
+      setRealEstateOpportunities(availableRE);
     } catch (error) {
-      console.error("Error fetching bonds:", error);
+      console.error("Error fetching opportunities:", error);
       toast.error("Failed to load opportunities");
     } finally {
       setLoading(false);
