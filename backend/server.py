@@ -6857,6 +6857,7 @@ class Bond(BaseModel):
     total_units: int = 1
     units_sold: int = 0
     status: Optional[str] = None  # Computed: 'available', 'funded', 'closed'
+    listing_status: Optional[str] = "pending"  # 'pending' or 'active' - pending until price verification
     description: Optional[str] = None  # Bond description
     calculator_file_url: Optional[str] = None  # URL to the uploaded pricing calculator Excel
     calculator_filename: Optional[str] = None  # Original filename of the calculator
