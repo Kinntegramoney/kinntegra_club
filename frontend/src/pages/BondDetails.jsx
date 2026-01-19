@@ -872,20 +872,32 @@ export default function BondDetails() {
                     {/* Order Summary */}
                     <div className="bg-white p-3 md:p-4 rounded-md border border-amber-200">
                       <p className="text-xs text-gray-500 uppercase mb-2 font-medium">Order Summary</p>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <p className="text-gray-500 text-xs">Units</p>
-                          <p className="font-mono font-bold text-lg">{selectedUnits}</p>
+                      <div className="space-y-2 text-sm">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-gray-500 text-xs">Units</p>
+                            <p className="font-mono font-bold text-lg">{selectedUnits}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs">Price/Unit</p>
+                            <p className="font-mono font-bold text-sm md:text-base">₹{calculation.price_per_unit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-gray-500 text-xs">Price/Unit</p>
-                          <p className="font-mono font-bold text-sm md:text-base">₹{calculation.price_per_unit.toLocaleString('en-IN')}</p>
+                        <div className="pt-2 border-t border-gray-200 space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500 text-xs">Clean Price</span>
+                            <span className="font-mono text-sm">₹{calculation.total_price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500 text-xs">Stamp Duty (0.0001%)</span>
+                            <span className="font-mono text-sm" data-testid="order-stamp-duty">₹{(calculation.stamp_duty || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between pt-1 border-t border-gray-200">
+                            <span className="text-gray-600 font-medium text-xs">Total Consideration</span>
+                            <span className="font-mono font-bold text-amber-600 text-base" data-testid="order-total-consideration">₹{(calculation.total_consideration || calculation.total_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-gray-500 text-xs">Total Amount</p>
-                          <p className="font-mono font-bold text-amber-600 text-lg">₹{calculation.total_price.toLocaleString('en-IN')}</p>
-                        </div>
-                        <div>
+                        <div className="pt-2">
                           <p className="text-gray-500 text-xs">Status</p>
                           <p className={`font-medium text-sm ${user?.role === 'broker' ? 'text-green-600' : 'text-amber-600'}`}>
                             {user?.role === 'broker' ? 'Auto-Approved' : 'Pending Approval'}
