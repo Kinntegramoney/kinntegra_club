@@ -3331,8 +3331,15 @@ async def reactivate_client(client_id: str, current_user: dict = Depends(get_cur
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
+    # Update clients collection
     await db.clients.update_one(
         {"id": client_id},
+        {"$set": {"is_active": True}, "$unset": {"deactivated_at": ""}}
+    )
+    
+    # ALSO update users collection (this is where login check happens)
+    await db.users.update_one(
+        {"pan": client['pan_number']},
         {"$set": {"is_active": True}, "$unset": {"deactivated_at": ""}}
     )
     
