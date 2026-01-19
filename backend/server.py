@@ -9213,6 +9213,158 @@ async def confirm_participation(
     }
 
 
+class UpdateInvestorPercentageRequest(BaseModel):
+    investor_id: str  # client_id of the investor
+    new_percentage: float
+
+
+@api_router.put("/real-estate-opportunities/{opportunity_id}/investor-percentage")
+async def update_investor_percentage(
+    opportunity_id: str,
+    request: UpdateInvestorPercentageRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update an investor's share percentage in a real estate opportunity"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can update investor percentages")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    investors = opportunity.get('investors', [])
+    
+    # Find the investor
+    investor_index = None
+    old_percentage = 0
+    for i, inv in enumerate(investors):
+        if inv.get('client_id') == request.investor_id:
+            investor_index = i
+            old_percentage = inv.get('share_percentage', 0)
+            break
+    
+    if investor_index is None:
+        raise HTTPException(status_code=404, detail="Investor not found in this opportunity")
+    
+    # Calculate total allocated by other investors
+    other_investors_total = sum(
+        inv.get('share_percentage', 0) for i, inv in enumerate(investors) 
+        if i != investor_index
+    )
+    
+    # Check if new percentage is valid
+    max_available = 100 - other_investors_total
+    if request.new_percentage > max_available:
+        raise HTTPException(status_code=400, detail=f"Maximum available percentage is {max_available:.1f}%")
+    
+    if request.new_percentage < 1:
+        raise HTTPException(status_code=400, detail="Minimum percentage is 1%")
+    
+    # Update the investor's percentage
+    investors[investor_index]['share_percentage'] = request.new_percentage
+    
+    # Recalculate investment amount
+    total_cost = opportunity.get('total_cost', opportunity.get('unit_price', 0))
+    investors[investor_index]['investment_amount'] = total_cost * request.new_percentage / 100
+    
+    # Calculate new totals
+    new_total_percentage = sum(inv.get('share_percentage', 0) for inv in investors)
+    new_total_invested = sum(inv.get('investment_amount', 0) for inv in investors)
+    
+    # Determine new status
+    new_status = opportunity.get('status', 'available')
+    if new_total_percentage >= 99.99:
+        new_status = 'fully_invested'
+    elif new_total_percentage > 0:
+        new_status = 'partially_invested'
+    else:
+        new_status = 'available'
+    
+    # Update the opportunity
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {
+            "investors": investors,
+            "invested_percentage": new_total_percentage,
+            "remaining_percentage": 100 - new_total_percentage,
+            "total_invested": new_total_invested,
+            "status": new_status,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "message": "Investor percentage updated successfully",
+        "old_percentage": old_percentage,
+        "new_percentage": request.new_percentage,
+        "new_investment_amount": investors[investor_index]['investment_amount']
+    }
+
+
+@api_router.delete("/real-estate-opportunities/{opportunity_id}/investor/{investor_id}")
+async def remove_investor(
+    opportunity_id: str,
+    investor_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Remove an investor from a real estate opportunity"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can remove investors")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    investors = opportunity.get('investors', [])
+    
+    # Find and remove the investor
+    removed_investor = None
+    new_investors = []
+    for inv in investors:
+        if inv.get('client_id') == investor_id:
+            removed_investor = inv
+        else:
+            new_investors.append(inv)
+    
+    if not removed_investor:
+        raise HTTPException(status_code=404, detail="Investor not found in this opportunity")
+    
+    # Calculate new totals
+    new_total_percentage = sum(inv.get('share_percentage', 0) for inv in new_investors)
+    new_total_invested = sum(inv.get('investment_amount', 0) for inv in new_investors)
+    new_investor_count = len(new_investors)
+    
+    # Determine new status
+    if new_investor_count == 0:
+        new_status = 'available'
+    elif new_total_percentage >= 99.99:
+        new_status = 'fully_invested'
+    else:
+        new_status = 'partially_invested' if new_total_percentage > 0 else 'available'
+    
+    # Update the opportunity
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {
+            "investors": new_investors,
+            "current_investors": new_investor_count,
+            "invested_percentage": new_total_percentage,
+            "remaining_percentage": 100 - new_total_percentage,
+            "total_invested": new_total_invested,
+            "status": new_status,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "message": "Investor removed successfully",
+        "removed_investor": removed_investor.get('client_name', investor_id),
+        "removed_percentage": removed_investor.get('share_percentage', 0)
+    }
+
+
 class ShareOpportunityRequest(BaseModel):
     client_ids: List[str]
     message: str = ""
