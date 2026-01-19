@@ -51,7 +51,24 @@ const COLORS = {
   chart: ["#4F46E5", "#7C3AED", "#EC4899", "#F59E0B", "#10B981", "#3B82F6", "#6366F1", "#8B5CF6"]
 };
 
-// Format currency
+// Format currency for INR (Crores)
+const formatINRCrores = (value) => {
+  if (value === undefined || value === null || value === 0) return "₹0";
+  if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)} Cr`;
+  if (value >= 100000) return `₹${(value / 100000).toFixed(2)} L`;
+  if (value >= 1000) return `₹${(value / 1000).toFixed(1)} K`;
+  return `₹${value.toLocaleString('en-IN')}`;
+};
+
+// Format currency for AED (Millions)
+const formatAEDMillions = (value) => {
+  if (value === undefined || value === null || value === 0) return "AED 0";
+  if (value >= 1000000) return `AED ${(value / 1000000).toFixed(2)} M`;
+  if (value >= 1000) return `AED ${(value / 1000).toFixed(1)} K`;
+  return `AED ${value.toLocaleString()}`;
+};
+
+// Generic format currency (legacy)
 const formatCurrency = (value, currency = "AED") => {
   if (value === undefined || value === null) return `${currency} 0`;
   if (value >= 10000000) return `${currency} ${(value / 10000000).toFixed(2)}Cr`;
