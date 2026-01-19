@@ -7210,6 +7210,10 @@ class EnhancedCalculationResult(BaseModel):
     total_accrued_interest: float
     total_dirty_price: float  # This is what buyer pays
     
+    # Stamp duty and final total
+    stamp_duty: float  # Stamp duty = ROUND(consideration * 0.0001%, 0)
+    total_consideration: float  # Total Consideration = Clean Price + Stamp Duty (final amount)
+    
     # Premium/Discount
     premium_discount_per_unit: float  # Difference from face value
     premium_discount_percentage: float
