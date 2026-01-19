@@ -217,17 +217,46 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          </div>
+
+          {/* Excel Calculator Upload */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-gray-700 border-b pb-2">Pricing Calculator</h3>
+            <div className="space-y-3">
+              {bond?.calculator_file_url && (
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-green-800">Calculator Uploaded</p>
+                      <p className="text-xs text-green-600">Cut-off Days: {bond?.cutoff_days || 15}</p>
+                    </div>
+                  </div>
+                  <a 
+                    href={bond.calculator_file_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-green-700 hover:text-green-900 underline"
+                  >
+                    Download
+                  </a>
+                </div>
+              )}
               <div>
-                <Label htmlFor="cutoff_days">Cut-off Days</Label>
+                <Label htmlFor="calculator_file">{bond?.calculator_file_url ? 'Update Calculator (Excel)' : 'Upload Pricing Calculator (Excel)'}</Label>
                 <Input
-                  id="cutoff_days"
-                  type="number"
-                  value={formData.cutoff_days}
-                  onChange={(e) => setFormData({...formData, cutoff_days: e.target.value})}
-                  placeholder="15"
-                  title="Days before payment date to consider as missed for secondary market"
+                  id="calculator_file"
+                  type="file"
+                  accept=".xlsx,.xlsm,.xls"
+                  onChange={(e) => setFormData({...formData, calculator_file: e.target.files[0]})}
+                  className="mt-1"
                 />
-                <p className="text-xs text-gray-500 mt-1">For secondary market calc</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Upload the Excel pricing calculator. System will auto-extract cut-off days.
+                </p>
               </div>
             </div>
           </div>
