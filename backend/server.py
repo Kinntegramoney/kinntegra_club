@@ -7187,6 +7187,236 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
     }
 
 
+class EnhancedCalculationRequest(BaseModel):
+    settlement_date: str  # ISO format date (YYYY-MM-DD)
+    units: int = 1
+
+
+class EnhancedCalculationResult(BaseModel):
+    # Basic info
+    settlement_date: str
+    units_requested: int
+    face_value_per_unit: float
+    
+    # Price breakdown
+    clean_price_per_unit: float  # PV of future cashflows at secondary IRR
+    accrued_interest_per_unit: float  # Interest accumulated since last payment
+    dirty_price_per_unit: float  # Clean + Accrued (total price)
+    
+    # Total amounts
+    total_clean_price: float
+    total_accrued_interest: float
+    total_dirty_price: float  # This is what buyer pays
+    
+    # Premium/Discount
+    premium_discount_per_unit: float  # Difference from face value
+    premium_discount_percentage: float
+    
+    # Yield and cashflow info
+    secondary_irr: float  # The IRR used (Proposed IRR for Client)
+    coupon_rate: float
+    days_to_maturity: int
+    remaining_interest_payments: int
+    remaining_principal_payments: int
+    
+    # Remaining cashflows
+    total_remaining_principal: float
+    total_remaining_interest: float
+    total_future_cashflows: float
+    
+    # Units info
+    units_available: int
+    
+    # Interest calculation details
+    last_interest_payment_date: Optional[str] = None
+    next_interest_payment_date: Optional[str] = None
+    days_since_last_payment: int = 0
+    days_in_current_period: int = 0
+    accrued_interest_calculation: Optional[str] = None
+
+
+@api_router.post("/bonds/{bond_id}/calculate-enhanced", response_model=EnhancedCalculationResult)
+async def calculate_enhanced_secondary_price(bond_id: str, calculation: EnhancedCalculationRequest):
+    """
+    Enhanced Secondary Market Calculator
+    
+    Calculates:
+    - Clean Price: Present Value of all future cashflows at Secondary IRR
+    - Accrued Interest: Interest accumulated from last payment date to settlement date
+    - Dirty Price: Clean Price + Accrued Interest (total amount buyer pays)
+    - Premium/Discount: Difference from face value
+    
+    This replicates Excel-style bond calculations with XNPV-like discounting.
+    """
+    bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
+    
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Check if bond is closed
+    status = calculate_bond_status(bond)
+    if status == 'closed':
+        raise HTTPException(status_code=400, detail="Cannot calculate price for a closed bond")
+    
+    settlement_date = datetime.fromisoformat(calculation.settlement_date)
+    start_date = datetime.fromisoformat(bond['start_date'])
+    end_date = datetime.fromisoformat(bond['end_date'])
+    
+    if settlement_date < start_date:
+        raise HTTPException(status_code=400, detail="Settlement date cannot be before bond start date")
+    if settlement_date > end_date:
+        raise HTTPException(status_code=400, detail="Settlement date cannot be after bond maturity date")
+    
+    # Check units availability
+    units_available = bond.get('total_units', 1) - bond.get('units_sold', 0)
+    if calculation.units > units_available:
+        raise HTTPException(status_code=400, detail=f"Only {units_available} units available")
+    
+    # Get bond details
+    face_value = bond.get('face_value') or bond.get('principal_amount', 0)
+    coupon_rate = bond.get('coupon_rate', 0) / 100  # Convert to decimal
+    secondary_irr = bond.get('secondary_irr', 0) / 100  # Convert to decimal
+    
+    # Collect all interest payments
+    interest_payments = bond.get('interest_payments', [])
+    principal_payments = bond.get('principal_payments', [])
+    
+    # Find last and next interest payment dates relative to settlement
+    past_payments = []
+    future_payments = []
+    
+    for ip in interest_payments:
+        ip_date = datetime.fromisoformat(ip['date'])
+        if ip_date <= settlement_date:
+            past_payments.append((ip_date, ip['amount']))
+        else:
+            future_payments.append((ip_date, ip['amount']))
+    
+    past_payments.sort(key=lambda x: x[0], reverse=True)
+    future_payments.sort(key=lambda x: x[0])
+    
+    # Get last and next payment dates
+    last_payment_date = past_payments[0][0] if past_payments else start_date
+    next_payment_date = future_payments[0][0] if future_payments else end_date
+    
+    # Calculate days for accrued interest
+    days_since_last = (settlement_date - last_payment_date).days
+    days_in_period = (next_payment_date - last_payment_date).days
+    if days_in_period == 0:
+        days_in_period = 1  # Avoid division by zero
+    
+    # Calculate Accrued Interest
+    # Using simple day-count: (Days since last payment / Days in year) * Coupon Rate * Face Value
+    # Or proportionally: (Days since last payment / Days in period) * Period Interest Amount
+    
+    # Method 1: Proportional to period (more accurate for irregular periods)
+    if future_payments:
+        next_interest_amount = future_payments[0][1]
+        accrued_interest_per_unit = (days_since_last / days_in_period) * next_interest_amount if days_in_period > 0 else 0
+    else:
+        # No future interest payments, calculate based on daily rate
+        daily_rate = coupon_rate / 365
+        accrued_interest_per_unit = face_value * daily_rate * days_since_last
+    
+    # Round accrued interest
+    accrued_interest_per_unit = round(accrued_interest_per_unit, 2)
+    
+    # Calculate Clean Price (PV of all future cashflows at Secondary IRR)
+    # This is like XNPV calculation
+    clean_price_pv = 0
+    remaining_interest_count = 0
+    remaining_principal_count = 0
+    total_remaining_interest = 0
+    total_remaining_principal = 0
+    
+    # Add future interest payments to PV calculation
+    for ip_date, ip_amount in future_payments:
+        days_to_payment = (ip_date - settlement_date).days
+        years_to_payment = days_to_payment / 365
+        discount_factor = 1 / ((1 + secondary_irr) ** years_to_payment)
+        clean_price_pv += ip_amount * discount_factor
+        remaining_interest_count += 1
+        total_remaining_interest += ip_amount
+    
+    # Add future principal payments to PV calculation
+    for pp in principal_payments:
+        pp_date = datetime.fromisoformat(pp['date'])
+        if pp_date > settlement_date:
+            principal_amount = face_value * pp['percentage'] / 100
+            days_to_payment = (pp_date - settlement_date).days
+            years_to_payment = days_to_payment / 365
+            discount_factor = 1 / ((1 + secondary_irr) ** years_to_payment)
+            clean_price_pv += principal_amount * discount_factor
+            remaining_principal_count += 1
+            total_remaining_principal += principal_amount
+    
+    clean_price_per_unit = round(clean_price_pv, 2)
+    
+    # Dirty Price = Clean Price + Accrued Interest
+    dirty_price_per_unit = round(clean_price_per_unit + accrued_interest_per_unit, 2)
+    
+    # Premium/Discount calculation
+    premium_discount = dirty_price_per_unit - face_value
+    premium_discount_pct = (premium_discount / face_value) * 100 if face_value > 0 else 0
+    
+    # Calculate totals
+    units = calculation.units
+    total_clean = round(clean_price_per_unit * units, 2)
+    total_accrued = round(accrued_interest_per_unit * units, 2)
+    total_dirty = round(dirty_price_per_unit * units, 2)
+    
+    # Days to maturity
+    days_to_maturity = (end_date - settlement_date).days
+    
+    # Accrued interest calculation explanation
+    accrued_calc_explanation = (
+        f"({days_since_last} days / {days_in_period} days) × "
+        f"₹{future_payments[0][1] if future_payments else 0:.2f} = ₹{accrued_interest_per_unit:.2f}"
+    )
+    
+    return {
+        "settlement_date": calculation.settlement_date,
+        "units_requested": units,
+        "face_value_per_unit": face_value,
+        
+        # Price breakdown
+        "clean_price_per_unit": clean_price_per_unit,
+        "accrued_interest_per_unit": accrued_interest_per_unit,
+        "dirty_price_per_unit": dirty_price_per_unit,
+        
+        # Total amounts
+        "total_clean_price": total_clean,
+        "total_accrued_interest": total_accrued,
+        "total_dirty_price": total_dirty,
+        
+        # Premium/Discount
+        "premium_discount_per_unit": round(premium_discount, 2),
+        "premium_discount_percentage": round(premium_discount_pct, 2),
+        
+        # Yield and cashflow info
+        "secondary_irr": bond.get('secondary_irr', 0),
+        "coupon_rate": bond.get('coupon_rate', 0),
+        "days_to_maturity": days_to_maturity,
+        "remaining_interest_payments": remaining_interest_count,
+        "remaining_principal_payments": remaining_principal_count,
+        
+        # Remaining cashflows
+        "total_remaining_principal": round(total_remaining_principal, 2),
+        "total_remaining_interest": round(total_remaining_interest, 2),
+        "total_future_cashflows": round(total_remaining_principal + total_remaining_interest, 2),
+        
+        # Units info
+        "units_available": units_available,
+        
+        # Interest calculation details
+        "last_interest_payment_date": last_payment_date.strftime('%Y-%m-%d'),
+        "next_interest_payment_date": next_payment_date.strftime('%Y-%m-%d') if future_payments else None,
+        "days_since_last_payment": days_since_last,
+        "days_in_current_period": days_in_period,
+        "accrued_interest_calculation": accrued_calc_explanation
+    }
+
+
 @api_router.delete("/bonds/{bond_id}")
 async def delete_bond(bond_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a bond (brokers only) - cannot delete funded or closed bonds"""
