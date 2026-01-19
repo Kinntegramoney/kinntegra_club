@@ -187,11 +187,14 @@ export default function BondDetails() {
       });
       setEnhancedCalculation(response.data);
       // Also set for booking section compatibility - use CLEAN PRICE (principal only)
+      // Include stamp duty and total consideration for the order summary
       setCalculation({
         investment_date: settlementDate,
         units_requested: units,
         price_per_unit: response.data.clean_price_per_unit,
         total_price: response.data.total_clean_price,
+        stamp_duty: response.data.stamp_duty || 0,
+        total_consideration: response.data.total_consideration || response.data.total_clean_price,
         remaining_principal: response.data.total_remaining_principal / units,
         remaining_interest: response.data.total_remaining_interest / units,
         total_inflows: response.data.total_future_cashflows / units,
