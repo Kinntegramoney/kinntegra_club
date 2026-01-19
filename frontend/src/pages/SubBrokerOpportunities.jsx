@@ -312,9 +312,9 @@ export default function SubBrokerOpportunities() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Sold Real Estate */}
-                  {soldRealEstate.map(property => (
-                    <RealEstateCard key={property.id} property={property} status="sold" />
+                  {/* Funded/Sold Real Estate */}
+                  {fundedRealEstate.map(property => (
+                    <RealEstateCard key={property.id} property={property} status="funded" />
                   ))}
                   {/* Funded Bonds */}
                   {fundedBonds.map(bond => (
