@@ -63,20 +63,20 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 ## What's Been Implemented
 
 ### 2026-01-19 (Current Session - Secondary Market Bond Calculator)
-- **Feature**: Enhanced Secondary Market Calculator on BondDetails page
+- **Feature**: Unified Secondary Market Calculator on BondDetails page
   - **Backend**: New endpoint `/api/bonds/{bond_id}/calculate-enhanced`
-  - **Clean Price**: Present Value of future cashflows discounted at Secondary IRR
-  - **Accrued Interest**: Proportional calculation based on days since last payment
-  - **Dirty Price**: Clean Price + Accrued Interest (total amount buyer pays)
-  - **Premium/Discount**: Difference from face value with percentage display
-  - **Interest Period Details**: Last/Next payment dates, days calculations
-  - **Future Cashflows**: Remaining payments count and totals
-  - **Proposed IRR (Client)**: Displays bond's secondary_irr prominently
+  - **Frontend**: Merged two calculators into one unified interface
+  - **Clean Price Only**: Shows only Clean Price (PV of future cashflows at Secondary IRR) per user request
+  - **Dual Input Mode**: 
+    - Enter Units (optional) → get exact price
+    - Enter Amount (₹) → get unit bounds (Lower/Upper)
+  - **Premium/Discount**: Shows percentage difference from face value
+  - **Future Cashflows**: Remaining interest payments, principal, total cashflows
+  - **Proposed IRR (Client)**: Displays bond's secondary_irr prominently (11.5%)
 - **Test Bond Added**: "All Home Bharat Platform" (CDHBP002)
   - Secondary IRR: 11.5%, Coupon Rate: 14%, Face Value: ₹100,000
   - 18 monthly interest payments, 2 principal payments (50% each)
-- **Testing**: 12/12 backend tests passed, all frontend UI features verified
-  - Test file: `/app/tests/test_enhanced_calculator.py`
+- **Testing**: Backend tests passed, all frontend UI features verified
 
 ### 2026-01-17 (Current Session - Bulk Upload Upsert)
 - **Feature**: Bulk upload now supports UPDATE existing clients
