@@ -3909,3 +3909,90 @@ function PassportDetailsModal({ opportunity, investor, onClose, onSuccess }) {
     </div>
   );
 }
+
+
+// Edit Investor Percentage Modal
+function EditInvestorPercentageModal({ opportunity, investor, onClose, onUpdate }) {
+  const [newPercentage, setNewPercentage] = useState(investor?.share_percentage || 25);
+  const [loading, setLoading] = useState(false);
+
+  // Calculate other investors total
+  const otherInvestorsTotal = (opportunity?.investors || [])
+    .filter(inv => inv.client_id !== investor.client_id)
+    .reduce((sum, inv) => sum + (inv.share_percentage || 0), 0);
+  
+  const maxAvailable = 100 - otherInvestorsTotal;
+  const newAmount = opportunity?.total_cost ? (opportunity.total_cost * newPercentage / 100) : 0;
+
+  const formatCurrency = (amt) => new Intl.NumberFormat("en-AE", { minimumFractionDigits: 0 }).format(amt || 0);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (newPercentage < 1 || newPercentage > maxAvailable) {
+      return;
+    }
+    setLoading(true);
+    await onUpdate(investor.client_id, newPercentage);
+    setLoading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-lg font-semibold">Edit Investor Share</h2>
+            <p className="text-sm text-gray-500">{investor?.client_name}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <p className="text-sm text-blue-600">Current Share</p>
+            <p className="text-2xl font-bold text-blue-800">{investor?.share_percentage || 25}%</p>
+            <p className="text-sm text-blue-600">AED {formatCurrency(opportunity?.total_cost * (investor?.share_percentage || 25) / 100)}</p>
+          </div>
+
+          <div>
+            <Label>New Percentage *</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                step="0.1"
+                min="1"
+                max={maxAvailable}
+                value={newPercentage}
+                onChange={(e) => setNewPercentage(parseFloat(e.target.value) || 0)}
+                className="flex-1"
+                data-testid="new-percentage-input"
+              />
+              <span className="text-gray-500">%</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Max available: {maxAvailable.toFixed(1)}%</p>
+          </div>
+
+          <div className="bg-green-50 p-4 rounded-lg">
+            <p className="text-sm text-green-600">New Investment Amount</p>
+            <p className="text-2xl font-bold text-green-800">AED {formatCurrency(newAmount)}</p>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button 
+              type="submit" 
+              disabled={loading || newPercentage < 1 || newPercentage > maxAvailable} 
+              className="flex-1 bg-blue-600 hover:bg-blue-700"
+              data-testid="update-percentage-btn"
+            >
+              {loading ? "Updating..." : "Update Share"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
