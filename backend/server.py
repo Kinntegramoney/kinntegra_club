@@ -7439,6 +7439,7 @@ async def delete_bond(bond_id: str, current_user: dict = Depends(get_current_use
 
 class BondUpdate(BaseModel):
     name: Optional[str] = None
+    bond_code: Optional[str] = None
     issuer: Optional[str] = None
     principal_amount: Optional[float] = None
     coupon_rate: Optional[float] = None
