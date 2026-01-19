@@ -4287,3 +4287,106 @@ function EditInvestorPercentageModal({ opportunity, investor, onClose, onUpdate 
   );
 }
 
+
+// DLD + Admin Document Upload Modal
+function DldAdminUploadModal({ opportunity, investor, uploadType, amounts, onClose, onSuccess }) {
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const API = process.env.REACT_APP_BACKEND_URL;
+
+  const uploadLabels = {
+    invoice: { title: 'Upload DLD + Admin Invoice', description: 'Upload the invoice for DLD and Admin fees' },
+    swift: { title: 'Upload SWIFT Copy', description: 'Upload the SWIFT/payment proof for DLD + Admin fees' },
+    receipt: { title: 'Upload Receipt', description: 'Upload the receipt from DLD/Admin after payment' }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) {
+      toast.error("Please select a file");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('document_type', uploadType);
+
+      await axios.post(
+        `${API}/api/real-estate-opportunities/${opportunity.id}/dld-admin/${investor.client_id}/upload`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+      );
+
+      toast.success(`${uploadLabels[uploadType].title.replace('Upload ', '')} uploaded successfully!`);
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to upload document");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-orange-50 to-green-50">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">{uploadLabels[uploadType]?.title}</h2>
+            <p className="text-sm text-gray-500">{investor?.client_name}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Amount Summary */}
+          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-orange-600">DLD Fee</span>
+              <span className="font-medium">AED {amounts?.dldFee?.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-green-600">Admin Fee</span>
+              <span className="font-medium">AED {amounts?.adminFee?.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-sm font-bold border-t pt-2">
+              <span>Total</span>
+              <span>AED {amounts?.total?.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {/* File Upload */}
+          <div>
+            <Label>{uploadLabels[uploadType]?.description}</Label>
+            <Input
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg"
+              onChange={(e) => setFile(e.target.files[0])}
+              className="mt-2"
+              data-testid="dld-admin-file-input"
+            />
+            {file && (
+              <p className="text-sm text-green-600 mt-1">Selected: {file.name}</p>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button
+              type="submit"
+              disabled={loading || !file}
+              className="flex-1 bg-orange-600 hover:bg-orange-700"
+              data-testid="upload-dld-admin-btn"
+            >
+              {loading ? "Uploading..." : "Upload"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
