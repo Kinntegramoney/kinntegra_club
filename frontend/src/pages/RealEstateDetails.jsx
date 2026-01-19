@@ -100,6 +100,43 @@ export default function RealEstateDetails() {
     return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  // Handle removing an investor
+  const handleRemoveInvestor = async (investor) => {
+    if (!window.confirm(`Are you sure you want to remove ${investor.client_name || 'this investor'}?`)) {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(
+        `${API}/real-estate-opportunities/${id}/investor/${investor.client_id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Investor removed successfully");
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to remove investor");
+    }
+  };
+
+  // Handle updating investor percentage
+  const handleUpdateInvestorPercentage = async (investorId, newPercentage) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `${API}/real-estate-opportunities/${id}/investor-percentage`,
+        { investor_id: investorId, new_percentage: newPercentage },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Investor percentage updated successfully");
+      setShowEditInvestorModal(false);
+      setSelectedInvestorForEdit(null);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to update percentage");
+    }
+  };
+
   // XIRR Calculation Function - CORRECTED VERSION
   // DLD + Admin are upfront costs paid with first payment
   // Outstanding amount (unpaid portion) is deducted from sale proceeds
