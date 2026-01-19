@@ -1821,6 +1821,31 @@ export default function RealEstateDetails() {
           onUpdate={handleUpdateInvestorPercentage}
         />
       )}
+
+      {/* DLD + Admin Document Upload Modal */}
+      {showDldAdminModal && selectedDldAdminInvestor && (
+        <DldAdminUploadModal
+          opportunity={opp}
+          investor={selectedDldAdminInvestor.investor}
+          uploadType={dldAdminUploadType}
+          amounts={{
+            dldFee: selectedDldAdminInvestor.dldFee,
+            adminFee: selectedDldAdminInvestor.adminFee,
+            total: selectedDldAdminInvestor.total
+          }}
+          onClose={() => {
+            setShowDldAdminModal(false);
+            setSelectedDldAdminInvestor(null);
+            setDldAdminUploadType(null);
+          }}
+          onSuccess={() => {
+            setShowDldAdminModal(false);
+            setSelectedDldAdminInvestor(null);
+            setDldAdminUploadType(null);
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 }
