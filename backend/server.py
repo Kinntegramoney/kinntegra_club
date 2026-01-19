@@ -7042,9 +7042,15 @@ async def get_bonds(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/bonds/available", response_model=List[Bond])
 async def get_available_bonds(current_user: dict = Depends(get_current_user)):
-    """Get bonds with available units (for sub-brokers)"""
-    # Get all bonds where units_sold < total_units
-    bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
+    """Get bonds with available units (for sub-brokers and clients)"""
+    # For sub-brokers and clients, only show 'active' listed bonds
+    # Brokers can see all bonds in their admin view
+    query = {}
+    if current_user['role'] in ['sub_broker', 'client']:
+        query['listing_status'] = 'active'
+    
+    # Get bonds
+    bonds = await db.bonds.find(query, {"_id": 0}).to_list(1000)
     
     # Filter bonds with available units and not closed
     available_bonds = []
