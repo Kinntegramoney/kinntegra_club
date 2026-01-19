@@ -707,6 +707,19 @@ export default function BondDetails() {
                     </div>
                   )}
                 </div>
+
+                {/* Download Cashflow Button */}
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    data-testid="download-cashflow-btn"
+                    onClick={downloadCashflow}
+                    disabled={downloading}
+                    variant="outline"
+                    className="btn-scale"
+                  >
+                    {downloading ? "Downloading..." : "Download Monthly Cashflow (CSV)"}
+                  </Button>
+                </div>
               </div>
             )}
 
