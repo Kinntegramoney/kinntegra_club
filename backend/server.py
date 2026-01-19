@@ -8216,7 +8216,7 @@ async def delete_bond_presentation(
 
 @api_router.post("/bonds/{bond_id}/download-cashflow", response_model=CashflowDownload)
 async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculation):
-    """Generate month-wise cashflow with TDS calculation"""
+    """Generate month-wise cashflow with TDS calculation - using record date logic"""
     bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
     
     if not bond:
@@ -8224,23 +8224,28 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
     
     investment_date = datetime.fromisoformat(calculation.investment_date)
     units = calculation.units
+    cutoff_days = bond.get('cutoff_days', 15)  # Record date convention
     
-    # Calculate price per unit
+    # Calculate price per unit using record date logic
     secondary_irr_decimal = bond['secondary_irr'] / 100
     
-    # Get remaining cashflows
+    # Get remaining cashflows using RECORD DATE logic
+    # Payment is received only if: investment_date <= record_date (payment_date - cutoff_days)
     remaining_dates = []
     remaining_cashflows = []
     
     for ip in bond['interest_payments']:
         ip_date = datetime.fromisoformat(ip['date'])
-        if ip_date > investment_date:
+        record_date = ip_date - timedelta(days=cutoff_days)
+        # Buyer receives this payment only if they invested ON or BEFORE the record date
+        if investment_date <= record_date:
             remaining_dates.append(ip_date)
             remaining_cashflows.append(ip['amount'])
     
     for pp in bond['principal_payments']:
         pp_date = datetime.fromisoformat(pp['date'])
-        if pp_date > investment_date:
+        record_date = pp_date - timedelta(days=cutoff_days)
+        if investment_date <= record_date:
             remaining_dates.append(pp_date)
             remaining_cashflows.append(bond['principal_amount'] * pp['percentage'] / 100)
     
@@ -8258,12 +8263,19 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
     total_price = price_per_unit * units
     
     # Build cashflow schedule - MULTIPLY BY UNITS
+    # Only include payments where buyer will receive based on record date
     cashflows = []
     total_principal = 0
     total_interest = 0
     total_tds = 0
     
     for payment_date in sorted(date_cashflow_map.keys()):
+        record_date = payment_date - timedelta(days=cutoff_days)
+        
+        # Skip payments where record date has passed (buyer won't receive)
+        if investment_date > record_date:
+            continue
+        
         # Separate principal and interest for this date
         principal_payment = 0
         interest_payment = 0
@@ -8271,14 +8283,16 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
         # Check principal payments
         for pp in bond['principal_payments']:
             pp_date = datetime.fromisoformat(pp['date'])
-            if pp_date == payment_date and pp_date > investment_date:
-                principal_payment += (bond['principal_amount'] * pp['percentage'] / 100) * units  # MULTIPLY BY UNITS
+            pp_record_date = pp_date - timedelta(days=cutoff_days)
+            if pp_date == payment_date and investment_date <= pp_record_date:
+                principal_payment += (bond['principal_amount'] * pp['percentage'] / 100) * units
         
         # Check interest payments
         for ip in bond['interest_payments']:
             ip_date = datetime.fromisoformat(ip['date'])
-            if ip_date == payment_date and ip_date > investment_date:
-                interest_payment += ip['amount'] * units  # MULTIPLY BY UNITS
+            ip_record_date = ip_date - timedelta(days=cutoff_days)
+            if ip_date == payment_date and investment_date <= ip_record_date:
+                interest_payment += ip['amount'] * units
         
         # Calculate TDS on interest
         tds_deducted = interest_payment * 0.10
