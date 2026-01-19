@@ -692,100 +692,20 @@ export default function BondDetails() {
             {/* Clean Price Display - Main Result */}
             {enhancedCalculation && (
               <div className="space-y-4">
-                {/* Primary Price Display */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-2 bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-lg shadow-lg">
-                    <p className="text-xs text-emerald-100 font-semibold mb-1">PRICE PER UNIT</p>
-                    <p className="text-3xl font-mono font-bold text-white" data-testid="clean-price-display">
-                      ₹{enhancedCalculation.clean_price_per_unit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-xs text-emerald-200 mt-2">Based on {enhancedCalculation.secondary_irr}% IRR • Face Value: ₹{enhancedCalculation.face_value_per_unit.toLocaleString('en-IN')}</p>
-                  </div>
-                  
-                  <div className={`p-4 rounded-lg ${
-                    enhancedCalculation.premium_discount_per_unit >= 0 
-                      ? 'bg-orange-50 border border-orange-200' 
-                      : 'bg-green-50 border border-green-200'
-                  }`}>
-                    <p className="text-xs font-semibold mb-1 text-gray-600">
-                      {enhancedCalculation.premium_discount_per_unit >= 0 ? 'PREMIUM' : 'DISCOUNT'}
-                    </p>
-                    <p className={`text-2xl font-mono font-bold ${
-                      enhancedCalculation.premium_discount_per_unit >= 0 ? 'text-orange-600' : 'text-green-600'
-                    }`}>
-                      {enhancedCalculation.premium_discount_percentage >= 0 ? '+' : ''}{enhancedCalculation.premium_discount_percentage.toFixed(2)}%
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      ₹{Math.abs(enhancedCalculation.premium_discount_per_unit).toLocaleString('en-IN', { minimumFractionDigits: 2 })} per unit
-                    </p>
-                  </div>
-                </div>
-
-                {/* Total for Multiple Units */}
-                {enhancedCalculation.units_requested > 0 && (
-                  <div className="bg-white p-4 rounded-lg border shadow-sm">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                      <div>
-                        <p className="text-xs text-gray-500">Units</p>
-                        <p className="text-xl font-mono font-bold">{enhancedCalculation.units_requested}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Price per Unit</p>
-                        <p className="text-xl font-mono font-bold text-emerald-600">₹{enhancedCalculation.clean_price_per_unit.toLocaleString('en-IN')}</p>
-                      </div>
-                      <div className="bg-blue-50 rounded-lg p-2">
-                        <p className="text-xs text-blue-600 font-semibold">Total Investment</p>
-                        <p className="text-xl font-mono font-bold text-blue-700">₹{enhancedCalculation.total_clean_price.toLocaleString('en-IN')}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Days to Maturity</p>
-                        <p className="text-xl font-mono font-bold">{enhancedCalculation.days_to_maturity}</p>
-                      </div>
+                {/* Primary Price Display - Only Clean Price */}
+                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-lg shadow-lg text-center">
+                  <p className="text-sm text-emerald-100 font-semibold mb-2">PRICE PER UNIT</p>
+                  <p className="text-4xl font-mono font-bold text-white" data-testid="clean-price-display">
+                    ₹{enhancedCalculation.clean_price_per_unit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  {enhancedCalculation.units_requested > 1 && (
+                    <div className="mt-4 pt-4 border-t border-emerald-400">
+                      <p className="text-sm text-emerald-100">Total for {enhancedCalculation.units_requested} units</p>
+                      <p className="text-2xl font-mono font-bold text-white">
+                        ₹{enhancedCalculation.total_clean_price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
                     </div>
-                  </div>
-                )}
-
-                {/* Future Cashflows Summary */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="text-sm font-semibold mb-3 text-gray-700">Future Cashflows (per unit)</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500">Interest Payments</p>
-                      <p className="font-mono font-medium">{enhancedCalculation.remaining_interest_payments}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Total Future Interest</p>
-                      <p className="font-mono font-medium text-emerald-600">₹{enhancedCalculation.total_remaining_interest.toLocaleString('en-IN')}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Total Future Principal</p>
-                      <p className="font-mono font-medium text-blue-600">₹{enhancedCalculation.total_remaining_principal.toLocaleString('en-IN')}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 font-medium">Total Cashflows</p>
-                      <p className="font-mono font-bold">₹{enhancedCalculation.total_future_cashflows.toLocaleString('en-IN')}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Key Metrics */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="bg-white p-3 rounded-lg border text-center">
-                    <p className="text-xs text-gray-500">Settlement Date</p>
-                    <p className="font-mono font-medium">{format(new Date(enhancedCalculation.settlement_date), "MMM dd, yyyy")}</p>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg border text-center">
-                    <p className="text-xs text-gray-500">Coupon Rate</p>
-                    <p className="font-mono font-medium">{enhancedCalculation.coupon_rate}%</p>
-                  </div>
-                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 text-center">
-                    <p className="text-xs text-blue-600 font-semibold">Proposed IRR</p>
-                    <p className="font-mono font-bold text-blue-700">{enhancedCalculation.secondary_irr}%</p>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg border text-center">
-                    <p className="text-xs text-gray-500">Units Available</p>
-                    <p className="font-mono font-medium">{enhancedCalculation.units_available}</p>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
