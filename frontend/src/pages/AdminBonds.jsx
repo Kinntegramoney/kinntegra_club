@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import EditBondModal from "@/components/EditBondModal";
-import { Plus, Edit2, Trash2, Upload } from "lucide-react";
+import { Plus, Edit2, Trash2, Upload, CheckCircle, Clock, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -16,6 +16,10 @@ export default function AdminBonds() {
   const [bonds, setBonds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingBond, setEditingBond] = useState(null);
+  const [verifyingBond, setVerifyingBond] = useState(null);
+  const [verificationFile, setVerificationFile] = useState(null);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationResult, setVerificationResult] = useState(null);
 
   // Set page title
   useEffect(() => {
