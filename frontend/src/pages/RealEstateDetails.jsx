@@ -1542,6 +1542,19 @@ export default function RealEstateDetails() {
           }}
         />
       )}
+
+      {/* Edit Investor Percentage Modal */}
+      {showEditInvestorModal && selectedInvestorForEdit && (
+        <EditInvestorPercentageModal
+          opportunity={opp}
+          investor={selectedInvestorForEdit}
+          onClose={() => {
+            setShowEditInvestorModal(false);
+            setSelectedInvestorForEdit(null);
+          }}
+          onUpdate={handleUpdateInvestorPercentage}
+        />
+      )}
     </div>
   );
 }
