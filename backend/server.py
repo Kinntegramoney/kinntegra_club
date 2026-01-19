@@ -7421,6 +7421,14 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
     total_accrued = round(accrued_interest_per_unit * units, 2)
     total_dirty = round(dirty_price_per_unit * units, 2)
     
+    # Calculate Stamp Duty: ROUND(consideration * 0.0001%, 0)
+    # 0.0001% = 0.000001
+    # Per Excel formula: =ROUND(E22*0.0001%,0)
+    stamp_duty = round(total_clean * 0.000001, 0)
+    
+    # Total Consideration = Clean Price + Stamp Duty
+    total_consideration = round(total_clean + stamp_duty, 2)
+    
     # Days to maturity
     days_to_maturity = (end_date - settlement_date).days
     
@@ -7444,6 +7452,10 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
         "total_clean_price": total_clean,
         "total_accrued_interest": total_accrued,
         "total_dirty_price": total_dirty,
+        
+        # Stamp duty and final total
+        "stamp_duty": stamp_duty,
+        "total_consideration": total_consideration,
         
         # Premium/Discount
         "premium_discount_per_unit": round(premium_discount, 2),
