@@ -169,6 +169,11 @@ export default function AdminRealEstate() {
                                 {opp.location}
                               </p>
                             )}
+                            {opp.description && (
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-xs" title={opp.description}>
+                                {opp.description.length > 100 ? `${opp.description.slice(0, 100)}...` : opp.description}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
