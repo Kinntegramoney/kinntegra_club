@@ -38,6 +38,9 @@ export default function RealEstateDetails() {
   const [selectedInvoiceMilestone, setSelectedInvoiceMilestone] = useState(null);
   const [showDeveloperReceiptModal, setShowDeveloperReceiptModal] = useState(false);
   const [selectedPaymentForReceipt, setSelectedPaymentForReceipt] = useState(null);
+  const [showDldAdminModal, setShowDldAdminModal] = useState(false);
+  const [selectedDldAdminInvestor, setSelectedDldAdminInvestor] = useState(null);
+  const [dldAdminUploadType, setDldAdminUploadType] = useState(null); // 'invoice', 'swift', 'receipt'
   const [showCurrencySettingsModal, setShowCurrencySettingsModal] = useState(false);
   const [showXirrComparisonModal, setShowXirrComparisonModal] = useState(false);
   const [selectedInvestorForXirr, setSelectedInvestorForXirr] = useState(null);
