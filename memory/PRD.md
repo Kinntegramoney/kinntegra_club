@@ -268,6 +268,7 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## Key API Endpoints
 - `/api/clients` - CRUD for clients
+- `/api/bonds/{bond_id}/calculate-enhanced` - Enhanced Secondary Market Calculator (Clean Price, Accrued Interest, Dirty Price)
 - `/api/bulk/template/historical-trades` - Download Excel template for historical trades
 - `/api/bulk/historical-trades` - Bulk upload historical client bond investments
 - `/api/clients/{id}/resend-credentials` - Reset and resend credentials
