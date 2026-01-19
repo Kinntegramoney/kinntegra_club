@@ -36,6 +36,11 @@ export default function BondDetails() {
   const [paymentNotes, setPaymentNotes] = useState("");
   const [paymentProof, setPaymentProof] = useState(null);
   const [bookingUnits, setBookingUnits] = useState(false);
+  
+  // Enhanced calculator state
+  const [enhancedCalculation, setEnhancedCalculation] = useState(null);
+  const [calculatingEnhanced, setCalculatingEnhanced] = useState(false);
+  const [settlementDate, setSettlementDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
