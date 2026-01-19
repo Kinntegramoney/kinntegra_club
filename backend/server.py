@@ -7281,9 +7281,9 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
     interest_payments = bond.get('interest_payments', [])
     principal_payments = bond.get('principal_payments', [])
     
-    # Get record day convention (days before payment date that determines ownership)
+    # Get cutoff days / record day convention (days before payment date that determines ownership)
     # Default is 15 days if not specified
-    record_day_convention = bond.get('record_day_convention', 15)
+    record_day_convention = bond.get('cutoff_days', bond.get('record_day_convention', 15))
     
     # Find last and next interest payment dates relative to settlement
     past_payments = []
