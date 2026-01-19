@@ -70,7 +70,28 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
-### 2026-01-19 (Current Session - Secondary Market Bond Calculator)
+### 2026-01-19 (Current Session - Bond Price Verification Workflow)
+- **Feature**: Bond Listing Status & Price Verification
+  - **New `listing_status` field**: Bonds now have `pending` or `active` status
+  - **Bulk uploaded bonds start as `pending`**: Must be verified before visible to sub-brokers/clients
+  - **Price Verification Endpoint**: `POST /api/bonds/{bond_id}/verify-pricing`
+    - Upload Excel with Date and Expected Price columns
+    - System calculates prices for each date and compares
+    - **ALL prices must match exactly** (no tolerance) for bond to be activated
+    - Returns detailed comparison results (row-by-row match/mismatch)
+  - **Manual Activation**: `POST /api/bonds/{bond_id}/activate` (bypass verification)
+  - **Deactivation**: `POST /api/bonds/{bond_id}/deactivate` (reverts to pending)
+  - **Frontend Updates**:
+    - New "Listing" column in bonds table showing Active/Pending status
+    - Pending bonds have yellow background
+    - Verify Pricing button (spreadsheet icon) opens verification modal
+    - Modal shows instructions, file upload, verification results with details
+    - "Activate Without Verification" button for manual bypass
+    - Deactivate button (clock icon) for active bonds
+  - **Sub-broker/Client Filtering**: `/api/bonds/available` only returns `active` bonds for sub-brokers/clients
+- **Testing**: Backend endpoints tested via curl, frontend UI verified via screenshots
+
+### 2026-01-19 (Previous - Secondary Market Bond Calculator)
 - **Feature**: Unified Secondary Market Calculator on BondDetails page
   - **Backend**: New endpoint `/api/bonds/{bond_id}/calculate-enhanced`
   - **Frontend**: Merged two calculators into one unified interface
@@ -83,7 +104,7 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
   - **Premium/Discount**: Shows percentage difference from face value
   - **Future Cashflows**: Remaining interest payments, principal, total cashflows
   - **Proposed IRR (Client)**: Displays bond's secondary_irr prominently
-- **Stamp Duty Calculation** ✅ (Latest Addition):
+- **Stamp Duty Calculation** ✅:
   - Formula: `ROUND(consideration × 0.0001%, 0)` - matches Excel formula
   - Backend returns `stamp_duty` and `total_consideration` fields
   - Calculator display shows Stamp Duty breakdown when units > 1
