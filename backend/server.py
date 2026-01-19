@@ -8788,9 +8788,11 @@ async def invest_in_opportunity(
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
-    # Check if fully invested
-    if new_remaining_percentage <= 0.01 or update_data['current_investors'] >= max_investors:
+    # Check if fully invested - ONLY when 100% is allocated (not just max investors)
+    if new_remaining_percentage <= 0.01:
         update_data['status'] = 'fully_invested'
+    elif new_invested_percentage > 0:
+        update_data['status'] = 'partially_invested'
     
     await db.real_estate_opportunities.update_one(
         {"id": opportunity_id},
