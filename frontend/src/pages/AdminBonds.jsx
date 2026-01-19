@@ -199,6 +199,7 @@ export default function AdminBonds() {
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Principal</th>
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">IRR</th>
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Units</th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Listing</th>
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="text-right py-4 px-6 text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
@@ -207,22 +208,70 @@ export default function AdminBonds() {
                   {bonds.map((bond) => {
                     const unitsAvailable = (bond.total_units || 1) - (bond.units_sold || 0);
                     const isFullyFunded = unitsAvailable === 0;
+                    const listingStatus = bond.listing_status || 'pending';
+                    const isActive = listingStatus === 'active';
 
                     return (
-                      <tr key={bond.id} className="border-t border-gray-100 hover:bg-gray-50" data-testid={`bond-row-${bond.id}`}>
-                        <td className="py-4 px-6 font-medium">{bond.name}</td>
-                        <td className="py-4 px-6 font-mono">₹{bond.principal_amount.toLocaleString()}</td>
+                      <tr key={bond.id} className={`border-t border-gray-100 hover:bg-gray-50 ${!isActive ? 'bg-yellow-50/30' : ''}`} data-testid={`bond-row-${bond.id}`}>
+                        <td className="py-4 px-6">
+                          <div>
+                            <span className="font-medium">{bond.name}</span>
+                            <span className="text-xs text-gray-400 ml-2">({bond.bond_code})</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 font-mono">₹{bond.principal_amount?.toLocaleString()}</td>
                         <td className="py-4 px-6 font-mono text-amber-600">{bond.secondary_irr}%</td>
                         <td className="py-4 px-6 font-mono">{unitsAvailable}/{bond.total_units || 1}</td>
+                        <td className="py-4 px-6">
+                          {isActive ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                              <CheckCircle className="h-3 w-3" />
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
+                              <Clock className="h-3 w-3" />
+                              Pending
+                            </span>
+                          )}
+                        </td>
                         <td className="py-4 px-6">
                           {isFullyFunded ? (
                             <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full">Funded</span>
                           ) : (
-                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Available</span>
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Available</span>
                           )}
                         </td>
                         <td className="py-4 px-6">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
+                            {!isActive && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setVerifyingBond(bond);
+                                  setVerificationFile(null);
+                                  setVerificationResult(null);
+                                }}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                data-testid={`verify-bond-${bond.id}`}
+                                title="Verify Pricing"
+                              >
+                                <FileSpreadsheet className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {isActive && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeactivateBond(bond.id)}
+                                className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+                                data-testid={`deactivate-bond-${bond.id}`}
+                                title="Deactivate bond"
+                              >
+                                <Clock className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
