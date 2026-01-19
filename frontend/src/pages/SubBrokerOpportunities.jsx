@@ -110,7 +110,10 @@ export default function SubBrokerOpportunities() {
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-amber-500 transition-colors" data-testid={`bond-card-${bond.id}`}>
         <div className="flex items-start justify-between mb-3">
-          <h3 className="text-lg font-semibold text-gray-800">{bond.name}</h3>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-amber-600" />
+            <h3 className="text-lg font-semibold text-gray-800">{bond.name}</h3>
+          </div>
           {status === 'available' && (
             <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
               Available
@@ -127,6 +130,8 @@ export default function SubBrokerOpportunities() {
             </span>
           )}
         </div>
+
+        <div className="text-xs text-amber-600 font-medium mb-2">BOND / NCD</div>
 
         <div className="space-y-2 text-sm mb-4">
           <div className="flex justify-between">
@@ -166,6 +171,76 @@ export default function SubBrokerOpportunities() {
               onClick={() => handleShareBond(bond)}
               className="bg-amber-600 hover:bg-amber-700 text-white"
               data-testid={`share-btn-${bond.id}`}
+            >
+              <Share2 className="h-4 w-4 mr-1" />
+              Share
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const RealEstateCard = ({ property, status }) => {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-blue-500 transition-colors" data-testid={`property-card-${property.id}`}>
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-800">{property.building_name}</h3>
+          </div>
+          {status === 'available' && (
+            <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+              Available
+            </span>
+          )}
+          {status === 'sold' && (
+            <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+              Sold
+            </span>
+          )}
+        </div>
+
+        <div className="text-xs text-blue-600 font-medium mb-2">REAL ESTATE</div>
+
+        <div className="space-y-2 text-sm mb-4">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Unit:</span>
+            <span className="font-mono font-medium">{property.unit_no}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Type:</span>
+            <span className="font-medium">{property.type || 'N/A'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Price:</span>
+            <span className="font-mono font-medium text-blue-600">
+              {property.price ? `AED ${property.price.toLocaleString()}` : 'Contact'}
+            </span>
+          </div>
+          {property.area && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Area:</span>
+              <span className="font-mono font-medium">{property.area} sq.ft</span>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/real-estate/${property.id}`)}
+            data-testid={`view-property-btn-${property.id}`}
+          >
+            View Details
+          </Button>
+          {status === 'available' && (
+            <Button
+              size="sm"
+              onClick={() => handleShareRealEstate(property)}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              data-testid={`share-property-btn-${property.id}`}
             >
               <Share2 className="h-4 w-4 mr-1" />
               Share
