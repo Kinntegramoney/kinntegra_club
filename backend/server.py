@@ -7507,6 +7507,139 @@ async def update_bond(bond_id: str, bond_update: BondUpdate, current_user: dict 
     return updated_bond
 
 
+@api_router.post("/bonds/upload-calculator")
+async def upload_bond_calculator(
+    file: UploadFile = File(...),
+    bond_id: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Upload a pricing calculator Excel file for a bond.
+    Parses the Excel to extract cut-off days and stores the file.
+    """
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers can upload calculator files")
+    
+    # Validate file type
+    if not file.filename.endswith(('.xlsx', '.xlsm', '.xls')):
+        raise HTTPException(status_code=400, detail="Only Excel files are allowed (.xlsx, .xlsm, .xls)")
+    
+    # Check if bond exists
+    bond = await db.bonds.find_one({"id": bond_id})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    try:
+        # Read file content
+        file_content = await file.read()
+        
+        # Save file to uploads directory
+        import os
+        uploads_dir = "/app/uploads/calculators"
+        os.makedirs(uploads_dir, exist_ok=True)
+        
+        # Generate unique filename
+        file_ext = os.path.splitext(file.filename)[1]
+        unique_filename = f"{bond_id}_{uuid.uuid4().hex[:8]}{file_ext}"
+        file_path = os.path.join(uploads_dir, unique_filename)
+        
+        with open(file_path, 'wb') as f:
+            f.write(file_content)
+        
+        # Parse Excel to extract cut-off days
+        cutoff_days = 15  # Default
+        try:
+            import openpyxl
+            from io import BytesIO
+            
+            wb = openpyxl.load_workbook(BytesIO(file_content), data_only=True)
+            
+            # Try to find cutoff days in common locations
+            # Check Reference sheet first
+            if 'Reference' in wb.sheetnames:
+                ws = wb['Reference']
+                # Look for "Record Date" or "Cut-off" related cells
+                for row in ws.iter_rows(max_row=50, max_col=10):
+                    for cell in row:
+                        if cell.value and isinstance(cell.value, str):
+                            cell_lower = cell.value.lower()
+                            if 'record' in cell_lower or 'cut' in cell_lower or 'cutoff' in cell_lower:
+                                # Check adjacent cells for the value
+                                try:
+                                    next_cell = ws.cell(row=cell.row, column=cell.column + 1)
+                                    if next_cell.value and isinstance(next_cell.value, (int, float)):
+                                        cutoff_days = int(next_cell.value)
+                                        break
+                                except:
+                                    pass
+            
+            # If not found in Reference, try Sec_Pur or Pri_Sale sheets
+            for sheet_name in ['Sec_Pur', 'Pri_Sale', 'Pri_Pur']:
+                if sheet_name in wb.sheetnames and cutoff_days == 15:
+                    ws = wb[sheet_name]
+                    for row in ws.iter_rows(max_row=30, max_col=15):
+                        for cell in row:
+                            if cell.value and isinstance(cell.value, str):
+                                cell_lower = cell.value.lower()
+                                if 'record' in cell_lower or 'cut' in cell_lower:
+                                    try:
+                                        next_cell = ws.cell(row=cell.row, column=cell.column + 1)
+                                        if next_cell.value and isinstance(next_cell.value, (int, float)):
+                                            cutoff_days = int(next_cell.value)
+                                            break
+                                    except:
+                                        pass
+            
+            wb.close()
+        except Exception as parse_error:
+            print(f"Error parsing Excel for cutoff days: {parse_error}")
+            # Continue with default cutoff_days
+        
+        # Generate file URL
+        backend_url = os.environ.get('BACKEND_URL', '')
+        file_url = f"/api/uploads/calculators/{unique_filename}"
+        
+        # Update bond with calculator info
+        await db.bonds.update_one(
+            {"id": bond_id},
+            {"$set": {
+                "calculator_file_url": file_url,
+                "calculator_filename": file.filename,
+                "cutoff_days": cutoff_days,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        return {
+            "success": True,
+            "file_url": file_url,
+            "filename": file.filename,
+            "cutoff_days": cutoff_days,
+            "message": f"Calculator uploaded successfully. Cut-off days extracted: {cutoff_days}"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload calculator: {str(e)}")
+
+
+# Serve uploaded calculator files
+@api_router.get("/uploads/calculators/{filename}")
+async def serve_calculator_file(filename: str):
+    """Serve uploaded calculator files"""
+    import os
+    from fastapi.responses import FileResponse
+    
+    file_path = f"/app/uploads/calculators/{filename}"
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return FileResponse(
+        file_path,
+        filename=filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
 class RecordSale(BaseModel):
     units: int = 1
 
