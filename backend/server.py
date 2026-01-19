@@ -1405,7 +1405,7 @@ async def bulk_upload_clients(
             
             pan = str(row['pan']).upper().strip()
             
-            # Collect up to 5 UCCs
+            # Collect up to 5 UCCs (optional)
             ucc_list = []
             for i in range(1, 6):
                 ucc_key = f'ucc{i}'
@@ -1413,14 +1413,8 @@ async def bulk_upload_clients(
                 if not pd.isna(ucc_val) and str(ucc_val).strip():
                     ucc_list.append(str(ucc_val).strip().upper())
             
-            # At least one UCC is required
-            if len(ucc_list) == 0:
-                results['errors'].append(f"Row {idx+2}: At least one UCC is required")
-                results['failed'] += 1
-                continue
-            
-            # Check for duplicate UCCs in the submitted list
-            if len(ucc_list) != len(set(ucc_list)):
+            # Check for duplicate UCCs in the submitted list (only if UCCs provided)
+            if len(ucc_list) > 0 and len(ucc_list) != len(set(ucc_list)):
                 results['errors'].append(f"Row {idx+2}: Duplicate UCCs are not allowed")
                 results['failed'] += 1
                 continue
