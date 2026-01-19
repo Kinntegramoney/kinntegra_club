@@ -2002,7 +2002,8 @@ async def bulk_upload_bonds(
                 "description": str(row.get('description', '')) if not pd.isna(row.get('description')) else '',
                 "face_value": float(row.get('face_value_per_unit', 0)) if not pd.isna(row.get('face_value_per_unit')) else 0,
                 "created_by": current_user['id'],
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "listing_status": "pending"  # Bonds start as pending until price verification
             }
             
             await db.bonds.insert_one(bond)
