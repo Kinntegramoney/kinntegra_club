@@ -7830,7 +7830,242 @@ async def record_sale(bond_id: str, sale: RecordSale):
     }
 
 
-@api_router.post("/bonds/{bond_id}/presentations")
+@api_router.post("/bonds/{bond_id}/verify-pricing")
+async def verify_bond_pricing(
+    bond_id: str,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Verify bond pricing by comparing system-calculated prices with uploaded Excel prices.
+    
+    The Excel should have columns: Date, Expected Price (or Price)
+    System will calculate prices for those dates and compare.
+    If ALL prices match exactly, the bond listing_status will be set to 'active'.
+    
+    Returns comparison results for each date.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can verify bond pricing")
+    
+    # Validate file type
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    # Check if bond exists
+    bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Check if bond has cashflows_per_unit
+    if not bond.get('cashflows_per_unit'):
+        raise HTTPException(
+            status_code=400, 
+            detail="Bond does not have cashflows_per_unit defined. Cannot calculate prices."
+        )
+    
+    import pandas as pd
+    
+    content = await file.read()
+    excel_file = io.BytesIO(content)
+    
+    try:
+        # Read the Excel file - try to find date and price columns
+        df = pd.read_excel(excel_file, sheet_name=0)
+        df.columns = [str(col).strip().lower().replace(' ', '_') for col in df.columns]
+        
+        # Find date column
+        date_col = None
+        for col in df.columns:
+            if 'date' in col:
+                date_col = col
+                break
+        
+        if not date_col:
+            # Try first column if it looks like dates
+            first_col = df.columns[0]
+            try:
+                pd.to_datetime(df[first_col].dropna().iloc[0])
+                date_col = first_col
+            except:
+                raise HTTPException(status_code=400, detail="Could not find a date column in the Excel file")
+        
+        # Find price column
+        price_col = None
+        for col in df.columns:
+            if 'price' in col or 'expected' in col or 'value' in col:
+                price_col = col
+                break
+        
+        if not price_col:
+            # Try second column
+            if len(df.columns) > 1:
+                price_col = df.columns[1]
+            else:
+                raise HTTPException(status_code=400, detail="Could not find a price column in the Excel file")
+        
+        # Process each row
+        comparison_results = []
+        all_matched = True
+        total_rows = 0
+        matched_rows = 0
+        mismatched_rows = 0
+        
+        cutoff_days = bond.get('cutoff_days', 15)
+        irr = bond.get('secondary_irr', bond.get('primary_irr', 12))
+        
+        for idx, row in df.iterrows():
+            date_val = row.get(date_col)
+            expected_price = row.get(price_col)
+            
+            # Skip empty rows
+            if pd.isna(date_val) or pd.isna(expected_price):
+                continue
+            
+            total_rows += 1
+            
+            try:
+                # Parse date
+                if isinstance(date_val, str):
+                    investment_date = pd.to_datetime(date_val).strftime('%Y-%m-%d')
+                else:
+                    investment_date = pd.to_datetime(date_val).strftime('%Y-%m-%d')
+                
+                expected_price = float(expected_price)
+                
+                # Calculate system price using the existing function
+                calc_result = calculate_secondary_market_price_and_units(
+                    bond=bond,
+                    investment_date_str=investment_date,
+                    irr=irr,
+                    cutoff_days=cutoff_days
+                )
+                
+                system_price = round(calc_result.get('price_per_unit', 0), 2)
+                expected_price_rounded = round(expected_price, 2)
+                
+                # Exact match comparison
+                is_match = system_price == expected_price_rounded
+                
+                if is_match:
+                    matched_rows += 1
+                else:
+                    mismatched_rows += 1
+                    all_matched = False
+                
+                comparison_results.append({
+                    "row": idx + 2,  # Excel row number (1-indexed + header)
+                    "date": investment_date,
+                    "expected_price": expected_price_rounded,
+                    "system_price": system_price,
+                    "difference": round(system_price - expected_price_rounded, 2),
+                    "match": is_match
+                })
+                
+            except Exception as e:
+                comparison_results.append({
+                    "row": idx + 2,
+                    "date": str(date_val),
+                    "error": str(e),
+                    "match": False
+                })
+                all_matched = False
+                mismatched_rows += 1
+        
+        if total_rows == 0:
+            raise HTTPException(status_code=400, detail="No valid data rows found in the Excel file")
+        
+        # If all prices match, update listing_status to 'active'
+        if all_matched:
+            await db.bonds.update_one(
+                {"id": bond_id},
+                {"$set": {
+                    "listing_status": "active",
+                    "price_verified_at": datetime.now(timezone.utc).isoformat(),
+                    "price_verified_by": current_user['id']
+                }}
+            )
+        
+        return {
+            "bond_id": bond_id,
+            "bond_code": bond.get('bond_code'),
+            "bond_name": bond.get('name'),
+            "verification_passed": all_matched,
+            "listing_status": "active" if all_matched else "pending",
+            "summary": {
+                "total_dates_checked": total_rows,
+                "matched": matched_rows,
+                "mismatched": mismatched_rows
+            },
+            "comparison_details": comparison_results,
+            "message": "All prices matched! Bond is now listed as ACTIVE." if all_matched else f"Price verification failed. {mismatched_rows} date(s) have mismatched prices."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing Excel file: {str(e)}")
+
+
+@api_router.post("/bonds/{bond_id}/activate")
+async def activate_bond(
+    bond_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Manually activate a bond (set listing_status to 'active').
+    Use this only if you want to bypass price verification.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can activate bonds")
+    
+    bond = await db.bonds.find_one({"id": bond_id})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    await db.bonds.update_one(
+        {"id": bond_id},
+        {"$set": {
+            "listing_status": "active",
+            "activated_at": datetime.now(timezone.utc).isoformat(),
+            "activated_by": current_user['id']
+        }}
+    )
+    
+    return {
+        "message": "Bond activated successfully",
+        "listing_status": "active"
+    }
+
+
+@api_router.post("/bonds/{bond_id}/deactivate")
+async def deactivate_bond(
+    bond_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Deactivate a bond (set listing_status to 'pending').
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can deactivate bonds")
+    
+    bond = await db.bonds.find_one({"id": bond_id})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    await db.bonds.update_one(
+        {"id": bond_id},
+        {"$set": {
+            "listing_status": "pending",
+            "deactivated_at": datetime.now(timezone.utc).isoformat(),
+            "deactivated_by": current_user['id']
+        }}
+    )
+    
+    return {
+        "message": "Bond deactivated successfully",
+        "listing_status": "pending"
+    }
 async def upload_bond_presentations(
     bond_id: str,
     files: List[UploadFile] = File(...),
