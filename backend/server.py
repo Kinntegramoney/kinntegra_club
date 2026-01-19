@@ -7281,6 +7281,10 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
     interest_payments = bond.get('interest_payments', [])
     principal_payments = bond.get('principal_payments', [])
     
+    # Get record day convention (days before payment date that determines ownership)
+    # Default is 15 days if not specified
+    record_day_convention = bond.get('record_day_convention', 15)
+    
     # Find last and next interest payment dates relative to settlement
     past_payments = []
     future_payments = []
@@ -7290,7 +7294,13 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
         if ip_date <= settlement_date:
             past_payments.append((ip_date, ip['amount']))
         else:
-            future_payments.append((ip_date, ip['amount']))
+            # Check if buyer will receive this payment based on record date
+            # Record date = Payment date - record_day_convention
+            record_date = ip_date - timedelta(days=record_day_convention)
+            if settlement_date <= record_date:
+                # Buyer will receive this payment (settled on or before record date)
+                future_payments.append((ip_date, ip['amount']))
+            # else: Buyer won't receive this payment (settled after record date)
     
     past_payments.sort(key=lambda x: x[0], reverse=True)
     future_payments.sort(key=lambda x: x[0])
@@ -7321,15 +7331,16 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
     # Round accrued interest
     accrued_interest_per_unit = round(accrued_interest_per_unit, 2)
     
-    # Calculate Clean Price using XNPV formula: Face Value + XNPV(IRR, Cashflows, Dates) / Units
-    # Clean Price = PV of ALL future cashflows (interest + principal) at Secondary IRR
+    # Calculate Clean Price using XNPV formula
+    # Clean Price = PV of future cashflows that the BUYER will receive at Secondary IRR
+    # Note: Only includes interest payments where settlement is on/before record date
     clean_price_pv = 0
     remaining_interest_count = 0
     remaining_principal_count = 0
     total_remaining_interest = 0
     total_remaining_principal = 0
     
-    # Add future interest payments to PV calculation
+    # Add future interest payments to PV calculation (only those buyer will receive)
     for ip_date, ip_amount in future_payments:
         days_to_payment = (ip_date - settlement_date).days
         years_to_payment = days_to_payment / 365
