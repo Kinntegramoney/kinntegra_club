@@ -27,7 +27,7 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
     units_sold: 0,
     face_value: "",
     description: "",
-    cutoff_days: 15
+    calculator_file: null
   });
   const [loading, setLoading] = useState(false);
 
