@@ -73,6 +73,76 @@ export default function AdminBonds() {
     }
   };
 
+  const handleVerifyPricing = async () => {
+    if (!verificationFile || !verifyingBond) return;
+    
+    setVerificationLoading(true);
+    setVerificationResult(null);
+    
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('file', verificationFile);
+      
+      const response = await axios.post(
+        `${API}/bonds/${verifyingBond.id}/verify-pricing`,
+        formData,
+        {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      
+      setVerificationResult(response.data);
+      
+      if (response.data.verification_passed) {
+        toast.success("Price verification passed! Bond is now ACTIVE.");
+        fetchBonds();
+      } else {
+        toast.error(`Price verification failed. ${response.data.summary.mismatched} date(s) mismatched.`);
+      }
+    } catch (error) {
+      console.error("Error verifying pricing:", error);
+      toast.error(error.response?.data?.detail || "Failed to verify pricing");
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const handleActivateBond = async (bondId) => {
+    if (!window.confirm("Are you sure you want to manually activate this bond without price verification?")) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/bonds/${bondId}/activate`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Bond activated successfully");
+      fetchBonds();
+    } catch (error) {
+      console.error("Error activating bond:", error);
+      toast.error("Failed to activate bond");
+    }
+  };
+
+  const handleDeactivateBond = async (bondId) => {
+    if (!window.confirm("Are you sure you want to deactivate this bond?")) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/bonds/${bondId}/deactivate`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Bond deactivated successfully");
+      fetchBonds();
+    } catch (error) {
+      console.error("Error deactivating bond:", error);
+      toast.error("Failed to deactivate bond");
+    }
+  };
+
   if (!user) return null;
 
   return (
