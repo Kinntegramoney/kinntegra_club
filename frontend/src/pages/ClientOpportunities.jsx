@@ -76,12 +76,12 @@ export default function ClientOpportunities() {
                 Investment Opportunities
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                Browse available bonds and invest
+                Browse available bonds and real estate opportunities
               </p>
             </div>
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-teal-100 text-teal-700 text-sm rounded-full font-medium">
-                {bonds.length} Available
+                {bonds.length + realEstateOpportunities.length} Available
               </span>
             </div>
           </div>
@@ -91,13 +91,70 @@ export default function ClientOpportunities() {
         <div className="p-4 md:p-8">
           {loading ? (
             <div className="text-center py-12 text-gray-500">Loading opportunities...</div>
-          ) : bonds.length === 0 ? (
+          ) : (bonds.length === 0 && realEstateOpportunities.length === 0) ? (
             <div className="text-center py-12">
               <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">No opportunities available at the moment</p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {/* Real Estate Opportunities */}
+              {realEstateOpportunities.map((property) => (
+                <div
+                  key={property.id}
+                  className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/real-estate/${property.id}`)}
+                  data-testid={`property-card-${property.id}`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-blue-600" />
+                      <span className="text-xs text-blue-600 font-medium">REAL ESTATE</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                  </div>
+                  
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-gray-800 truncate">{property.building_name}</h3>
+                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                      Available
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-gray-600">Unit: {property.unit_no}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm">
+                      <DollarSign className="h-4 w-4 text-gray-400" />
+                      <span className="text-gray-600">
+                        {property.price ? `AED ${property.price.toLocaleString()}` : 'Contact for price'}
+                      </span>
+                    </div>
+
+                    {property.type && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-600">Type: {property.type}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <Button
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/real-estate/${property.id}`);
+                      }}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {/* Bond Opportunities */}
               {bonds.map((bond) => (
                 <div
                   key={bond.id}
@@ -105,14 +162,19 @@ export default function ClientOpportunities() {
                   onClick={() => navigate(`/bonds/${bond.id}`)}
                   data-testid={`bond-card-${bond.id}`}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-800 truncate">{bond.name}</h3>
-                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
-                        {bond.units_remaining} units available
-                      </span>
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-amber-600" />
+                      <span className="text-xs text-amber-600 font-medium">BOND / NCD</span>
                     </div>
                     <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                  </div>
+
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-gray-800 truncate">{bond.name}</h3>
+                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                      {bond.units_remaining} units available
+                    </span>
                   </div>
 
                   <div className="space-y-3">
