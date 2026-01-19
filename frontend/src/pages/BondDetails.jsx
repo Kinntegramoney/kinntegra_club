@@ -535,6 +535,216 @@ export default function BondDetails() {
               </span>
             </div>
             
+            {/* Enhanced Calculator - Primary Section */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-4 border border-blue-200">
+              <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                <Calculator className="h-4 w-4" />
+                Bond Price Calculator (Secondary IRR: {bondData.secondary_irr}%)
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="settlement_date" className="text-xs text-blue-700">Settlement Date</Label>
+                  <Input
+                    data-testid="settlement-date-input"
+                    id="settlement_date"
+                    type="date"
+                    value={settlementDate}
+                    onChange={(e) => {
+                      setSettlementDate(e.target.value);
+                      setEnhancedCalculation(null);
+                    }}
+                    min={bondData.start_date}
+                    max={bondData.end_date}
+                    className="bg-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="calc_units" className="text-xs text-blue-700">Number of Units</Label>
+                  <Input
+                    data-testid="calc-units-input"
+                    id="calc_units"
+                    type="number"
+                    min="1"
+                    max={unitsAvailable}
+                    defaultValue="1"
+                    className="bg-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-blue-700">Face Value (per unit)</Label>
+                  <div className="h-10 px-3 flex items-center bg-white border rounded-md text-sm font-mono">
+                    ₹{(bondData.face_value || bondData.principal_amount).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    data-testid="calculate-price-btn"
+                    onClick={() => {
+                      const units = parseInt(document.getElementById('calc_units').value) || 1;
+                      calculateEnhancedPrice(units);
+                    }}
+                    disabled={calculatingEnhanced || !settlementDate}
+                    className="btn-scale w-full bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    <Calculator className="h-4 w-4 mr-2" />
+                    {calculatingEnhanced ? "Calculating..." : "Calculate Price"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Enhanced Calculation Results */}
+            {enhancedCalculation && (
+              <div className="space-y-4">
+                {/* Price Breakdown - Main Display */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white p-4 rounded-lg border-2 border-emerald-200 shadow-sm">
+                    <p className="text-xs text-emerald-600 font-semibold mb-1">CLEAN PRICE (per unit)</p>
+                    <p className="text-2xl font-mono font-bold text-emerald-700" data-testid="clean-price-display">
+                      ₹{enhancedCalculation.clean_price_per_unit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">PV of future cashflows at {enhancedCalculation.secondary_irr}% IRR</p>
+                  </div>
+                  
+                  <div className="bg-white p-4 rounded-lg border-2 border-amber-200 shadow-sm">
+                    <p className="text-xs text-amber-600 font-semibold mb-1">ACCRUED INTEREST (per unit)</p>
+                    <p className="text-2xl font-mono font-bold text-amber-700" data-testid="accrued-interest-display">
+                      ₹{enhancedCalculation.accrued_interest_per_unit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{enhancedCalculation.accrued_interest_calculation}</p>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-4 rounded-lg shadow-lg">
+                    <p className="text-xs text-blue-100 font-semibold mb-1">DIRTY PRICE (per unit)</p>
+                    <p className="text-2xl font-mono font-bold text-white" data-testid="dirty-price-display">
+                      ₹{enhancedCalculation.dirty_price_per_unit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-blue-200 mt-1">Clean Price + Accrued Interest</p>
+                  </div>
+                </div>
+
+                {/* Premium/Discount Badge */}
+                <div className={`flex items-center justify-center p-3 rounded-lg ${
+                  enhancedCalculation.premium_discount_per_unit >= 0 
+                    ? 'bg-orange-50 border border-orange-200' 
+                    : 'bg-green-50 border border-green-200'
+                }`}>
+                  <span className={`text-sm font-medium ${
+                    enhancedCalculation.premium_discount_per_unit >= 0 
+                      ? 'text-orange-700' 
+                      : 'text-green-700'
+                  }`}>
+                    {enhancedCalculation.premium_discount_per_unit >= 0 ? '📈 Premium' : '📉 Discount'} of{' '}
+                    <span className="font-mono font-bold">
+                      ₹{Math.abs(enhancedCalculation.premium_discount_per_unit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                    {' '}per unit ({enhancedCalculation.premium_discount_percentage >= 0 ? '+' : ''}{enhancedCalculation.premium_discount_percentage.toFixed(2)}% from face value)
+                  </span>
+                </div>
+
+                {/* Total Calculation for Multiple Units */}
+                {enhancedCalculation.units_requested > 1 && (
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h4 className="text-sm font-semibold mb-3">Total for {enhancedCalculation.units_requested} Units</h4>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-xs text-gray-500">Clean Price</p>
+                        <p className="font-mono font-bold text-emerald-600">₹{enhancedCalculation.total_clean_price.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Accrued Interest</p>
+                        <p className="font-mono font-bold text-amber-600">₹{enhancedCalculation.total_accrued_interest.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div className="bg-blue-100 rounded-lg p-2">
+                        <p className="text-xs text-blue-700 font-semibold">Total Payable</p>
+                        <p className="font-mono font-bold text-blue-800">₹{enhancedCalculation.total_dirty_price.toLocaleString('en-IN')}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Detailed Breakdown */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Interest Period Details */}
+                  <div className="bg-white p-4 rounded-lg border">
+                    <h4 className="text-sm font-semibold mb-3 text-gray-700">Interest Period Details</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Last Interest Date:</span>
+                        <span className="font-mono">{enhancedCalculation.last_interest_payment_date ? format(new Date(enhancedCalculation.last_interest_payment_date), "MMM dd, yyyy") : '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Next Interest Date:</span>
+                        <span className="font-mono">{enhancedCalculation.next_interest_payment_date ? format(new Date(enhancedCalculation.next_interest_payment_date), "MMM dd, yyyy") : '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Days Since Last Payment:</span>
+                        <span className="font-mono font-medium">{enhancedCalculation.days_since_last_payment} days</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Days in Period:</span>
+                        <span className="font-mono">{enhancedCalculation.days_in_current_period} days</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Future Cashflows */}
+                  <div className="bg-white p-4 rounded-lg border">
+                    <h4 className="text-sm font-semibold mb-3 text-gray-700">Future Cashflows (per unit)</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Remaining Interest Payments:</span>
+                        <span className="font-mono">{enhancedCalculation.remaining_interest_payments}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Remaining Principal Payments:</span>
+                        <span className="font-mono">{enhancedCalculation.remaining_principal_payments}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Total Future Interest:</span>
+                        <span className="font-mono text-emerald-600">₹{enhancedCalculation.total_remaining_interest.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Total Future Principal:</span>
+                        <span className="font-mono text-blue-600">₹{enhancedCalculation.total_remaining_principal.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t">
+                        <span className="text-gray-700 font-medium">Total Future Cashflows:</span>
+                        <span className="font-mono font-bold">₹{enhancedCalculation.total_future_cashflows.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Metrics Row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-gray-50 p-3 rounded-lg text-center">
+                    <p className="text-xs text-gray-500">Settlement Date</p>
+                    <p className="font-mono font-medium">{format(new Date(enhancedCalculation.settlement_date), "MMM dd, yyyy")}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg text-center">
+                    <p className="text-xs text-gray-500">Days to Maturity</p>
+                    <p className="font-mono font-medium">{enhancedCalculation.days_to_maturity} days</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg text-center">
+                    <p className="text-xs text-gray-500">Coupon Rate</p>
+                    <p className="font-mono font-medium">{enhancedCalculation.coupon_rate}%</p>
+                  </div>
+                  <div className="bg-blue-50 p-3 rounded-lg text-center border border-blue-200">
+                    <p className="text-xs text-blue-600 font-semibold">Proposed IRR (Client)</p>
+                    <p className="font-mono font-bold text-blue-700">{enhancedCalculation.secondary_irr}%</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Separator */}
+            <div className="border-t border-gray-200 my-6" />
+
+            {/* Legacy Calculator Section - for unit bounds */}
+            <h3 className="text-sm font-semibold text-gray-600 mb-3">Quick Unit Calculator (for investment amount)</h3>
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="space-y-2">
                 <Label htmlFor="investment_date">Investment Date</Label>
