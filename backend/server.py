@@ -7583,7 +7583,8 @@ async def update_bond(bond_id: str, bond_update: BondUpdate, current_user: dict 
     updatable_fields = [
         'name', 'bond_code', 'issuer', 'principal_amount', 'coupon_rate', 'primary_irr', 
         'secondary_irr', 'start_date', 'end_date', 'interest_payment_frequency',
-        'total_units', 'units_sold', 'face_value', 'description', 'cutoff_days', 'calculator_file_url'
+        'total_units', 'units_sold', 'face_value', 'description', 'cutoff_days', 'calculator_file_url',
+        'listing_status'
     ]
     
     for field in updatable_fields:
