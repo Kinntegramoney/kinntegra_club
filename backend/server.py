@@ -7321,20 +7321,24 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
     # Round accrued interest
     accrued_interest_per_unit = round(accrued_interest_per_unit, 2)
     
-    # Calculate Clean Price (PV of future PRINCIPAL only at Secondary IRR)
-    # Interest is NOT included in clean price per user requirement
+    # Calculate Clean Price using XNPV formula: Face Value + XNPV(IRR, Cashflows, Dates) / Units
+    # Clean Price = PV of ALL future cashflows (interest + principal) at Secondary IRR
     clean_price_pv = 0
     remaining_interest_count = 0
     remaining_principal_count = 0
     total_remaining_interest = 0
     total_remaining_principal = 0
     
-    # Count future interest payments (for info display only, NOT included in price)
+    # Add future interest payments to PV calculation
     for ip_date, ip_amount in future_payments:
+        days_to_payment = (ip_date - settlement_date).days
+        years_to_payment = days_to_payment / 365
+        discount_factor = 1 / ((1 + secondary_irr) ** years_to_payment)
+        clean_price_pv += ip_amount * discount_factor
         remaining_interest_count += 1
         total_remaining_interest += ip_amount
     
-    # Add ONLY future principal payments to Clean Price PV calculation
+    # Add future principal payments to PV calculation
     for pp in principal_payments:
         pp_date = datetime.fromisoformat(pp['date'])
         if pp_date > settlement_date:
