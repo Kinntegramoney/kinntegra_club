@@ -359,6 +359,21 @@ export default function BondDetails() {
 
       {/* Content */}
       <div className="container mx-auto px-6 py-8">
+        {/* Bond Description - At Top */}
+        {bondData.description && (
+          <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-5 border border-amber-200 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <FileText className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs text-amber-700 font-semibold uppercase tracking-wide mb-1">Description</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{bondData.description}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Bond Summary */}
           <div className="lg:col-span-3">
@@ -381,14 +396,6 @@ export default function BondDetails() {
                 </p>
               </div>
             </div>
-            
-            {/* Bond Description */}
-            {bondData.description && (
-              <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Description</p>
-                <p className="text-sm text-gray-700 leading-relaxed">{bondData.description}</p>
-              </div>
-            )}
           </div>
 
           {/* Cashflow Timeline */}
