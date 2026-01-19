@@ -398,12 +398,12 @@ export default function Dashboard() {
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
                 <div className="text-center">
-                  <p className="text-lg font-bold text-indigo-600">{formatCurrency(summary?.aum?.bonds)}</p>
-                  <p className="text-xs text-gray-500">Bonds</p>
+                  <p className="text-lg font-bold text-amber-600">{formatINRCrores(summary?.aum?.bonds)}</p>
+                  <p className="text-xs text-gray-500">NCD Bonds (INR)</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-pink-600">{formatCurrency(summary?.aum?.real_estate)}</p>
-                  <p className="text-xs text-gray-500">Real Estate</p>
+                  <p className="text-lg font-bold text-pink-600">{formatAEDMillions(summary?.aum?.real_estate)}</p>
+                  <p className="text-xs text-gray-500">Real Estate (AED)</p>
                 </div>
               </div>
             </div>
