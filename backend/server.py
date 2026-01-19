@@ -7548,68 +7548,127 @@ async def upload_bond_calculator(
         with open(file_path, 'wb') as f:
             f.write(file_content)
         
-        # Parse Excel to extract cut-off days
+        # Parse Excel to extract cut-off days and secondary IRR
         cutoff_days = 15  # Default
+        secondary_irr = None  # Will be extracted from Excel
         try:
             import openpyxl
             from io import BytesIO
             
             wb = openpyxl.load_workbook(BytesIO(file_content), data_only=True)
             
-            # Try to find cutoff days in common locations
-            # Check Reference sheet first
+            # Try to find cutoff days and secondary IRR in Sec_Pur sheet first
+            if 'Sec_Pur' in wb.sheetnames:
+                ws = wb['Sec_Pur']
+                for row in ws.iter_rows(max_row=30, max_col=15):
+                    for cell in row:
+                        if cell.value and isinstance(cell.value, str):
+                            cell_lower = cell.value.lower()
+                            # Look for record day convention
+                            if 'record' in cell_lower and 'day' in cell_lower:
+                                try:
+                                    # Check cell to the right (usually column E or next column)
+                                    for offset in [1, 2, 3]:
+                                        next_cell = ws.cell(row=cell.row, column=cell.column + offset)
+                                        if next_cell.value and isinstance(next_cell.value, (int, float)):
+                                            cutoff_days = int(next_cell.value)
+                                            break
+                                except:
+                                    pass
+                            # Look for Proposed IRR or Secondary IRR
+                            elif 'proposed irr' in cell_lower or 'secondary irr' in cell_lower or 'xirr' in cell_lower:
+                                try:
+                                    for offset in [1, 2, 3]:
+                                        next_cell = ws.cell(row=cell.row, column=cell.column + offset)
+                                        if next_cell.value and isinstance(next_cell.value, (int, float)):
+                                            # Convert to percentage if needed
+                                            irr_val = float(next_cell.value)
+                                            if irr_val > 1:  # Already in percentage form
+                                                secondary_irr = irr_val
+                                            else:  # In decimal form
+                                                secondary_irr = irr_val * 100
+                                            break
+                                except:
+                                    pass
+            
+            # Also check Pri_Sale sheet
+            if 'Pri_Sale' in wb.sheetnames:
+                ws = wb['Pri_Sale']
+                for row in ws.iter_rows(max_row=30, max_col=15):
+                    for cell in row:
+                        if cell.value and isinstance(cell.value, str):
+                            cell_lower = cell.value.lower()
+                            if 'record' in cell_lower and cutoff_days == 15:
+                                try:
+                                    for offset in [1, 2, 3]:
+                                        next_cell = ws.cell(row=cell.row, column=cell.column + offset)
+                                        if next_cell.value and isinstance(next_cell.value, (int, float)):
+                                            cutoff_days = int(next_cell.value)
+                                            break
+                                except:
+                                    pass
+                            elif ('proposed irr' in cell_lower or 'secondary' in cell_lower) and secondary_irr is None:
+                                try:
+                                    for offset in [1, 2, 3]:
+                                        next_cell = ws.cell(row=cell.row, column=cell.column + offset)
+                                        if next_cell.value and isinstance(next_cell.value, (int, float)):
+                                            irr_val = float(next_cell.value)
+                                            if irr_val > 1:
+                                                secondary_irr = irr_val
+                                            else:
+                                                secondary_irr = irr_val * 100
+                                            break
+                                except:
+                                    pass
+            
+            # Check Reference sheet for additional info
             if 'Reference' in wb.sheetnames:
                 ws = wb['Reference']
-                # Look for "Record Date" or "Cut-off" related cells
                 for row in ws.iter_rows(max_row=50, max_col=10):
                     for cell in row:
                         if cell.value and isinstance(cell.value, str):
                             cell_lower = cell.value.lower()
-                            if 'record' in cell_lower or 'cut' in cell_lower or 'cutoff' in cell_lower:
-                                # Check adjacent cells for the value
+                            if ('record' in cell_lower or 'cut' in cell_lower) and cutoff_days == 15:
                                 try:
                                     next_cell = ws.cell(row=cell.row, column=cell.column + 1)
                                     if next_cell.value and isinstance(next_cell.value, (int, float)):
                                         cutoff_days = int(next_cell.value)
-                                        break
+                                except:
+                                    pass
+                            elif 'secondary' in cell_lower and 'irr' in cell_lower and secondary_irr is None:
+                                try:
+                                    next_cell = ws.cell(row=cell.row, column=cell.column + 1)
+                                    if next_cell.value and isinstance(next_cell.value, (int, float)):
+                                        irr_val = float(next_cell.value)
+                                        secondary_irr = irr_val if irr_val > 1 else irr_val * 100
                                 except:
                                     pass
             
-            # If not found in Reference, try Sec_Pur or Pri_Sale sheets
-            for sheet_name in ['Sec_Pur', 'Pri_Sale', 'Pri_Pur']:
-                if sheet_name in wb.sheetnames and cutoff_days == 15:
-                    ws = wb[sheet_name]
-                    for row in ws.iter_rows(max_row=30, max_col=15):
-                        for cell in row:
-                            if cell.value and isinstance(cell.value, str):
-                                cell_lower = cell.value.lower()
-                                if 'record' in cell_lower or 'cut' in cell_lower:
-                                    try:
-                                        next_cell = ws.cell(row=cell.row, column=cell.column + 1)
-                                        if next_cell.value and isinstance(next_cell.value, (int, float)):
-                                            cutoff_days = int(next_cell.value)
-                                            break
-                                    except:
-                                        pass
-            
             wb.close()
         except Exception as parse_error:
-            print(f"Error parsing Excel for cutoff days: {parse_error}")
-            # Continue with default cutoff_days
+            print(f"Error parsing Excel: {parse_error}")
+            # Continue with defaults
         
         # Generate file URL
         backend_url = os.environ.get('BACKEND_URL', '')
         file_url = f"/api/uploads/calculators/{unique_filename}"
         
+        # Build update data
+        update_data = {
+            "calculator_file_url": file_url,
+            "calculator_filename": file.filename,
+            "cutoff_days": cutoff_days,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Only update secondary_irr if extracted from Excel
+        if secondary_irr is not None:
+            update_data["secondary_irr"] = secondary_irr
+        
         # Update bond with calculator info
         await db.bonds.update_one(
             {"id": bond_id},
-            {"$set": {
-                "calculator_file_url": file_url,
-                "calculator_filename": file.filename,
-                "cutoff_days": cutoff_days,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }}
+            {"$set": update_data}
         )
         
         return {
@@ -7617,7 +7676,8 @@ async def upload_bond_calculator(
             "file_url": file_url,
             "filename": file.filename,
             "cutoff_days": cutoff_days,
-            "message": f"Calculator uploaded successfully. Cut-off days extracted: {cutoff_days}"
+            "secondary_irr": secondary_irr,
+            "message": f"Calculator uploaded. Cut-off days: {cutoff_days}" + (f", Secondary IRR: {secondary_irr}%" if secondary_irr else "")
         }
         
     except Exception as e:
