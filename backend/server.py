@@ -6762,6 +6762,7 @@ class BondCreate(BaseModel):
     minimum_units: int = 1  # Minimum units per order
     units_sold: int = 0  # Number of units already sold
     cutoff_days: int = 15  # Days after investment where payments are still missed (for secondary market)
+    description: Optional[str] = None  # Bond description
 
     @field_validator('principal_payments')
     def validate_principal_total(cls, v):
