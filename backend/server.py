@@ -2797,12 +2797,16 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
     Calculate secondary market price per unit and units for a given investment.
     Uses cashflows_per_unit for accurate calculation.
     
+    The record date convention is used to determine missed cashflows:
+    - Record date = Payment date - cutoff_days
+    - If record_date <= investment_date, the payment is missed (goes to primary holder)
+    
     Args:
         bond: Bond document with cashflows_per_unit
         investment_date_str: Date of investment (YYYY-MM-DD)
         investment_amount: Amount being invested (optional, for unit calculation)
         irr: IRR to use for discounting (optional, defaults to bond's secondary_irr)
-        cutoff_days: Payments within this many days after investment are considered missed (default 15)
+        cutoff_days: Record date is this many days before payment date (default 15)
     
     Returns:
         dict with price_per_unit, calculated_units, remaining_cashflows, etc.
@@ -2814,17 +2818,42 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
         irr = bond.get('secondary_irr', bond.get('primary_irr', 12))
     irr_decimal = irr / 100
     
-    # Calculate cutoff date - payments on or before this date are considered missed
-    from datetime import timedelta
-    cutoff_date = investment_date + timedelta(days=cutoff_days)
-    
-    # Get cashflows per unit
+    # Get cashflows per unit - if empty, generate from interest_payments
     cashflows_per_unit = bond.get('cashflows_per_unit', [])
+    
+    if not cashflows_per_unit:
+        # Generate cashflows_per_unit from interest_payments and principal_payments
+        interest_payments = bond.get('interest_payments', [])
+        principal_payments = bond.get('principal_payments', [])
+        face_value = bond.get('face_value', bond.get('principal_amount', 100000))
+        
+        # Create a map of payment dates to cashflows
+        cashflow_map = {}
+        
+        # Add interest payments (per unit)
+        for ip in interest_payments:
+            date = ip.get('date', '')
+            if date:
+                if date not in cashflow_map:
+                    cashflow_map[date] = {'date': date, 'interest_per_unit': 0, 'principal_per_unit': 0}
+                cashflow_map[date]['interest_per_unit'] += ip.get('amount', 0)
+        
+        # Add principal payments (per unit)
+        for pp in principal_payments:
+            date = pp.get('date', '')
+            pct = pp.get('percentage', 0)
+            if date and pct:
+                principal_per_unit = face_value * (pct / 100)
+                if date not in cashflow_map:
+                    cashflow_map[date] = {'date': date, 'interest_per_unit': 0, 'principal_per_unit': 0}
+                cashflow_map[date]['principal_per_unit'] += principal_per_unit
+        
+        # Sort by date
+        cashflows_per_unit = sorted(cashflow_map.values(), key=lambda x: x['date'])
     
     result = {
         "investment_date": investment_date_str,
         "cutoff_days": cutoff_days,
-        "cutoff_date": cutoff_date.strftime('%Y-%m-%d'),
         "irr_used": irr,
         "face_value_per_unit": bond.get('face_value', bond.get('principal_amount', 0) / max(bond.get('total_units', 1), 1)),
         "total_cashflows_in_bond": len(cashflows_per_unit),
@@ -2848,10 +2877,10 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
         result["price_per_unit"] = result["face_value_per_unit"]
         if investment_amount:
             result["calculated_units"] = round(investment_amount / result["price_per_unit"], 2)
-        result["warning"] = "No cashflows_per_unit defined. Using face value."
+        result["warning"] = "No cashflows_per_unit or interest_payments defined. Using face value."
         return result
     
-    # Separate remaining and missed cashflows
+    # Separate remaining and missed cashflows using RECORD DATE convention
     pv_total = 0
     
     for cf in cashflows_per_unit:
@@ -2861,18 +2890,23 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
         principal = cf.get('principal_per_unit', 0)
         total_cf = interest + principal
         
-        # Payment is missed if it's on or before the cutoff date
-        if cf_date <= cutoff_date:
+        # Calculate record date (cutoff_days BEFORE payment date)
+        record_date = cf_date - timedelta(days=cutoff_days)
+        
+        # Payment is missed if RECORD DATE is on or before the investment date
+        # (meaning the investor would not be on the register for this payment)
+        if record_date <= investment_date:
             # Missed cashflow - already paid/committed to primary holder
             result["missed_cashflows"] += 1
             result["total_missed_interest_per_unit"] += interest
             result["total_missed_principal_per_unit"] += principal
             result["missed_cashflows_detail"].append({
                 "date": cf_date_str,
+                "record_date": record_date.strftime('%Y-%m-%d'),
                 "interest": round(interest, 2),
                 "principal": round(principal, 2),
                 "total": round(total_cf, 2),
-                "status": "Paid to primary holder"
+                "status": "Paid to primary holder (record date passed)"
             })
         else:
             # Remaining cashflow - calculate PV from investment date
@@ -2887,6 +2921,7 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
             result["total_remaining_principal_per_unit"] += principal
             result["remaining_cashflows_detail"].append({
                 "date": cf_date_str,
+                "record_date": record_date.strftime('%Y-%m-%d'),
                 "interest": round(interest, 2),
                 "principal": round(principal, 2),
                 "total": round(total_cf, 2),
