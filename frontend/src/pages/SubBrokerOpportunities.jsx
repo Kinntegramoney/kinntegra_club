@@ -72,10 +72,36 @@ export default function SubBrokerOpportunities() {
     }
   };
 
+  const handleShareRealEstate = (property) => {
+    const shareText = `Real Estate Opportunity: ${property.building_name}\n\nUnit: ${property.unit_no}\nPrice: ${property.price ? `AED ${property.price.toLocaleString()}` : 'Contact for price'}\nType: ${property.type || 'N/A'}\n\nView details!`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: property.building_name,
+        text: shareText
+      }).catch(() => {
+        navigator.clipboard.writeText(shareText);
+        toast.success("Property details copied to clipboard!");
+      });
+    } else {
+      navigator.clipboard.writeText(shareText);
+      toast.success("Property details copied to clipboard!");
+    }
+  };
+
   // Categorize bonds using backend-calculated status
   const availableBonds = bonds.filter(b => b.status === 'available');
   const fundedBonds = bonds.filter(b => b.status === 'funded');
   const closedBonds = bonds.filter(b => b.status === 'closed');
+
+  // Categorize real estate by status
+  const availableRealEstate = realEstateOpportunities.filter(p => p.status === 'available' || !p.status);
+  const soldRealEstate = realEstateOpportunities.filter(p => p.status === 'sold');
+
+  // Combined counts
+  const totalAvailable = availableBonds.length + availableRealEstate.length;
+  const totalFunded = fundedBonds.length + soldRealEstate.length;
+  const totalClosed = closedBonds.length;
 
   const BondCard = ({ bond, status }) => {
     const unitsAvailable = (bond.total_units || 1) - (bond.units_sold || 0);
