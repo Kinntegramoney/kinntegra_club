@@ -130,6 +130,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
       if (uniqueUccs.length !== validUccs.length) {
         toast.error("Duplicate UCCs are not allowed");
         return;
+      }
     }
 
     setLoading(true);
@@ -137,7 +138,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
       const token = localStorage.getItem("token");
       const submitData = {
         ...formData,
-        ucc_list: validUccs,  // Send as array
+        ucc_list: validUccs.length > 0 ? validUccs : [],  // Send as array (can be empty)
         linked_subbroker_id: formData.linked_subbroker_id || null
       };
       
