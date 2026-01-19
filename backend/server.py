@@ -10618,7 +10618,27 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     # Get clients
     clients = await db.clients.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
     total_clients = len(clients)
-    active_clients = len([c for c in clients if c.get('is_active', True) and not c.get('deactivated_at')])
+    
+    # Check user accounts for login status
+    client_pans = [c.get('pan_number') for c in clients if c.get('pan_number')]
+    user_accounts = await db.users.find({"pan": {"$in": client_pans}}, {"_id": 0, "pan": 1, "is_active": 1, "last_login": 1}).to_list(1000)
+    
+    # Create a map of PAN to user account status
+    user_status_map = {u['pan']: u for u in user_accounts}
+    
+    # Count active (logged in / activated) vs pending (never logged in / not activated)
+    active_clients = 0
+    pending_clients = 0
+    for c in clients:
+        pan = c.get('pan_number')
+        user_account = user_status_map.get(pan)
+        
+        # Client is active if:
+        # 1. Has a user account AND is_active is True AND (has logged in OR not deactivated)
+        if user_account and user_account.get('is_active', False):
+            active_clients += 1
+        else:
+            pending_clients += 1
     
     # Get sub-brokers (partners)
     partners = await db.partners.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
@@ -10659,7 +10679,8 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     return {
         "clients": {
             "total": total_clients,
-            "active": active_clients
+            "active": active_clients,
+            "pending": pending_clients
         },
         "sub_brokers": {
             "total": total_subbrokers,
