@@ -9371,6 +9371,60 @@ async def remove_investor(
     }
 
 
+@api_router.post("/real-estate-opportunities/{opportunity_id}/recalculate-status")
+async def recalculate_opportunity_status(
+    opportunity_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Recalculate and fix the status of a real estate opportunity based on actual allocation"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can recalculate status")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    investors = opportunity.get('investors', [])
+    
+    # Recalculate totals
+    total_percentage = sum(inv.get('share_percentage', 0) for inv in investors)
+    total_invested = sum(inv.get('amount', inv.get('investment_amount', 0)) for inv in investors)
+    investor_count = len(investors)
+    
+    # Determine correct status
+    if total_percentage >= 99.99:
+        new_status = 'fully_invested'
+    elif total_percentage > 0:
+        new_status = 'partially_invested'
+    else:
+        new_status = 'available'
+    
+    old_status = opportunity.get('status', 'available')
+    
+    # Update the opportunity
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {
+            "status": new_status,
+            "invested_percentage": round(total_percentage, 2),
+            "remaining_percentage": round(100 - total_percentage, 2),
+            "total_invested": round(total_invested, 2),
+            "current_investors": investor_count,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "message": "Status recalculated successfully",
+        "old_status": old_status,
+        "new_status": new_status,
+        "total_percentage": round(total_percentage, 2),
+        "remaining_percentage": round(100 - total_percentage, 2),
+        "investor_count": investor_count
+    }
+
+
 class ShareOpportunityRequest(BaseModel):
     client_ids: List[str]
     message: str = ""
