@@ -65,8 +65,31 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
+      
+      // If there's a calculator file, upload it first
+      let calculatorFileUrl = bond?.calculator_file_url;
+      let extractedCutoffDays = bond?.cutoff_days || 15;
+      
+      if (formData.calculator_file) {
+        const fileFormData = new FormData();
+        fileFormData.append('file', formData.calculator_file);
+        fileFormData.append('bond_id', bond.id);
+        
+        const uploadResponse = await axios.post(`${API}/bonds/upload-calculator`, fileFormData, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        calculatorFileUrl = uploadResponse.data.file_url;
+        extractedCutoffDays = uploadResponse.data.cutoff_days || 15;
+        toast.success(`Calculator uploaded. Cut-off days: ${extractedCutoffDays}`);
+      }
+      
       await axios.put(`${API}/bonds/${bond.id}`, {
         name: formData.name,
+        bond_code: formData.bond_code,
         issuer: formData.issuer,
         principal_amount: parseFloat(formData.principal_amount) || 0,
         coupon_rate: parseFloat(formData.coupon_rate) || 0,
@@ -79,7 +102,8 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
         units_sold: parseInt(formData.units_sold) || 0,
         face_value: parseFloat(formData.face_value) || 0,
         description: formData.description,
-        cutoff_days: parseInt(formData.cutoff_days) || 15
+        cutoff_days: extractedCutoffDays,
+        calculator_file_url: calculatorFileUrl
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
