@@ -137,6 +137,22 @@ export default function RealEstateDetails() {
     }
   };
 
+  // Handle recalculating status
+  const handleRecalculateStatus = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/real-estate-opportunities/${id}/recalculate-status`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(`Status updated: ${response.data.old_status} → ${response.data.new_status} (${response.data.total_percentage}% allocated)`);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to recalculate status");
+    }
+  };
+
   // XIRR Calculation Function - CORRECTED VERSION
   // DLD + Admin are upfront costs paid with first payment
   // Outstanding amount (unpaid portion) is deducted from sale proceeds
