@@ -10381,6 +10381,141 @@ async def approve_developer_receipt(
     return {"message": "Receipt approved successfully"}
 
 
+# DLD + Admin Fee Document Management
+@api_router.post("/real-estate-opportunities/{opportunity_id}/dld-admin/{investor_id}/upload")
+async def upload_dld_admin_document(
+    opportunity_id: str,
+    investor_id: str,
+    document_type: str = Form(...),  # 'invoice', 'swift', 'receipt'
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload DLD + Admin fee documents (invoice, SWIFT, or receipt)"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can upload DLD+Admin documents")
+    
+    if document_type not in ['invoice', 'swift', 'receipt']:
+        raise HTTPException(status_code=400, detail="Invalid document type. Must be 'invoice', 'swift', or 'receipt'")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    # Verify investor exists
+    investor = next((inv for inv in opportunity.get('investors', []) if inv['client_id'] == investor_id), None)
+    if not investor:
+        raise HTTPException(status_code=404, detail="Investor not found in this opportunity")
+    
+    # Save file
+    os.makedirs("uploads/dld_admin", exist_ok=True)
+    file_ext = file.filename.split('.')[-1] if '.' in file.filename else 'pdf'
+    filename = f"{opportunity_id}_{investor_id}_{document_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{file_ext}"
+    file_path = f"uploads/dld_admin/{filename}"
+    
+    with open(file_path, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
+    
+    # Update or create DLD+Admin document record
+    dld_admin_documents = opportunity.get('dld_admin_documents', [])
+    
+    # Find existing record for this investor
+    existing_idx = next((i for i, d in enumerate(dld_admin_documents) if d.get('investor_id') == investor_id), None)
+    
+    if existing_idx is not None:
+        # Update existing record
+        dld_admin_documents[existing_idx][f'{document_type}_url'] = f"/api/{file_path}"
+        dld_admin_documents[existing_idx][f'{document_type}_uploaded_at'] = datetime.now(timezone.utc).isoformat()
+        dld_admin_documents[existing_idx][f'{document_type}_uploaded_by'] = current_user['id']
+    else:
+        # Create new record
+        new_record = {
+            'investor_id': investor_id,
+            'investor_name': investor.get('client_name'),
+            f'{document_type}_url': f"/api/{file_path}",
+            f'{document_type}_uploaded_at': datetime.now(timezone.utc).isoformat(),
+            f'{document_type}_uploaded_by': current_user['id']
+        }
+        dld_admin_documents.append(new_record)
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"dld_admin_documents": dld_admin_documents}}
+    )
+    
+    return {"message": f"DLD+Admin {document_type} uploaded successfully", "file_url": f"/api/{file_path}"}
+
+
+@api_router.put("/real-estate-opportunities/{opportunity_id}/dld-admin/{investor_id}/verify-swift")
+async def verify_dld_admin_swift(
+    opportunity_id: str,
+    investor_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Verify DLD + Admin SWIFT payment (broker only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can verify DLD+Admin SWIFT")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    dld_admin_documents = opportunity.get('dld_admin_documents', [])
+    doc_idx = next((i for i, d in enumerate(dld_admin_documents) if d.get('investor_id') == investor_id), None)
+    
+    if doc_idx is None:
+        raise HTTPException(status_code=404, detail="DLD+Admin record not found for this investor")
+    
+    if not dld_admin_documents[doc_idx].get('swift_url'):
+        raise HTTPException(status_code=400, detail="No SWIFT document uploaded yet")
+    
+    dld_admin_documents[doc_idx]['swift_verified'] = True
+    dld_admin_documents[doc_idx]['swift_verified_at'] = datetime.now(timezone.utc).isoformat()
+    dld_admin_documents[doc_idx]['swift_verified_by'] = current_user['id']
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"dld_admin_documents": dld_admin_documents}}
+    )
+    
+    return {"message": "DLD+Admin SWIFT verified successfully"}
+
+
+@api_router.put("/real-estate-opportunities/{opportunity_id}/dld-admin/{investor_id}/approve-receipt")
+async def approve_dld_admin_receipt(
+    opportunity_id: str,
+    investor_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Approve DLD + Admin receipt (broker only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can approve DLD+Admin receipts")
+    
+    opportunity = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    dld_admin_documents = opportunity.get('dld_admin_documents', [])
+    doc_idx = next((i for i, d in enumerate(dld_admin_documents) if d.get('investor_id') == investor_id), None)
+    
+    if doc_idx is None:
+        raise HTTPException(status_code=404, detail="DLD+Admin record not found for this investor")
+    
+    if not dld_admin_documents[doc_idx].get('receipt_url'):
+        raise HTTPException(status_code=400, detail="No receipt document uploaded yet")
+    
+    dld_admin_documents[doc_idx]['receipt_approved'] = True
+    dld_admin_documents[doc_idx]['receipt_approved_at'] = datetime.now(timezone.utc).isoformat()
+    dld_admin_documents[doc_idx]['receipt_approved_by'] = current_user['id']
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"dld_admin_documents": dld_admin_documents}}
+    )
+    
+    return {"message": "DLD+Admin receipt approved successfully"}
+
+
 # Serve uploaded files
 @api_router.get("/uploads/{folder}/{filename}")
 async def serve_upload(folder: str, filename: str):
