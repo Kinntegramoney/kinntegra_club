@@ -95,12 +95,15 @@ export default function SubBrokerOpportunities() {
   const closedBonds = bonds.filter(b => b.status === 'closed');
 
   // Categorize real estate by status
+  // Real estate statuses: 'available', 'partially_invested', 'fully_invested', 'sold'
   const availableRealEstate = realEstateOpportunities.filter(p => p.status === 'available' || !p.status);
-  const soldRealEstate = realEstateOpportunities.filter(p => p.status === 'sold');
+  const fundedRealEstate = realEstateOpportunities.filter(p => 
+    p.status === 'sold' || p.status === 'funded' || p.status === 'partially_invested' || p.status === 'fully_invested'
+  );
 
   // Combined counts
   const totalAvailable = availableBonds.length + availableRealEstate.length;
-  const totalFunded = fundedBonds.length + soldRealEstate.length;
+  const totalFunded = fundedBonds.length + fundedRealEstate.length;
   const totalClosed = closedBonds.length;
 
   const BondCard = ({ bond, status }) => {
