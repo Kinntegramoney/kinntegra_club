@@ -593,14 +593,14 @@ export default function BondDetails() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="calc_units" className="text-xs text-blue-700">Units (optional)</Label>
+                  <Label htmlFor="calc_units" className="text-xs text-blue-700">Units</Label>
                   <Input
                     data-testid="calc-units-input"
                     id="calc_units"
                     type="number"
-                    min="1"
+                    min={bondData.minimum_units || 1}
                     max={unitsAvailable}
-                    placeholder="Enter units"
+                    defaultValue={bondData.minimum_units || 1}
                     className="bg-white"
                     onChange={() => {
                       setApproximateAmount('');
