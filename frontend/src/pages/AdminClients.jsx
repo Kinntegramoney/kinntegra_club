@@ -524,6 +524,14 @@ export default function AdminClients() {
                                       <KeyRound className="h-4 w-4 mr-2" />
                                       Reset Password
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleSyncActivation(client.id)}
+                                      className="cursor-pointer text-blue-600"
+                                      data-testid={`sync-activation-${client.id}`}
+                                    >
+                                      <RefreshCw className="h-4 w-4 mr-2" />
+                                      Sync Activation
+                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
                                       onClick={() => handleDeactivate(client)}
