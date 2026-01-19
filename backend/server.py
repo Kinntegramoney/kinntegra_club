@@ -1419,14 +1419,15 @@ async def bulk_upload_clients(
                 results['failed'] += 1
                 continue
             
-            # Check if any UCC already exists for a DIFFERENT client (not current PAN)
+            # Check if any UCC already exists for a DIFFERENT client (only if UCCs provided)
             ucc_conflict = False
-            for ucc in ucc_list:
-                existing_ucc = await db.clients.find_one({"ucc_list": ucc, "pan_number": {"$ne": pan}})
-                if existing_ucc:
-                    results['errors'].append(f"Row {idx+2}: UCC '{ucc}' is already assigned to another client")
-                    ucc_conflict = True
-                    break
+            if len(ucc_list) > 0:
+                for ucc in ucc_list:
+                    existing_ucc = await db.clients.find_one({"ucc_list": ucc, "pan_number": {"$ne": pan}})
+                    if existing_ucc:
+                        results['errors'].append(f"Row {idx+2}: UCC '{ucc}' is already assigned to another client")
+                        ucc_conflict = True
+                        break
             if ucc_conflict:
                 results['failed'] += 1
                 continue
