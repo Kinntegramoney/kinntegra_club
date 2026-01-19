@@ -67,7 +67,7 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
   - **Backend**: New endpoint `/api/bonds/{bond_id}/calculate-enhanced`
   - **Frontend**: Merged two calculators into one unified interface
   - **Clean Price Only**: Shows only Clean Price (PV of future cashflows at Secondary IRR)
-  - **Record Date Convention**: Implements 15-day cutoff before payment date
+  - **Record Date Convention**: Implements configurable cutoff days before payment date
     - If settlement > record date, buyer misses that interest payment
   - **Dual Input Mode**: 
     - Enter Units (optional) → get exact price
@@ -75,16 +75,22 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
   - **Premium/Discount**: Shows percentage difference from face value
   - **Future Cashflows**: Remaining interest payments, principal, total cashflows
   - **Proposed IRR (Client)**: Displays bond's secondary_irr prominently
+- **Stamp Duty Calculation** ✅ (Latest Addition):
+  - Formula: `ROUND(consideration × 0.0001%, 0)` - matches Excel formula
+  - Backend returns `stamp_duty` and `total_consideration` fields
+  - Calculator display shows Stamp Duty breakdown when units > 1
+  - Order Summary shows Clean Price + Stamp Duty = Total Consideration
+  - Example: 10 units @ ₹1,03,070.08 = ₹10,30,700.80 + ₹1.00 stamp = ₹10,30,701.80
 - **Excel Calculator Upload Feature**:
   - Upload pricing calculator Excel when creating/editing bond
-  - System auto-extracts cut-off days from Excel
+  - System auto-extracts cut-off days and secondary_irr from Excel
   - Download Excel button on bond details page for verification
   - `/api/bonds/upload-calculator` endpoint
 - **Test Results (All Home Bharat Platform - CDHBP002)**:
   - Secondary IRR: 11.5%, Coupon Rate: 14%, Face Value: ₹100,000
   - Jan 8, 2026 (before record date): ₹1,03,915.86 (16 interest payments)
   - Jan 19, 2026 (after record date): ₹1,03,070.05 (15 interest payments) ✓ Matches Excel
-- **Testing**: Backend tests passed, calculator verified against Excel
+- **Testing**: Backend tests passed, calculator verified against Excel, stamp duty verified
 
 ### 2026-01-17 (Current Session - Bulk Upload Upsert)
 - **Feature**: Bulk upload now supports UPDATE existing clients
