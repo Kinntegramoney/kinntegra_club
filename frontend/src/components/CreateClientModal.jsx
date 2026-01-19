@@ -121,18 +121,15 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
       return;
     }
 
-    // Validate UCC list - at least one is required
+    // UCC list is optional - filter valid UCCs
     const validUccs = uccList.filter(ucc => ucc.trim() !== "");
-    if (validUccs.length === 0) {
-      toast.error("At least one UCC is required");
-      return;
-    }
 
-    // Check for duplicate UCCs
-    const uniqueUccs = [...new Set(validUccs)];
-    if (uniqueUccs.length !== validUccs.length) {
-      toast.error("Duplicate UCCs are not allowed");
-      return;
+    // Check for duplicate UCCs (only if any UCCs provided)
+    if (validUccs.length > 0) {
+      const uniqueUccs = [...new Set(validUccs)];
+      if (uniqueUccs.length !== validUccs.length) {
+        toast.error("Duplicate UCCs are not allowed");
+        return;
     }
 
     setLoading(true);
