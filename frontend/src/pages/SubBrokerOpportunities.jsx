@@ -4,7 +4,7 @@ import axios from "axios";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Share2 } from "lucide-react";
+import { Share2, Building2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -14,7 +14,9 @@ export default function SubBrokerOpportunities() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [bonds, setBonds] = useState([]);
+  const [realEstateOpportunities, setRealEstateOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState("all"); // "all", "bonds", "real-estate"
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -30,19 +32,25 @@ export default function SubBrokerOpportunities() {
     }
     
     setUser(parsedUser);
-    fetchBonds();
+    fetchAllOpportunities();
   }, [navigate]);
 
-  const fetchBonds = async () => {
+  const fetchAllOpportunities = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/bonds`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setBonds(response.data);
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      // Fetch both bonds and real estate in parallel
+      const [bondsRes, realEstateRes] = await Promise.all([
+        axios.get(`${API}/bonds`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API}/real-estate-opportunities`, { headers }).catch(() => ({ data: [] }))
+      ]);
+      
+      setBonds(bondsRes.data || []);
+      setRealEstateOpportunities(realEstateRes.data || []);
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching bonds:", error);
+      console.error("Error fetching opportunities:", error);
       setLoading(false);
     }
   };
