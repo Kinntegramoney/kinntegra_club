@@ -9,8 +9,8 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## User Personas
 - **Broker Admin**: Manages clients, sub-brokers, and investment opportunities
-- **Sub-Broker**: Limited access to manage assigned clients
-- **Client**: End investors (managed by brokers)
+- **Sub-Broker**: Limited access to manage assigned clients and view/share all opportunities
+- **Client**: End investors (managed by brokers), can view and invest in opportunities
 
 ## Core Requirements
 
@@ -21,6 +21,14 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 ### Dashboard
 - Analytics overview (clients, AUM, opportunities)
 - Charts for client distribution and trends
+
+### Opportunities Visibility ✅ (Fixed 2026-01-19)
+- **Sub-brokers can view ALL opportunities** (both Bonds and Real Estate)
+- **Clients can view ALL opportunities** (both Bonds and Real Estate)
+- Opportunities categorized with visual indicators:
+  - BOND / NCD (amber icon)
+  - REAL ESTATE (blue icon)
+- Available/Funded/Sold status tracking
 
 ### Holdings Management ✅
 - View client bond holdings with XIRR
