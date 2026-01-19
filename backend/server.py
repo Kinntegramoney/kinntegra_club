@@ -10728,6 +10728,62 @@ async def get_clients_by_city(current_user: dict = Depends(get_current_user)):
     return [{"city": city, "count": count} for city, count in sorted_cities]
 
 
+@api_router.get("/lookup/pincode/{pincode}")
+async def lookup_pincode(pincode: str):
+    """Lookup city, state, and country from Indian pincode using postal API"""
+    import httpx
+    
+    if not pincode or len(pincode) != 6 or not pincode.isdigit():
+        raise HTTPException(status_code=400, detail="Invalid pincode. Must be 6 digits.")
+    
+    try:
+        # Use India Post API for pincode lookup
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(f"https://api.postalpincode.in/pincode/{pincode}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                if data and len(data) > 0 and data[0].get('Status') == 'Success':
+                    post_offices = data[0].get('PostOffice', [])
+                    
+                    if post_offices and len(post_offices) > 0:
+                        # Get the first post office for this pincode
+                        po = post_offices[0]
+                        return {
+                            "success": True,
+                            "pincode": pincode,
+                            "city": po.get('District', ''),
+                            "state": po.get('State', ''),
+                            "country": "India",
+                            "district": po.get('District', ''),
+                            "region": po.get('Region', ''),
+                            "division": po.get('Division', ''),
+                            "post_offices": [
+                                {
+                                    "name": p.get('Name', ''),
+                                    "branch_type": p.get('BranchType', ''),
+                                    "delivery_status": p.get('DeliveryStatus', '')
+                                }
+                                for p in post_offices[:5]  # Return up to 5 post offices
+                            ]
+                        }
+                
+                # No data found for this pincode
+                return {
+                    "success": False,
+                    "pincode": pincode,
+                    "message": "No data found for this pincode"
+                }
+            else:
+                raise HTTPException(status_code=502, detail="Failed to fetch pincode data")
+                
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Pincode lookup timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error looking up pincode: {str(e)}")
+
+
 @api_router.get("/dashboard/aum-distribution")
 async def get_aum_distribution(current_user: dict = Depends(get_current_user)):
     """Get AUM distribution by asset class and sub-broker"""
