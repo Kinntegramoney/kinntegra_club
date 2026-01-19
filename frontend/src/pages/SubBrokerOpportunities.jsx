@@ -185,6 +185,17 @@ export default function SubBrokerOpportunities() {
   };
 
   const RealEstateCard = ({ property, status }) => {
+    // Determine display status based on actual property status
+    const displayStatus = property.status === 'partially_invested' ? 'Partially Invested' :
+                          property.status === 'fully_invested' ? 'Fully Invested' :
+                          property.status === 'sold' ? 'Sold' :
+                          property.status === 'funded' ? 'Funded' :
+                          status === 'funded' ? 'Funded' :
+                          'Available';
+    
+    const isAvailable = status === 'available';
+    const statusColor = isAvailable ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
+    
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-blue-500 transition-colors" data-testid={`property-card-${property.id}`}>
         <div className="flex items-start justify-between mb-3">
@@ -192,16 +203,9 @@ export default function SubBrokerOpportunities() {
             <Building2 className="h-5 w-5 text-blue-600" />
             <h3 className="text-lg font-semibold text-gray-800">{property.building_name}</h3>
           </div>
-          {status === 'available' && (
-            <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-              Available
-            </span>
-          )}
-          {status === 'sold' && (
-            <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-              Sold
-            </span>
-          )}
+          <span className={`px-3 py-1 ${statusColor} text-xs font-medium rounded-full`}>
+            {displayStatus}
+          </span>
         </div>
 
         <div className="text-xs text-blue-600 font-medium mb-2">REAL ESTATE</div>
