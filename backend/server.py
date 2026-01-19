@@ -7468,7 +7468,7 @@ async def update_bond(bond_id: str, bond_update: BondUpdate, current_user: dict 
     # Build update dict with only provided fields
     update_data = {}
     updatable_fields = [
-        'name', 'issuer', 'principal_amount', 'coupon_rate', 'primary_irr', 
+        'name', 'bond_code', 'issuer', 'principal_amount', 'coupon_rate', 'primary_irr', 
         'secondary_irr', 'start_date', 'end_date', 'interest_payment_frequency',
         'total_units', 'units_sold', 'face_value', 'description'
     ]
