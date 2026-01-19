@@ -3346,6 +3346,35 @@ async def reactivate_client(client_id: str, current_user: dict = Depends(get_cur
     return {"message": "Client reactivated successfully"}
 
 
+@api_router.post("/clients/{client_id}/sync-activation")
+async def sync_client_activation(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Sync the activation status between clients and users collections"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can sync client activation")
+    
+    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Get client's is_active status
+    client_active = client.get('is_active', True) and not client.get('deactivated_at')
+    
+    # Update users collection to match
+    result = await db.users.update_one(
+        {"pan": client['pan_number']},
+        {"$set": {"is_active": client_active}}
+    )
+    
+    if result.matched_count == 0:
+        return {"message": "No user account found for this client", "synced": False}
+    
+    return {
+        "message": "Activation synced successfully",
+        "synced": True,
+        "is_active": client_active
+    }
+
+
 @api_router.post("/clients/{client_id}/resend-credentials")
 async def resend_client_credentials(client_id: str, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     """Resend login credentials to client (brokers only)"""
