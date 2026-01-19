@@ -143,6 +143,29 @@ export default function AdminBonds() {
     }
   };
 
+  const handleDownloadPricingCalculator = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/templates/pricing-calculator`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Bond_Pricing_Calculator_Corrected.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Pricing calculator template downloaded");
+    } catch (error) {
+      console.error("Error downloading template:", error);
+      toast.error("Failed to download pricing calculator template");
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -158,6 +181,15 @@ export default function AdminBonds() {
               <p className="text-sm text-gray-500 mt-1">Manage all bond listings</p>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleDownloadPricingCalculator}
+                data-testid="download-pricing-calc-btn"
+                title="Download pricing calculator with correct record date logic"
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Pricing Calculator
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate('/broker/bulk-upload?tab=bonds')}
