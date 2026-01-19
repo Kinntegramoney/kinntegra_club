@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import { 
   Building2, MapPin, ArrowLeft, Calendar, Users, Check, 
   DollarSign, Ruler, Car, CheckCircle2, Clock, Plus, Upload, FileText, X, CreditCard, TrendingUp,
-  Calculator, Heart, UserPlus, Info, Download, Send, Bell, Eye, Settings, BarChart3
+  Calculator, Heart, UserPlus, Info, Download, Send, Bell, Eye, Settings, BarChart3, Edit2, Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,8 @@ export default function RealEstateDetails() {
   const [selectedInvestorForXirr, setSelectedInvestorForXirr] = useState(null);
   const [showPassportModal, setShowPassportModal] = useState(false);
   const [selectedInvestorForPassport, setSelectedInvestorForPassport] = useState(null);
+  const [showEditInvestorModal, setShowEditInvestorModal] = useState(false);
+  const [selectedInvestorForEdit, setSelectedInvestorForEdit] = useState(null);
   
   // XIRR Calculator state
   const [xirrSaleStage, setXirrSaleStage] = useState(100); // % of payment completed when sold
