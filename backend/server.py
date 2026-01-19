@@ -3028,7 +3028,7 @@ class ClientCreate(BaseModel):
     # Personal Details
     name: str
     pan_number: str
-    ucc_list: List[str]  # List of Unique Client Codes (1-5 required, must be unique across system)
+    ucc_list: Optional[List[str]] = None  # List of Unique Client Codes (optional, max 5, must be unique across system)
     occupation: Optional[str] = None
     date_of_birth: Optional[str] = None
     father_husband_name: Optional[str] = None
