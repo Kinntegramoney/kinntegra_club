@@ -1016,8 +1016,8 @@ export default function RealEstateDetails() {
                         XIRR
                       </Button>
                     </div>
-                    {/* Edit/Remove buttons for broker */}
-                    {user?.role === 'broker' && (
+                    {/* Edit/Remove buttons for broker and sub_broker */}
+                    {(user?.role === 'broker' || user?.role === 'sub_broker') && (
                       <div className="flex gap-2 mt-2">
                         <Button 
                           size="sm" 
