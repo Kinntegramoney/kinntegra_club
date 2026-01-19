@@ -194,32 +194,33 @@ export default function Dashboard() {
       textColor: "text-violet-400"
     },
     { 
-      label: "Total AUM", 
-      value: formatCurrency(summary?.aum?.total),
-      subValue: "Bonds + Real Estate",
-      icon: DollarSign, 
-      color: "from-emerald-500 to-emerald-600",
-      bgColor: "bg-emerald-500/10",
-      textColor: "text-emerald-400",
+      label: "Bond AUM", 
+      value: formatINRCrores(summary?.aum?.bonds),
+      subValue: "NCD Investments (INR)",
+      icon: Landmark, 
+      color: "from-amber-500 to-amber-600",
+      bgColor: "bg-amber-500/10",
+      textColor: "text-amber-400",
+      isLarge: true
+    },
+    { 
+      label: "Real Estate AUM", 
+      value: formatAEDMillions(summary?.aum?.real_estate),
+      subValue: "Property Investments (AED)",
+      icon: Building2, 
+      color: "from-pink-500 to-pink-600",
+      bgColor: "bg-pink-500/10",
+      textColor: "text-pink-400",
       isLarge: true
     },
     { 
       label: "Bond Opportunities", 
       value: summary?.opportunities?.bonds?.total || 0, 
       subValue: `${summary?.opportunities?.bonds?.available || 0} Available`,
-      icon: Landmark, 
-      color: "from-amber-500 to-amber-600",
-      bgColor: "bg-amber-500/10",
-      textColor: "text-amber-400"
-    },
-    { 
-      label: "Real Estate", 
-      value: summary?.opportunities?.real_estate?.total || 0, 
-      subValue: `${summary?.opportunities?.real_estate?.invested || 0} Invested`,
-      icon: Building2, 
-      color: "from-pink-500 to-pink-600",
-      bgColor: "bg-pink-500/10",
-      textColor: "text-pink-400"
+      icon: TrendingUp, 
+      color: "from-emerald-500 to-emerald-600",
+      bgColor: "bg-emerald-500/10",
+      textColor: "text-emerald-400"
     },
     { 
       label: "Trades Done", 
