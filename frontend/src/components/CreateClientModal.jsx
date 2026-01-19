@@ -322,7 +322,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
               {/* Multiple UCCs Section */}
               <div className="space-y-2 col-span-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-gray-500 uppercase">UCC (Unique Client Codes) * - Max 5</Label>
+                  <Label className="text-xs text-gray-500 uppercase">UCC (Unique Client Codes) - Optional, Max 5</Label>
                   {uccList.length < 5 && (
                     <Button
                       type="button"
@@ -342,7 +342,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
                       <Input
                         value={ucc}
                         onChange={(e) => updateUcc(index, e.target.value)}
-                        placeholder={`UCC ${index + 1}${index === 0 ? ' *' : ''}`}
+                        placeholder={`UCC ${index + 1}`}
                         className="font-mono uppercase"
                         data-testid={`client-ucc-${index + 1}`}
                       />
@@ -360,7 +360,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400">At least one UCC is required. Each UCC must be unique across all clients.</p>
+                <p className="text-xs text-gray-400">UCCs are optional. Each UCC must be unique across all clients.</p>
               </div>
               
               <div className="space-y-2">
