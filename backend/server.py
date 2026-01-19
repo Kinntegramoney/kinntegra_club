@@ -7468,6 +7468,7 @@ class BondUpdate(BaseModel):
     face_value: Optional[float] = None
     description: Optional[str] = None
     cutoff_days: Optional[int] = None  # Days before payment that determines record date
+    calculator_file_url: Optional[str] = None  # URL to the uploaded calculator Excel
 
 
 @api_router.put("/bonds/{bond_id}")
