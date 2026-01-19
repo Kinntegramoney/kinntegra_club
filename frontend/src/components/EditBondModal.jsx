@@ -130,8 +130,8 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
                 <Input
                   id="bond_code"
                   value={formData.bond_code}
-                  disabled
-                  className="bg-gray-100"
+                  onChange={(e) => setFormData({...formData, bond_code: e.target.value})}
+                  required
                 />
               </div>
               <div>
