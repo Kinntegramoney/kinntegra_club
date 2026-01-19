@@ -66,17 +66,25 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 - **Feature**: Unified Secondary Market Calculator on BondDetails page
   - **Backend**: New endpoint `/api/bonds/{bond_id}/calculate-enhanced`
   - **Frontend**: Merged two calculators into one unified interface
-  - **Clean Price Only**: Shows only Clean Price (PV of future cashflows at Secondary IRR) per user request
+  - **Clean Price Only**: Shows only Clean Price (PV of future cashflows at Secondary IRR)
+  - **Record Date Convention**: Implements 15-day cutoff before payment date
+    - If settlement > record date, buyer misses that interest payment
   - **Dual Input Mode**: 
     - Enter Units (optional) → get exact price
     - Enter Amount (₹) → get unit bounds (Lower/Upper)
   - **Premium/Discount**: Shows percentage difference from face value
   - **Future Cashflows**: Remaining interest payments, principal, total cashflows
-  - **Proposed IRR (Client)**: Displays bond's secondary_irr prominently (11.5%)
-- **Test Bond Added**: "All Home Bharat Platform" (CDHBP002)
+  - **Proposed IRR (Client)**: Displays bond's secondary_irr prominently
+- **Excel Calculator Upload Feature**:
+  - Upload pricing calculator Excel when creating/editing bond
+  - System auto-extracts cut-off days from Excel
+  - Download Excel button on bond details page for verification
+  - `/api/bonds/upload-calculator` endpoint
+- **Test Results (All Home Bharat Platform - CDHBP002)**:
   - Secondary IRR: 11.5%, Coupon Rate: 14%, Face Value: ₹100,000
-  - 18 monthly interest payments, 2 principal payments (50% each)
-- **Testing**: Backend tests passed, all frontend UI features verified
+  - Jan 8, 2026 (before record date): ₹1,03,915.86 (16 interest payments)
+  - Jan 19, 2026 (after record date): ₹1,03,070.05 (15 interest payments) ✓ Matches Excel
+- **Testing**: Backend tests passed, calculator verified against Excel
 
 ### 2026-01-17 (Current Session - Bulk Upload Upsert)
 - **Feature**: Bulk upload now supports UPDATE existing clients
