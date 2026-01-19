@@ -374,7 +374,15 @@ export default function Dashboard() {
                           borderRadius: '8px',
                           color: '#374151'
                         }}
-                        formatter={(value) => formatCurrency(value)}
+                        formatter={(value, name) => {
+                          // Format based on asset type
+                          if (name === 'NCD Bonds') {
+                            return [formatINRCrores(value), name];
+                          } else if (name === 'Real Estate') {
+                            return [formatAEDMillions(value), name];
+                          }
+                          return [formatCurrency(value), name];
+                        }}
                       />
                       <Legend 
                         wrapperStyle={{ color: '#6b7280' }}
