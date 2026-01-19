@@ -119,6 +119,24 @@ export default function AdminClients() {
     }
   };
 
+  const handleSyncActivation = async (clientId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/clients/${clientId}/sync-activation`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.synced) {
+        toast.success(`Activation synced: ${response.data.is_active ? 'Active' : 'Inactive'}`);
+      } else {
+        toast.warning(response.data.message);
+      }
+      fetchData();
+    } catch (error) {
+      console.error("Error syncing activation:", error);
+      toast.error("Failed to sync activation status");
+    }
+  };
+
   // Edit client functions
   const handleEditClick = async (client) => {
     try {
