@@ -1302,6 +1302,62 @@ export default function RealEstateDetails() {
             </div>
           )}
 
+          {/* Current Investors Section - Visible when not fully allocated */}
+          {(user?.role === 'broker' || user?.role === 'sub_broker') && !isFullyAllocated && opp.investors && opp.investors.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  Tagged Investors ({opp.investors.length})
+                </h2>
+                <div className="text-sm text-gray-500">
+                  {opp.invested_percentage?.toFixed(1) || 0}% allocated
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {opp.investors.map((investor, idx) => (
+                  <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-800">{investor.client_name || `Investor ${idx + 1}`}</span>
+                      <Badge variant="outline" className="text-blue-600">{investor.share_percentage || 25}%</Badge>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-3">
+                      Investment: AED {formatCurrency(opp.total_cost * (investor.share_percentage || 25) / 100)}
+                    </p>
+                    
+                    {/* Edit/Remove buttons */}
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        onClick={() => {
+                          setSelectedInvestorForEdit(investor);
+                          setShowEditInvestorModal(true);
+                        }}
+                        data-testid={`edit-investor-btn-${idx}`}
+                      >
+                        <Edit2 className="h-4 w-4 mr-1" />
+                        Edit %
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleRemoveInvestor(investor)}
+                        data-testid={`remove-investor-btn-${idx}`}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Oqood Upload Section - Only visible after first milestone is fully verified */}
           {canManageOqood && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
