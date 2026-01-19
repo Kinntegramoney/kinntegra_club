@@ -964,17 +964,31 @@ export default function RealEstateDetails() {
                   XIRR Comparison Report
                   <span className="text-xs font-normal text-gray-500 ml-2">Projected vs Actual Currency Rates</span>
                 </h2>
-                {user?.role === 'broker' && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setShowCurrencySettingsModal(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Currency Settings
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {(user?.role === 'broker' || user?.role === 'sub_broker') && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleRecalculateStatus}
+                      className="flex items-center gap-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      data-testid="recalculate-status-btn"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Fix Status
+                    </Button>
+                  )}
+                  {user?.role === 'broker' && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowCurrencySettingsModal(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Currency Settings
+                    </Button>
+                  )}
+                </div>
               </div>
               
               <p className="text-sm text-gray-600 mb-4">
