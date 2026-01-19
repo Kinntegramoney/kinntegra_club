@@ -49,7 +49,7 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
         units_sold: bond.units_sold || 0,
         face_value: bond.face_value || "",
         description: bond.description || "",
-        cutoff_days: bond.cutoff_days ?? 15
+        calculator_file: null
       });
     }
   }, [bond]);
