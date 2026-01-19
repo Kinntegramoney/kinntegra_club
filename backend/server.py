@@ -6820,6 +6820,7 @@ class Bond(BaseModel):
     total_units: int = 1
     units_sold: int = 0
     status: Optional[str] = None  # Computed: 'available', 'funded', 'closed'
+    description: Optional[str] = None  # Bond description
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # Legacy fields for backward compatibility
     face_value: Optional[float] = None
