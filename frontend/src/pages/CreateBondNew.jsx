@@ -161,7 +161,7 @@ export default function CreateBondNew() {
         investment_date: new Date().toISOString().split("T")[0],
         bond_maturity_date: formData.end_date,
         cashflows: cashflows,
-        cutoff_days: parseInt(formData.cutoff_days) || 15
+        cutoff_days: 15
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
