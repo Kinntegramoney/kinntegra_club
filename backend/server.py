@@ -1318,7 +1318,304 @@ async def download_client_template(current_user: dict = Depends(get_current_user
     )
 
 
-@api_router.post("/bulk/clients")
+@api_router.get("/bulk/template/clients-indian")
+async def download_indian_client_template(current_user: dict = Depends(get_current_user)):
+    """Download Excel template for bulk Indian passport holder client upload"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can download templates")
+    
+    wb = Workbook()
+    
+    # Sheet 1: Personal Details
+    ws_personal = wb.active
+    ws_personal.title = "Personal Details"
+    
+    personal_headers = ["Name*", "PAN*", "Email*", "Mobile*", "Country of Residency*",
+                       "Opportunities* (bonds,real_estate)", "Date of Birth", "Occupation", "Father/Husband Name"]
+    for col, header in enumerate(personal_headers, 1):
+        cell = ws_personal.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="7C3AED", end_color="7C3AED", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_personal.column_dimensions[get_column_letter(col)].width = 22
+    
+    personal_sample = ["Rahul Sharma", "ABCDE1234F", "rahul@example.com", "9876543210", "India",
+                      "bonds,real_estate", "1990-05-15", "Business", "Suresh Sharma"]
+    for col, value in enumerate(personal_sample, 1):
+        ws_personal.cell(row=2, column=col, value=value)
+    
+    # Sheet 2: Bank & Investment Details (Required for Bonds)
+    ws_bank = wb.create_sheet("Bank & Investment Details")
+    
+    bank_headers = ["PAN*", "Bank Name*", "Account Number*", "Branch", "IFSC Code*",
+                   "Demat Account No", "UCC1", "UCC2", "UCC3", "UCC4", "UCC5"]
+    for col, header in enumerate(bank_headers, 1):
+        cell = ws_bank.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="EA580C", end_color="EA580C", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_bank.column_dimensions[get_column_letter(col)].width = 18
+    
+    bank_sample = ["ABCDE1234F", "HDFC Bank", "12345678901234", "Andheri West", "HDFC0001234",
+                  "1234567890123456", "UCC123456", "", "", "", ""]
+    for col, value in enumerate(bank_sample, 1):
+        ws_bank.cell(row=2, column=col, value=value)
+    
+    # Sheet 3: Passport Details (Required for Real Estate)
+    ws_passport = wb.create_sheet("Passport Details")
+    
+    passport_headers = ["PAN*", "Passport Number", "Passport Valid From*", "Passport Valid Until*", "Passport Country of Issue*"]
+    for col, header in enumerate(passport_headers, 1):
+        cell = ws_passport.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="0891B2", end_color="0891B2", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_passport.column_dimensions[get_column_letter(col)].width = 22
+    
+    passport_sample = ["ABCDE1234F", "A1234567", "2020-01-15", "2030-01-14", "India"]
+    for col, value in enumerate(passport_sample, 1):
+        ws_passport.cell(row=2, column=col, value=value)
+    
+    # Sheet 4: Address Details
+    ws_address = wb.create_sheet("Address Details")
+    
+    address_headers = ["PAN*", "Address Line 1", "Address Line 2", "City", "State", "Country", "Pincode"]
+    for col, header in enumerate(address_headers, 1):
+        cell = ws_address.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="059669", end_color="059669", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_address.column_dimensions[get_column_letter(col)].width = 18
+    
+    address_sample = ["ABCDE1234F", "456 Park Avenue", "Apartment 10B", "Mumbai", "Maharashtra", "India", "400001"]
+    for col, value in enumerate(address_sample, 1):
+        ws_address.cell(row=2, column=col, value=value)
+    
+    # Sheet 5: Nominee Details
+    ws_nominee = wb.create_sheet("Nominee Details")
+    
+    nominee_headers = ["PAN*", "Nominee Name", "Nominee DOB", "Nominee Mobile", "Relationship"]
+    for col, header in enumerate(nominee_headers, 1):
+        cell = ws_nominee.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="DC2626", end_color="DC2626", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_nominee.column_dimensions[get_column_letter(col)].width = 18
+    
+    nominee_sample = ["ABCDE1234F", "Priya Sharma", "1965-03-20", "9876543210", "Mother"]
+    for col, value in enumerate(nominee_sample, 1):
+        ws_nominee.cell(row=2, column=col, value=value)
+    
+    # Sheet 6: Sub-Broker Assignment
+    ws_subbroker = wb.create_sheet("Sub-Broker Assignment")
+    
+    sb_headers = ["PAN*", "Sub-Broker Code"]
+    for col, header in enumerate(sb_headers, 1):
+        cell = ws_subbroker.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_subbroker.column_dimensions[get_column_letter(col)].width = 20
+    
+    sb_sample = ["ABCDE1234F", "SB001"]
+    for col, value in enumerate(sb_sample, 1):
+        ws_subbroker.cell(row=2, column=col, value=value)
+    
+    # Instructions sheet
+    ws_instructions = wb.create_sheet("Instructions")
+    instructions = [
+        "INDIAN PASSPORT HOLDERS - BULK CLIENT UPLOAD",
+        "",
+        "This template is for Indian Passport holders who can invest in:",
+        "• Bonds / NCD",
+        "• Real Estate",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 1 - Personal Details (Purple) - REQUIRED",
+        "═══════════════════════════════════════════════════════════════",
+        "• Name*: Full legal name",
+        "• PAN*: Valid 10-character PAN (e.g., ABCDE1234F) - This is the LOGIN ID",
+        "• Email*: Valid email address",
+        "• Mobile*: 10-digit mobile number",
+        "• Country of Residency*: Current country of residence",
+        "• Opportunities*: Comma-separated (bonds,real_estate or just bonds or just real_estate)",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 2 - Bank & Investment Details (Orange) - REQUIRED FOR BONDS",
+        "═══════════════════════════════════════════════════════════════",
+        "• Bank details are mandatory if 'bonds' is selected in Opportunities",
+        "• UCC fields (1-5): Up to 5 Unique Client Codes",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 3 - Passport Details (Cyan) - REQUIRED FOR REAL ESTATE",
+        "═══════════════════════════════════════════════════════════════",
+        "• Passport validity details mandatory if 'real_estate' is selected",
+        "• System will notify 3 months before passport expiry",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "IMPORTANT NOTES",
+        "═══════════════════════════════════════════════════════════════",
+        "1. PAN is used as LOGIN ID for all Indian passport holders",
+        "2. Default Password: kinntegra123",
+        "3. Default PIN: 1234",
+        "4. Delete sample rows before uploading",
+        "5. Maximum 200 clients per upload",
+    ]
+    for row, text in enumerate(instructions, 1):
+        cell = ws_instructions.cell(row=row, column=1, value=text)
+        if text.startswith("═") or text.startswith("SHEET") or text.startswith("INDIAN") or text.startswith("IMPORTANT"):
+            cell.font = Font(bold=True)
+        ws_instructions.column_dimensions['A'].width = 70
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=indian_client_upload_template.xlsx"}
+    )
+
+
+@api_router.get("/bulk/template/clients-foreign")
+async def download_foreign_client_template(current_user: dict = Depends(get_current_user)):
+    """Download Excel template for bulk Foreign passport holder client upload"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can download templates")
+    
+    wb = Workbook()
+    
+    # Sheet 1: Personal Details
+    ws_personal = wb.active
+    ws_personal.title = "Personal Details"
+    
+    personal_headers = ["Name*", "Passport Number*", "Email*", "Mobile*", "Country of Residency*",
+                       "Emirates ID", "Opportunities* (real_estate,gift_city)", "Date of Birth", "Occupation"]
+    for col, header in enumerate(personal_headers, 1):
+        cell = ws_personal.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_personal.column_dimensions[get_column_letter(col)].width = 24
+    
+    personal_sample = ["John Smith", "A1234567", "john@example.com", "+971501234567", "United Arab Emirates",
+                      "784-1234-1234567-1", "real_estate,gift_city", "1985-08-20", "Executive"]
+    for col, value in enumerate(personal_sample, 1):
+        ws_personal.cell(row=2, column=col, value=value)
+    
+    # Sheet 2: Passport Details (Required for all)
+    ws_passport = wb.create_sheet("Passport Details")
+    
+    passport_headers = ["Passport Number*", "Passport Valid From*", "Passport Valid Until*", "Passport Country of Issue*"]
+    for col, header in enumerate(passport_headers, 1):
+        cell = ws_passport.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="0891B2", end_color="0891B2", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_passport.column_dimensions[get_column_letter(col)].width = 24
+    
+    passport_sample = ["A1234567", "2020-06-15", "2030-06-14", "United States"]
+    for col, value in enumerate(passport_sample, 1):
+        ws_passport.cell(row=2, column=col, value=value)
+    
+    # Sheet 3: Address Details
+    ws_address = wb.create_sheet("Address Details")
+    
+    address_headers = ["Passport Number*", "Address Line 1", "Address Line 2", "City", "State/Region", "Country", "Postal Code"]
+    for col, header in enumerate(address_headers, 1):
+        cell = ws_address.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="059669", end_color="059669", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_address.column_dimensions[get_column_letter(col)].width = 18
+    
+    address_sample = ["A1234567", "Building 5, Street 12", "Dubai Marina", "Dubai", "Dubai", "United Arab Emirates", "00000"]
+    for col, value in enumerate(address_sample, 1):
+        ws_address.cell(row=2, column=col, value=value)
+    
+    # Sheet 4: Nominee Details
+    ws_nominee = wb.create_sheet("Nominee Details")
+    
+    nominee_headers = ["Passport Number*", "Nominee Name", "Nominee DOB", "Nominee Mobile", "Relationship"]
+    for col, header in enumerate(nominee_headers, 1):
+        cell = ws_nominee.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="DC2626", end_color="DC2626", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_nominee.column_dimensions[get_column_letter(col)].width = 18
+    
+    nominee_sample = ["A1234567", "Jane Smith", "1988-11-25", "+971509876543", "Spouse"]
+    for col, value in enumerate(nominee_sample, 1):
+        ws_nominee.cell(row=2, column=col, value=value)
+    
+    # Sheet 5: Sub-Broker Assignment
+    ws_subbroker = wb.create_sheet("Sub-Broker Assignment")
+    
+    sb_headers = ["Passport Number*", "Sub-Broker Code"]
+    for col, header in enumerate(sb_headers, 1):
+        cell = ws_subbroker.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_subbroker.column_dimensions[get_column_letter(col)].width = 20
+    
+    sb_sample = ["A1234567", "SB001"]
+    for col, value in enumerate(sb_sample, 1):
+        ws_subbroker.cell(row=2, column=col, value=value)
+    
+    # Instructions sheet
+    ws_instructions = wb.create_sheet("Instructions")
+    instructions = [
+        "FOREIGN PASSPORT HOLDERS - BULK CLIENT UPLOAD",
+        "",
+        "This template is for Foreign Passport holders who can invest in:",
+        "• Real Estate (Dubai/UAE properties)",
+        "• GIFT City (Gujarat International Finance Tec-City)",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 1 - Personal Details (Blue) - REQUIRED",
+        "═══════════════════════════════════════════════════════════════",
+        "• Name*: Full legal name as per passport",
+        "• Passport Number*: Valid passport number - This is the LOGIN ID",
+        "• Email*: Valid email address",
+        "• Mobile*: Include country code (e.g., +971501234567)",
+        "• Country of Residency*: Current country of residence",
+        "• Emirates ID: REQUIRED if Country of Residency is UAE",
+        "• Opportunities*: Comma-separated (real_estate,gift_city or just one)",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "SHEET 2 - Passport Details (Cyan) - REQUIRED",
+        "═══════════════════════════════════════════════════════════════",
+        "• Passport validity details are mandatory for all foreign clients",
+        "• System will notify 3 months before passport expiry",
+        "",
+        "═══════════════════════════════════════════════════════════════",
+        "IMPORTANT NOTES",
+        "═══════════════════════════════════════════════════════════════",
+        "1. Passport Number is used as LOGIN ID for all foreign passport holders",
+        "2. Emirates ID is REQUIRED for UAE residents",
+        "3. Default Password: kinntegra123",
+        "4. Default PIN: 1234",
+        "5. Delete sample rows before uploading",
+        "6. Maximum 200 clients per upload",
+        "7. Foreign passport holders CANNOT invest in Indian Bonds",
+    ]
+    for row, text in enumerate(instructions, 1):
+        cell = ws_instructions.cell(row=row, column=1, value=text)
+        if text.startswith("═") or text.startswith("SHEET") or text.startswith("FOREIGN") or text.startswith("IMPORTANT"):
+            cell.font = Font(bold=True)
+        ws_instructions.column_dimensions['A'].width = 70
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=foreign_client_upload_template.xlsx"}
+    )
 async def bulk_upload_clients(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
