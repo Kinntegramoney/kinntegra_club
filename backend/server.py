@@ -8480,24 +8480,33 @@ class BondCreate(BaseModel):
     start_date: str  # ISO format
     end_date: str
     principal_amount: float
-    coupon_rate: float  # Annual coupon rate as percentage
-    primary_irr: float  # Expected IRR for primary buyer as percentage
-    secondary_irr: float  # Target IRR for secondary buyers as percentage
-    principal_payments: List[PrincipalPayment]
-    interest_payment_frequency: str  # "monthly", "quarterly", "semi-annual", "annual", "custom"
-    interest_payments: List[InterestPayment]  # For custom frequency
+    coupon_rate: float = 0  # Annual coupon rate as percentage (optional if cashflows provided)
+    primary_irr: float = 0  # Expected IRR for primary buyer as percentage
+    secondary_irr: float = 0  # Target IRR for secondary buyers as percentage
+    principal_payments: List[PrincipalPayment] = []  # Can be empty if cashflows provided
+    interest_payment_frequency: str = "monthly"  # "monthly", "quarterly", "semi-annual", "annual", "custom"
+    interest_payments: List[InterestPayment] = []  # For custom frequency or empty if cashflows provided
+    cashflows_per_unit: List[dict] = []  # Direct cashflows: [{date, principal, interest}]
     total_units: int = 1  # Total number of units available for sale
     minimum_units: int = 1  # Minimum units per order
     units_sold: int = 0  # Number of units already sold
     cutoff_days: int = 15  # Days after investment where payments are still missed (for secondary market)
     description: Optional[str] = None  # Bond description
-
-    @field_validator('principal_payments')
-    def validate_principal_total(cls, v):
-        total = sum([p.percentage for p in v])
-        if abs(total - 100.0) > 0.01:  # Allow small floating point errors
-            raise ValueError(f'Principal payments must sum to 100%, got {total}%')
-        return v
+    isin: Optional[str] = None  # ISIN code
+    
+    @model_validator(mode='after')
+    def validate_cashflows_or_payments(self):
+        # If cashflows_per_unit is provided, skip principal payment validation
+        if self.cashflows_per_unit and len(self.cashflows_per_unit) > 0:
+            return self
+        
+        # Otherwise, validate principal payments sum to 100%
+        if self.principal_payments:
+            total = sum([p.percentage for p in self.principal_payments])
+            if abs(total - 100.0) > 0.01:
+                raise ValueError(f'Principal payments must sum to 100%, got {total}%')
+        
+        return self
 
 
 def calculate_bond_status(bond: dict) -> str:
