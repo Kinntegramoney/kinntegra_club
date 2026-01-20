@@ -118,6 +118,7 @@ class CASParser:
     
     def _parse_investor_info(self, text: str):
         """Extract investor information"""
+        # Try "Dear <Name>," pattern first
         name_match = re.search(r'Dear\s+([A-Za-z\s]+),', text)
         if name_match:
             self.investor_info['name'] = name_match.group(1).strip()
@@ -125,10 +126,30 @@ class CASParser:
         email_match = re.search(r'Email Id:\s*([^\s]+@[^\s]+)', text)
         if email_match:
             self.investor_info['email'] = email_match.group(1).strip()
+            
+            # Try to extract name from line after Email Id (CAMS format)
+            # Pattern: "Email Id: email@domain.com\nName Here\nAddress..."
+            if 'name' not in self.investor_info:
+                lines = text.split('\n')
+                for i, line in enumerate(lines):
+                    if 'Email Id:' in line and i + 1 < len(lines):
+                        # Next line should be the name
+                        potential_name = lines[i + 1].strip()
+                        # Validate it looks like a name (only letters and spaces, not too long)
+                        if potential_name and len(potential_name) < 50:
+                            if re.match(r'^[A-Za-z\s\.]+$', potential_name):
+                                self.investor_info['name'] = potential_name
+                        break
         
         mobile_match = re.search(r'Mobile:\s*(\d+)', text)
         if mobile_match:
             self.investor_info['mobile'] = mobile_match.group(1)
+        
+        # Also try Phone Off pattern (CAMS format)
+        if 'mobile' not in self.investor_info:
+            phone_match = re.search(r'Phone Off:\s*(\d+)', text)
+            if phone_match:
+                self.investor_info['mobile'] = phone_match.group(1)
         
         pan_match = re.search(r'PAN:\s*([A-Z]{5}\d{4}[A-Z])', text)
         if pan_match:
