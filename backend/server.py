@@ -9420,9 +9420,30 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
     coupon_rate = bond.get('coupon_rate', 0) / 100  # Convert to decimal
     secondary_irr = bond.get('secondary_irr', 0) / 100  # Convert to decimal
     
-    # Collect all interest payments
+    # Check if bond has cashflows_per_unit (new format) or legacy arrays
+    cashflows_per_unit = bond.get('cashflows_per_unit', [])
     interest_payments = bond.get('interest_payments', [])
     principal_payments = bond.get('principal_payments', [])
+    
+    # If cashflows_per_unit exists, convert to interest_payments and principal_payments format
+    if cashflows_per_unit and len(cashflows_per_unit) > 0:
+        interest_payments = []
+        principal_payments = []
+        for cf in cashflows_per_unit:
+            cf_date = cf.get('date')
+            if cf.get('interest', 0) > 0:
+                interest_payments.append({
+                    'date': cf_date,
+                    'amount': cf.get('interest', 0)
+                })
+            if cf.get('principal', 0) > 0:
+                # Convert to percentage format for compatibility
+                principal_pct = (cf.get('principal', 0) / face_value) * 100 if face_value > 0 else 0
+                principal_payments.append({
+                    'date': cf_date,
+                    'percentage': principal_pct,
+                    'amount': cf.get('principal', 0)  # Also store absolute amount
+                })
     
     # Get cutoff days / record day convention (days before payment date that determines ownership)
     # Default is 15 days if not specified
