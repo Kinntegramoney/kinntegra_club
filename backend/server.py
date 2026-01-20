@@ -4144,6 +4144,167 @@ async def calculate_xnpv_price_endpoint(
         raise HTTPException(status_code=400, detail=f"Calculation error: {str(e)}")
 
 
+class BondPriceCalculationRequest(BaseModel):
+    """
+    Request model for bond price calculation.
+    Matches the Excel 'Final Bond Calculation' format.
+    """
+    face_value: float = Field(..., description="Face value per unit (e.g., 500000)")
+    coupon_rate: float = Field(..., description="Coupon rate as decimal (e.g., 0.125 for 12.5%)")
+    client_irr: float = Field(..., description="Client IRR as decimal (e.g., 0.11 for 11%)")
+    bond_start_date: str = Field(..., description="Bond start date (YYYY-MM-DD)")
+    investment_date: str = Field(..., description="Investment date (YYYY-MM-DD)")
+    bond_maturity_date: str = Field(..., description="Bond maturity date (YYYY-MM-DD)")
+    principal_repayment_type: str = Field(default="equal_monthly", description="equal_monthly, at_maturity, custom")
+    custom_principal_payments: List[dict] = Field(default=[], description="For custom: [{date, percentage}]")
+    cutoff_days: int = Field(default=15, description="Record date cutoff in days")
+    payment_day: Optional[int] = Field(default=None, description="Day of month for payments (defaults to start date day)")
+
+
+@api_router.post("/bonds/calculate-price")
+async def calculate_bond_price(
+    request: BondPriceCalculationRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Calculate bond price per unit using discounted cash flow method.
+    
+    Formula (from Excel):
+    - Generate all payment dates from start to maturity
+    - For each payment: Principal + Interest = Total Payout
+    - Interest = Balance × Days × Coupon / 365
+    - Discounted CF = IF(days_from_investment > cutoff_days, Total / (1 + IRR)^(days/365), 0)
+    - Price = Sum of all Discounted CFs
+    
+    Example (from Excel):
+    - Face Value: 500,000
+    - Coupon: 12.5%
+    - Client IRR: 11%
+    - Start: 2025-03-24, Investment: 2025-05-13, Maturity: 2026-09-24
+    - Equal monthly principal repayment
+    - Expected Price: 449,082.99
+    """
+    try:
+        # Parse dates
+        bond_start = datetime.fromisoformat(request.bond_start_date.split('T')[0])
+        investment_date = datetime.fromisoformat(request.investment_date.split('T')[0])
+        bond_maturity = datetime.fromisoformat(request.bond_maturity_date.split('T')[0])
+        
+        face_value = request.face_value
+        coupon_rate = request.coupon_rate
+        client_irr = request.client_irr
+        cutoff_days = request.cutoff_days
+        payment_day = request.payment_day or bond_start.day
+        
+        # Generate payment dates (monthly on the payment_day)
+        payment_dates = []
+        current = bond_start
+        while current <= bond_maturity:
+            # Move to next month
+            month = current.month + 1
+            year = current.year
+            if month > 12:
+                month = 1
+                year += 1
+            
+            # Use payment_day, but handle months with fewer days
+            last_day = monthrange(year, month)[1]
+            day = min(payment_day, last_day)
+            next_date = datetime(year, month, day)
+            
+            if next_date <= bond_maturity:
+                payment_dates.append(next_date)
+            
+            current = next_date
+            
+            # Safety check to prevent infinite loop
+            if len(payment_dates) > 100:
+                break
+        
+        # Ensure maturity is included if it's a payment date
+        if bond_maturity not in payment_dates and bond_maturity > bond_start:
+            payment_dates.append(bond_maturity)
+            payment_dates.sort()
+        
+        num_payments = len(payment_dates)
+        
+        # Determine principal repayment per payment
+        if request.principal_repayment_type == "equal_monthly":
+            principal_per_payment = face_value / num_payments
+            principal_schedule = {d.strftime('%Y-%m-%d'): principal_per_payment for d in payment_dates}
+        elif request.principal_repayment_type == "at_maturity":
+            principal_schedule = {bond_maturity.strftime('%Y-%m-%d'): face_value}
+        else:  # custom
+            principal_schedule = {}
+            for pp in request.custom_principal_payments:
+                pp_date = pp.get('date', '')
+                pp_pct = pp.get('percentage', 0)
+                if pp_date and pp_pct:
+                    principal_schedule[pp_date] = face_value * (pp_pct / 100)
+        
+        # Calculate cashflows
+        cashflows = []
+        balance = face_value
+        prev_date = bond_start
+        total_price = 0
+        total_principal = 0
+        total_interest = 0
+        
+        for pay_date in payment_dates:
+            days_in_period = (pay_date - prev_date).days
+            interest = balance * days_in_period * coupon_rate / 365
+            principal = principal_schedule.get(pay_date.strftime('%Y-%m-%d'), 0)
+            total_payout = principal + interest
+            
+            days_from_investment = (pay_date - investment_date).days
+            
+            # Apply cutoff: if days_from_investment > cutoff_days, include the cashflow
+            if days_from_investment > cutoff_days:
+                discount_factor = (1 + client_irr) ** (days_from_investment / 365)
+                discounted_cf = total_payout / discount_factor
+            else:
+                discounted_cf = 0
+            
+            total_price += discounted_cf
+            total_principal += principal
+            total_interest += interest
+            
+            cashflows.append({
+                "date": pay_date.strftime('%Y-%m-%d'),
+                "days_in_period": days_in_period,
+                "principal": round(principal, 2),
+                "balance": round(balance, 2),
+                "interest": round(interest, 2),
+                "total_payout": round(total_payout, 2),
+                "days_from_investment": days_from_investment,
+                "discounted_cf": round(discounted_cf, 2),
+                "included": days_from_investment > cutoff_days
+            })
+            
+            balance -= principal
+            prev_date = pay_date
+        
+        return {
+            "price_per_unit": round(total_price, 2),
+            "face_value": face_value,
+            "coupon_rate": coupon_rate,
+            "client_irr": client_irr,
+            "bond_start_date": request.bond_start_date,
+            "investment_date": request.investment_date,
+            "bond_maturity_date": request.bond_maturity_date,
+            "principal_repayment_type": request.principal_repayment_type,
+            "cutoff_days": cutoff_days,
+            "num_payments": num_payments,
+            "total_principal": round(total_principal, 2),
+            "total_interest": round(total_interest, 2),
+            "total_payout": round(total_principal + total_interest, 2),
+            "cashflows": cashflows
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Calculation error: {str(e)}")
+
+
 class PartnerUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
