@@ -83,7 +83,31 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
-### 2026-01-20 (Current Session - Client UI Refactor)
+### 2026-01-20 (Current Session - Client Module Overhaul)
+- **Feature**: Major Client Module Redesign
+  - **5-Step Wizard** for client creation with conditional fields
+  - **Passport Type Support**: Indian Passport (PAN) and Foreign Passport
+  - **Opportunities by Passport Type**: Bonds/Real Estate for Indian, Real Estate/GIFT City for Foreign
+  - **Login ID**: Auto-set to Photo ID (PAN for Indian, Passport for Foreign)
+  - **Emirates ID**: Required for UAE residents
+  - **Bank Details**: Required for Bonds opportunity
+  - **Passport Validity**: Required for Real Estate opportunity
+- **Feature**: Dashboard Notifications
+  - `/api/clients/dashboard/expiring-documents` - 3 months advance warning
+  - `/api/clients/dashboard/invalid-pan` - Clients with invalid PAN format
+- **Feature**: Separate Bulk Upload Templates
+  - `/api/bulk/template/clients-indian` - Indian passport holders
+  - `/api/bulk/template/clients-foreign` - Foreign passport holders
+  - `/api/bulk/clients-indian` and `/api/bulk/clients-foreign` upload endpoints
+- **Migration**: Existing 56 clients migrated to new schema (Indian passport type by default)
+- **Files Modified**:
+  - `server.py`: Updated ClientCreate/ClientUpdate models, new endpoints
+  - `CreateClientModal.jsx`: Complete rewrite as 5-step wizard
+  - `AdminClients.jsx`: Updated Edit modal with new fields
+  - `BulkUpload.jsx`: Added Indian/Foreign template options
+- **Testing**: 100% pass rate (16/16 backend tests, all frontend tests passed)
+
+### 2026-01-20 (Earlier - Client UI Refactor)
 - **Feature**: Client-Side Navigation Consolidation
   - **Removed "Real Estate" from client sidebar**: Clients no longer have a separate Real Estate navigation item
   - **Consolidated Opportunities**: Both bonds and real estate opportunities now display in a single mixed list on `/client/opportunities`
