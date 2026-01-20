@@ -210,10 +210,8 @@ export default function CreateBondNew() {
         secondary_irr: parseFloat(formData.secondary_irr) || 0,
         total_units: parseInt(formData.total_units) || 1,
         minimum_units: parseInt(formData.minimum_units) || 1,
-        cutoff_days: parseInt(formData.cutoff_days) || 15,
         description: formData.description || "",
         cashflows_per_unit: cashflows,
-        principal_payments: [],
         interest_payments: [],
         interest_payment_frequency: "custom"
       };
