@@ -34,7 +34,6 @@ export default function CreateBondNew() {
     secondary_irr: "",
     total_units: "1",
     minimum_units: "1",
-    cutoff_days: "15",
     description: ""
   });
   
