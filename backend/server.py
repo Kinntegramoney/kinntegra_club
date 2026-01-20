@@ -3184,6 +3184,7 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
     client_dict['bond_allocations'] = []
     client_dict['verification_status'] = 'pending'  # pending, verified
     client_dict['verification_token'] = str(uuid.uuid4())
+    client_dict['is_active'] = True  # Clients are active by default
     
     # If sub-broker is creating, auto-link the client to them
     if current_user['role'] == 'sub_broker':
