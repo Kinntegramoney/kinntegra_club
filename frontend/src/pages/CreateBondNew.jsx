@@ -429,7 +429,7 @@ export default function CreateBondNew() {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Upload Cashflow Excel</h2>
               <p className="text-sm text-slate-600 mb-4">
-                Upload an Excel file containing the bond's cashflow schedule. The file should have columns for Date, Principal Repayment, and Interest Repayment.
+                Upload an Excel file containing the bond&apos;s cashflow schedule. The file should have columns for Date, Principal Repayment, and Interest Repayment.
               </p>
               
               {!uploadedFileName ? (
