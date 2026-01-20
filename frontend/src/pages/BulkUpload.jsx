@@ -472,13 +472,35 @@ export default function BulkUpload() {
                       </ul>
                     </div>
 
-                    <Button 
-                      onClick={() => downloadTemplate(activeTab)}
-                      className={`w-full ${currentColor.bg} hover:opacity-90`}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download {tabs.find(t => t.id === activeTab)?.label} Template
-                    </Button>
+                    {activeTab === "clients" ? (
+                      <div className="space-y-2">
+                        <Button 
+                          onClick={() => downloadTemplate('clients-indian')}
+                          className="w-full bg-amber-600 hover:bg-amber-700"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          🇮🇳 Download Indian Passport Template
+                        </Button>
+                        <Button 
+                          onClick={() => downloadTemplate('clients-foreign')}
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          🌍 Download Foreign Passport Template
+                        </Button>
+                        <p className="text-xs text-gray-500 text-center mt-2">
+                          Choose the template that matches your client&apos;s passport type
+                        </p>
+                      </div>
+                    ) : (
+                      <Button 
+                        onClick={() => downloadTemplate(activeTab)}
+                        className={`w-full ${currentColor.bg} hover:opacity-90`}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download {tabs.find(t => t.id === activeTab)?.label} Template
+                      </Button>
+                    )}
                   </div>
                 </div>
 
