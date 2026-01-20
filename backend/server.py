@@ -9487,16 +9487,18 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
         # This ensures we use the exact values that were uploaded/calculated during bond creation
         interest_amount = ip.get('amount', 0)
         
+        # Calculate days from settlement date to payment
+        days_from_settlement = (ip_date - settlement_date).days
+        
         if ip_date <= settlement_date:
             past_payments.append((ip_date, interest_amount))
         else:
-            # Check if buyer will receive this payment based on record date
-            # Record date = Payment date - record_day_convention
-            record_date = ip_date - timedelta(days=record_day_convention)
-            if settlement_date <= record_date:
-                # Buyer will receive this payment (settled on or before record date)
+            # Use cutoff_days logic: only include if days_from_settlement > record_day_convention
+            # This matches the /calculate endpoint behavior
+            if days_from_settlement > record_day_convention:
+                # Buyer will receive this payment
                 future_payments.append((ip_date, interest_amount))
-            # else: Buyer won't receive this payment (settled after record date)
+            # else: Buyer won't receive this payment (within cutoff period)
     
     past_payments.sort(key=lambda x: x[0], reverse=True)
     future_payments.sort(key=lambda x: x[0])
