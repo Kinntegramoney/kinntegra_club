@@ -4150,7 +4150,7 @@ class BondPriceCalculationRequest(BaseModel):
     Matches the Excel 'Final Bond Calculation' format.
     """
     face_value: float = Field(..., description="Face value per unit (e.g., 500000)")
-    coupon_rate: float = Field(..., description="Coupon rate as decimal (e.g., 0.125 for 12.5%)")
+    coupon_rate: float = Field(default=0, description="Coupon rate as decimal (e.g., 0.125 for 12.5%). Optional if interest_amount provided.")
     client_irr: float = Field(..., description="Client IRR as decimal (e.g., 0.11 for 11%)")
     bond_start_date: str = Field(..., description="Bond start date (YYYY-MM-DD)")
     investment_date: str = Field(..., description="Investment date (YYYY-MM-DD)")
@@ -4159,6 +4159,8 @@ class BondPriceCalculationRequest(BaseModel):
     custom_principal_payments: List[dict] = Field(default=[], description="For custom: [{date, percentage}]")
     cutoff_days: int = Field(default=15, description="Record date cutoff in days")
     payment_day: Optional[int] = Field(default=None, description="Day of month for payments (defaults to start date day)")
+    interest_amount: Optional[float] = Field(default=None, description="For bullet bonds: total interest amount from cashflow file (overrides coupon calculation)")
+    cashflows: Optional[List[dict]] = Field(default=None, description="Pre-defined cashflows: [{date, principal, interest}]")
 
 
 @api_router.post("/bonds/calculate-price")
