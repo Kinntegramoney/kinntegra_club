@@ -537,34 +537,42 @@ export default function BondDetails() {
           <div className="lg:col-span-1 metric-card rounded-md">
             <h3 className="text-lg font-semibold mb-3">Principal Payments</h3>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {bondData.principal_payments.map((pp, index) => (
-                <div key={index} className="flex justify-between text-sm pb-2 border-b border-border last:border-0">
-                  <span className="font-mono text-muted-foreground">{format(new Date(pp.date), "MMM dd, yyyy")}</span>
-                  <span className="font-mono font-medium">{pp.percentage}%</span>
-                </div>
-              ))}
+              {displayPrincipalPayments.length > 0 ? (
+                displayPrincipalPayments.map((pp, index) => (
+                  <div key={index} className="flex justify-between text-sm pb-2 border-b border-border last:border-0">
+                    <span className="font-mono text-muted-foreground">{format(new Date(pp.date), "MMM dd, yyyy")}</span>
+                    <span className="font-mono font-medium">₹{pp.amount?.toLocaleString()}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No principal payments scheduled</p>
+              )}
             </div>
           </div>
 
           <div className="lg:col-span-2 metric-card rounded-md">
             <h3 className="text-lg font-semibold mb-3">Interest Payments</h3>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              <table className="w-full data-grid">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th className="text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bondData.interest_payments.map((ip, index) => (
-                    <tr key={index}>
-                      <td>{format(new Date(ip.date), "MMM dd, yyyy")}</td>
-                      <td className="text-right">₹{ip.amount.toLocaleString()}</td>
+              {displayInterestPayments.length > 0 ? (
+                <table className="w-full data-grid">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th className="text-right">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {displayInterestPayments.map((ip, index) => (
+                      <tr key={index}>
+                        <td>{format(new Date(ip.date), "MMM dd, yyyy")}</td>
+                        <td className="text-right">₹{ip.amount?.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-sm text-muted-foreground">No interest payments scheduled</p>
+              )}
             </div>
           </div>
 
