@@ -8705,6 +8705,192 @@ async def reset_database(secret_key: str = None):
         raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
 
 
+@api_router.post("/bonds/parse-cashflow-excel")
+async def parse_cashflow_excel(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Parse an Excel file containing bond cashflow details.
+    
+    Expected Excel format (matching 'Final Bond Calculation.xlsx'):
+    - Row with 'Face Value': contains the face value
+    - Row with 'Coupon %': contains coupon rate as decimal (e.g., 0.125)
+    - Row with 'Primary IRR %': contains primary IRR
+    - Row with 'Client IRR %': contains client IRR as decimal (e.g., 0.11)
+    - Row with 'Bond Start Date': contains start date
+    - Row with 'Bond Investment Date': contains investment date
+    - Row with 'Bond Maturity Date': contains maturity date
+    - Cashflow table with columns: Date, Principal Repayment, Interest Repayment
+    
+    Returns parsed bond details and cashflows.
+    """
+    import openpyxl
+    from io import BytesIO
+    
+    if not file.filename.endswith(('.xlsx', '.xls', '.xlsm')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx, .xls, .xlsm)")
+    
+    try:
+        contents = await file.read()
+        wb = openpyxl.load_workbook(BytesIO(contents), data_only=True)
+        
+        # Try to find the cashflow sheet
+        sheet_names = wb.sheetnames
+        ws = None
+        for name in ['Cashflow per unit', 'Cashflow', 'Sheet1', 'Sheet2']:
+            if name in sheet_names:
+                ws = wb[name]
+                break
+        
+        if ws is None:
+            ws = wb.active
+        
+        # Parse bond parameters from the sheet
+        bond_params = {
+            "face_value": None,
+            "coupon_rate": None,
+            "primary_irr": None,
+            "client_irr": None,
+            "bond_start_date": None,
+            "investment_date": None,
+            "bond_maturity_date": None,
+            "bond_name": None,
+            "deal_id": None,
+            "isin": None
+        }
+        
+        # Scan first 20 rows for parameters
+        for row in range(1, 21):
+            cell_a = ws.cell(row=row, column=1).value
+            cell_b = ws.cell(row=row, column=2).value
+            
+            if cell_a is None:
+                continue
+            
+            cell_a_lower = str(cell_a).lower().strip()
+            
+            if 'face value' in cell_a_lower:
+                bond_params['face_value'] = float(cell_b) if cell_b else None
+            elif 'coupon' in cell_a_lower and '%' in cell_a_lower:
+                bond_params['coupon_rate'] = float(cell_b) if cell_b else None
+            elif 'primary irr' in cell_a_lower:
+                bond_params['primary_irr'] = float(cell_b) if cell_b else None
+            elif 'client irr' in cell_a_lower:
+                bond_params['client_irr'] = float(cell_b) if cell_b else None
+            elif 'start date' in cell_a_lower or 'bond start' in cell_a_lower:
+                if cell_b:
+                    if isinstance(cell_b, datetime):
+                        bond_params['bond_start_date'] = cell_b.strftime('%Y-%m-%d')
+                    else:
+                        bond_params['bond_start_date'] = str(cell_b).split()[0]
+            elif 'investment date' in cell_a_lower:
+                if cell_b:
+                    if isinstance(cell_b, datetime):
+                        bond_params['investment_date'] = cell_b.strftime('%Y-%m-%d')
+                    else:
+                        bond_params['investment_date'] = str(cell_b).split()[0]
+            elif 'maturity' in cell_a_lower or 'end date' in cell_a_lower:
+                if cell_b:
+                    if isinstance(cell_b, datetime):
+                        bond_params['bond_maturity_date'] = cell_b.strftime('%Y-%m-%d')
+                    else:
+                        bond_params['bond_maturity_date'] = str(cell_b).split()[0]
+            elif 'bond name' in cell_a_lower or 'company' in cell_a_lower:
+                bond_params['bond_name'] = str(cell_b) if cell_b else None
+            elif 'deal id' in cell_a_lower:
+                bond_params['deal_id'] = str(cell_b) if cell_b else None
+            elif 'isin' in cell_a_lower:
+                bond_params['isin'] = str(cell_b) if cell_b else None
+        
+        # Find cashflow table header row
+        header_row = None
+        date_col = None
+        principal_col = None
+        interest_col = None
+        
+        for row in range(1, 50):
+            for col in range(1, 15):
+                cell_val = ws.cell(row=row, column=col).value
+                if cell_val is None:
+                    continue
+                cell_lower = str(cell_val).lower().strip()
+                
+                if 'date' in cell_lower and header_row is None:
+                    header_row = row
+                    date_col = col
+                elif 'principal' in cell_lower and 'repayment' in cell_lower:
+                    principal_col = col
+                elif 'interest' in cell_lower and 'repayment' in cell_lower:
+                    interest_col = col
+        
+        # Parse cashflows
+        cashflows = []
+        if header_row and date_col:
+            for row in range(header_row + 1, header_row + 100):
+                date_val = ws.cell(row=row, column=date_col).value
+                
+                if date_val is None:
+                    # Check if this is a "Total" row
+                    check_total = ws.cell(row=row, column=1).value
+                    if check_total and 'total' in str(check_total).lower():
+                        break
+                    continue
+                
+                # Parse date
+                if isinstance(date_val, datetime):
+                    cf_date = date_val.strftime('%Y-%m-%d')
+                else:
+                    try:
+                        cf_date = str(date_val).split()[0]
+                    except:
+                        continue
+                
+                # Get principal and interest
+                principal = 0
+                interest = 0
+                
+                if principal_col:
+                    p_val = ws.cell(row=row, column=principal_col).value
+                    principal = float(p_val) if p_val else 0
+                
+                if interest_col:
+                    i_val = ws.cell(row=row, column=interest_col).value
+                    interest = float(i_val) if i_val else 0
+                
+                # Skip rows with no cashflow
+                if principal == 0 and interest == 0:
+                    continue
+                
+                cashflows.append({
+                    "date": cf_date,
+                    "principal": round(principal, 2),
+                    "interest": round(interest, 2),
+                    "total": round(principal + interest, 2)
+                })
+        
+        # Calculate totals
+        total_principal = sum(cf['principal'] for cf in cashflows)
+        total_interest = sum(cf['interest'] for cf in cashflows)
+        
+        return {
+            "success": True,
+            "filename": file.filename,
+            "sheet_used": ws.title,
+            "bond_params": bond_params,
+            "cashflows": cashflows,
+            "summary": {
+                "num_payments": len(cashflows),
+                "total_principal": round(total_principal, 2),
+                "total_interest": round(total_interest, 2),
+                "total_payout": round(total_principal + total_interest, 2)
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error parsing Excel file: {str(e)}")
+
+
 @api_router.post("/bonds", response_model=Bond)
 async def create_bond(bond_input: BondCreate):
     bond_dict = bond_input.model_dump()
