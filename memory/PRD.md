@@ -29,6 +29,9 @@ Build a comprehensive bond and real estate investment management platform for br
 - ✅ Two-step bond creation UI with Excel upload
 - ✅ Excel parsing endpoints (`/bonds/parse-cashflows`, `/bonds/template/cashflows`)
 - ✅ Database wiped - fresh start with admin user and dummy bond `CDUC001`
+- ✅ Fixed BondDetails page to display `cashflows_per_unit` data (chart, principal/interest tables)
+- ✅ Fixed `calculate-enhanced` endpoint to use `cashflows_per_unit` and correct cutoff logic
+- ✅ Price calculation now shows correct value (₹449,083.02 for CDUC001 on 2025-05-13)
 
 ## Prioritized Backlog
 
