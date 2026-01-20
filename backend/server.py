@@ -9545,7 +9545,11 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
     for pp in principal_payments:
         pp_date = datetime.fromisoformat(pp['date'])
         if pp_date > settlement_date:
-            principal_amount = face_value * pp['percentage'] / 100
+            # Use absolute amount if available (from cashflows_per_unit), otherwise calculate from percentage
+            if 'amount' in pp and pp['amount'] > 0:
+                principal_amount = pp['amount']
+            else:
+                principal_amount = face_value * pp['percentage'] / 100
             days_to_payment = (pp_date - settlement_date).days
             years_to_payment = days_to_payment / 365
             discount_factor = 1 / ((1 + secondary_irr) ** years_to_payment)
