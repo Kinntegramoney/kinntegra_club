@@ -3955,6 +3955,153 @@ async def calculate_secondary_price(
     return result
 
 
+class XNPVPriceRequest(BaseModel):
+    """Request model for XNPV-based price calculation"""
+    face_value: float = Field(..., description="Face value per unit")
+    investment_date: str = Field(..., description="Investment date (YYYY-MM-DD)")
+    client_irr: float = Field(..., description="Client IRR as percentage (e.g., 11.5)")
+    coupon_rate: float = Field(..., description="Coupon rate as percentage (e.g., 14)")
+    bond_start_date: str = Field(..., description="Bond start date (YYYY-MM-DD)")
+    bond_end_date: str = Field(..., description="Bond maturity date (YYYY-MM-DD)")
+    interest_frequency: str = Field(default="monthly", description="monthly, quarterly, semi-annual, annual")
+    principal_payments: List[dict] = Field(default=[], description="List of {date: 'YYYY-MM-DD', percentage: float}")
+    cutoff_days: int = Field(default=15, description="Record date is this many days before payment")
+
+
+@api_router.post("/bonds/calculate-xnpv-price")
+async def calculate_xnpv_price_endpoint(
+    request: XNPVPriceRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Calculate bond price using Excel XNPV formula exactly.
+    
+    This matches the BharatBond Excel calculation:
+    - Price = face_value + XNPV(irr, cashflows, dates) 
+    - Cashflows include initial outflow (-face_value) at investment date
+    - Record date determines which payments are missed
+    
+    Example for bond with:
+    - Face value: 100,000
+    - Investment date: 2026-01-20
+    - Client IRR: 11.5%
+    - Coupon: 14%
+    - Start: 2025-12-30, End: 2027-06-30
+    - Monthly interest, 50% principal Mar 2027, 50% Jun 2027
+    
+    Expected result: 103,355.17
+    """
+    try:
+        investment_date = datetime.fromisoformat(request.investment_date.split('T')[0])
+        bond_start = datetime.fromisoformat(request.bond_start_date.split('T')[0])
+        bond_end = datetime.fromisoformat(request.bond_end_date.split('T')[0])
+        
+        face_value = request.face_value
+        coupon_rate = request.coupon_rate / 100
+        client_irr = request.client_irr / 100
+        
+        # Generate cashflows schedule
+        cashflows = []
+        
+        # Map of principal payment dates
+        principal_map = {}
+        for pp in request.principal_payments:
+            pp_date = pp.get('date', '')
+            pp_pct = pp.get('percentage', 0)
+            if pp_date and pp_pct:
+                principal_map[pp_date] = face_value * (pp_pct / 100)
+        
+        # Determine frequency in months
+        freq_months = {
+            "monthly": 1,
+            "quarterly": 3,
+            "semi-annual": 6,
+            "annual": 12,
+            "on_maturity": 0  # Special case
+        }
+        months = freq_months.get(request.interest_frequency.lower(), 1)
+        
+        # Generate payment dates
+        current_date = bond_start
+        prev_date = bond_start
+        balance = face_value
+        
+        if months > 0:
+            # Regular periodic payments
+            while current_date <= bond_end:
+                # Add months, keeping the same day of month
+                current_date = add_months_fixed_day(prev_date, months)
+                
+                if current_date > bond_end:
+                    current_date = bond_end
+                
+                # Calculate interest for this period
+                days_in_period = (current_date - prev_date).days
+                interest = balance * coupon_rate * days_in_period / 365
+                
+                # Check for principal payment on this date
+                date_str = current_date.strftime('%Y-%m-%d')
+                principal = principal_map.get(date_str, 0)
+                
+                cashflows.append({
+                    "date": date_str,
+                    "interest_per_unit": interest,
+                    "principal_per_unit": principal,
+                    "days_in_period": days_in_period,
+                    "balance": balance
+                })
+                
+                # Update balance after principal payment
+                if principal > 0:
+                    balance -= principal
+                
+                prev_date = current_date
+                
+                if current_date >= bond_end:
+                    break
+        
+        # Calculate XNPV price
+        result = calculate_xnpv_price(
+            face_value=face_value,
+            investment_date=investment_date,
+            client_irr=client_irr,
+            cashflows=cashflows,
+            cutoff_days=request.cutoff_days
+        )
+        
+        # Add additional context
+        result["coupon_rate"] = request.coupon_rate
+        result["bond_start_date"] = request.bond_start_date
+        result["bond_end_date"] = request.bond_end_date
+        result["interest_frequency"] = request.interest_frequency
+        result["principal_payments_input"] = request.principal_payments
+        result["generated_cashflows"] = cashflows
+        
+        # Calculate accrued interest based on Excel formula
+        # E15 = FV * (investment_date - last_ip_date) * coupon_rate / 365
+        if result.get("last_ip_date"):
+            last_ip = datetime.fromisoformat(result["last_ip_date"])
+            accrued_days = (investment_date - last_ip).days
+            accrued_interest = face_value * accrued_days * coupon_rate / 365
+            result["accrued_interest"] = round(accrued_interest, 2)
+            result["accrued_interest_pct"] = round(accrued_interest / face_value * 100, 4)
+        elif result.get("next_ip_date"):
+            # Investment before first payment - calculate from investment to next IP
+            next_ip = datetime.fromisoformat(result["next_ip_date"])
+            accrued_days = (investment_date - next_ip).days  # Negative
+            accrued_interest = face_value * accrued_days * coupon_rate / 365
+            result["accrued_interest"] = round(accrued_interest, 2)
+            result["accrued_interest_pct"] = round(accrued_interest / face_value * 100, 4)
+        
+        # Clean price = Dirty price - Accrued interest (in percentage terms)
+        result["clean_price_pct"] = round(result["dirty_price_pct"] - result.get("accrued_interest_pct", 0), 4)
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Calculation error: {str(e)}")
+
+
 class PartnerUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
