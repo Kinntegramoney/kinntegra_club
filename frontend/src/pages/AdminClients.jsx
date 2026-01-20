@@ -599,6 +599,17 @@ export default function AdminClients() {
             </div>
             
             <form onSubmit={handleEditSubmit} className="p-4 space-y-4">
+              {/* Identity Info Banner */}
+              {editFormData.passport_type && (
+                <div className={`p-3 rounded-lg ${editFormData.passport_type === 'indian' ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <span>{editFormData.passport_type === 'indian' ? '🇮🇳' : '🌍'}</span>
+                    <span className="font-medium">{editFormData.passport_type === 'indian' ? 'Indian Passport Holder' : 'Foreign Passport Holder'}</span>
+                    <span className="text-sm text-gray-500 ml-auto">Login ID: {editFormData.photo_id || editFormData.pan_number || editFormData.passport_number}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Personal Details */}
               <div className="space-y-3">
                 <h3 className="font-medium text-gray-700 border-b pb-2">Personal Details</h3>
@@ -612,8 +623,8 @@ export default function AdminClients() {
                     />
                   </div>
                   <div>
-                    <Label>PAN Number</Label>
-                    <Input value={editFormData.pan_number || ''} disabled className="bg-gray-100" />
+                    <Label>{editFormData.passport_type === 'foreign' ? 'Passport Number' : 'PAN Number'}</Label>
+                    <Input value={editFormData.pan_number || editFormData.passport_number || ''} disabled className="bg-gray-100" />
                   </div>
                   <div>
                     <Label>Email *</Label>
@@ -632,51 +643,25 @@ export default function AdminClients() {
                       required
                     />
                   </div>
-                  <div className="col-span-2">
-                    <Label>UCCs</Label>
-                    <div className="space-y-2">
-                      {(editFormData.uccs || [editFormData.ucc || '']).map((ucc, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <Input
-                            value={ucc}
-                            onChange={(e) => {
-                              const newUccs = [...(editFormData.uccs || [editFormData.ucc || ''])];
-                              newUccs[index] = e.target.value;
-                              setEditFormData({...editFormData, uccs: newUccs});
-                            }}
-                            placeholder={`UCC ${index + 1}`}
-                          />
-                          {index > 0 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const newUccs = [...(editFormData.uccs || [editFormData.ucc || ''])];
-                                newUccs.splice(index, 1);
-                                setEditFormData({...editFormData, uccs: newUccs});
-                              }}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const currentUccs = editFormData.uccs || [editFormData.ucc || ''];
-                          setEditFormData({...editFormData, uccs: [...currentUccs, '']});
-                        }}
-                        className="w-full"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add UCC
-                      </Button>
+                  <div>
+                    <Label>Country of Residency</Label>
+                    <Input
+                      value={editFormData.country_of_residency || ''}
+                      onChange={(e) => setEditFormData({...editFormData, country_of_residency: e.target.value})}
+                    />
+                  </div>
+                  {editFormData.country_of_residency?.toLowerCase().includes('arab') && (
+                    <div>
+                      <Label>Emirates ID</Label>
+                      <Input
+                        value={editFormData.emirates_id || ''}
+                        onChange={(e) => setEditFormData({...editFormData, emirates_id: e.target.value})}
+                      />
                     </div>
+                  )}
+                  <div>
+                    <Label>Opportunities</Label>
+                    <Input value={(editFormData.opportunities || []).join(', ')} disabled className="bg-gray-100" />
                   </div>
                   <div>
                     <Label>Occupation</Label>
@@ -687,6 +672,107 @@ export default function AdminClients() {
                   </div>
                 </div>
               </div>
+
+              {/* UCC Section - Only for Indian passport holders with bonds */}
+              {(editFormData.passport_type === 'indian' || !editFormData.passport_type) && (editFormData.opportunities?.includes('bonds') || !editFormData.opportunities) && (
+                <div className="space-y-3">
+                  <h3 className="font-medium text-gray-700 border-b pb-2">Investment Details (Bonds)</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <Label>UCCs</Label>
+                      <div className="space-y-2">
+                        {(editFormData.uccs || editFormData.ucc_list || ['']).map((ucc, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Input
+                              value={ucc}
+                              onChange={(e) => {
+                                const newUccs = [...(editFormData.uccs || editFormData.ucc_list || [''])];
+                                newUccs[index] = e.target.value;
+                                setEditFormData({...editFormData, uccs: newUccs, ucc_list: newUccs});
+                              }}
+                              placeholder={`UCC ${index + 1}`}
+                            />
+                            {index > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const newUccs = [...(editFormData.uccs || editFormData.ucc_list || [''])];
+                                  newUccs.splice(index, 1);
+                                  setEditFormData({...editFormData, uccs: newUccs, ucc_list: newUccs});
+                                }}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const currentUccs = editFormData.uccs || editFormData.ucc_list || [''];
+                            setEditFormData({...editFormData, uccs: [...currentUccs, ''], ucc_list: [...currentUccs, '']});
+                          }}
+                          className="w-full"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add UCC
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Demat Account No</Label>
+                      <Input
+                        value={editFormData.demat_account_no || ''}
+                        onChange={(e) => setEditFormData({...editFormData, demat_account_no: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Passport Details - For Real Estate investors */}
+              {editFormData.opportunities?.includes('real_estate') && (
+                <div className="space-y-3">
+                  <h3 className="font-medium text-gray-700 border-b pb-2">Passport Validity (Real Estate)</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>Passport Number</Label>
+                      <Input
+                        value={editFormData.passport_number || ''}
+                        onChange={(e) => setEditFormData({...editFormData, passport_number: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label>Valid From</Label>
+                      <Input
+                        type="date"
+                        value={editFormData.passport_valid_from?.split('T')[0] || ''}
+                        onChange={(e) => setEditFormData({...editFormData, passport_valid_from: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label>Valid Until</Label>
+                      <Input
+                        type="date"
+                        value={editFormData.passport_valid_until?.split('T')[0] || ''}
+                        onChange={(e) => setEditFormData({...editFormData, passport_valid_until: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label>Country of Issue</Label>
+                      <Input
+                        value={editFormData.passport_country_of_issue || ''}
+                        onChange={(e) => setEditFormData({...editFormData, passport_country_of_issue: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* Address Details */}
               <div className="space-y-3">
