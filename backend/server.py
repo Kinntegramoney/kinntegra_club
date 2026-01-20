@@ -3129,28 +3129,56 @@ class ClientCreate(BaseModel):
 
 
 class ClientUpdate(BaseModel):
+    # Basic Details
     name: Optional[str] = None
-    ucc_list: Optional[List[str]] = None  # List of Unique Client Codes (1-5, must be unique across system)
+    email: Optional[str] = None
+    mobile: Optional[str] = None
+    
+    # Identity & Residency
+    country_of_residency: Optional[str] = None
+    passport_type: Optional[str] = None  # "indian" or "foreign"
+    pan_number: Optional[str] = None
+    passport_number: Optional[str] = None
+    emirates_id: Optional[str] = None
+    
+    # Passport Details
+    passport_valid_from: Optional[str] = None
+    passport_valid_until: Optional[str] = None
+    passport_country_of_issue: Optional[str] = None
+    
+    # Opportunities
+    opportunities: Optional[List[str]] = None
+    
+    # For Bonds
+    ucc_list: Optional[List[str]] = None
+    demat_account_no: Optional[str] = None
+    
+    # Bank Details
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    branch: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    
+    # Additional Personal Details
     occupation: Optional[str] = None
     date_of_birth: Optional[str] = None
     father_husband_name: Optional[str] = None
-    demat_account_no: Optional[str] = None
-    email: Optional[str] = None
-    mobile: Optional[str] = None
+    
+    # Address Details
     address_line1: Optional[str] = None
     address_line2: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
     country: Optional[str] = None
     pincode: Optional[str] = None
-    bank_name: Optional[str] = None
-    account_number: Optional[str] = None
-    branch: Optional[str] = None
-    ifsc_code: Optional[str] = None
+    
+    # Nominee Details
     nominee_name: Optional[str] = None
     nominee_dob: Optional[str] = None
     nominee_mobile: Optional[str] = None
     nominee_relationship: Optional[str] = None
+    
+    # Sub-broker link
     linked_subbroker_id: Optional[str] = None
 
 
