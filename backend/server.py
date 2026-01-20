@@ -3348,7 +3348,7 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
             send_welcome_email_client,
             client_name=client_data.name,
             client_email=client_data.email,
-            pan=client_data.pan_number.upper(),
+            pan=photo_id,  # Use photo_id as login ID
             password=default_password,
             pin=default_pin,
             broker_name=current_user.get('name', 'Your Broker')
