@@ -182,7 +182,7 @@ function App() {
             path="/bonds/create" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
-                <CreateBond />
+                <CreateBondNew />
               </ProtectedRoute>
             } 
           />
