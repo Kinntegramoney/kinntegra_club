@@ -4028,7 +4028,21 @@ async def calculate_xnpv_price_endpoint(
         balance = face_value
         month_counter = 0
         
-        if months > 0:
+        if months == 0:
+            # On maturity - single payment at end
+            days_in_period = (bond_end - bond_start).days
+            interest = balance * coupon_rate * days_in_period / 365
+            date_str = bond_end.strftime('%Y-%m-%d')
+            principal = principal_map.get(date_str, balance)  # Default to full balance if not specified
+            
+            cashflows.append({
+                "date": date_str,
+                "interest_per_unit": interest,
+                "principal_per_unit": principal,
+                "days_in_period": days_in_period,
+                "balance": balance
+            })
+        else:
             # Regular periodic payments
             while True:
                 month_counter += months
