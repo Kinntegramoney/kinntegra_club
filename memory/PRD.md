@@ -37,12 +37,25 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 - Bulk repayment update via Excel
 - Email notifications to clients on prepayment
 
-### Client Management ✅
-- Create/Edit/Delete clients
-- **Multiple UCCs per client** (up to 5, minimum 1 required)
-- UCCs must be unique across all clients (one UCC cannot belong to multiple clients)
-- Three-dots menu with: Resend Credentials, Reset Password, Deactivate, Delete
-- Bulk client upload with UCC1-UCC5 columns
+### Client Management ✅ (Major Update 2026-01-20)
+- **5-Step Wizard** for client creation:
+  - Step 1: Basic Info (Name, Email, Mobile, Country of Residency, Passport Type)
+  - Step 2: ID Details (PAN for Indian, Passport for Foreign, Emirates ID for UAE)
+  - Step 3: Opportunities Selection (Bonds/Real Estate for Indian, Real Estate/GIFT City for Foreign)
+  - Step 4: Conditional fields (Bank details for Bonds, Passport validity for Real Estate)
+  - Step 5: Review & Additional Info (Address, Nominee, Sub-broker link)
+- **Passport Types**:
+  - 🇮🇳 Indian Passport: PAN required (Login ID), access to Bonds & Real Estate
+  - 🌍 Foreign Passport: Passport Number required (Login ID), access to Real Estate & GIFT City
+- **Login ID** = Photo ID (PAN for Indian, Passport No for Foreign)
+- **Conditional Fields**:
+  - Bonds selected: Bank Name, Account Number, IFSC, Demat No, UCCs (required)
+  - Real Estate selected: Passport validity (Valid From, Valid Until, Country of Issue)
+- **UAE Residents**: Emirates ID required
+- **Dashboard Notifications**:
+  - Expiring documents (3 months advance warning)
+  - Invalid PAN format alerts
+- **Bulk Upload**: Separate templates for Indian and Foreign passport holders
 - Link clients to sub-brokers
 
 ### Analysis (CAS PDF Processing)
