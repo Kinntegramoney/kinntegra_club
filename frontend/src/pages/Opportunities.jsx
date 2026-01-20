@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
-import CreateBondModal from "@/components/CreateBondModal";
 import CreateRealEstateModal from "@/components/CreateRealEstateModal";
 import EditBondModal from "@/components/EditBondModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,7 +18,6 @@ export default function Opportunities() {
   const [bonds, setBonds] = useState([]);
   const [realEstateOpps, setRealEstateOpps] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showBondModal, setShowBondModal] = useState(false);
   const [showRealEstateModal, setShowRealEstateModal] = useState(false);
   const [editingBond, setEditingBond] = useState(null);
   const [editingRealEstate, setEditingRealEstate] = useState(null);
