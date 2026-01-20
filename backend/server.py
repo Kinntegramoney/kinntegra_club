@@ -3447,6 +3447,57 @@ async def get_invalid_pan_clients(current_user: dict = Depends(get_current_user)
     return {"invalid_pan_clients": invalid_pan_clients, "count": len(invalid_pan_clients)}
 
 
+@api_router.post("/clients/migrate-to-new-schema")
+async def migrate_clients_to_new_schema(current_user: dict = Depends(get_current_user)):
+    """Migrate existing clients to the new schema (Indian passport holders by default)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can run migrations")
+    
+    # Get all clients created by this broker that don't have the new fields
+    clients = await db.clients.find({
+        "created_by": current_user['id'],
+        "passport_type": {"$exists": False}
+    }).to_list(10000)
+    
+    migrated_count = 0
+    invalid_pan_count = 0
+    
+    for client in clients:
+        pan = client.get('pan_number', '')
+        
+        # Set new fields for existing clients (assume Indian passport holders)
+        update_fields = {
+            "passport_type": "indian",
+            "country_of_residency": client.get('country', 'India') or 'India',
+            "photo_id": pan.upper() if pan else None,
+            "opportunities": ["bonds", "real_estate"],  # Default to both for existing
+        }
+        
+        # Check if PAN is valid
+        if not is_valid_pan_format(pan):
+            invalid_pan_count += 1
+        
+        await db.clients.update_one(
+            {"id": client['id']},
+            {"$set": update_fields}
+        )
+        
+        # Also update the user record
+        if client.get('user_id'):
+            await db.users.update_one(
+                {"id": client['user_id']},
+                {"$set": {"passport_type": "indian"}}
+            )
+        
+        migrated_count += 1
+    
+    return {
+        "message": f"Migration complete",
+        "migrated_clients": migrated_count,
+        "invalid_pan_clients": invalid_pan_count
+    }
+
+
 @api_router.get("/clients/{client_id}")
 async def get_client(client_id: str, current_user: dict = Depends(get_current_user)):
     """Get a specific client"""
