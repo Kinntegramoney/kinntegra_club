@@ -678,7 +678,7 @@ export default function Dashboard() {
           {/* Quick Actions */}
           <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               <button
                 onClick={() => navigate("/broker/admin/bonds")}
                 className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-amber-400 transition-all group"
@@ -711,10 +711,103 @@ export default function Dashboard() {
                 <Briefcase className="h-8 w-8 text-violet-500 group-hover:scale-110 transition-transform" />
                 <span className="mt-2 text-sm font-medium text-gray-700">Sub-Brokers</span>
               </button>
+              <button
+                onClick={() => setShowResetModal(true)}
+                className="flex flex-col items-center justify-center p-4 bg-red-50 hover:bg-red-100 rounded-xl border border-red-200 hover:border-red-400 transition-all group"
+                data-testid="quick-action-reset"
+              >
+                <Trash2 className="h-8 w-8 text-red-500 group-hover:scale-110 transition-transform" />
+                <span className="mt-2 text-sm font-medium text-red-700">Reset Data</span>
+              </button>
             </div>
           </div>
         </div>
       </div>
+      
+      {/* Reset Database Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 rounded-full">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Reset Database</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowResetModal(false);
+                  setResetConfirmText("");
+                }}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-red-800 font-medium mb-2">
+                ⚠️ This action will permanently delete:
+              </p>
+              <ul className="text-sm text-red-700 space-y-1 ml-4">
+                <li>• All clients</li>
+                <li>• All sub-brokers</li>
+                <li>• All bonds & opportunities</li>
+                <li>• All real estate investments</li>
+                <li>• All trades & analyses</li>
+              </ul>
+              <p className="text-sm text-red-800 font-medium mt-3">
+                ✓ Broker accounts will be preserved
+              </p>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Type <span className="font-bold text-red-600">RESET</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder="Type RESET"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                data-testid="reset-confirm-input"
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowResetModal(false);
+                  setResetConfirmText("");
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetDatabase}
+                disabled={resetConfirmText !== "RESET" || resetting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                data-testid="reset-confirm-button"
+              >
+                {resetting ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Resetting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Reset Database
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
