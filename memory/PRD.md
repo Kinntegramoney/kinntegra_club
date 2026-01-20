@@ -70,7 +70,18 @@ Build a B2B platform for brokers to manage client investments in NCDs (Non-Conve
 
 ## What's Been Implemented
 
-### 2026-01-19 (Current Session - Bond Price Verification Workflow)
+### 2026-01-20 (Current Session - Client UI Refactor)
+- **Feature**: Client-Side Navigation Consolidation
+  - **Removed "Real Estate" from client sidebar**: Clients no longer have a separate Real Estate navigation item
+  - **Consolidated Opportunities**: Both bonds and real estate opportunities now display in a single mixed list on `/client/opportunities`
+  - **Holdings tabs preserved**: Within Holdings page, users can still toggle between Bonds and Real Estate tabs
+  - **Sidebar now shows**: Opportunities, Holdings, Trade Verification, Analysis, Profile
+- **Files Modified**:
+  - `ClientSidebar.jsx`: Removed Real Estate menu item from menuItems array
+  - `ClientHoldings.jsx`: Added missing Percent and ChevronRight icon imports
+- **Testing**: 100% frontend testing passed - verified sidebar changes, mixed opportunities list, and Holdings tabs functionality
+
+### 2026-01-19 (Previous Session - Bond Price Verification Workflow)
 - **Feature**: Bond Listing Status & Price Verification
   - **New `listing_status` field**: Bonds now have `pending` or `active` status
   - **Bulk uploaded bonds start as `pending`**: Must be verified before visible to sub-brokers/clients
