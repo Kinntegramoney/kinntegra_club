@@ -8769,6 +8769,17 @@ async def parse_cashflow_excel(
             "isin": None
         }
         
+        def safe_float(val):
+            """Safely convert value to float, return None if not possible"""
+            if val is None:
+                return None
+            if isinstance(val, (int, float)):
+                return float(val)
+            try:
+                return float(str(val).replace(',', ''))
+            except:
+                return None
+        
         # Scan first 20 rows for parameters
         for row in range(1, 21):
             cell_a = ws.cell(row=row, column=1).value
@@ -8780,13 +8791,13 @@ async def parse_cashflow_excel(
             cell_a_lower = str(cell_a).lower().strip()
             
             if 'face value' in cell_a_lower:
-                bond_params['face_value'] = float(cell_b) if cell_b else None
+                bond_params['face_value'] = safe_float(cell_b)
             elif 'coupon' in cell_a_lower and '%' in cell_a_lower:
-                bond_params['coupon_rate'] = float(cell_b) if cell_b else None
+                bond_params['coupon_rate'] = safe_float(cell_b)
             elif 'primary irr' in cell_a_lower:
-                bond_params['primary_irr'] = float(cell_b) if cell_b else None
+                bond_params['primary_irr'] = safe_float(cell_b)
             elif 'client irr' in cell_a_lower:
-                bond_params['client_irr'] = float(cell_b) if cell_b else None
+                bond_params['client_irr'] = safe_float(cell_b)
             elif 'start date' in cell_a_lower or 'bond start' in cell_a_lower:
                 if cell_b:
                     if isinstance(cell_b, datetime):
