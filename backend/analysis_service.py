@@ -1486,19 +1486,78 @@ class GapSheetGenerator:
                 else:
                     return 'Other'
             
+            # Get asset class using scheme mapper or keyword matching
+            asset_class = 'Other'
+            if self.scheme_mapper:
+                asset_class = self.scheme_mapper.get_asset_category(
+                    isin=folio_data.get('isin', ''), 
+                    scheme_name=scheme_name
+                )
+            else:
+                asset_class = classify_scheme(scheme_name)
+            
+            # Map to CAMS asset class names
+            asset_class_map = {
+                'Equity': 'EQUITY', 'Large Cap': 'EQUITY', 'Mid Cap': 'EQUITY',
+                'Small Cap': 'EQUITY', 'Flexi Cap': 'EQUITY', 'Multi Cap': 'EQUITY',
+                'ELSS': 'EQUITY', 'Index Fund': 'EQUITY', 'Sectoral/Thematic': 'EQUITY',
+                'Debt': 'DEBT', 'Liquid': 'DEBT', 'Hybrid': 'HYBRID', 
+                'Arbitrage': 'HYBRID', 'Other': 'EQUITY'
+            }
+            asset_class = asset_class_map.get(asset_class, 'EQUITY')
+            
+            # Get inception date (first transaction date)
+            inception_date = ''
+            first_trans = None
+            for t in valid_trans:
+                if not t.get('is_redemption'):
+                    try:
+                        t_date = datetime.strptime(t['date'], '%d-%b-%Y')
+                        if first_trans is None or t_date < first_trans:
+                            first_trans = t_date
+                            inception_date = t['date']
+                    except:
+                        pass
+            
+            # Calculate cost price (average)
+            cost_price = cost_value / closing_balance if closing_balance > 0 else 0
+            
+            # Calculate realized and unrealized gains
+            realized_gl = withdrawn - sum(t['amount'] for t in valid_trans 
+                                          if t.get('is_redemption', False)) if withdrawn > 0 else 0
+            unrealized_gl = gains if closing_balance > 0 else 0
+            
+            # Get advisor name from ARN
+            advisor_name = self._get_advisor_name(advisor_arn)
+            
+            # Get investor name (Group Name)
+            investor_name = self.parsed_data.get('investor_info', {}).get('name', '')
+            
             entry = {
+                'group_name': investor_name,
+                'pan': folio_data.get('pan', ''),
+                'asset_class': asset_class,
+                'advisor': advisor_name,
                 'folio': folio_data.get('folio', folio_id),
                 'scheme': scheme_name,
+                'instrument_type': 'MutualFund',
+                'from_date': inception_date,
+                'to_date': self.report_date.strftime('%d-%b-%Y') if self.report_date else '',
                 'invested': invested,
                 'withdrawn': withdrawn,
-                'dividend': 0,  # Dividend tracking not in CAS
+                'dividend': 0,
                 'valuation': market_value,
                 'gains': gains,
                 'return_pct': return_pct,
                 'cagr': cagr,
+                'three_yr_pct': cagr,  # Use CAGR as 3 yr % approximation
+                'inception_date': inception_date,
+                'cost_value': cost_value,
+                'cost_price': cost_price,
                 'closing_units': closing_balance,
-                'pan': folio_data.get('pan', ''),
-                'advisor_arn': advisor_arn
+                'realized_gl': realized_gl,
+                'unrealized_gl': unrealized_gl,
+                'remarks': ''
             }
             
             # Only include folios with actual data (skip empty folios with only NFT transactions)
@@ -1508,49 +1567,94 @@ class GapSheetGenerator:
         # Sort by Valuation (highest first)
         all_entries.sort(key=lambda x: x['valuation'], reverse=True)
         
-        # Write data rows - column order matching template
+        # Write data rows - column order matching CAMS Gap Sheet format (24 columns)
         row = 2
         for entry in all_entries:
-            ws.cell(row=row, column=1, value=entry['folio'])
-            ws.cell(row=row, column=2, value=entry['scheme'])
+            # Column 1: Group Name
+            ws.cell(row=row, column=1, value=entry['group_name'])
             
-            # Valuation (Column 3)
-            cell = ws.cell(row=row, column=3, value=round(entry['valuation'], 2))
-            cell.number_format = '₹#,##0.00'
+            # Column 2: PAN
+            ws.cell(row=row, column=2, value=entry['pan'])
             
-            # Cash Withdrawal (Column 4)
-            cell = ws.cell(row=row, column=4, value=round(entry['withdrawn'], 2))
-            cell.number_format = '₹#,##0.00'
+            # Column 3: Asset Class
+            ws.cell(row=row, column=3, value=entry['asset_class'])
             
-            # Dividend Paid (Column 5)
-            cell = ws.cell(row=row, column=5, value=round(entry['dividend'], 2))
-            cell.number_format = '₹#,##0.00'
+            # Column 4: Advisor
+            ws.cell(row=row, column=4, value=entry['advisor'])
             
-            # Amount Invested (Column 6)
-            cell = ws.cell(row=row, column=6, value=round(entry['invested'], 2))
-            cell.number_format = '₹#,##0.00'
+            # Column 5: Folio No.
+            ws.cell(row=row, column=5, value=entry['folio'])
             
-            # Absolute Gains (Column 7)
-            cell = ws.cell(row=row, column=7, value=round(entry['gains'], 2))
-            cell.number_format = '₹#,##0.00'
+            # Column 6: Instrument Name
+            ws.cell(row=row, column=6, value=entry['scheme'])
             
-            # Absolute Return % (Column 8)
-            cell = ws.cell(row=row, column=8, value=round(entry['return_pct'], 2))
-            cell.number_format = '0.00"%"'
+            # Column 7: Instrument Type
+            ws.cell(row=row, column=7, value=entry['instrument_type'])
             
-            # CAGR % (Column 9)
-            cell = ws.cell(row=row, column=9, value=round(entry['cagr'], 4))
-            cell.number_format = '0.0000"%"'
+            # Column 8: From Date
+            ws.cell(row=row, column=8, value=entry['from_date'])
             
-            # Closing Units (Column 10)
-            cell = ws.cell(row=row, column=10, value=round(entry['closing_units'], 3))
+            # Column 9: To Date
+            ws.cell(row=row, column=9, value=entry['to_date'])
+            
+            # Column 10: Amount Invested
+            cell = ws.cell(row=row, column=10, value=round(entry['invested'], 2))
+            cell.number_format = '#,##0.00'
+            
+            # Column 11: Cash Withdrawal
+            cell = ws.cell(row=row, column=11, value=round(entry['withdrawn'], 2))
+            cell.number_format = '#,##0.00'
+            
+            # Column 12: Dividend Paid
+            cell = ws.cell(row=row, column=12, value=round(entry['dividend'], 2))
+            cell.number_format = '#,##0.00'
+            
+            # Column 13: Valuation (Current Market Value)
+            cell = ws.cell(row=row, column=13, value=round(entry['valuation'], 2))
+            cell.number_format = '#,##0.00'
+            
+            # Column 14: Absolute Gains
+            cell = ws.cell(row=row, column=14, value=round(entry['gains'], 2))
+            cell.number_format = '#,##0.00'
+            
+            # Column 15: Absolute Return %
+            cell = ws.cell(row=row, column=15, value=round(entry['return_pct'], 4))
+            cell.number_format = '0.0000'
+            
+            # Column 16: CAGR %
+            cell = ws.cell(row=row, column=16, value=round(entry['cagr'], 4))
+            cell.number_format = '0.0000'
+            
+            # Column 17: 3 Yr %
+            cell = ws.cell(row=row, column=17, value=round(entry['three_yr_pct'], 4))
+            cell.number_format = '0.0000'
+            
+            # Column 18: Inception Date
+            ws.cell(row=row, column=18, value=entry['inception_date'])
+            
+            # Column 19: Cost Value
+            cell = ws.cell(row=row, column=19, value=round(entry['cost_value'], 4))
+            cell.number_format = '#,##0.0000'
+            
+            # Column 20: Cost price
+            cell = ws.cell(row=row, column=20, value=round(entry['cost_price'], 6))
+            cell.number_format = '#,##0.000000'
+            
+            # Column 21: Closing Units
+            cell = ws.cell(row=row, column=21, value=round(entry['closing_units'], 3))
             cell.number_format = '#,##0.000'
             
-            # PAN (Column 11)
-            ws.cell(row=row, column=11, value=entry['pan'])
+            # Column 22: Realized GL
+            cell = ws.cell(row=row, column=22, value=round(entry['realized_gl'], 2))
+            cell.number_format = '#,##0.00'
             
-            # Adviser ARN (Column 12)
-            ws.cell(row=row, column=12, value=entry['advisor_arn'])
+            # Column 23: Unrealized GL
+            cell = ws.cell(row=row, column=23, value=round(entry['unrealized_gl'], 2))
+            cell.number_format = '#,##0.00'
+            
+            # Column 24: Remarks
+            ws.cell(row=row, column=24, value=entry['remarks'])
+            
             row += 1
         
         self._auto_width(ws)
