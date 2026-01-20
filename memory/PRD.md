@@ -1,372 +1,75 @@
-# B2B Investment Broker Platform - PRD
+# Kinntegraa Bond & Real Estate Management Platform
 
 ## Original Problem Statement
-Build a B2B platform for brokers to manage client investments in NCDs (Non-Convertible Debentures) and Real Estate. Core features include:
-- CAS PDF analysis with complex financial calculations (FIFO, per-transaction XIRR, TDS)
-- Holdings management with prepayment tracking
-- Bulk data upload capabilities
-- Client and sub-broker management
-
-## User Personas
-- **Broker Admin**: Manages clients, sub-brokers, and investment opportunities
-- **Sub-Broker**: Limited access to manage assigned clients and view/share all opportunities
-- **Client**: End investors (managed by brokers), can view and invest in opportunities
+Build a comprehensive bond and real estate investment management platform for brokers and clients. The system handles bond pricing calculations, client portfolio management, trade verification, and real estate investment tracking.
 
 ## Core Requirements
+1. **Bond Management**: Create, edit, and manage bonds with accurate pricing calculations based on cashflow schedules
+2. **Client Management**: Track client information, PAN validation, document expiry
+3. **Real Estate Investment**: Track real estate investment opportunities
+4. **Trade Verification**: Process and verify client trades
+5. **Multi-role Access**: Support broker, sub-broker, and client roles with appropriate permissions
 
-### Authentication
-- Two-step login (PAN + Password, then PIN)
-- Role-based access (broker, sub_broker, client)
+## User Personas
+- **Broker**: Full admin access - manages bonds, clients, real estate, trades
+- **Sub-Broker**: Limited access to opportunities and assigned clients
+- **Client**: View opportunities, holdings, and make investments
 
-### Dashboard
-- Analytics overview (clients, AUM, opportunities)
-- Charts for client distribution and trends
-
-### Opportunities Visibility ✅ (Fixed 2026-01-19)
-- **Sub-brokers can view ALL opportunities** (both Bonds and Real Estate)
-- **Clients can view ALL opportunities** (both Bonds and Real Estate)
-- Opportunities categorized with visual indicators:
-  - BOND / NCD (amber icon)
-  - REAL ESTATE (blue icon)
-- Available/Funded/Sold status tracking
-
-### Holdings Management ✅
-- View client bond holdings with XIRR
-- Record principal prepayments with percentage calculation
-- Automatic interest recalculation on prepayment
-- Bulk repayment update via Excel
-- Email notifications to clients on prepayment
-
-### Client Management ✅ (Major Update 2026-01-20)
-- **5-Step Wizard** for client creation:
-  - Step 1: Basic Info (Name, Email, Mobile, Country of Residency, Passport Type)
-  - Step 2: ID Details (PAN for Indian, Passport for Foreign, Emirates ID for UAE)
-  - Step 3: Opportunities Selection (Bonds/Real Estate for Indian, Real Estate/GIFT City for Foreign)
-  - Step 4: Conditional fields (Bank details for Bonds, Passport validity for Real Estate)
-  - Step 5: Review & Additional Info (Address, Nominee, Sub-broker link)
-- **Passport Types**:
-  - 🇮🇳 Indian Passport: PAN required (Login ID), access to Bonds & Real Estate
-  - 🌍 Foreign Passport: Passport Number required (Login ID), access to Real Estate & GIFT City
-- **Login ID** = Photo ID (PAN for Indian, Passport No for Foreign)
-- **Conditional Fields**:
-  - Bonds selected: Bank Name, Account Number, IFSC, Demat No, UCCs (required)
-  - Real Estate selected: Passport validity (Valid From, Valid Until, Country of Issue)
-- **UAE Residents**: Emirates ID required
-- **Dashboard Notifications**:
-  - Expiring documents (3 months advance warning)
-  - Invalid PAN format alerts
-- **Bulk Upload**: Separate templates for Indian and Foreign passport holders
-- Link clients to sub-brokers
-
-### Analysis (CAS PDF Processing)
-- Upload password-protected CAS PDFs
-- Parse and extract investment data
-- Generate multi-sheet Excel reports
-- Client selection mandatory for tracking
-
-### Reinvestment Tagging ✅
-- Tag upcoming cashflows for reinvestment
-- Support for: Principal, Interest, Net Amount, Custom, Not Invest
-- **Target UCC selection** for reinvestment (dropdown shows client's UCCs)
-- Send for client approval via email
-- Shows prepayment-affected entries with "Revised" badge
-- Displays original vs amended amounts with strikethrough
-- Untag functionality to move items back to untagged
-
-### Bulk Upload Features ✅
-- Bonds: Multi-sheet Excel (Bond Details, Financial Details, Units & Limits, Principal Payments)
-- Clients: Multi-sheet Excel with proper PAN field handling
-- Sub-brokers: Single sheet upload
-- Real Estate: Multi-sheet upload
-
----
+## Key Technical Decisions
+- **Bond Pricing Engine**: Complete rewrite based on user's Excel specification (`2026_01_20_Final Bond Calculation.xlsx`)
+- **Cashflow Source**: `cashflows_per_unit` array from Excel upload is the single source of truth for bond payments
+- **Two-Step Bond Creation**: Step 1 for basic details, Step 2 for Excel cashflow upload
 
 ## What's Been Implemented
 
-### 2026-01-20 (Current Session - Client Module Overhaul)
-- **Feature**: Major Client Module Redesign
-  - **5-Step Wizard** for client creation with conditional fields
-  - **Passport Type Support**: Indian Passport (PAN) and Foreign Passport
-  - **Opportunities by Passport Type**: Bonds/Real Estate for Indian, Real Estate/GIFT City for Foreign
-  - **Login ID**: Auto-set to Photo ID (PAN for Indian, Passport for Foreign)
-  - **Emirates ID**: Required for UAE residents
-  - **Bank Details**: Required for Bonds opportunity
-  - **Passport Validity**: Required for Real Estate opportunity
-- **Feature**: Dashboard Notifications
-  - `/api/clients/dashboard/expiring-documents` - 3 months advance warning
-  - `/api/clients/dashboard/invalid-pan` - Clients with invalid PAN format
-- **Feature**: Separate Bulk Upload Templates
-  - `/api/bulk/template/clients-indian` - Indian passport holders
-  - `/api/bulk/template/clients-foreign` - Foreign passport holders
-  - `/api/bulk/clients-indian` and `/api/bulk/clients-foreign` upload endpoints
-- **Migration**: Existing 56 clients migrated to new schema (Indian passport type by default)
-- **Files Modified**:
-  - `server.py`: Updated ClientCreate/ClientUpdate models, new endpoints
-  - `CreateClientModal.jsx`: Complete rewrite as 5-step wizard
-  - `AdminClients.jsx`: Updated Edit modal with new fields
-  - `BulkUpload.jsx`: Added Indian/Foreign template options
-- **Testing**: 100% pass rate (16/16 backend tests, all frontend tests passed)
-
-### 2026-01-20 (Earlier - Client UI Refactor)
-- **Feature**: Client-Side Navigation Consolidation
-  - **Removed "Real Estate" from client sidebar**: Clients no longer have a separate Real Estate navigation item
-  - **Consolidated Opportunities**: Both bonds and real estate opportunities now display in a single mixed list on `/client/opportunities`
-  - **Holdings tabs preserved**: Within Holdings page, users can still toggle between Bonds and Real Estate tabs
-  - **Sidebar now shows**: Opportunities, Holdings, Trade Verification, Analysis, Profile
-- **Files Modified**:
-  - `ClientSidebar.jsx`: Removed Real Estate menu item from menuItems array
-  - `ClientHoldings.jsx`: Added missing Percent and ChevronRight icon imports
-- **Testing**: 100% frontend testing passed - verified sidebar changes, mixed opportunities list, and Holdings tabs functionality
-
-### 2026-01-19 (Previous Session - Bond Price Verification Workflow)
-- **Feature**: Bond Listing Status & Price Verification
-  - **New `listing_status` field**: Bonds now have `pending` or `active` status
-  - **Bulk uploaded bonds start as `pending`**: Must be verified before visible to sub-brokers/clients
-  - **Price Verification Endpoint**: `POST /api/bonds/{bond_id}/verify-pricing`
-    - Upload Excel with Date and Expected Price columns
-    - System calculates prices for each date and compares
-    - **ALL prices must match exactly** (no tolerance) for bond to be activated
-    - Returns detailed comparison results (row-by-row match/mismatch)
-  - **Manual Activation**: `POST /api/bonds/{bond_id}/activate` (bypass verification)
-  - **Deactivation**: `POST /api/bonds/{bond_id}/deactivate` (reverts to pending)
-  - **Frontend Updates**:
-    - New "Listing" column in bonds table showing Active/Pending status
-    - Pending bonds have yellow background
-    - Verify Pricing button (spreadsheet icon) opens verification modal
-    - Modal shows instructions, file upload, verification results with details
-    - "Activate Without Verification" button for manual bypass
-    - Deactivate button (clock icon) for active bonds
-  - **Sub-broker/Client Filtering**: `/api/bonds/available` only returns `active` bonds for sub-brokers/clients
-- **Testing**: Backend endpoints tested via curl, frontend UI verified via screenshots
-
-### 2026-01-19 (Previous - Secondary Market Bond Calculator)
-- **Feature**: Unified Secondary Market Calculator on BondDetails page
-  - **Backend**: New endpoint `/api/bonds/{bond_id}/calculate-enhanced`
-  - **Frontend**: Merged two calculators into one unified interface
-  - **Clean Price Only**: Shows only Clean Price (PV of future cashflows at Secondary IRR)
-  - **Record Date Convention**: Implements configurable cutoff days before payment date
-    - If settlement > record date, buyer misses that interest payment
-  - **Dual Input Mode**: 
-    - Enter Units (optional) → get exact price
-    - Enter Amount (₹) → get unit bounds (Lower/Upper)
-  - **Premium/Discount**: Shows percentage difference from face value
-  - **Future Cashflows**: Remaining interest payments, principal, total cashflows
-  - **Proposed IRR (Client)**: Displays bond's secondary_irr prominently
-- **Stamp Duty Calculation** ✅:
-  - Formula: `ROUND(consideration × 0.0001%, 0)` - matches Excel formula
-  - Backend returns `stamp_duty` and `total_consideration` fields
-  - Calculator display shows Stamp Duty breakdown when units > 1
-  - Order Summary shows Clean Price + Stamp Duty = Total Consideration
-  - Example: 10 units @ ₹1,03,070.08 = ₹10,30,700.80 + ₹1.00 stamp = ₹10,30,701.80
-- **Excel Calculator Upload Feature**:
-  - Upload pricing calculator Excel when creating/editing bond
-  - System auto-extracts cut-off days and secondary_irr from Excel
-  - Download Excel button on bond details page for verification
-  - `/api/bonds/upload-calculator` endpoint
-- **Test Results (All Home Bharat Platform - CDHBP002)**:
-  - Secondary IRR: 11.5%, Coupon Rate: 14%, Face Value: ₹100,000
-  - Jan 8, 2026 (before record date): ₹1,03,915.86 (16 interest payments)
-  - Jan 19, 2026 (after record date): ₹1,03,070.05 (15 interest payments) ✓ Matches Excel
-- **Testing**: Backend tests passed, calculator verified against Excel, stamp duty verified
-
-### 2026-01-17 (Current Session - Bulk Upload Upsert)
-- **Feature**: Bulk upload now supports UPDATE existing clients
-  - Re-uploading a file with existing PAN will update missing fields instead of rejecting
-  - Only empty/missing fields are updated (existing data is preserved)
-  - Response now includes: success, failed, updated, created counts
-  - UCC check now only rejects if UCC belongs to a DIFFERENT client
-- **Testing**: Manual testing verified create -> update workflow works correctly
-
-### 2026-01-17 (Current Session - Bulk Upload & Sub-Broker Permissions)
-- **Feature**: Bulk upload now reads ALL 5 sheets from Excel template
-  - Personal Details (with UCC1-UCC5)
-  - Address Details
-  - Bank Details  
-  - Nominee Details
-  - Sub-Broker Assignment
-  - Data merged by PAN across all sheets
-- **Feature**: Sub-brokers can now create and update clients
-  - POST /api/clients allows sub_broker role
-  - PUT /api/clients/{id} allows sub_broker for linked clients
-  - Clients created by sub-broker auto-link to them
-- **Testing**: 12/12 backend tests passed (1 skipped - no sub-broker account)
-
-### 2026-01-17 (Current Session - Multiple UCCs Feature)
-- **Feature**: Multiple UCCs per client (up to 5)
-  - Backend: Changed `ucc: str` to `ucc_list: List[str]` in ClientCreate/ClientUpdate models
-  - Added UCC uniqueness validation (UCCs cannot be shared across clients)
-  - At least 1 UCC required, maximum 5 allowed
-  - Frontend: Dynamic UCC input fields with Add/Remove buttons in Create/Edit Client modals
-  - Bulk upload template updated with UCC1-UCC5 columns
-- **Feature**: Target UCC selection in Reinvestment Tagging
-  - Backend: Added `target_ucc` field to reinvestment tag update
-  - Added `client_ucc_list` to reinvestment/upcoming response
-  - Frontend: Target UCC dropdown appears when entry is tagged (shows client's available UCCs)
-- **Bug Fix**: Removed duplicate `update_client` endpoint that was overriding proper UCC validation
-- **Testing**: 14/14 backend tests passed, all frontend UI tests verified
-
-### 2026-01-17 (Current Session - Reinvestment Tagging Fix)
-- **Bug Fix**: Reinvestment Tagging page Deal ID display
-  - Backend: Added `bond_code` field to `/api/reinvestment/upcoming` response
-  - Fetches bond_code from trade document or bond document as fallback
-  - "Deal ID" column now shows actual bond codes (e.g., "CDUCIC01") instead of "N/A"
-- **Feature**: Untag button functionality
-  - Added `handleUntag()` function in ReinvestmentTagging.jsx
-  - Calls API to reset tag to 'not_tagged' and clear portfolio_category
-  - Fixed incorrect button handler (was calling handleTagChange with wrong params)
-  - Button shows loading state during untag operation
-- **Testing**: All 14 pytest tests passed (100% success rate)
-  - Test file: `/app/tests/test_reinvestment_tagging.py`
-
-### 2026-01-17 (Current Session - Earlier)
-- **UI Refactor**: Completely restructured sidebar navigation
-  - Removed nested "User" and "Admin" menus
-  - Made "Sub Broker" and "Client" separate top-level tabs
-  - Moved "Bulk Upload" from Admin to top-level "Upload" 
-  - Added "Opportunities" with hover dropdown for "Add Bond" / "Add Real Estate"
-  - Simplified navigation with all items at top level
-  - Added "Settings" as top-level menu item
-
-- **Analysis Page Updates**:
-  - Removed "Folios" column from Previous Analyses table
-  - Added hover tooltip on Client name showing "Requested By" and "Sub-Broker" details
-  - Reduced table columns: Client, File Name, Date, Actions
-  - Dashboard section already available after analysis completion
-
-### 2026-01-17 (Current Session - Earlier)
-- **UI Cleanup**: Reorganized sidebar navigation
-  - Moved "Add User" from Admin submenu to top-level "User" menu
-  - "User" menu now contains Sub Broker and Client sub-items
-  - Simplified Admin menu structure (Opportunities, Bulk Upload only)
-
-- **UI Cleanup**: Removed credential hover display on Sub-Broker page
-  - Removed HoverCard component that showed login credentials on hover
-  - Sub-broker names now display as plain text without credential reveal
-  - Credentials can still be resent via the 3-dots action menu
-
-- **Feature**: Consolidated Scheme Master into Bulk Upload page
-  - Added "Scheme Master" as 6th tab in BulkUpload.jsx
-  - Shows current status (total schemes, last upload date)
-  - Includes BSE StAR MF download instructions with external link
-  - File upload functionality for SCHMSTRPHY.txt files
-  - Removed separate Scheme Master page from Admin menu
-
-### 2026-01-17 (Earlier in Session)
-- **Feature**: Removed "Credit Rating" field from bond creation and bulk upload
-  - Backend: Cleaned BondCreate, Bond, BondUpdate Pydantic models (no credit_rating)
-  - Backend: Bulk template no longer includes Credit Rating column
-  - Frontend: Removed credit_rating from EditBondModal.jsx (form state, payload, UI)
-  - Verified: Bond creation and bulk upload work correctly without credit_rating
-
-- **Feature**: Bulk Historical Trades Upload Module
-  - New template download: `GET /api/bulk/template/historical-trades`
-  - Template columns: Deal ID, Investment Date, Investor Name, Investor PAN, Units, Purchase Price, IFA Name, Notes
-  - Bulk upload endpoint: `POST /api/bulk/historical-trades`
-  - **Option A Implementation**: Trust user-provided Units and Investment Amount
-    - Secondary market purchases at discount are fully supported
-    - Price per unit calculated as: Investment Amount ÷ Units
-    - No strict price validation (negotiated prices vary)
-  - Validations:
-    - Bond code must exist in system
-    - Client must exist (matched by name or PAN)
-    - Units and Investment Amount must be positive
-  - On success: Creates trade record, updates bond units_sold, generates cashflows
-  - Frontend: Added "Historical Trades" tab in BulkUpload.jsx with amber theme
-
-- **Feature**: Exact Cashflows Per Unit for Secondary Market Bonds
-  - Updated Bond Bulk Upload template with new **"Cashflows Per Unit"** sheet (Sheet 5)
-  - Columns: Bond Code, Payment Date, Interest Per Unit, Principal Per Unit
-  - When provided, system uses EXACT values instead of calculated amounts
-  - `generate_client_cashflows()` now prioritizes `cashflows_per_unit` field
-  - Cashflows are filtered to only include payments AFTER client's investment date
-  - Client amounts = per-unit amounts × units
-  - **Verified**: System generates cashflows matching Excel exactly (e.g., June 24 Interest: ₹70,776.30 vs Excel ₹70,776.26)
-
-### 2026-01-16 (Previous Session)
-- **Feature**: Enhanced prepayment with percentage calculation and display
-  - Shows prepayment percentage in success toast (e.g., "₹1,00,000 (10%) principal prepaid")
-  - Shows remaining principal percentage (e.g., "Remaining: ₹9,00,000 (90%)")
-  - Real-time percentage preview in prepayment modal as user enters amount
-- **Feature**: Client email notification on prepayment
-  - Added `send_prepayment_notification_email()` function to email_service.py
-  - Professional HTML template with prepayment details, investment summary, revised schedule
-  - Email includes amount prepaid, percentage, original/remaining principal
-- **Feature**: Reinvestment tags marked for review on prepayment
-  - Affected cashflows flagged with `prepayment_affected` and `reinvestment_tag_needs_update`
-  - Backend API returns count of affected reinvestment tags
-- **Feature**: Reinvestment Tagging page shows prepayment-affected entries
-  - "Revised" badge on amended entries (amber color)
-  - Original amounts shown with strikethrough below current amounts
-  - Added fields: is_amended, prepayment_affected, original_net_amount, amendment_reason
-
-### 2026-01-16 (Previous Fork)
-- **Bug Fix**: Bond bulk upload now reads all 4 Excel sheets and merges by bond_code
-- **Bug Fix**: Client bulk upload now correctly stores `pan_number` field
-- **Feature**: Edit client modal with full form (Personal, Address, Bank, Sub-broker details)
-- **Feature**: Three-dots menu for clients (Resend Credentials, Reset Password, Deactivate, Delete)
-- **Backend**: Added `/api/clients/{id}/resend-credentials`, `/reset-password`, `/deactivate` endpoints
-- **Email Service**: Fixed SMTP connection via `donotreply@kinntegraa.club`
-- **Email Templates**: Redesigned all templates to match website UI/branding
-
-### Previous Sessions
-- Holdings page major feature set (prepayment, XIRR, bulk upload)
-- Test data creation for Holdings verification
-- UI/UX overhaul (Analysis, Reinv Tag, Logs pages)
-- Client selection mandatory on Analysis page
-- Interest calculation with reducing principal balance
-- "On Maturity" interest frequency option
-
----
+### Jan 20, 2026 - Bond Module Updates
+- ✅ Removed "Record Date Cutoff (days)" field from bond creation form
+- ✅ Removed `principal_payments` from bond submission (relies on `cashflows_per_unit`)
+- ✅ New bond pricing engine (`calculate_bond_price_from_request`)
+- ✅ Two-step bond creation UI with Excel upload
+- ✅ Excel parsing endpoints (`/bonds/parse-cashflows`, `/bonds/template/cashflows`)
+- ✅ Database wiped - fresh start with admin user and dummy bond `CDUC001`
 
 ## Prioritized Backlog
 
 ### P0 - Critical
-- Production deployment pipeline (user handles manually via "Save to Github")
+- [ ] User verification of new bond creation flow and pricing
 
-### P1 - High Priority
-- User verification of all recent features (prepayment, client management, bulk upload)
-- Final verification of CAS analysis report generation
+### P1 - High Priority  
+- [ ] Dashboard counts frontend (invalid PAN, expiring documents)
+- [ ] Pincode lookup in client creation form
 
 ### P2 - Medium Priority
-- BondDetails radio button UI bug (recurring)
+- [ ] Delete obsolete files (`CreateBond.jsx`, `CreateBondModal.jsx`)
+- [ ] Fix recurring UI bug on BondDetails page (radio button state)
+- [ ] Code cleanup
 
-### Technical Debt - CRITICAL
-- `server.py` (~5000+ lines) - needs router separation
-- `analysis_service.py` (~2500 lines) - needs modularization
-- `RealEstateDetails.jsx` (~3500 lines) - needs component breakdown
-
----
-
-## Test Credentials
-- **Broker Login**: PAN: ANVPB5297J, Password: Laksh@0208, PIN: 0516
-- **PDF Password**: prima12
-
-## Database
-- Name: `test_database`
-- Collections: users, clients, trades, cashflows, analyses, bonds, holding_cashflows, prepayment_records
-
-## Navigation Structure (Updated 2026-01-17)
-- **Dashboard** - Analytics overview
-- **Opportunities** - View all + hover to Add Bond/Real Estate
-- **Logs** - Trade logs
-- **Holdings** - Client holdings
-- **Analysis** - CAS PDF analysis with dashboard
-- **Reinv Tag** - Reinvestment tagging
-- **Sub Broker** - Top-level sub-broker management
-- **Client** - Top-level client management
-- **Upload** - Bulk upload for all data types (including Scheme Master)
-- **Settings** - Platform settings
+### P3 - Technical Debt
+- [ ] Refactor backend monolith (`server.py`)
+- [ ] Refactor frontend monolith (`RealEstateDetails.jsx`)
+- [ ] Build out `AnalysisDashboard.jsx`
+- [ ] Email notifications for passport expiry
 
 ## Key API Endpoints
-- `/api/clients` - CRUD for clients
-- `/api/bonds/{bond_id}/calculate-enhanced` - Enhanced Secondary Market Calculator (Clean Price, Accrued Interest, Dirty Price)
-- `/api/bulk/template/historical-trades` - Download Excel template for historical trades
-- `/api/bulk/historical-trades` - Bulk upload historical client bond investments
-- `/api/clients/{id}/resend-credentials` - Reset and resend credentials
-- `/api/clients/{id}/reset-password` - Reset password only
-- `/api/clients/{id}/deactivate` - Soft deactivate client
-- `/api/bulk/bonds` - Bulk upload bonds (multi-sheet)
-- `/api/bulk/clients` - Bulk upload clients
-- `/api/holdings/*` - Holdings management APIs
-- `/api/holdings/trade/{trade_id}/record-prepayment` - Record prepayment with email notification
-- `/api/reinvestment/upcoming` - Get upcoming cashflows with prepayment flags
+- `POST /bonds/calculate-price-v2` - Clean price calculation endpoint
+- `POST /bonds/parse-cashflow-excel` - Parse uploaded Excel for bond cashflows
+- `GET /bonds/cashflow-template` - Download Excel template
+- `POST /bonds` - Create bond with optional `cashflows_per_unit`
+- `POST /bonds/{bond_id}/calculate` - Calculate price for existing bond
+
+## Database Schema Notes
+- **bonds collection**: Now includes `cashflows_per_unit: List[dict]` field
+- Each cashflow dict contains: `date`, `principal`, `interest`, `total`
+- When `cashflows_per_unit` exists, it overrides other payment fields
+
+## Test Credentials
+- **Broker Login**: PAN: `ANVPB5297J`, Password: `Laksh@0208`, PIN: `0516`
+
+## Known Issues
+- UI bug on BondDetails page - radio button state not clearing correctly (recurring, low priority)
+
+## Tech Stack
+- **Frontend**: React + Shadcn/UI + TailwindCSS
+- **Backend**: FastAPI (Python)
+- **Database**: MongoDB
+- **File Handling**: openpyxl for Excel parsing, react-dropzone for uploads
