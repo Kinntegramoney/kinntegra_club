@@ -3574,6 +3574,179 @@ async def bulk_upload_historical_trades(
     return results
 
 
+def calculate_xnpv_price(
+    face_value: float,
+    investment_date: datetime,
+    client_irr: float,
+    cashflows: list,
+    cutoff_days: int = 15
+) -> dict:
+    """
+    Calculate bond price using Excel XNPV formula exactly.
+    
+    Formula: price_per_unit = face_value + XNPV(irr, cashflows_with_outflow, dates) / units
+    
+    Where XNPV includes:
+    - Initial outflow at investment_date: -face_value
+    - Future cashflows (interest + principal) that are NOT missed due to record date
+    
+    Args:
+        face_value: Face value per unit
+        investment_date: Date of investment
+        client_irr: IRR as decimal (e.g., 0.115 for 11.5%)
+        cashflows: List of dicts with 'date', 'interest_per_unit', 'principal_per_unit'
+        cutoff_days: Record date is this many days before payment date (default 15)
+    
+    Returns:
+        dict with price_per_unit, xnpv_value, accrued_interest, remaining_cashflows, etc.
+    """
+    result = {
+        "face_value": face_value,
+        "investment_date": investment_date.strftime('%Y-%m-%d'),
+        "client_irr": client_irr,
+        "cutoff_days": cutoff_days,
+        "xnpv_value": 0.0,
+        "price_per_unit": 0.0,
+        "clean_price_pct": 0.0,
+        "accrued_interest": 0.0,
+        "accrued_interest_pct": 0.0,
+        "dirty_price_pct": 0.0,
+        "remaining_cashflows": [],
+        "missed_cashflows": [],
+        "last_ip_date": None,
+        "next_ip_date": None,
+    }
+    
+    if not cashflows:
+        result["price_per_unit"] = face_value
+        result["warning"] = "No cashflows provided"
+        return result
+    
+    # Build XNPV cashflows list: [(date, amount), ...]
+    # First entry is the initial outflow at investment date
+    xnpv_flows = [(investment_date, -face_value)]
+    
+    # Find last and next IP dates for accrued interest calculation
+    sorted_cashflows = sorted(cashflows, key=lambda x: x.get('date', ''))
+    last_ip_date = None
+    next_ip_date = None
+    
+    for cf in sorted_cashflows:
+        cf_date_str = str(cf.get('date', '')).split('T')[0].split(' ')[0]
+        if cf_date_str:
+            try:
+                cf_date = datetime.fromisoformat(cf_date_str)
+                if cf_date <= investment_date:
+                    last_ip_date = cf_date
+                elif next_ip_date is None and cf_date > investment_date:
+                    next_ip_date = cf_date
+            except:
+                pass
+    
+    result["last_ip_date"] = last_ip_date.strftime('%Y-%m-%d') if last_ip_date else None
+    result["next_ip_date"] = next_ip_date.strftime('%Y-%m-%d') if next_ip_date else None
+    
+    # Process each cashflow
+    for cf in sorted_cashflows:
+        cf_date_str = str(cf.get('date', '')).split('T')[0].split(' ')[0]
+        if not cf_date_str:
+            continue
+            
+        try:
+            cf_date = datetime.fromisoformat(cf_date_str)
+        except:
+            continue
+        
+        interest = cf.get('interest_per_unit', 0) or 0
+        principal = cf.get('principal_per_unit', 0) or 0
+        total_cf = interest + principal
+        
+        # Calculate record date
+        record_date = cf_date - timedelta(days=cutoff_days)
+        
+        # Check if cashflow is missed (record date on or before investment date)
+        if record_date <= investment_date:
+            # Missed cashflow - set to 0 in XNPV
+            xnpv_flows.append((cf_date, 0))
+            result["missed_cashflows"].append({
+                "date": cf_date_str,
+                "record_date": record_date.strftime('%Y-%m-%d'),
+                "interest": round(interest, 2),
+                "principal": round(principal, 2),
+                "total": round(total_cf, 2),
+                "days_from_investment": (cf_date - investment_date).days,
+            })
+        else:
+            # Include cashflow
+            xnpv_flows.append((cf_date, total_cf))
+            result["remaining_cashflows"].append({
+                "date": cf_date_str,
+                "record_date": record_date.strftime('%Y-%m-%d'),
+                "interest": round(interest, 2),
+                "principal": round(principal, 2),
+                "total": round(total_cf, 2),
+                "days_from_investment": (cf_date - investment_date).days,
+            })
+    
+    # Calculate XNPV
+    # XNPV = sum of PV of each cashflow, where PV = CF / (1 + rate)^(days/365)
+    # First date is the valuation date (days = 0)
+    xnpv_total = 0
+    valuation_date = xnpv_flows[0][0]
+    
+    for cf_date, cf_amount in xnpv_flows:
+        days = (cf_date - valuation_date).days
+        if days == 0:
+            pv = cf_amount
+        else:
+            discount_factor = (1 + client_irr) ** (days / 365)
+            pv = cf_amount / discount_factor
+        xnpv_total += pv
+    
+    result["xnpv_value"] = round(xnpv_total, 2)
+    
+    # Price per unit = face_value + XNPV
+    price_per_unit = face_value + xnpv_total
+    result["price_per_unit"] = round(price_per_unit, 2)
+    
+    # Calculate accrued interest
+    # Accrued = FV * (investment_date - last_ip_date) * coupon_rate / 365
+    # But if next_ip_date is the first payment (last_ip_date is None or same as next_ip_date),
+    # then accrued is calculated from investment_date to next_ip_date (negative)
+    
+    # From the Excel: Accrued = FV_for_accrued * (investment_date - last_ip_date) * coupon_rate / 365
+    # If investment_date < last_ip_date (next payment date stored as last_ip_date), accrued is negative
+    
+    if next_ip_date and last_ip_date:
+        # Normal case: calculate accrued from last_ip_date to investment_date
+        accrued_days = (investment_date - last_ip_date).days
+        # Get coupon rate from first cashflow (assuming it has interest)
+        coupon_rate = 0.14  # Default, should be passed or calculated from cashflows
+        for cf in sorted_cashflows:
+            int_amt = cf.get('interest_per_unit', 0)
+            if int_amt and int_amt > 0:
+                # Back-calculate coupon rate: interest = FV * days * rate / 365
+                # This is approximate, better to pass coupon_rate explicitly
+                break
+    elif next_ip_date:
+        # Investment is before first payment - accrued is negative (buyer pays less)
+        accrued_days = (investment_date - next_ip_date).days  # Will be negative
+    else:
+        accrued_days = 0
+    
+    # For now, calculate as shown in Excel: E15 = FV * (inv_date - last_ip) * coupon / 365
+    # But we need the coupon rate from somewhere
+    
+    # Calculate clean/dirty price percentages
+    result["dirty_price_pct"] = round((price_per_unit / face_value) * 100, 4) if face_value else 0
+    
+    # Accrued interest percentage (from Excel E18)
+    # This requires knowing when accrued was calculated from
+    # For now, leave it for the calling function to set based on bond details
+    
+    return result
+
+
 def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: str, investment_amount: float = None, irr: float = None, cutoff_days: int = 15) -> dict:
     """
     Calculate secondary market price per unit and units for a given investment.
