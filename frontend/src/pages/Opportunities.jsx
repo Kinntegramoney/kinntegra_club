@@ -279,7 +279,7 @@ export default function Opportunities() {
             </div>
             <div className="flex items-center gap-3">
               <Button 
-                onClick={() => setShowBondModal(true)} 
+                onClick={() => navigate("/bonds/create")} 
                 className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
               >
                 <Plus className="h-4 w-4" />
@@ -296,14 +296,6 @@ export default function Opportunities() {
             </div>
           </div>
         </div>
-
-        {/* Bond Modal */}
-        {showBondModal && (
-          <CreateBondModal 
-            onClose={() => setShowBondModal(false)} 
-            onSuccess={fetchData}
-          />
-        )}
 
         {/* Edit Bond Modal */}
         {editingBond && (
