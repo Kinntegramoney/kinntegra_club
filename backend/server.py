@@ -4198,11 +4198,68 @@ async def calculate_bond_price(
         cutoff_days = request.cutoff_days
         payment_day = request.payment_day or bond_start.day
         
+        # If pre-defined cashflows are provided, use them directly
+        if request.cashflows:
+            total_price = 0
+            total_principal = 0
+            total_interest = 0
+            processed_cashflows = []
+            
+            for cf in request.cashflows:
+                cf_date = datetime.fromisoformat(cf.get('date', '').split('T')[0])
+                principal = cf.get('principal', 0) or 0
+                interest = cf.get('interest', 0) or 0
+                total_payout = principal + interest
+                
+                days_from_investment = (cf_date - investment_date).days
+                
+                if days_from_investment > cutoff_days:
+                    discount_factor = (1 + client_irr) ** (days_from_investment / 365)
+                    discounted_cf = total_payout / discount_factor
+                else:
+                    discounted_cf = 0
+                
+                total_price += discounted_cf
+                total_principal += principal
+                total_interest += interest
+                
+                processed_cashflows.append({
+                    "date": cf_date.strftime('%Y-%m-%d'),
+                    "principal": round(principal, 2),
+                    "interest": round(interest, 2),
+                    "total_payout": round(total_payout, 2),
+                    "days_from_investment": days_from_investment,
+                    "discounted_cf": round(discounted_cf, 2),
+                    "included": days_from_investment > cutoff_days
+                })
+            
+            return {
+                "price_per_unit": round(total_price, 2),
+                "face_value": face_value,
+                "client_irr": client_irr,
+                "bond_start_date": request.bond_start_date,
+                "investment_date": request.investment_date,
+                "bond_maturity_date": request.bond_maturity_date,
+                "principal_repayment_type": "from_cashflows",
+                "cutoff_days": cutoff_days,
+                "num_payments": len(processed_cashflows),
+                "total_principal": round(total_principal, 2),
+                "total_interest": round(total_interest, 2),
+                "total_payout": round(total_principal + total_interest, 2),
+                "cashflows": processed_cashflows
+            }
+        
         # Handle at_maturity (bullet bond) separately - only one payment at maturity
         if request.principal_repayment_type == "at_maturity":
             # For bullet bonds: single payment at maturity with all interest + principal
             total_days = (bond_maturity - bond_start).days
-            total_interest = face_value * coupon_rate * total_days / 365
+            
+            # Use provided interest_amount if available, otherwise calculate
+            if request.interest_amount is not None:
+                total_interest = request.interest_amount
+            else:
+                total_interest = face_value * coupon_rate * total_days / 365
+            
             total_payout = face_value + total_interest
             
             days_from_investment = (bond_maturity - investment_date).days
@@ -4218,6 +4275,7 @@ async def calculate_bond_price(
                 "face_value": face_value,
                 "coupon_rate": coupon_rate,
                 "client_irr": client_irr,
+                "interest_amount_used": round(total_interest, 2),
                 "bond_start_date": request.bond_start_date,
                 "investment_date": request.investment_date,
                 "bond_maturity_date": request.bond_maturity_date,
