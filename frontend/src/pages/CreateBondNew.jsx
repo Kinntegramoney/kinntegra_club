@@ -456,7 +456,24 @@ export default function CreateBondNew() {
           <div className="space-y-6" data-testid="step-2-form">
             {/* Upload Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4">Upload Cashflow Excel</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-900">Upload Cashflow Excel</h2>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={downloadTemplate}
+                  disabled={downloadingTemplate}
+                  className="gap-2"
+                  data-testid="download-template-btn"
+                >
+                  {downloadingTemplate ? (
+                    <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  Download Template
+                </Button>
+              </div>
               <p className="text-sm text-slate-600 mb-4">
                 Upload an Excel file containing the bond&apos;s cashflow schedule. The file should have columns for Date, Principal Repayment, and Interest Repayment.
               </p>
