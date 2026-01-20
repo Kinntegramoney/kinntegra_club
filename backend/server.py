@@ -3190,8 +3190,8 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
         client_dict['linked_subbroker_id'] = current_user['id']
     
     # Generate default credentials (client will change on first login)
-    default_password = client_data.pan_number.upper()[-4:] + "1234"  # Last 4 chars of PAN + 1234
-    default_pin = "1234"
+    default_password = "kinntegra123"  # Standard default password
+    default_pin = "1234"  # Standard default PIN
     
     # Create user account for client
     user_id = str(uuid.uuid4())
@@ -3204,7 +3204,7 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
         "password_hash": get_password_hash(default_password),
         "pin_hash": get_password_hash(default_pin),
         "role": "client",
-        "is_active": False,  # Activated after client verifies profile
+        "is_active": True,  # Clients are active by default
         "client_id": client_id,
         "broker_id": current_user['id'],
         "created_at": datetime.now(timezone.utc).isoformat()
