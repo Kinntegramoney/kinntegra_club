@@ -414,19 +414,6 @@ export default function CreateBondNew() {
                 />
               </div>
               
-              <div>
-                <Label htmlFor="cutoff_days">Record Date Cutoff (days)</Label>
-                <Input
-                  id="cutoff_days"
-                  name="cutoff_days"
-                  type="number"
-                  value={formData.cutoff_days}
-                  onChange={handleInputChange}
-                  placeholder="15"
-                  data-testid="cutoff-days-input"
-                />
-              </div>
-              
               <div className="md:col-span-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
