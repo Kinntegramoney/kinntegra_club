@@ -45,7 +45,6 @@ export default function ClientSidebar({ user }) {
 
   const menuItems = [
     { path: "/client/opportunities", label: "Opportunities", icon: TrendingUp },
-    { path: "/client/real-estate", label: "Real Estate", icon: Building2 },
     { path: "/client/holdings", label: "Holdings", icon: Wallet },
     { path: "/client/trades", label: "Trade Verification", icon: ClipboardCheck },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },

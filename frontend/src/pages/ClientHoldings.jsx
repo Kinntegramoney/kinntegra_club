@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import ClientSidebar from "@/components/ClientSidebar";
-import { Wallet, TrendingUp, Calendar, Download, ChevronDown, ChevronUp, Check, Clock, X, Building2, MapPin } from "lucide-react";
+import { Wallet, TrendingUp, Calendar, Download, ChevronDown, ChevronUp, Check, Clock, X, Building2, MapPin, Percent, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
