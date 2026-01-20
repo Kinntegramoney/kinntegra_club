@@ -97,11 +97,43 @@ export default function Dashboard() {
   const [activityLog, setActivityLog] = useState([]);
   const [monthlyStats, setMonthlyStats] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  
+  // Reset database state
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   // Set page title
   useEffect(() => {
     document.title = "Kinntegraa | Dashboard";
   }, []);
+
+  const handleResetDatabase = async () => {
+    if (resetConfirmText !== "RESET") {
+      toast.error("Please type RESET to confirm");
+      return;
+    }
+    
+    setResetting(true);
+    try {
+      const response = await axios.post(
+        `${API}/admin/reset-database?secret_key=KINNTEGRAA_RESET_2026`
+      );
+      
+      if (response.data.success) {
+        toast.success("Database reset successful!");
+        setShowResetModal(false);
+        setResetConfirmText("");
+        // Refresh dashboard data
+        fetchDashboardData();
+      }
+    } catch (error) {
+      console.error("Reset error:", error);
+      toast.error(error.response?.data?.detail || "Failed to reset database");
+    } finally {
+      setResetting(false);
+    }
+  };
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
