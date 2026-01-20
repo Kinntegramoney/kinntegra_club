@@ -8872,11 +8872,11 @@ async def parse_cashflow_excel(
                 
                 if principal_col:
                     p_val = ws.cell(row=row, column=principal_col).value
-                    principal = float(p_val) if p_val else 0
+                    principal = safe_float(p_val) or 0
                 
                 if interest_col:
                     i_val = ws.cell(row=row, column=interest_col).value
-                    interest = float(i_val) if i_val else 0
+                    interest = safe_float(i_val) or 0
                 
                 # Skip rows with no cashflow
                 if principal == 0 and interest == 0:
