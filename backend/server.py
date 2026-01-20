@@ -8608,42 +8608,39 @@ class MonthlyIRRCalculationResult(BaseModel):
 @api_router.post("/bonds/{bond_id}/calculate-monthly-irr")
 async def calculate_monthly_irr_price(bond_id: str, calculation: MonthlyIRRCalculationRequest):
     """
-    Monthly IRR Calculator - Uses your exact Excel formula:
+    Secondary Bond Calculator using Monthly IRR discounting.
     
     Formula:
-    - Monthly Principal = (FV × Units) / TotalMonths
-    - Monthly Interest Rate = Coupon / 12
-    - Monthly IRR = ClientIRR / 12
-    - Interest Payment = Opening Principal × Monthly Interest Rate
-    - Total Payment = Principal + Interest
-    - Discount Factor = 1 / (1 + Monthly IRR)^MonthNumber
-    - PV = Total Payment × Discount Factor
-    - Client Payment = Sum of all PVs
-    
-    For mid-entry clients:
-    - Opening Principal = Total Principal - (Months Missed × Monthly Principal)
-    - Count months from 1 (from client's perspective)
+    1. elapsed = count repayments before InvestmentDate
+    2. outstanding = totalPrincipal - (elapsed × monthlyPrincipal)
+    3. For each repayment >= nextRepayment:
+       - interest = outstanding × coupon/12
+       - cashflow = monthlyPrincipal + interest
+       - n = days from investment to payment / 30
+       - PV = cashflow / (1 + IRR/12)^n
+       - outstanding -= monthlyPrincipal
+    4. accrued = outstanding × (coupon/12) × (daysSinceLastPayment / daysInMonth)
+    5. totalPrice = sum(PVs) + accrued
+    6. pricePerUnit = totalPrice / units
     """
     bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
     
     if not bond:
         raise HTTPException(status_code=404, detail="Bond not found")
     
-    # Check if bond is closed
     status = calculate_bond_status(bond)
     if status == 'closed':
         raise HTTPException(status_code=400, detail="Cannot calculate price for a closed bond")
     
-    settlement_date = datetime.fromisoformat(calculation.settlement_date)
+    investment_date = datetime.fromisoformat(calculation.settlement_date)
     start_date = datetime.fromisoformat(bond['start_date'])
     end_date = datetime.fromisoformat(bond['end_date'])
     
-    if settlement_date < start_date:
-        raise HTTPException(status_code=400, detail="Settlement date cannot be before bond start date")
-    if settlement_date > end_date:
-        raise HTTPException(status_code=400, detail="Settlement date cannot be after bond maturity date")
+    if investment_date < start_date:
+        raise HTTPException(status_code=400, detail="Investment date cannot be before bond start date")
+    if investment_date > end_date:
+        raise HTTPException(status_code=400, detail="Investment date cannot be after bond maturity date")
     
-    # Check units availability
     units = calculation.units
     units_available = bond.get('total_units', 1) - bond.get('units_sold', 0)
     if units > units_available:
@@ -8651,92 +8648,133 @@ async def calculate_monthly_irr_price(bond_id: str, calculation: MonthlyIRRCalcu
     
     # Get bond details
     face_value = bond.get('face_value') or bond.get('principal_amount', 0)
-    coupon_rate = bond.get('coupon_rate', 0) / 100  # Convert to decimal
-    secondary_irr = bond.get('secondary_irr', 0) / 100  # Convert to decimal
+    coupon_rate = bond.get('coupon_rate', 0) / 100
+    secondary_irr = bond.get('secondary_irr', 0) / 100
     
-    # Calculate total months from principal payments (18 months in your example)
+    # Get principal payment dates
     principal_payments = bond.get('principal_payments', [])
     total_months = len(principal_payments)
     
     if total_months == 0:
         raise HTTPException(status_code=400, detail="Bond has no principal payment schedule")
     
+    # Sort payment dates
+    repayment_dates = sorted([datetime.fromisoformat(pp['date']) for pp in principal_payments])
+    
     # Basic calculations
-    total_principal = face_value * units  # FV × Units
-    monthly_principal = total_principal / total_months  # Total / Months
-    monthly_interest_rate = coupon_rate / 12  # Coupon / 12
-    monthly_irr = secondary_irr / 12  # IRR / 12
+    total_principal = face_value * units
+    monthly_principal = total_principal / total_months
+    monthly_interest_rate = coupon_rate / 12
+    monthly_irr = secondary_irr / 12
     
-    # Determine how many months have passed (principal payments made before settlement)
-    months_passed = 0
-    for pp in principal_payments:
-        pp_date = datetime.fromisoformat(pp['date'])
-        if pp_date <= settlement_date:
-            months_passed += 1
+    # Count repayments before investment date (elapsed)
+    elapsed = sum(1 for d in repayment_dates if d <= investment_date)
     
-    # Remaining months for client
-    remaining_months = total_months - months_passed
+    # Outstanding principal after elapsed payments
+    outstanding = total_principal - (elapsed * monthly_principal)
     
-    if remaining_months <= 0:
-        raise HTTPException(status_code=400, detail="No remaining payments after settlement date")
+    # Find last payment date (for accrued interest calculation)
+    last_payment_date = None
+    next_payment_date = None
+    for i, d in enumerate(repayment_dates):
+        if d <= investment_date:
+            last_payment_date = d
+        else:
+            if next_payment_date is None:
+                next_payment_date = d
     
-    # Opening principal for client (after missed payments)
-    opening_principal = total_principal - (months_passed * monthly_principal)
+    if next_payment_date is None:
+        raise HTTPException(status_code=400, detail="No remaining payments after investment date")
     
-    # Build cashflow schedule and calculate PV
+    # If no last payment, use bond start date
+    if last_payment_date is None:
+        last_payment_date = start_date
+    
+    # Days since last payment (for accrued interest)
+    days_since_last = (investment_date - last_payment_date).days
+    
+    # Days in the current payment period
+    days_in_period = (next_payment_date - last_payment_date).days
+    if days_in_period <= 0:
+        days_in_period = 30  # Default to 30 if calculation fails
+    
+    # Calculate PV of future cashflows
     cashflow_schedule = []
-    total_pv = 0
-    current_principal = opening_principal
+    pv_sum = 0
+    current_outstanding = outstanding
     
-    for month in range(1, remaining_months + 1):
-        # Interest on opening principal for this month
-        interest = current_principal * monthly_interest_rate
+    for repayment_date in repayment_dates:
+        if repayment_date <= investment_date:
+            continue
         
-        # Total payment
-        total_payment = monthly_principal + interest
+        # Interest on current outstanding
+        interest = current_outstanding * monthly_interest_rate
         
-        # Discount factor using Monthly IRR
-        discount_factor = 1 / ((1 + monthly_irr) ** month)
+        # Total cashflow
+        cashflow = monthly_principal + interest
+        
+        # n = days from investment to payment / 30
+        days_to_payment = (repayment_date - investment_date).days
+        n = days_to_payment / 30
+        
+        # Discount factor
+        discount_factor = 1 / ((1 + monthly_irr) ** n)
         
         # Present Value
-        pv = total_payment * discount_factor
-        total_pv += pv
-        
-        # Closing principal
-        closing_principal = current_principal - monthly_principal
+        pv = cashflow * discount_factor
+        pv_sum += pv
         
         cashflow_schedule.append({
-            "month": month,
-            "opening_principal": round(current_principal, 2),
+            "payment_date": repayment_date.strftime('%Y-%m-%d'),
+            "opening_principal": round(current_outstanding, 2),
             "principal_payment": round(monthly_principal, 2),
             "interest_payment": round(interest, 2),
-            "total_payment": round(total_payment, 2),
+            "total_cashflow": round(cashflow, 2),
+            "days_to_payment": days_to_payment,
+            "n_months": round(n, 4),
             "discount_factor": round(discount_factor, 6),
-            "present_value": round(pv, 2),
-            "closing_principal": round(closing_principal, 2)
+            "present_value": round(pv, 2)
         })
         
-        # Update for next month
-        current_principal = closing_principal
+        # Reduce for next iteration
+        current_outstanding -= monthly_principal
+    
+    # Accrued interest (seller's portion - buyer pays this to seller)
+    # Using actual days in period for accuracy
+    accrued_interest = outstanding * monthly_interest_rate * (days_since_last / days_in_period)
+    
+    # Total client payment = PV of cashflows + Accrued interest
+    total_client_payment = pv_sum + accrued_interest
     
     # Price per unit
-    price_per_unit = total_pv / units
+    price_per_unit = total_client_payment / units
+    
+    # Clean price per unit (without accrued)
+    clean_price_per_unit = pv_sum / units
     
     return {
-        "settlement_date": calculation.settlement_date,
+        "investment_date": calculation.settlement_date,
         "units": units,
         "face_value_per_unit": face_value,
         "total_principal": round(total_principal, 2),
         "coupon_rate": bond.get('coupon_rate', 0),
         "secondary_irr": bond.get('secondary_irr', 0),
         "total_months": total_months,
-        "remaining_months": remaining_months,
-        "months_passed": months_passed,
+        "elapsed_months": elapsed,
+        "remaining_months": total_months - elapsed,
         "monthly_principal_payment": round(monthly_principal, 2),
-        "monthly_interest_rate": round(monthly_interest_rate * 100, 4),
-        "monthly_irr": round(monthly_irr * 100, 4),
-        "opening_principal": round(opening_principal, 2),
-        "total_client_payment": round(total_pv, 2),
+        "monthly_interest_rate_pct": round(monthly_interest_rate * 100, 4),
+        "monthly_irr_pct": round(monthly_irr * 100, 4),
+        "opening_outstanding": round(outstanding, 2),
+        "last_payment_date": last_payment_date.strftime('%Y-%m-%d'),
+        "next_payment_date": next_payment_date.strftime('%Y-%m-%d'),
+        "days_since_last_payment": days_since_last,
+        "days_in_period": days_in_period,
+        "clean_price_total": round(pv_sum, 2),
+        "clean_price_per_unit": round(clean_price_per_unit, 2),
+        "accrued_interest": round(accrued_interest, 2),
+        "accrued_interest_per_unit": round(accrued_interest / units, 2),
+        "total_client_payment": round(total_client_payment, 2),
         "price_per_unit": round(price_per_unit, 2),
         "cashflow_schedule": cashflow_schedule
     }
