@@ -1616,6 +1616,476 @@ async def download_foreign_client_template(current_user: dict = Depends(get_curr
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=foreign_client_upload_template.xlsx"}
     )
+
+
+@api_router.post("/bulk/clients-indian")
+async def bulk_upload_indian_clients(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Bulk upload Indian passport holder clients from Excel file"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can bulk upload clients")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    import pandas as pd
+    
+    content = await file.read()
+    excel_file = io.BytesIO(content)
+    
+    # Read all sheets
+    try:
+        df_personal = pd.read_excel(excel_file, sheet_name=0)  # Personal Details
+        excel_file.seek(0)
+        df_bank = pd.read_excel(excel_file, sheet_name=1)       # Bank & Investment Details
+        excel_file.seek(0)
+        df_passport = pd.read_excel(excel_file, sheet_name=2)   # Passport Details
+        excel_file.seek(0)
+        df_address = pd.read_excel(excel_file, sheet_name=3)    # Address Details
+        excel_file.seek(0)
+        df_nominee = pd.read_excel(excel_file, sheet_name=4)    # Nominee Details
+        excel_file.seek(0)
+        df_subbroker = pd.read_excel(excel_file, sheet_name=5)  # Sub-Broker Assignment
+    except Exception as e:
+        excel_file.seek(0)
+        df_personal = pd.read_excel(excel_file, sheet_name=0)
+        df_bank = pd.DataFrame()
+        df_passport = pd.DataFrame()
+        df_address = pd.DataFrame()
+        df_nominee = pd.DataFrame()
+        df_subbroker = pd.DataFrame()
+    
+    # Clean column names
+    def clean_columns(df):
+        if not df.empty:
+            df.columns = [col.replace('*', '').strip().lower().replace(' ', '_').replace('-', '_').replace('/', '_') for col in df.columns]
+        return df
+    
+    df_personal = clean_columns(df_personal)
+    df_bank = clean_columns(df_bank)
+    df_passport = clean_columns(df_passport)
+    df_address = clean_columns(df_address)
+    df_nominee = clean_columns(df_nominee)
+    df_subbroker = clean_columns(df_subbroker)
+    
+    # Create lookup dictionaries by PAN
+    bank_by_pan = {}
+    passport_by_pan = {}
+    address_by_pan = {}
+    nominee_by_pan = {}
+    subbroker_by_pan = {}
+    
+    if not df_bank.empty and 'pan' in df_bank.columns:
+        for _, row in df_bank.iterrows():
+            if not pd.isna(row.get('pan')):
+                bank_by_pan[str(row['pan']).upper().strip()] = row
+    
+    if not df_passport.empty and 'pan' in df_passport.columns:
+        for _, row in df_passport.iterrows():
+            if not pd.isna(row.get('pan')):
+                passport_by_pan[str(row['pan']).upper().strip()] = row
+    
+    if not df_address.empty and 'pan' in df_address.columns:
+        for _, row in df_address.iterrows():
+            if not pd.isna(row.get('pan')):
+                address_by_pan[str(row['pan']).upper().strip()] = row
+    
+    if not df_nominee.empty and 'pan' in df_nominee.columns:
+        for _, row in df_nominee.iterrows():
+            if not pd.isna(row.get('pan')):
+                nominee_by_pan[str(row['pan']).upper().strip()] = row
+    
+    if not df_subbroker.empty and 'pan' in df_subbroker.columns:
+        for _, row in df_subbroker.iterrows():
+            if not pd.isna(row.get('pan')):
+                subbroker_by_pan[str(row['pan']).upper().strip()] = row
+    
+    results = {"success": 0, "failed": 0, "errors": [], "created_clients": []}
+    
+    def get_val(data, key, default=''):
+        if isinstance(data, pd.Series):
+            val = data.get(key)
+            if pd.isna(val):
+                return default
+            return str(val).strip()
+        return default
+    
+    for idx, row in df_personal.iterrows():
+        try:
+            # Validate required fields
+            name = get_val(row, 'name')
+            pan = get_val(row, 'pan').upper()
+            email = get_val(row, 'email')
+            mobile = get_val(row, 'mobile')
+            country_of_residency = get_val(row, 'country_of_residency') or 'India'
+            opportunities_str = get_val(row, 'opportunities_(bonds,real_estate)') or get_val(row, 'opportunities')
+            
+            if not name or not pan:
+                results['errors'].append(f"Row {idx+2}: Missing required fields (Name or PAN)")
+                results['failed'] += 1
+                continue
+            
+            # Check if client exists
+            existing = await db.clients.find_one({"$or": [{"pan_number": pan}, {"photo_id": pan}]})
+            if existing:
+                results['errors'].append(f"Row {idx+2}: Client with PAN {pan} already exists")
+                results['failed'] += 1
+                continue
+            
+            # Parse opportunities
+            opportunities = []
+            if opportunities_str:
+                opportunities = [o.strip().lower() for o in opportunities_str.split(',')]
+                for opp in opportunities:
+                    if opp not in ['bonds', 'real_estate']:
+                        results['errors'].append(f"Row {idx+2}: Invalid opportunity '{opp}'. Indian passport holders can only select: bonds, real_estate")
+                        results['failed'] += 1
+                        continue
+            
+            # Get bank details (required for bonds)
+            bank_row = bank_by_pan.get(pan, {})
+            if 'bonds' in opportunities:
+                bank_name = get_val(bank_row, 'bank_name')
+                account_number = get_val(bank_row, 'account_number')
+                ifsc_code = get_val(bank_row, 'ifsc_code')
+                if not bank_name or not account_number or not ifsc_code:
+                    results['errors'].append(f"Row {idx+2}: Bank details required for Bond investments (PAN: {pan})")
+                    results['failed'] += 1
+                    continue
+            
+            # Get passport details (required for real_estate)
+            passport_row = passport_by_pan.get(pan, {})
+            if 'real_estate' in opportunities:
+                passport_valid_from = get_val(passport_row, 'passport_valid_from')
+                passport_valid_until = get_val(passport_row, 'passport_valid_until')
+                passport_country_of_issue = get_val(passport_row, 'passport_country_of_issue')
+                if not passport_valid_from or not passport_valid_until or not passport_country_of_issue:
+                    results['errors'].append(f"Row {idx+2}: Passport details required for Real Estate investments (PAN: {pan})")
+                    results['failed'] += 1
+                    continue
+            
+            # Collect UCCs
+            ucc_list = []
+            for i in range(1, 6):
+                ucc_val = get_val(bank_row, f'ucc{i}')
+                if ucc_val:
+                    ucc_list.append(ucc_val.upper())
+            
+            # Get other data
+            address_row = address_by_pan.get(pan, {})
+            nominee_row = nominee_by_pan.get(pan, {})
+            subbroker_row = subbroker_by_pan.get(pan, {})
+            
+            # Find linked sub-broker
+            linked_subbroker_id = None
+            sub_broker_code = get_val(subbroker_row, 'sub_broker_code')
+            if sub_broker_code:
+                sub_broker = await db.partners.find_one({"partner_code": sub_broker_code})
+                if sub_broker:
+                    linked_subbroker_id = sub_broker['id']
+            
+            if current_user['role'] == 'sub_broker' and not linked_subbroker_id:
+                linked_subbroker_id = current_user['id']
+            
+            # Create client
+            client_id = str(uuid.uuid4())
+            user_id = str(uuid.uuid4())
+            
+            client_dict = {
+                "id": client_id,
+                "name": name,
+                "photo_id": pan,
+                "pan_number": pan,
+                "passport_type": "indian",
+                "country_of_residency": country_of_residency,
+                "opportunities": opportunities,
+                "email": email or "",
+                "mobile": mobile or "",
+                "passport_number": get_val(passport_row, 'passport_number'),
+                "passport_valid_from": get_val(passport_row, 'passport_valid_from'),
+                "passport_valid_until": get_val(passport_row, 'passport_valid_until'),
+                "passport_country_of_issue": get_val(passport_row, 'passport_country_of_issue'),
+                "bank_name": get_val(bank_row, 'bank_name'),
+                "account_number": get_val(bank_row, 'account_number'),
+                "branch": get_val(bank_row, 'branch'),
+                "ifsc_code": get_val(bank_row, 'ifsc_code'),
+                "demat_account_no": get_val(bank_row, 'demat_account_no'),
+                "ucc_list": ucc_list,
+                "occupation": get_val(row, 'occupation'),
+                "date_of_birth": get_val(row, 'date_of_birth'),
+                "father_husband_name": get_val(row, 'father_husband_name'),
+                "address_line1": get_val(address_row, 'address_line_1'),
+                "address_line2": get_val(address_row, 'address_line_2'),
+                "city": get_val(address_row, 'city'),
+                "state": get_val(address_row, 'state'),
+                "country": get_val(address_row, 'country') or 'India',
+                "pincode": get_val(address_row, 'pincode'),
+                "nominee_name": get_val(nominee_row, 'nominee_name'),
+                "nominee_dob": get_val(nominee_row, 'nominee_dob'),
+                "nominee_mobile": get_val(nominee_row, 'nominee_mobile'),
+                "nominee_relationship": get_val(nominee_row, 'relationship'),
+                "linked_subbroker_id": linked_subbroker_id,
+                "created_by": current_user['id'],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "bond_allocations": [],
+                "verification_status": "pending",
+                "is_active": True,
+                "user_id": user_id
+            }
+            
+            # Create user account
+            user_data = {
+                "id": user_id,
+                "pan": pan,
+                "name": name,
+                "email": email,
+                "phone": mobile,
+                "password_hash": get_password_hash("kinntegra123"),
+                "pin_hash": get_password_hash("1234"),
+                "role": "client",
+                "is_active": True,
+                "client_id": client_id,
+                "broker_id": current_user['id'],
+                "passport_type": "indian",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.users.insert_one(user_data)
+            await db.clients.insert_one(client_dict)
+            
+            results['success'] += 1
+            results['created_clients'].append({"name": name, "pan": pan})
+            
+        except Exception as e:
+            results['errors'].append(f"Row {idx+2}: Error - {str(e)}")
+            results['failed'] += 1
+    
+    return results
+
+
+@api_router.post("/bulk/clients-foreign")
+async def bulk_upload_foreign_clients(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Bulk upload Foreign passport holder clients from Excel file"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can bulk upload clients")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    import pandas as pd
+    
+    content = await file.read()
+    excel_file = io.BytesIO(content)
+    
+    # Read all sheets
+    try:
+        df_personal = pd.read_excel(excel_file, sheet_name=0)  # Personal Details
+        excel_file.seek(0)
+        df_passport = pd.read_excel(excel_file, sheet_name=1)   # Passport Details
+        excel_file.seek(0)
+        df_address = pd.read_excel(excel_file, sheet_name=2)    # Address Details
+        excel_file.seek(0)
+        df_nominee = pd.read_excel(excel_file, sheet_name=3)    # Nominee Details
+        excel_file.seek(0)
+        df_subbroker = pd.read_excel(excel_file, sheet_name=4)  # Sub-Broker Assignment
+    except Exception as e:
+        excel_file.seek(0)
+        df_personal = pd.read_excel(excel_file, sheet_name=0)
+        df_passport = pd.DataFrame()
+        df_address = pd.DataFrame()
+        df_nominee = pd.DataFrame()
+        df_subbroker = pd.DataFrame()
+    
+    # Clean column names
+    def clean_columns(df):
+        if not df.empty:
+            df.columns = [col.replace('*', '').strip().lower().replace(' ', '_').replace('-', '_').replace('/', '_') for col in df.columns]
+        return df
+    
+    df_personal = clean_columns(df_personal)
+    df_passport = clean_columns(df_passport)
+    df_address = clean_columns(df_address)
+    df_nominee = clean_columns(df_nominee)
+    df_subbroker = clean_columns(df_subbroker)
+    
+    # Create lookup dictionaries by Passport Number
+    passport_by_id = {}
+    address_by_id = {}
+    nominee_by_id = {}
+    subbroker_by_id = {}
+    
+    if not df_passport.empty and 'passport_number' in df_passport.columns:
+        for _, row in df_passport.iterrows():
+            if not pd.isna(row.get('passport_number')):
+                passport_by_id[str(row['passport_number']).upper().strip()] = row
+    
+    if not df_address.empty and 'passport_number' in df_address.columns:
+        for _, row in df_address.iterrows():
+            if not pd.isna(row.get('passport_number')):
+                address_by_id[str(row['passport_number']).upper().strip()] = row
+    
+    if not df_nominee.empty and 'passport_number' in df_nominee.columns:
+        for _, row in df_nominee.iterrows():
+            if not pd.isna(row.get('passport_number')):
+                nominee_by_id[str(row['passport_number']).upper().strip()] = row
+    
+    if not df_subbroker.empty and 'passport_number' in df_subbroker.columns:
+        for _, row in df_subbroker.iterrows():
+            if not pd.isna(row.get('passport_number')):
+                subbroker_by_id[str(row['passport_number']).upper().strip()] = row
+    
+    results = {"success": 0, "failed": 0, "errors": [], "created_clients": []}
+    
+    def get_val(data, key, default=''):
+        if isinstance(data, pd.Series):
+            val = data.get(key)
+            if pd.isna(val):
+                return default
+            return str(val).strip()
+        return default
+    
+    for idx, row in df_personal.iterrows():
+        try:
+            # Validate required fields
+            name = get_val(row, 'name')
+            passport_number = get_val(row, 'passport_number').upper()
+            email = get_val(row, 'email')
+            mobile = get_val(row, 'mobile')
+            country_of_residency = get_val(row, 'country_of_residency')
+            emirates_id = get_val(row, 'emirates_id')
+            opportunities_str = get_val(row, 'opportunities_(real_estate,gift_city)') or get_val(row, 'opportunities')
+            
+            if not name or not passport_number:
+                results['errors'].append(f"Row {idx+2}: Missing required fields (Name or Passport Number)")
+                results['failed'] += 1
+                continue
+            
+            # Check if client exists
+            existing = await db.clients.find_one({"$or": [{"passport_number": passport_number}, {"photo_id": passport_number}]})
+            if existing:
+                results['errors'].append(f"Row {idx+2}: Client with Passport {passport_number} already exists")
+                results['failed'] += 1
+                continue
+            
+            # Validate UAE residents need Emirates ID
+            if country_of_residency and country_of_residency.lower() in ['united arab emirates', 'uae']:
+                if not emirates_id:
+                    results['errors'].append(f"Row {idx+2}: Emirates ID required for UAE residents (Passport: {passport_number})")
+                    results['failed'] += 1
+                    continue
+            
+            # Parse opportunities
+            opportunities = []
+            if opportunities_str:
+                opportunities = [o.strip().lower() for o in opportunities_str.split(',')]
+                for opp in opportunities:
+                    if opp not in ['real_estate', 'gift_city']:
+                        results['errors'].append(f"Row {idx+2}: Invalid opportunity '{opp}'. Foreign passport holders can only select: real_estate, gift_city")
+                        results['failed'] += 1
+                        continue
+            
+            # Get passport details (required for all foreign clients)
+            passport_row = passport_by_id.get(passport_number, {})
+            passport_valid_from = get_val(passport_row, 'passport_valid_from')
+            passport_valid_until = get_val(passport_row, 'passport_valid_until')
+            passport_country_of_issue = get_val(passport_row, 'passport_country_of_issue')
+            
+            if not passport_valid_from or not passport_valid_until or not passport_country_of_issue:
+                results['errors'].append(f"Row {idx+2}: Passport validity details required (Passport: {passport_number})")
+                results['failed'] += 1
+                continue
+            
+            # Get other data
+            address_row = address_by_id.get(passport_number, {})
+            nominee_row = nominee_by_id.get(passport_number, {})
+            subbroker_row = subbroker_by_id.get(passport_number, {})
+            
+            # Find linked sub-broker
+            linked_subbroker_id = None
+            sub_broker_code = get_val(subbroker_row, 'sub_broker_code')
+            if sub_broker_code:
+                sub_broker = await db.partners.find_one({"partner_code": sub_broker_code})
+                if sub_broker:
+                    linked_subbroker_id = sub_broker['id']
+            
+            if current_user['role'] == 'sub_broker' and not linked_subbroker_id:
+                linked_subbroker_id = current_user['id']
+            
+            # Create client
+            client_id = str(uuid.uuid4())
+            user_id = str(uuid.uuid4())
+            
+            client_dict = {
+                "id": client_id,
+                "name": name,
+                "photo_id": passport_number,
+                "passport_number": passport_number,
+                "passport_type": "foreign",
+                "country_of_residency": country_of_residency,
+                "emirates_id": emirates_id,
+                "opportunities": opportunities,
+                "email": email or "",
+                "mobile": mobile or "",
+                "passport_valid_from": passport_valid_from,
+                "passport_valid_until": passport_valid_until,
+                "passport_country_of_issue": passport_country_of_issue,
+                "occupation": get_val(row, 'occupation'),
+                "date_of_birth": get_val(row, 'date_of_birth'),
+                "address_line1": get_val(address_row, 'address_line_1'),
+                "address_line2": get_val(address_row, 'address_line_2'),
+                "city": get_val(address_row, 'city'),
+                "state": get_val(address_row, 'state_region'),
+                "country": get_val(address_row, 'country'),
+                "pincode": get_val(address_row, 'postal_code'),
+                "nominee_name": get_val(nominee_row, 'nominee_name'),
+                "nominee_dob": get_val(nominee_row, 'nominee_dob'),
+                "nominee_mobile": get_val(nominee_row, 'nominee_mobile'),
+                "nominee_relationship": get_val(nominee_row, 'relationship'),
+                "linked_subbroker_id": linked_subbroker_id,
+                "created_by": current_user['id'],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "bond_allocations": [],
+                "verification_status": "pending",
+                "is_active": True,
+                "user_id": user_id
+            }
+            
+            # Create user account
+            user_data = {
+                "id": user_id,
+                "pan": passport_number,
+                "name": name,
+                "email": email,
+                "phone": mobile,
+                "password_hash": get_password_hash("kinntegra123"),
+                "pin_hash": get_password_hash("1234"),
+                "role": "client",
+                "is_active": True,
+                "client_id": client_id,
+                "broker_id": current_user['id'],
+                "passport_type": "foreign",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.users.insert_one(user_data)
+            await db.clients.insert_one(client_dict)
+            
+            results['success'] += 1
+            results['created_clients'].append({"name": name, "passport": passport_number})
+            
+        except Exception as e:
+            results['errors'].append(f"Row {idx+2}: Error - {str(e)}")
+            results['failed'] += 1
+    
+    return results
+
+
+@api_router.post("/bulk/clients")
 async def bulk_upload_clients(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
