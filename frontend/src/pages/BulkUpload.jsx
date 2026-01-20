@@ -153,6 +153,9 @@ export default function BulkUpload() {
     }
   };
 
+  // Client upload type state
+  const [clientUploadType, setClientUploadType] = useState('indian');
+  
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -170,7 +173,13 @@ export default function BulkUpload() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await axios.post(`${API}/bulk/${activeTab}`, formData, {
+      // Determine the correct endpoint
+      let uploadEndpoint = `${API}/bulk/${activeTab}`;
+      if (activeTab === 'clients') {
+        uploadEndpoint = `${API}/bulk/clients-${clientUploadType}`;
+      }
+
+      const response = await axios.post(uploadEndpoint, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
