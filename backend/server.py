@@ -10548,8 +10548,9 @@ async def get_client_real_estate_investments(current_user: dict = Depends(get_cu
     if current_user['role'] != 'client':
         raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
     
-    # Get client record
-    client = await db.clients.find_one({"pan_number": current_user.get('pan_number')})
+    # Get client record - try pan_number first, then pan for legacy users
+    pan = current_user.get('pan_number') or current_user.get('pan')
+    client = await db.clients.find_one({"pan_number": pan})
     if not client:
         raise HTTPException(status_code=404, detail="Client profile not found")
     
