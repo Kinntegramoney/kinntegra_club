@@ -283,86 +283,126 @@ export default function ClientHoldings() {
                   </div>
                 ) : (
                   <>
-                    {/* Real Estate Summary */}
+                    {/* Real Estate Summary - Matching Broker View */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="bg-white rounded-lg border border-gray-200 p-5">
-                        <p className="text-sm text-gray-500 uppercase tracking-wide">Total RE Investment</p>
-                        <p className="text-2xl font-bold text-gray-800 mt-1">
-                          {formatAED(realEstateHoldings.reduce((sum, h) => sum + (h.investment_amount || 0), 0))}
-                        </p>
+                      <div className="bg-white rounded-xl border border-gray-200 p-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                            <Building2 className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Total Properties</p>
+                            <p className="text-2xl font-bold text-gray-800">{realEstateHoldings.length}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="bg-white rounded-lg border border-gray-200 p-5">
-                        <p className="text-sm text-gray-500 uppercase tracking-wide">Properties</p>
-                        <p className="text-2xl font-bold text-purple-600 mt-1">
-                          {realEstateHoldings.length}
-                        </p>
+                      <div className="bg-white rounded-xl border border-gray-200 p-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <TrendingUp className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Total Investment</p>
+                            <p className="text-2xl font-bold text-gray-800">
+                              {formatAED(realEstateHoldings.reduce((sum, h) => sum + (h.my_investment?.amount || h.investment_amount || 0), 0))}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="bg-white rounded-lg border border-gray-200 p-5">
-                        <p className="text-sm text-gray-500 uppercase tracking-wide">Avg. Ownership</p>
-                        <p className="text-2xl font-bold text-blue-600 mt-1">
-                          {(realEstateHoldings.reduce((sum, h) => sum + (h.share_percentage || 0), 0) / realEstateHoldings.length).toFixed(1)}%
-                        </p>
+                      <div className="bg-white rounded-xl border border-gray-200 p-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <Percent className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Avg Share</p>
+                            <p className="text-2xl font-bold text-gray-800">
+                              {(realEstateHoldings.reduce((sum, h) => sum + (h.my_investment?.share_percentage || h.share_percentage || 0), 0) / realEstateHoldings.length).toFixed(1)}%
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Real Estate Holdings Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {realEstateHoldings.map((property) => (
-                        <div key={property.opportunity_id} className="bg-white rounded-lg border border-gray-200 p-5 hover:border-teal-500 transition-colors">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <Building2 className="h-5 w-5 text-purple-600" />
+                    {/* Real Estate Holdings Grid - Matching Broker View */}
+                    <div className="space-y-4">
+                      {realEstateHoldings.map((property) => {
+                        const investment = property.my_investment || {};
+                        const sharePercent = investment.share_percentage || property.share_percentage || 0;
+                        const investmentAmount = investment.amount || property.investment_amount || 0;
+                        const unitPrice = property.total_cost || property.unit_price || 0;
+                        const investedDate = investment.invested_at || property.invested_on;
+                        const paymentSchedule = property.payment_schedule || [];
+                        const completedPayments = paymentSchedule.filter(p => p.is_paid).length;
+                        
+                        return (
+                          <div key={property.id || property.opportunity_id} className="bg-white rounded-xl border border-gray-200 p-6 hover:border-purple-300 transition-colors">
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-start gap-4">
+                                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                  <Building2 className="h-6 w-6 text-purple-600" />
+                                </div>
+                                <div>
+                                  <h3 className="font-bold text-gray-800 text-lg">{property.building_name}</h3>
+                                  <p className="text-sm text-gray-500">
+                                    Unit {property.unit_no}{property.floor ? `, ${property.floor}` : ''}
+                                  </p>
+                                </div>
+                              </div>
+                              <Badge className={`${property.status === 'fully_invested' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                                {property.status === 'fully_invested' ? 'Fully Allocated' : property.property_type === 'off_plan' ? 'Off-Plan' : 'Ready'}
+                              </Badge>
+                            </div>
+                            
+                            {/* Property Details Grid - Like Broker View */}
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 py-4 border-t border-gray-100">
+                              <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide">Share</p>
+                                <p className="font-bold text-purple-600 text-lg">{sharePercent.toFixed(1)}%</p>
                               </div>
                               <div>
-                                <h3 className="font-semibold text-gray-800">{property.building_name}</h3>
-                                <p className="text-sm text-gray-500">Unit {property.unit_no} • Floor {property.floor}</p>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide">Investment</p>
+                                <p className="font-bold text-gray-800">{formatAED(investmentAmount)}</p>
                               </div>
-                            </div>
-                            <Badge className="bg-purple-100 text-purple-700">Off-Plan</Badge>
-                          </div>
-                          
-                          {property.location && (
-                            <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
-                              <MapPin className="h-4 w-4" />
-                              {property.location}
-                            </div>
-                          )}
-                          
-                          <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-100">
-                            <div>
-                              <p className="text-xs text-gray-500">Your Share</p>
-                              <p className="font-bold text-purple-600 text-lg">{property.share_percentage}%</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Investment</p>
-                              <p className="font-bold text-gray-800">{formatAED(property.investment_amount)}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                            <div>
-                              <p className="text-xs text-gray-500">Payment Progress</p>
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 bg-gray-200 rounded-full h-2">
-                                  <div 
-                                    className="bg-teal-500 h-2 rounded-full" 
-                                    style={{ width: `${property.payment_progress || 0}%` }} 
-                                  />
+                              <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide">Unit Price</p>
+                                <p className="font-semibold text-gray-600">{formatAED(unitPrice)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide">Invested On</p>
+                                <p className="font-semibold text-gray-600">
+                                  {investedDate ? format(new Date(investedDate), "dd MMM yyyy") : '-'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide">Payment Progress</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-purple-500 h-2 rounded-full" 
+                                      style={{ width: `${paymentSchedule.length > 0 ? (completedPayments / paymentSchedule.length) * 100 : 0}%` }} 
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-600">{completedPayments}/{paymentSchedule.length} milestones</span>
                                 </div>
-                                <span className="text-sm font-medium">{property.payment_progress || 0}%</span>
                               </div>
                             </div>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => navigate(`/client/real-estate/${property.opportunity_id}`)}
-                            >
-                              View Details
-                            </Button>
+                            
+                            {/* Action Button */}
+                            <div className="flex justify-end pt-4 border-t border-gray-100">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="gap-2"
+                                onClick={() => navigate(`/client/real-estate/${property.id || property.opportunity_id}`)}
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                                View
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </>
                 )}
