@@ -9307,8 +9307,6 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
     days_to_maturity = (end_date - investment_date).days
     
     total_inflows_gross = sum(remaining_cashflows_gross)
-    remaining_principal = bond['principal_amount'] * remaining_principal_pct / 100
-    remaining_interest_gross = total_inflows_gross - remaining_principal
     
     # Calculate units available
     units_available = bond.get('total_units', 1) - bond.get('units_sold', 0)
