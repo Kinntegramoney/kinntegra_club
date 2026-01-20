@@ -17,7 +17,10 @@ import {
   UserPlus,
   Landmark,
   Home,
-  RefreshCw
+  RefreshCw,
+  Trash2,
+  AlertTriangle,
+  X
 } from "lucide-react";
 import {
   PieChart as RechartsPie,
@@ -36,6 +39,7 @@ import {
   Area,
   AreaChart
 } from "recharts";
+import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
