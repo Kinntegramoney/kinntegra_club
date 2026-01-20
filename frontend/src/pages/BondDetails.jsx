@@ -330,34 +330,67 @@ export default function BondDetails() {
   const isClosed = bondData.status === 'closed';
   const isCalculatorDisabled = isFullyFunded || isClosed;
 
-  // Prepare chart data
+  // Prepare chart data - prioritize cashflows_per_unit (new format) over legacy arrays
   const chartData = [];
+  const hasCashflowsPerUnit = bondData.cashflows_per_unit && bondData.cashflows_per_unit.length > 0;
   
-  // Add interest payments
-  bondData.interest_payments.forEach(ip => {
-    chartData.push({
-      date: format(new Date(ip.date), "MMM dd, yyyy"),
-      dateValue: new Date(ip.date).getTime(),
-      Interest: ip.amount,
-      Principal: 0
-    });
-  });
-
-  // Add principal payments
-  bondData.principal_payments.forEach(pp => {
-    const amount = bondData.principal_amount * pp.percentage / 100;
-    const existing = chartData.find(d => d.dateValue === new Date(pp.date).getTime());
-    if (existing) {
-      existing.Principal = amount;
-    } else {
+  // Prepare display arrays for the tables
+  const displayInterestPayments = [];
+  const displayPrincipalPayments = [];
+  
+  if (hasCashflowsPerUnit) {
+    // Use new cashflows_per_unit format
+    bondData.cashflows_per_unit.forEach(cf => {
+      const cfDate = new Date(cf.date);
+      const dateStr = format(cfDate, "MMM dd, yyyy");
+      const dateValue = cfDate.getTime();
+      
       chartData.push({
-        date: format(new Date(pp.date), "MMM dd, yyyy"),
-        dateValue: new Date(pp.date).getTime(),
-        Interest: 0,
-        Principal: amount
+        date: dateStr,
+        dateValue: dateValue,
+        Interest: cf.interest || 0,
+        Principal: cf.principal || 0
       });
-    }
-  });
+      
+      // Build display arrays
+      if (cf.interest && cf.interest > 0) {
+        displayInterestPayments.push({ date: cf.date, amount: cf.interest });
+      }
+      if (cf.principal && cf.principal > 0) {
+        displayPrincipalPayments.push({ date: cf.date, amount: cf.principal });
+      }
+    });
+  } else {
+    // Fall back to legacy interest_payments and principal_payments arrays
+    const interestPayments = bondData.interest_payments || [];
+    const principalPayments = bondData.principal_payments || [];
+    
+    interestPayments.forEach(ip => {
+      chartData.push({
+        date: format(new Date(ip.date), "MMM dd, yyyy"),
+        dateValue: new Date(ip.date).getTime(),
+        Interest: ip.amount,
+        Principal: 0
+      });
+      displayInterestPayments.push({ date: ip.date, amount: ip.amount });
+    });
+
+    principalPayments.forEach(pp => {
+      const amount = bondData.principal_amount * pp.percentage / 100;
+      const existing = chartData.find(d => d.dateValue === new Date(pp.date).getTime());
+      if (existing) {
+        existing.Principal = amount;
+      } else {
+        chartData.push({
+          date: format(new Date(pp.date), "MMM dd, yyyy"),
+          dateValue: new Date(pp.date).getTime(),
+          Interest: 0,
+          Principal: amount
+        });
+      }
+      displayPrincipalPayments.push({ date: pp.date, amount: amount, percentage: pp.percentage });
+    });
+  }
 
   chartData.sort((a, b) => a.dateValue - b.dateValue);
 
