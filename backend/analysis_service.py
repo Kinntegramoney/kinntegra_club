@@ -619,7 +619,17 @@ class CASParser:
                             except ValueError:
                                 pass
                         
-                        is_redemption = amount < 0 or 'Redemption' in trans_type_line or 'Rejection' in trans_type_line or 'Switch Over Out' in trans_type_line or 'Lateral Shift Out' in trans_type_line
+                        # Treat as redemption/reversal if:
+                        # - Amount is negative (in parentheses)
+                        # - Contains 'Redemption', 'Rejection', 'Switch Over Out', 'Lateral Shift Out'
+                        # - Contains 'dishonoured' or 'not realised' (bounced/reversed transactions)
+                        is_redemption = (amount < 0 or 
+                                        'Redemption' in trans_type_line or 
+                                        'Rejection' in trans_type_line or 
+                                        'Switch Over Out' in trans_type_line or 
+                                        'Lateral Shift Out' in trans_type_line or
+                                        'dishonoured' in trans_type_line.lower() or
+                                        'not realised' in trans_type_line.lower())
                         
                         # Track first transaction date per advisor
                         if current_advisor:
