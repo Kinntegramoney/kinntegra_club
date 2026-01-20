@@ -3369,6 +3369,84 @@ async def get_clients(current_user: dict = Depends(get_current_user)):
     return clients
 
 
+@api_router.get("/clients/dashboard/expiring-documents")
+async def get_expiring_documents(current_user: dict = Depends(get_current_user)):
+    """Get clients with documents expiring within 3 months (for dashboard notifications)"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    from datetime import timedelta
+    
+    # Calculate date 3 months from now
+    three_months_from_now = datetime.now(timezone.utc) + timedelta(days=90)
+    today = datetime.now(timezone.utc)
+    
+    # Build query based on role
+    if current_user['role'] == 'broker':
+        base_query = {"created_by": current_user['id']}
+    else:
+        base_query = {"linked_subbroker_id": current_user['id']}
+    
+    # Find clients with passport expiring within 3 months
+    clients = await db.clients.find(base_query, {"_id": 0}).to_list(1000)
+    
+    expiring_documents = []
+    for client in clients:
+        passport_expiry = client.get('passport_valid_until')
+        if passport_expiry:
+            try:
+                expiry_date = datetime.fromisoformat(passport_expiry.replace('Z', '+00:00')) if isinstance(passport_expiry, str) else passport_expiry
+                if today <= expiry_date <= three_months_from_now:
+                    days_until_expiry = (expiry_date - today).days
+                    expiring_documents.append({
+                        "client_id": client.get('id'),
+                        "client_name": client.get('name'),
+                        "document_type": "passport",
+                        "expiry_date": passport_expiry,
+                        "days_until_expiry": days_until_expiry,
+                        "photo_id": client.get('photo_id') or client.get('pan_number')
+                    })
+            except (ValueError, TypeError):
+                pass
+    
+    # Sort by days until expiry (most urgent first)
+    expiring_documents.sort(key=lambda x: x['days_until_expiry'])
+    
+    return {"expiring_documents": expiring_documents, "count": len(expiring_documents)}
+
+
+@api_router.get("/clients/dashboard/invalid-pan")
+async def get_invalid_pan_clients(current_user: dict = Depends(get_current_user)):
+    """Get clients with invalid PAN format (for dashboard alerts)"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Build query based on role
+    if current_user['role'] == 'broker':
+        base_query = {"created_by": current_user['id']}
+    else:
+        base_query = {"linked_subbroker_id": current_user['id']}
+    
+    # Only check Indian passport holders
+    base_query['passport_type'] = 'indian'
+    
+    clients = await db.clients.find(base_query, {"_id": 0}).to_list(1000)
+    
+    invalid_pan_clients = []
+    for client in clients:
+        pan = client.get('pan_number') or client.get('photo_id')
+        if pan and not is_valid_pan_format(pan):
+            invalid_pan_clients.append({
+                "client_id": client.get('id'),
+                "client_name": client.get('name'),
+                "pan_number": pan,
+                "email": client.get('email'),
+                "mobile": client.get('mobile')
+            })
+    
+    return {"invalid_pan_clients": invalid_pan_clients, "count": len(invalid_pan_clients)}
+
+
 @api_router.get("/clients/{client_id}")
 async def get_client(client_id: str, current_user: dict = Depends(get_current_user)):
     """Get a specific client"""
