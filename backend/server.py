@@ -8688,13 +8688,17 @@ async def reset_database(secret_key: str = None):
         result = await db.prepayment_records.delete_many({})
         deleted_counts['prepayment_records'] = result.deleted_count
         
-        # 10. Delete all sub-brokers
-        result = await db.sub_brokers.delete_many({})
-        deleted_counts['sub_brokers'] = result.deleted_count
+        # 10. Delete all sub-brokers (partners collection)
+        result = await db.partners.delete_many({})
+        deleted_counts['partners'] = result.deleted_count
         
         # 11. Delete sub-broker user accounts
         result = await db.users.delete_many({"role": "sub_broker"})
         deleted_counts['sub_broker_users'] = result.deleted_count
+        
+        # 12. Delete all CAS analyses
+        result = await db.cas_analyses.delete_many({})
+        deleted_counts['cas_analyses'] = result.deleted_count
         
         # Get remaining broker count
         broker_count = await db.users.count_documents({"role": "broker"})
