@@ -4196,7 +4196,51 @@ async def calculate_bond_price(
         cutoff_days = request.cutoff_days
         payment_day = request.payment_day or bond_start.day
         
-        # Generate payment dates (monthly on the payment_day)
+        # Handle at_maturity (bullet bond) separately - only one payment at maturity
+        if request.principal_repayment_type == "at_maturity":
+            # For bullet bonds: single payment at maturity with all interest + principal
+            total_days = (bond_maturity - bond_start).days
+            total_interest = face_value * coupon_rate * total_days / 365
+            total_payout = face_value + total_interest
+            
+            days_from_investment = (bond_maturity - investment_date).days
+            
+            if days_from_investment > cutoff_days:
+                discount_factor = (1 + client_irr) ** (days_from_investment / 365)
+                price_per_unit = total_payout / discount_factor
+            else:
+                price_per_unit = 0
+            
+            return {
+                "price_per_unit": round(price_per_unit, 2),
+                "face_value": face_value,
+                "coupon_rate": coupon_rate,
+                "client_irr": client_irr,
+                "bond_start_date": request.bond_start_date,
+                "investment_date": request.investment_date,
+                "bond_maturity_date": request.bond_maturity_date,
+                "principal_repayment_type": request.principal_repayment_type,
+                "cutoff_days": cutoff_days,
+                "num_payments": 1,
+                "total_principal": face_value,
+                "total_interest": round(total_interest, 2),
+                "total_payout": round(total_payout, 2),
+                "days_to_maturity": days_from_investment,
+                "total_bond_days": total_days,
+                "cashflows": [{
+                    "date": bond_maturity.strftime('%Y-%m-%d'),
+                    "days_in_period": total_days,
+                    "principal": face_value,
+                    "balance": face_value,
+                    "interest": round(total_interest, 2),
+                    "total_payout": round(total_payout, 2),
+                    "days_from_investment": days_from_investment,
+                    "discounted_cf": round(price_per_unit, 2),
+                    "included": days_from_investment > cutoff_days
+                }]
+            }
+        
+        # Generate payment dates (monthly on the payment_day) for non-bullet bonds
         payment_dates = []
         current = bond_start
         while current <= bond_maturity:
