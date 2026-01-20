@@ -12,7 +12,7 @@ import AdminRealEstate from "@/pages/AdminRealEstate";
 import TradeVerification from "@/pages/TradeVerification";
 import Holdings from "@/pages/Holdings";
 import SubBrokerOpportunities from "@/pages/SubBrokerOpportunities";
-import CreateBond from "@/pages/CreateBond";
+import CreateBondNew from "@/pages/CreateBondNew";
 import BondDetails from "@/pages/BondDetails";
 import RealEstateDetails from "@/pages/RealEstateDetails";
 import ClientOpportunities from "@/pages/ClientOpportunities";
