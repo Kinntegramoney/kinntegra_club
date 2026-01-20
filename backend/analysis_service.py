@@ -1357,16 +1357,16 @@ class GapSheetGenerator:
         return results
     
     def _create_portfolio_performance_sheet(self, wb: Workbook):
-        """Sheet 2: Portfolio Performance"""
+        """Sheet 2: Portfolio Performance - Matching CAMS Gap Sheet format"""
         ws = wb.create_sheet("Portfolio Performance")
         
-        # Column order as per user's template:
-        # Folio No., Instrument Name, Valuation, Cash Withdrawal, Dividend Paid, 
-        # Amount Invested, Absolute Gains, Absolute Return %, CAGR %, Closing Units, PAN, Adviser ARN
+        # Column order matching CAMS Gap Sheet format (24 columns):
         headers = [
-            "Folio No.", "Instrument Name", "Valuation", "Cash Withdrawal",
-            "Dividend Paid", "Amount Invested", "Absolute Gains", "Absolute Return %", 
-            "CAGR %", "Closing Units", "PAN", "Adviser ARN"
+            "Group Name", "PAN", "Asset Class", "Advisor", "Folio No.", "Instrument Name",
+            "Instrument Type", "From Date", "To Date", "Amount Invested", "Cash Withdrawal",
+            "Dividend Paid", "Valuation", "Absolute Gains", "Absolute Return %", "CAGR %",
+            "3 Yr %", "Inception Date", "Cost Value", "Cost price", "Closing Units",
+            "Realized GL", "Unrealized GL", "Remarks"
         ]
         
         for col, header in enumerate(headers, 1):
