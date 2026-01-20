@@ -118,6 +118,34 @@ export default function CreateBondNew() {
     maxFiles: 1
   });
   
+  // Download template
+  const downloadTemplate = async () => {
+    setDownloadingTemplate(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/bonds/cashflow-template`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'bond_cashflow_template.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Template downloaded!");
+    } catch (error) {
+      console.error("Error downloading template:", error);
+      toast.error("Failed to download template");
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+  
   // Calculate price preview
   const calculatePrice = async () => {
     if (cashflows.length === 0) {
