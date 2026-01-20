@@ -436,10 +436,12 @@ export default function BulkUpload() {
                         )}
                         {activeTab === "clients" && (
                           <>
-                            <li>• Name, PAN, Email, Mobile</li>
-                            <li>• Password, PIN for login credentials</li>
-                            <li>• Linked Sub-Broker Code (optional)</li>
-                            <li>• Address details (optional)</li>
+                            <li>• <strong>Two templates available:</strong></li>
+                            <li className="ml-4">🇮🇳 Indian Passport - PAN, Bonds, Real Estate</li>
+                            <li className="ml-4">🌍 Foreign Passport - Passport No, Real Estate, GIFT City</li>
+                            <li>• Bank details required for Bonds (Indian only)</li>
+                            <li>• Passport validity required for Real Estate</li>
+                            <li>• Emirates ID required for UAE residents</li>
                           </>
                         )}
                         {activeTab === "bonds" && (
