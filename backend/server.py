@@ -8714,6 +8714,153 @@ async def reset_database(secret_key: str = None):
         raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
 
 
+@api_router.get("/bonds/cashflow-template")
+async def download_cashflow_template(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Download an Excel template for bond cashflow upload.
+    The template includes:
+    - Bond parameters section (Face Value, Coupon %, IRR, dates)
+    - Cashflow table with columns: Date, Principal Repayment, Interest Repayment
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from io import BytesIO
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cashflow per unit"
+    
+    # Styles
+    header_font = Font(bold=True, size=11)
+    header_fill = PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid")
+    param_fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Bond Parameters Section
+    params = [
+        ("A1", "Bond Parameters", None),
+        ("A2", "Deal ID", "BOND-001"),
+        ("A3", "ISIN", "INE0XXX00000"),
+        ("A4", "Bond Name", "Sample Bond Company"),
+        ("A5", "Face Value", 100000),
+        ("A6", "Coupon %", 0.125),  # 12.5% as decimal
+        ("A7", "Primary IRR %", 0.1324),
+        ("A8", "Client IRR %", 0.11),  # 11% as decimal
+        ("A9", "Bond Start Date", "2025-01-01"),
+        ("A10", "Bond Investment Date", "2025-02-01"),
+        ("A11", "Bond Maturity Date", "2026-01-01"),
+    ]
+    
+    for cell_ref, label, value in params:
+        row = int(cell_ref[1:])
+        ws[f"A{row}"] = label
+        ws[f"A{row}"].font = header_font
+        ws[f"A{row}"].fill = param_fill
+        ws[f"A{row}"].border = border
+        if value is not None:
+            ws[f"B{row}"] = value
+            ws[f"B{row}"].border = border
+    
+    # Cashflow Table Header
+    ws["A13"] = "Cashflow Schedule"
+    ws["A13"].font = Font(bold=True, size=12)
+    
+    headers = ["Date", "Principal Repayment", "Interest Repayment", "Total"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=14, column=col)
+        cell.value = header
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal="center")
+    
+    # Sample cashflow data (12 monthly payments for 1 year, equal principal)
+    sample_cashflows = [
+        ("2025-02-01", 8333.33, 1041.67),
+        ("2025-03-01", 8333.33, 972.22),
+        ("2025-04-01", 8333.33, 902.78),
+        ("2025-05-01", 8333.33, 833.33),
+        ("2025-06-01", 8333.33, 763.89),
+        ("2025-07-01", 8333.33, 694.44),
+        ("2025-08-01", 8333.33, 625.00),
+        ("2025-09-01", 8333.33, 555.56),
+        ("2025-10-01", 8333.33, 486.11),
+        ("2025-11-01", 8333.33, 416.67),
+        ("2025-12-01", 8333.33, 347.22),
+        ("2026-01-01", 8333.37, 277.78),
+    ]
+    
+    for row_idx, (date, principal, interest) in enumerate(sample_cashflows, 15):
+        ws.cell(row=row_idx, column=1, value=date).border = border
+        ws.cell(row=row_idx, column=2, value=principal).border = border
+        ws.cell(row=row_idx, column=3, value=interest).border = border
+        ws.cell(row=row_idx, column=4, value=f"=B{row_idx}+C{row_idx}").border = border
+    
+    # Total row
+    total_row = 15 + len(sample_cashflows)
+    ws.cell(row=total_row, column=1, value="Total").font = header_font
+    ws.cell(row=total_row, column=1).border = border
+    ws.cell(row=total_row, column=2, value=f"=SUM(B15:B{total_row-1})").border = border
+    ws.cell(row=total_row, column=3, value=f"=SUM(C15:C{total_row-1})").border = border
+    ws.cell(row=total_row, column=4, value=f"=SUM(D15:D{total_row-1})").border = border
+    
+    # Column widths
+    ws.column_dimensions['A'].width = 25
+    ws.column_dimensions['B'].width = 20
+    ws.column_dimensions['C'].width = 20
+    ws.column_dimensions['D'].width = 15
+    
+    # Instructions sheet
+    instructions = wb.create_sheet("Instructions")
+    instructions["A1"] = "Bond Cashflow Template Instructions"
+    instructions["A1"].font = Font(bold=True, size=14)
+    
+    instruction_text = [
+        "",
+        "1. Fill in the Bond Parameters section (rows 2-11) with your bond details:",
+        "   - Face Value: The principal amount per unit",
+        "   - Coupon %: Annual coupon rate as decimal (e.g., 0.125 for 12.5%)",
+        "   - Client IRR %: Target IRR for client as decimal (e.g., 0.11 for 11%)",
+        "   - Dates: Use YYYY-MM-DD format",
+        "",
+        "2. Fill in the Cashflow Schedule (starting row 15):",
+        "   - Date: Payment date (YYYY-MM-DD)",
+        "   - Principal Repayment: Principal amount paid on this date",
+        "   - Interest Repayment: Interest amount paid on this date",
+        "",
+        "3. Important Notes:",
+        "   - Enter values PER UNIT (not total)",
+        "   - Total principal should equal Face Value",
+        "   - Interest is calculated as: Balance × Days × Coupon / 365",
+        "   - The system will calculate the bond price based on these cashflows",
+        "",
+        "4. Supported formats: .xlsx, .xls, .xlsm"
+    ]
+    
+    for row, text in enumerate(instruction_text, 2):
+        instructions[f"A{row}"] = text
+    
+    instructions.column_dimensions['A'].width = 80
+    
+    # Save to BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=bond_cashflow_template.xlsx"}
+    )
+
+
 @api_router.post("/bonds/parse-cashflow-excel")
 async def parse_cashflow_excel(
     file: UploadFile = File(...),
