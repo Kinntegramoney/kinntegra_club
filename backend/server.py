@@ -4022,18 +4022,46 @@ async def calculate_xnpv_price_endpoint(
         months = freq_months.get(request.interest_frequency.lower(), 1)
         
         # Generate payment dates
-        current_date = bond_start
+        # Key: Always use the ORIGINAL start day of month, not the previous payment date
+        original_day = bond_start.day  # e.g., 30
         prev_date = bond_start
         balance = face_value
+        month_counter = 0
         
         if months > 0:
             # Regular periodic payments
-            while current_date <= bond_end:
-                # Add months, keeping the same day of month
-                current_date = add_months_fixed_day(prev_date, months)
+            while True:
+                month_counter += months
+                
+                # Calculate target date keeping original day of month
+                target_month = bond_start.month + month_counter
+                target_year = bond_start.year + (target_month - 1) // 12
+                target_month = ((target_month - 1) % 12) + 1
+                
+                # Get last day of target month
+                last_day_of_month = monthrange(target_year, target_month)[1]
+                
+                # Use original day or last day if original doesn't exist in target month
+                target_day = min(original_day, last_day_of_month)
+                
+                current_date = datetime(target_year, target_month, target_day)
                 
                 if current_date > bond_end:
-                    current_date = bond_end
+                    # Final payment at maturity if not already covered
+                    if prev_date < bond_end:
+                        days_in_period = (bond_end - prev_date).days
+                        interest = balance * coupon_rate * days_in_period / 365
+                        date_str = bond_end.strftime('%Y-%m-%d')
+                        principal = principal_map.get(date_str, 0)
+                        
+                        cashflows.append({
+                            "date": date_str,
+                            "interest_per_unit": interest,
+                            "principal_per_unit": principal,
+                            "days_in_period": days_in_period,
+                            "balance": balance
+                        })
+                    break
                 
                 # Calculate interest for this period
                 days_in_period = (current_date - prev_date).days
