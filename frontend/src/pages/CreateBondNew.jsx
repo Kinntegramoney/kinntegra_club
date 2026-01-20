@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, ArrowRight, Upload, FileSpreadsheet, Check, AlertCircle, Calculator, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload, FileSpreadsheet, Check, AlertCircle, Calculator, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ export default function CreateBondNew() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [calculatedPrice, setCalculatedPrice] = useState(null);
   
   // Step 1: Basic bond details
