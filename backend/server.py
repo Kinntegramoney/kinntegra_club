@@ -3189,15 +3189,67 @@ class ClientBondAllocation(BaseModel):
     status: str = "blocked"  # blocked, partial_paid, fully_paid
 
 
+# Helper function to validate PAN format
+def is_valid_pan_format(pan: str) -> bool:
+    """Check if PAN follows the format: 5 letters + 4 digits + 1 letter"""
+    import re
+    if not pan or len(pan) != 10:
+        return False
+    pattern = r'^[A-Z]{5}[0-9]{4}[A-Z]$'
+    return bool(re.match(pattern, pan.upper()))
+
+
 @api_router.post("/clients")
 async def create_client(client_data: ClientCreate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     """Create a new client (brokers and sub-brokers)"""
     if current_user['role'] not in ['broker', 'sub_broker']:
         raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can create clients")
     
-    # Validate UCC list (optional - can be empty)
+    # Validate passport type and required fields based on selection
+    if client_data.passport_type not in ['indian', 'foreign']:
+        raise HTTPException(status_code=400, detail="Passport type must be 'indian' or 'foreign'")
+    
+    # Determine the photo_id (login ID)
+    if client_data.passport_type == 'indian':
+        if not client_data.pan_number:
+            raise HTTPException(status_code=400, detail="PAN number is required for Indian passport holders")
+        photo_id = client_data.pan_number.upper()
+        
+        # Validate opportunities for Indian passport holders
+        valid_opportunities = ['bonds', 'real_estate']
+        for opp in client_data.opportunities:
+            if opp not in valid_opportunities:
+                raise HTTPException(status_code=400, detail=f"Indian passport holders can only select: {valid_opportunities}")
+        
+        # If bonds selected, validate bank details
+        if 'bonds' in client_data.opportunities:
+            if not client_data.bank_name or not client_data.account_number or not client_data.ifsc_code:
+                raise HTTPException(status_code=400, detail="Bank details (Bank Name, Account Number, IFSC) are required for Bond investments")
+    else:
+        # Foreign passport holder
+        if not client_data.passport_number:
+            raise HTTPException(status_code=400, detail="Passport number is required for foreign passport holders")
+        photo_id = client_data.passport_number.upper()
+        
+        # Validate opportunities for foreign passport holders
+        valid_opportunities = ['real_estate', 'gift_city']
+        for opp in client_data.opportunities:
+            if opp not in valid_opportunities:
+                raise HTTPException(status_code=400, detail=f"Foreign passport holders can only select: {valid_opportunities}")
+    
+    # Validate Emirates ID for UAE residents
+    if client_data.country_of_residency and client_data.country_of_residency.lower() in ['united arab emirates', 'uae']:
+        if not client_data.emirates_id:
+            raise HTTPException(status_code=400, detail="Emirates ID is required for UAE residents")
+    
+    # Validate passport details if real_estate is selected
+    if 'real_estate' in client_data.opportunities:
+        if not client_data.passport_valid_from or not client_data.passport_valid_until or not client_data.passport_country_of_issue:
+            raise HTTPException(status_code=400, detail="Passport validity details (Valid From, Valid Until, Country of Issue) are required for Real Estate investments")
+    
+    # Validate UCC list (optional - only relevant for bonds)
     ucc_list = []
-    if client_data.ucc_list and len(client_data.ucc_list) > 0:
+    if 'bonds' in client_data.opportunities and client_data.ucc_list and len(client_data.ucc_list) > 0:
         if len(client_data.ucc_list) > 5:
             raise HTTPException(status_code=400, detail="Maximum 5 UCCs allowed per client")
         
@@ -3214,20 +3266,30 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
             if existing_ucc:
                 raise HTTPException(status_code=400, detail=f"UCC '{ucc}' is already assigned to another client")
     
-    # Check if client with same PAN already exists
-    existing = await db.clients.find_one({"pan_number": client_data.pan_number.upper()})
+    # Check if client with same photo_id already exists
+    existing = await db.clients.find_one({"photo_id": photo_id})
     if existing:
-        raise HTTPException(status_code=400, detail="Client with this PAN already exists")
+        raise HTTPException(status_code=400, detail=f"Client with this {'PAN' if client_data.passport_type == 'indian' else 'Passport Number'} already exists")
     
-    # Check if user with same PAN already exists
-    existing_user = await db.users.find_one({"pan": client_data.pan_number.upper()})
+    # Also check legacy pan_number field for backwards compatibility
+    if client_data.pan_number:
+        existing_pan = await db.clients.find_one({"pan_number": client_data.pan_number.upper()})
+        if existing_pan:
+            raise HTTPException(status_code=400, detail="Client with this PAN already exists")
+    
+    # Check if user with same photo_id already exists
+    existing_user = await db.users.find_one({"pan": photo_id})
     if existing_user:
-        raise HTTPException(status_code=400, detail="User with this PAN already exists")
+        raise HTTPException(status_code=400, detail=f"User with this {'PAN' if client_data.passport_type == 'indian' else 'Passport Number'} already exists")
     
     client_dict = client_data.model_dump()
     client_id = str(uuid.uuid4())
     client_dict['id'] = client_id
-    client_dict['pan_number'] = client_dict['pan_number'].upper()
+    client_dict['photo_id'] = photo_id  # The login ID (PAN for Indian, Passport for Foreign)
+    if client_dict.get('pan_number'):
+        client_dict['pan_number'] = client_dict['pan_number'].upper()
+    if client_dict.get('passport_number'):
+        client_dict['passport_number'] = client_dict['passport_number'].upper()
     client_dict['ucc_list'] = ucc_list  # Store cleaned UCC list (can be empty)
     client_dict['created_by'] = current_user['id']
     client_dict['created_at'] = datetime.now(timezone.utc).isoformat()
@@ -3235,6 +3297,10 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
     client_dict['verification_status'] = 'pending'  # pending, verified
     client_dict['verification_token'] = str(uuid.uuid4())
     client_dict['is_active'] = True  # Clients are active by default
+    
+    # Track document expiry notifications
+    if client_dict.get('passport_valid_until'):
+        client_dict['passport_expiry_notified'] = False
     
     # If sub-broker is creating, auto-link the client to them
     if current_user['role'] == 'sub_broker':
@@ -3248,7 +3314,7 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
     user_id = str(uuid.uuid4())
     user_data = {
         "id": user_id,
-        "pan": client_data.pan_number.upper(),
+        "pan": photo_id,  # Login ID is the photo_id (PAN or Passport Number)
         "name": client_data.name,
         "email": client_data.email,
         "phone": client_data.mobile,
@@ -3258,6 +3324,7 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
         "is_active": True,  # Clients are active by default
         "client_id": client_id,
         "broker_id": current_user['id'],
+        "passport_type": client_data.passport_type,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
