@@ -1579,7 +1579,7 @@ async def bulk_upload_clients(
                 "name": str(row['name']).strip(),
                 "email": get_val(row, 'email'),
                 "phone": get_val(row, 'mobile'),
-                "password_hash": get_password_hash(get_val(row, 'password', 'password123')),
+                "password_hash": get_password_hash(get_val(row, 'password', 'kinntegra123')),
                 "pin_hash": get_password_hash(get_val(row, 'pin', '1234')),
                 "role": "client",
                 "is_active": True,
