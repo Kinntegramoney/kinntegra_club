@@ -9215,40 +9215,91 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
     # Get remaining GROSS cashflows after investment date (for price calculation)
     remaining_dates = []
     remaining_cashflows_gross = []
+    cutoff_days = bond.get('cutoff_days', 15)
     
-    # Add remaining interest payments (GROSS)
-    for ip in bond['interest_payments']:
-        ip_date = datetime.fromisoformat(ip['date'])
-        if ip_date > investment_date:
-            remaining_dates.append(ip_date)
-            remaining_cashflows_gross.append(ip['amount'])
-    
-    # Add remaining principal payments
-    remaining_principal_pct = 0
-    for pp in bond['principal_payments']:
-        pp_date = datetime.fromisoformat(pp['date'])
-        if pp_date > investment_date:
-            remaining_dates.append(pp_date)
-            remaining_cashflows_gross.append(bond['principal_amount'] * pp['percentage'] / 100)
-            remaining_principal_pct += pp['percentage']
-    
-    # Combine cashflows on same date (GROSS amounts)
-    date_cashflow_map = {}
-    for d, cf in zip(remaining_dates, remaining_cashflows_gross):
-        if d in date_cashflow_map:
-            date_cashflow_map[d] += cf
-        else:
-            date_cashflow_map[d] = cf
-    
-    remaining_dates = sorted(date_cashflow_map.keys())
-    remaining_cashflows_gross = [date_cashflow_map[d] for d in remaining_dates]
+    # Check if bond has cashflows_per_unit (new format)
+    if bond.get('cashflows_per_unit') and len(bond['cashflows_per_unit']) > 0:
+        # Use the new cashflows_per_unit format with proper cutoff logic
+        for cf in bond['cashflows_per_unit']:
+            cf_date_str = str(cf.get('date', '')).split('T')[0].split(' ')[0]
+            if not cf_date_str:
+                continue
+            
+            try:
+                cf_date = datetime.fromisoformat(cf_date_str)
+            except:
+                continue
+            
+            principal = cf.get('principal', 0) or 0
+            interest = cf.get('interest', 0) or 0
+            total_cf = principal + interest
+            
+            # Calculate days from investment
+            days_from_investment = (cf_date - investment_date).days
+            
+            # Apply cutoff: if days_from_investment > cutoff_days, include the cashflow
+            if days_from_investment > cutoff_days:
+                remaining_dates.append(cf_date)
+                remaining_cashflows_gross.append(total_cf)
+        
+        # Calculate remaining principal/interest from included cashflows
+        remaining_principal = sum(cf.get('principal', 0) or 0 for cf in bond['cashflows_per_unit'] 
+                                  if (datetime.fromisoformat(str(cf.get('date', '')).split('T')[0].split(' ')[0]) - investment_date).days > cutoff_days)
+        remaining_interest_gross = sum(cf.get('interest', 0) or 0 for cf in bond['cashflows_per_unit']
+                                       if (datetime.fromisoformat(str(cf.get('date', '')).split('T')[0].split(' ')[0]) - investment_date).days > cutoff_days)
+    else:
+        # Fallback to old format: interest_payments and principal_payments
+        # Add remaining interest payments (GROSS)
+        for ip in bond.get('interest_payments', []):
+            ip_date = datetime.fromisoformat(ip['date'])
+            if ip_date > investment_date:
+                remaining_dates.append(ip_date)
+                remaining_cashflows_gross.append(ip['amount'])
+        
+        # Add remaining principal payments
+        remaining_principal_pct = 0
+        for pp in bond.get('principal_payments', []):
+            pp_date = datetime.fromisoformat(pp['date'])
+            if pp_date > investment_date:
+                remaining_dates.append(pp_date)
+                remaining_cashflows_gross.append(bond['principal_amount'] * pp['percentage'] / 100)
+                remaining_principal_pct += pp['percentage']
+        
+        # Combine cashflows on same date (GROSS amounts)
+        date_cashflow_map = {}
+        for d, cf in zip(remaining_dates, remaining_cashflows_gross):
+            if d in date_cashflow_map:
+                date_cashflow_map[d] += cf
+            else:
+                date_cashflow_map[d] = cf
+        
+        remaining_dates = sorted(date_cashflow_map.keys())
+        remaining_cashflows_gross = [date_cashflow_map[d] for d in remaining_dates]
+        
+        remaining_principal = bond['principal_amount'] * remaining_principal_pct / 100
+        remaining_interest_gross = sum(remaining_cashflows_gross) - remaining_principal
     
     if len(remaining_dates) == 0:
         raise HTTPException(status_code=400, detail="No remaining cashflows after investment date")
     
-    # Calculate price per unit using GROSS IRR and GROSS cashflows
-    secondary_irr_decimal = bond['secondary_irr'] / 100
-    price_per_unit = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows_gross, investment_date)
+    # Calculate price using XNPV method if cashflows_per_unit exists
+    if bond.get('cashflows_per_unit') and len(bond['cashflows_per_unit']) > 0:
+        # Use the new XNPV-based calculation
+        secondary_irr_decimal = bond['secondary_irr'] / 100
+        
+        # Calculate XNPV
+        xnpv_total = 0
+        for cf_date, cf_amount in zip(remaining_dates, remaining_cashflows_gross):
+            days = (cf_date - investment_date).days
+            if days > 0:
+                discount_factor = (1 + secondary_irr_decimal) ** (days / 365)
+                xnpv_total += cf_amount / discount_factor
+        
+        price_per_unit = xnpv_total
+    else:
+        # Use original calculation method
+        secondary_irr_decimal = bond['secondary_irr'] / 100
+        price_per_unit = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows_gross, investment_date)
     
     # Calculate total price for requested units
     total_price = price_per_unit * calculation.units
