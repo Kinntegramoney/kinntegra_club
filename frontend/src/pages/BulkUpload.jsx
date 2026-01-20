@@ -520,6 +520,53 @@ export default function BulkUpload() {
                     Step 2: Upload Filled Template
                   </h2>
 
+                  {/* Client passport type selector */}
+                  {activeTab === "clients" && (
+                    <div className="mb-4 p-4 bg-gray-50 rounded-lg border">
+                      <p className="text-sm font-medium text-gray-700 mb-3">Select passport type for this upload:</p>
+                      <div className="flex gap-4">
+                        <label className={`flex-1 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          clientUploadType === 'indian' 
+                            ? 'border-amber-500 bg-amber-50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}>
+                          <input 
+                            type="radio" 
+                            name="clientType" 
+                            value="indian" 
+                            checked={clientUploadType === 'indian'}
+                            onChange={(e) => setClientUploadType(e.target.value)}
+                            className="sr-only"
+                          />
+                          <div className="flex items-center gap-2">
+                            <span>🇮🇳</span>
+                            <span className="font-medium">Indian Passport</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">PAN as Login ID</p>
+                        </label>
+                        <label className={`flex-1 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          clientUploadType === 'foreign' 
+                            ? 'border-blue-500 bg-blue-50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}>
+                          <input 
+                            type="radio" 
+                            name="clientType" 
+                            value="foreign" 
+                            checked={clientUploadType === 'foreign'}
+                            onChange={(e) => setClientUploadType(e.target.value)}
+                            className="sr-only"
+                          />
+                          <div className="flex items-center gap-2">
+                            <span>🌍</span>
+                            <span className="font-medium">Foreign Passport</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">Passport No as Login ID</p>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
                   <label className={`block border-2 border-dashed ${currentColor.border} rounded-xl p-8 text-center cursor-pointer hover:${currentColor.light} transition-colors`}>
                     <input
                       type="file"
