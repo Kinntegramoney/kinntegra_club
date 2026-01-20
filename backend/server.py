@@ -3071,30 +3071,52 @@ async def update_partner(partner_id: str, partner_update: PartnerUpdate, current
 # ==================== CLIENT MANAGEMENT ====================
 
 class ClientCreate(BaseModel):
-    # Personal Details
+    # Basic Details (Required for all)
     name: str
-    pan_number: str
-    ucc_list: Optional[List[str]] = None  # List of Unique Client Codes (optional, max 5, must be unique across system)
+    email: str
+    mobile: str
+    
+    # Identity & Residency
+    country_of_residency: str  # Country dropdown with UAE & India on top
+    passport_type: str  # "indian" or "foreign"
+    
+    # For Indian Passport holders
+    pan_number: Optional[str] = None  # Required if passport_type == "indian"
+    passport_number: Optional[str] = None  # Optional for Indian, Required for Foreign
+    
+    # For UAE residents
+    emirates_id: Optional[str] = None  # Required if country_of_residency == "United Arab Emirates"
+    
+    # Passport Details (Required for Real Estate opportunity)
+    passport_valid_from: Optional[str] = None
+    passport_valid_until: Optional[str] = None
+    passport_country_of_issue: Optional[str] = None
+    
+    # Opportunities Selection (array of: "bonds", "real_estate", "gift_city")
+    opportunities: List[str] = []  # Indian: bonds, real_estate | Foreign: real_estate, gift_city
+    
+    # For Bonds opportunity (Indian passport holders only)
+    ucc_list: Optional[List[str]] = None  # Max 5, unique across system
+    demat_account_no: Optional[str] = None
+    
+    # Bank Details (Required for Bonds - Indian passport holders only)
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    branch: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    
+    # Additional Personal Details
     occupation: Optional[str] = None
     date_of_birth: Optional[str] = None
     father_husband_name: Optional[str] = None
-    demat_account_no: Optional[str] = None
-    email: str
-    mobile: str
     
     # Address Details
     address_line1: Optional[str] = None
     address_line2: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
-    country: str = "India"
+    country: Optional[str] = None  # Can be different from country_of_residency
     pincode: Optional[str] = None
-    
-    # Bank Details
-    bank_name: Optional[str] = None
-    account_number: Optional[str] = None
-    branch: Optional[str] = None
-    ifsc_code: Optional[str] = None
     
     # Nominee Details
     nominee_name: Optional[str] = None
