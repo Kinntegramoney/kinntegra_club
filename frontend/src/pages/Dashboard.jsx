@@ -210,65 +210,6 @@ export default function Dashboard() {
     );
   }
 
-  const kpiCards = [
-    { 
-      label: "Total Clients", 
-      value: summary?.clients?.total || 0, 
-      subValue: `${summary?.clients?.active || 0} Active`,
-      icon: Users, 
-      color: "from-indigo-500 to-indigo-600",
-      bgColor: "bg-indigo-500/10",
-      textColor: "text-indigo-400"
-    },
-    { 
-      label: "Sub-Brokers", 
-      value: summary?.sub_brokers?.total || 0, 
-      subValue: `${summary?.sub_brokers?.active || 0} Active`,
-      icon: Briefcase, 
-      color: "from-violet-500 to-violet-600",
-      bgColor: "bg-violet-500/10",
-      textColor: "text-violet-400"
-    },
-    { 
-      label: "Bond AUM", 
-      value: formatINRCrores(summary?.aum?.bonds),
-      subValue: "NCD Investments (INR)",
-      icon: Landmark, 
-      color: "from-amber-500 to-amber-600",
-      bgColor: "bg-amber-500/10",
-      textColor: "text-amber-400",
-      isLarge: true
-    },
-    { 
-      label: "Real Estate AUM", 
-      value: formatAEDMillions(summary?.aum?.real_estate),
-      subValue: "Property Investments (AED)",
-      icon: Building2, 
-      color: "from-pink-500 to-pink-600",
-      bgColor: "bg-pink-500/10",
-      textColor: "text-pink-400",
-      isLarge: true
-    },
-    { 
-      label: "Bond Opportunities", 
-      value: summary?.opportunities?.bonds?.total || 0, 
-      subValue: `${summary?.opportunities?.bonds?.available || 0} Available`,
-      icon: TrendingUp, 
-      color: "from-emerald-500 to-emerald-600",
-      bgColor: "bg-emerald-500/10",
-      textColor: "text-emerald-400"
-    },
-    { 
-      label: "Trades Done", 
-      value: summary?.trades_count || 0, 
-      subValue: "Approved Trades",
-      icon: Activity, 
-      color: "from-cyan-500 to-cyan-600",
-      bgColor: "bg-cyan-500/10",
-      textColor: "text-cyan-400"
-    }
-  ];
-
   // Prepare data for client type distribution (using status)
   const clientTypeData = [
     { name: "Active", value: summary?.clients?.active || 0, color: COLORS.success },
