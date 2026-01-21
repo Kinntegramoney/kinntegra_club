@@ -1181,6 +1181,60 @@ async def get_sub_broker_clients(current_user: dict = Depends(get_current_user))
     return clients
 
 
+@api_router.get("/sub-broker/clients/{client_id}")
+async def get_sub_broker_client_details(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Get detailed info for a specific client linked to this sub-broker"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
+    
+    client = await db.clients.find_one(
+        {"id": client_id, "linked_subbroker_id": current_user['id']},
+        {"_id": 0}
+    )
+    
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found or not linked to you")
+    
+    return client
+
+
+@api_router.put("/sub-broker/clients/{client_id}")
+async def update_sub_broker_client(client_id: str, client_data: dict, current_user: dict = Depends(get_current_user)):
+    """Update client details by sub-broker"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
+    
+    # Verify client is linked to this sub-broker
+    existing_client = await db.clients.find_one(
+        {"id": client_id, "linked_subbroker_id": current_user['id']},
+        {"_id": 0}
+    )
+    
+    if not existing_client:
+        raise HTTPException(status_code=404, detail="Client not found or not linked to you")
+    
+    # Fields that can be updated
+    allowed_fields = [
+        'name', 'email', 'mobile', 'date_of_birth', 'father_husband_name', 'occupation',
+        'demat_account_no', 'address_line1', 'address_line2', 'city', 'state', 'pincode', 'country',
+        'bank_name', 'account_number', 'branch', 'ifsc_code',
+        'nominee_name', 'nominee_relationship', 'nominee_dob', 'nominee_mobile'
+    ]
+    
+    update_data = {k: v for k, v in client_data.items() if k in allowed_fields and v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    if update_data:
+        await db.clients.update_one(
+            {"id": client_id},
+            {"$set": update_data}
+        )
+    
+    # Return updated client
+    updated_client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    return updated_client
+
+
 @api_router.post("/sub-broker/clients")
 async def create_client_by_subbroker(
     client_data: dict,
