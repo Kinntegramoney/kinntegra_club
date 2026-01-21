@@ -3657,7 +3657,14 @@ function DeveloperReceiptModal({ opportunity, payment, investor, milestone, onCl
 function CurrencySettingsModal({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [projections, setProjections] = useState([]);
+  const [currencyPairs, setCurrencyPairs] = useState([{ from: "INR", to: "AED" }]);
+  const [dldProjections, setDldProjections] = useState([]);
+  const [adminProjections, setAdminProjections] = useState([]);
+  const [activeTab, setActiveTab] = useState("currency");
   const currentYear = new Date().getFullYear();
+  
+  // Available currency options
+  const currencies = ["INR", "USD", "EUR", "GBP", "SGD", "AUD", "CAD", "CHF", "JPY"];
   
   useEffect(() => {
     fetchProjections();
@@ -3672,23 +3679,55 @@ function CurrencySettingsModal({ onClose, onSuccess }) {
       
       if (response.data.projections && response.data.projections.length > 0) {
         setProjections(response.data.projections);
+        // Extract unique currency pairs
+        const pairs = [...new Set(response.data.projections.map(p => p.currency))].map(c => ({ from: c, to: "AED" }));
+        if (pairs.length > 0) setCurrencyPairs(pairs);
       } else {
-        // Initialize with default years
-        const defaults = [];
-        for (let i = 0; i < 6; i++) {
-          defaults.push({ year: currentYear + i, currency: "INR", projected_rate: 22.5 });
-        }
-        setProjections(defaults);
+        initializeDefaults();
+      }
+      
+      // Load DLD and Admin projections if available
+      if (response.data.dld_projections) {
+        setDldProjections(response.data.dld_projections);
+      } else {
+        initializeDldDefaults();
+      }
+      
+      if (response.data.admin_projections) {
+        setAdminProjections(response.data.admin_projections);
+      } else {
+        initializeAdminDefaults();
       }
     } catch (error) {
       console.error("Error fetching projections:", error);
-      // Initialize with defaults
-      const defaults = [];
-      for (let i = 0; i < 6; i++) {
-        defaults.push({ year: currentYear + i, currency: "INR", projected_rate: 22.5 });
-      }
-      setProjections(defaults);
+      initializeDefaults();
+      initializeDldDefaults();
+      initializeAdminDefaults();
     }
+  };
+  
+  const initializeDefaults = () => {
+    const defaults = [];
+    for (let i = 0; i < 6; i++) {
+      defaults.push({ year: currentYear + i, currency: "INR", projected_rate: 22.5 });
+    }
+    setProjections(defaults);
+  };
+  
+  const initializeDldDefaults = () => {
+    const defaults = [];
+    for (let i = 0; i < 6; i++) {
+      defaults.push({ year: currentYear + i, dld_percentage: 4.0 });
+    }
+    setDldProjections(defaults);
+  };
+  
+  const initializeAdminDefaults = () => {
+    const defaults = [];
+    for (let i = 0; i < 6; i++) {
+      defaults.push({ year: currentYear + i, admin_fee_percentage: 2.0 });
+    }
+    setAdminProjections(defaults);
   };
   
   const updateProjection = (index, field, value) => {
@@ -3697,13 +3736,64 @@ function CurrencySettingsModal({ onClose, onSuccess }) {
     setProjections(updated);
   };
   
+  const updateDldProjection = (index, field, value) => {
+    const updated = [...dldProjections];
+    updated[index] = { ...updated[index], [field]: parseFloat(value) || 0 };
+    setDldProjections(updated);
+  };
+  
+  const updateAdminProjection = (index, field, value) => {
+    const updated = [...adminProjections];
+    updated[index] = { ...updated[index], [field]: parseFloat(value) || 0 };
+    setAdminProjections(updated);
+  };
+  
   const addYear = () => {
     const lastYear = projections.length > 0 ? projections[projections.length - 1].year : currentYear - 1;
-    setProjections([...projections, { year: lastYear + 1, currency: "INR", projected_rate: 22.5 }]);
+    // Add for all currency pairs
+    currencyPairs.forEach(pair => {
+      setProjections(prev => [...prev, { year: lastYear + 1, currency: pair.from, projected_rate: 22.5 }]);
+    });
+  };
+  
+  const addDldYear = () => {
+    const lastYear = dldProjections.length > 0 ? dldProjections[dldProjections.length - 1].year : currentYear - 1;
+    setDldProjections([...dldProjections, { year: lastYear + 1, dld_percentage: 4.0 }]);
+  };
+  
+  const addAdminYear = () => {
+    const lastYear = adminProjections.length > 0 ? adminProjections[adminProjections.length - 1].year : currentYear - 1;
+    setAdminProjections([...adminProjections, { year: lastYear + 1, admin_fee_percentage: 2.0 }]);
+  };
+  
+  const addCurrencyPair = () => {
+    // Find a currency not yet added
+    const usedCurrencies = currencyPairs.map(p => p.from);
+    const availableCurrency = currencies.find(c => !usedCurrencies.includes(c)) || "USD";
+    setCurrencyPairs([...currencyPairs, { from: availableCurrency, to: "AED" }]);
+    
+    // Add projections for this new currency for all existing years
+    const years = [...new Set(projections.map(p => p.year))];
+    const newProjections = years.map(year => ({ year, currency: availableCurrency, projected_rate: availableCurrency === "USD" ? 3.67 : availableCurrency === "EUR" ? 4.0 : 22.5 }));
+    setProjections([...projections, ...newProjections]);
+  };
+  
+  const removeCurrencyPair = (index) => {
+    const pairToRemove = currencyPairs[index];
+    setCurrencyPairs(currencyPairs.filter((_, i) => i !== index));
+    setProjections(projections.filter(p => p.currency !== pairToRemove.from));
   };
   
   const removeYear = (index) => {
     setProjections(projections.filter((_, i) => i !== index));
+  };
+  
+  const removeDldYear = (index) => {
+    setDldProjections(dldProjections.filter((_, i) => i !== index));
+  };
+  
+  const removeAdminYear = (index) => {
+    setAdminProjections(adminProjections.filter((_, i) => i !== index));
   };
   
   const handleSave = async (e) => {
@@ -3713,10 +3803,14 @@ function CurrencySettingsModal({ onClose, onSuccess }) {
       const token = localStorage.getItem("token");
       await axios.put(
         `${process.env.REACT_APP_BACKEND_URL}/api/settings/currency-projections`,
-        { projections },
+        { 
+          projections,
+          dld_projections: dldProjections,
+          admin_projections: adminProjections
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success("Currency projections saved!");
+      toast.success("Projections saved!");
       onSuccess?.();
       onClose();
     } catch (error) {
@@ -3726,86 +3820,279 @@ function CurrencySettingsModal({ onClose, onSuccess }) {
     }
   };
   
+  // Group projections by currency for display
+  const groupedProjections = currencyPairs.map(pair => ({
+    currency: pair.from,
+    projections: projections.filter(p => p.currency === pair.from).sort((a, b) => a.year - b.year)
+  }));
+  
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-auto">
-        <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+      <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-auto">
+        <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between z-10">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Settings className="h-5 w-5 text-indigo-600" />
-              Currency Rate Projections
+              Rate Projections Settings
             </h2>
-            <p className="text-sm text-gray-500">Set projected exchange rates for XIRR calculations</p>
+            <p className="text-sm text-gray-500">Configure currency rates, DLD & admin fee projections</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
         </div>
         
+        {/* Tabs */}
+        <div className="border-b px-4">
+          <div className="flex gap-1">
+            <button
+              onClick={() => setActiveTab("currency")}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "currency" 
+                  ? "border-indigo-600 text-indigo-600" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Currency Rates
+            </button>
+            <button
+              onClick={() => setActiveTab("dld")}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "dld" 
+                  ? "border-indigo-600 text-indigo-600" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              DLD %
+            </button>
+            <button
+              onClick={() => setActiveTab("admin")}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "admin" 
+                  ? "border-indigo-600 text-indigo-600" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Admin Fee %
+            </button>
+          </div>
+        </div>
+        
         <form onSubmit={handleSave} className="p-4 space-y-4">
-          <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
-            <strong>Note:</strong> These projected rates are used to calculate the "Expected XIRR" in comparison reports. 
-            Rates are defined as: 1 AED = X [Currency]
-          </div>
-          
-          <div className="space-y-3">
-            <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-2">
-              <div className="col-span-3">Year</div>
-              <div className="col-span-3">Currency</div>
-              <div className="col-span-4">Rate (per 1 AED)</div>
-              <div className="col-span-2"></div>
-            </div>
-            
-            {projections.map((proj, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                <div className="col-span-3">
-                  <Input
-                    type="number"
-                    value={proj.year}
-                    onChange={(e) => updateProjection(idx, 'year', e.target.value)}
-                    className="text-sm"
-                  />
-                </div>
-                <div className="col-span-3">
-                  <select
-                    className="w-full border rounded-md px-3 py-2 text-sm"
-                    value={proj.currency}
-                    onChange={(e) => updateProjection(idx, 'currency', e.target.value)}
-                  >
-                    <option value="INR">INR</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="GBP">GBP</option>
-                  </select>
-                </div>
-                <div className="col-span-4">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={proj.projected_rate}
-                    onChange={(e) => updateProjection(idx, 'projected_rate', e.target.value)}
-                    placeholder="e.g., 22.5"
-                    className="text-sm"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <button 
-                    type="button" 
-                    onClick={() => removeYear(idx)}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
+          {/* Currency Rates Tab */}
+          {activeTab === "currency" && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
+                <strong>Note:</strong> These projected rates are used for XIRR calculations. 
+                Rate format: 1 AED = X [Currency]
               </div>
-            ))}
-          </div>
+              
+              {/* Currency Pairs with Add button */}
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-gray-700">Currency Pairs</h3>
+                <button
+                  type="button"
+                  onClick={addCurrencyPair}
+                  className="flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100"
+                >
+                  <Plus className="h-4 w-4" /> Add Currency
+                </button>
+              </div>
+              
+              {/* Currency Pair Pills */}
+              <div className="flex flex-wrap gap-2">
+                {currencyPairs.map((pair, idx) => (
+                  <div key={idx} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-full text-sm">
+                    <span className="font-medium">{pair.from}</span>
+                    <span className="text-gray-400">→</span>
+                    <span>AED</span>
+                    {currencyPairs.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeCurrencyPair(idx)}
+                        className="ml-1 text-gray-400 hover:text-red-500"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Projections by Currency */}
+              {groupedProjections.map((group, gIdx) => (
+                <div key={gIdx} className="border rounded-lg p-3 space-y-3">
+                  <h4 className="font-medium text-gray-700 flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs">{group.currency}</span>
+                    to AED Rates
+                  </h4>
+                  
+                  <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-2">
+                    <div className="col-span-4">Year</div>
+                    <div className="col-span-6">Rate (1 AED = X {group.currency})</div>
+                    <div className="col-span-2"></div>
+                  </div>
+                  
+                  {group.projections.map((proj, idx) => {
+                    const globalIdx = projections.findIndex(p => p.year === proj.year && p.currency === proj.currency);
+                    return (
+                      <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                        <div className="col-span-4">
+                          <Input
+                            type="number"
+                            value={proj.year}
+                            onChange={(e) => updateProjection(globalIdx, 'year', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="col-span-6">
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            value={proj.projected_rate}
+                            onChange={(e) => updateProjection(globalIdx, 'projected_rate', e.target.value)}
+                            placeholder="e.g., 22.5"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <button 
+                            type="button" 
+                            onClick={() => removeYear(globalIdx)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+              
+              <button
+                type="button"
+                onClick={addYear}
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 flex items-center justify-center gap-2"
+              >
+                <Plus className="h-4 w-4" /> Add Year (All Currencies)
+              </button>
+            </div>
+          )}
           
-          <button
-            type="button"
-            onClick={addYear}
-            className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 flex items-center justify-center gap-2"
-          >
-            <Plus className="h-4 w-4" /> Add Year
-          </button>
+          {/* DLD Tab */}
+          {activeTab === "dld" && (
+            <div className="space-y-4">
+              <div className="bg-amber-50 p-3 rounded-lg text-sm text-amber-800">
+                <strong>DLD (Dubai Land Department):</strong> Set the projected DLD percentage for each year. 
+                This is typically 4% of property value.
+              </div>
+              
+              <div className="space-y-3">
+                <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-2">
+                  <div className="col-span-5">Year</div>
+                  <div className="col-span-5">DLD Percentage (%)</div>
+                  <div className="col-span-2"></div>
+                </div>
+                
+                {dldProjections.map((proj, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-5">
+                      <Input
+                        type="number"
+                        value={proj.year}
+                        onChange={(e) => updateDldProjection(idx, 'year', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="col-span-5">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={proj.dld_percentage}
+                        onChange={(e) => updateDldProjection(idx, 'dld_percentage', e.target.value)}
+                        placeholder="e.g., 4.0"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <button 
+                        type="button" 
+                        onClick={() => removeDldYear(idx)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <button
+                type="button"
+                onClick={addDldYear}
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 flex items-center justify-center gap-2"
+              >
+                <Plus className="h-4 w-4" /> Add Year
+              </button>
+            </div>
+          )}
+          
+          {/* Admin Fee Tab */}
+          {activeTab === "admin" && (
+            <div className="space-y-4">
+              <div className="bg-purple-50 p-3 rounded-lg text-sm text-purple-800">
+                <strong>Admin Fee:</strong> Set the projected admin fee percentage for each year. 
+                This is charged on top of the property value.
+              </div>
+              
+              <div className="space-y-3">
+                <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-2">
+                  <div className="col-span-5">Year</div>
+                  <div className="col-span-5">Admin Fee (%)</div>
+                  <div className="col-span-2"></div>
+                </div>
+                
+                {adminProjections.map((proj, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-5">
+                      <Input
+                        type="number"
+                        value={proj.year}
+                        onChange={(e) => updateAdminProjection(idx, 'year', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="col-span-5">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={proj.admin_fee_percentage}
+                        onChange={(e) => updateAdminProjection(idx, 'admin_fee_percentage', e.target.value)}
+                        placeholder="e.g., 2.0"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <button 
+                        type="button" 
+                        onClick={() => removeAdminYear(idx)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <button
+                type="button"
+                onClick={addAdminYear}
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 flex items-center justify-center gap-2"
+              >
+                <Plus className="h-4 w-4" /> Add Year
+              </button>
+            </div>
+          )}
           
           <div className="flex gap-3 pt-4 border-t">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
