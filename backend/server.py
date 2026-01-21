@@ -13265,7 +13265,8 @@ async def invest_in_opportunity(
     if not opportunity:
         raise HTTPException(status_code=404, detail="Real estate opportunity not found")
     
-    if opportunity['status'] != 'available':
+    # Allow investment for both 'available' and 'partially_invested' status
+    if opportunity.get('status') not in ['available', 'partially_invested', None]:
         raise HTTPException(status_code=400, detail="This opportunity is no longer available for investment")
     
     # Verify client exists
