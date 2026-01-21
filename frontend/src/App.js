@@ -316,6 +316,16 @@ function App() {
             } 
           />
           
+          {/* Sub-Broker Approval Logs Route */}
+          <Route 
+            path="/sub-broker/approval-logs" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <ApprovalLogs />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Analysis Dashboard - Opens in new tab */}
           <Route 
             path="/analysis/dashboard/:analysisId" 
