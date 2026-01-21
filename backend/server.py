@@ -3955,8 +3955,10 @@ async def bulk_upload_clients(
             existing_user = await db.users.find_one({"pan": pan})
             
             # Get data from other sheets using PAN lookup
-            address_row = address_by_pan.get(pan, {})
             bank_row = bank_by_pan.get(pan, {})
+            intl_bank_row = intl_bank_by_pan.get(pan, {})
+            passport_row = passport_by_pan.get(pan, {})
+            address_row = address_by_pan.get(pan, {})
             nominee_row = nominee_by_pan.get(pan, {})
             subbroker_row = subbroker_by_pan.get(pan, {})
             
