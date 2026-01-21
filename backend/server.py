@@ -3412,7 +3412,7 @@ async def download_real_estate_template(current_user: dict = Depends(get_current
     pricing_headers = [
         "Building Name*", "Unit No*", "Unit Price (AED)*", "DLD Fee (%)*", 
         "Admin Fee (AED)*", "Broker Fee (AED)", "Other Fees (AED)", 
-        "Unit Selling Fee (%)"
+        "Unit Selling Fee (%)", "Developer Discount (AED)", "Developer Discount (%)"
     ]
     for col, header in enumerate(pricing_headers, 1):
         cell = ws_pricing.cell(row=1, column=col, value=header)
@@ -3422,7 +3422,7 @@ async def download_real_estate_template(current_user: dict = Depends(get_current
         ws_pricing.column_dimensions[get_column_letter(col)].width = 18
     
     # Sample data for Pricing
-    pricing_sample = ["Palm Tower", "1201", 2500000, 4, 5000, 25000, 2000, 2]
+    pricing_sample = ["Palm Tower", "1201", 2500000, 4, 5000, 25000, 2000, 2, 50000, ""]
     for col, value in enumerate(pricing_sample, 1):
         ws_pricing.cell(row=2, column=col, value=value)
     
