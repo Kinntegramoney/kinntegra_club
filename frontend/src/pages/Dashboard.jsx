@@ -275,6 +275,11 @@ export default function Dashboard() {
     { name: "Inactive", value: (summary?.clients?.total || 0) - (summary?.clients?.active || 0), color: COLORS.danger }
   ].filter(d => d.value > 0);
 
+  // Client product distribution for Venn diagram
+  const bondOnlyClients = summary?.clients?.bond_only || 0;
+  const realEstateOnlyClients = summary?.clients?.real_estate_only || 0;
+  const bothProductsClients = summary?.clients?.both_products || 0;
+
   // Prepare AUM by asset class for pie chart
   const aumByAssetClass = aumDistribution.by_asset_class?.filter(d => d.value > 0) || [];
 
