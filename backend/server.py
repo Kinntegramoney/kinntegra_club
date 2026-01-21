@@ -14855,26 +14855,34 @@ async def update_currency_projections(
     data: CurrencyRateProjectionsUpdate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Update projected currency rates"""
+    """Update projected currency rates, DLD and admin fee"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can update settings")
     
     broker_id = current_user['id']
     
+    update_data = {
+        "broker_id": broker_id,
+        "currency_projections": [p.dict() for p in data.projections],
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Add DLD projections if provided
+    if data.dld_projections:
+        update_data["dld_projections"] = [p.dict() for p in data.dld_projections]
+    
+    # Add Admin projections if provided
+    if data.admin_projections:
+        update_data["admin_projections"] = [p.dict() for p in data.admin_projections]
+    
     # Upsert the settings
     await db.broker_settings.update_one(
         {"broker_id": broker_id},
-        {
-            "$set": {
-                "broker_id": broker_id,
-                "currency_projections": [p.dict() for p in data.projections],
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-        },
+        {"$set": update_data},
         upsert=True
     )
     
-    return {"message": "Currency projections updated successfully"}
+    return {"message": "Projections updated successfully"}
 
 
 @api_router.get("/real-estate-opportunities/{opportunity_id}/xirr-comparison/{investor_id}")
