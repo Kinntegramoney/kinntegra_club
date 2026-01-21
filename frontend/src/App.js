@@ -46,7 +46,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     } else if (parsedUser.role === "client") {
       return <Navigate to="/client/opportunities" replace />;
     } else {
-      return <Navigate to="/sub-broker/opportunities" replace />;
+      return <Navigate to="/sub-broker/dashboard" replace />;
     }
   }
   
