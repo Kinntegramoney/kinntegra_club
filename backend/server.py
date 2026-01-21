@@ -4560,11 +4560,18 @@ class ClientUpdate(BaseModel):
     ucc_list: Optional[List[str]] = None
     demat_account_no: Optional[str] = None
     
-    # Bank Details
+    # Bank Details - Indian Bank
     bank_name: Optional[str] = None
     account_number: Optional[str] = None
     branch: Optional[str] = None
     ifsc_code: Optional[str] = None
+    account_type: Optional[str] = None
+    
+    # Bank Details - International Bank
+    intl_bank_name: Optional[str] = None
+    intl_account_number: Optional[str] = None
+    intl_iban: Optional[str] = None
+    intl_swift_code: Optional[str] = None
     
     # Additional Personal Details
     occupation: Optional[str] = None
