@@ -18,6 +18,12 @@ const INDIAN_STATES = [
   "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
 ];
 
+const COUNTRIES = [
+  "India", "UAE", "USA", "UK", "Singapore", "Australia", "Canada", "Germany", 
+  "France", "Japan", "China", "South Korea", "Malaysia", "Indonesia", "Thailand",
+  "Philippines", "Vietnam", "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"
+];
+
 const COLORS = [
   { name: "Brown", value: "#78716C" },
   { name: "Blue", value: "#3B82F6" },
@@ -39,7 +45,8 @@ export default function EditPartnerModal({ partner, onClose, onSuccess }) {
     address_line2: partner.address_line2 || "",
     city: partner.city || "",
     state: partner.state || "",
-    pincode: partner.pincode || ""
+    pincode: partner.pincode || "",
+    country: partner.country || "India"
   });
   const [loading, setLoading] = useState(false);
 
@@ -85,6 +92,25 @@ export default function EditPartnerModal({ partner, onClose, onSuccess }) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+          {/* Read-only Info */}
+          <div className="mb-6 bg-gray-50 rounded-lg p-4">
+            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Identification (Read-Only)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500 uppercase">PAN Number</Label>
+                <div className="px-3 py-2 bg-white border border-gray-200 rounded-md font-mono text-gray-700">
+                  {partner.pan || "N/A"}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500 uppercase">Partner Code</Label>
+                <div className="px-3 py-2 bg-white border border-gray-200 rounded-md font-mono text-gray-700">
+                  {partner.partner_code || "N/A"}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Partner Details */}
           <div className="mb-6">
             <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">Partner Details</h3>
@@ -187,6 +213,19 @@ export default function EditPartnerModal({ partner, onClose, onSuccess }) {
                   className="font-mono"
                   data-testid="edit-partner-pincode"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-500 uppercase">Country</Label>
+                <Select value={formData.country} onValueChange={(value) => setFormData({...formData, country: value})}>
+                  <SelectTrigger data-testid="edit-partner-country">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map(country => (
+                      <SelectItem key={country} value={country}>{country}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
