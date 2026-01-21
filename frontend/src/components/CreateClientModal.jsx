@@ -690,57 +690,186 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">Required for Bonds</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-500 uppercase">Bank Name *</Label>
-                      <Input
-                        value={formData.bank_name}
-                        onChange={(e) => updateField('bank_name', e.target.value)}
-                        placeholder="HDFC Bank"
-                        data-testid="client-bank-name"
-                      />
+                  {/* Indian Bank Details - For Indian Passport holders (both residents and NRIs) */}
+                  {formData.passport_type === "indian" && (
+                    <>
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                        <h4 className="font-medium text-orange-800 mb-3">
+                          {formData.country_of_residency === "India" ? "Indian Bank Account" : "Indian Bank Account (for NRI)"}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-gray-500 uppercase">Bank Name *</Label>
+                            <Input
+                              value={formData.bank_name}
+                              onChange={(e) => updateField('bank_name', e.target.value)}
+                              placeholder="HDFC Bank"
+                              data-testid="client-bank-name"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-gray-500 uppercase">Account Number *</Label>
+                            <Input
+                              value={formData.account_number}
+                              onChange={(e) => updateField('account_number', e.target.value)}
+                              placeholder="Account Number"
+                              className="font-mono"
+                              data-testid="client-account-number"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-gray-500 uppercase">Account Type *</Label>
+                            <Select value={formData.account_type} onValueChange={(v) => updateField('account_type', v)}>
+                              <SelectTrigger data-testid="client-account-type">
+                                <SelectValue placeholder="Select Account Type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {formData.country_of_residency === "India" ? (
+                                  <>
+                                    <SelectItem value="Savings">Savings</SelectItem>
+                                    <SelectItem value="Current">Current</SelectItem>
+                                  </>
+                                ) : (
+                                  <>
+                                    <SelectItem value="NRE">NRE</SelectItem>
+                                    <SelectItem value="NRO">NRO</SelectItem>
+                                    <SelectItem value="Savings">Savings</SelectItem>
+                                    <SelectItem value="Current">Current</SelectItem>
+                                  </>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-gray-500 uppercase">IFSC Code *</Label>
+                            <Input
+                              value={formData.ifsc_code}
+                              onChange={(e) => updateField('ifsc_code', e.target.value.toUpperCase())}
+                              placeholder="HDFC0000001"
+                              maxLength={11}
+                              className="font-mono uppercase"
+                              data-testid="client-ifsc"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-gray-500 uppercase">Branch</Label>
+                            <Input
+                              value={formData.branch}
+                              onChange={(e) => updateField('branch', e.target.value)}
+                              placeholder="Branch Name"
+                              data-testid="client-branch"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-gray-500 uppercase">Demat Account No</Label>
+                            <Input
+                              value={formData.demat_account_no}
+                              onChange={(e) => updateField('demat_account_no', e.target.value)}
+                              placeholder="Demat Account Number"
+                              className="font-mono"
+                              data-testid="client-demat"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* International Bank Details - Only for NRIs (Indian Passport + Non-India Residency) */}
+                      {formData.country_of_residency !== "India" && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                          <h4 className="font-medium text-blue-800 mb-3">International Bank Account (UAE/Foreign)</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-xs text-gray-500 uppercase">Bank Name *</Label>
+                              <Input
+                                value={formData.intl_bank_name}
+                                onChange={(e) => updateField('intl_bank_name', e.target.value)}
+                                placeholder="Commercial Bank of Dubai"
+                                data-testid="client-intl-bank-name"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-gray-500 uppercase">Account Number *</Label>
+                              <Input
+                                value={formData.intl_account_number}
+                                onChange={(e) => updateField('intl_account_number', e.target.value)}
+                                placeholder="1007997925"
+                                className="font-mono"
+                                data-testid="client-intl-account-number"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-gray-500 uppercase">IBAN *</Label>
+                              <Input
+                                value={formData.intl_iban}
+                                onChange={(e) => updateField('intl_iban', e.target.value.toUpperCase())}
+                                placeholder="AE690230000001007997925"
+                                className="font-mono uppercase"
+                                data-testid="client-intl-iban"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-gray-500 uppercase">SWIFT Code *</Label>
+                              <Input
+                                value={formData.intl_swift_code}
+                                onChange={(e) => updateField('intl_swift_code', e.target.value.toUpperCase())}
+                                placeholder="CBDUAEAD"
+                                className="font-mono uppercase"
+                                data-testid="client-intl-swift"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Foreign Passport - Only International Bank Details */}
+                  {formData.passport_type === "foreign" && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <h4 className="font-medium text-blue-800 mb-3">International Bank Account</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs text-gray-500 uppercase">Bank Name *</Label>
+                          <Input
+                            value={formData.intl_bank_name}
+                            onChange={(e) => updateField('intl_bank_name', e.target.value)}
+                            placeholder="Commercial Bank of Dubai"
+                            data-testid="client-intl-bank-name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-gray-500 uppercase">Account Number *</Label>
+                          <Input
+                            value={formData.intl_account_number}
+                            onChange={(e) => updateField('intl_account_number', e.target.value)}
+                            placeholder="1007997925"
+                            className="font-mono"
+                            data-testid="client-intl-account-number"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-gray-500 uppercase">IBAN *</Label>
+                          <Input
+                            value={formData.intl_iban}
+                            onChange={(e) => updateField('intl_iban', e.target.value.toUpperCase())}
+                            placeholder="AE690230000001007997925"
+                            className="font-mono uppercase"
+                            data-testid="client-intl-iban"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-gray-500 uppercase">SWIFT Code *</Label>
+                          <Input
+                            value={formData.intl_swift_code}
+                            onChange={(e) => updateField('intl_swift_code', e.target.value.toUpperCase())}
+                            placeholder="CBDUAEAD"
+                            className="font-mono uppercase"
+                            data-testid="client-intl-swift"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-500 uppercase">Account Number *</Label>
-                      <Input
-                        value={formData.account_number}
-                        onChange={(e) => updateField('account_number', e.target.value)}
-                        placeholder="Account Number"
-                        className="font-mono"
-                        data-testid="client-account-number"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-500 uppercase">Branch</Label>
-                      <Input
-                        value={formData.branch}
-                        onChange={(e) => updateField('branch', e.target.value)}
-                        placeholder="Branch Name"
-                        data-testid="client-branch"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-500 uppercase">IFSC Code *</Label>
-                      <Input
-                        value={formData.ifsc_code}
-                        onChange={(e) => updateField('ifsc_code', e.target.value.toUpperCase())}
-                        placeholder="HDFC0000001"
-                        maxLength={11}
-                        className="font-mono uppercase"
-                        data-testid="client-ifsc"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-gray-500 uppercase">Demat Account No</Label>
-                      <Input
-                        value={formData.demat_account_no}
-                        onChange={(e) => updateField('demat_account_no', e.target.value)}
-                        placeholder="Demat Account Number"
-                        className="font-mono"
-                        data-testid="client-demat"
-                      />
-                    </div>
-                  </div>
+                  )}
 
                   {/* UCC Section */}
                   <div className="space-y-2 pt-4 border-t">
