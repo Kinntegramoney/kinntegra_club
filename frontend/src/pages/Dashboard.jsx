@@ -38,7 +38,7 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Color palette
+// Color palette - softer, professional tones
 const COLORS = {
   primary: "#4F46E5",
   secondary: "#7C3AED",
@@ -47,11 +47,11 @@ const COLORS = {
   danger: "#EF4444",
   info: "#3B82F6",
   venn: {
-    introduction: "#0D9488", // Teal for Bonds
-    analysis: "#3B82F6",     // Blue for Real Estate
-    opened: "#F59E0B"        // Amber/Tan for Both
+    bonds: "#6366F1",      // Soft indigo for Bonds
+    realEstate: "#EC4899", // Soft pink for Real Estate  
+    both: "#8B5CF6"        // Soft purple for overlap
   },
-  chart: ["#0D9488", "#D4A574", "#93C5FD", "#86EFAC", "#1E40AF", "#22C55E", "#7C3AED", "#EC4899"]
+  chart: ["#6366F1", "#EC4899", "#8B5CF6", "#10B981", "#F59E0B", "#3B82F6"]
 };
 
 // Format currency for INR (Crores)
