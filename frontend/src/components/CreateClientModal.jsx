@@ -219,9 +219,26 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
       
       case 4:
         if (formData.opportunities.includes("bonds")) {
-          if (!formData.bank_name || !formData.account_number || !formData.ifsc_code) {
-            toast.error("Bank details are required for Bond investments");
-            return false;
+          // Validation for Indian Passport holders
+          if (formData.passport_type === "indian") {
+            if (!formData.bank_name || !formData.account_number || !formData.ifsc_code || !formData.account_type) {
+              toast.error("Indian bank details (Bank Name, Account Number, IFSC, Account Type) are required");
+              return false;
+            }
+            // NRI also needs international bank details
+            if (formData.country_of_residency !== "India") {
+              if (!formData.intl_bank_name || !formData.intl_account_number || !formData.intl_iban || !formData.intl_swift_code) {
+                toast.error("International bank details (Bank Name, Account Number, IBAN, SWIFT) are required for NRIs");
+                return false;
+              }
+            }
+          }
+          // Validation for Foreign Passport holders
+          if (formData.passport_type === "foreign") {
+            if (!formData.intl_bank_name || !formData.intl_account_number || !formData.intl_iban || !formData.intl_swift_code) {
+              toast.error("International bank details (Bank Name, Account Number, IBAN, SWIFT) are required");
+              return false;
+            }
           }
         }
         if (formData.opportunities.includes("real_estate")) {
