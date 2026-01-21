@@ -14996,10 +14996,18 @@ async def get_xirr_comparison_report(
             "is_paid": actual_payment is not None
         })
     
-    # Add DLD Fee as a line item (typically paid with booking)
+    # Add DLD Fee as a line item (calculated from dld_fee or dld_fee_percentage)
     dld_fee = opp.get('dld_fee', 0)
-    investor_dld_fee = dld_fee * share_percentage / 100
-    if investor_dld_fee > 0:
+    if not dld_fee and opp.get('dld_fee_percentage'):
+        dld_fee = unit_price * float(opp.get('dld_fee_percentage', 4)) / 100
+    investor_dld_fee = dld_fee * share_percentage / 100 if dld_fee else 0
+    
+    # Always show DLD if percentage exists (even if 0 value currently)
+    dld_percentage = opp.get('dld_fee_percentage', 4)
+    if investor_dld_fee > 0 or dld_percentage:
+        if investor_dld_fee == 0:
+            investor_dld_fee = investor_unit_price * float(dld_percentage) / 100
+        
         # Use first milestone date for DLD (usually paid with booking)
         dld_date = payment_schedule[0].get('date', '') if payment_schedule else ''
         try:
@@ -15029,8 +15037,8 @@ async def get_xirr_comparison_report(
         
         cashflows_projected.append({
             "date": dld_date,
-            "description": "DLD Fee",
-            "percentage": opp.get('dld_fee_percentage', 4),
+            "description": f"DLD Fee ({dld_percentage}%)",
+            "percentage": dld_percentage,
             "aed_amount": investor_dld_fee,
             "projected_rate": dld_projected_rate,
             "home_currency_amount": dld_projected_home,
@@ -15039,8 +15047,8 @@ async def get_xirr_comparison_report(
         
         cashflows_actual.append({
             "date": dld_date,
-            "description": "DLD Fee",
-            "percentage": opp.get('dld_fee_percentage', 4),
+            "description": f"DLD Fee ({dld_percentage}%)",
+            "percentage": dld_percentage,
             "aed_amount": actual_dld_aed,
             "actual_rate": actual_dld_rate,
             "home_currency_amount": actual_dld_home,
@@ -15048,9 +15056,10 @@ async def get_xirr_comparison_report(
             "is_paid": dld_payment is not None
         })
     
-    # Add Admin Fee as a line item (typically paid with booking)
+    # Add Admin Fee as a line item
     admin_fee = opp.get('admin_fee', 0)
-    investor_admin_fee = admin_fee * share_percentage / 100
+    investor_admin_fee = float(admin_fee) * share_percentage / 100 if admin_fee else 0
+    
     if investor_admin_fee > 0:
         # Use first milestone date for Admin (usually paid with booking)
         admin_date = payment_schedule[0].get('date', '') if payment_schedule else ''
