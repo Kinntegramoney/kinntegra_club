@@ -95,10 +95,12 @@ export default function SubBrokerOpportunities() {
   const closedBonds = bonds.filter(b => b.status === 'closed');
 
   // Categorize real estate by status
-  // Real estate statuses: 'available', 'partially_invested', 'fully_invested', 'sold'
-  const availableRealEstate = realEstateOpportunities.filter(p => p.status === 'available' || !p.status);
+  // Real estate: available OR partially_invested should show as "Open" (can still add more investors)
+  const availableRealEstate = realEstateOpportunities.filter(p => 
+    p.status === 'available' || p.status === 'partially_invested' || !p.status
+  );
   const fundedRealEstate = realEstateOpportunities.filter(p => 
-    p.status === 'sold' || p.status === 'funded' || p.status === 'partially_invested' || p.status === 'fully_invested'
+    p.status === 'fully_invested' || p.status === 'sold'
   );
 
   // Combined counts
