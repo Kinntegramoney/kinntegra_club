@@ -4042,13 +4042,15 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                         <th className="text-right p-3 font-medium text-indigo-600">Projected {report.investor.currency}</th>
                         <th className="text-right p-3 font-medium text-emerald-600">Actual Rate</th>
                         <th className="text-right p-3 font-medium text-emerald-600">Actual {report.investor.currency}</th>
+                        <th className="text-right p-3 font-medium text-purple-600">Current Rate</th>
+                        <th className="text-right p-3 font-medium text-purple-600">Current {report.investor.currency}</th>
                         <th className="text-center p-3 font-medium text-gray-600">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {report.cashflows_projected.map((cf, idx) => {
                         const actualCf = report.cashflows_actual[idx];
-                        const diff = cf.home_currency_amount - (actualCf?.home_currency_amount || 0);
+                        const currentAmount = currentRate ? Math.abs(cf.aed_amount) * currentRate : null;
                         return (
                           <tr key={idx} className={`border-t ${cf.type === 'inflow' ? 'bg-green-50' : ''}`}>
                             <td className="p-3">{cf.date || '-'}</td>
@@ -4058,6 +4060,8 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                             <td className="p-3 text-right text-indigo-600">{formatCurrency(cf.home_currency_amount)}</td>
                             <td className="p-3 text-right text-emerald-600">{actualCf?.actual_rate?.toFixed(4) || '-'}</td>
                             <td className="p-3 text-right text-emerald-600">{actualCf ? formatCurrency(actualCf.home_currency_amount) : '-'}</td>
+                            <td className="p-3 text-right text-purple-600">{currentRate?.toFixed(4) || '-'}</td>
+                            <td className="p-3 text-right text-purple-600">{currentAmount ? formatCurrency(currentAmount) : '-'}</td>
                             <td className="p-3 text-center">
                               {actualCf?.is_paid ? (
                                 <Badge className="bg-green-100 text-green-700">Paid</Badge>
