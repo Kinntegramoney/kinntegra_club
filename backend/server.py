@@ -1966,15 +1966,20 @@ async def bulk_upload_foreign_clients(
         excel_file.seek(0)
         df_passport = pd.read_excel(excel_file, sheet_name=1)   # Passport Details
         excel_file.seek(0)
-        df_address = pd.read_excel(excel_file, sheet_name=2)    # Address Details
+        df_passport = pd.read_excel(excel_file, sheet_name=1)   # Passport Details
         excel_file.seek(0)
-        df_nominee = pd.read_excel(excel_file, sheet_name=3)    # Nominee Details
+        df_intl_bank = pd.read_excel(excel_file, sheet_name=2)  # International Bank Details
         excel_file.seek(0)
-        df_subbroker = pd.read_excel(excel_file, sheet_name=4)  # Sub-Broker Assignment
+        df_address = pd.read_excel(excel_file, sheet_name=3)    # Address Details
+        excel_file.seek(0)
+        df_nominee = pd.read_excel(excel_file, sheet_name=4)    # Nominee Details
+        excel_file.seek(0)
+        df_subbroker = pd.read_excel(excel_file, sheet_name=5)  # Sub-Broker Assignment
     except Exception as e:
         excel_file.seek(0)
         df_personal = pd.read_excel(excel_file, sheet_name=0)
         df_passport = pd.DataFrame()
+        df_intl_bank = pd.DataFrame()
         df_address = pd.DataFrame()
         df_nominee = pd.DataFrame()
         df_subbroker = pd.DataFrame()
@@ -1987,12 +1992,14 @@ async def bulk_upload_foreign_clients(
     
     df_personal = clean_columns(df_personal)
     df_passport = clean_columns(df_passport)
+    df_intl_bank = clean_columns(df_intl_bank)
     df_address = clean_columns(df_address)
     df_nominee = clean_columns(df_nominee)
     df_subbroker = clean_columns(df_subbroker)
     
     # Create lookup dictionaries by Passport Number
     passport_by_id = {}
+    intl_bank_by_id = {}
     address_by_id = {}
     nominee_by_id = {}
     subbroker_by_id = {}
@@ -2001,6 +2008,11 @@ async def bulk_upload_foreign_clients(
         for _, row in df_passport.iterrows():
             if not pd.isna(row.get('passport_number')):
                 passport_by_id[str(row['passport_number']).upper().strip()] = row
+    
+    if not df_intl_bank.empty and 'passport_number' in df_intl_bank.columns:
+        for _, row in df_intl_bank.iterrows():
+            if not pd.isna(row.get('passport_number')):
+                intl_bank_by_id[str(row['passport_number']).upper().strip()] = row
     
     if not df_address.empty and 'passport_number' in df_address.columns:
         for _, row in df_address.iterrows():
