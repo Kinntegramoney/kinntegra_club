@@ -149,6 +149,22 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/broker/pending-approvals" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <PendingApprovals />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/approval-logs" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <ApprovalLogs />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Sub-Broker Routes */}
           <Route 
