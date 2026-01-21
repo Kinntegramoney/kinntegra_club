@@ -6346,6 +6346,7 @@ class ClientUpdate(BaseModel):
     pan_number: Optional[str] = None
     passport_number: Optional[str] = None
     emirates_id: Optional[str] = None
+    emirates_id_expiry: Optional[str] = None
     
     # Passport Details
     passport_valid_from: Optional[str] = None
