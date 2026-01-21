@@ -833,7 +833,7 @@ export default function RealEstateDetails() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, idx) => {
+                    {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).flatMap((milestone, idx) => {
                       const milestonePayments = opp.investor_payments?.filter(p => p.milestone_index === idx) || [];
                       const verifiedCount = milestonePayments.filter(p => p.status === 'verified').length;
                       const pendingCount = milestonePayments.filter(p => p.status === 'pending_verification').length;
@@ -843,8 +843,12 @@ export default function RealEstateDetails() {
                       const allVerified = totalInvestors > 0 && verifiedCount >= totalInvestors;
                       const propertyFullyFunded = isFullyAllocated;
                       
-                      return (
-                        <tr key={idx} className={`border-b border-gray-100 hover:bg-gray-50 ${allVerified ? 'bg-green-50/50' : ''}`}>
+                      // Array to hold rows - milestone row and optionally DLD+Admin row after first milestone
+                      const rows = [];
+                      
+                      // Add the milestone row
+                      rows.push(
+                        <tr key={`milestone-${idx}`} className={`border-b border-gray-100 hover:bg-gray-50 ${allVerified ? 'bg-green-50/50' : ''}`}>
                           {/* Milestone Info */}
                           <td className="py-4 px-4 sticky left-0 bg-white z-10">
                             <div className="flex items-center gap-3">
