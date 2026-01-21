@@ -1353,7 +1353,8 @@ async def download_indian_client_template(current_user: dict = Depends(get_curre
     # Sheet 2: Bank & Investment Details (Required for Bonds)
     ws_bank = wb.create_sheet("Bank & Investment Details")
     
-    bank_headers = ["PAN*", "Bank Name*", "Account Number*", "Branch", "IFSC Code*",
+    # Indian bank details + Account Type (for Indian residents: Savings/Current, for NRIs: NRE/NRO/Savings/Current)
+    bank_headers = ["PAN*", "Bank Name*", "Account Number*", "Account Type*", "Branch", "IFSC Code*",
                    "Demat Account No", "UCC1", "UCC2", "UCC3", "UCC4", "UCC5"]
     for col, header in enumerate(bank_headers, 1):
         cell = ws_bank.cell(row=1, column=col, value=header)
@@ -1362,10 +1363,34 @@ async def download_indian_client_template(current_user: dict = Depends(get_curre
         cell.alignment = Alignment(horizontal="center", wrap_text=True)
         ws_bank.column_dimensions[get_column_letter(col)].width = 18
     
-    bank_sample = ["ABCDE1234F", "HDFC Bank", "12345678901234", "Andheri West", "HDFC0001234",
+    bank_sample = ["ABCDE1234F", "HDFC Bank", "12345678901234", "Savings", "Andheri West", "HDFC0001234",
                   "1234567890123456", "UCC123456", "", "", "", ""]
     for col, value in enumerate(bank_sample, 1):
         ws_bank.cell(row=2, column=col, value=value)
+    
+    # Add note about Account Type options
+    ws_bank.cell(row=4, column=1, value="Account Type Options:")
+    ws_bank.cell(row=5, column=1, value="For Indian Residents: Savings, Current")
+    ws_bank.cell(row=6, column=1, value="For NRIs (Non-India Residency): NRE, NRO, Savings, Current")
+    
+    # Sheet 2b: International Bank Details (Required for NRIs - Non-India Residency)
+    ws_intl_bank = wb.create_sheet("International Bank (NRI)")
+    
+    intl_bank_headers = ["PAN*", "Intl Bank Name*", "Intl Account Number*", "IBAN*", "SWIFT Code*"]
+    for col, header in enumerate(intl_bank_headers, 1):
+        cell = ws_intl_bank.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_intl_bank.column_dimensions[get_column_letter(col)].width = 22
+    
+    intl_bank_sample = ["ABCDE1234F", "Commercial Bank of Dubai", "1007997925", "AE690230000001007997925", "CBDUAEAD"]
+    for col, value in enumerate(intl_bank_sample, 1):
+        ws_intl_bank.cell(row=2, column=col, value=value)
+    
+    # Add note
+    ws_intl_bank.cell(row=4, column=1, value="Note: This sheet is REQUIRED only for NRIs (Indian Passport + Non-India Residency)")
+    ws_intl_bank.cell(row=5, column=1, value="Skip this sheet for Indian Residents")
     
     # Sheet 3: Passport Details (Required for Real Estate)
     ws_passport = wb.create_sheet("Passport Details")
