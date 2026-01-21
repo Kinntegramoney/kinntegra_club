@@ -14698,6 +14698,168 @@ async def get_scheme_master_status(current_user: dict = Depends(get_current_user
 # ==================== END ANALYSIS ENDPOINTS ====================
 
 
+# ==================== FOREX RATE ENDPOINT ====================
+
+@api_router.get("/forex/aed-to-inr")
+async def get_aed_to_inr_rate():
+    """Get current AED to INR exchange rate from free API"""
+    import aiohttp
+    
+    try:
+        # Using the free exchange rate API
+        async with aiohttp.ClientSession() as session:
+            # Try primary API first
+            try:
+                async with session.get(
+                    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/aed.json",
+                    timeout=aiohttp.ClientTimeout(total=5)
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        inr_rate = data.get('aed', {}).get('inr', 22.5)
+                        return {
+                            "rate": inr_rate,
+                            "source": "fawazahmed0/currency-api",
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        }
+            except Exception:
+                pass
+            
+            # Fallback to alternative API
+            try:
+                async with session.get(
+                    "https://api.exchangerate-api.com/v4/latest/AED",
+                    timeout=aiohttp.ClientTimeout(total=5)
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        inr_rate = data.get('rates', {}).get('INR', 22.5)
+                        return {
+                            "rate": inr_rate,
+                            "source": "exchangerate-api",
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        }
+            except Exception:
+                pass
+        
+        # Default fallback rate if APIs fail
+        return {
+            "rate": 22.5,
+            "source": "fallback",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        # Return fallback rate on any error
+        return {
+            "rate": 22.5,
+            "source": "fallback",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+
+# ==================== SUB-BROKER DASHBOARD ENDPOINTS ====================
+
+@api_router.get("/sub-broker/dashboard/summary")
+async def get_sub_broker_dashboard_summary(current_user: dict = Depends(get_current_user)):
+    """Get dashboard summary for sub-broker - showing only their linked clients"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
+    
+    sub_broker_id = current_user['id']
+    
+    # Get clients linked to this sub-broker
+    linked_clients = await db.clients.find(
+        {"linked_subbroker_id": sub_broker_id},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    client_ids = [c.get('id') for c in linked_clients]
+    total_clients = len(linked_clients)
+    active_clients = len([c for c in linked_clients if c.get('is_active', True)])
+    
+    # Count clients by product type
+    bond_clients = 0
+    re_clients = 0
+    both_clients = 0
+    
+    for client in linked_clients:
+        has_bonds = bool(client.get('bond_allocations', []))
+        has_re = False
+        # Check real estate investments
+        re_opps = await db.real_estate_opportunities.find(
+            {"investors.client_id": client.get('id')},
+            {"_id": 0}
+        ).to_list(1)
+        has_re = len(re_opps) > 0
+        
+        if has_bonds and has_re:
+            both_clients += 1
+        elif has_bonds:
+            bond_clients += 1
+        elif has_re:
+            re_clients += 1
+    
+    # Calculate Bond AUM for linked clients
+    bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
+    total_bond_invested = 0
+    total_bond_repaid = 0
+    total_bond_pending = 0
+    
+    for client in linked_clients:
+        allocations = client.get('bond_allocations', [])
+        for alloc in allocations:
+            bond = next((b for b in bonds if b.get('id') == alloc.get('bond_id')), None)
+            if bond:
+                face_value = bond.get('face_value', 0)
+                units_paid = alloc.get('units_paid', 0)
+                total_bond_invested += units_paid * face_value
+                
+                # Calculate repaid from cashflows
+                cashflows = alloc.get('cashflows', [])
+                for cf in cashflows:
+                    if cf.get('type') == 'principal_repayment':
+                        total_bond_repaid += cf.get('amount', 0)
+    
+    total_bond_pending = total_bond_invested - total_bond_repaid
+    
+    # Calculate Real Estate AUM for linked clients
+    real_estate_opps = await db.real_estate_opportunities.find({}, {"_id": 0}).to_list(1000)
+    total_re_deal_size = 0
+    total_re_paid = 0
+    
+    for re in real_estate_opps:
+        investors = re.get('investors', [])
+        for inv in investors:
+            if inv.get('client_id') in client_ids:
+                share_pct = inv.get('share_percentage', inv.get('percentage', 0))
+                total_cost = re.get('total_cost', 0)
+                total_re_deal_size += total_cost * share_pct / 100
+                
+                # Calculate paid amount
+                payments = inv.get('payments', [])
+                for payment in payments:
+                    total_re_paid += payment.get('amount', 0)
+    
+    return {
+        "clients": {
+            "total": total_clients,
+            "active": active_clients,
+            "bond_only": bond_clients,
+            "real_estate_only": re_clients,
+            "both_products": both_clients
+        },
+        "bond_aum": {
+            "total_invested": total_bond_invested,
+            "total_repaid": total_bond_repaid,
+            "total_pending": total_bond_pending
+        },
+        "real_estate_aum": {
+            "total_deal_size": total_re_deal_size,
+            "total_paid": total_re_paid
+        }
+    }
+
+
 # Reset broker password endpoint
 @api_router.get("/reset-broker-password")
 async def reset_broker_password():
