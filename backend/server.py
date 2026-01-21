@@ -13548,6 +13548,12 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     # Count active (logged in / activated) vs pending (never logged in / not activated)
     active_clients = 0
     pending_clients = 0
+    
+    # Count clients by product type for Venn diagram
+    bond_only_clients = 0
+    real_estate_only_clients = 0
+    both_products_clients = 0
+    
     for c in clients:
         pan = c.get('pan_number')
         user_account = user_status_map.get(pan)
@@ -13558,6 +13564,18 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
             active_clients += 1
         else:
             pending_clients += 1
+        
+        # Count by opportunities for Venn diagram
+        opportunities = c.get('opportunities', [])
+        has_bonds = 'bonds' in opportunities
+        has_real_estate = 'real_estate' in opportunities
+        
+        if has_bonds and has_real_estate:
+            both_products_clients += 1
+        elif has_bonds:
+            bond_only_clients += 1
+        elif has_real_estate:
+            real_estate_only_clients += 1
     
     # Get sub-brokers (partners)
     partners = await db.partners.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
@@ -13577,14 +13595,52 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     available_re = len([r for r in real_estate if r.get('status') == 'available'])
     invested_re = len([r for r in real_estate if r.get('status') in ['partially_invested', 'fully_invested']])
     
-    # Calculate AUM
-    # Bond AUM = sum of (units_sold * face_value) for all bonds
+    # Calculate Bond AUM Details
+    # Get all client allocations for detailed AUM breakdown
+    bond_total_invested = 0
+    bond_total_repaid = 0
+    bond_total_pending = 0
+    bond_profits = 0
+    
+    for client in clients:
+        allocations = client.get('bond_allocations', [])
+        for alloc in allocations:
+            invested = alloc.get('total_investment', 0) or alloc.get('invested_amount', 0) or 0
+            repaid = alloc.get('total_repaid', 0) or 0
+            
+            bond_total_invested += invested
+            bond_total_repaid += repaid
+            bond_total_pending += max(0, invested - repaid)
+    
+    # Calculate profits from holding cashflows
+    cashflows = await db.holding_cashflows.find({}, {"_id": 0}).to_list(10000)
+    for cf in cashflows:
+        if cf.get('interest', 0) > 0:
+            bond_profits += cf.get('interest', 0)
+    
+    # Legacy bond AUM calculation
     bond_aum = sum(
         (b.get('units_sold', 0) * b.get('face_value', 0)) 
         for b in bonds
     )
     
-    # Real Estate AUM = sum of (total_cost * invested_percentage / 100) for all properties
+    # Calculate Real Estate AUM Details
+    # Total deal size = sum of total_cost (which includes DLD and admin)
+    re_total_deal_size = sum(r.get('total_cost', 0) for r in real_estate)
+    
+    # Total paid by clients = sum of all investments
+    re_total_paid = 0
+    for re_opp in real_estate:
+        # Check investors list
+        investors = re_opp.get('investors', [])
+        for inv in investors:
+            re_total_paid += inv.get('amount_paid', 0) or inv.get('invested_amount', 0) or 0
+        
+        # Also check invested_percentage as fallback
+        if not investors and re_opp.get('invested_percentage', 0) > 0:
+            re_total_paid += (re_opp.get('total_cost', 0) * re_opp.get('invested_percentage', 0) / 100)
+    
+    # Legacy real estate AUM calculation  
     real_estate_aum = sum(
         (r.get('total_cost', 0) * r.get('invested_percentage', 0) / 100)
         for r in real_estate
@@ -13599,7 +13655,10 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         "clients": {
             "total": total_clients,
             "active": active_clients,
-            "pending": pending_clients
+            "pending": pending_clients,
+            "bond_only": bond_only_clients,
+            "real_estate_only": real_estate_only_clients,
+            "both_products": both_products_clients
         },
         "sub_brokers": {
             "total": total_subbrokers,
@@ -13622,6 +13681,16 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
             "total": total_aum,
             "bonds": bond_aum,
             "real_estate": real_estate_aum
+        },
+        "bond_aum": {
+            "total_invested": bond_total_invested or bond_aum,
+            "total_repaid": bond_total_repaid,
+            "total_pending": bond_total_pending or bond_aum,
+            "profits": bond_profits
+        },
+        "real_estate_aum": {
+            "total_deal_size": re_total_deal_size,
+            "total_paid": re_total_paid or real_estate_aum
         },
         "trades_count": len(trades)
     }
