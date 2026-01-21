@@ -243,17 +243,16 @@ export default function AdminRealEstate() {
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
-                          {opp.current_investors === 0 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(opp.id, opp.building_name)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(opp.id, opp.building_name)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title="Delete"
+                            data-testid={`delete-property-${opp.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
