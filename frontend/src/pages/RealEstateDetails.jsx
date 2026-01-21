@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import { 
-  Building2, MapPin, ArrowLeft, Calendar, Users, Check, 
+  Building2, MapPin, ArrowLeft, Calendar, Users, Check, User,
   DollarSign, Ruler, Car, CheckCircle2, Clock, Plus, Upload, FileText, X, CreditCard, TrendingUp,
   Calculator, Heart, UserPlus, Info, Download, Send, Bell, Eye, Settings, BarChart3, Edit2, Trash2, RefreshCw
 } from "lucide-react";
