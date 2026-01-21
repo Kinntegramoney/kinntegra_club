@@ -1234,20 +1234,18 @@ export default function RealEstateDetails() {
                       return rows;
                     })}
                   </tbody>
-                        <tr className={`border-b border-gray-100 hover:bg-orange-50/30 ${allVerified ? 'bg-green-50/50' : 'bg-orange-50/20'}`}>
-                          {/* Milestone Info */}
-                          <td className="py-4 px-4 sticky left-0 bg-orange-50/20 z-10">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                                allVerified ? 'bg-green-500 text-white' : 
-                                pendingCount > 0 ? 'bg-amber-500 text-white' : 
-                                'bg-orange-200 text-orange-700'
-                              }`}>
-                                {allVerified ? <Check className="h-4 w-4" /> : 'D'}
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-800">DLD Fee ({opp.dld_fee_percentage || 4}%)</p>
-                                <p className="text-xs text-gray-500">Dubai Land Department</p>
+                </table>
+              </div>
+              
+              {/* Footer Legend */}
+              <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                <span className="font-medium text-gray-600">Legend:</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-green-100 text-green-600 flex items-center justify-center"><Check className="h-2 w-2" /></span>Uploaded/Verified</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-blue-500 text-white flex items-center justify-center"><Upload className="h-2 w-2" /></span>Upload</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-amber-100 text-amber-600 flex items-center justify-center"><Clock className="h-2 w-2" /></span>Pending Approval</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-2 w-2" /></span>Pending</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-amber-200 text-amber-700 flex items-center justify-center">$</span>DLD + Admin Fee</span>
+              </div>
                               </div>
                             </div>
                           </td>
