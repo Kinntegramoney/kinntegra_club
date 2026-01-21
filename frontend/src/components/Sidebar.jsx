@@ -43,9 +43,9 @@ export default function Sidebar({ user }) {
 
   // Menu items for Sub-Broker (limited access)
   const subBrokerMenuItems = [
+    { path: "/sub-broker/dashboard", label: "Dashboard", icon: LayoutGrid },
     { path: "/sub-broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
-    { path: "/sub-broker/clients", label: "Clients", icon: UserCheck },
-    { path: "/sub-broker/reinvestment", label: "Reinv Tag", icon: Tag },
+    { path: "/sub-broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
     { path: "/sub-broker/profile", label: "Profile", icon: User },
   ];
