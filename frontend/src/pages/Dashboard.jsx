@@ -8,24 +8,15 @@ import {
   Users, 
   Building2, 
   Briefcase,
-  Activity,
-  MapPin,
-  PieChart,
-  BarChart3,
-  ArrowUpRight,
-  ArrowDownRight,
-  UserPlus,
   Landmark,
-  Home,
   RefreshCw,
   Trash2,
   AlertTriangle,
-  X
+  X,
+  IndianRupee,
+  ArrowRightLeft
 } from "lucide-react";
 import {
-  PieChart as RechartsPie,
-  Pie,
-  Cell,
   BarChart,
   Bar,
   XAxis,
@@ -33,11 +24,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
-  LineChart,
-  Line,
-  Area,
-  AreaChart
+  Legend
 } from "recharts";
 import { toast } from "sonner";
 
@@ -72,31 +59,13 @@ const formatAEDMillions = (value) => {
   return `AED ${value.toLocaleString()}`;
 };
 
-// Generic format currency (legacy)
-const formatCurrency = (value, currency = "AED") => {
-  if (value === undefined || value === null) return `${currency} 0`;
-  if (value >= 10000000) return `${currency} ${(value / 10000000).toFixed(2)}Cr`;
-  if (value >= 100000) return `${currency} ${(value / 100000).toFixed(2)}L`;
-  if (value >= 1000) return `${currency} ${(value / 1000).toFixed(1)}K`;
-  return `${currency} ${value.toLocaleString()}`;
-};
-
-// Format number
-const formatNumber = (value) => {
-  if (value === undefined || value === null) return "0";
-  return value.toLocaleString();
-};
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
-  const [clientsByCity, setClientsByCity] = useState([]);
   const [aumDistribution, setAumDistribution] = useState({ by_asset_class: [], by_subbroker: [] });
-  const [activityLog, setActivityLog] = useState([]);
-  const [monthlyStats, setMonthlyStats] = useState([]);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [forexRate, setForexRate] = useState(22.5); // Default AED to INR rate
   
   // Reset database state
   const [showResetModal, setShowResetModal] = useState(false);
@@ -150,7 +119,20 @@ export default function Dashboard() {
     
     setUser(parsedUser);
     fetchDashboardData();
+    fetchForexRate();
   }, [navigate]);
+
+  const fetchForexRate = async () => {
+    try {
+      const response = await axios.get(`${API}/forex/aed-to-inr`);
+      if (response.data?.rate) {
+        setForexRate(response.data.rate);
+      }
+    } catch (error) {
+      console.error("Error fetching forex rate:", error);
+      // Keep default rate
+    }
+  };
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -158,41 +140,17 @@ export default function Dashboard() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       
-      const [summaryRes, citiesRes, aumRes, activityRes, monthlyRes] = await Promise.all([
+      const [summaryRes, aumRes] = await Promise.all([
         axios.get(`${API}/dashboard/summary`, { headers }),
-        axios.get(`${API}/dashboard/clients-by-city`, { headers }),
-        axios.get(`${API}/dashboard/aum-distribution`, { headers }),
-        axios.get(`${API}/dashboard/activity-log?limit=15`, { headers }),
-        axios.get(`${API}/dashboard/monthly-stats?year=${selectedYear}`, { headers })
+        axios.get(`${API}/dashboard/aum-distribution`, { headers })
       ]);
 
       setSummary(summaryRes.data);
-      setClientsByCity(citiesRes.data);
       setAumDistribution(aumRes.data);
-      setActivityLog(activityRes.data);
-      setMonthlyStats(monthlyRes.data);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      fetchMonthlyStats();
-    }
-  }, [selectedYear]);
-
-  const fetchMonthlyStats = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${API}/dashboard/monthly-stats?year=${selectedYear}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMonthlyStats(res.data);
-    } catch (error) {
-      console.error("Error fetching monthly stats:", error);
     }
   };
 
@@ -210,19 +168,18 @@ export default function Dashboard() {
     );
   }
 
-  // Prepare data for client type distribution (using status)
-  const clientTypeData = [
-    { name: "Active", value: summary?.clients?.active || 0, color: COLORS.success },
-    { name: "Inactive", value: (summary?.clients?.total || 0) - (summary?.clients?.active || 0), color: COLORS.danger }
-  ].filter(d => d.value > 0);
-
   // Client product distribution for Venn diagram
   const bondOnlyClients = summary?.clients?.bond_only || 0;
   const realEstateOnlyClients = summary?.clients?.real_estate_only || 0;
   const bothProductsClients = summary?.clients?.both_products || 0;
 
-  // Prepare AUM by asset class for pie chart
-  const aumByAssetClass = aumDistribution.by_asset_class?.filter(d => d.value > 0) || [];
+  // Prepare sub-broker AUM data for chart
+  const subBrokerChartData = (aumDistribution.by_subbroker || []).map(sb => ({
+    ...sb,
+    bond_aum_display: sb.bond_aum || 0,
+    real_estate_aum_aed: sb.real_estate_aum || 0,
+    real_estate_aum_inr: (sb.real_estate_aum || 0) * forexRate
+  }));
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -237,8 +194,12 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500 mt-1">Welcome back, {user.name}</p>
             </div>
             <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg">
+                <ArrowRightLeft className="h-3 w-3" />
+                <span>1 AED = ₹{forexRate.toFixed(2)}</span>
+              </div>
               <button 
-                onClick={fetchDashboardData}
+                onClick={() => { fetchDashboardData(); fetchForexRate(); }}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 data-testid="refresh-dashboard-btn"
               >
@@ -414,171 +375,31 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Charts Row 1 */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Client Distribution */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="client-distribution-chart">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <PieChart className="h-5 w-5 text-indigo-500" />
-                Client Status
-              </h3>
-              <div className="h-[200px]">
-                {clientTypeData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPie>
-                      <Pie
-                        data={clientTypeData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {clientTypeData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#fff', 
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          color: '#374151'
-                        }}
-                      />
-                      <Legend 
-                        wrapperStyle={{ color: '#6b7280' }}
-                        formatter={(value) => <span className="text-gray-600">{value}</span>}
-                      />
-                    </RechartsPie>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-gray-400">
-                    No client data available
-                  </div>
-                )}
-              </div>
-              <div className="text-center mt-2">
-                <p className="text-3xl font-bold text-gray-800">{summary?.clients?.total || 0}</p>
-                <p className="text-xs text-gray-500">Total Clients</p>
-              </div>
-            </div>
-
-            {/* AUM Distribution by Asset Class */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="aum-distribution-chart">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-emerald-500" />
-                AUM Distribution
-              </h3>
-              <div className="h-[200px]">
-                {aumByAssetClass.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPie>
-                      <Pie
-                        data={aumByAssetClass}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {aumByAssetClass.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS.chart[index % COLORS.chart.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#fff', 
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          color: '#374151'
-                        }}
-                        formatter={(value, name) => {
-                          // Format based on asset type
-                          if (name === 'NCD Bonds') {
-                            return [formatINRCrores(value), name];
-                          } else if (name === 'Real Estate') {
-                            return [formatAEDMillions(value), name];
-                          }
-                          return [formatCurrency(value), name];
-                        }}
-                      />
-                      <Legend 
-                        wrapperStyle={{ color: '#6b7280' }}
-                        formatter={(value) => <span className="text-gray-600">{value}</span>}
-                      />
-                    </RechartsPie>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-gray-400">
-                    No AUM data available
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
-                <div className="text-center">
-                  <p className="text-lg font-bold text-amber-600">{formatINRCrores(summary?.aum?.bonds)}</p>
-                  <p className="text-xs text-gray-500">NCD Bonds (INR)</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-pink-600">{formatAEDMillions(summary?.aum?.real_estate)}</p>
-                  <p className="text-xs text-gray-500">Real Estate (AED)</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Client Spread by City */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="client-spread-chart">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-pink-500" />
-                Client Spread by City
-              </h3>
-              <div className="h-[280px]">
-                {clientsByCity.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart 
-                      data={clientsByCity.slice(0, 6)} 
-                      layout="vertical"
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis type="number" stroke="#6b7280" />
-                      <YAxis dataKey="city" type="category" stroke="#6b7280" width={80} tick={{ fontSize: 12 }} />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#fff', 
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          color: '#374151'
-                        }}
-                      />
-                      <Bar dataKey="count" fill={COLORS.primary} radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-gray-400">
-                    No location data available
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Charts Row 2 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Sub-broker AUM */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="subbroker-aum-chart">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          {/* AUM by Sub-Broker - Enhanced with Both Bonds and Real Estate */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="subbroker-aum-chart">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <Briefcase className="h-5 w-5 text-violet-500" />
                 AUM by Sub-Broker
               </h3>
-              <div className="h-[300px]">
-                {aumDistribution.by_subbroker?.length > 0 ? (
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded bg-amber-500"></div>
+                  <span className="text-gray-600">Bonds (INR)</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded bg-pink-500"></div>
+                  <span className="text-gray-600">Real Estate (AED)</span>
+                </div>
+              </div>
+            </div>
+            
+            {subBrokerChartData.length > 0 ? (
+              <div className="space-y-4">
+                <div className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart 
-                      data={aumDistribution.by_subbroker.slice(0, 8)} 
+                      data={subBrokerChartData.slice(0, 8)} 
                       margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -591,7 +412,12 @@ export default function Dashboard() {
                         tick={{ fontSize: 11 }}
                         height={60}
                       />
-                      <YAxis stroke="#6b7280" tickFormatter={(value) => formatCurrency(value, '')} />
+                      <YAxis stroke="#6b7280" tickFormatter={(value) => {
+                        if (value >= 10000000) return `${(value / 10000000).toFixed(1)}Cr`;
+                        if (value >= 100000) return `${(value / 100000).toFixed(1)}L`;
+                        if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                        return value;
+                      }} />
                       <Tooltip 
                         contentStyle={{ 
                           backgroundColor: '#fff', 
@@ -599,165 +425,74 @@ export default function Dashboard() {
                           borderRadius: '8px',
                           color: '#374151'
                         }}
-                        formatter={(value) => formatCurrency(value)}
+                        formatter={(value, name) => {
+                          if (name === 'Bond AUM') {
+                            return [formatINRCrores(value), name];
+                          }
+                          return [formatAEDMillions(value), name];
+                        }}
                       />
-                      <Bar dataKey="bond_aum" name="Bond AUM" stackId="a" fill={COLORS.primary} radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="real_estate_aum" name="RE AUM" stackId="a" fill={COLORS.secondary} radius={[4, 4, 0, 0]} />
-                      <Legend />
+                      <Bar dataKey="bond_aum" name="Bond AUM" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="real_estate_aum" name="RE AUM (AED)" fill="#EC4899" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-gray-400">
-                    <div className="text-center">
-                      <Briefcase className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>No sub-broker data available</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-              {aumDistribution.by_subbroker?.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Total Sub-Brokers</span>
-                    <span className="text-gray-800 font-medium">{summary?.sub_brokers?.total || 0}</span>
-                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Monthly Console */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="monthly-console-chart">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-cyan-500" />
-                  Monthly Console
-                </h3>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  className="bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  data-testid="year-selector"
-                >
-                  {[2025, 2024, 2023, 2022].map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyStats} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorInvestments" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS.success} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={COLORS.success} stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorTrades" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="month" stroke="#6b7280" tick={{ fontSize: 11 }} />
-                    <YAxis stroke="#6b7280" tickFormatter={(value) => formatCurrency(value, '')} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#fff', 
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        color: '#374151'
-                      }}
-                      formatter={(value) => formatCurrency(value)}
-                    />
-                    <Legend />
-                    <Area 
-                      type="monotone" 
-                      dataKey="investments" 
-                      name="RE Investments"
-                      stroke={COLORS.success} 
-                      fillOpacity={1} 
-                      fill="url(#colorInvestments)" 
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="trades" 
-                      name="Bond Trades"
-                      stroke={COLORS.primary} 
-                      fillOpacity={1} 
-                      fill="url(#colorTrades)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* Activity Log */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="activity-log">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Activity className="h-5 w-5 text-amber-500" />
-              Recent Activity
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {activityLog.length > 0 ? (
-                    activityLog.map((activity, index) => (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            {activity.type === 'trade' && <Landmark className="h-4 w-4 text-indigo-500" />}
-                            {activity.type === 'real_estate_investment' && <Building2 className="h-4 w-4 text-pink-500" />}
-                            {activity.type === 'client_created' && <UserPlus className="h-4 w-4 text-emerald-500" />}
-                            <span className="text-sm text-gray-700 capitalize">
-                              {activity.type.replace(/_/g, ' ')}
-                            </span>
+                {/* Sub-broker AUM Table with INR conversion for Real Estate */}
+                <div className="overflow-x-auto border rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Sub-Broker</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Partner Code</th>
+                        <th className="text-right py-3 px-4 font-medium text-amber-600">Bond AUM (INR)</th>
+                        <th className="text-right py-3 px-4 font-medium text-pink-600">RE AUM (AED)</th>
+                        <th className="text-right py-3 px-4 font-medium text-indigo-600">
+                          <div className="flex items-center justify-end gap-1">
+                            <IndianRupee className="h-3 w-3" />
+                            RE AUM (INR)
                           </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <p className="text-sm text-gray-600 truncate max-w-xs">{activity.description}</p>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm font-medium text-gray-800">
-                            {activity.amount > 0 ? formatCurrency(activity.amount) : '-'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            activity.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                            activity.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                            activity.status === 'invested' ? 'bg-indigo-100 text-indigo-700' :
-                            activity.status === 'new' ? 'bg-cyan-100 text-cyan-700' :
-                            'bg-gray-100 text-gray-600'
-                          }`}>
-                            {activity.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm text-gray-500">
-                            {activity.timestamp ? new Date(activity.timestamp).toLocaleDateString() : '-'}
-                          </span>
-                        </td>
+                        </th>
+                        <th className="text-center py-3 px-4 font-medium text-gray-600">Clients</th>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-gray-400">
-                        No recent activity
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {subBrokerChartData.map((sb, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="py-3 px-4 font-medium text-gray-800">{sb.name}</td>
+                          <td className="py-3 px-4 text-gray-600">{sb.partner_code}</td>
+                          <td className="py-3 px-4 text-right text-amber-700 font-medium">
+                            {formatINRCrores(sb.bond_aum)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-pink-700 font-medium">
+                            {formatAEDMillions(sb.real_estate_aum)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-indigo-700 font-medium">
+                            {sb.real_estate_aum > 0 ? (
+                              <span title={`Converted at 1 AED = ₹${forexRate.toFixed(2)}`}>
+                                {formatINRCrores(sb.real_estate_aum * forexRate)}
+                              </span>
+                            ) : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
+                              {sb.client_count}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-gray-400">
+                <div className="text-center">
+                  <Briefcase className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No sub-broker data available</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}
@@ -833,19 +568,19 @@ export default function Dashboard() {
             
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
               <p className="text-sm text-red-800 font-medium mb-2">
-                ⚠️ This action will permanently delete:
+                This action will permanently delete:
               </p>
               <ul className="text-sm text-red-700 space-y-1 ml-4">
-                <li>• All clients & client documents</li>
-                <li>• All sub-brokers</li>
-                <li>• All bonds & bond documents</li>
-                <li>• All real estate deals & attachments</li>
-                <li>• All trades, investments & cashflows</li>
-                <li>• All CAS analyses & reports</li>
-                <li>• All uploaded files</li>
+                <li>All clients & client documents</li>
+                <li>All sub-brokers</li>
+                <li>All bonds & bond documents</li>
+                <li>All real estate deals & attachments</li>
+                <li>All trades, investments & cashflows</li>
+                <li>All CAS analyses & reports</li>
+                <li>All uploaded files</li>
               </ul>
               <p className="text-sm text-red-800 font-medium mt-3">
-                ✓ Broker accounts will be preserved
+                Broker accounts will be preserved
               </p>
             </div>
             
