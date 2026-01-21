@@ -192,6 +192,28 @@ export default function SubBrokerProfile() {
     }
   };
 
+  const handleUpdateAddress = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API}/sub-broker/profile/address`, 
+        { 
+          address_line1: addressLine1,
+          address_line2: addressLine2,
+          city,
+          state,
+          pincode,
+          country
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Address updated successfully");
+      setEditingAddress(false);
+      fetchProfile();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to update address");
+    }
+  };
+
   if (!user || loading) {
     return (
       <div className="flex h-screen bg-gray-50">
