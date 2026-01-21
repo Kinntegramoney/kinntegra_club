@@ -1,78 +1,109 @@
-# Kinntegraa Bond & Real Estate Management Platform
+# Kinntegraa - Product Requirements Document
 
 ## Original Problem Statement
-Build a comprehensive bond and real estate investment management platform for brokers and clients. The system handles bond pricing calculations, client portfolio management, trade verification, and real estate investment tracking.
-
-## Core Requirements
-1. **Bond Management**: Create, edit, and manage bonds with accurate pricing calculations based on cashflow schedules
-2. **Client Management**: Track client information, PAN validation, document expiry
-3. **Real Estate Investment**: Track real estate investment opportunities
-4. **Trade Verification**: Process and verify client trades
-5. **Multi-role Access**: Support broker, sub-broker, and client roles with appropriate permissions
+A wealth management platform for brokers to manage clients, bonds, real estate investments, and sub-brokers. The application allows:
+- Brokers to create and manage investment opportunities (Bonds & Real Estate)
+- Sub-brokers to assist in client management
+- Clients to view their investments and holdings
+- CAS (Consolidated Account Statement) PDF analysis
 
 ## User Personas
-- **Broker**: Full admin access - manages bonds, clients, real estate, trades
-- **Sub-Broker**: Limited access to opportunities and assigned clients
-- **Client**: View opportunities, holdings, and make investments
+1. **Broker**: Full admin access - manages all entities
+2. **Sub-Broker**: Limited access - works with linked clients
+3. **Client**: Read access - views own investments
 
-## Key Technical Decisions
-- **Bond Pricing Engine**: Complete rewrite based on user's Excel specification (`2026_01_20_Final Bond Calculation.xlsx`)
-- **Cashflow Source**: `cashflows_per_unit` array from Excel upload is the single source of truth for bond payments
-- **Two-Step Bond Creation**: Step 1 for basic details, Step 2 for Excel cashflow upload
+## Core Features Implemented
 
-## What's Been Implemented
+### Authentication & Authorization
+- Two-step login (PAN + Password, then PIN)
+- Role-based access control (Broker, Sub-Broker, Client)
+- Password reset functionality
+- Customer self-registration
 
-### Jan 20, 2026 - Bond Module Updates
-- ✅ Removed "Record Date Cutoff (days)" field from bond creation form
-- ✅ Removed `principal_payments` from bond submission (relies on `cashflows_per_unit`)
-- ✅ New bond pricing engine (`calculate_bond_price_from_request`)
-- ✅ Two-step bond creation UI with Excel upload
-- ✅ Excel parsing endpoints (`/bonds/parse-cashflows`, `/bonds/template/cashflows`)
-- ✅ Database wiped - fresh start with admin user and dummy bond `CDUC001`
-- ✅ Fixed BondDetails page to display `cashflows_per_unit` data (chart, principal/interest tables)
-- ✅ Fixed `calculate-enhanced` endpoint to use `cashflows_per_unit` and correct cutoff logic
-- ✅ Price calculation now shows correct value (₹449,083.02 for CDUC001 on 2025-05-13)
+### Dashboard (Updated: Jan 2026)
+- **Broker Dashboard**: 
+  - Total Clients (Venn diagram style)
+  - Sub-Brokers count
+  - Opportunities (Bonds & Real Estate)
+  - Bond AUM (INR)
+  - Real Estate AUM (AED)
+  - AUM by Sub-Broker (showing both Bonds INR and RE AED with INR conversion)
+  - Forex rate display (AED to INR from live API)
+  - Quick Actions
+  
+- **Sub-Broker Dashboard** (NEW):
+  - Total AUM under management
+  - My Clients (Venn diagram)
+  - Bond AUM (INR)
+  - Real Estate AUM (AED with INR conversion)
+  - Quick Actions
 
-## Prioritized Backlog
+### Client Management
+- Conditional bank details based on residency/passport type
+- Bulk upload (Indian & Foreign passport holders)
+- Pincode lookup API integration
 
-### P0 - Critical
-- [ ] User verification of new bond creation flow and pricing
+### Investment Management
+- Bond opportunities with payment schedules
+- Real Estate opportunities with investor tracking
+- Trade verification workflow
 
-### P1 - High Priority  
-- [ ] Dashboard counts frontend (invalid PAN, expiring documents)
-- [ ] Pincode lookup in client creation form
+### Analysis
+- CAS PDF parsing (handles dishonoured transactions)
+- Gap sheet generation
 
-### P2 - Medium Priority
-- [ ] Delete obsolete files (`CreateBond.jsx`, `CreateBondModal.jsx`)
-- [ ] Fix recurring UI bug on BondDetails page (radio button state)
-- [ ] Code cleanup
-
-### P3 - Technical Debt
-- [ ] Refactor backend monolith (`server.py`)
-- [ ] Refactor frontend monolith (`RealEstateDetails.jsx`)
-- [ ] Build out `AnalysisDashboard.jsx`
-- [ ] Email notifications for passport expiry
-
-## Key API Endpoints
-- `POST /bonds/calculate-price-v2` - Clean price calculation endpoint
-- `POST /bonds/parse-cashflow-excel` - Parse uploaded Excel for bond cashflows
-- `GET /bonds/cashflow-template` - Download Excel template
-- `POST /bonds` - Create bond with optional `cashflows_per_unit`
-- `POST /bonds/{bond_id}/calculate` - Calculate price for existing bond
-
-## Database Schema Notes
-- **bonds collection**: Now includes `cashflows_per_unit: List[dict]` field
-- Each cashflow dict contains: `date`, `principal`, `interest`, `total`
-- When `cashflows_per_unit` exists, it overrides other payment fields
-
-## Test Credentials
-- **Broker Login**: PAN: `ANVPB5297J`, Password: `Laksh@0208`, PIN: `0516`
-
-## Known Issues
-- UI bug on BondDetails page - radio button state not clearing correctly (recurring, low priority)
+### Admin Features
+- Database reset functionality
+- Sub-broker management (search, sort, CRUD)
 
 ## Tech Stack
-- **Frontend**: React + Shadcn/UI + TailwindCSS
+- **Frontend**: React + Tailwind CSS + Shadcn/UI + Recharts
 - **Backend**: FastAPI (Python)
 - **Database**: MongoDB
-- **File Handling**: openpyxl for Excel parsing, react-dropzone for uploads
+- **Third-Party**: 
+  - Currency Exchange API (fawazahmed0/exchange-api)
+  - Pincode lookup API
+
+## Recent Changes (Jan 21, 2026)
+1. **Dashboard Redesign**:
+   - Removed: Client Status, AUM distribution, Client spread by city, Monthly console, Recent Activity
+   - Enhanced: AUM by Sub-Broker now shows both Bonds (INR) and Real Estate (AED)
+   - Added: Real Estate INR conversion using live forex rate
+   - Added: Forex rate display in header
+
+2. **Sub-Broker Dashboard**:
+   - Created new `/sub-broker/dashboard` page
+   - Shows only data for linked clients
+   - Displays AUM with INR conversion
+
+3. **API Additions**:
+   - `GET /api/forex/aed-to-inr` - Live exchange rate
+   - `GET /api/sub-broker/dashboard/summary` - Sub-broker specific dashboard data
+
+## P0 - Critical Issues (In Progress)
+1. Sub-broker "Resend credentials" & "Reset password" emails not working
+2. Sub-broker verification flow not implemented
+
+## P1 - Upcoming Tasks
+- Complete Sub-Broker Profile page UI
+- Frontend for Pincode Lookup on client creation form
+
+## P2 - Future Tasks
+- **CRITICAL**: Refactor `server.py` (14,000+ lines) into modular routers
+- Refactor `RealEstateDetails.jsx` and `CreateClientModal.jsx`
+- Build out `AnalysisDashboard.jsx`
+- Email notifications for passport expiry
+- Delete obsolete bond creation files
+
+## API Endpoints Reference
+- Auth: `/api/auth/*`
+- Dashboard: `/api/dashboard/*`, `/api/sub-broker/dashboard/*`
+- Forex: `/api/forex/aed-to-inr`
+- Clients: `/api/clients/*`, `/api/bulk/*`
+- Bonds: `/api/bonds/*`
+- Real Estate: `/api/real-estate-opportunities/*`
+- Partners: `/api/partners/*`
+- Analysis: `/api/analysis/*`
+
+## Test Credentials
+- **Broker**: PAN: `ANVPB5297J`, Password: `Laksh@0208`, PIN: `0516`
