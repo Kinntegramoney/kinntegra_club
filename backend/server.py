@@ -4150,19 +4150,32 @@ async def bulk_upload_clients(
                 "occupation": get_val(row, 'occupation'),
                 "father_husband_name": get_val(row, 'father_husband_name'),
                 "demat_account_no": get_val(row, 'demat_account_no'),
-                # Address details from sheet 2
+                "country_of_residency": get_val(row, 'country_of_residency'),
+                "passport_type": get_val(row, 'passport_type', 'indian'),
+                # Bank details from sheet 2 (Bank & Investment)
+                "bank_name": get_val(bank_row, 'bank_name'),
+                "account_number": get_val(bank_row, 'account_number'),
+                "branch": get_val(bank_row, 'branch'),
+                "ifsc_code": get_val(bank_row, 'ifsc_code'),
+                "account_type": get_val(bank_row, 'account_type'),
+                # International Bank details from sheet 3 (NRI)
+                "intl_bank_name": get_val(intl_bank_row, 'international_bank_name'),
+                "intl_account_number": get_val(intl_bank_row, 'international_account_number'),
+                "intl_iban": get_val(intl_bank_row, 'iban'),
+                "intl_swift_code": get_val(intl_bank_row, 'swift_code'),
+                # Passport details from sheet 4
+                "passport_number": get_val(passport_row, 'passport_number'),
+                "passport_valid_from": get_val(passport_row, 'passport_valid_from'),
+                "passport_valid_until": get_val(passport_row, 'passport_valid_until'),
+                "passport_country_of_issue": get_val(passport_row, 'passport_country_of_issue'),
+                # Address details from sheet 5
                 "address_line1": get_val(address_row, 'address_line_1'),
                 "address_line2": get_val(address_row, 'address_line_2'),
                 "city": get_val(address_row, 'city'),
                 "state": get_val(address_row, 'state'),
                 "country": get_val(address_row, 'country', 'India'),
                 "pincode": get_val(address_row, 'pincode'),
-                # Bank details from sheet 3
-                "bank_name": get_val(bank_row, 'bank_name'),
-                "account_number": get_val(bank_row, 'account_number'),
-                "branch": get_val(bank_row, 'branch'),
-                "ifsc_code": get_val(bank_row, 'ifsc_code'),
-                # Nominee details from sheet 4
+                # Nominee details from sheet 6
                 "nominee_name": get_val(nominee_row, 'nominee_name'),
                 "nominee_dob": get_val(nominee_row, 'nominee_dob'),
                 "nominee_mobile": get_val(nominee_row, 'nominee_mobile'),
