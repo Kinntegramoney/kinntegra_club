@@ -4071,39 +4071,6 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
             </div>
           ) : report ? (
             <div className="space-y-6">
-              {/* Notional Currency Gain Banner */}
-              {currentRate && (
-                <div className={`rounded-xl p-4 border-2 ${
-                  (report.summary.total_actual_home_currency - (report.summary.total_investment_aed * currentRate)) > 0 
-                    ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
-                    : 'bg-gradient-to-r from-red-50 to-amber-50 border-red-200'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Notional Gain/Loss due to Currency Movement</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Comparing what you paid (Actuals) vs Today's rate
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-3xl font-bold ${
-                        (report.summary.total_actual_home_currency - (report.summary.total_investment_aed * currentRate)) > 0 
-                          ? 'text-green-700' 
-                          : 'text-red-700'
-                      }`}>
-                        {(report.summary.total_actual_home_currency - (report.summary.total_investment_aed * currentRate)) > 0 ? '+' : ''}
-                        {report.investor.currency} {formatCurrency(Math.abs(report.summary.total_actual_home_currency - (report.summary.total_investment_aed * currentRate)))}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {(report.summary.total_actual_home_currency - (report.summary.total_investment_aed * currentRate)) > 0 
-                          ? `You saved ${report.investor.currency} by paying earlier at better rates` 
-                          : `Currency moved in your favor - today's rate is better`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
               {/* Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-indigo-50 rounded-lg p-4">
@@ -4127,13 +4094,21 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                   </p>
                   <p className="text-xs text-gray-500">{report.summary.xirr_difference >= 0 ? 'Better than expected' : 'Below expected'}</p>
                 </div>
-                <div className={`rounded-lg p-4 ${report.summary.currency_gain_loss >= 0 ? 'bg-green-50' : 'bg-amber-50'}`}>
-                  <p className="text-xs text-gray-600 font-medium">Currency Impact</p>
-                  <p className={`text-2xl font-bold ${report.summary.currency_gain_loss >= 0 ? 'text-green-800' : 'text-amber-800'}`}>
-                    {report.summary.currency_gain_loss >= 0 ? '+' : ''}{formatCurrency(report.summary.currency_gain_loss)}
-                  </p>
-                  <p className="text-xs text-gray-500">{report.investor.currency} {report.summary.currency_gain_loss >= 0 ? 'saved' : 'extra spent'}</p>
-                </div>
+                {/* Currency Impact = Projected - Actual + Today */}
+                {(() => {
+                  const todayTotal = currentRate ? report.summary.total_investment_aed * currentRate : 0;
+                  const currencyImpact = report.summary.total_projected_home_currency - report.summary.total_actual_home_currency + todayTotal;
+                  const isPositive = currencyImpact >= 0;
+                  return (
+                    <div className={`rounded-lg p-4 ${isPositive ? 'bg-green-50' : 'bg-red-50'}`}>
+                      <p className="text-xs text-gray-600 font-medium">Currency Impact</p>
+                      <p className={`text-2xl font-bold ${isPositive ? 'text-green-800' : 'text-red-800'}`}>
+                        {isPositive ? '+' : ''}{report.investor.currency} {formatCurrency(Math.abs(currencyImpact))}
+                      </p>
+                      <p className="text-xs text-gray-500">Projected - Actual + Today</p>
+                    </div>
+                  );
+                })()}
               </div>
               
               {/* Investment Summary */}
