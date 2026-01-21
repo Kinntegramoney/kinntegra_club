@@ -1550,6 +1550,21 @@ async def download_foreign_client_template(current_user: dict = Depends(get_curr
     for col, value in enumerate(passport_sample, 1):
         ws_passport.cell(row=2, column=col, value=value)
     
+    # Sheet 2b: International Bank Details (Required for Foreign Passport holders)
+    ws_intl_bank = wb.create_sheet("International Bank Details")
+    
+    intl_bank_headers = ["Passport Number*", "Bank Name*", "Account Number*", "IBAN*", "SWIFT Code*"]
+    for col, header in enumerate(intl_bank_headers, 1):
+        cell = ws_intl_bank.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="EA580C", end_color="EA580C", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_intl_bank.column_dimensions[get_column_letter(col)].width = 26
+    
+    intl_bank_sample = ["A1234567", "Commercial Bank of Dubai", "1007997925", "AE690230000001007997925", "CBDUAEAD"]
+    for col, value in enumerate(intl_bank_sample, 1):
+        ws_intl_bank.cell(row=2, column=col, value=value)
+    
     # Sheet 3: Address Details
     ws_address = wb.create_sheet("Address Details")
     
