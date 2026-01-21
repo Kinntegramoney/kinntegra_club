@@ -257,25 +257,6 @@ export default function Dashboard() {
   const bondOnlyClients = summary?.clients?.bond_only || 0;
   const realEstateOnlyClients = summary?.clients?.real_estate_only || 0;
   const bothProductsClients = summary?.clients?.both_products || 0;
-  const totalClients = summary?.clients?.total || 0;
-
-  // Prepare sub-broker AUM data for chart
-  const subBrokerChartData = (aumDistribution.by_subbroker || []).map((sb, index) => ({
-    ...sb,
-    bond_aum_display: sb.bond_aum || 0,
-    real_estate_aum_aed: sb.real_estate_aum || 0,
-    real_estate_aum_inr: (sb.real_estate_aum || 0) * forexRate,
-    fill: COLORS.chart[index % COLORS.chart.length]
-  }));
-
-  // Filter chart data based on selected sub-broker
-  const filteredChartData = selectedSubBroker === "all" 
-    ? subBrokerChartData 
-    : subBrokerChartData.filter(sb => sb.name === selectedSubBroker);
-
-  // Calculate totals
-  const totalSubBrokers = aumDistribution.by_subbroker?.length || 0;
-  const totalAUM = subBrokerChartData.reduce((acc, sb) => acc + (sb.bond_aum || 0) + ((sb.real_estate_aum || 0) * forexRate), 0);
 
   return (
     <div className="flex h-screen bg-gray-50">
