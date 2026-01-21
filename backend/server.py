@@ -15436,8 +15436,11 @@ class SellUnitRequest(BaseModel):
     sale_date: str
     sale_price: float
     brokerage_fee: Optional[float] = 0
-    selling_fee_percentage: Optional[float] = 2
+    selling_fee_percentage: Optional[float] = 0
     net_proceeds: Optional[float] = 0
+    total_invested: Optional[float] = 0
+    net_profit: Optional[float] = 0
+    xirr: Optional[float] = 0
     notes: Optional[str] = ""
 
 @api_router.post("/real-estate-opportunities/{opportunity_id}/sell")
@@ -15459,20 +15462,28 @@ async def sell_real_estate_unit(
     if opp.get('status') != 'fully_invested':
         raise HTTPException(status_code=400, detail="Only fully invested properties can be sold")
     
-    # Calculate profit/loss
+    # Calculate profit/loss from purchase price (basic calculation)
     purchase_price = opp.get('unit_price', 0)
-    profit_loss = data.sale_price - purchase_price - data.brokerage_fee
-    profit_percentage = (profit_loss / purchase_price * 100) if purchase_price > 0 else 0
+    dld_fee = opp.get('dld_fee', 0)
+    admin_fee = opp.get('admin_fee', 0)
+    total_cost = purchase_price + dld_fee + admin_fee
     
-    # Update the opportunity with sale details
+    # Use the values from frontend if provided, otherwise calculate
+    total_invested = data.total_invested if data.total_invested > 0 else total_cost
+    net_profit = data.net_profit if data.net_profit != 0 else (data.net_proceeds - total_invested)
+    profit_percentage = (net_profit / total_invested * 100) if total_invested > 0 else 0
+    
+    # Update the opportunity with comprehensive sale details
     sale_record = {
         "sale_date": data.sale_date,
         "sale_price": data.sale_price,
         "brokerage_fee": data.brokerage_fee,
         "selling_fee_percentage": data.selling_fee_percentage,
         "net_proceeds": data.net_proceeds or (data.sale_price - data.brokerage_fee),
-        "profit_loss": profit_loss,
+        "total_invested": total_invested,
+        "net_profit": net_profit,
         "profit_percentage": round(profit_percentage, 2),
+        "xirr": round(data.xirr, 2) if data.xirr else 0,
         "notes": data.notes,
         "sold_by": current_user['id'],
         "sold_at": datetime.now(timezone.utc).isoformat()
