@@ -260,21 +260,60 @@ export default function AdminSubBrokers() {
                 Create First Sub Broker
               </Button>
             </div>
+          ) : filteredPartners.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 mb-4">No sub-brokers match your search</p>
+              <Button variant="outline" onClick={() => setSearchQuery("")}>
+                Clear Search
+              </Button>
+            </div>
           ) : (
             <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
               <table className="w-full min-w-[600px]">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase">Partner Name</th>
-                    <th className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase">Code</th>
-                    <th className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Email</th>
+                    <th 
+                      className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("name")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Partner Name
+                        <SortIcon field="name" />
+                      </div>
+                    </th>
+                    <th 
+                      className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("partner_code")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Code
+                        <SortIcon field="partner_code" />
+                      </div>
+                    </th>
+                    <th 
+                      className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase hidden md:table-cell cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("email")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Email
+                        <SortIcon field="email" />
+                      </div>
+                    </th>
                     <th className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Mobile</th>
-                    <th className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th 
+                      className="text-left py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("is_active")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Status
+                        <SortIcon field="is_active" />
+                      </div>
+                    </th>
                     <th className="text-right py-4 px-4 md:px-6 text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {partners.map((partner) => {
+                  {filteredPartners.map((partner) => {
                     const initials = partner.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                     const isInactive = partner.is_active === false;
 
