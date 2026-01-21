@@ -499,7 +499,7 @@ export default function RealEstateDetails() {
               </div>
             </div>
             <div className="flex gap-2">
-              {opp.status === 'available' && remainingPercentage > 0 && (
+              {(opp.status === 'available' || opp.status === 'partially_invested') && remainingPercentage > 0 && (
                 <Button onClick={() => setShowAllocateModal(true)} className="bg-teal-600 hover:bg-teal-700">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Investor
