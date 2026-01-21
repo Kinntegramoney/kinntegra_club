@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, LogOut, Menu, X, Wallet, FileBarChart, UserCheck, Tag, User } from "lucide-react";
+import { LayoutGrid, TrendingUp, LogOut, Menu, X, Wallet, FileBarChart, UserCheck, Tag, User, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function SubBrokerSidebar({ user }) {
@@ -27,6 +27,7 @@ export default function SubBrokerSidebar({ user }) {
     { path: "/sub-broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/sub-broker/clients", label: "Clients", icon: UserCheck },
     { path: "/sub-broker/reinvestment", label: "Reinv Tag", icon: Tag },
+    { path: "/sub-broker/approval-logs", label: "Logs", icon: History },
     { path: "/sub-broker/analysis", label: "Analysis", icon: FileBarChart },
     { path: "/sub-broker/profile", label: "Profile", icon: User },
   ];
