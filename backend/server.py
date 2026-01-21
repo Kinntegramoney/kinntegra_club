@@ -3686,6 +3686,9 @@ async def bulk_upload_real_estate(
                         property_data['broker_fee'] = float(row.get('broker_fee', 0)) if not pd.isna(row.get('broker_fee')) else 0
                         property_data['other_fees'] = float(row.get('other_fees', 0)) if not pd.isna(row.get('other_fees')) else 0
                         property_data['selling_fee_percentage'] = float(row.get('unit_selling_fee', 0)) if not pd.isna(row.get('unit_selling_fee')) else 0
+                        # Developer Discount fields
+                        property_data['developer_discount'] = float(row.get('developer_discount', 0)) if not pd.isna(row.get('developer_discount')) else 0
+                        property_data['developer_discount_percentage'] = float(row.get('developer_discount_', 0)) if not pd.isna(row.get('developer_discount_')) else 0
                 
                 # Unit Details
                 if 'unit' in sheets_data:
