@@ -2348,6 +2348,32 @@ async def download_foreign_client_template(current_user: dict = Depends(get_curr
     for col, value in enumerate(sb_sample, 1):
         ws_subbroker.cell(row=2, column=col, value=value)
     
+    # Sheet 6: Country of Residency List
+    ws_countries = wb.create_sheet("Country List")
+    
+    countries_list = [
+        "United Arab Emirates", "USA", "UK", "Singapore", "Australia", "Canada", "Germany",
+        "France", "Netherlands", "Switzerland", "Japan", "China", "Hong Kong", 
+        "South Korea", "Malaysia", "Indonesia", "Thailand", "Philippines", "Vietnam",
+        "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman", "New Zealand",
+        "Ireland", "Belgium", "Sweden", "Norway", "Denmark", "Finland", "Austria",
+        "Italy", "Spain", "Portugal", "Greece", "Poland", "Czech Republic", "Russia",
+        "South Africa", "Kenya", "Nigeria", "Egypt", "Brazil", "Mexico", "Argentina",
+        "India"
+    ]
+    
+    ws_countries.cell(row=1, column=1, value="Country of Residency")
+    ws_countries.cell(row=1, column=1).font = Font(bold=True, color="FFFFFF")
+    ws_countries.cell(row=1, column=1).fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+    ws_countries.column_dimensions['A'].width = 30
+    
+    for idx, country in enumerate(countries_list, 2):
+        ws_countries.cell(row=idx, column=1, value=country)
+    
+    # Add note
+    ws_countries.cell(row=len(countries_list)+3, column=1, value="Note: Copy from this list to 'Country of Residency' column in Personal Details sheet")
+    ws_countries.cell(row=len(countries_list)+4, column=1, value="If your country is not listed, type it manually")
+    
     # Instructions sheet
     ws_instructions = wb.create_sheet("Instructions")
     instructions = [
