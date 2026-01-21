@@ -3749,6 +3749,7 @@ async def bulk_upload_foreign_clients(
                 "passport_type": "foreign",
                 "country_of_residency": country_of_residency,
                 "emirates_id": emirates_id,
+                "emirates_id_expiry": emirates_id_expiry,
                 "opportunities": opportunities,
                 "email": email or "",
                 "mobile": mobile or "",
