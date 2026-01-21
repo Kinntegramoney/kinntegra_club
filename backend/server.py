@@ -1195,10 +1195,21 @@ async def create_client_by_subbroker(
     
     broker_id = partner.get('broker_id')
     
-    # Check if PAN already exists
-    existing = await db.clients.find_one({"pan": client_data.get('pan')})
-    if existing:
-        raise HTTPException(status_code=400, detail="Client with this PAN already exists")
+    # Determine PAN - could be pan_number or pan
+    pan = client_data.get('pan_number', client_data.get('pan', '')).upper()
+    passport_type = client_data.get('passport_type', 'indian')
+    
+    # Check if PAN/Passport already exists
+    if passport_type == 'indian' and pan:
+        existing = await db.clients.find_one({"$or": [{"pan": pan}, {"pan_number": pan}]})
+        if existing:
+            raise HTTPException(status_code=400, detail="Client with this PAN already exists")
+    elif passport_type == 'foreign':
+        passport_number = client_data.get('passport_number', '').upper()
+        if passport_number:
+            existing = await db.clients.find_one({"passport_number": passport_number})
+            if existing:
+                raise HTTPException(status_code=400, detail="Client with this passport number already exists")
     
     # Generate client ID
     client_id = str(uuid.uuid4())
@@ -1207,35 +1218,74 @@ async def create_client_by_subbroker(
     temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
     temp_pin = ''.join(random.choices(string.digits, k=4))
     
-    # Create client with pending approval status
+    # Create client with pending approval status - include ALL fields from broker modal
     new_client = {
         "id": client_id,
-        "pan": client_data.get('pan', '').upper(),
+        "pan": pan,
+        "pan_number": pan,
         "name": client_data.get('name', ''),
         "email": client_data.get('email', ''),
-        "phone": client_data.get('phone', ''),
-        "mobile": client_data.get('phone', ''),
+        "phone": client_data.get('mobile', client_data.get('phone', '')),
+        "mobile": client_data.get('mobile', client_data.get('phone', '')),
         "password_hash": get_password_hash(temp_password),
         "pin_hash": get_password_hash(temp_pin),
-        "temp_password": temp_password,
-        "temp_pin": temp_pin,
+        "default_password": temp_password,
+        "default_pin": temp_pin,
         "role": "client",
         "broker_id": broker_id,
         "linked_subbroker_id": current_user['id'],
         "created_by_subbroker": True,
-        "approval_status": "pending_approval",  # Key field for approval workflow
+        "approval_status": "pending_approval",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
-        "is_active": False,  # Not active until approved
-        # Additional fields
+        "is_active": False,
+        
+        # Passport & Residency
+        "passport_type": passport_type,
+        "country_of_residency": client_data.get('country_of_residency', ''),
+        "passport_number": client_data.get('passport_number', ''),
+        "emirates_id": client_data.get('emirates_id', ''),
+        "passport_valid_from": client_data.get('passport_valid_from', ''),
+        "passport_valid_until": client_data.get('passport_valid_until', ''),
+        "passport_country_of_issue": client_data.get('passport_country_of_issue', ''),
+        
+        # Opportunities
+        "opportunities": client_data.get('opportunities', []),
+        
+        # Indian Bank Details (for bonds)
+        "demat_account_no": client_data.get('demat_account_no', ''),
         "bank_name": client_data.get('bank_name', ''),
         "account_number": client_data.get('account_number', ''),
+        "branch": client_data.get('branch', ''),
         "ifsc_code": client_data.get('ifsc_code', ''),
-        "address": client_data.get('address', ''),
+        "account_type": client_data.get('account_type', ''),
+        
+        # International Bank Details (for NRIs)
+        "intl_bank_name": client_data.get('intl_bank_name', ''),
+        "intl_account_number": client_data.get('intl_account_number', ''),
+        "intl_iban": client_data.get('intl_iban', ''),
+        "intl_swift_code": client_data.get('intl_swift_code', ''),
+        
+        # Additional Details
+        "occupation": client_data.get('occupation', ''),
+        "date_of_birth": client_data.get('date_of_birth', ''),
+        "father_husband_name": client_data.get('father_husband_name', ''),
+        
+        # Address
+        "address_line1": client_data.get('address_line1', ''),
+        "address_line2": client_data.get('address_line2', ''),
         "city": client_data.get('city', ''),
         "state": client_data.get('state', ''),
+        "country": client_data.get('country', ''),
         "pincode": client_data.get('pincode', ''),
-        "country": client_data.get('country', 'India'),
+        
+        # Nominee Details
+        "nominee_name": client_data.get('nominee_name', ''),
+        "nominee_dob": client_data.get('nominee_dob', ''),
+        "nominee_mobile": client_data.get('nominee_mobile', ''),
+        "nominee_relationship": client_data.get('nominee_relationship', ''),
+        
+        # UCCs
         "ucc_list": client_data.get('ucc_list', []),
         "bond_allocations": [],
         "notes": client_data.get('notes', '')
@@ -1249,6 +1299,8 @@ async def create_client_by_subbroker(
     return {
         "message": "Client created successfully. Pending broker approval.",
         "client": response_client,
+        "default_password": temp_password,
+        "default_pin": temp_pin,
         "requires_approval": True
     }
 
