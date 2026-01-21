@@ -137,39 +137,28 @@ const VennDiagram = ({ bondOnly, realEstateOnly, both }) => {
         {/* Overlap area - Different color blending */}
         <g clipPath="url(#leftCircle)">
           <circle 
-            cx="180" 
-            cy="90" 
-            r="65" 
+            cx="175" 
+            cy="80" 
+            r="60" 
             fill={COLORS.venn.opened}
-            fillOpacity="0.9"
+            fillOpacity="0.95"
           />
         </g>
         
-        {/* Numbers on circles */}
+        {/* Numbers only on circles - no labels */}
         {/* Bonds Only number (left) */}
-        <text x="70" y="95" textAnchor="middle" className="fill-white font-bold text-xl">
+        <text x="65" y="85" textAnchor="middle" className="fill-white font-bold" style={{ fontSize: '22px' }}>
           {bondOnly}
         </text>
         
         {/* Both products number (center overlap) */}
-        <text x="140" y="95" textAnchor="middle" className="fill-white font-bold text-xl">
+        <text x="135" y="85" textAnchor="middle" className="fill-white font-bold" style={{ fontSize: '22px' }}>
           {both}
         </text>
         
         {/* Real Estate Only number (right) */}
-        <text x="210" y="95" textAnchor="middle" className="fill-white font-bold text-xl">
+        <text x="205" y="85" textAnchor="middle" className="fill-white font-bold" style={{ fontSize: '22px' }}>
           {realEstateOnly}
-        </text>
-        
-        {/* Labels */}
-        <text x="70" y="115" textAnchor="middle" className="fill-white text-[10px] font-medium">
-          Bonds Only
-        </text>
-        <text x="140" y="115" textAnchor="middle" className="fill-white text-[10px] font-medium">
-          Both
-        </text>
-        <text x="210" y="115" textAnchor="middle" className="fill-white text-[10px] font-medium">
-          RE Only
         </text>
       </svg>
     </div>
