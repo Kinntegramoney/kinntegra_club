@@ -4005,18 +4005,25 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
               {/* Investment Summary */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="font-medium text-gray-800 mb-3">Investment Summary</h3>
-                <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-gray-500">Total AED Investment</p>
                     <p className="font-semibold">AED {formatCurrency(report.summary.total_investment_aed)}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Projected Total ({report.investor.currency})</p>
-                    <p className="font-semibold">{report.investor.currency} {formatCurrency(report.summary.total_projected_home_currency)}</p>
+                    <p className="font-semibold text-indigo-600">{report.investor.currency} {formatCurrency(report.summary.total_projected_home_currency)}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Actual Total ({report.investor.currency})</p>
-                    <p className="font-semibold">{report.investor.currency} {formatCurrency(report.summary.total_actual_home_currency)}</p>
+                    <p className="font-semibold text-emerald-600">{report.investor.currency} {formatCurrency(report.summary.total_actual_home_currency)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Current Total ({report.investor.currency})</p>
+                    <p className="font-semibold text-purple-600">
+                      {report.investor.currency} {currentRate ? formatCurrency(report.summary.total_investment_aed * currentRate) : '-'}
+                    </p>
+                    <p className="text-xs text-gray-400">@ {currentRate?.toFixed(4) || '-'} rate</p>
                   </div>
                 </div>
               </div>
