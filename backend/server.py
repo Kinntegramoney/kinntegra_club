@@ -11338,15 +11338,18 @@ class RealEstateOpportunityUpdate(BaseModel):
     unit_no: Optional[str] = None
     unit_price: Optional[float] = None
     dld_fee_percentage: Optional[float] = None
+    dld_fee: Optional[float] = None
     admin_fee: Optional[float] = None
     broker_fee: Optional[float] = None
+    brokerage_fee: Optional[float] = None
     other_fees: Optional[float] = None
+    selling_fee_percentage: Optional[float] = None
     unit_selling_fee_percentage: Optional[float] = None
     total_area: Optional[float] = None
     carpet_area: Optional[float] = None
     balcony_area: Optional[float] = None
     unit_type: Optional[str] = None
-    floor: Optional[int] = None
+    floor: Optional[str] = None
     parking_spaces: Optional[int] = None
     payment_schedule: Optional[List[PaymentScheduleItem]] = None
     expected_sale_rate: Optional[float] = None
@@ -11356,6 +11359,8 @@ class RealEstateOpportunityUpdate(BaseModel):
     location: Optional[str] = None
     handover_date: Optional[str] = None
     description: Optional[str] = None
+    developer_discount: Optional[float] = None
+    developer_discount_percentage: Optional[float] = None
 
 
 class InvestorAllocation(BaseModel):
