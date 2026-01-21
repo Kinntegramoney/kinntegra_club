@@ -11602,12 +11602,12 @@ async def update_real_estate_opportunity(
         raise HTTPException(status_code=400, detail="No fields to update")
     
     # Recalculate totals if any pricing field changed
-    if any(k in update_dict for k in ['unit_price', 'dld_fee', 'admin_fee', 'broker_fee', 'other_fees']):
-        unit_price = update_dict.get('unit_price', opportunity['unit_price'])
-        dld_fee = update_dict.get('dld_fee', opportunity['dld_fee'])
-        admin_fee = update_dict.get('admin_fee', opportunity['admin_fee'])
-        broker_fee = update_dict.get('broker_fee', opportunity['broker_fee'])
-        other_fees = update_dict.get('other_fees', opportunity['other_fees'])
+    if any(k in update_dict for k in ['unit_price', 'dld_fee', 'admin_fee', 'broker_fee', 'brokerage_fee', 'other_fees']):
+        unit_price = update_dict.get('unit_price', opportunity.get('unit_price', 0))
+        dld_fee = update_dict.get('dld_fee', opportunity.get('dld_fee', 0))
+        admin_fee = update_dict.get('admin_fee', opportunity.get('admin_fee', 0))
+        broker_fee = update_dict.get('broker_fee', opportunity.get('broker_fee', opportunity.get('brokerage_fee', 0)))
+        other_fees = update_dict.get('other_fees', opportunity.get('other_fees', 0))
         
         total_cost = unit_price + dld_fee + admin_fee + broker_fee + other_fees
         update_dict['total_cost'] = total_cost
@@ -11624,9 +11624,9 @@ async def update_real_estate_opportunity(
     
     # Recalculate balcony ratio if area fields changed
     if any(k in update_dict for k in ['carpet_area', 'balcony_area']):
-        carpet_area = update_dict.get('carpet_area', opportunity['carpet_area'])
-        balcony_area = update_dict.get('balcony_area', opportunity['balcony_area'])
-        if carpet_area > 0:
+        carpet_area = update_dict.get('carpet_area', opportunity.get('carpet_area', 0))
+        balcony_area = update_dict.get('balcony_area', opportunity.get('balcony_area', 0))
+        if carpet_area and carpet_area > 0:
             update_dict['balcony_ratio'] = round(balcony_area / carpet_area, 4)
     
     update_dict['updated_at'] = datetime.now(timezone.utc).isoformat()
