@@ -726,8 +726,97 @@ export default function Holdings() {
                         <p className="text-xs text-gray-500 uppercase tracking-wide">IFSC Code</p>
                         <p className="font-mono font-medium text-gray-800">{clientDetails.ifsc_code || '-'}</p>
                       </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Account Type</p>
+                        <p className="font-medium text-gray-800">{clientDetails.account_type || '-'}</p>
+                      </div>
                     </div>
                   </div>
+                  
+                  {/* International Bank Details (NRI) */}
+                  {(clientDetails.passport_type === 'foreign' || clientDetails.intl_bank_name) && (
+                    <div className="bg-white rounded-lg border border-gray-200 p-5">
+                      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                        <Building2 className="h-5 w-5 text-blue-600" />
+                        <h3 className="font-semibold text-gray-800">International Bank Details</h3>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded ml-auto">NRI</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Name</p>
+                          <p className="font-medium text-gray-800">{clientDetails.intl_bank_name || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Account Number</p>
+                          <p className="font-mono font-medium text-gray-800">{clientDetails.intl_account_number || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">IBAN</p>
+                          <p className="font-mono font-medium text-gray-800">{clientDetails.intl_iban || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">SWIFT Code</p>
+                          <p className="font-mono font-medium text-gray-800">{clientDetails.intl_swift_code || '-'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Passport Details */}
+                  {(clientDetails.passport_number || clientDetails.passport_type === 'foreign') && (
+                    <div className="bg-white rounded-lg border border-gray-200 p-5">
+                      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                        <CreditCard className="h-5 w-5 text-indigo-600" />
+                        <h3 className="font-semibold text-gray-800">Passport Details</h3>
+                        <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded ml-auto capitalize">{clientDetails.passport_type || 'Indian'}</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Passport Number</p>
+                          <p className="font-mono font-medium text-gray-800">{clientDetails.passport_number || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Valid From</p>
+                          <p className="font-medium text-gray-800">
+                            {clientDetails.passport_valid_from ? format(new Date(clientDetails.passport_valid_from), "MMM dd, yyyy") : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Valid Until</p>
+                          <p className="font-medium text-gray-800">
+                            {clientDetails.passport_valid_until ? format(new Date(clientDetails.passport_valid_until), "MMM dd, yyyy") : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Country of Issue</p>
+                          <p className="font-medium text-gray-800">{clientDetails.passport_country_of_issue || '-'}</p>
+                        </div>
+                        {clientDetails.country_of_residency && (
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">Country of Residency</p>
+                            <p className="font-medium text-gray-800">{clientDetails.country_of_residency || '-'}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* UCC List */}
+                  {clientDetails.ucc_list && clientDetails.ucc_list.length > 0 && (
+                    <div className="bg-white rounded-lg border border-gray-200 p-5">
+                      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                        <FileText className="h-5 w-5 text-green-600" />
+                        <h3 className="font-semibold text-gray-800">UCC List</h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {clientDetails.ucc_list.map((ucc, idx) => (
+                          <span key={idx} className="px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-sm font-mono">
+                            {ucc}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Nominee Details */}
                   <div className="bg-white rounded-lg border border-gray-200 p-5">
