@@ -1607,6 +1607,804 @@ async def approve_client(
         raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
 
 
+# ==================== APPROVAL WORKFLOW SYSTEM ====================
+
+class ApprovalLogEntry(BaseModel):
+    """Model for creating approval log entries"""
+    entity_type: str  # 'client' or 'reinvestment'
+    entity_id: str
+    action: str  # 'submitted', 'broker_approved', 'broker_rejected', 'client_approved', 'client_rejected', 'api_submitted'
+    notes: Optional[str] = None
+
+
+async def create_approval_log(
+    entity_type: str,
+    entity_id: str,
+    action: str,
+    actor_id: str,
+    actor_role: str,
+    actor_name: str,
+    details: dict = None,
+    notes: str = None
+):
+    """Helper to create approval log entries"""
+    log_entry = {
+        "id": str(uuid.uuid4()),
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "action": action,
+        "actor_id": actor_id,
+        "actor_role": actor_role,
+        "actor_name": actor_name,
+        "details": details or {},
+        "notes": notes,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.approval_logs.insert_one(log_entry)
+    return log_entry
+
+
+@api_router.get("/approval-logs")
+async def get_approval_logs(
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    limit: int = 100,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get approval logs based on user role"""
+    query = {}
+    
+    if current_user['role'] == 'broker':
+        # Broker sees all logs for their entities
+        broker_id = current_user['id']
+        # Get all clients and sub-brokers under this broker
+        client_ids = await db.clients.distinct("id", {"broker_id": broker_id})
+        partner_ids = await db.partners.distinct("id", {"created_by": broker_id})
+        query["$or"] = [
+            {"actor_id": broker_id},
+            {"entity_id": {"$in": client_ids + partner_ids}},
+            {"details.broker_id": broker_id}
+        ]
+    elif current_user['role'] == 'sub_broker':
+        # Sub-broker sees logs for their submissions
+        query["$or"] = [
+            {"actor_id": current_user['id']},
+            {"details.sub_broker_id": current_user['id']}
+        ]
+    elif current_user['role'] == 'client':
+        # Client sees logs for their approvals
+        client = await db.clients.find_one({"user_id": current_user['id']})
+        if client:
+            query["entity_id"] = client['id']
+    
+    if entity_type:
+        query["entity_type"] = entity_type
+    if entity_id:
+        query["entity_id"] = entity_id
+    
+    logs = await db.approval_logs.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    return logs
+
+
+@api_router.get("/approval-workflow/pending")
+async def get_pending_approvals_workflow(current_user: dict = Depends(get_current_user)):
+    """Get all pending approvals for the approval workflow page"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can view pending approvals")
+    
+    # Get pending clients from sub-brokers
+    pending_clients = await db.clients.find(
+        {
+            "broker_id": current_user['id'],
+            "approval_status": "pending_approval"
+        },
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Enrich with sub-broker info
+    for client in pending_clients:
+        if client.get('linked_subbroker_id'):
+            sub_broker = await db.partners.find_one(
+                {"id": client['linked_subbroker_id']},
+                {"_id": 0, "name": 1, "partner_code": 1}
+            )
+            client['sub_broker_name'] = sub_broker.get('name') if sub_broker else 'Unknown'
+            client['sub_broker_code'] = sub_broker.get('partner_code') if sub_broker else ''
+    
+    # Get pending reinvestments from sub-brokers
+    pending_reinvestments = await db.reinvestment_submissions.find(
+        {
+            "broker_id": current_user['id'],
+            "broker_approval_status": "pending"
+        },
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Enrich reinvestments with client and sub-broker info
+    for reinv in pending_reinvestments:
+        if reinv.get('client_id'):
+            client = await db.clients.find_one(
+                {"id": reinv['client_id']},
+                {"_id": 0, "name": 1, "pan_number": 1}
+            )
+            reinv['client_name'] = client.get('name') if client else 'Unknown'
+            reinv['client_pan'] = client.get('pan_number') if client else ''
+        if reinv.get('sub_broker_id'):
+            sub_broker = await db.partners.find_one(
+                {"id": reinv['sub_broker_id']},
+                {"_id": 0, "name": 1, "partner_code": 1}
+            )
+            reinv['sub_broker_name'] = sub_broker.get('name') if sub_broker else 'Unknown'
+            reinv['sub_broker_code'] = sub_broker.get('partner_code') if sub_broker else ''
+    
+    return {
+        "pending_clients": pending_clients,
+        "pending_reinvestments": pending_reinvestments,
+        "total_pending": len(pending_clients) + len(pending_reinvestments)
+    }
+
+
+class ClientApprovalRequest(BaseModel):
+    action: str  # 'approve' or 'reject'
+    notes: Optional[str] = None
+    send_client_email: bool = True  # Whether to send approval email to client
+
+
+@api_router.post("/approval-workflow/client/{client_id}")
+async def process_client_approval(
+    client_id: str,
+    request: ClientApprovalRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Process client approval/rejection by broker and optionally send client email"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can approve clients")
+    
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if client.get('broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Not authorized to approve this client")
+    
+    if request.action == "approve":
+        # Generate approval token for client email
+        approval_token = create_access_token(
+            data={
+                "type": "client_approval",
+                "client_id": client_id,
+                "broker_id": current_user['id']
+            },
+            expires_delta=timedelta(days=7)  # Token valid for 7 days
+        )
+        
+        # Update client status to broker_approved
+        await db.clients.update_one(
+            {"id": client_id},
+            {
+                "$set": {
+                    "broker_approval_status": "approved",
+                    "broker_approved_at": datetime.now(timezone.utc).isoformat(),
+                    "broker_approved_by": current_user['id'],
+                    "client_approval_status": "pending" if request.send_client_email else "not_required",
+                    "approval_token": approval_token
+                }
+            }
+        )
+        
+        # Create log entry
+        await create_approval_log(
+            entity_type="client",
+            entity_id=client_id,
+            action="broker_approved",
+            actor_id=current_user['id'],
+            actor_role="broker",
+            actor_name=current_user.get('name', 'Broker'),
+            details={
+                "client_name": client.get('name'),
+                "sub_broker_id": client.get('linked_subbroker_id'),
+                "broker_id": current_user['id']
+            },
+            notes=request.notes
+        )
+        
+        # Send client approval email if requested
+        if request.send_client_email and client.get('email'):
+            from email_service import send_client_approval_request_email
+            background_tasks.add_task(
+                send_client_approval_request_email,
+                client_name=client.get('name', ''),
+                client_email=client.get('email'),
+                approval_token=approval_token,
+                broker_name=current_user.get('name', 'Your Broker')
+            )
+            
+        return {
+            "message": "Client approved by broker" + (" - approval email sent to client" if request.send_client_email else ""),
+            "status": "broker_approved",
+            "client_approval_pending": request.send_client_email
+        }
+    
+    elif request.action == "reject":
+        await db.clients.update_one(
+            {"id": client_id},
+            {
+                "$set": {
+                    "approval_status": "rejected",
+                    "broker_approval_status": "rejected",
+                    "rejected_at": datetime.now(timezone.utc).isoformat(),
+                    "rejected_by": current_user['id'],
+                    "rejection_notes": request.notes
+                }
+            }
+        )
+        
+        # Create log entry
+        await create_approval_log(
+            entity_type="client",
+            entity_id=client_id,
+            action="broker_rejected",
+            actor_id=current_user['id'],
+            actor_role="broker",
+            actor_name=current_user.get('name', 'Broker'),
+            details={
+                "client_name": client.get('name'),
+                "sub_broker_id": client.get('linked_subbroker_id'),
+                "broker_id": current_user['id']
+            },
+            notes=request.notes
+        )
+        
+        return {"message": "Client rejected", "status": "rejected"}
+    
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
+
+
+@api_router.get("/approval-workflow/client-approve")
+async def client_approve_via_link(token: str, action: str = "approve"):
+    """Public endpoint for client to approve via email link - NO AUTH REQUIRED"""
+    try:
+        payload = verify_token(token)
+        if not payload or payload.get("type") != "client_approval":
+            return {"success": False, "message": "Invalid or expired approval link"}
+        
+        client_id = payload.get("client_id")
+        
+        client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+        if not client:
+            return {"success": False, "message": "Client not found"}
+        
+        approved = action.lower() == "approve"
+        
+        if approved:
+            # Final approval - activate client account
+            temp_password = generate_password()
+            temp_pin = generate_pin()
+            
+            # Create user account for client
+            user_id = str(uuid.uuid4())
+            await db.users.insert_one({
+                "id": user_id,
+                "pan": client.get('pan_number', '').upper(),
+                "name": client.get('name', ''),
+                "email": client.get('email', ''),
+                "phone": client.get('mobile', ''),
+                "password_hash": get_password_hash(temp_password),
+                "pin_hash": get_password_hash(temp_pin),
+                "role": "client",
+                "client_id": client_id,
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            # Update client record
+            await db.clients.update_one(
+                {"id": client_id},
+                {
+                    "$set": {
+                        "approval_status": "approved",
+                        "client_approval_status": "approved",
+                        "client_approved_at": datetime.now(timezone.utc).isoformat(),
+                        "is_active": True,
+                        "user_id": user_id,
+                        "temp_password": temp_password,
+                        "temp_pin": temp_pin
+                    }
+                }
+            )
+            
+            # Create log entry
+            await create_approval_log(
+                entity_type="client",
+                entity_id=client_id,
+                action="client_approved",
+                actor_id=client_id,
+                actor_role="client",
+                actor_name=client.get('name', 'Client'),
+                details={"broker_id": client.get('broker_id')}
+            )
+            
+            # Send welcome email with credentials
+            if client.get('email'):
+                broker = await db.users.find_one({"id": client.get('broker_id')}, {"_id": 0})
+                from email_service import send_welcome_email_client
+                send_welcome_email_client(
+                    client_name=client.get('name', ''),
+                    client_email=client.get('email'),
+                    pan=client.get('pan_number', ''),
+                    password=temp_password,
+                    pin=temp_pin,
+                    broker_name=broker.get('name', 'Your Broker') if broker else 'Your Broker'
+                )
+            
+            return {
+                "success": True,
+                "message": "Your account has been approved! Check your email for login credentials.",
+                "action": "approved"
+            }
+        else:
+            await db.clients.update_one(
+                {"id": client_id},
+                {
+                    "$set": {
+                        "client_approval_status": "rejected",
+                        "client_rejected_at": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+            )
+            
+            # Create log entry
+            await create_approval_log(
+                entity_type="client",
+                entity_id=client_id,
+                action="client_rejected",
+                actor_id=client_id,
+                actor_role="client",
+                actor_name=client.get('name', 'Client'),
+                details={"broker_id": client.get('broker_id')}
+            )
+            
+            return {
+                "success": True,
+                "message": "You have declined the account creation.",
+                "action": "rejected"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error in client approval link: {e}")
+        return {"success": False, "message": "Invalid or expired approval link"}
+
+
+class ReinvestmentSubmissionRequest(BaseModel):
+    """Request to submit reinvestment for approval"""
+    client_id: str
+    cashflow_ids: List[str]
+    portfolio_category: str
+    target_ucc: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@api_router.post("/approval-workflow/submit-reinvestment")
+async def submit_reinvestment_for_approval(
+    request: ReinvestmentSubmissionRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Sub-broker submits reinvestment tagging for broker approval"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can submit reinvestments for approval")
+    
+    # Verify client is linked to this sub-broker
+    client = await db.clients.find_one(
+        {"id": request.client_id, "linked_subbroker_id": current_user['id']},
+        {"_id": 0}
+    )
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found or not linked to you")
+    
+    # Get cashflows
+    cashflows = await db.holding_cashflows.find(
+        {"id": {"$in": request.cashflow_ids}}
+    ).to_list(100)
+    
+    if not cashflows:
+        raise HTTPException(status_code=404, detail="No cashflows found")
+    
+    # Calculate total amount
+    total_amount = sum(cf.get('net_amount', 0) for cf in cashflows)
+    
+    # Create submission record
+    submission_id = str(uuid.uuid4())
+    submission = {
+        "id": submission_id,
+        "sub_broker_id": current_user['id'],
+        "broker_id": client.get('broker_id'),
+        "client_id": request.client_id,
+        "cashflow_ids": request.cashflow_ids,
+        "portfolio_category": request.portfolio_category,
+        "target_ucc": request.target_ucc,
+        "total_amount": total_amount,
+        "cashflows_count": len(cashflows),
+        "broker_approval_status": "pending",
+        "client_approval_status": "not_started",
+        "kinntegra_status": "not_submitted",
+        "notes": request.notes,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.reinvestment_submissions.insert_one(submission)
+    
+    # Update cashflows with submission reference
+    await db.holding_cashflows.update_many(
+        {"id": {"$in": request.cashflow_ids}},
+        {"$set": {
+            "submission_id": submission_id,
+            "approval_status": "pending_broker"
+        }}
+    )
+    
+    # Create log entry
+    await create_approval_log(
+        entity_type="reinvestment",
+        entity_id=submission_id,
+        action="submitted",
+        actor_id=current_user['id'],
+        actor_role="sub_broker",
+        actor_name=current_user.get('name', 'Sub-Broker'),
+        details={
+            "client_id": request.client_id,
+            "client_name": client.get('name'),
+            "total_amount": total_amount,
+            "cashflows_count": len(cashflows),
+            "broker_id": client.get('broker_id'),
+            "sub_broker_id": current_user['id']
+        },
+        notes=request.notes
+    )
+    
+    return {
+        "message": "Reinvestment submitted for broker approval",
+        "submission_id": submission_id,
+        "total_amount": total_amount,
+        "cashflows_count": len(cashflows)
+    }
+
+
+class ReinvestmentApprovalRequest(BaseModel):
+    action: str  # 'approve' or 'reject'
+    notes: Optional[str] = None
+    send_client_email: bool = True
+
+
+@api_router.post("/approval-workflow/reinvestment/{submission_id}")
+async def process_reinvestment_approval(
+    submission_id: str,
+    request: ReinvestmentApprovalRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Broker approves/rejects reinvestment submission"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can approve reinvestments")
+    
+    submission = await db.reinvestment_submissions.find_one(
+        {"id": submission_id, "broker_id": current_user['id']},
+        {"_id": 0}
+    )
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    
+    client = await db.clients.find_one({"id": submission['client_id']}, {"_id": 0})
+    
+    if request.action == "approve":
+        # Generate approval token for client
+        approval_token = create_access_token(
+            data={
+                "type": "reinvestment_approval",
+                "submission_id": submission_id,
+                "client_id": submission['client_id'],
+                "cashflow_ids": submission['cashflow_ids']
+            },
+            expires_delta=timedelta(days=7)
+        )
+        
+        await db.reinvestment_submissions.update_one(
+            {"id": submission_id},
+            {
+                "$set": {
+                    "broker_approval_status": "approved",
+                    "broker_approved_at": datetime.now(timezone.utc).isoformat(),
+                    "broker_approved_by": current_user['id'],
+                    "client_approval_status": "pending" if request.send_client_email else "not_required",
+                    "approval_token": approval_token
+                }
+            }
+        )
+        
+        # Update cashflows
+        await db.holding_cashflows.update_many(
+            {"id": {"$in": submission['cashflow_ids']}},
+            {"$set": {"approval_status": "broker_approved"}}
+        )
+        
+        # Create log entry
+        await create_approval_log(
+            entity_type="reinvestment",
+            entity_id=submission_id,
+            action="broker_approved",
+            actor_id=current_user['id'],
+            actor_role="broker",
+            actor_name=current_user.get('name', 'Broker'),
+            details={
+                "client_id": submission['client_id'],
+                "total_amount": submission['total_amount'],
+                "sub_broker_id": submission['sub_broker_id'],
+                "broker_id": current_user['id']
+            },
+            notes=request.notes
+        )
+        
+        # Send client approval email
+        if request.send_client_email and client and client.get('email'):
+            from email_service import send_reinvestment_client_approval_email
+            background_tasks.add_task(
+                send_reinvestment_client_approval_email,
+                client_name=client.get('name', ''),
+                client_email=client.get('email'),
+                total_amount=submission['total_amount'],
+                cashflows_count=submission['cashflows_count'],
+                approval_token=approval_token,
+                broker_name=current_user.get('name', 'Your Broker')
+            )
+        
+        return {
+            "message": "Reinvestment approved" + (" - approval email sent to client" if request.send_client_email else ""),
+            "status": "broker_approved"
+        }
+    
+    elif request.action == "reject":
+        await db.reinvestment_submissions.update_one(
+            {"id": submission_id},
+            {
+                "$set": {
+                    "broker_approval_status": "rejected",
+                    "broker_rejected_at": datetime.now(timezone.utc).isoformat(),
+                    "rejection_notes": request.notes
+                }
+            }
+        )
+        
+        # Update cashflows
+        await db.holding_cashflows.update_many(
+            {"id": {"$in": submission['cashflow_ids']}},
+            {"$set": {"approval_status": "broker_rejected"}}
+        )
+        
+        # Create log entry
+        await create_approval_log(
+            entity_type="reinvestment",
+            entity_id=submission_id,
+            action="broker_rejected",
+            actor_id=current_user['id'],
+            actor_role="broker",
+            actor_name=current_user.get('name', 'Broker'),
+            details={
+                "client_id": submission['client_id'],
+                "sub_broker_id": submission['sub_broker_id'],
+                "broker_id": current_user['id']
+            },
+            notes=request.notes
+        )
+        
+        return {"message": "Reinvestment rejected", "status": "rejected"}
+    
+    raise HTTPException(status_code=400, detail="Invalid action")
+
+
+@api_router.get("/approval-workflow/reinvestment-approve")
+async def reinvestment_approve_via_link(token: str, action: str = "approve"):
+    """Public endpoint for client to approve reinvestment via email link - NO AUTH REQUIRED"""
+    try:
+        payload = verify_token(token)
+        if not payload or payload.get("type") != "reinvestment_approval":
+            return {"success": False, "message": "Invalid or expired approval link"}
+        
+        submission_id = payload.get("submission_id")
+        client_id = payload.get("client_id")
+        cashflow_ids = payload.get("cashflow_ids", [])
+        
+        submission = await db.reinvestment_submissions.find_one({"id": submission_id}, {"_id": 0})
+        if not submission:
+            return {"success": False, "message": "Submission not found"}
+        
+        client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+        
+        approved = action.lower() == "approve"
+        
+        if approved:
+            # Update submission
+            await db.reinvestment_submissions.update_one(
+                {"id": submission_id},
+                {
+                    "$set": {
+                        "client_approval_status": "approved",
+                        "client_approved_at": datetime.now(timezone.utc).isoformat(),
+                        "kinntegra_status": "ready_to_submit"
+                    }
+                }
+            )
+            
+            # Update cashflows
+            await db.holding_cashflows.update_many(
+                {"id": {"$in": cashflow_ids}},
+                {"$set": {
+                    "client_approved": True,
+                    "approval_status": "client_approved"
+                }}
+            )
+            
+            # Create log entry
+            await create_approval_log(
+                entity_type="reinvestment",
+                entity_id=submission_id,
+                action="client_approved",
+                actor_id=client_id,
+                actor_role="client",
+                actor_name=client.get('name', 'Client') if client else 'Client',
+                details={
+                    "broker_id": submission.get('broker_id'),
+                    "sub_broker_id": submission.get('sub_broker_id')
+                }
+            )
+            
+            # Trigger Kinntegra API submission
+            kinntegra_result = await submit_to_kinntegra_internal(submission_id)
+            
+            return {
+                "success": True,
+                "message": "Reinvestment approved! Your investment will be processed shortly.",
+                "action": "approved",
+                "kinntegra_status": kinntegra_result.get('status', 'pending')
+            }
+        else:
+            await db.reinvestment_submissions.update_one(
+                {"id": submission_id},
+                {
+                    "$set": {
+                        "client_approval_status": "rejected",
+                        "client_rejected_at": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+            )
+            
+            await db.holding_cashflows.update_many(
+                {"id": {"$in": cashflow_ids}},
+                {"$set": {"approval_status": "client_rejected"}}
+            )
+            
+            # Create log entry
+            await create_approval_log(
+                entity_type="reinvestment",
+                entity_id=submission_id,
+                action="client_rejected",
+                actor_id=client_id,
+                actor_role="client",
+                actor_name=client.get('name', 'Client') if client else 'Client',
+                details={
+                    "broker_id": submission.get('broker_id'),
+                    "sub_broker_id": submission.get('sub_broker_id')
+                }
+            )
+            
+            return {
+                "success": True,
+                "message": "You have declined this reinvestment.",
+                "action": "rejected"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error in reinvestment approval link: {e}")
+        return {"success": False, "message": "Invalid or expired approval link"}
+
+
+async def submit_to_kinntegra_internal(submission_id: str) -> dict:
+    """Internal function to submit approved reinvestment to Kinntegra API"""
+    try:
+        submission = await db.reinvestment_submissions.find_one({"id": submission_id}, {"_id": 0})
+        if not submission:
+            return {"status": "error", "message": "Submission not found"}
+        
+        # Get cashflows
+        cashflows = await db.holding_cashflows.find(
+            {"id": {"$in": submission['cashflow_ids']}}
+        ).to_list(100)
+        
+        # Get client
+        client = await db.clients.find_one({"id": submission['client_id']}, {"_id": 0})
+        
+        # Prepare Kinntegra API payload
+        investment_data = []
+        for cf in cashflows:
+            investment_data.append({
+                "UCC": submission.get('target_ucc', client.get('ucc', '')),
+                "DealId": cf.get('bond_id', ''),
+                "BondInvestmentDate": cf.get('date', ''),
+                "InvestmentAmount": cf.get('net_amount', 0),
+                "PortfolioName": submission.get('portfolio_category', 'wealth'),
+                "MFInvestmentDate": datetime.now(timezone.utc).strftime('%Y-%m-%d')
+            })
+        
+        api_payload = {"InvestmentData": investment_data}
+        
+        # Store the API request (will make actual call when Kinntegra auth is available)
+        kinntegra_request = {
+            "id": str(uuid.uuid4()),
+            "submission_id": submission_id,
+            "client_id": submission['client_id'],
+            "api_endpoint": "https://api.kinntegra.co.in/api/transaction/addbuyschedule",
+            "payload": api_payload,
+            "status": "pending_api_credentials",  # Change to 'submitted' when we have API credentials
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.kinntegra_api_requests.insert_one(kinntegra_request)
+        
+        # Update submission status
+        await db.reinvestment_submissions.update_one(
+            {"id": submission_id},
+            {
+                "$set": {
+                    "kinntegra_status": "pending_api_credentials",
+                    "kinntegra_request_id": kinntegra_request['id'],
+                    "kinntegra_payload": api_payload
+                }
+            }
+        )
+        
+        # Create log entry
+        await create_approval_log(
+            entity_type="reinvestment",
+            entity_id=submission_id,
+            action="kinntegra_prepared",
+            actor_id="system",
+            actor_role="system",
+            actor_name="System",
+            details={
+                "kinntegra_request_id": kinntegra_request['id'],
+                "status": "pending_api_credentials"
+            },
+            notes="Kinntegra API payload prepared. Awaiting API credentials for submission."
+        )
+        
+        logger.info(f"Kinntegra submission prepared for submission {submission_id}")
+        return {"status": "pending_api_credentials", "request_id": kinntegra_request['id']}
+        
+    except Exception as e:
+        logger.error(f"Error preparing Kinntegra submission: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@api_router.get("/approval-workflow/my-submissions")
+async def get_my_submissions(current_user: dict = Depends(get_current_user)):
+    """Sub-broker gets their own submissions status"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can view their submissions")
+    
+    submissions = await db.reinvestment_submissions.find(
+        {"sub_broker_id": current_user['id']},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Enrich with client info
+    for sub in submissions:
+        client = await db.clients.find_one(
+            {"id": sub['client_id']},
+            {"_id": 0, "name": 1}
+        )
+        sub['client_name'] = client.get('name') if client else 'Unknown'
+    
+    return submissions
+
+
 # ==================== SUB-BROKER REINVESTMENT ====================
 
 @api_router.get("/sub-broker/reinvestment/upcoming")
