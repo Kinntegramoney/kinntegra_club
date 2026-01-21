@@ -1913,6 +1913,7 @@ export default function RealEstateDetails() {
         <CurrencySettingsModal
           onClose={() => setShowCurrencySettingsModal(false)}
           onSuccess={() => {
+            setCurrencyProjectionsMissing(false);
             toast.success("Currency settings updated!");
           }}
         />
