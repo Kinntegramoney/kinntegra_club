@@ -1253,3 +1253,209 @@ def send_prepayment_notification_email(
     """
     
     return send_email(client_email, subject, html_content, plain_content)
+
+
+# ==================== APPROVAL WORKFLOW EMAILS ====================
+
+def send_client_approval_request_email(
+    client_name: str,
+    client_email: str,
+    approval_token: str,
+    broker_name: str,
+    base_url: str = "https://kinntegraa.club"
+) -> bool:
+    """Send approval request email to client after broker approves their account"""
+    
+    approve_url = f"{base_url}/api/approval-workflow/client-approve?token={approval_token}&action=approve"
+    reject_url = f"{base_url}/api/approval-workflow/client-approve?token={approval_token}&action=reject"
+    
+    subject = "Action Required: Confirm Your Kinntegraa Account"
+    
+    content = f"""
+                <div class="header">
+                    <div class="logo">K</div>
+                    <h1>Account Confirmation Required</h1>
+                    <p>Your Kinntegraa Investment Account</p>
+                </div>
+                <div class="content">
+                    <p class="greeting">Dear <strong>{client_name}</strong>,</p>
+                    
+                    <p>Great news! <strong>{broker_name}</strong> has approved the creation of your investment account on the Kinntegraa platform.</p>
+                    
+                    <div class="info-box success">
+                        <strong>What happens next?</strong><br>
+                        Please confirm your account by clicking the button below. Once confirmed, you will receive your login credentials via email.
+                    </div>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{approve_url}" style="display: inline-block; background: linear-gradient(135deg, #22C55E, #16A34A); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 10px;">
+                            ✓ Confirm My Account
+                        </a>
+                    </div>
+                    
+                    <div class="info-box warning">
+                        <strong>⚠️ Important:</strong><br>
+                        This link expires in 7 days. If you did not request this account, please click the decline button below.
+                    </div>
+                    
+                    <div style="text-align: center; margin: 20px 0;">
+                        <a href="{reject_url}" style="display: inline-block; background: #6B7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-size: 14px;">
+                            Decline Account
+                        </a>
+                    </div>
+                    
+                    <div class="features">
+                        <h3 style="margin-top: 0; color: #1f2937;">With Your Kinntegraa Account, You Can:</h3>
+                        <div class="feature-item">
+                            <span class="feature-icon">✓</span>
+                            <span>View exclusive investment opportunities</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✓</span>
+                            <span>Track your portfolio in real-time</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✓</span>
+                            <span>Manage reinvestments and cashflows</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✓</span>
+                            <span>Access detailed investment analytics</span>
+                        </div>
+                    </div>
+                </div>
+    """
+    
+    footer = f"<p>This request was initiated by <strong>{broker_name}</strong>. If you have questions, please contact them directly.</p>"
+    
+    html_content = get_email_template_base(content, footer)
+    
+    plain_content = f"""
+    Account Confirmation Required - Kinntegraa
+    
+    Dear {client_name},
+    
+    Great news! {broker_name} has approved the creation of your investment account on the Kinntegraa platform.
+    
+    CONFIRM YOUR ACCOUNT:
+    Click here to confirm: {approve_url}
+    
+    Or decline: {reject_url}
+    
+    This link expires in 7 days.
+    
+    WITH YOUR KINNTEGRAA ACCOUNT, YOU CAN:
+    - View exclusive investment opportunities
+    - Track your portfolio in real-time
+    - Manage reinvestments and cashflows
+    - Access detailed investment analytics
+    
+    If you have questions, please contact {broker_name}.
+    
+    Best regards,
+    Kinntegraa Team
+    
+    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    """
+    
+    return send_email(client_email, subject, html_content, plain_content)
+
+
+def send_reinvestment_client_approval_email(
+    client_name: str,
+    client_email: str,
+    total_amount: float,
+    cashflows_count: int,
+    approval_token: str,
+    broker_name: str,
+    base_url: str = "https://kinntegraa.club"
+) -> bool:
+    """Send reinvestment approval request email to client"""
+    
+    approve_url = f"{base_url}/api/approval-workflow/reinvestment-approve?token={approval_token}&action=approve"
+    reject_url = f"{base_url}/api/approval-workflow/reinvestment-approve?token={approval_token}&action=reject"
+    
+    subject = f"Action Required: Approve Reinvestment of ₹{total_amount:,.0f}"
+    
+    content = f"""
+                <div class="header">
+                    <div class="logo">K</div>
+                    <h1>Reinvestment Approval Required</h1>
+                    <p>Your Investment Decision</p>
+                </div>
+                <div class="content">
+                    <p class="greeting">Dear <strong>{client_name}</strong>,</p>
+                    
+                    <p>Your broker <strong>{broker_name}</strong> has prepared a reinvestment plan for your upcoming cashflows and requires your approval to proceed.</p>
+                    
+                    <div style="background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%); padding: 24px; border-radius: 12px; margin: 24px 0; text-align: center;">
+                        <div style="font-size: 14px; color: #6366F1; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+                            Total Reinvestment Amount
+                        </div>
+                        <div style="font-size: 36px; font-weight: 700; color: #4338CA;">
+                            ₹{total_amount:,.2f}
+                        </div>
+                        <div style="font-size: 14px; color: #6B7280; margin-top: 8px;">
+                            Across {cashflows_count} cashflow(s)
+                        </div>
+                    </div>
+                    
+                    <div class="info-box">
+                        <strong>What happens when you approve?</strong><br>
+                        Your reinvestment instructions will be processed automatically when the cashflows mature. The funds will be reinvested according to the plan prepared by your broker.
+                    </div>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{approve_url}" style="display: inline-block; background: linear-gradient(135deg, #22C55E, #16A34A); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 10px;">
+                            ✓ Approve Reinvestment
+                        </a>
+                    </div>
+                    
+                    <div class="info-box warning">
+                        <strong>⚠️ Important:</strong><br>
+                        This approval link expires in 7 days. If you do not approve, the cashflows will remain in your account without automatic reinvestment.
+                    </div>
+                    
+                    <div style="text-align: center; margin: 20px 0;">
+                        <a href="{reject_url}" style="display: inline-block; background: #DC2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-size: 14px;">
+                            Decline Reinvestment
+                        </a>
+                    </div>
+                </div>
+    """
+    
+    footer = f"<p>This reinvestment plan was prepared by <strong>{broker_name}</strong>. Contact them for any questions.</p>"
+    
+    html_content = get_email_template_base(content, footer)
+    
+    plain_content = f"""
+    Reinvestment Approval Required - Kinntegraa
+    
+    Dear {client_name},
+    
+    Your broker {broker_name} has prepared a reinvestment plan for your upcoming cashflows.
+    
+    REINVESTMENT DETAILS:
+    - Total Amount: ₹{total_amount:,.2f}
+    - Number of Cashflows: {cashflows_count}
+    
+    APPROVE REINVESTMENT:
+    Click here to approve: {approve_url}
+    
+    Or decline: {reject_url}
+    
+    This link expires in 7 days.
+    
+    WHAT HAPPENS WHEN YOU APPROVE?
+    Your reinvestment instructions will be processed automatically when the cashflows mature.
+    
+    If you have questions, please contact {broker_name}.
+    
+    Best regards,
+    Kinntegraa Team
+    
+    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    """
+    
+    return send_email(client_email, subject, html_content, plain_content)
+
