@@ -1687,9 +1687,9 @@ async def bulk_upload_indian_clients(
         excel_file.seek(0)
         df_bank = pd.read_excel(excel_file, sheet_name=1)       # Bank & Investment Details
         excel_file.seek(0)
-        df_passport = pd.read_excel(excel_file, sheet_name=2)   # Passport Details
+        df_intl_bank = pd.read_excel(excel_file, sheet_name=2)  # International Bank (NRI)
         excel_file.seek(0)
-        df_intl_bank = pd.read_excel(excel_file, sheet_name=3)  # International Bank (NRI)
+        df_passport = pd.read_excel(excel_file, sheet_name=3)   # Passport Details
         excel_file.seek(0)
         df_address = pd.read_excel(excel_file, sheet_name=4)    # Address Details
         excel_file.seek(0)
@@ -1700,8 +1700,8 @@ async def bulk_upload_indian_clients(
         excel_file.seek(0)
         df_personal = pd.read_excel(excel_file, sheet_name=0)
         df_bank = pd.DataFrame()
-        df_passport = pd.DataFrame()
         df_intl_bank = pd.DataFrame()
+        df_passport = pd.DataFrame()
         df_address = pd.DataFrame()
         df_nominee = pd.DataFrame()
         df_subbroker = pd.DataFrame()
