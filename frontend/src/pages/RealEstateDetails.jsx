@@ -3829,16 +3829,51 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
   useEffect(() => {
     if (investor?.client_id) {
       fetchReport();
-      fetchCurrentRate();
     }
   }, [investor]);
   
-  const fetchCurrentRate = async () => {
+  // Fetch current rate after report is loaded (to know the currency)
+  useEffect(() => {
+    if (report?.investor?.currency) {
+      fetchCurrentRate(report.investor.currency);
+    }
+  }, [report]);
+  
+  const fetchCurrentRate = async (targetCurrency) => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/forex/aed-to-inr`);
-      if (response.data?.rate) {
-        setCurrentRate(response.data.rate);
+      // Default rates for common currencies (AED to X)
+      const defaultRates = {
+        'INR': 22.5,
+        'EUR': 0.25,
+        'USD': 0.27,
+        'GBP': 0.21
+      };
+      
+      if (targetCurrency === 'INR') {
+        // Use our existing forex API for INR
+        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/forex/aed-to-inr`);
+        if (response.data?.rate) {
+          setCurrentRate(response.data.rate);
+          return;
+        }
       }
+      
+      // Try to fetch from free currency API for other currencies
+      try {
+        const response = await axios.get(`https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/aed.json`);
+        if (response.data?.aed) {
+          const currencyKey = targetCurrency.toLowerCase();
+          if (response.data.aed[currencyKey]) {
+            setCurrentRate(response.data.aed[currencyKey]);
+            return;
+          }
+        }
+      } catch (apiErr) {
+        console.error("Currency API error:", apiErr);
+      }
+      
+      // Fallback to default rates
+      setCurrentRate(defaultRates[targetCurrency] || 22.5);
     } catch (err) {
       console.error("Error fetching current rate:", err);
       setCurrentRate(22.5); // Fallback default
