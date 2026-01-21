@@ -212,7 +212,7 @@ export default function AdminSubBrokers() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-gray-800" data-testid="admin-subbrokers-title">Admin - Sub Brokers</h1>
-              <p className="text-sm text-gray-500 mt-1">Manage all sub-broker partners</p>
+              <p className="text-sm text-gray-500 mt-1">Manage all sub-broker partners ({filteredPartners.length} of {partners.length})</p>
             </div>
             <div className="flex gap-2">
               <Button
@@ -232,6 +232,19 @@ export default function AdminSubBrokers() {
                 Add Sub Broker
               </Button>
             </div>
+          </div>
+          
+          {/* Search Bar */}
+          <div className="mt-4 relative max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search by name, email, phone, or code..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+              data-testid="subbroker-search-input"
+            />
           </div>
         </div>
 
