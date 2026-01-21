@@ -294,7 +294,10 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
         linked_subbroker_id: formData.linked_subbroker_id || null
       };
       
-      const response = await axios.post(`${API}/clients`, submitData, {
+      // Use different endpoint for sub-broker mode
+      const endpoint = isSubBrokerMode ? `${API}/sub-broker/clients` : `${API}/clients`;
+      
+      const response = await axios.post(endpoint, submitData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -302,6 +305,13 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
       const photoId = formData.passport_type === "indian" 
         ? formData.pan_number.toUpperCase() 
         : formData.passport_number.toUpperCase();
+      
+      // For sub-broker mode, show pending approval message
+      if (isSubBrokerMode) {
+        toast.success("Client created successfully! Pending broker approval.");
+        onSuccess();
+        return;
+      }
       
       setCredentials({
         name: formData.name,
