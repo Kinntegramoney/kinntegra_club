@@ -751,11 +751,13 @@ export default function Dashboard() {
                 ⚠️ This action will permanently delete:
               </p>
               <ul className="text-sm text-red-700 space-y-1 ml-4">
-                <li>• All clients</li>
+                <li>• All clients & client documents</li>
                 <li>• All sub-brokers</li>
-                <li>• All bonds & opportunities</li>
-                <li>• All real estate investments</li>
-                <li>• All trades & analyses</li>
+                <li>• All bonds & bond documents</li>
+                <li>• All real estate deals & attachments</li>
+                <li>• All trades, investments & cashflows</li>
+                <li>• All CAS analyses & reports</li>
+                <li>• All uploaded files</li>
               </ul>
               <p className="text-sm text-red-800 font-medium mt-3">
                 ✓ Broker accounts will be preserved
