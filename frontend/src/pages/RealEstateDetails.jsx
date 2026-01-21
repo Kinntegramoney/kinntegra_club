@@ -1074,20 +1074,166 @@ export default function RealEstateDetails() {
                           })}
                         </tr>
                       );
-                    })}
-                    
-                    {/* DLD Fee Row - After first payment (between milestone 1 and 2) */}
-                    {(opp.dld_fee > 0 || opp.dld_fee_percentage > 0) && (() => {
-                      const dldFeeAmount = opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100);
-                      const dldPayments = opp.dld_admin_payments?.filter(p => p.type === 'dld') || [];
-                      const totalInvestors = opp.investors?.length || 0;
-                      const invoicesSent = dldPayments.filter(p => p.invoice_url).length;
-                      const verifiedCount = dldPayments.filter(p => p.swift_verified).length;
-                      const receiptsUploaded = dldPayments.filter(p => p.receipt_url).length;
-                      const allVerified = totalInvestors > 0 && verifiedCount === totalInvestors;
-                      const pendingCount = dldPayments.filter(p => p.swift_copy && !p.swift_verified).length;
                       
-                      return (
+                      // Add combined DLD + Admin Fee row AFTER the first milestone (Booking Amount)
+                      if (idx === 0 && ((opp.dld_fee > 0 || opp.dld_fee_percentage > 0) || opp.admin_fee > 0)) {
+                        const dldFeeAmount = opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100);
+                        const adminFeeAmount = opp.admin_fee || 0;
+                        const combinedAmount = dldFeeAmount + adminFeeAmount;
+                        
+                        // Combine DLD and Admin payments for tracking
+                        const dldPayments = opp.dld_admin_payments?.filter(p => p.type === 'dld') || [];
+                        const adminPayments = opp.dld_admin_payments?.filter(p => p.type === 'admin') || [];
+                        const totalInvestorsDld = opp.investors?.length || 0;
+                        
+                        // Count statuses from both types
+                        const invoicesSentDld = dldPayments.filter(p => p.invoice_url).length + adminPayments.filter(p => p.invoice_url).length;
+                        const verifiedCountDld = dldPayments.filter(p => p.swift_verified).length;
+                        const verifiedCountAdmin = adminPayments.filter(p => p.swift_verified).length;
+                        const allVerifiedDld = totalInvestorsDld > 0 && verifiedCountDld === totalInvestorsDld && verifiedCountAdmin === totalInvestorsDld;
+                        const pendingCountDld = dldPayments.filter(p => p.swift_copy && !p.swift_verified).length + adminPayments.filter(p => p.swift_copy && !p.swift_verified).length;
+                        const receiptsUploadedDld = dldPayments.filter(p => p.receipt_url).length + adminPayments.filter(p => p.receipt_url).length;
+                        
+                        rows.push(
+                          <tr key="dld-admin-combined" className={`border-b border-gray-100 hover:bg-amber-50/30 ${allVerifiedDld ? 'bg-green-50/50' : 'bg-amber-50/20'}`}>
+                            {/* Combined DLD + Admin Info */}
+                            <td className="py-4 px-4 sticky left-0 bg-amber-50/20 z-10">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                  allVerifiedDld ? 'bg-green-500 text-white' : 
+                                  pendingCountDld > 0 ? 'bg-amber-500 text-white' : 
+                                  'bg-amber-200 text-amber-700'
+                                }`}>
+                                  {allVerifiedDld ? <Check className="h-4 w-4" /> : '$'}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-800">DLD + Admin Fee</p>
+                                  <p className="text-xs text-gray-500">
+                                    DLD {opp.dld_fee_percentage || 4}% + Admin
+                                    {dldFeeAmount > 0 && adminFeeAmount > 0 && (
+                                      <span className="ml-1">(AED {formatCurrency(dldFeeAmount)} + {formatCurrency(adminFeeAmount)})</span>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            
+                            {/* Combined Amount */}
+                            <td className="py-4 px-3 text-right">
+                              <p className="font-bold text-amber-700">AED {formatCurrency(combinedAmount)}</p>
+                            </td>
+                            
+                            {/* Progress Bars */}
+                            <td className="py-4 px-3">
+                              {isFullyAllocated && totalInvestorsDld > 0 ? (
+                                <div className="flex items-center gap-2 justify-center">
+                                  <div className="flex flex-col items-center" title="Invoices">
+                                    <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                                      <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(invoicesSentDld / (totalInvestorsDld * 2)) * 100}%` }} />
+                                    </div>
+                                    <span className="text-[10px] text-blue-600">{invoicesSentDld}/{totalInvestorsDld * 2}</span>
+                                  </div>
+                                  <div className="flex flex-col items-center" title="Payments">
+                                    <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                                      <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${((verifiedCountDld + verifiedCountAdmin) / (totalInvestorsDld * 2)) * 100}%` }} />
+                                    </div>
+                                    <span className="text-[10px] text-green-600">{verifiedCountDld + verifiedCountAdmin}/{totalInvestorsDld * 2}</span>
+                                  </div>
+                                  <div className="flex flex-col items-center" title="Receipts">
+                                    <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                                      <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(receiptsUploadedDld / (totalInvestorsDld * 2)) * 100}%` }} />
+                                    </div>
+                                    <span className="text-[10px] text-purple-600">{receiptsUploadedDld}/{totalInvestorsDld * 2}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </td>
+                            
+                            {/* Status */}
+                            <td className="py-4 px-3 text-center">
+                              {!isFullyAllocated ? (
+                                <Badge className="bg-blue-100 text-blue-700">Open</Badge>
+                              ) : allVerifiedDld ? (
+                                <Badge className="bg-green-100 text-green-700"><Check className="h-3 w-3 mr-1" />Complete</Badge>
+                              ) : (verifiedCountDld + verifiedCountAdmin) > 0 ? (
+                                <Badge className="bg-blue-100 text-blue-700">Partial</Badge>
+                              ) : pendingCountDld > 0 ? (
+                                <Badge className="bg-amber-100 text-amber-700"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
+                              ) : (
+                                <Badge className="bg-gray-100 text-gray-600">Awaiting</Badge>
+                              )}
+                            </td>
+                            
+                            {/* Per-Investor columns for combined DLD + Admin */}
+                            {opp.investors?.map((investor) => {
+                              const invDld = dldPayments.find(p => p.investor_id === investor.client_id);
+                              const invAdmin = adminPayments.find(p => p.investor_id === investor.client_id);
+                              const sharePercent = investor.share_percentage || (100 / opp.investors.length);
+                              const investorDldAmount = dldFeeAmount * sharePercent / 100;
+                              const investorAdminAmount = adminFeeAmount * sharePercent / 100;
+                              const investorTotalAmount = investorDldAmount + investorAdminAmount;
+                              
+                              // Determine combined status
+                              const hasDldSwift = invDld?.swift_copy;
+                              const hasAdminSwift = invAdmin?.swift_copy;
+                              const dldVerified = invDld?.swift_verified;
+                              const adminVerified = invAdmin?.swift_verified;
+                              const bothVerified = dldVerified && adminVerified;
+                              const anyPending = (hasDldSwift && !dldVerified) || (hasAdminSwift && !adminVerified);
+                              
+                              return (
+                                <td key={investor.client_id} className="py-3 px-2 text-center">
+                                  <div className="flex flex-col items-center gap-1.5">
+                                    <div className="flex items-center gap-1">
+                                      {/* DLD Payment Status */}
+                                      <div 
+                                        className={`w-5 h-5 rounded text-[9px] font-bold flex items-center justify-center cursor-pointer ${
+                                          dldVerified ? 'bg-green-100 text-green-600' :
+                                          hasDldSwift ? 'bg-amber-100 text-amber-600' :
+                                          'bg-gray-100 text-gray-400'
+                                        }`}
+                                        title={`DLD: ${dldVerified ? 'Verified' : hasDldSwift ? 'Pending' : 'Not Paid'}`}
+                                        onClick={() => {
+                                          if (!dldVerified) {
+                                            setSelectedDldAdminPayment({ investor, type: 'dld', existing: invDld });
+                                            setShowDldAdminModal(true);
+                                          }
+                                        }}
+                                      >
+                                        D
+                                      </div>
+                                      {/* Admin Payment Status */}
+                                      <div 
+                                        className={`w-5 h-5 rounded text-[9px] font-bold flex items-center justify-center cursor-pointer ${
+                                          adminVerified ? 'bg-green-100 text-green-600' :
+                                          hasAdminSwift ? 'bg-amber-100 text-amber-600' :
+                                          'bg-gray-100 text-gray-400'
+                                        }`}
+                                        title={`Admin: ${adminVerified ? 'Verified' : hasAdminSwift ? 'Pending' : 'Not Paid'}`}
+                                        onClick={() => {
+                                          if (!adminVerified) {
+                                            setSelectedDldAdminPayment({ investor, type: 'admin', existing: invAdmin });
+                                            setShowDldAdminModal(true);
+                                          }
+                                        }}
+                                      >
+                                        A
+                                      </div>
+                                    </div>
+                                    <span className="text-[9px] font-medium text-amber-600">AED {formatCurrency(investorTotalAmount)}</span>
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      }
+                      
+                      return rows;
+                    })}
+                  </tbody>
                         <tr className={`border-b border-gray-100 hover:bg-orange-50/30 ${allVerified ? 'bg-green-50/50' : 'bg-orange-50/20'}`}>
                           {/* Milestone Info */}
                           <td className="py-4 px-4 sticky left-0 bg-orange-50/20 z-10">
