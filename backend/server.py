@@ -11040,9 +11040,15 @@ async def update_real_estate_opportunity(
 @api_router.delete("/real-estate-opportunities/{opportunity_id}")
 async def delete_real_estate_opportunity(
     opportunity_id: str,
+    force: bool = False,
     current_user: dict = Depends(get_current_user)
 ):
-    """Delete a real estate opportunity (broker only, only if no investors)"""
+    """Delete a real estate opportunity (broker only)
+    
+    Args:
+        opportunity_id: ID of the opportunity to delete
+        force: If True, delete even if there are investors (use with caution)
+    """
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can delete real estate opportunities")
     
@@ -11054,8 +11060,12 @@ async def delete_real_estate_opportunity(
     if not opportunity:
         raise HTTPException(status_code=404, detail="Real estate opportunity not found")
     
-    if opportunity.get('current_investors', 0) > 0:
-        raise HTTPException(status_code=400, detail="Cannot delete opportunity with existing investors")
+    investor_count = opportunity.get('current_investors', 0)
+    if investor_count > 0 and not force:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"This property has {investor_count} investor(s). Add ?force=true to delete anyway."
+        )
     
     await db.real_estate_opportunities.delete_one({"id": opportunity_id})
     
