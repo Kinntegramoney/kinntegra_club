@@ -65,9 +65,10 @@ export default function Opportunities() {
   const fundedBonds = bonds.filter(b => b.status === 'funded');
   const closedBonds = bonds.filter(b => b.status === 'closed');
 
-  const availableRE = realEstateOpps.filter(r => r.status === 'available');
+  // Real Estate: available OR partially_invested should show in "Open" section
+  const availableRE = realEstateOpps.filter(r => r.status === 'available' || r.status === 'partially_invested');
   const investedRE = realEstateOpps.filter(r => r.status === 'fully_invested');
-  const closedRE = realEstateOpps.filter(r => r.status === 'closed');
+  const closedRE = realEstateOpps.filter(r => r.status === 'closed' || r.status === 'sold');
 
   // Combined counts
   const availableCount = availableBonds.length + availableRE.length;
