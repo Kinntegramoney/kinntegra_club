@@ -465,6 +465,7 @@ export default function BulkUpload() {
                           <>
                             <li>• Building, Developer, Unit Details</li>
                             <li>• Pricing: Unit Price, DLD, Admin Fees</li>
+                            <li>• Developer Discount (Amount or %)</li>
                             <li>• Separate sheet for Payment Schedule</li>
                             <li>• Default schedule if none provided</li>
                           </>
