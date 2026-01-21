@@ -3960,76 +3960,45 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
     }
   };
   
-  const exportToExcel = () => {
+  const exportToPDF = async () => {
     if (!report) return;
     
-    const csv = [];
+    // Get the report content element
+    const reportElement = document.getElementById('xirr-report-content');
+    if (!reportElement) {
+      toast.error("Unable to generate PDF");
+      return;
+    }
     
-    // Header
-    csv.push(["XIRR COMPARISON REPORT"]);
-    csv.push([]);
-    csv.push(["Property", report.opportunity.building_name]);
-    csv.push(["Unit", report.opportunity.unit_number]);
-    csv.push(["Investor", report.investor.name]);
-    csv.push(["Share", `${report.investor.share_percentage}%`]);
-    csv.push(["Currency", report.investor.currency]);
-    csv.push(["Current Rate", currentRate ? currentRate.toFixed(4) : 'N/A']);
-    csv.push([]);
+    toast.info("Generating PDF...");
     
-    // Summary
-    csv.push(["SUMMARY"]);
-    csv.push(["Total Investment (AED)", report.summary.total_investment_aed.toFixed(2)]);
-    csv.push(["Total Projected (Home Currency)", report.summary.total_projected_home_currency.toFixed(2)]);
-    csv.push(["Total Actual (Home Currency)", report.summary.total_actual_home_currency.toFixed(2)]);
-    csv.push(["Total Current (Home Currency)", currentRate ? (report.summary.total_investment_aed * currentRate).toFixed(2) : 'N/A']);
-    csv.push(["Currency Gain/Loss", report.summary.currency_gain_loss.toFixed(2)]);
-    csv.push(["Currency Impact %", `${report.summary.currency_gain_loss_percentage.toFixed(2)}%`]);
-    csv.push([]);
-    csv.push(["Expected XIRR (Projected Rates)", report.summary.xirr_projected ? `${report.summary.xirr_projected.toFixed(2)}%` : 'N/A']);
-    csv.push(["Actual XIRR (Actual Rates)", report.summary.xirr_actual ? `${report.summary.xirr_actual.toFixed(2)}%` : 'N/A']);
-    csv.push(["XIRR Difference", report.summary.xirr_difference ? `${report.summary.xirr_difference.toFixed(2)}%` : 'N/A']);
-    csv.push([]);
-    
-    // Projected Cashflows
-    csv.push(["PROJECTED CASHFLOWS"]);
-    csv.push(["Date", "Description", "AED Amount", "Projected Rate", "Home Currency Amount", "Current Rate", "Current Amount", "Type"]);
-    report.cashflows_projected.forEach(cf => {
-      csv.push([
-        cf.date,
-        cf.description,
-        cf.aed_amount.toFixed(2),
-        cf.projected_rate.toFixed(4),
-        cf.home_currency_amount.toFixed(2),
-        currentRate ? currentRate.toFixed(4) : 'N/A',
-        currentRate ? (Math.abs(cf.aed_amount) * currentRate).toFixed(2) : 'N/A',
-        cf.type
-      ]);
-    });
-    csv.push([]);
-    
-    // Actual Cashflows
-    csv.push(["ACTUAL CASHFLOWS"]);
-    csv.push(["Date", "Description", "AED Amount", "Actual Rate", "Home Currency Amount", "Type", "Paid"]);
-    report.cashflows_actual.forEach(cf => {
-      csv.push([
-        cf.date,
-        cf.description,
-        cf.aed_amount.toFixed(2),
-        cf.actual_rate.toFixed(4),
-        cf.home_currency_amount.toFixed(2),
-        cf.type,
-        cf.is_paid ? 'Yes' : 'No'
-      ]);
-    });
-    
-    // Convert to CSV string
-    const csvContent = csv.map(row => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `XIRR_Comparison_${report.opportunity.building_name.replace(/\s+/g, '_')}_${report.investor.name.replace(/\s+/g, '_')}.csv`;
-    link.click();
-    toast.success("Report exported!");
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `XIRR_Report_${report.opportunity.building_name.replace(/\s+/g, '_')}_${report.investor.name.replace(/\s+/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          letterRendering: true
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'landscape' 
+        },
+        pagebreak: { mode: 'avoid-all' }
+      };
+      
+      await html2pdf().set(opt).from(reportElement).save();
+      toast.success("PDF exported successfully!");
+    } catch (err) {
+      console.error("PDF export error:", err);
+      toast.error("Failed to export PDF");
+    }
   };
   
   const formatCurrency = (val) => {
