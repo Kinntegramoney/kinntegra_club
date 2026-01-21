@@ -481,221 +481,50 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* AUM by Sub-Broker - New Design with Dropdown */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="subbroker-aum-chart">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-violet-500/10">
-                  <User className="h-5 w-5 text-violet-500" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800">AUM basis Sublogin</h3>
-              </div>
-              
-              {/* Sub-Broker Dropdown */}
-              <Select value={selectedSubBroker} onValueChange={setSelectedSubBroker}>
-                <SelectTrigger className="w-[200px]" data-testid="subbroker-select">
-                  <SelectValue placeholder="Select Advisor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Advisors</SelectItem>
-                  {subBrokerChartData.map((sb, index) => (
-                    <SelectItem key={index} value={sb.name}>{sb.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {subBrokerChartData.length > 0 ? (
-              <div className="space-y-4">
-                {/* Stacked Bar Chart - Horizontal */}
-                <div className="h-16 bg-gray-50 rounded-lg overflow-hidden flex">
-                  {subBrokerChartData.map((sb, index) => {
-                    const sbAUM = (sb.bond_aum || 0) + ((sb.real_estate_aum || 0) * forexRate);
-                    const percentage = totalAUM > 0 ? (sbAUM / totalAUM) * 100 : 0;
-                    
-                    if (percentage < 0.5) return null; // Skip very small segments
-                    
-                    return (
-                      <div 
-                        key={index}
-                        className="h-full flex items-center justify-center relative group cursor-pointer transition-opacity hover:opacity-90"
-                        style={{ 
-                          width: `${percentage}%`,
-                          backgroundColor: sb.fill,
-                          minWidth: percentage > 3 ? '40px' : '20px'
-                        }}
-                        title={`${sb.name}: ${formatINRCrores(sbAUM)}`}
-                      >
-                        {/* Tooltip on hover */}
-                        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none shadow-lg">
-                          <div className="font-semibold">{sb.name}</div>
-                          <div>{formatINRCrores(sbAUM)}</div>
-                          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900"></div>
-                        </div>
-                        
-                        {percentage > 8 && (
-                          <span className="text-white text-xs font-medium truncate px-1">
-                            {sb.name.split(' ')[0]}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Summary Stats */}
-                <div className="flex justify-between items-center pt-2">
-                  <div className="flex items-center gap-6">
-                    <div>
-                      <span className="text-sm text-gray-500">Total Advisors</span>
-                      <p className="text-xl font-bold text-gray-800">{totalSubBrokers}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Total AUM</span>
-                      <p className="text-xl font-bold text-indigo-600">{formatINRCrores(totalAUM)}</p>
-                    </div>
-                  </div>
-                  
-                  {/* Legend - showing top contributors */}
-                  <div className="flex flex-wrap gap-2 max-w-md justify-end">
-                    {subBrokerChartData.slice(0, 5).map((sb, index) => (
-                      <div key={index} className="flex items-center gap-1.5 text-xs">
-                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: sb.fill }}></div>
-                        <span className="text-gray-600">{sb.name?.split(' ')[0]}</span>
-                      </div>
-                    ))}
-                    {subBrokerChartData.length > 5 && (
-                      <span className="text-xs text-gray-400">+{subBrokerChartData.length - 5} more</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Detailed Bar Chart */}
-                <div className="h-[300px] mt-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart 
-                      data={filteredChartData.slice(0, 8)} 
-                      margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke="#6b7280" 
-                        angle={-45}
-                        textAnchor="end"
-                        interval={0}
-                        tick={{ fontSize: 11 }}
-                        height={60}
-                      />
-                      <YAxis stroke="#6b7280" tickFormatter={(value) => {
-                        if (value >= 10000000) return `${(value / 10000000).toFixed(1)}Cr`;
-                        if (value >= 100000) return `${(value / 100000).toFixed(1)}L`;
-                        if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                        return value;
-                      }} />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#fff', 
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          color: '#374151'
-                        }}
-                        formatter={(value, name) => {
-                          if (name === 'Bond AUM') {
-                            return [formatINRCrores(value), name];
-                          }
-                          return [formatAEDMillions(value), name];
-                        }}
-                      />
-                      <Bar dataKey="bond_aum" name="Bond AUM" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="real_estate_aum" name="RE AUM (AED)" fill="#EC4899" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Sub-broker AUM Table with INR conversion for Real Estate */}
-                <div className="overflow-x-auto border rounded-lg">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Sub-Broker</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">Partner Code</th>
-                        <th className="text-right py-3 px-4 font-medium text-amber-600">Bond AUM (INR)</th>
-                        <th className="text-right py-3 px-4 font-medium text-pink-600">RE AUM (AED)</th>
-                        <th className="text-right py-3 px-4 font-medium text-indigo-600">
-                          <div className="flex items-center justify-end gap-1">
-                            <IndianRupee className="h-3 w-3" />
-                            RE AUM (INR)
-                          </div>
-                        </th>
-                        <th className="text-center py-3 px-4 font-medium text-gray-600">Clients</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {filteredChartData.map((sb, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: sb.fill }}></div>
-                              <span className="font-medium text-gray-800">{sb.name}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-gray-600">{sb.partner_code}</td>
-                          <td className="py-3 px-4 text-right text-amber-700 font-medium">
-                            {formatINRCrores(sb.bond_aum)}
-                          </td>
-                          <td className="py-3 px-4 text-right text-pink-700 font-medium">
-                            {formatAEDMillions(sb.real_estate_aum)}
-                          </td>
-                          <td className="py-3 px-4 text-right text-indigo-700 font-medium">
-                            {formatINRCrores(sb.real_estate_aum_inr)}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                              {sb.client_count || 0}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <Briefcase className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p>No sub-broker data available</p>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="flex flex-wrap gap-3" data-testid="quick-actions">
+          {/* Quick Actions - Clean card style */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="quick-actions">
             <button
               onClick={() => navigate("/broker/opportunities")}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm"
+              className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all group"
+              data-testid="quick-action-opportunities"
             >
-              View Opportunities
+              <div className="p-3 rounded-full bg-indigo-50 group-hover:bg-indigo-100 transition-colors">
+                <TrendingUp className="h-5 w-5 text-indigo-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-700">Opportunities</span>
             </button>
+            
             <button
               onClick={() => navigate("/broker/admin/clients")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
+              className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-emerald-300 hover:shadow-md transition-all group"
+              data-testid="quick-action-clients"
             >
-              Manage Clients
+              <div className="p-3 rounded-full bg-emerald-50 group-hover:bg-emerald-100 transition-colors">
+                <Users className="h-5 w-5 text-emerald-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-700">Clients</span>
             </button>
+            
             <button
               onClick={() => navigate("/broker/admin/sub-brokers")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
+              className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-violet-300 hover:shadow-md transition-all group"
+              data-testid="quick-action-subbrokers"
             >
-              Manage Sub-Brokers
+              <div className="p-3 rounded-full bg-violet-50 group-hover:bg-violet-100 transition-colors">
+                <Briefcase className="h-5 w-5 text-violet-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-700">Sub-Brokers</span>
             </button>
+            
             <button
               onClick={() => setShowResetModal(true)}
-              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors text-sm flex items-center gap-2"
+              className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-red-300 hover:shadow-md transition-all group"
               data-testid="reset-database-btn"
             >
-              <Trash2 className="h-4 w-4" />
-              Reset Database
+              <div className="p-3 rounded-full bg-red-50 group-hover:bg-red-100 transition-colors">
+                <Trash2 className="h-5 w-5 text-red-500" />
+              </div>
+              <span className="text-sm font-medium text-gray-700">Reset DB</span>
             </button>
           </div>
         </div>
