@@ -4194,60 +4194,57 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                 {/* RIGHT COLUMN - Cashflow Table */}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-800 text-sm mb-2">Cashflow Comparison</h3>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Actual Total ({report.investor.currency})</p>
-                    <p className="font-semibold text-emerald-600">{report.investor.currency} {formatCurrency(report.summary.total_actual_home_currency)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Current Total ({report.investor.currency})</p>
-                    <p className="font-semibold text-purple-600">
-                      {report.investor.currency} {currentRate ? formatCurrency(report.summary.total_investment_aed * currentRate) : '-'}
-                    </p>
-                    <p className="text-xs text-gray-400">@ {currentRate?.toFixed(4) || '-'} rate</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Cashflow Comparison Table - Full Width, No Scroll */}
-              <div>
-                <h3 className="font-medium text-gray-800 mb-3">Cashflow Comparison</h3>
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-xs table-fixed">
-                    {/* Grouped Header Row 1 */}
-                    <thead>
-                      <tr className="bg-gray-800 text-white">
-                        <th colSpan="3" className="p-2 text-center font-semibold border-r border-gray-600">Details</th>
-                        <th colSpan="2" className="p-2 text-center font-semibold border-r border-gray-600 bg-indigo-700">Projected</th>
-                        <th colSpan="2" className="p-2 text-center font-semibold border-r border-gray-600 bg-emerald-700">Actuals</th>
-                        <th colSpan="2" className="p-2 text-center font-semibold border-r border-gray-600 bg-purple-700">Today</th>
-                        <th className="p-2 text-center font-semibold">Status</th>
-                      </tr>
-                      {/* Sub Header Row */}
-                      <tr className="bg-gray-100 text-gray-700">
-                        <th className="p-2 text-left font-medium" style={{width: '100px'}}>Date</th>
-                        <th className="p-2 text-left font-medium" style={{width: '140px'}}>Description</th>
-                        <th className="p-2 text-right font-medium border-r border-gray-300" style={{width: '90px'}}>AED</th>
-                        <th className="p-2 text-right font-medium text-indigo-700" style={{width: '60px'}}>Rate</th>
-                        <th className="p-2 text-right font-medium text-indigo-700 border-r border-gray-300" style={{width: '90px'}}>{report.investor.currency}</th>
-                        <th className="p-2 text-right font-medium text-emerald-700" style={{width: '60px'}}>Rate</th>
-                        <th className="p-2 text-right font-medium text-emerald-700 border-r border-gray-300" style={{width: '90px'}}>{report.investor.currency}</th>
-                        <th className="p-2 text-right font-medium text-purple-700" style={{width: '60px'}}>Rate</th>
-                        <th className="p-2 text-right font-medium text-purple-700 border-r border-gray-300" style={{width: '90px'}}>{report.investor.currency}</th>
-                        <th className="p-2 text-center font-medium" style={{width: '70px'}}>-</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {report.cashflows_projected.map((cf, idx) => {
-                        const actualCf = report.cashflows_actual[idx];
-                        const currentAmount = currentRate ? Math.abs(cf.aed_amount) * currentRate : null;
-                        return (
-                          <tr key={idx} className={`border-t ${cf.type === 'inflow' ? 'bg-green-50' : 'hover:bg-gray-50'}`}>
-                            <td className="p-2 text-gray-600 whitespace-nowrap">{cf.date || '-'}</td>
-                            <td className="p-2 font-medium text-gray-800 whitespace-nowrap">{cf.description}</td>
-                            <td className="p-2 text-right font-mono border-r border-gray-200 whitespace-nowrap">{cf.type === 'outflow' ? '-' : '+'}{formatCurrency(cf.aed_amount)}</td>
-                            <td className="p-2 text-right text-indigo-600 font-mono whitespace-nowrap">{cf.projected_rate.toFixed(2)}</td>
-                            <td className="p-2 text-right text-indigo-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{formatCurrency(cf.home_currency_amount)}</td>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-[10px]">
+                      {/* Grouped Header Row 1 */}
+                      <thead>
+                        <tr className="bg-gray-800 text-white">
+                          <th colSpan="3" className="p-1.5 text-center font-semibold border-r border-gray-600">Details</th>
+                          <th colSpan="2" className="p-1.5 text-center font-semibold border-r border-gray-600 bg-indigo-700">Projected</th>
+                          <th colSpan="2" className="p-1.5 text-center font-semibold border-r border-gray-600 bg-emerald-700">Actuals</th>
+                          <th colSpan="2" className="p-1.5 text-center font-semibold border-r border-gray-600 bg-purple-700">Today</th>
+                          <th className="p-1.5 text-center font-semibold">Status</th>
+                        </tr>
+                        {/* Sub Header Row */}
+                        <tr className="bg-gray-100 text-gray-700">
+                          <th className="p-1.5 text-left font-medium">Date</th>
+                          <th className="p-1.5 text-left font-medium">Description</th>
+                          <th className="p-1.5 text-right font-medium border-r border-gray-300">AED</th>
+                          <th className="p-1.5 text-right font-medium text-indigo-700">Rate</th>
+                          <th className="p-1.5 text-right font-medium text-indigo-700 border-r border-gray-300">{report.investor.currency}</th>
+                          <th className="p-1.5 text-right font-medium text-emerald-700">Rate</th>
+                          <th className="p-1.5 text-right font-medium text-emerald-700 border-r border-gray-300">{report.investor.currency}</th>
+                          <th className="p-1.5 text-right font-medium text-purple-700">Rate</th>
+                          <th className="p-1.5 text-right font-medium text-purple-700 border-r border-gray-300">{report.investor.currency}</th>
+                          <th className="p-1.5 text-center font-medium">-</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {report.cashflows_projected.map((cf, idx) => {
+                          const actualCf = report.cashflows_actual[idx];
+                          const currentAmount = currentRate ? Math.abs(cf.aed_amount) * currentRate : null;
+                          return (
+                            <tr key={idx} className={`border-t ${cf.type === 'inflow' ? 'bg-green-50' : 'hover:bg-gray-50'}`}>
+                              <td className="p-1.5 text-gray-600 whitespace-nowrap">{cf.date || '-'}</td>
+                              <td className="p-1.5 font-medium text-gray-800 whitespace-nowrap">{cf.description}</td>
+                              <td className="p-1.5 text-right font-mono border-r border-gray-200 whitespace-nowrap">{cf.type === 'outflow' ? '-' : '+'}{formatCurrency(cf.aed_amount)}</td>
+                              <td className="p-1.5 text-right text-indigo-600 font-mono whitespace-nowrap">{cf.projected_rate.toFixed(2)}</td>
+                              <td className="p-1.5 text-right text-indigo-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{formatCurrency(cf.home_currency_amount)}</td>
+                              <td className="p-1.5 text-right text-emerald-600 font-mono whitespace-nowrap">{actualCf?.actual_rate?.toFixed(2) || '-'}</td>
+                              <td className="p-1.5 text-right text-emerald-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{actualCf ? formatCurrency(actualCf.home_currency_amount) : '-'}</td>
+                              <td className="p-1.5 text-right text-purple-600 font-mono whitespace-nowrap">{currentRate?.toFixed(2) || '-'}</td>
+                              <td className="p-1.5 text-right text-purple-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{currentAmount ? formatCurrency(currentAmount) : '-'}</td>
+                              <td className="p-1.5 text-center">
+                                {actualCf?.is_paid ? (
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-green-100 text-green-700">Paid</span>
+                                ) : cf.type === 'inflow' ? (
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-blue-100 text-blue-700">Expected</span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-100 text-amber-700">Pending</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
                             <td className="p-2 text-right text-emerald-600 font-mono whitespace-nowrap">{actualCf?.actual_rate?.toFixed(2) || '-'}</td>
                             <td className="p-2 text-right text-emerald-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{actualCf ? formatCurrency(actualCf.home_currency_amount) : '-'}</td>
                             <td className="p-2 text-right text-purple-600 font-mono whitespace-nowrap">{currentRate?.toFixed(2) || '-'}</td>
