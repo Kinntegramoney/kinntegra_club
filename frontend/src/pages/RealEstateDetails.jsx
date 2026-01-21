@@ -4116,9 +4116,13 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
               
               {/* Info Note */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                <strong>Note:</strong> The "Expected XIRR" uses projected currency rates set in Currency Settings. 
-                The "Actual XIRR" uses the actual exchange rates from recorded SWIFT transactions. 
-                Future payments and sale proceeds use projected rates for both calculations.
+                <strong>Note:</strong> 
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li><span className="text-indigo-600 font-medium">Expected XIRR</span> uses projected currency rates set in Currency Settings.</li>
+                  <li><span className="text-emerald-600 font-medium">Actual XIRR</span> uses actual exchange rates from recorded SWIFT transactions.</li>
+                  <li><span className="text-purple-600 font-medium">Current Rate</span> shows today's live exchange rate for {report.investor.currency} ({currentRate?.toFixed(4) || '-'}).</li>
+                  <li>Future payments and sale proceeds use projected rates for Expected and Actual calculations.</li>
+                </ul>
               </div>
             </div>
           ) : null}
