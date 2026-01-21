@@ -11592,6 +11592,12 @@ async def update_real_estate_opportunity(
     # Build update dict with only provided fields
     update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
     
+    # Handle field name aliases
+    if 'unit_selling_fee_percentage' in update_dict:
+        update_dict['selling_fee_percentage'] = update_dict.pop('unit_selling_fee_percentage')
+    if 'brokerage_fee' in update_dict and 'broker_fee' not in update_dict:
+        update_dict['broker_fee'] = update_dict.pop('brokerage_fee')
+    
     if not update_dict:
         raise HTTPException(status_code=400, detail="No fields to update")
     
