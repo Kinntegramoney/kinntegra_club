@@ -3911,6 +3911,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
     csv.push(["Investor", report.investor.name]);
     csv.push(["Share", `${report.investor.share_percentage}%`]);
     csv.push(["Currency", report.investor.currency]);
+    csv.push(["Current Rate", currentRate ? currentRate.toFixed(4) : 'N/A']);
     csv.push([]);
     
     // Summary
@@ -3918,6 +3919,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
     csv.push(["Total Investment (AED)", report.summary.total_investment_aed.toFixed(2)]);
     csv.push(["Total Projected (Home Currency)", report.summary.total_projected_home_currency.toFixed(2)]);
     csv.push(["Total Actual (Home Currency)", report.summary.total_actual_home_currency.toFixed(2)]);
+    csv.push(["Total Current (Home Currency)", currentRate ? (report.summary.total_investment_aed * currentRate).toFixed(2) : 'N/A']);
     csv.push(["Currency Gain/Loss", report.summary.currency_gain_loss.toFixed(2)]);
     csv.push(["Currency Impact %", `${report.summary.currency_gain_loss_percentage.toFixed(2)}%`]);
     csv.push([]);
@@ -3928,7 +3930,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
     
     // Projected Cashflows
     csv.push(["PROJECTED CASHFLOWS"]);
-    csv.push(["Date", "Description", "AED Amount", "Projected Rate", "Home Currency Amount", "Type"]);
+    csv.push(["Date", "Description", "AED Amount", "Projected Rate", "Home Currency Amount", "Current Rate", "Current Amount", "Type"]);
     report.cashflows_projected.forEach(cf => {
       csv.push([
         cf.date,
@@ -3936,6 +3938,8 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
         cf.aed_amount.toFixed(2),
         cf.projected_rate.toFixed(4),
         cf.home_currency_amount.toFixed(2),
+        currentRate ? currentRate.toFixed(4) : 'N/A',
+        currentRate ? (Math.abs(cf.aed_amount) * currentRate).toFixed(2) : 'N/A',
         cf.type
       ]);
     });
