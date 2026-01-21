@@ -3826,23 +3826,36 @@ async def bulk_upload_clients(
     content = await file.read()
     excel_file = io.BytesIO(content)
     
-    # Read all sheets
+    # Read all sheets - matching template structure:
+    # Sheet 0: Personal Details
+    # Sheet 1: Bank & Investment Details
+    # Sheet 2: International Bank (NRI)
+    # Sheet 3: Passport Details
+    # Sheet 4: Address Details
+    # Sheet 5: Nominee Details
+    # Sheet 6: Sub-Broker Assignment
     try:
         df_personal = pd.read_excel(excel_file, sheet_name=0)  # Personal Details
         excel_file.seek(0)
-        df_address = pd.read_excel(excel_file, sheet_name=1)   # Address Details
+        df_bank = pd.read_excel(excel_file, sheet_name=1)      # Bank & Investment Details
         excel_file.seek(0)
-        df_bank = pd.read_excel(excel_file, sheet_name=2)      # Bank Details
+        df_intl_bank = pd.read_excel(excel_file, sheet_name=2) # International Bank (NRI)
         excel_file.seek(0)
-        df_nominee = pd.read_excel(excel_file, sheet_name=3)   # Nominee Details
+        df_passport = pd.read_excel(excel_file, sheet_name=3)  # Passport Details
         excel_file.seek(0)
-        df_subbroker = pd.read_excel(excel_file, sheet_name=4) # Sub-Broker Assignment
+        df_address = pd.read_excel(excel_file, sheet_name=4)   # Address Details
+        excel_file.seek(0)
+        df_nominee = pd.read_excel(excel_file, sheet_name=5)   # Nominee Details
+        excel_file.seek(0)
+        df_subbroker = pd.read_excel(excel_file, sheet_name=6) # Sub-Broker Assignment
     except Exception as e:
         # If sheets don't exist, fallback to single sheet parsing
         excel_file.seek(0)
         df_personal = pd.read_excel(excel_file, sheet_name=0)
-        df_address = pd.DataFrame()
         df_bank = pd.DataFrame()
+        df_intl_bank = pd.DataFrame()
+        df_passport = pd.DataFrame()
+        df_address = pd.DataFrame()
         df_nominee = pd.DataFrame()
         df_subbroker = pd.DataFrame()
     
@@ -3853,26 +3866,40 @@ async def bulk_upload_clients(
         return df
     
     df_personal = clean_columns(df_personal)
-    df_address = clean_columns(df_address)
     df_bank = clean_columns(df_bank)
+    df_intl_bank = clean_columns(df_intl_bank)
+    df_passport = clean_columns(df_passport)
+    df_address = clean_columns(df_address)
     df_nominee = clean_columns(df_nominee)
     df_subbroker = clean_columns(df_subbroker)
     
     # Create lookup dictionaries by PAN for other sheets
-    address_by_pan = {}
     bank_by_pan = {}
+    intl_bank_by_pan = {}
+    passport_by_pan = {}
+    address_by_pan = {}
     nominee_by_pan = {}
     subbroker_by_pan = {}
-    
-    if not df_address.empty and 'pan' in df_address.columns:
-        for _, row in df_address.iterrows():
-            if not pd.isna(row.get('pan')):
-                address_by_pan[str(row['pan']).upper().strip()] = row
     
     if not df_bank.empty and 'pan' in df_bank.columns:
         for _, row in df_bank.iterrows():
             if not pd.isna(row.get('pan')):
                 bank_by_pan[str(row['pan']).upper().strip()] = row
+    
+    if not df_intl_bank.empty and 'pan' in df_intl_bank.columns:
+        for _, row in df_intl_bank.iterrows():
+            if not pd.isna(row.get('pan')):
+                intl_bank_by_pan[str(row['pan']).upper().strip()] = row
+    
+    if not df_passport.empty and 'pan' in df_passport.columns:
+        for _, row in df_passport.iterrows():
+            if not pd.isna(row.get('pan')):
+                passport_by_pan[str(row['pan']).upper().strip()] = row
+    
+    if not df_address.empty and 'pan' in df_address.columns:
+        for _, row in df_address.iterrows():
+            if not pd.isna(row.get('pan')):
+                address_by_pan[str(row['pan']).upper().strip()] = row
     
     if not df_nominee.empty and 'pan' in df_nominee.columns:
         for _, row in df_nominee.iterrows():
