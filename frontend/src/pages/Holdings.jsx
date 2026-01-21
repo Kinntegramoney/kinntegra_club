@@ -878,56 +878,6 @@ export default function Holdings() {
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Documents */}
-                  <div className="bg-white rounded-lg border border-gray-200 p-5">
-                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                      <CreditCard className="h-5 w-5 text-amber-600" />
-                      <h3 className="font-semibold text-gray-800">KYC Documents</h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">PAN Card</p>
-                        {clientDetails.pan_document ? (
-                          <p className="text-sm text-green-600 font-medium flex items-center gap-1">
-                            <Check className="h-4 w-4" /> Uploaded
-                          </p>
-                        ) : (
-                          <p className="text-sm text-gray-400">Not uploaded</p>
-                        )}
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Aadhar Card</p>
-                        {clientDetails.aadhar_document ? (
-                          <p className="text-sm text-green-600 font-medium flex items-center gap-1">
-                            <Check className="h-4 w-4" /> Uploaded
-                          </p>
-                        ) : (
-                          <p className="text-sm text-gray-400">Not uploaded</p>
-                        )}
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Bank Cheque</p>
-                        {clientDetails.bank_cheque_document ? (
-                          <p className="text-sm text-green-600 font-medium flex items-center gap-1">
-                            <Check className="h-4 w-4" /> Uploaded
-                          </p>
-                        ) : (
-                          <p className="text-sm text-gray-400">Not uploaded</p>
-                        )}
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">CNL Document</p>
-                        {clientDetails.cnl_document ? (
-                          <p className="text-sm text-green-600 font-medium flex items-center gap-1">
-                            <Check className="h-4 w-4" /> Uploaded
-                          </p>
-                        ) : (
-                          <p className="text-sm text-gray-400">Not uploaded</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
                 </div>
               )}
               
