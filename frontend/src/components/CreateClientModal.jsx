@@ -69,12 +69,19 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] 
     opportunities: [], // ["bonds", "real_estate", "gift_city"]
     
     // Step 4: Conditional Fields
-    // For Bonds
+    // For Bonds - Indian Bank Details
     demat_account_no: "",
     bank_name: "",
     account_number: "",
     branch: "",
     ifsc_code: "",
+    account_type: "", // Savings, Current for Indian residents; NRE, NRO, Savings, Current for NRIs
+    
+    // For NRI (Indian Passport + Non-India Residency) - UAE/International Bank Details
+    intl_iban: "",
+    intl_account_number: "",
+    intl_swift_code: "",
+    intl_bank_name: "",
     
     // For Real Estate - Passport Details
     passport_valid_from: "",
