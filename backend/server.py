@@ -3592,7 +3592,8 @@ async def bulk_upload_real_estate(
     # Helper to normalize column names
     def normalize_columns(df):
         df.columns = [col.replace('*', '').replace('(%)', '').replace('(AED)', '').replace('(sqft)', '')
-                      .strip().lower().replace(' ', '_') for col in df.columns]
+                      .replace('(AED/sqft)', '').strip().lower().replace(' ', '_').replace('/', '_') 
+                      for col in df.columns]
         return df
     
     # Read all sheets
