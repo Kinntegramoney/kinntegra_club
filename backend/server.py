@@ -309,6 +309,12 @@ def generate_pin(length=4):
 # Create the main app without a prefix
 app = FastAPI()
 
+# Health check endpoint for Kubernetes
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Kubernetes liveness/readiness probes"""
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
