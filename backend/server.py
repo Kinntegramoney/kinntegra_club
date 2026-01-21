@@ -8643,9 +8643,13 @@ async def reset_database(secret_key: str = None):
     - All cashflows
     - All analyses
     - All prepayment records
+    - All uploaded files (except templates)
     
     Broker accounts are preserved so you can still login.
     """
+    import shutil
+    import glob
+    
     if secret_key != RESET_SECRET_KEY:
         raise HTTPException(status_code=403, detail="Invalid secret key. Access denied.")
     
@@ -8699,6 +8703,58 @@ async def reset_database(secret_key: str = None):
         # 12. Delete all CAS analyses
         result = await db.cas_analyses.delete_many({})
         deleted_counts['cas_analyses'] = result.deleted_count
+        
+        # 13. Delete real estate attachments/documents
+        result = await db.real_estate_documents.delete_many({})
+        deleted_counts['real_estate_documents'] = result.deleted_count
+        
+        # 14. Delete bond documents
+        result = await db.bond_documents.delete_many({})
+        deleted_counts['bond_documents'] = result.deleted_count
+        
+        # 15. Delete client documents
+        result = await db.client_documents.delete_many({})
+        deleted_counts['client_documents'] = result.deleted_count
+        
+        # 16. Delete any file attachments collection
+        result = await db.attachments.delete_many({})
+        deleted_counts['attachments'] = result.deleted_count
+        
+        # 17. Delete any uploads collection
+        result = await db.uploads.delete_many({})
+        deleted_counts['uploads'] = result.deleted_count
+        
+        # 18. Delete investment records
+        result = await db.investments.delete_many({})
+        deleted_counts['investments'] = result.deleted_count
+        
+        # 19. Delete notifications
+        result = await db.notifications.delete_many({})
+        deleted_counts['notifications'] = result.deleted_count
+        
+        # 20. Delete activity logs (optional - keep for audit?)
+        result = await db.activity_logs.delete_many({})
+        deleted_counts['activity_logs'] = result.deleted_count
+        
+        # 21. Clean uploaded files from disk (except templates)
+        upload_dir = os.path.join(os.path.dirname(__file__), 'uploads')
+        files_deleted = 0
+        if os.path.exists(upload_dir):
+            for item in os.listdir(upload_dir):
+                item_path = os.path.join(upload_dir, item)
+                # Skip templates folder
+                if item == 'templates':
+                    continue
+                try:
+                    if os.path.isfile(item_path):
+                        os.remove(item_path)
+                        files_deleted += 1
+                    elif os.path.isdir(item_path):
+                        shutil.rmtree(item_path)
+                        files_deleted += 1
+                except Exception as e:
+                    logger.warning(f"Could not delete {item_path}: {e}")
+        deleted_counts['uploaded_files'] = files_deleted
         
         # Get remaining broker count
         broker_count = await db.users.count_documents({"role": "broker"})
