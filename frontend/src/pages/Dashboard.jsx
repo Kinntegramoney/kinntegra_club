@@ -100,40 +100,38 @@ const formatDateTime = () => {
   return `${timeStr} | ${dayName}, ${day}${suffix} ${monthName} ${year}`;
 };
 
-// Venn Diagram Component
-const VennDiagram = ({ bondOnly, realEstateOnly, both, total }) => {
-  const overlap = both;
-  
+// Venn Diagram Component - Shows only numbers, labels in legend
+const VennDiagram = ({ bondOnly, realEstateOnly, both }) => {
   return (
-    <div className="relative w-full h-48 flex items-center justify-center">
+    <div className="relative w-full h-44 flex items-center justify-center">
       {/* Venn Circles */}
-      <svg viewBox="0 0 280 180" className="w-full h-full max-w-[320px]">
+      <svg viewBox="0 0 280 160" className="w-full h-full max-w-[300px]">
         {/* Definitions for clip paths */}
         <defs>
           <clipPath id="leftCircle">
-            <circle cx="100" cy="90" r="65" />
+            <circle cx="95" cy="80" r="60" />
           </clipPath>
           <clipPath id="rightCircle">
-            <circle cx="180" cy="90" r="65" />
+            <circle cx="175" cy="80" r="60" />
           </clipPath>
         </defs>
         
         {/* Left circle (Bonds Only) - Teal */}
         <circle 
-          cx="100" 
-          cy="90" 
-          r="65" 
+          cx="95" 
+          cy="80" 
+          r="60" 
           fill={COLORS.venn.introduction}
-          fillOpacity="0.8"
+          fillOpacity="0.85"
         />
         
         {/* Right circle (Real Estate Only) - Blue */}
         <circle 
-          cx="180" 
-          cy="90" 
-          r="65" 
+          cx="175" 
+          cy="80" 
+          r="60" 
           fill={COLORS.venn.analysis}
-          fillOpacity="0.8"
+          fillOpacity="0.85"
         />
         
         {/* Overlap area - Different color blending */}
