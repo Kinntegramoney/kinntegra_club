@@ -1301,6 +1301,7 @@ async def create_client_by_subbroker(
         "country_of_residency": client_data.get('country_of_residency', ''),
         "passport_number": client_data.get('passport_number', ''),
         "emirates_id": client_data.get('emirates_id', ''),
+        "emirates_id_expiry": client_data.get('emirates_id_expiry', ''),
         "passport_valid_from": client_data.get('passport_valid_from', ''),
         "passport_valid_until": client_data.get('passport_valid_until', ''),
         "passport_country_of_issue": client_data.get('passport_country_of_issue', ''),
