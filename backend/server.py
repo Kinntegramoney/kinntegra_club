@@ -2090,6 +2090,18 @@ async def bulk_upload_foreign_clients(
                 results['failed'] += 1
                 continue
             
+            # Get international bank details (required for foreign passport holders)
+            intl_bank_row = intl_bank_by_id.get(passport_number, {})
+            intl_bank_name = get_val(intl_bank_row, 'bank_name')
+            intl_account_number = get_val(intl_bank_row, 'account_number')
+            intl_iban = get_val(intl_bank_row, 'iban')
+            intl_swift_code = get_val(intl_bank_row, 'swift_code')
+            
+            if not intl_bank_name or not intl_account_number or not intl_iban or not intl_swift_code:
+                results['errors'].append(f"Row {idx+2}: International bank details (Bank Name, Account Number, IBAN, SWIFT) required (Passport: {passport_number})")
+                results['failed'] += 1
+                continue
+            
             # Get other data
             address_row = address_by_id.get(passport_number, {})
             nominee_row = nominee_by_id.get(passport_number, {})
@@ -2124,6 +2136,10 @@ async def bulk_upload_foreign_clients(
                 "passport_valid_from": passport_valid_from,
                 "passport_valid_until": passport_valid_until,
                 "passport_country_of_issue": passport_country_of_issue,
+                "intl_bank_name": intl_bank_name,
+                "intl_account_number": intl_account_number,
+                "intl_iban": intl_iban,
+                "intl_swift_code": intl_swift_code,
                 "occupation": get_val(row, 'occupation'),
                 "date_of_birth": get_val(row, 'date_of_birth'),
                 "address_line1": get_val(address_row, 'address_line_1'),
