@@ -57,12 +57,27 @@ export default function AdminRealEstate() {
     }
   };
 
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const handleDelete = async (id, name, investorCount = 0) => {
+    let confirmMessage = `Delete "${name}"? This cannot be undone.`;
+    
+    if (investorCount > 0) {
+      confirmMessage = `⚠️ WARNING: "${name}" has ${investorCount} investor(s)!\n\nDeleting will remove all investment records.\n\nAre you absolutely sure?`;
+    }
+    
+    if (!window.confirm(confirmMessage)) return;
+    
+    // Double confirmation for properties with investors
+    if (investorCount > 0) {
+      if (!window.confirm("This is your FINAL warning. Type OK to confirm deletion.")) return;
+    }
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API}/real-estate-opportunities/${id}`, {
+      const url = investorCount > 0 
+        ? `${API}/real-estate-opportunities/${id}?force=true`
+        : `${API}/real-estate-opportunities/${id}`;
+      
+      await axios.delete(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Property deleted successfully");
