@@ -214,49 +214,79 @@ export default function Dashboard() {
           {/* Dashboard Cards - Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="kpi-cards">
             
-            {/* Total Clients - Venn Diagram Style */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="clients-venn-card">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-lg bg-indigo-500/10">
-                  <Users className="h-5 w-5 text-indigo-500" />
+            {/* Total Clients - Index Style */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="clients-index-card">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-indigo-500/10">
+                    <Users className="h-5 w-5 text-indigo-500" />
+                  </div>
+                  <h3 className="font-semibold text-gray-800">Total Clients</h3>
                 </div>
-                <h3 className="font-semibold text-gray-800">Total Clients</h3>
+                <p className="text-3xl font-bold text-indigo-600">{summary?.clients?.total || 0}</p>
               </div>
               
-              {/* Venn Diagram Style Display */}
-              <div className="flex items-center justify-center gap-0 my-4 relative">
-                {/* Bonds Circle */}
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-amber-100 border-2 border-amber-400 flex items-center justify-center relative z-10">
-                    <div className="text-center">
-                      <p className="text-xl font-bold text-amber-700">{bondOnlyClients}</p>
-                      <p className="text-xs text-amber-600">Bonds</p>
-                    </div>
+              {/* Client Index Breakdown */}
+              <div className="space-y-3">
+                {/* Bonds Only */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                    <span className="text-sm text-gray-600">Bonds Only</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-800">{bondOnlyClients}</span>
+                    <span className="text-xs text-gray-400">
+                      ({summary?.clients?.total > 0 ? Math.round((bondOnlyClients / summary.clients.total) * 100) : 0}%)
+                    </span>
                   </div>
                 </div>
-                
-                {/* Intersection - Both Products */}
-                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-amber-200 to-pink-200 border-2 border-purple-400 flex items-center justify-center -mx-6 z-20 shadow-lg">
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-purple-700">{bothProductsClients}</p>
-                    <p className="text-[10px] text-purple-600">Both</p>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div 
+                    className="bg-amber-500 h-2 rounded-full transition-all" 
+                    style={{ width: `${summary?.clients?.total > 0 ? (bondOnlyClients / summary.clients.total) * 100 : 0}%` }}
+                  />
+                </div>
+
+                {/* Real Estate Only */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-pink-500"></div>
+                    <span className="text-sm text-gray-600">Real Estate Only</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-800">{realEstateOnlyClients}</span>
+                    <span className="text-xs text-gray-400">
+                      ({summary?.clients?.total > 0 ? Math.round((realEstateOnlyClients / summary.clients.total) * 100) : 0}%)
+                    </span>
                   </div>
                 </div>
-                
-                {/* Real Estate Circle */}
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-pink-100 border-2 border-pink-400 flex items-center justify-center relative z-10">
-                    <div className="text-center">
-                      <p className="text-xl font-bold text-pink-700">{realEstateOnlyClients}</p>
-                      <p className="text-xs text-pink-600">Real Estate</p>
-                    </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div 
+                    className="bg-pink-500 h-2 rounded-full transition-all" 
+                    style={{ width: `${summary?.clients?.total > 0 ? (realEstateOnlyClients / summary.clients.total) * 100 : 0}%` }}
+                  />
+                </div>
+
+                {/* Both Products */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                    <span className="text-sm text-gray-600">Both Products</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-800">{bothProductsClients}</span>
+                    <span className="text-xs text-gray-400">
+                      ({summary?.clients?.total > 0 ? Math.round((bothProductsClients / summary.clients.total) * 100) : 0}%)
+                    </span>
                   </div>
                 </div>
-              </div>
-              
-              <div className="text-center border-t pt-3 mt-2">
-                <p className="text-2xl font-bold text-gray-800">{summary?.clients?.total || 0}</p>
-                <p className="text-xs text-gray-500">Total Clients</p>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div 
+                    className="bg-purple-500 h-2 rounded-full transition-all" 
+                    style={{ width: `${summary?.clients?.total > 0 ? (bothProductsClients / summary.clients.total) * 100 : 0}%` }}
+                  />
+                </div>
               </div>
             </div>
 
