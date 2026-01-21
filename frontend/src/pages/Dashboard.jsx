@@ -144,7 +144,6 @@ export default function Dashboard() {
   const [aumDistribution, setAumDistribution] = useState({ by_asset_class: [], by_subbroker: [] });
   const [forexRate, setForexRate] = useState(22.5); // Default AED to INR rate
   const [currentTime, setCurrentTime] = useState(formatDateTime());
-  const [selectedSubBroker, setSelectedSubBroker] = useState("all");
   
   // Reset database state
   const [showResetModal, setShowResetModal] = useState(false);
