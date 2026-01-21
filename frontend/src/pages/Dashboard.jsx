@@ -309,29 +309,168 @@ export default function Dashboard() {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" data-testid="kpi-cards">
-            {kpiCards.map((card, index) => {
-              const Icon = card.icon;
-              return (
-                <div 
-                  key={card.label} 
-                  className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all"
-                  data-testid={`kpi-card-${index}`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`p-2 rounded-lg ${card.bgColor}`}>
-                      <Icon className={`h-5 w-5 ${card.textColor}`} />
+          {/* Dashboard Cards - Row 1 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="kpi-cards">
+            
+            {/* Total Clients - Venn Diagram Style */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="clients-venn-card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-indigo-500/10">
+                  <Users className="h-5 w-5 text-indigo-500" />
+                </div>
+                <h3 className="font-semibold text-gray-800">Total Clients</h3>
+              </div>
+              
+              {/* Venn Diagram Style Display */}
+              <div className="flex items-center justify-center gap-0 my-4 relative">
+                {/* Bonds Circle */}
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full bg-amber-100 border-2 border-amber-400 flex items-center justify-center relative z-10">
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-amber-700">{bondOnlyClients}</p>
+                      <p className="text-xs text-amber-600">Bonds</p>
                     </div>
                   </div>
-                  <p className={`text-2xl font-bold text-gray-800 ${card.isLarge ? 'text-xl' : ''}`}>
-                    {typeof card.value === 'string' ? card.value : formatNumber(card.value)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">{card.label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{card.subValue}</p>
                 </div>
-              );
-            })}
+                
+                {/* Intersection - Both Products */}
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-amber-200 to-pink-200 border-2 border-purple-400 flex items-center justify-center -mx-6 z-20 shadow-lg">
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-purple-700">{bothProductsClients}</p>
+                    <p className="text-[10px] text-purple-600">Both</p>
+                  </div>
+                </div>
+                
+                {/* Real Estate Circle */}
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full bg-pink-100 border-2 border-pink-400 flex items-center justify-center relative z-10">
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-pink-700">{realEstateOnlyClients}</p>
+                      <p className="text-xs text-pink-600">Real Estate</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-center border-t pt-3 mt-2">
+                <p className="text-2xl font-bold text-gray-800">{summary?.clients?.total || 0}</p>
+                <p className="text-xs text-gray-500">Total Clients</p>
+              </div>
+            </div>
+
+            {/* Sub-Brokers Count */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="subbrokers-card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-violet-500/10">
+                  <Briefcase className="h-5 w-5 text-violet-500" />
+                </div>
+                <h3 className="font-semibold text-gray-800">Sub-Brokers</h3>
+              </div>
+              
+              <div className="flex items-center justify-center my-6">
+                <div className="text-center">
+                  <p className="text-5xl font-bold text-violet-600">{summary?.sub_brokers?.total || 0}</p>
+                  <p className="text-sm text-gray-500 mt-2">Total Partners</p>
+                </div>
+              </div>
+              
+              <div className="flex justify-center gap-6 border-t pt-3 mt-2">
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-emerald-600">{summary?.sub_brokers?.active || 0}</p>
+                  <p className="text-xs text-gray-500">Active</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-gray-400">{(summary?.sub_brokers?.total || 0) - (summary?.sub_brokers?.active || 0)}</p>
+                  <p className="text-xs text-gray-500">Inactive</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Opportunities - Bonds & Real Estate */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="opportunities-card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-emerald-500/10">
+                  <TrendingUp className="h-5 w-5 text-emerald-500" />
+                </div>
+                <h3 className="font-semibold text-gray-800">Opportunities</h3>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 my-4">
+                {/* Bonds */}
+                <div className="bg-amber-50 rounded-lg p-4 text-center border border-amber-200">
+                  <Landmark className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+                  <p className="text-3xl font-bold text-amber-700">{summary?.opportunities?.bonds?.total || 0}</p>
+                  <p className="text-xs text-amber-600 mt-1">Bonds</p>
+                  <p className="text-xs text-gray-500">{summary?.opportunities?.bonds?.available || 0} available</p>
+                </div>
+                
+                {/* Real Estate */}
+                <div className="bg-pink-50 rounded-lg p-4 text-center border border-pink-200">
+                  <Building2 className="h-8 w-8 text-pink-500 mx-auto mb-2" />
+                  <p className="text-3xl font-bold text-pink-700">{summary?.opportunities?.real_estate?.total || 0}</p>
+                  <p className="text-xs text-pink-600 mt-1">Real Estate</p>
+                  <p className="text-xs text-gray-500">{summary?.opportunities?.real_estate?.available || 0} available</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dashboard Cards - Row 2: AUM Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Bond AUM Details */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="bond-aum-card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-amber-500/10">
+                  <Landmark className="h-5 w-5 text-amber-500" />
+                </div>
+                <h3 className="font-semibold text-gray-800">Bond AUM</h3>
+                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded ml-auto">INR</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                  <p className="text-xs text-blue-600 uppercase tracking-wide">Total Invested</p>
+                  <p className="text-lg font-bold text-blue-700 mt-1">{formatINRCrores(summary?.bond_aum?.total_invested || 0)}</p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100">
+                  <p className="text-xs text-emerald-600 uppercase tracking-wide">Total Repaid</p>
+                  <p className="text-lg font-bold text-emerald-700 mt-1">{formatINRCrores(summary?.bond_aum?.total_repaid || 0)}</p>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+                  <p className="text-xs text-orange-600 uppercase tracking-wide">Total Pending</p>
+                  <p className="text-lg font-bold text-orange-700 mt-1">{formatINRCrores(summary?.bond_aum?.total_pending || 0)}</p>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                  <p className="text-xs text-purple-600 uppercase tracking-wide">Profits</p>
+                  <p className="text-lg font-bold text-purple-700 mt-1">{formatINRCrores(summary?.bond_aum?.profits || 0)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Real Estate AUM Details */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="real-estate-aum-card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-pink-500/10">
+                  <Building2 className="h-5 w-5 text-pink-500" />
+                </div>
+                <h3 className="font-semibold text-gray-800">Real Estate AUM</h3>
+                <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded ml-auto">AED</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-pink-50 rounded-lg p-3 border border-pink-100">
+                  <p className="text-xs text-pink-600 uppercase tracking-wide">Total Deal Size</p>
+                  <p className="text-xs text-gray-500">(incl. DLD & Admin)</p>
+                  <p className="text-lg font-bold text-pink-700 mt-1">{formatAEDMillions(summary?.real_estate_aum?.total_deal_size || 0)}</p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100">
+                  <p className="text-xs text-emerald-600 uppercase tracking-wide">Total Paid</p>
+                  <p className="text-xs text-gray-500">by Clients</p>
+                  <p className="text-lg font-bold text-emerald-700 mt-1">{formatAEDMillions(summary?.real_estate_aum?.total_paid || 0)}</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Charts Row 1 */}
