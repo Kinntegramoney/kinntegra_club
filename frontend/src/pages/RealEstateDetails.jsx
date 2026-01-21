@@ -3976,21 +3976,22 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
       const html2pdf = (await import('html2pdf.js')).default;
       
       const opt = {
-        margin: [10, 10, 10, 10],
+        margin: [5, 5, 5, 5],
         filename: `XIRR_Report_${report.opportunity.building_name.replace(/\s+/g, '_')}_${report.investor.name.replace(/\s+/g, '_')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg', quality: 0.95 },
         html2canvas: { 
-          scale: 2,
+          scale: 1.5,
           useCORS: true,
           logging: false,
-          letterRendering: true
+          letterRendering: true,
+          scrollY: 0
         },
         jsPDF: { 
           unit: 'mm', 
-          format: 'a4', 
+          format: 'a3', 
           orientation: 'landscape' 
         },
-        pagebreak: { mode: 'avoid-all' }
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
       
       await html2pdf().set(opt).from(reportElement).save();
