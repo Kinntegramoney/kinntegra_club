@@ -3666,6 +3666,7 @@ async def bulk_upload_foreign_clients(
             mobile = get_val(row, 'mobile')
             country_of_residency = get_val(row, 'country_of_residency')
             emirates_id = get_val(row, 'emirates_id')
+            emirates_id_expiry = get_val(row, 'emirates_id_expiry')
             opportunities_str = get_val(row, 'opportunities_(real_estate,gift_city)') or get_val(row, 'opportunities')
             
             if not name or not passport_number:
