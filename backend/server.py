@@ -1137,6 +1137,327 @@ async def update_sub_broker_pin(
     return {"message": "PIN updated successfully"}
 
 
+@api_router.put("/sub-broker/profile/address")
+async def update_sub_broker_address(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update sub-broker address"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can update their address")
+    
+    update_data = {
+        "address_line1": data.get('address_line1', ''),
+        "address_line2": data.get('address_line2', ''),
+        "city": data.get('city', ''),
+        "state": data.get('state', ''),
+        "pincode": data.get('pincode', ''),
+        "country": data.get('country', 'India')
+    }
+    
+    await db.partners.update_one(
+        {"id": current_user['id']},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Address updated successfully"}
+
+
+# ==================== SUB-BROKER CLIENT MANAGEMENT ====================
+
+@api_router.get("/sub-broker/clients")
+async def get_sub_broker_clients(current_user: dict = Depends(get_current_user)):
+    """Get clients linked to this sub-broker"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
+    
+    clients = await db.clients.find(
+        {"linked_subbroker_id": current_user['id']},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    return clients
+
+
+@api_router.post("/sub-broker/clients")
+async def create_client_by_subbroker(
+    client_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new client (requires broker approval)"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can use this endpoint")
+    
+    # Get the broker associated with this sub-broker
+    partner = await db.partners.find_one({"id": current_user['id']}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    
+    broker_id = partner.get('broker_id')
+    
+    # Check if PAN already exists
+    existing = await db.clients.find_one({"pan": client_data.get('pan')})
+    if existing:
+        raise HTTPException(status_code=400, detail="Client with this PAN already exists")
+    
+    # Generate client ID
+    client_id = str(uuid.uuid4())
+    
+    # Generate temporary password and PIN
+    temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+    temp_pin = ''.join(random.choices(string.digits, k=4))
+    
+    # Create client with pending approval status
+    new_client = {
+        "id": client_id,
+        "pan": client_data.get('pan', '').upper(),
+        "name": client_data.get('name', ''),
+        "email": client_data.get('email', ''),
+        "phone": client_data.get('phone', ''),
+        "mobile": client_data.get('phone', ''),
+        "password_hash": get_password_hash(temp_password),
+        "pin_hash": get_password_hash(temp_pin),
+        "temp_password": temp_password,
+        "temp_pin": temp_pin,
+        "role": "client",
+        "broker_id": broker_id,
+        "linked_subbroker_id": current_user['id'],
+        "created_by_subbroker": True,
+        "approval_status": "pending_approval",  # Key field for approval workflow
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "is_active": False,  # Not active until approved
+        # Additional fields
+        "bank_name": client_data.get('bank_name', ''),
+        "account_number": client_data.get('account_number', ''),
+        "ifsc_code": client_data.get('ifsc_code', ''),
+        "address": client_data.get('address', ''),
+        "city": client_data.get('city', ''),
+        "state": client_data.get('state', ''),
+        "pincode": client_data.get('pincode', ''),
+        "country": client_data.get('country', 'India'),
+        "ucc_list": client_data.get('ucc_list', []),
+        "bond_allocations": [],
+        "notes": client_data.get('notes', '')
+    }
+    
+    await db.clients.insert_one(new_client)
+    
+    # Clean response
+    response_client = {k: v for k, v in new_client.items() if k != '_id'}
+    
+    return {
+        "message": "Client created successfully. Pending broker approval.",
+        "client": response_client,
+        "requires_approval": True
+    }
+
+
+@api_router.get("/sub-broker/pending-approvals")
+async def get_subbroker_pending_approvals(current_user: dict = Depends(get_current_user)):
+    """Get items pending approval created by this sub-broker"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
+    
+    pending_clients = await db.clients.find(
+        {
+            "linked_subbroker_id": current_user['id'],
+            "approval_status": "pending_approval"
+        },
+        {"_id": 0}
+    ).to_list(100)
+    
+    return {
+        "pending_clients": pending_clients
+    }
+
+
+# ==================== BROKER APPROVAL ENDPOINTS ====================
+
+@api_router.get("/broker/pending-approvals")
+async def get_broker_pending_approvals(current_user: dict = Depends(get_current_user)):
+    """Get all items pending broker approval"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this endpoint")
+    
+    # Get pending clients created by sub-brokers
+    pending_clients = await db.clients.find(
+        {
+            "broker_id": current_user['id'],
+            "approval_status": "pending_approval"
+        },
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Get pending reinvestment tags
+    pending_reinvestments = await db.reinvestment_approvals.find(
+        {
+            "broker_id": current_user['id'],
+            "broker_approval_status": "pending"
+        },
+        {"_id": 0}
+    ).to_list(100)
+    
+    return {
+        "pending_clients": pending_clients,
+        "pending_reinvestments": pending_reinvestments
+    }
+
+
+@api_router.post("/broker/approve-client/{client_id}")
+async def approve_client(
+    client_id: str,
+    action: str = Query(..., description="approve or reject"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Approve or reject a client created by sub-broker"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can approve clients")
+    
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if client.get('broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Not authorized to approve this client")
+    
+    if action == "approve":
+        await db.clients.update_one(
+            {"id": client_id},
+            {
+                "$set": {
+                    "approval_status": "approved",
+                    "is_active": True,
+                    "approved_at": datetime.now(timezone.utc).isoformat(),
+                    "approved_by": current_user['id']
+                }
+            }
+        )
+        
+        # Send welcome email with credentials
+        if client.get('email'):
+            from email_service import send_welcome_email_client
+            broker = await db.users.find_one({"id": current_user['id']}, {"_id": 0})
+            send_welcome_email_client(
+                client_name=client.get('name', ''),
+                client_email=client.get('email'),
+                pan=client.get('pan', ''),
+                password=client.get('temp_password', ''),
+                pin=client.get('temp_pin', ''),
+                broker_name=broker.get('name', 'Your Broker') if broker else 'Your Broker'
+            )
+        
+        return {"message": "Client approved successfully", "status": "approved"}
+    
+    elif action == "reject":
+        await db.clients.update_one(
+            {"id": client_id},
+            {
+                "$set": {
+                    "approval_status": "rejected",
+                    "rejected_at": datetime.now(timezone.utc).isoformat(),
+                    "rejected_by": current_user['id']
+                }
+            }
+        )
+        return {"message": "Client rejected", "status": "rejected"}
+    
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
+
+
+# ==================== SUB-BROKER REINVESTMENT ====================
+
+@api_router.get("/sub-broker/reinvestment/upcoming")
+async def get_subbroker_upcoming_reinvestments(current_user: dict = Depends(get_current_user)):
+    """Get upcoming cashflows for sub-broker's linked clients only"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
+    
+    # Get linked client IDs
+    linked_clients = await db.clients.find(
+        {"linked_subbroker_id": current_user['id']},
+        {"id": 1, "name": 1, "pan": 1, "ucc_list": 1, "_id": 0}
+    ).to_list(1000)
+    
+    client_ids = [c['id'] for c in linked_clients]
+    client_map = {c['id']: c for c in linked_clients}
+    
+    if not client_ids:
+        return {"by_client": [], "summary": {"total_amount": 0, "total_entries": 0}}
+    
+    # Get bonds
+    bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
+    bond_map = {b['id']: b for b in bonds}
+    
+    # Get all clients with bond allocations
+    all_clients = await db.clients.find(
+        {"id": {"$in": client_ids}},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    by_client = []
+    total_amount = 0
+    total_entries = 0
+    
+    for client in all_clients:
+        client_entries = []
+        allocations = client.get('bond_allocations', [])
+        
+        for alloc in allocations:
+            bond = bond_map.get(alloc.get('bond_id'))
+            if not bond:
+                continue
+            
+            cashflows = alloc.get('cashflows', [])
+            for cf in cashflows:
+                cf_date = cf.get('date', '')
+                if not cf_date:
+                    continue
+                
+                # Only include future cashflows
+                try:
+                    cf_date_obj = datetime.fromisoformat(cf_date.replace('Z', '+00:00'))
+                    if cf_date_obj.date() < datetime.now(timezone.utc).date():
+                        continue
+                except:
+                    continue
+                
+                amount = cf.get('interest_component', cf.get('amount', 0))
+                total_amount += amount
+                total_entries += 1
+                
+                client_entries.append({
+                    "cashflow_id": cf.get('id', f"{alloc.get('bond_id')}_{cf_date}"),
+                    "opportunity_name": bond.get('issuer', 'Bond'),
+                    "expected_date": cf_date,
+                    "cashflow_type": cf.get('type', 'interest'),
+                    "amount": amount,
+                    "reinvestment_tag": cf.get('reinvestment_tag', 'not_tagged'),
+                    "portfolio_category": cf.get('portfolio_category', ''),
+                    "target_ucc": cf.get('target_ucc', ''),
+                    "approval_status": cf.get('approval_status', 'not_submitted')
+                })
+        
+        if client_entries:
+            client_info = client_map.get(client['id'], {})
+            by_client.append({
+                "client_id": client['id'],
+                "client_name": client.get('name', ''),
+                "client_pan": client.get('pan', ''),
+                "ucc_list": client.get('ucc_list', []),
+                "entries": client_entries
+            })
+    
+    return {
+        "by_client": by_client,
+        "summary": {
+            "total_amount": total_amount,
+            "total_entries": total_entries
+        }
+    }
+
+
 # ==================== BULK UPLOAD ENDPOINTS ====================
 
 @api_router.get("/bulk/template/sub-brokers")
