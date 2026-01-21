@@ -4499,11 +4499,18 @@ class ClientCreate(BaseModel):
     ucc_list: Optional[List[str]] = None  # Max 5, unique across system
     demat_account_no: Optional[str] = None
     
-    # Bank Details (Required for Bonds - Indian passport holders only)
+    # Bank Details - Indian Bank (Required for Bonds - Indian passport holders)
     bank_name: Optional[str] = None
     account_number: Optional[str] = None
     branch: Optional[str] = None
     ifsc_code: Optional[str] = None
+    account_type: Optional[str] = None  # Savings, Current for residents; NRE, NRO, Savings, Current for NRIs
+    
+    # Bank Details - International Bank (Required for NRIs and Foreign passport holders)
+    intl_bank_name: Optional[str] = None
+    intl_account_number: Optional[str] = None
+    intl_iban: Optional[str] = None
+    intl_swift_code: Optional[str] = None
     
     # Additional Personal Details
     occupation: Optional[str] = None
