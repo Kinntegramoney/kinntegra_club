@@ -809,6 +809,31 @@ export default function Holdings() {
                     </div>
                   )}
                   
+                  {/* Emirates ID Details - Shows when country of residency is UAE */}
+                  {clientDetails.country_of_residency && 
+                   (clientDetails.country_of_residency.toLowerCase().includes('emirates') || 
+                    clientDetails.country_of_residency.toLowerCase() === 'uae') && (
+                    <div className="bg-white rounded-lg border border-gray-200 p-5">
+                      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                        <CreditCard className="h-5 w-5 text-teal-600" />
+                        <h3 className="font-semibold text-gray-800">Emirates ID Details</h3>
+                        <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded ml-auto">UAE Resident</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Emirates ID Number</p>
+                          <p className="font-mono font-medium text-gray-800">{clientDetails.emirates_id || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Emirates ID Expiry</p>
+                          <p className="font-medium text-gray-800">
+                            {clientDetails.emirates_id_expiry ? format(new Date(clientDetails.emirates_id_expiry), "MMM dd, yyyy") : '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* UCC List */}
                   {clientDetails.ucc_list && clientDetails.ucc_list.length > 0 && (
                     <div className="bg-white rounded-lg border border-gray-200 p-5">
