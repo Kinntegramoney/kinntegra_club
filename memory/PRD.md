@@ -9,7 +9,7 @@ A wealth management platform for brokers to manage clients, bonds, real estate i
 
 ## User Personas
 1. **Broker**: Full admin access - manages all entities
-2. **Sub-Broker**: Limited access - works with linked clients
+2. **Sub-Broker**: Limited access - works with linked clients, requires approval for new items
 3. **Client**: Read access - views own investments
 
 ## Core Features Implemented
@@ -38,10 +38,20 @@ A wealth management platform for brokers to manage clients, bonds, real estate i
   - Real Estate AUM (AED with INR conversion)
   - Quick Actions
 
+### Sub-Broker Module (Updated: Jan 21, 2026)
+- **Dashboard**: `/sub-broker/dashboard` - Personal business overview
+- **Opportunities**: View and share investment opportunities
+- **Holdings**: View client holdings
+- **Clients**: Create/view linked clients (with approval workflow)
+- **Reinvestment Tag**: Tag cashflows with UCC dropdown for linked clients
+- **Analysis**: Upload CAS files for linked clients
+- **Profile**: Edit personal details (email, phone, password, PIN, address)
+
 ### Client Management
 - Conditional bank details based on residency/passport type
 - Bulk upload (Indian & Foreign passport holders)
 - Pincode lookup API integration
+- **NEW**: Sub-broker can create clients (pending broker approval)
 
 ### Investment Management
 - Bond opportunities with payment schedules
@@ -55,6 +65,7 @@ A wealth management platform for brokers to manage clients, bonds, real estate i
 ### Admin Features
 - Database reset functionality
 - Sub-broker management (search, sort, CRUD)
+- **NEW**: Pending approvals view for broker
 
 ## Tech Stack
 - **Frontend**: React + Tailwind CSS + Shadcn/UI + Recharts
@@ -63,47 +74,56 @@ A wealth management platform for brokers to manage clients, bonds, real estate i
 - **Third-Party**: 
   - Currency Exchange API (fawazahmed0/exchange-api)
   - Pincode lookup API
+  - **Kinntegra Investment API** (for reinvestment triggers)
 
 ## Recent Changes (Jan 21, 2026)
-1. **Dashboard Redesign**:
-   - Removed: Client Status, AUM distribution, Client spread by city, Monthly console, Recent Activity
-   - Enhanced: AUM by Sub-Broker now shows both Bonds (INR) and Real Estate (AED)
-   - Added: Real Estate INR conversion using live forex rate
-   - Added: Forex rate display in header
 
-2. **Sub-Broker Dashboard**:
-   - Created new `/sub-broker/dashboard` page
-   - Shows only data for linked clients
-   - Displays AUM with INR conversion
+### Dashboard Updates
+1. Removed: Client Status, AUM distribution, Client spread by city, Monthly console, Recent Activity
+2. Enhanced: AUM by Sub-Broker shows both Bonds (INR) and Real Estate (AED)
+3. Added: Real Estate INR conversion using live forex rate
+4. Added: Forex rate display in header
 
-3. **API Additions**:
-   - `GET /api/forex/aed-to-inr` - Live exchange rate
-   - `GET /api/sub-broker/dashboard/summary` - Sub-broker specific dashboard data
+### Sub-Broker Module Complete
+1. **Sidebar Updated**: Added Dashboard, Clients, Reinv Tag, Analysis, Profile
+2. **SubBrokerClients.jsx**: New page for client management
+3. **SubBrokerReinvestment.jsx**: New page for reinvestment tagging with UCC dropdown
+4. **SubBrokerAnalysis.jsx**: Dedicated analysis page
+5. **SubBrokerProfile.jsx**: Enhanced with address editing
 
-## P0 - Critical Issues (In Progress)
-1. Sub-broker "Resend credentials" & "Reset password" emails not working
-2. Sub-broker verification flow not implemented
+### Backend Endpoints Added
+- `PUT /api/sub-broker/profile/address` - Update address
+- `GET /api/sub-broker/clients` - Get linked clients
+- `POST /api/sub-broker/clients` - Create client (pending approval)
+- `GET /api/sub-broker/pending-approvals` - View pending items
+- `GET /api/broker/pending-approvals` - View items to approve
+- `POST /api/broker/approve-client/{id}` - Approve/reject client
+- `GET /api/sub-broker/reinvestment/upcoming` - Get reinvestment data
+
+## P0 - Still In Progress
+1. **Email Issues**: Need to verify resend credentials/reset password emails are being sent
+2. **Verification Flow**: Client approval via email link → API trigger to Kinntegra
 
 ## P1 - Upcoming Tasks
-- Complete Sub-Broker Profile page UI
 - Frontend for Pincode Lookup on client creation form
+- Complete client approval email flow
+- Kinntegra API integration for approved reinvestments
 
 ## P2 - Future Tasks
-- **CRITICAL**: Refactor `server.py` (14,000+ lines) into modular routers
-- Refactor `RealEstateDetails.jsx` and `CreateClientModal.jsx`
-- Build out `AnalysisDashboard.jsx`
+- **CRITICAL**: Refactor `server.py` (14,000+ lines)
+- Refactor frontend monoliths
+- Build Analysis Dashboard
 - Email notifications for passport expiry
-- Delete obsolete bond creation files
 
-## API Endpoints Reference
-- Auth: `/api/auth/*`
-- Dashboard: `/api/dashboard/*`, `/api/sub-broker/dashboard/*`
-- Forex: `/api/forex/aed-to-inr`
-- Clients: `/api/clients/*`, `/api/bulk/*`
-- Bonds: `/api/bonds/*`
-- Real Estate: `/api/real-estate-opportunities/*`
-- Partners: `/api/partners/*`
-- Analysis: `/api/analysis/*`
+## API Integration - Kinntegra MF Buy Scheduler
+
+### New Buy Investment Schedule
+- **Endpoint**: `POST https://api.kinntegra.co.in/api/transaction/addbuyschedule`
+- **Payload**: `{"InvestmentData": [{"UCC", "DealId", "BondInvestmentDate", "InvestmentAmount", "PortfolioName", "MFInvestmentDate"}]}`
+
+### Revise Buy Investment Schedule  
+- **Endpoint**: `POST https://api.kinntegra.co.in/api/transaction/revisebuyschedule`
 
 ## Test Credentials
 - **Broker**: PAN: `ANVPB5297J`, Password: `Laksh@0208`, PIN: `0516`
+- **Test Sub-Broker**: PAN: `TESTSB1234`, Password: `Test@123`, PIN: `1234`
