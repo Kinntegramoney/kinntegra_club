@@ -261,7 +261,7 @@ export default function AdminRealEstate() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDelete(opp.id, opp.building_name)}
+                            onClick={() => handleDelete(opp.id, opp.building_name, opp.current_investors || 0)}
                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             title="Delete"
                             data-testid={`delete-property-${opp.id}`}
