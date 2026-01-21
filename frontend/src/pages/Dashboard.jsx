@@ -261,10 +261,10 @@ export default function Dashboard() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar user={user} />
       
-      <div className="flex-1 overflow-auto md:ml-64">
+      <div className="flex-1 overflow-auto">
         {/* Header with Date/Time */}
         <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
-          <div className="flex items-center justify-between">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">Analytics Dashboard</h1>
               <p className="text-sm text-gray-500 mt-1">{currentTime}</p>
@@ -286,7 +286,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
           {/* Dashboard Cards - Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="kpi-cards">
             
