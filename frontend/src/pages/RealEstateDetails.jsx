@@ -50,6 +50,7 @@ export default function RealEstateDetails() {
   const [selectedInvestorForEdit, setSelectedInvestorForEdit] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showSellModal, setShowSellModal] = useState(false);
   
   // XIRR Calculator state
   const [xirrSaleStage, setXirrSaleStage] = useState(100); // % of payment completed when sold
