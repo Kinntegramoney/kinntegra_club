@@ -4,7 +4,7 @@ import axios from "axios";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Share2, Building2, TrendingUp } from "lucide-react";
+import { Share2, Building2, TrendingUp, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
