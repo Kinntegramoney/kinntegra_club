@@ -14996,6 +14996,108 @@ async def get_xirr_comparison_report(
             "is_paid": actual_payment is not None
         })
     
+    # Add DLD Fee as a line item (typically paid with booking)
+    dld_fee = opp.get('dld_fee', 0)
+    investor_dld_fee = dld_fee * share_percentage / 100
+    if investor_dld_fee > 0:
+        # Use first milestone date for DLD (usually paid with booking)
+        dld_date = payment_schedule[0].get('date', '') if payment_schedule else ''
+        try:
+            dld_year = int(dld_date[:4]) if dld_date else datetime.now().year
+        except:
+            dld_year = datetime.now().year
+        
+        dld_projected_rate = projected_rates.get(dld_year, {}).get('projected_rate', 22.5)
+        dld_projected_home = investor_dld_fee * dld_projected_rate
+        
+        total_projected_home_currency += dld_projected_home
+        total_aed_amount += investor_dld_fee
+        
+        # Check if DLD was paid (look for DLD payment in investor payments)
+        dld_payment = next((p for p in investor_actual_payments if 'dld' in p.get('description', '').lower()), None)
+        
+        if dld_payment:
+            actual_dld_home = float(dld_payment.get('home_currency_amount', 0) or 0)
+            actual_dld_aed = float(dld_payment.get('aed_amount', 0) or 0)
+            actual_dld_rate = actual_dld_home / actual_dld_aed if actual_dld_aed > 0 else dld_projected_rate
+        else:
+            actual_dld_home = dld_projected_home
+            actual_dld_aed = investor_dld_fee
+            actual_dld_rate = dld_projected_rate
+        
+        total_actual_home_currency += actual_dld_home
+        
+        cashflows_projected.append({
+            "date": dld_date,
+            "description": "DLD Fee",
+            "percentage": opp.get('dld_fee_percentage', 4),
+            "aed_amount": investor_dld_fee,
+            "projected_rate": dld_projected_rate,
+            "home_currency_amount": dld_projected_home,
+            "type": "outflow"
+        })
+        
+        cashflows_actual.append({
+            "date": dld_date,
+            "description": "DLD Fee",
+            "percentage": opp.get('dld_fee_percentage', 4),
+            "aed_amount": actual_dld_aed,
+            "actual_rate": actual_dld_rate,
+            "home_currency_amount": actual_dld_home,
+            "type": "outflow",
+            "is_paid": dld_payment is not None
+        })
+    
+    # Add Admin Fee as a line item (typically paid with booking)
+    admin_fee = opp.get('admin_fee', 0)
+    investor_admin_fee = admin_fee * share_percentage / 100
+    if investor_admin_fee > 0:
+        # Use first milestone date for Admin (usually paid with booking)
+        admin_date = payment_schedule[0].get('date', '') if payment_schedule else ''
+        try:
+            admin_year = int(admin_date[:4]) if admin_date else datetime.now().year
+        except:
+            admin_year = datetime.now().year
+        
+        admin_projected_rate = projected_rates.get(admin_year, {}).get('projected_rate', 22.5)
+        admin_projected_home = investor_admin_fee * admin_projected_rate
+        
+        total_projected_home_currency += admin_projected_home
+        total_aed_amount += investor_admin_fee
+        
+        # Check if Admin was paid
+        admin_payment = next((p for p in investor_actual_payments if 'admin' in p.get('description', '').lower()), None)
+        
+        if admin_payment:
+            actual_admin_home = float(admin_payment.get('home_currency_amount', 0) or 0)
+            actual_admin_aed = float(admin_payment.get('aed_amount', 0) or 0)
+            actual_admin_rate = actual_admin_home / actual_admin_aed if actual_admin_aed > 0 else admin_projected_rate
+        else:
+            actual_admin_home = admin_projected_home
+            actual_admin_aed = investor_admin_fee
+            actual_admin_rate = admin_projected_rate
+        
+        total_actual_home_currency += actual_admin_home
+        
+        cashflows_projected.append({
+            "date": admin_date,
+            "description": "Admin Fee",
+            "aed_amount": investor_admin_fee,
+            "projected_rate": admin_projected_rate,
+            "home_currency_amount": admin_projected_home,
+            "type": "outflow"
+        })
+        
+        cashflows_actual.append({
+            "date": admin_date,
+            "description": "Admin Fee",
+            "aed_amount": actual_admin_aed,
+            "actual_rate": actual_admin_rate,
+            "home_currency_amount": actual_admin_home,
+            "type": "outflow",
+            "is_paid": admin_payment is not None
+        })
+    
     # Calculate sale proceeds (inflow)
     sell_date = opp.get('estimated_sell_date', '')
     expected_sale_rate = opp.get('expected_sale_rate', 0)  # per sqft
