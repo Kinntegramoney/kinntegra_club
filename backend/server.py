@@ -986,6 +986,157 @@ async def reset_partner_password(
         }
 
 
+# ==================== SUB-BROKER PROFILE ENDPOINTS ====================
+
+@api_router.get("/sub-broker/profile")
+async def get_sub_broker_profile(current_user: dict = Depends(get_current_user)):
+    """Get sub-broker profile information"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
+    
+    partner = await db.partners.find_one({"id": current_user['id']}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    # Count linked clients
+    linked_clients = await db.clients.count_documents({"linked_subbroker_id": current_user['id']})
+    
+    return {
+        "id": partner.get('id'),
+        "name": partner.get('name'),
+        "email": partner.get('email'),
+        "mobile": partner.get('mobile') or partner.get('phone'),
+        "phone": partner.get('phone') or partner.get('mobile'),
+        "pan": partner.get('pan'),
+        "partner_code": partner.get('partner_code'),
+        "is_active": partner.get('is_active', True),
+        "created_at": partner.get('created_at'),
+        "linked_clients_count": linked_clients
+    }
+
+
+@api_router.put("/sub-broker/profile/email")
+async def update_sub_broker_email(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update sub-broker email address"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can update their profile")
+    
+    email = data.get('email', '').strip()
+    if not email or '@' not in email:
+        raise HTTPException(status_code=400, detail="Invalid email address")
+    
+    # Check if email is already used
+    existing = await db.partners.find_one({"email": email, "id": {"$ne": current_user['id']}})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already in use by another account")
+    
+    await db.partners.update_one(
+        {"id": current_user['id']},
+        {"$set": {"email": email, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    await db.users.update_one(
+        {"id": current_user['id']},
+        {"$set": {"email": email}}
+    )
+    
+    return {"message": "Email updated successfully"}
+
+
+@api_router.put("/sub-broker/profile/phone")
+async def update_sub_broker_phone(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update sub-broker phone number"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can update their profile")
+    
+    phone = data.get('phone', '').strip()
+    if not phone or len(phone) < 10:
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+    
+    await db.partners.update_one(
+        {"id": current_user['id']},
+        {"$set": {"mobile": phone, "phone": phone, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Phone number updated successfully"}
+
+
+@api_router.put("/sub-broker/profile/password")
+async def update_sub_broker_password(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update sub-broker password"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can update their password")
+    
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+    
+    if not current_password or not new_password:
+        raise HTTPException(status_code=400, detail="Current and new passwords are required")
+    
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
+    # Verify current password
+    user = await db.users.find_one({"id": current_user['id']})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not verify_password(current_password, user.get('password_hash', '')):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Update password
+    await db.users.update_one(
+        {"id": current_user['id']},
+        {"$set": {"password_hash": get_password_hash(new_password)}}
+    )
+    
+    return {"message": "Password updated successfully"}
+
+
+@api_router.put("/sub-broker/profile/pin")
+async def update_sub_broker_pin(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update sub-broker PIN"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can update their PIN")
+    
+    current_pin = data.get('current_pin', '')
+    new_pin = data.get('new_pin', '')
+    
+    if not current_pin or not new_pin:
+        raise HTTPException(status_code=400, detail="Current and new PINs are required")
+    
+    if len(new_pin) != 4 or not new_pin.isdigit():
+        raise HTTPException(status_code=400, detail="New PIN must be exactly 4 digits")
+    
+    # Verify current PIN
+    user = await db.users.find_one({"id": current_user['id']})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not verify_password(current_pin, user.get('pin_hash', '')):
+        raise HTTPException(status_code=400, detail="Current PIN is incorrect")
+    
+    # Update PIN
+    await db.users.update_one(
+        {"id": current_user['id']},
+        {"$set": {"pin_hash": get_password_hash(new_pin)}}
+    )
+    
+    return {"message": "PIN updated successfully"}
+
+
 # ==================== BULK UPLOAD ENDPOINTS ====================
 
 @api_router.get("/bulk/template/sub-brokers")
