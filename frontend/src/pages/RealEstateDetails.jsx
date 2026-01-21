@@ -1008,6 +1008,108 @@ export default function RealEstateDetails() {
                         </tr>
                       );
                     })}
+                    
+                    {/* DLD Fee Row - After first payment */}
+                    {(opp.dld_fee > 0 || opp.dld_fee_percentage > 0) && (
+                      <tr className="border-b border-gray-100 hover:bg-orange-50/50 bg-orange-50/30">
+                        <td className="py-4 px-4 sticky left-0 bg-orange-50/30 z-10">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-orange-200 text-orange-700">
+                              D
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-800">DLD Fee ({opp.dld_fee_percentage || 4}%)</p>
+                              <p className="text-xs text-gray-500">Dubai Land Department</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3 text-right">
+                          <p className="font-bold text-orange-700">AED {formatCurrency(opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100))}</p>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-xs text-gray-500">-</span>
+                        </td>
+                        {/* Investor columns for DLD */}
+                        {opp.investors?.map((investor, invIdx) => {
+                          const investorShare = parseFloat(investor.share_percentage) || (100 / opp.investors.length);
+                          const dldAmount = (opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100)) * (investorShare / 100);
+                          const dldPayment = opp.dld_admin_payments?.find(p => p.investor_id === investor.client_id && p.type === 'dld');
+                          return (
+                            <td key={invIdx} className="py-3 px-2 text-center">
+                              <div className="text-xs font-medium text-orange-700 mb-1">AED {formatCurrency(dldAmount)}</div>
+                              <div className="flex justify-center gap-1">
+                                {dldPayment?.swift_copy ? (
+                                  <span className="w-5 h-5 rounded bg-green-100 text-green-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
+                                ) : (
+                                  <button 
+                                    className="w-5 h-5 rounded bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center"
+                                    onClick={() => {
+                                      setSelectedDldAdminInvestor(investor);
+                                      setDldAdminUploadType('dld');
+                                      setShowDldAdminModal(true);
+                                    }}
+                                    title="Upload DLD SWIFT"
+                                  >
+                                    <Upload className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    )}
+                    
+                    {/* Admin Fee Row */}
+                    {opp.admin_fee > 0 && (
+                      <tr className="border-b border-gray-100 hover:bg-green-50/50 bg-green-50/30">
+                        <td className="py-4 px-4 sticky left-0 bg-green-50/30 z-10">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-green-200 text-green-700">
+                              A
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-800">Admin Fee</p>
+                              <p className="text-xs text-gray-500">Administration Charges</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3 text-right">
+                          <p className="font-bold text-green-700">AED {formatCurrency(opp.admin_fee)}</p>
+                        </td>
+                        <td className="py-4 px-3">
+                          <span className="text-xs text-gray-500">-</span>
+                        </td>
+                        {/* Investor columns for Admin */}
+                        {opp.investors?.map((investor, invIdx) => {
+                          const investorShare = parseFloat(investor.share_percentage) || (100 / opp.investors.length);
+                          const adminAmount = opp.admin_fee * (investorShare / 100);
+                          const adminPayment = opp.dld_admin_payments?.find(p => p.investor_id === investor.client_id && p.type === 'admin');
+                          return (
+                            <td key={invIdx} className="py-3 px-2 text-center">
+                              <div className="text-xs font-medium text-green-700 mb-1">AED {formatCurrency(adminAmount)}</div>
+                              <div className="flex justify-center gap-1">
+                                {adminPayment?.swift_copy ? (
+                                  <span className="w-5 h-5 rounded bg-green-100 text-green-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
+                                ) : (
+                                  <button 
+                                    className="w-5 h-5 rounded bg-green-500 hover:bg-green-600 text-white flex items-center justify-center"
+                                    onClick={() => {
+                                      setSelectedDldAdminInvestor(investor);
+                                      setDldAdminUploadType('admin');
+                                      setShowDldAdminModal(true);
+                                    }}
+                                    title="Upload Admin SWIFT"
+                                  >
+                                    <Upload className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
