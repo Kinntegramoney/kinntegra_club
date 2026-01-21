@@ -1,112 +1,167 @@
 <analysis>**original_problem_statement:**
-The user's initial problem was a bond pricing mismatch. This led to a request for a complete data wipe and a rebuild of the bond calculation logic from scratch based on a provided Excel file. The agent implemented a new two-step bond creation UI that uses an Excel upload for cashflow schedules.
+The user initially reported that the Excel file generated after uploading a Consolidated Account Statement (CAS) PDF was not parsing data correctly. The agent discovered this was due to the parser's inability to handle dishonoured or reversed transactions, leading to incorrect investment totals. After fixing the parser, the user requested a way to clear all data from their production server. This led to the creation of a secure admin endpoint and a UI button, which then uncovered deployment-blocking issues (a  version conflict and a missing  endpoint).
 
-In the current session, the user requested modifications to this new UI, which the agent completed. Then, the user reported that the Bond Details page was blank after uploading a cashflow file. The agent fixed this by updating the frontend to read from the correct data structure (). A subsequent price calculation error on the same page was also fixed by aligning the logic of the  backend endpoint with the already-verified  endpoint.
+After fixing the deployment and data reset functionality, the user made a series of rapid-fire feature requests:
+1.  A missing delete button for real estate opportunities.
+2.  Removal of the Settings menu item.
+3.  A complex, conditional bank details form in the client creation modal that changes based on the user's residency and passport type (distinguishing between Indian residents, NRIs, and foreign nationals).
+4.  Applying the same conditional bank logic to the bulk client upload feature.
+5.  A complete redesign of the main dashboard summary cards.
+6.  A large batch of features and fixes for the Sub-Broker module, including search/sort, fixing credential emails, a dedicated profile page, role-specific UI, and a verification workflow.
 
-Most recently, the user pivoted to a new, unrelated task, uploading a Mutual Fund Consolidated Account Statement (CAS) and a Gap Sheet Excel file with the message the output has not captured fields properly. The agent has performed initial analysis on these files and is pending clarification from the user on the specific requirements.
+The agent has completed all requests up to the Sub-Broker module, which is currently in progress.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The bond creation and pricing system is now fully functional and robust. A two-step bond creation UI at  allows users to create bonds and upload an Excel file for the cashflow schedule. This UI has been updated to remove the frequency and cut off days fields. The  page has been significantly patched to correctly display data from these new bond types and now calculates the price accurately, resolving a mismatch between two different backend calculation endpoints. The application is in a state where the entire bond creation-to-viewing flow is fixed, but the user has initiated a new, unrelated data parsing task.
+The application's core features have been significantly enhanced. The CAS PDF parser now correctly handles dishonoured transactions. A robust, secure data reset function exists, accessible via an admin API endpoint and a UI button on the broker's dashboard. The client creation process (both single and bulk upload) features a dynamic form that intelligently requests bank details based on the client's profile. The main dashboard has been redesigned with custom data visualizations for clients, AUM, and opportunities.
+
+For the new sub-broker requests, the foundational work is complete: the sub-broker admin page now has search and sort capabilities, the main sidebar is now role-aware (showing different options for brokers vs. sub-brokers), and a placeholder page with its corresponding backend endpoints and frontend route has been created for sub-broker profiles.
 
 **Last working item**:
--   **Last item agent was working**: The agent received a new request from the user: the output has not captured fields properly, accompanied by a Mutual Fund CAS PDF and an Excel Gap Sheet. The agent performed initial data extraction on these files, identifying them as relating to mutual fund holdings for a specific client, which is unrelated to the previous bond-related work. The agent was preparing to ask the user for clarification on what specific fields need to be captured and for what purpose.
--   **Status**: BLOCKED
--   **Agent Testing Done**: N/A
--   **Which testing method agent to use?**: N/A (Waiting for user requirements).
+-   **Last item agent was working**: The agent was in the middle of a major update to the sub-broker module. The initial groundwork has been laid by adding search/sorting to the admin list view, creating a placeholder Profile page, adding role-based logic to the sidebar, and creating the necessary backend endpoints and frontend routes.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?**: both
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Incomplete UI update on BondDetails page (P2)**
-    -   A recurring, low-priority UI bug where a radio button's state is not cleared correctly after an action.
+-   **Issue 1: Sub-broker Resend credentials and reset password emails not working (P0)**
+-   **Issue 2: Sub-broker verification flow not implemented (P0)**
+
+**Issues Detail:**
+-   **Issue 1: Sub-broker Resend credentials and reset password emails not working (P0)**
+    -   **Attempted fixes**: The agent only performed an initial investigation, locating the relevant functions in  and . No fix has been implemented yet.
+    -   **Next debug checklist**:
+        1.  Examine  to confirm the email sending mechanism (e.g., SMTP, third-party API).
+        2.  Verify all required email-related credentials and configurations are present in .
+        3.  Add detailed logging to the email sending functions to capture any errors during execution.
+        4.  Trigger the Resend Credentials API and inspect backend logs for error messages.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical blocker for sub-broker onboarding and account management.
     -   **Status**: NOT STARTED
-    -   **Is recurring issue?**: Y
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Backend
+    -   **Blocked on other issue**: None
+
+-   **Issue 2: Sub-broker verification flow not implemented (P0)**
+    -   **Attempted fixes**: None. This is a new feature request.
+    -   **Next debug checklist**:
+        1.  **Backend**: Add a  field (e.g., , ) to the client and opportunity models. Modify the creation endpoints to set this status to  if the creator is a sub-broker. Create new endpoints for the broker to approve/reject these items.
+        2.  **Frontend**: Update the broker's client/opportunity lists to show a Pending Approval filter and add approval/rejection buttons.
+    -   **Why fix this issue and what will be achieved with the fix?**: Implements a crucial business requirement for broker oversight of sub-broker activities.
+    -   **Status**: NOT STARTED
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   **Task 1: Parse and Utilize Mutual Fund Data (P0)**
-    -   **Where to resume**: The agent has already performed initial data extraction from the user-provided PDF and Excel files. The next step is to ask the user for specific requirements:
-        1.  Which exact fields need to be extracted from the CAS and Gap Sheet?
-        2.  What should be done with this data? (e.g., display it on a new page, store it in the database, integrate it into an existing client view).
-    -   **What will be achieved with this?**: Fulfilling the user's latest request to process and utilize data from their financial statements.
+-   **Task 1: Complete Sub-Broker Module Implementation (P0)**
+    -   **Where to resume**: The foundation is set. The immediate next step is to build out the UI and logic for the  page. This includes creating the form for sub-brokers to edit their profile details and integrating it with the new backend endpoints for updating their profile, password, and PIN.
+    -   **What will be achieved with this?**: This will provide sub-brokers with a dedicated space to manage their own account information, a key part of the user's request.
     -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Both (likely)
-    -   **Blocked on something**: User clarification on requirements.
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **(P0) User Verification of Bond Creation Flow**: The user has not yet tested or confirmed that the complete, fixed bond workflow (creation, detail view, and price calculation) meets their expectations. This is pending confirmation.
-    -   **(P1) Frontend for Dashboard Counts & Pincode Lookup**: The backend logic is complete. The frontend needs to be implemented to call  and  and display counts on the dashboard. Pincode lookup needs to be added to the client creation form.
-        -   **Files**: , , .
+    -   **(P1) User Verification of All Recent Changes**: The user has not yet formally tested or approved the CAS parsing fix, the data reset functionality, the conditional bank details, the bulk upload fix, or the new dashboard.
+    -   **(P1) Frontend for Pincode Lookup**: The backend API for pincode lookup is ready. The feature needs to be implemented on the client creation form in .
 
 -   **Future Tasks**:
-    -   **(CRITICAL) Refactor Backend Monolith**:  needs to be modularized into FastAPI s.
-    -   **(CRITICAL) Refactor Frontend Monolith**:  (>4000 lines) must be broken down.
+    -   **(CRITICAL) Refactor Backend Monolith**: The  file is now over 14,000 lines and must be broken down into modular s.
+    -   **(CRITICAL) Refactor Frontend Monolith**:  remains a monolithic component that needs to be decomposed.
     -   **(P2) Implement Analysis Dashboard**: Build out the placeholder .
-    -   **(P2) Email notifications for passport expiry**: Implement user-facing enhancement.
+    -   **(P2) Email notifications for passport expiry**: Implement this user-facing enhancement.
     -   **(P2) Code Cleanup**: Delete obsolete components  and .
 
 **Completed work in this session**
--   **Bug Fix (Incorrect Bond Price)**: Fixed the  endpoint in  by aligning its cashflow filtering logic (using ) with the known-correct  endpoint. This resolved the price mismatch on the  page.
--   **Bug Fix (Blank Bond Details Page)**: Modified  to correctly source cashflow data from the  array for newly created bonds, fixing an issue where the cashflow chart and payment tables were empty.
--   **UI Modification (Bond Creation Form)**: Removed the Frequency and Cutoff Days fields from  and updated the component's state and submission logic as requested by the user.
+-   **CAS Parsing Fix**: Corrected the logic in  to properly handle dishonoured transactions, ensuring accurate investment calculations.
+-   **Data Reset Feature**: Implemented a secure  endpoint and a corresponding UI button on the  to clear all application data.
+-   **Deployment Fixes**: Added a  endpoint and pinned the  version to  to resolve deployment failures.
+-   **Conditional Bank Details**: Revamped the client creation modal and bulk upload process to handle different bank details (Indian vs. International) based on the client's residency and passport status.
+-   **Dashboard Redesign**: Replaced the standard KPI cards on  with custom, more detailed components for Clients, AUM, and Opportunities, and updated the backend summary endpoint accordingly.
+-   **Sub-Broker Foundation**: Added search/sort to the sub-broker list, implemented role-based sidebar visibility, and created the necessary pages, routes, and endpoints for the sub-broker profile page.
+-   **Real Estate Delete Fix**: Made the delete button for real estate opportunities always visible and enabled a force delete option.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Incomplete UI update on BondDetails page**: A recurring, low-priority UI bug where a radio button's state is not cleared correctly. This was not addressed in this session.
+-   **Issue 1: Incomplete UI update on BondDetails page**: A recurring, low-priority UI bug where a radio button's state is not cleared correctly.
+    -   **Debug checklist**: Investigate state management in .
+    -   **Why to solve this issue and what will be achieved with this?**: Minor UX improvement.
+    -   **Should Test frontend/backend/both after fix**: Frontend
+    -   **Is recurring issue?**: Y
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork**: Incomplete UI update on BondDetails page.
--   **Recurrence count**: 7+
+-   **Recurrence count**: 8+
 -   **Status**: NOT STARTED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **API Logic Debugging**: Analyzed and reconciled the logic between two similar but distinct backend endpoints ( and ) to ensure consistent financial calculations.
--   **React Frontend Debugging**: Traced data flow within a complex React component () to identify and fix the root cause of missing data display.
--   **PDF/Excel Data Extraction**: Used  to decrypt a password-protected PDF and  to perform initial content analysis on user-provided financial documents.
+-   **Conditional Rendering (React)**: Heavily used in  to show different form fields based on client profile.
+-   **Backend Data Aggregation (FastAPI/MongoDB)**: The  endpoint was rewritten to perform complex aggregations for the new dashboard cards.
+-   **File Parsing (Pandas/openpyxl)**: Enhanced the CAS PDF parser and the Excel bulk upload logic, including fixing a sheet indexing bug.
+-   **Role-Based Access Control (RBAC)**: Implemented basic RBAC in  to render different navigation items based on the user's role.
 
 **key DB schema**
--   No changes were made to the database schema in this session.
+-   **clients**: Added , , , , .
+
+**changes in tech stack**
+-    version pinned to  in .
 
 **All files of reference**
 -   
 -   
 -   
--    (New artifact from user for new task)
--    (New artifact from user for new task)
+-   
+-   
+-   
+-   
+-   
 
 **Areas that need refactoring**:
--   **CRITICAL**: The backend monolith at .
+-   **CRITICAL**:  is now over 14,000 lines and must be modularized.
 -   **CRITICAL**: The frontend monolith at .
--   **Cleanup**: Obsolete files  and  still need to be deleted.
+-   **High Priority**: The logic in  has grown complex and should be broken into smaller components.
 
 **key api endpoints**
--   **MODIFIED**:  (Logic updated to provide price consistent with user expectations).
+-   **MODIFIED**: : Logic expanded to clear numerous collections and uploaded files.
+-   **MODIFIED**: : Response payload completely changed to support the new dashboard UI.
+-   **MODIFIED**: , : Now accept new international bank fields.
+-   **MODIFIED**: , : Logic updated to process new bank fields from Excel templates.
+-   **MODIFIED**: : Added  query parameter.
+-   **CREATED**: : New endpoint for deployment health checks.
+-   **CREATED**: , , , : New endpoints for sub-broker profile management.
 
 **Critical Info for New Agent**
--   **Task Pivot**: The user has abruptly switched context from fixing the bond module to a new, undefined task involving parsing mutual fund statements.
--   **Immediate Priority**: Your first action must be to get clarification from the user on the new data parsing task. The request the output has not captured fields properly is too vague to act on. You need to know *what* to capture and *why*.
--   **Unverified Fixes**: The recent, complex fixes to the bond details and pricing flow have been completed but **not** verified by the user. After handling the user's current request, you should guide them to test the end-to-end bond creation and viewing process to formally close that chapter.
+-   Your immediate priority is the **Sub-Broker module**. Focus on completing the  (building the profile page) and then addressing the  (fixing emails and building the verification flow).
+-   The user frequently tests on their production app, so be prepared for questions about why changes aren't live. Remind them that code must be **deployed** first.
+-   The database used in this preview environment is named ****. Ensure you use this name when running verification commands.
 
 **documents and test reports created in this job**
 -   None.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**:  - This is the current, active request that is blocked on user clarification. (IN PROGRESS)
-2.  **User**: Uploaded  and . (IN PROGRESS)
-3.  **User**:  - This bug report initiated the fixes on the  page. (COMPLETED)
-4.  **User**:  - This request initiated the UI changes on the  page. (COMPLETED)
+1.  **User**: Listed multiple issues with the sub-broker module (search/sort missing, emails not working, wrong sidebar view, no profile page, no verification flow). (IN PROGRESS)
+2.  **User**: Requested a major redesign of the dashboard summary cards. (COMPLETED)
+3.  **User**: Reported bulk upload not capturing international bank fields on production. (COMPLETED)
+4.  **User**: Asked to implement the new conditional bank fields for the bulk client upload module. (COMPLETED)
+5.  **User**: Requested removal of the Settings button and implementation of complex conditional bank detail fields for the client creation modal. (COMPLETED)
+6.  **User**: Reported the delete button for property opportunities is missing. (COMPLETED)
+7.  **User**: Reported that real estate deals are still visible on production after a reset. (COMPLETED)
+8.  **User**: Provided deployment error logs. (COMPLETED)
+9.  **User**: Asked to create a UI button to trigger the data reset. (COMPLETED)
+10. **User**: Asked to clear all historical data from the production server. (COMPLETED)
 
 **Project Health Check:**
--   **Broken**: No critical components are broken. The bond module is now in a stable, fixed state.
+-   **Broken**: Sub-broker credential emails are not functional. The required verification flow for sub-broker actions is missing.
 -   **Mocked**: .
--   **Technical Debt**: High. Monolithic backend () and frontend () files persist. Obsolete bond creation components have not been deleted.
+-   **Technical Debt**: CRITICAL. The monolithic  file is a major liability.  and  also require urgent refactoring.
 
 **3rd Party Integrations**
--   **react-dropzone**: Used in bond creation UI.
--   **openpyxl**: Used on the backend to parse  files.
+-   **passlib / bcrypt**: Used for password hashing.  is pinned to version .
+-   **openpyxl / pandas**: Used for all Excel and CAS parsing/generation.
 -   **api.postalpincode.in**: Backend integration is ready; frontend implementation is pending.
 
 **Testing status**
@@ -119,6 +174,6 @@ The bond creation and pricing system is now fully functional and robust. A two-s
 -   **Broker Login**: PAN: , Password: , PIN: 
 
 **What agent forgot to execute**
+-   The agent has not addressed the recurring low-priority UI bug on the  page.
 -   The agent has not deleted the obsolete bond creation files ( and ).
--   The agent did not address the recurring low-priority UI bug on the  page.
--   The agent did not get explicit user verification on the completed bond fixes before the user pivoted to a new topic.</analysis>
+-   The agent has not implemented the frontend portion of the pincode lookup feature.</analysis>
