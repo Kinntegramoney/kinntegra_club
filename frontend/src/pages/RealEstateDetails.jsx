@@ -1733,6 +1733,18 @@ export default function RealEstateDetails() {
         </div>
       )}
 
+      {/* Sell Unit Modal */}
+      {showSellModal && (
+        <SellUnitModal
+          opportunity={opp}
+          onClose={() => setShowSellModal(false)}
+          onSuccess={() => {
+            setShowSellModal(false);
+            fetchData();
+          }}
+        />
+      )}
+
       {/* Allocate Investor Modal */}
       {showAllocateModal && (
         <AllocateInvestorModal
