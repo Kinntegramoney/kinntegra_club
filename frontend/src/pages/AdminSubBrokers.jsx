@@ -158,6 +158,48 @@ export default function AdminSubBrokers() {
     }
   };
 
+  // Filter and sort partners
+  const filteredPartners = partners
+    .filter(partner => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        partner.name?.toLowerCase().includes(query) ||
+        partner.email?.toLowerCase().includes(query) ||
+        partner.phone?.toLowerCase().includes(query) ||
+        partner.partner_code?.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      let aVal = a[sortField] || "";
+      let bVal = b[sortField] || "";
+      
+      if (typeof aVal === "string") aVal = aVal.toLowerCase();
+      if (typeof bVal === "string") bVal = bVal.toLowerCase();
+      
+      if (sortDirection === "asc") {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
+    return sortDirection === "asc" 
+      ? <ArrowUp className="h-4 w-4 text-amber-600" /> 
+      : <ArrowDown className="h-4 w-4 text-amber-600" />;
+  };
+
   if (!user) return null;
 
   return (
