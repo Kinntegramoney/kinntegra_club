@@ -44,7 +44,7 @@ const INDIAN_STATES = [
 
 const RELATIONSHIPS = ["Spouse", "Father", "Mother", "Son", "Daughter", "Brother", "Sister", "Other"];
 
-export default function CreateClientModal({ onClose, onSuccess, subbrokers = [] }) {
+export default function CreateClientModal({ onClose, onSuccess, subbrokers = [], isSubBrokerMode = false }) {
   const [loading, setLoading] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
   const [credentials, setCredentials] = useState({ photo_id: "", password: "", pin: "", name: "", email: "" });
