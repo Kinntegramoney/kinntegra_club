@@ -4245,51 +4245,27 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                               </td>
                             </tr>
                           );
-                            <td className="p-2 text-right text-emerald-600 font-mono whitespace-nowrap">{actualCf?.actual_rate?.toFixed(2) || '-'}</td>
-                            <td className="p-2 text-right text-emerald-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{actualCf ? formatCurrency(actualCf.home_currency_amount) : '-'}</td>
-                            <td className="p-2 text-right text-purple-600 font-mono whitespace-nowrap">{currentRate?.toFixed(2) || '-'}</td>
-                            <td className="p-2 text-right text-purple-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{currentAmount ? formatCurrency(currentAmount) : '-'}</td>
-                            <td className="p-2 text-center">
-                              {actualCf?.is_paid ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700">Paid</span>
-                              ) : cf.type === 'inflow' ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">Expected</span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">Pending</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    {/* Totals Row */}
-                    <tfoot className="bg-gray-100 font-semibold border-t-2 border-gray-300">
-                      <tr>
-                        <td colSpan="2" className="p-2 text-right text-gray-700">TOTAL</td>
-                        <td className="p-2 text-right font-mono border-r border-gray-300">AED {formatCurrency(report.summary.total_investment_aed)}</td>
-                        <td className="p-2"></td>
-                        <td className="p-2 text-right text-indigo-700 font-mono border-r border-gray-300">{formatCurrency(report.summary.total_projected_home_currency)}</td>
-                        <td className="p-2"></td>
-                        <td className="p-2 text-right text-emerald-700 font-mono border-r border-gray-300">{formatCurrency(report.summary.total_actual_home_currency)}</td>
-                        <td className="p-2"></td>
-                        <td className="p-2 text-right text-purple-700 font-mono border-r border-gray-300">{currentRate ? formatCurrency(report.summary.total_investment_aed * currentRate) : '-'}</td>
-                        <td className="p-2"></td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                        })}
+                      </tbody>
+                      {/* Totals Row */}
+                      <tfoot className="bg-gray-100 font-semibold border-t-2 border-gray-300">
+                        <tr>
+                          <td colSpan="2" className="p-1.5 text-right text-gray-700 text-[10px]">TOTAL</td>
+                          <td className="p-1.5 text-right font-mono border-r border-gray-300">AED {formatCurrency(report.summary.total_investment_aed)}</td>
+                          <td className="p-1.5"></td>
+                          <td className="p-1.5 text-right text-indigo-700 font-mono border-r border-gray-300">{formatCurrency(report.summary.total_projected_home_currency)}</td>
+                          <td className="p-1.5"></td>
+                          <td className="p-1.5 text-right text-emerald-700 font-mono border-r border-gray-300">{formatCurrency(report.summary.total_actual_home_currency)}</td>
+                          <td className="p-1.5"></td>
+                          <td className="p-1.5 text-right text-purple-700 font-mono border-r border-gray-300">{currentRate ? formatCurrency(report.summary.total_investment_aed * currentRate) : '-'}</td>
+                          <td className="p-1.5"></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
               </div>
-              
-              {/* Info Note */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                <strong>Note:</strong> 
-                <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li><span className="text-indigo-600 font-medium">Expected XIRR</span> uses projected currency rates set in Currency Settings.</li>
-                  <li><span className="text-emerald-600 font-medium">Actual XIRR</span> uses actual exchange rates from recorded SWIFT transactions.</li>
-                  <li><span className="text-purple-600 font-medium">Current Rate</span> shows today's live exchange rate for {report.investor.currency} ({currentRate?.toFixed(4) || '-'}).</li>
-                  <li>Future payments and sale proceeds use projected rates for Expected and Actual calculations.</li>
-                </ul>
-              </div>
+              {/* End Two Column Layout */}
             </div>
           ) : null}
         </div>
