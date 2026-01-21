@@ -56,6 +56,7 @@ export default function RealEstateDetails() {
   const [xirrSaleStage, setXirrSaleStage] = useState(100); // % of payment completed when sold
   const [xirrSaleDate, setXirrSaleDate] = useState("");
   const [xirrSaleRate, setXirrSaleRate] = useState(""); // per sqft
+  const [currencyProjectionsMissing, setCurrencyProjectionsMissing] = useState(false);
 
   // Update xirrSaleStage to eligible percentage when opportunity loads
   useEffect(() => {
@@ -63,6 +64,24 @@ export default function RealEstateDetails() {
       setXirrSaleStage(opportunity.eligible_to_sell_after_percentage);
     }
   }, [opportunity]);
+
+  // Check if currency projections exist
+  useEffect(() => {
+    const checkCurrencyProjections = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(`${API}/settings/currency-projections`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const projections = response.data?.projections || [];
+        // Mark as missing if no projections or less than 3 years
+        setCurrencyProjectionsMissing(projections.length < 3);
+      } catch (error) {
+        setCurrencyProjectionsMissing(true);
+      }
+    };
+    checkCurrencyProjections();
+  }, [API]);
 
   const fetchData = useCallback(async () => {
     try {
