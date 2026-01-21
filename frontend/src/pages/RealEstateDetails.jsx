@@ -4039,7 +4039,15 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
               <Button variant="outline" onClick={fetchReport} className="mt-4">Retry</Button>
             </div>
           ) : report ? (
-            <div className="space-y-6">
+            <div id="xirr-report-content" className="space-y-6 bg-white">
+              {/* PDF Header - Only visible in PDF */}
+              <div className="hidden print:block mb-4 pb-4 border-b">
+                <h1 className="text-xl font-bold text-gray-800">XIRR Comparison Report</h1>
+                <p className="text-sm text-gray-600">{report.opportunity.building_name} - Unit {report.opportunity.unit_number}</p>
+                <p className="text-sm text-gray-600">Investor: {report.investor.name} ({report.investor.share_percentage}% Share)</p>
+                <p className="text-xs text-gray-400">Generated on {new Date().toLocaleDateString()}</p>
+              </div>
+              
               {/* Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-indigo-50 rounded-lg p-4">
