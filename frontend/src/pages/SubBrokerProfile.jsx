@@ -77,6 +77,13 @@ export default function SubBrokerProfile() {
       setProfile(response.data);
       setNewEmail(response.data.email || "");
       setNewPhone(response.data.mobile || response.data.phone || "");
+      // Set address fields
+      setAddressLine1(response.data.address_line1 || "");
+      setAddressLine2(response.data.address_line2 || "");
+      setCity(response.data.city || "");
+      setState(response.data.state || "");
+      setPincode(response.data.pincode || "");
+      setCountry(response.data.country || "India");
       setLoading(false);
     } catch (error) {
       console.error("Error fetching profile:", error);
