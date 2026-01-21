@@ -13,6 +13,7 @@ import TradeVerification from "@/pages/TradeVerification";
 import Holdings from "@/pages/Holdings";
 import SubBrokerOpportunities from "@/pages/SubBrokerOpportunities";
 import SubBrokerProfile from "@/pages/SubBrokerProfile";
+import SubBrokerDashboard from "@/pages/SubBrokerDashboard";
 import CreateBondNew from "@/pages/CreateBondNew";
 import BondDetails from "@/pages/BondDetails";
 import RealEstateDetails from "@/pages/RealEstateDetails";
