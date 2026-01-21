@@ -268,6 +268,36 @@ function App() {
             } 
           />
           
+          {/* Sub-Broker specific Analysis Route */}
+          <Route 
+            path="/sub-broker/analysis" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <SubBrokerAnalysis />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Sub-Broker Clients Route */}
+          <Route 
+            path="/sub-broker/clients" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <SubBrokerClients />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Sub-Broker Reinvestment Route */}
+          <Route 
+            path="/sub-broker/reinvestment" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <SubBrokerReinvestment />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Analysis Dashboard - Opens in new tab */}
           <Route 
             path="/analysis/dashboard/:analysisId" 
