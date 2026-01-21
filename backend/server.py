@@ -1524,6 +1524,7 @@ async def sub_broker_bulk_upload_foreign_clients(
                     "country_of_residency": str(row.get('country_of_residency', '')).strip(),
                     "passport_country_of_issue": str(row.get('passport_country_of_issue', '')).strip(),
                     "emirates_id": str(row.get('emirates_id', '')).strip(),
+                    "emirates_id_expiry": str(row.get('emirates_id_expiry', '')).strip(),
                     "intl_bank_name": str(row.get('bank_name', row.get('intl_bank_name', ''))).strip(),
                     "intl_account_number": str(row.get('account_number', row.get('intl_account_number', ''))).strip(),
                     "intl_iban": str(row.get('iban', row.get('intl_iban', ''))).strip(),
