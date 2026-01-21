@@ -13679,7 +13679,8 @@ async def confirm_participation(
     if not opportunity:
         raise HTTPException(status_code=404, detail="Real estate opportunity not found")
     
-    if opportunity.get('status') != 'available':
+    # Allow investment for both 'available' and 'partially_invested' status
+    if opportunity.get('status') not in ['available', 'partially_invested', None]:
         raise HTTPException(status_code=400, detail="This opportunity is no longer available")
     
     current_investors = opportunity.get('current_investors', 0)
