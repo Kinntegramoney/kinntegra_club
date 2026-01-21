@@ -4094,9 +4094,19 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                   </p>
                   <p className="text-xs text-gray-500">{report.summary.xirr_difference >= 0 ? 'Better than expected' : 'Below expected'}</p>
                 </div>
-                {/* Currency Impact = Projected - Actual + Today */}
+                {/* Currency Impact = Projected - Actual + Today (only show when actual payments exist) */}
                 {(() => {
-                  const todayTotal = currentRate ? report.summary.total_investment_aed * currentRate : 0;
+                  const hasActualPayments = report.cashflows_actual?.some(cf => cf.is_paid === true);
+                  if (!hasActualPayments || !currentRate) {
+                    return (
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-xs text-gray-500 font-medium">Currency Impact</p>
+                        <p className="text-2xl font-bold text-gray-400">-</p>
+                        <p className="text-xs text-gray-400">No payments yet</p>
+                      </div>
+                    );
+                  }
+                  const todayTotal = report.summary.total_investment_aed * currentRate;
                   const currencyImpact = report.summary.total_projected_home_currency - report.summary.total_actual_home_currency + todayTotal;
                   const isPositive = currencyImpact >= 0;
                   return (
