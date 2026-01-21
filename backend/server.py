@@ -1305,6 +1305,195 @@ async def create_client_by_subbroker(
     }
 
 
+# ==================== SUB-BROKER BULK UPLOAD ====================
+
+@api_router.post("/sub-broker/bulk/clients-indian")
+async def sub_broker_bulk_upload_indian_clients(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Bulk upload Indian passport clients by sub-broker (requires broker approval)"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can use this endpoint")
+    
+    # Get the broker associated with this sub-broker
+    partner = await db.partners.find_one({"id": current_user['id']}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    
+    broker_id = partner.get('broker_id')
+    
+    try:
+        contents = await file.read()
+        df = pd.read_excel(BytesIO(contents), sheet_name=0)
+        
+        # Normalize column names
+        df.columns = [col.strip().lower().replace(' ', '_').replace('*', '') for col in df.columns]
+        
+        created = 0
+        errors = []
+        
+        for idx, row in df.iterrows():
+            try:
+                pan = str(row.get('pan_number', row.get('pan', ''))).strip().upper()
+                if not pan or pan == 'NAN':
+                    continue
+                
+                # Check if already exists
+                existing = await db.clients.find_one({"$or": [{"pan": pan}, {"pan_number": pan}]})
+                if existing:
+                    errors.append(f"Row {idx+2}: PAN {pan} already exists")
+                    continue
+                
+                client_id = str(uuid.uuid4())
+                temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+                temp_pin = ''.join(random.choices(string.digits, k=4))
+                
+                new_client = {
+                    "id": client_id,
+                    "pan": pan,
+                    "pan_number": pan,
+                    "name": str(row.get('name', '')).strip(),
+                    "email": str(row.get('email', '')).strip(),
+                    "mobile": str(row.get('mobile', row.get('phone', ''))).strip(),
+                    "phone": str(row.get('mobile', row.get('phone', ''))).strip(),
+                    "password_hash": get_password_hash(temp_password),
+                    "pin_hash": get_password_hash(temp_pin),
+                    "default_password": temp_password,
+                    "default_pin": temp_pin,
+                    "role": "client",
+                    "broker_id": broker_id,
+                    "linked_subbroker_id": current_user['id'],
+                    "created_by_subbroker": True,
+                    "approval_status": "pending_approval",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "is_active": False,
+                    "passport_type": "indian",
+                    "country_of_residency": str(row.get('country_of_residency', 'India')).strip(),
+                    "demat_account_no": str(row.get('demat_account_no', '')).strip(),
+                    "bank_name": str(row.get('bank_name', '')).strip(),
+                    "account_number": str(row.get('account_number', '')).strip(),
+                    "branch": str(row.get('branch', '')).strip(),
+                    "ifsc_code": str(row.get('ifsc_code', '')).strip().upper(),
+                    "city": str(row.get('city', '')).strip(),
+                    "state": str(row.get('state', '')).strip(),
+                    "pincode": str(row.get('pincode', '')).strip(),
+                    "country": str(row.get('country', 'India')).strip(),
+                    "ucc_list": [],
+                    "bond_allocations": []
+                }
+                
+                await db.clients.insert_one(new_client)
+                created += 1
+                
+            except Exception as e:
+                errors.append(f"Row {idx+2}: {str(e)}")
+        
+        return {
+            "created": created,
+            "errors": errors[:10],
+            "message": f"Successfully uploaded {created} clients. All pending broker approval."
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to process file: {str(e)}")
+
+
+@api_router.post("/sub-broker/bulk/clients-foreign")
+async def sub_broker_bulk_upload_foreign_clients(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Bulk upload foreign passport clients by sub-broker (requires broker approval)"""
+    if current_user['role'] != 'sub_broker':
+        raise HTTPException(status_code=403, detail="Only sub-brokers can use this endpoint")
+    
+    # Get the broker associated with this sub-broker
+    partner = await db.partners.find_one({"id": current_user['id']}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    
+    broker_id = partner.get('broker_id')
+    
+    try:
+        contents = await file.read()
+        df = pd.read_excel(BytesIO(contents), sheet_name=0)
+        
+        # Normalize column names
+        df.columns = [col.strip().lower().replace(' ', '_').replace('*', '') for col in df.columns]
+        
+        created = 0
+        errors = []
+        
+        for idx, row in df.iterrows():
+            try:
+                passport_number = str(row.get('passport_number', '')).strip().upper()
+                if not passport_number or passport_number == 'NAN':
+                    continue
+                
+                # Check if already exists
+                existing = await db.clients.find_one({"passport_number": passport_number})
+                if existing:
+                    errors.append(f"Row {idx+2}: Passport {passport_number} already exists")
+                    continue
+                
+                client_id = str(uuid.uuid4())
+                temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+                temp_pin = ''.join(random.choices(string.digits, k=4))
+                
+                new_client = {
+                    "id": client_id,
+                    "passport_number": passport_number,
+                    "pan": "",
+                    "pan_number": "",
+                    "name": str(row.get('name', '')).strip(),
+                    "email": str(row.get('email', '')).strip(),
+                    "mobile": str(row.get('mobile', row.get('phone', ''))).strip(),
+                    "phone": str(row.get('mobile', row.get('phone', ''))).strip(),
+                    "password_hash": get_password_hash(temp_password),
+                    "pin_hash": get_password_hash(temp_pin),
+                    "default_password": temp_password,
+                    "default_pin": temp_pin,
+                    "role": "client",
+                    "broker_id": broker_id,
+                    "linked_subbroker_id": current_user['id'],
+                    "created_by_subbroker": True,
+                    "approval_status": "pending_approval",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "is_active": False,
+                    "passport_type": "foreign",
+                    "country_of_residency": str(row.get('country_of_residency', '')).strip(),
+                    "passport_country_of_issue": str(row.get('passport_country_of_issue', '')).strip(),
+                    "emirates_id": str(row.get('emirates_id', '')).strip(),
+                    "intl_bank_name": str(row.get('bank_name', row.get('intl_bank_name', ''))).strip(),
+                    "intl_account_number": str(row.get('account_number', row.get('intl_account_number', ''))).strip(),
+                    "intl_iban": str(row.get('iban', row.get('intl_iban', ''))).strip(),
+                    "intl_swift_code": str(row.get('swift_code', row.get('intl_swift_code', ''))).strip().upper(),
+                    "city": str(row.get('city', '')).strip(),
+                    "state": str(row.get('state', '')).strip(),
+                    "country": str(row.get('country', '')).strip(),
+                    "ucc_list": [],
+                    "bond_allocations": []
+                }
+                
+                await db.clients.insert_one(new_client)
+                created += 1
+                
+            except Exception as e:
+                errors.append(f"Row {idx+2}: {str(e)}")
+        
+        return {
+            "created": created,
+            "errors": errors[:10],
+            "message": f"Successfully uploaded {created} clients. All pending broker approval."
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to process file: {str(e)}")
+
+
 @api_router.get("/sub-broker/pending-approvals")
 async def get_subbroker_pending_approvals(current_user: dict = Depends(get_current_user)):
     """Get items pending approval created by this sub-broker"""
