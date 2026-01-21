@@ -526,6 +526,16 @@ export default function RealEstateDetails() {
                   Add Investor
                 </Button>
               )}
+              {opp.status === 'fully_invested' && (
+                <Button 
+                  onClick={() => setShowSellModal(true)} 
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  data-testid="sell-unit-btn"
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Sell Unit
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 className="text-red-600 border-red-200 hover:bg-red-50"
