@@ -3114,7 +3114,7 @@ async def download_foreign_client_template(current_user: dict = Depends(get_curr
     ws_personal.title = "Personal Details"
     
     personal_headers = ["Name*", "Passport Number*", "Email*", "Mobile*", "Country of Residency*",
-                       "Emirates ID", "Opportunities* (real_estate,gift_city)", "Date of Birth", "Occupation"]
+                       "Emirates ID", "Emirates ID Expiry", "Opportunities* (real_estate,gift_city)", "Date of Birth", "Occupation"]
     for col, header in enumerate(personal_headers, 1):
         cell = ws_personal.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
@@ -3123,7 +3123,7 @@ async def download_foreign_client_template(current_user: dict = Depends(get_curr
         ws_personal.column_dimensions[get_column_letter(col)].width = 24
     
     personal_sample = ["John Smith", "A1234567", "john@example.com", "+971501234567", "United Arab Emirates",
-                      "784-1234-1234567-1", "real_estate,gift_city", "1985-08-20", "Executive"]
+                      "784-1234-1234567-1", "2030-12-31", "real_estate,gift_city", "1985-08-20", "Executive"]
     for col, value in enumerate(personal_sample, 1):
         ws_personal.cell(row=2, column=col, value=value)
     
