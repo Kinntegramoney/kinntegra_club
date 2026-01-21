@@ -306,7 +306,6 @@ export default function Dashboard() {
                 bondOnly={bondOnlyClients}
                 realEstateOnly={realEstateOnlyClients}
                 both={bothProductsClients}
-                total={totalClients}
               />
               
               {/* Legend */}
