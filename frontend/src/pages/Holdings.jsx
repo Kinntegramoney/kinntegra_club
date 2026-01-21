@@ -666,6 +666,14 @@ export default function Holdings() {
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Mobile</p>
                         <p className="font-medium text-gray-800">{clientDetails.mobile || '-'}</p>
                       </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Country of Residency</p>
+                        <p className="font-medium text-gray-800">{clientDetails.country_of_residency || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Passport Type</p>
+                        <p className="font-medium text-gray-800 capitalize">{clientDetails.passport_type || 'Indian'}</p>
+                      </div>
                     </div>
                   </div>
                   
