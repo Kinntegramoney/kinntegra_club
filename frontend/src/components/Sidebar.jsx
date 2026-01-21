@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, User } from "lucide-react";
+import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, User, CheckSquare, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar({ user }) {
@@ -32,7 +32,8 @@ export default function Sidebar({ user }) {
   const brokerMenuItems = [
     { path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid },
     { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
-    { path: "/broker/trades", label: "Logs", icon: ClipboardCheck },
+    { path: "/broker/pending-approvals", label: "Approvals", icon: CheckSquare },
+    { path: "/broker/approval-logs", label: "Logs", icon: History },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
     { path: "/broker/reinvestment", label: "Reinv Tag", icon: Tag },
@@ -48,6 +49,7 @@ export default function Sidebar({ user }) {
     { path: "/sub-broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/sub-broker/clients", label: "Clients", icon: UserCheck },
     { path: "/sub-broker/reinvestment", label: "Reinv Tag", icon: Tag },
+    { path: "/sub-broker/approval-logs", label: "Logs", icon: History },
     { path: "/sub-broker/analysis", label: "Analysis", icon: FileBarChart },
     { path: "/sub-broker/profile", label: "Profile", icon: User },
   ];
