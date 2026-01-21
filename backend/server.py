@@ -4030,7 +4030,7 @@ async def bulk_upload_clients(
                 if should_update(existing_client.get('pincode'), get_val(address_row, 'pincode')):
                     update_data['pincode'] = get_val(address_row, 'pincode')
                 
-                # Bank details from sheet 3
+                # Bank details from sheet 2 (Bank & Investment Details)
                 if should_update(existing_client.get('bank_name'), get_val(bank_row, 'bank_name')):
                     update_data['bank_name'] = get_val(bank_row, 'bank_name')
                 if should_update(existing_client.get('account_number'), get_val(bank_row, 'account_number')):
@@ -4039,8 +4039,38 @@ async def bulk_upload_clients(
                     update_data['branch'] = get_val(bank_row, 'branch')
                 if should_update(existing_client.get('ifsc_code'), get_val(bank_row, 'ifsc_code')):
                     update_data['ifsc_code'] = get_val(bank_row, 'ifsc_code')
+                if should_update(existing_client.get('account_type'), get_val(bank_row, 'account_type')):
+                    update_data['account_type'] = get_val(bank_row, 'account_type')
                 
-                # Nominee details from sheet 4
+                # International Bank details from sheet 3 (NRI)
+                if should_update(existing_client.get('intl_bank_name'), get_val(intl_bank_row, 'international_bank_name')):
+                    update_data['intl_bank_name'] = get_val(intl_bank_row, 'international_bank_name')
+                if should_update(existing_client.get('intl_account_number'), get_val(intl_bank_row, 'international_account_number')):
+                    update_data['intl_account_number'] = get_val(intl_bank_row, 'international_account_number')
+                if should_update(existing_client.get('intl_iban'), get_val(intl_bank_row, 'iban')):
+                    update_data['intl_iban'] = get_val(intl_bank_row, 'iban')
+                if should_update(existing_client.get('intl_swift_code'), get_val(intl_bank_row, 'swift_code')):
+                    update_data['intl_swift_code'] = get_val(intl_bank_row, 'swift_code')
+                
+                # Passport details from sheet 4
+                if should_update(existing_client.get('passport_number'), get_val(passport_row, 'passport_number')):
+                    update_data['passport_number'] = get_val(passport_row, 'passport_number')
+                if should_update(existing_client.get('passport_valid_from'), get_val(passport_row, 'passport_valid_from')):
+                    update_data['passport_valid_from'] = get_val(passport_row, 'passport_valid_from')
+                if should_update(existing_client.get('passport_valid_until'), get_val(passport_row, 'passport_valid_until')):
+                    update_data['passport_valid_until'] = get_val(passport_row, 'passport_valid_until')
+                if should_update(existing_client.get('passport_country_of_issue'), get_val(passport_row, 'passport_country_of_issue')):
+                    update_data['passport_country_of_issue'] = get_val(passport_row, 'passport_country_of_issue')
+                
+                # Country of residency from Personal sheet
+                if should_update(existing_client.get('country_of_residency'), get_val(row, 'country_of_residency')):
+                    update_data['country_of_residency'] = get_val(row, 'country_of_residency')
+                
+                # Passport type from Personal sheet
+                if should_update(existing_client.get('passport_type'), get_val(row, 'passport_type')):
+                    update_data['passport_type'] = get_val(row, 'passport_type')
+                
+                # Nominee details from sheet 6
                 if should_update(existing_client.get('nominee_name'), get_val(nominee_row, 'nominee_name')):
                     update_data['nominee_name'] = get_val(nominee_row, 'nominee_name')
                 if should_update(existing_client.get('nominee_dob'), get_val(nominee_row, 'nominee_dob')):
