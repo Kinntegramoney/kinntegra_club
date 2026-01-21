@@ -4019,8 +4019,8 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
           </div>
           <div className="flex items-center gap-2">
             {report && (
-              <Button variant="outline" size="sm" onClick={exportToExcel}>
-                <Download className="h-4 w-4 mr-2" /> Export Excel
+              <Button variant="outline" size="sm" onClick={exportToPDF}>
+                <Download className="h-4 w-4 mr-2" /> Export PDF
               </Button>
             )}
             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
