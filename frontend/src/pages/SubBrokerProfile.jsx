@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
-import { User, Mail, Phone, Key, Lock, Save, Eye, EyeOff } from "lucide-react";
+import { User, Mail, Phone, Key, Lock, Save, Eye, EyeOff, MapPin, Building, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -22,6 +23,7 @@ export default function SubBrokerProfile() {
   const [editingPhone, setEditingPhone] = useState(false);
   const [editingPassword, setEditingPassword] = useState(false);
   const [editingPin, setEditingPin] = useState(false);
+  const [editingAddress, setEditingAddress] = useState(false);
   
   // Form values
   const [newEmail, setNewEmail] = useState("");
@@ -32,6 +34,14 @@ export default function SubBrokerProfile() {
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  
+  // Address fields
+  const [addressLine1, setAddressLine1] = useState("");
+  const [addressLine2, setAddressLine2] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [country, setCountry] = useState("");
   
   // Visibility toggles
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
