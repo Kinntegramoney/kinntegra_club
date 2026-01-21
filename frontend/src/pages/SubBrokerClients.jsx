@@ -204,14 +204,25 @@ export default function SubBrokerClients() {
                 Manage your linked clients ({filteredClients.length} total)
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {/* Search Bar - Inline */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search clients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-[200px]"
+                  data-testid="client-search-input"
+                />
+              </div>
               <Button
                 variant="outline"
                 onClick={fetchClients}
                 data-testid="refresh-clients-btn"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
+                <RefreshCw className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
@@ -230,19 +241,6 @@ export default function SubBrokerClients() {
                 Add Client
               </Button>
             </div>
-          </div>
-          
-          {/* Search */}
-          <div className="mt-4 relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search by name, PAN, email, or phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-              data-testid="client-search-input"
-            />
           </div>
         </div>
 
