@@ -8742,7 +8742,35 @@ async def reset_database(secret_key: str = None):
         result = await db.activity_logs.delete_many({})
         deleted_counts['activity_logs'] = result.deleted_count
         
-        # 21. Clean uploaded files from disk (except templates)
+        # 21. Delete scheme master
+        result = await db.scheme_master.delete_many({})
+        deleted_counts['scheme_master'] = result.deleted_count
+        
+        # 22. Delete password resets
+        result = await db.password_resets.delete_many({})
+        deleted_counts['password_resets'] = result.deleted_count
+        
+        # 23. Delete kinntegraa submissions
+        result = await db.kinntegraa_submissions.delete_many({})
+        deleted_counts['kinntegraa_submissions'] = result.deleted_count
+        
+        # 24. Delete broker settings
+        result = await db.broker_settings.delete_many({})
+        deleted_counts['broker_settings'] = result.deleted_count
+        
+        # 25. Delete real estate investments
+        result = await db.real_estate_investments.delete_many({})
+        deleted_counts['real_estate_investments'] = result.deleted_count
+        
+        # 26. Delete holdings
+        result = await db.holdings.delete_many({})
+        deleted_counts['holdings'] = result.deleted_count
+        
+        # 27. Delete currency projections
+        result = await db.currency_projections.delete_many({})
+        deleted_counts['currency_projections'] = result.deleted_count
+        
+        # 28. Clean uploaded files from disk (except templates)
         upload_dir = os.path.join(os.path.dirname(__file__), 'uploads')
         files_deleted = 0
         if os.path.exists(upload_dir):
