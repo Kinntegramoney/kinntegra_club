@@ -1667,6 +1667,61 @@ export default function RealEstateDetails() {
         </div>
       </div>
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <Trash2 className="h-6 w-6 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800">Delete Property</h2>
+            </div>
+            
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to delete <strong>{opp?.building_name}</strong>?
+            </p>
+            
+            {opp?.investors?.length > 0 && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
+                <p className="text-amber-800 text-sm">
+                  <strong>Warning:</strong> This property has {opp.investors.length} investor(s). 
+                  Deleting this will remove all investor records associated with it.
+                </p>
+              </div>
+            )}
+            
+            <p className="text-sm text-gray-500 mb-4">
+              This action cannot be undone.
+            </p>
+            
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                onClick={handleDeleteOpportunity}
+                disabled={deleting}
+                data-testid="confirm-delete-btn"
+              >
+                {deleting ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                Delete Property
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Allocate Investor Modal */}
       {showAllocateModal && (
         <AllocateInvestorModal
