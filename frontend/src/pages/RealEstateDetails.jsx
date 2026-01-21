@@ -1009,107 +1009,413 @@ export default function RealEstateDetails() {
                       );
                     })}
                     
-                    {/* DLD Fee Row - After first payment */}
-                    {(opp.dld_fee > 0 || opp.dld_fee_percentage > 0) && (
-                      <tr className="border-b border-gray-100 hover:bg-orange-50/50 bg-orange-50/30">
-                        <td className="py-4 px-4 sticky left-0 bg-orange-50/30 z-10">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-orange-200 text-orange-700">
-                              D
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-800">DLD Fee ({opp.dld_fee_percentage || 4}%)</p>
-                              <p className="text-xs text-gray-500">Dubai Land Department</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-3 text-right">
-                          <p className="font-bold text-orange-700">AED {formatCurrency(opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100))}</p>
-                        </td>
-                        <td className="py-4 px-3">
-                          <span className="text-xs text-gray-500">-</span>
-                        </td>
-                        {/* Investor columns for DLD */}
-                        {opp.investors?.map((investor, invIdx) => {
-                          const investorShare = parseFloat(investor.share_percentage) || (100 / opp.investors.length);
-                          const dldAmount = (opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100)) * (investorShare / 100);
-                          const dldPayment = opp.dld_admin_payments?.find(p => p.investor_id === investor.client_id && p.type === 'dld');
-                          return (
-                            <td key={invIdx} className="py-3 px-2 text-center">
-                              <div className="text-xs font-medium text-orange-700 mb-1">AED {formatCurrency(dldAmount)}</div>
-                              <div className="flex justify-center gap-1">
-                                {dldPayment?.swift_copy ? (
-                                  <span className="w-5 h-5 rounded bg-green-100 text-green-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
-                                ) : (
-                                  <button 
-                                    className="w-5 h-5 rounded bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center"
-                                    onClick={() => {
-                                      setSelectedDldAdminInvestor(investor);
-                                      setDldAdminUploadType('dld');
-                                      setShowDldAdminModal(true);
-                                    }}
-                                    title="Upload DLD SWIFT"
-                                  >
-                                    <Upload className="h-3 w-3" />
-                                  </button>
-                                )}
+                    {/* DLD Fee Row - After first payment (between milestone 1 and 2) */}
+                    {(opp.dld_fee > 0 || opp.dld_fee_percentage > 0) && (() => {
+                      const dldFeeAmount = opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100);
+                      const dldPayments = opp.dld_admin_payments?.filter(p => p.type === 'dld') || [];
+                      const totalInvestors = opp.investors?.length || 0;
+                      const invoicesSent = dldPayments.filter(p => p.invoice_url).length;
+                      const verifiedCount = dldPayments.filter(p => p.swift_verified).length;
+                      const receiptsUploaded = dldPayments.filter(p => p.receipt_url).length;
+                      const allVerified = totalInvestors > 0 && verifiedCount === totalInvestors;
+                      const pendingCount = dldPayments.filter(p => p.swift_copy && !p.swift_verified).length;
+                      
+                      return (
+                        <tr className={`border-b border-gray-100 hover:bg-orange-50/30 ${allVerified ? 'bg-green-50/50' : 'bg-orange-50/20'}`}>
+                          {/* Milestone Info */}
+                          <td className="py-4 px-4 sticky left-0 bg-orange-50/20 z-10">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                allVerified ? 'bg-green-500 text-white' : 
+                                pendingCount > 0 ? 'bg-amber-500 text-white' : 
+                                'bg-orange-200 text-orange-700'
+                              }`}>
+                                {allVerified ? <Check className="h-4 w-4" /> : 'D'}
                               </div>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    )}
+                              <div>
+                                <p className="font-medium text-gray-800">DLD Fee ({opp.dld_fee_percentage || 4}%)</p>
+                                <p className="text-xs text-gray-500">Dubai Land Department</p>
+                              </div>
+                            </div>
+                          </td>
+                          
+                          {/* Amount */}
+                          <td className="py-4 px-3 text-right">
+                            <p className="font-bold text-orange-700">AED {formatCurrency(dldFeeAmount)}</p>
+                          </td>
+                          
+                          {/* Progress Bars */}
+                          <td className="py-4 px-3">
+                            {isFullyAllocated && totalInvestors > 0 ? (
+                              <div className="flex items-center gap-2 justify-center">
+                                <div className="flex flex-col items-center" title="Invoices">
+                                  <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                                    <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(invoicesSent / totalInvestors) * 100}%` }} />
+                                  </div>
+                                  <span className="text-[10px] text-blue-600">{invoicesSent}/{totalInvestors}</span>
+                                </div>
+                                <div className="flex flex-col items-center" title="Payments">
+                                  <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                                    <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${(verifiedCount / totalInvestors) * 100}%` }} />
+                                  </div>
+                                  <span className="text-[10px] text-green-600">{verifiedCount}/{totalInvestors}</span>
+                                </div>
+                                <div className="flex flex-col items-center" title="Receipts">
+                                  <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                                    <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(receiptsUploaded / totalInvestors) * 100}%` }} />
+                                  </div>
+                                  <span className="text-[10px] text-purple-600">{receiptsUploaded}/{totalInvestors}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">-</span>
+                            )}
+                          </td>
+                          
+                          {/* Status */}
+                          <td className="py-4 px-3 text-center">
+                            {!isFullyAllocated ? (
+                              <Badge className="bg-blue-100 text-blue-700">Open</Badge>
+                            ) : allVerified ? (
+                              <Badge className="bg-green-100 text-green-700"><Check className="h-3 w-3 mr-1" />Complete</Badge>
+                            ) : verifiedCount > 0 ? (
+                              <Badge className="bg-blue-100 text-blue-700">Partial</Badge>
+                            ) : pendingCount > 0 ? (
+                              <Badge className="bg-amber-100 text-amber-700">Pending</Badge>
+                            ) : (
+                              <Badge className="bg-gray-100 text-gray-600">Awaiting</Badge>
+                            )}
+                          </td>
+                          
+                          {/* Investor Document Status Cells */}
+                          {isFullyAllocated && opp.investors?.map((investor, invIdx) => {
+                            const dldPayment = dldPayments.find(p => p.investor_id === investor.client_id);
+                            const hasInvoice = !!dldPayment?.invoice_url;
+                            const hasSwift = !!dldPayment?.swift_copy;
+                            const hasReceipt = !!dldPayment?.receipt_url;
+                            const isVerified = dldPayment?.swift_verified;
+                            const isPending = hasSwift && !isVerified;
+                            const receiptApproved = dldPayment?.receipt_approved;
+                            const investorShare = investor.share_percentage || (100 / totalInvestors);
+                            const investorAmount = dldFeeAmount * (investorShare / 100);
+                            
+                            const canUploadSwift = hasInvoice && !hasSwift;
+                            const canUploadReceipt = hasSwift && isVerified && !hasReceipt;
+                            
+                            return (
+                              <td key={invIdx} className="py-2 px-2 text-center border-l border-gray-100">
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <div className="flex items-start gap-1">
+                                    {/* 1. Invoice Column */}
+                                    <div className="flex flex-col items-center w-8">
+                                      {hasInvoice ? (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
+                                          <button className="text-[8px] text-blue-600 hover:text-blue-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${dldPayment.invoice_url}`, '_blank')}>View</button>
+                                        </>
+                                      ) : user?.role === 'broker' ? (
+                                        <>
+                                          <button className="w-6 h-6 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center" onClick={() => { setSelectedDldAdminInvestor({ ...investor, amount: investorAmount, feeType: 'dld' }); setDldAdminUploadType('invoice'); setShowDldAdminModal(true); }} title="Upload Invoice"><Upload className="h-3 w-3" /></button>
+                                          <span className="text-[8px] text-gray-400">Invoice</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-3 w-3" /></span>
+                                          <span className="text-[8px] text-gray-400">Pending</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    
+                                    {/* 2. SWIFT Column */}
+                                    <div className="flex flex-col items-center w-8">
+                                      {hasSwift ? (
+                                        <>
+                                          <span className={`w-6 h-6 rounded flex items-center justify-center ${isVerified ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                                            {isVerified ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                          </span>
+                                          <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${dldPayment.swift_copy}`, '_blank')}>View</button>
+                                          {!isVerified && user?.role === 'broker' && (
+                                            <button 
+                                              className="text-[8px] text-green-600 hover:text-green-800 font-medium"
+                                              onClick={async () => {
+                                                try {
+                                                  const token = localStorage.getItem("token");
+                                                  await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/dld-admin/${investor.client_id}/verify-swift?fee_type=dld`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                                  fetchData();
+                                                  toast.success("DLD SWIFT verified!");
+                                                } catch (error) {
+                                                  toast.error("Failed to verify");
+                                                }
+                                              }}
+                                            >
+                                              Verify
+                                            </button>
+                                          )}
+                                        </>
+                                      ) : canUploadSwift ? (
+                                        <>
+                                          <button className="w-6 h-6 rounded bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center" onClick={() => { setSelectedDldAdminInvestor({ ...investor, amount: investorAmount, feeType: 'dld' }); setDldAdminUploadType('swift'); setShowDldAdminModal(true); }} title="Upload SWIFT"><Upload className="h-3 w-3" /></button>
+                                          <span className="text-[8px] text-gray-400">Upload</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-3 w-3" /></span>
+                                          <span className="text-[8px] text-gray-400">Pending</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    
+                                    {/* 3. Receipt Column */}
+                                    <div className="flex flex-col items-center w-8">
+                                      {hasReceipt ? (
+                                        <>
+                                          <span className={`w-6 h-6 rounded flex items-center justify-center ${receiptApproved ? 'bg-purple-100 text-purple-600' : 'bg-amber-100 text-amber-600'}`}>
+                                            {receiptApproved ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                          </span>
+                                          <button className="text-[8px] text-purple-600 hover:text-purple-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${dldPayment.receipt_url}`, '_blank')}>View</button>
+                                          {!receiptApproved && user?.role === 'broker' && (
+                                            <button 
+                                              className="text-[8px] text-green-600 hover:text-green-800 font-medium"
+                                              onClick={async () => {
+                                                try {
+                                                  const token = localStorage.getItem("token");
+                                                  await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/dld-admin/${investor.client_id}/approve-receipt?fee_type=dld`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                                  fetchData();
+                                                  toast.success("DLD Receipt approved!");
+                                                } catch (error) {
+                                                  toast.error("Failed to approve");
+                                                }
+                                              }}
+                                            >
+                                              Approve
+                                            </button>
+                                          )}
+                                        </>
+                                      ) : canUploadReceipt ? (
+                                        <>
+                                          <button className="w-6 h-6 rounded bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center" onClick={() => { setSelectedDldAdminInvestor({ ...investor, amount: investorAmount, feeType: 'dld' }); setDldAdminUploadType('receipt'); setShowDldAdminModal(true); }} title="Upload Receipt"><Upload className="h-3 w-3" /></button>
+                                          <span className="text-[8px] text-gray-400">Upload</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-3 w-3" /></span>
+                                          <span className="text-[8px] text-gray-400">Pending</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className="text-[9px] font-medium text-orange-600">AED {formatCurrency(investorAmount)}</span>
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })()}
                     
-                    {/* Admin Fee Row */}
-                    {opp.admin_fee > 0 && (
-                      <tr className="border-b border-gray-100 hover:bg-green-50/50 bg-green-50/30">
-                        <td className="py-4 px-4 sticky left-0 bg-green-50/30 z-10">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-green-200 text-green-700">
-                              A
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-800">Admin Fee</p>
-                              <p className="text-xs text-gray-500">Administration Charges</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-3 text-right">
-                          <p className="font-bold text-green-700">AED {formatCurrency(opp.admin_fee)}</p>
-                        </td>
-                        <td className="py-4 px-3">
-                          <span className="text-xs text-gray-500">-</span>
-                        </td>
-                        {/* Investor columns for Admin */}
-                        {opp.investors?.map((investor, invIdx) => {
-                          const investorShare = parseFloat(investor.share_percentage) || (100 / opp.investors.length);
-                          const adminAmount = opp.admin_fee * (investorShare / 100);
-                          const adminPayment = opp.dld_admin_payments?.find(p => p.investor_id === investor.client_id && p.type === 'admin');
-                          return (
-                            <td key={invIdx} className="py-3 px-2 text-center">
-                              <div className="text-xs font-medium text-green-700 mb-1">AED {formatCurrency(adminAmount)}</div>
-                              <div className="flex justify-center gap-1">
-                                {adminPayment?.swift_copy ? (
-                                  <span className="w-5 h-5 rounded bg-green-100 text-green-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
-                                ) : (
-                                  <button 
-                                    className="w-5 h-5 rounded bg-green-500 hover:bg-green-600 text-white flex items-center justify-center"
-                                    onClick={() => {
-                                      setSelectedDldAdminInvestor(investor);
-                                      setDldAdminUploadType('admin');
-                                      setShowDldAdminModal(true);
-                                    }}
-                                    title="Upload Admin SWIFT"
-                                  >
-                                    <Upload className="h-3 w-3" />
-                                  </button>
-                                )}
+                    {/* Admin Fee Row - After DLD (between DLD and milestone 2) */}
+                    {opp.admin_fee > 0 && (() => {
+                      const adminFeeAmount = opp.admin_fee;
+                      const adminPayments = opp.dld_admin_payments?.filter(p => p.type === 'admin') || [];
+                      const totalInvestors = opp.investors?.length || 0;
+                      const invoicesSent = adminPayments.filter(p => p.invoice_url).length;
+                      const verifiedCount = adminPayments.filter(p => p.swift_verified).length;
+                      const receiptsUploaded = adminPayments.filter(p => p.receipt_url).length;
+                      const allVerified = totalInvestors > 0 && verifiedCount === totalInvestors;
+                      const pendingCount = adminPayments.filter(p => p.swift_copy && !p.swift_verified).length;
+                      
+                      return (
+                        <tr className={`border-b border-gray-100 hover:bg-green-50/30 ${allVerified ? 'bg-green-50/50' : 'bg-green-50/20'}`}>
+                          {/* Milestone Info */}
+                          <td className="py-4 px-4 sticky left-0 bg-green-50/20 z-10">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                allVerified ? 'bg-green-500 text-white' : 
+                                pendingCount > 0 ? 'bg-amber-500 text-white' : 
+                                'bg-green-200 text-green-700'
+                              }`}>
+                                {allVerified ? <Check className="h-4 w-4" /> : 'A'}
                               </div>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    )}
+                              <div>
+                                <p className="font-medium text-gray-800">Admin Fee</p>
+                                <p className="text-xs text-gray-500">Administration Charges</p>
+                              </div>
+                            </div>
+                          </td>
+                          
+                          {/* Amount */}
+                          <td className="py-4 px-3 text-right">
+                            <p className="font-bold text-green-700">AED {formatCurrency(adminFeeAmount)}</p>
+                          </td>
+                          
+                          {/* Progress Bars */}
+                          <td className="py-4 px-3">
+                            {isFullyAllocated && totalInvestors > 0 ? (
+                              <div className="flex items-center gap-2 justify-center">
+                                <div className="flex flex-col items-center" title="Invoices">
+                                  <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                                    <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(invoicesSent / totalInvestors) * 100}%` }} />
+                                  </div>
+                                  <span className="text-[10px] text-blue-600">{invoicesSent}/{totalInvestors}</span>
+                                </div>
+                                <div className="flex flex-col items-center" title="Payments">
+                                  <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                                    <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${(verifiedCount / totalInvestors) * 100}%` }} />
+                                  </div>
+                                  <span className="text-[10px] text-green-600">{verifiedCount}/{totalInvestors}</span>
+                                </div>
+                                <div className="flex flex-col items-center" title="Receipts">
+                                  <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                                    <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(receiptsUploaded / totalInvestors) * 100}%` }} />
+                                  </div>
+                                  <span className="text-[10px] text-purple-600">{receiptsUploaded}/{totalInvestors}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">-</span>
+                            )}
+                          </td>
+                          
+                          {/* Status */}
+                          <td className="py-4 px-3 text-center">
+                            {!isFullyAllocated ? (
+                              <Badge className="bg-blue-100 text-blue-700">Open</Badge>
+                            ) : allVerified ? (
+                              <Badge className="bg-green-100 text-green-700"><Check className="h-3 w-3 mr-1" />Complete</Badge>
+                            ) : verifiedCount > 0 ? (
+                              <Badge className="bg-blue-100 text-blue-700">Partial</Badge>
+                            ) : pendingCount > 0 ? (
+                              <Badge className="bg-amber-100 text-amber-700">Pending</Badge>
+                            ) : (
+                              <Badge className="bg-gray-100 text-gray-600">Awaiting</Badge>
+                            )}
+                          </td>
+                          
+                          {/* Investor Document Status Cells */}
+                          {isFullyAllocated && opp.investors?.map((investor, invIdx) => {
+                            const adminPayment = adminPayments.find(p => p.investor_id === investor.client_id);
+                            const hasInvoice = !!adminPayment?.invoice_url;
+                            const hasSwift = !!adminPayment?.swift_copy;
+                            const hasReceipt = !!adminPayment?.receipt_url;
+                            const isVerified = adminPayment?.swift_verified;
+                            const isPending = hasSwift && !isVerified;
+                            const receiptApproved = adminPayment?.receipt_approved;
+                            const investorShare = investor.share_percentage || (100 / totalInvestors);
+                            const investorAmount = adminFeeAmount * (investorShare / 100);
+                            
+                            const canUploadSwift = hasInvoice && !hasSwift;
+                            const canUploadReceipt = hasSwift && isVerified && !hasReceipt;
+                            
+                            return (
+                              <td key={invIdx} className="py-2 px-2 text-center border-l border-gray-100">
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <div className="flex items-start gap-1">
+                                    {/* 1. Invoice Column */}
+                                    <div className="flex flex-col items-center w-8">
+                                      {hasInvoice ? (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
+                                          <button className="text-[8px] text-blue-600 hover:text-blue-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${adminPayment.invoice_url}`, '_blank')}>View</button>
+                                        </>
+                                      ) : user?.role === 'broker' ? (
+                                        <>
+                                          <button className="w-6 h-6 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center" onClick={() => { setSelectedDldAdminInvestor({ ...investor, amount: investorAmount, feeType: 'admin' }); setDldAdminUploadType('invoice'); setShowDldAdminModal(true); }} title="Upload Invoice"><Upload className="h-3 w-3" /></button>
+                                          <span className="text-[8px] text-gray-400">Invoice</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-3 w-3" /></span>
+                                          <span className="text-[8px] text-gray-400">Pending</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    
+                                    {/* 2. SWIFT Column */}
+                                    <div className="flex flex-col items-center w-8">
+                                      {hasSwift ? (
+                                        <>
+                                          <span className={`w-6 h-6 rounded flex items-center justify-center ${isVerified ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                                            {isVerified ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                          </span>
+                                          <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${adminPayment.swift_copy}`, '_blank')}>View</button>
+                                          {!isVerified && user?.role === 'broker' && (
+                                            <button 
+                                              className="text-[8px] text-green-600 hover:text-green-800 font-medium"
+                                              onClick={async () => {
+                                                try {
+                                                  const token = localStorage.getItem("token");
+                                                  await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/dld-admin/${investor.client_id}/verify-swift?fee_type=admin`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                                  fetchData();
+                                                  toast.success("Admin SWIFT verified!");
+                                                } catch (error) {
+                                                  toast.error("Failed to verify");
+                                                }
+                                              }}
+                                            >
+                                              Verify
+                                            </button>
+                                          )}
+                                        </>
+                                      ) : canUploadSwift ? (
+                                        <>
+                                          <button className="w-6 h-6 rounded bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center" onClick={() => { setSelectedDldAdminInvestor({ ...investor, amount: investorAmount, feeType: 'admin' }); setDldAdminUploadType('swift'); setShowDldAdminModal(true); }} title="Upload SWIFT"><Upload className="h-3 w-3" /></button>
+                                          <span className="text-[8px] text-gray-400">Upload</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-3 w-3" /></span>
+                                          <span className="text-[8px] text-gray-400">Pending</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    
+                                    {/* 3. Receipt Column */}
+                                    <div className="flex flex-col items-center w-8">
+                                      {hasReceipt ? (
+                                        <>
+                                          <span className={`w-6 h-6 rounded flex items-center justify-center ${receiptApproved ? 'bg-purple-100 text-purple-600' : 'bg-amber-100 text-amber-600'}`}>
+                                            {receiptApproved ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                          </span>
+                                          <button className="text-[8px] text-purple-600 hover:text-purple-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${adminPayment.receipt_url}`, '_blank')}>View</button>
+                                          {!receiptApproved && user?.role === 'broker' && (
+                                            <button 
+                                              className="text-[8px] text-green-600 hover:text-green-800 font-medium"
+                                              onClick={async () => {
+                                                try {
+                                                  const token = localStorage.getItem("token");
+                                                  await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/dld-admin/${investor.client_id}/approve-receipt?fee_type=admin`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                                  fetchData();
+                                                  toast.success("Admin Receipt approved!");
+                                                } catch (error) {
+                                                  toast.error("Failed to approve");
+                                                }
+                                              }}
+                                            >
+                                              Approve
+                                            </button>
+                                          )}
+                                        </>
+                                      ) : canUploadReceipt ? (
+                                        <>
+                                          <button className="w-6 h-6 rounded bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center" onClick={() => { setSelectedDldAdminInvestor({ ...investor, amount: investorAmount, feeType: 'admin' }); setDldAdminUploadType('receipt'); setShowDldAdminModal(true); }} title="Upload Receipt"><Upload className="h-3 w-3" /></button>
+                                          <span className="text-[8px] text-gray-400">Upload</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="w-6 h-6 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-3 w-3" /></span>
+                                          <span className="text-[8px] text-gray-400">Pending</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className="text-[9px] font-medium text-green-600">AED {formatCurrency(investorAmount)}</span>
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>
