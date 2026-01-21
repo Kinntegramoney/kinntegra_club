@@ -6284,6 +6284,7 @@ class ClientCreate(BaseModel):
     
     # For UAE residents
     emirates_id: Optional[str] = None  # Required if country_of_residency == "United Arab Emirates"
+    emirates_id_expiry: Optional[str] = None  # Expiry date for Emirates ID
     
     # Passport Details (Required for Real Estate opportunity)
     passport_valid_from: Optional[str] = None
