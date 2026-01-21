@@ -1244,6 +1244,7 @@ export default function RealEstateDetails() {
                 <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-blue-500 text-white flex items-center justify-center"><Upload className="h-2 w-2" /></span>Upload</span>
                 <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-amber-100 text-amber-600 flex items-center justify-center"><Clock className="h-2 w-2" /></span>Pending Approval</span>
                 <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-2 w-2" /></span>Pending</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-amber-200 text-amber-700 flex items-center justify-center text-[10px] font-bold">$</span>DLD + Admin Fee</span>
               </div>
             </div>
           )}
