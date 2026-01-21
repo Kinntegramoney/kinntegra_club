@@ -4128,7 +4128,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
               <div>
                 <h3 className="font-medium text-gray-800 mb-3">Cashflow Comparison</h3>
                 <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-xs table-fixed">
                     {/* Grouped Header Row 1 */}
                     <thead>
                       <tr className="bg-gray-800 text-white">
@@ -4140,16 +4140,16 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                       </tr>
                       {/* Sub Header Row */}
                       <tr className="bg-gray-100 text-gray-700">
-                        <th className="p-2 text-left font-medium w-[10%]">Date</th>
-                        <th className="p-2 text-left font-medium w-[15%]">Description</th>
-                        <th className="p-2 text-right font-medium border-r border-gray-300 w-[10%]">AED</th>
-                        <th className="p-2 text-right font-medium text-indigo-700 w-[8%]">Rate</th>
-                        <th className="p-2 text-right font-medium text-indigo-700 border-r border-gray-300 w-[10%]">{report.investor.currency}</th>
-                        <th className="p-2 text-right font-medium text-emerald-700 w-[8%]">Rate</th>
-                        <th className="p-2 text-right font-medium text-emerald-700 border-r border-gray-300 w-[10%]">{report.investor.currency}</th>
-                        <th className="p-2 text-right font-medium text-purple-700 w-[8%]">Rate</th>
-                        <th className="p-2 text-right font-medium text-purple-700 border-r border-gray-300 w-[10%]">{report.investor.currency}</th>
-                        <th className="p-2 text-center font-medium w-[8%]">-</th>
+                        <th className="p-2 text-left font-medium" style={{width: '100px'}}>Date</th>
+                        <th className="p-2 text-left font-medium" style={{width: '140px'}}>Description</th>
+                        <th className="p-2 text-right font-medium border-r border-gray-300" style={{width: '90px'}}>AED</th>
+                        <th className="p-2 text-right font-medium text-indigo-700" style={{width: '60px'}}>Rate</th>
+                        <th className="p-2 text-right font-medium text-indigo-700 border-r border-gray-300" style={{width: '90px'}}>{report.investor.currency}</th>
+                        <th className="p-2 text-right font-medium text-emerald-700" style={{width: '60px'}}>Rate</th>
+                        <th className="p-2 text-right font-medium text-emerald-700 border-r border-gray-300" style={{width: '90px'}}>{report.investor.currency}</th>
+                        <th className="p-2 text-right font-medium text-purple-700" style={{width: '60px'}}>Rate</th>
+                        <th className="p-2 text-right font-medium text-purple-700 border-r border-gray-300" style={{width: '90px'}}>{report.investor.currency}</th>
+                        <th className="p-2 text-center font-medium" style={{width: '70px'}}>-</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4158,15 +4158,15 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                         const currentAmount = currentRate ? Math.abs(cf.aed_amount) * currentRate : null;
                         return (
                           <tr key={idx} className={`border-t ${cf.type === 'inflow' ? 'bg-green-50' : 'hover:bg-gray-50'}`}>
-                            <td className="p-2 text-gray-600">{cf.date || '-'}</td>
-                            <td className="p-2 font-medium text-gray-800">{cf.description}</td>
-                            <td className="p-2 text-right font-mono border-r border-gray-200">{cf.type === 'outflow' ? '-' : '+'}{formatCurrency(cf.aed_amount)}</td>
-                            <td className="p-2 text-right text-indigo-600 font-mono">{cf.projected_rate.toFixed(2)}</td>
-                            <td className="p-2 text-right text-indigo-700 font-mono font-medium border-r border-gray-200">{formatCurrency(cf.home_currency_amount)}</td>
-                            <td className="p-2 text-right text-emerald-600 font-mono">{actualCf?.actual_rate?.toFixed(2) || '-'}</td>
-                            <td className="p-2 text-right text-emerald-700 font-mono font-medium border-r border-gray-200">{actualCf ? formatCurrency(actualCf.home_currency_amount) : '-'}</td>
-                            <td className="p-2 text-right text-purple-600 font-mono">{currentRate?.toFixed(2) || '-'}</td>
-                            <td className="p-2 text-right text-purple-700 font-mono font-medium border-r border-gray-200">{currentAmount ? formatCurrency(currentAmount) : '-'}</td>
+                            <td className="p-2 text-gray-600 whitespace-nowrap">{cf.date || '-'}</td>
+                            <td className="p-2 font-medium text-gray-800 whitespace-nowrap">{cf.description}</td>
+                            <td className="p-2 text-right font-mono border-r border-gray-200 whitespace-nowrap">{cf.type === 'outflow' ? '-' : '+'}{formatCurrency(cf.aed_amount)}</td>
+                            <td className="p-2 text-right text-indigo-600 font-mono whitespace-nowrap">{cf.projected_rate.toFixed(2)}</td>
+                            <td className="p-2 text-right text-indigo-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{formatCurrency(cf.home_currency_amount)}</td>
+                            <td className="p-2 text-right text-emerald-600 font-mono whitespace-nowrap">{actualCf?.actual_rate?.toFixed(2) || '-'}</td>
+                            <td className="p-2 text-right text-emerald-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{actualCf ? formatCurrency(actualCf.home_currency_amount) : '-'}</td>
+                            <td className="p-2 text-right text-purple-600 font-mono whitespace-nowrap">{currentRate?.toFixed(2) || '-'}</td>
+                            <td className="p-2 text-right text-purple-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{currentAmount ? formatCurrency(currentAmount) : '-'}</td>
                             <td className="p-2 text-center">
                               {actualCf?.is_paid ? (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700">Paid</span>
