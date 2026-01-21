@@ -22,14 +22,14 @@ A wealth management platform for brokers to manage clients, bonds, real estate i
 
 ### Dashboard (Updated: Jan 2026)
 - **Broker Dashboard**: 
-  - Total Clients (Venn diagram style)
+  - Total Clients (Venn diagram style with soft indigo/pink/purple colors)
   - Sub-Brokers count
   - Opportunities (Bonds & Real Estate)
   - Bond AUM (INR)
   - Real Estate AUM (AED)
-  - AUM by Sub-Broker (showing both Bonds INR and RE AED with INR conversion)
   - Forex rate display (AED to INR from live API)
-  - Quick Actions
+  - Quick Actions (card-style grid: Opportunities, Clients, Sub-Brokers, Reset DB)
+  - REMOVED: AUM by Sub-Broker section (per user request Jan 21, 2026)
   
 - **Sub-Broker Dashboard**:
   - Total AUM under management
