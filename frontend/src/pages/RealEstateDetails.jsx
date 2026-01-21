@@ -532,6 +532,7 @@ export default function RealEstateDetails() {
                   {opp.status === 'available' && <Badge className="bg-green-100 text-green-700">Available</Badge>}
                   {opp.status === 'partially_invested' && <Badge className="bg-amber-100 text-amber-700">Partially Invested</Badge>}
                   {opp.status === 'fully_invested' && <Badge className="bg-blue-100 text-blue-700">Fully Invested</Badge>}
+                  {(opp.status === 'closed' || opp.status === 'sold') && <Badge className="bg-emerald-100 text-emerald-700">Closed - Sold</Badge>}
                 </div>
                 <p className="text-gray-500 mt-1">
                   Unit {opp.unit_no} • {opp.unit_type} • Floor {opp.floor}
