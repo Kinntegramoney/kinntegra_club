@@ -738,7 +738,69 @@ export default function RealEstateDetails() {
             </div>
           </div>
 
-          {/* Unified Payments Section */}
+          {/* Sale Returns Section - Only shown for closed/sold properties */}
+          {(opp.status === 'closed' || opp.status === 'sold') && opp.sale_record && (
+            <div className="bg-white rounded-xl border border-emerald-200 p-6" data-testid="sale-returns-section">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-emerald-600" />
+                Sale Returns
+                <Badge className="bg-emerald-100 text-emerald-700 ml-2">Closed</Badge>
+              </h2>
+              
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="bg-gray-50 rounded-lg p-4 border">
+                  <p className="text-xs text-gray-500 mb-1">Sale Date</p>
+                  <p className="font-semibold text-gray-800">{formatDate(opp.sale_record.sale_date)}</p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                  <p className="text-xs text-blue-600 mb-1">Sale Price</p>
+                  <p className="font-bold text-blue-800 text-lg">AED {formatCurrency(opp.sale_record.sale_price)}</p>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-4 border border-orange-100">
+                  <p className="text-xs text-orange-600 mb-1">Selling Fee ({opp.sale_record.selling_fee_percentage || 0}%)</p>
+                  <p className="font-semibold text-orange-800">AED {formatCurrency(opp.sale_record.brokerage_fee)}</p>
+                </div>
+                <div className="bg-teal-50 rounded-lg p-4 border border-teal-100">
+                  <p className="text-xs text-teal-600 mb-1">Net Proceeds</p>
+                  <p className="font-bold text-teal-800 text-lg">AED {formatCurrency(opp.sale_record.net_proceeds)}</p>
+                </div>
+              </div>
+              
+              {/* Returns Summary */}
+              <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-5 border border-emerald-200">
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total Invested</p>
+                    <p className="text-xl font-bold text-gray-800">AED {formatCurrency(opp.sale_record.total_invested || (opp.unit_price + opp.dld_fee + opp.admin_fee))}</p>
+                  </div>
+                  <div className="text-center border-x border-emerald-200 px-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Net Profit</p>
+                    <p className={`text-2xl font-bold ${(opp.sale_record.net_profit || opp.sale_record.profit_loss || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      AED {formatCurrency(Math.abs(opp.sale_record.net_profit || opp.sale_record.profit_loss || 0))}
+                      {(opp.sale_record.net_profit || opp.sale_record.profit_loss || 0) < 0 && ' (Loss)'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(opp.sale_record.profit_percentage || 0).toFixed(2)}% return
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-emerald-600 uppercase tracking-wider mb-1">XIRR</p>
+                    <p className={`text-3xl font-bold ${(opp.sale_record.xirr || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {opp.sale_record.xirr ? `${opp.sale_record.xirr.toFixed(2)}%` : 'N/A'}
+                    </p>
+                    <p className="text-xs text-emerald-500">Annualized return</p>
+                  </div>
+                </div>
+              </div>
+              
+              {opp.sale_record.notes && (
+                <div className="mt-4 bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500">Sale Notes</p>
+                  <p className="text-sm text-gray-700">{opp.sale_record.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
           {opp.payment_schedule && opp.payment_schedule.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               {/* Header - matches other sections */}
