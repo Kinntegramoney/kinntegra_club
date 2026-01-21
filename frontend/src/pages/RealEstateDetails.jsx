@@ -4652,3 +4652,193 @@ function DldAdminUploadModal({ opportunity, investor, uploadType, amounts, onClo
     </div>
   );
 }
+
+// Sell Unit Modal - For closing fully funded opportunities
+function SellUnitModal({ opportunity, onClose, onSuccess }) {
+  const [saleDate, setSaleDate] = useState('');
+  const [salePrice, setSalePrice] = useState('');
+  const [brokerageFee, setBrokerageFee] = useState('');
+  const [sellingFeePercentage, setSellingFeePercentage] = useState('2');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const API = process.env.REACT_APP_BACKEND_URL;
+
+  const calculatedBrokerage = salePrice ? (parseFloat(salePrice) * parseFloat(sellingFeePercentage || 0) / 100) : 0;
+  const netProceeds = salePrice ? (parseFloat(salePrice) - calculatedBrokerage) : 0;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!saleDate || !salePrice) {
+      toast.error("Please fill in sale date and sale price");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `${API}/api/real-estate-opportunities/${opportunity.id}/sell`,
+        {
+          sale_date: saleDate,
+          sale_price: parseFloat(salePrice),
+          brokerage_fee: parseFloat(brokerageFee || calculatedBrokerage),
+          selling_fee_percentage: parseFloat(sellingFeePercentage || 2),
+          net_proceeds: netProceeds,
+          notes: notes
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success("Unit sold successfully! Status changed to Closed.");
+      onSuccess();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to record sale");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-emerald-600" />
+              Sell Unit
+            </h2>
+            <p className="text-sm text-gray-500">{opportunity?.building_name} - Unit {opportunity?.unit_no}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Property Summary */}
+          <div className="bg-gray-50 rounded-lg p-3 text-sm">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-gray-500">Purchase Price:</span>
+                <span className="ml-2 font-medium">AED {opportunity?.unit_price?.toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Investors:</span>
+                <span className="ml-2 font-medium">{opportunity?.investors?.length || 0}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Sale Date */}
+          <div>
+            <Label htmlFor="saleDate">Sale Date *</Label>
+            <Input
+              id="saleDate"
+              type="date"
+              value={saleDate}
+              onChange={(e) => setSaleDate(e.target.value)}
+              required
+              className="mt-1"
+              data-testid="sale-date-input"
+            />
+          </div>
+
+          {/* Sale Price */}
+          <div>
+            <Label htmlFor="salePrice">Sale Price (AED) *</Label>
+            <Input
+              id="salePrice"
+              type="number"
+              value={salePrice}
+              onChange={(e) => setSalePrice(e.target.value)}
+              placeholder="e.g., 2500000"
+              required
+              className="mt-1"
+              data-testid="sale-price-input"
+            />
+          </div>
+
+          {/* Brokerage Fee */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="sellingFeePercentage">Selling Fee (%)</Label>
+              <Input
+                id="sellingFeePercentage"
+                type="number"
+                step="0.1"
+                value={sellingFeePercentage}
+                onChange={(e) => setSellingFeePercentage(e.target.value)}
+                placeholder="2"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="brokerageFee">Brokerage Fee (AED)</Label>
+              <Input
+                id="brokerageFee"
+                type="number"
+                value={brokerageFee || calculatedBrokerage.toFixed(2)}
+                onChange={(e) => setBrokerageFee(e.target.value)}
+                placeholder="Auto-calculated"
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          {/* Net Proceeds Preview */}
+          {salePrice && (
+            <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
+              <div className="flex justify-between items-center">
+                <span className="text-emerald-700 font-medium">Net Proceeds:</span>
+                <span className="text-xl font-bold text-emerald-800">
+                  AED {netProceeds.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <p className="text-xs text-emerald-600 mt-1">
+                Sale Price ({parseFloat(salePrice).toLocaleString()}) - Brokerage ({calculatedBrokerage.toLocaleString()})
+              </p>
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any additional notes about the sale..."
+              rows={2}
+              className="mt-1"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading || !saleDate || !salePrice}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              data-testid="confirm-sell-btn"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Confirm Sale
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
