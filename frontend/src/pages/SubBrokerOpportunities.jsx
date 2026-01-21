@@ -195,48 +195,94 @@ export default function SubBrokerOpportunities() {
     
     const isAvailable = status === 'available';
     const statusColor = isAvailable ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
+    const isOffPlan = property.property_type === 'off_plan';
+    
+    // Calculate payment progress
+    const paymentProgress = property.total_payment_percentage_completed || 0;
+    
+    // Format currency
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
+    };
     
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-blue-500 transition-colors" data-testid={`property-card-${property.id}`}>
+      <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all" data-testid={`property-card-${property.id}`}>
+        {/* Header with Building Name, Unit, Floor and Status Badges */}
         <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-800">{property.building_name}</h3>
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Building2 className="h-5 w-5 text-teal-600" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-gray-800 truncate">{property.building_name}</h3>
+              <p className="text-sm text-gray-500">Unit {property.unit_no} • Floor {property.floor || 'N/A'}</p>
+            </div>
           </div>
-          <span className={`px-3 py-1 ${statusColor} text-xs font-medium rounded-full`}>
-            {displayStatus}
-          </span>
-        </div>
-
-        <div className="text-xs text-blue-600 font-medium mb-2">REAL ESTATE</div>
-
-        <div className="space-y-2 text-sm mb-4">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Unit:</span>
-            <span className="font-mono font-medium">{property.unit_no}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Type:</span>
-            <span className="font-medium">{property.type || 'N/A'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Price:</span>
-            <span className="font-mono font-medium text-blue-600">
-              {property.price ? `AED ${property.price.toLocaleString()}` : 'Contact'}
+          <div className="flex flex-col gap-1 items-end flex-shrink-0">
+            {isOffPlan && (
+              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                Off-Plan
+              </span>
+            )}
+            <span className={`px-2 py-0.5 ${statusColor} text-xs font-medium rounded-full`}>
+              {displayStatus}
             </span>
           </div>
-          {property.area && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Area:</span>
-              <span className="font-mono font-medium">{property.area} sq.ft</span>
-            </div>
-          )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        {/* Size and Total Cost Row */}
+        <div className="grid grid-cols-2 gap-4 mb-3 py-3 border-y border-gray-100">
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Size</p>
+            <p className="font-semibold text-gray-800">{property.unit_type || 'N/A'}</p>
+            <p className="text-xs text-gray-500">{property.total_area || 0} sqft</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Total Cost*</p>
+            <p className="font-semibold text-teal-600">AED {formatCurrency(property.total_cost || property.unit_price)}</p>
+          </div>
+        </div>
+
+        {/* Location */}
+        {property.location && (
+          <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
+            <MapPin className="h-4 w-4 text-gray-400" />
+            <span className="truncate">{property.location}</span>
+          </div>
+        )}
+
+        {/* Interested, Investors, Payment Progress */}
+        <div className="grid grid-cols-3 gap-2 py-3 border-t border-gray-100">
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">Interested</p>
+            <p className="font-semibold text-gray-800">{property.interested_count || 0}</p>
+          </div>
+          <div className="text-center border-x border-gray-100">
+            <p className="text-xs text-gray-500 mb-1">Investors</p>
+            <p className="font-semibold text-purple-600">
+              {property.current_investors || 0}/{isOffPlan ? 4 : property.max_investors || 10}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">Payment Progress</p>
+            <p className="font-semibold text-gray-800">{paymentProgress}%</p>
+          </div>
+        </div>
+
+        {/* Payment Progress Bar */}
+        {property.payment_schedule && property.payment_schedule.length > 0 && (
+          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4">
+            <div 
+              className="bg-teal-500 h-1.5 rounded-full transition-all" 
+              style={{ width: `${paymentProgress}%` }}
+            />
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-3">
           <Button
-            variant="outline"
-            size="sm"
+            className="flex-1 bg-teal-600 hover:bg-teal-700"
             onClick={() => navigate(`/real-estate/${property.id}`)}
             data-testid={`view-property-btn-${property.id}`}
           >
@@ -244,13 +290,11 @@ export default function SubBrokerOpportunities() {
           </Button>
           {status === 'available' && (
             <Button
-              size="sm"
+              variant="outline"
               onClick={() => handleShareRealEstate(property)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
               data-testid={`share-property-btn-${property.id}`}
             >
-              <Share2 className="h-4 w-4 mr-1" />
-              Share
+              <Share2 className="h-4 w-4" />
             </Button>
           )}
         </div>
