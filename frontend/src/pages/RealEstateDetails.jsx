@@ -490,6 +490,7 @@ export default function RealEstateDetails() {
                     <Badge className="bg-teal-100 text-teal-700">Fractional</Badge>
                   )}
                   {opp.status === 'available' && <Badge className="bg-green-100 text-green-700">Available</Badge>}
+                  {opp.status === 'partially_invested' && <Badge className="bg-amber-100 text-amber-700">Partially Invested</Badge>}
                   {opp.status === 'fully_invested' && <Badge className="bg-blue-100 text-blue-700">Fully Invested</Badge>}
                 </div>
                 <p className="text-gray-500 mt-1">
