@@ -8679,8 +8679,8 @@ async def reset_database(secret_key: str = None):
         deleted_counts['bonds'] = result.deleted_count
         
         # 5. Delete all real estate opportunities
-        result = await db.real_estate.delete_many({})
-        deleted_counts['real_estate'] = result.deleted_count
+        result = await db.real_estate_opportunities.delete_many({})
+        deleted_counts['real_estate_opportunities'] = result.deleted_count
         
         # 6. Delete all holding cashflows
         result = await db.holding_cashflows.delete_many({})
