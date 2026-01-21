@@ -4,7 +4,6 @@ import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import { 
   TrendingUp, 
-  DollarSign, 
   Users, 
   Building2, 
   Briefcase,
@@ -14,7 +13,9 @@ import {
   AlertTriangle,
   X,
   IndianRupee,
-  ArrowRightLeft
+  ArrowRightLeft,
+  ChevronDown,
+  User
 } from "lucide-react";
 import {
   BarChart,
@@ -24,9 +25,15 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend
 } from "recharts";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -39,7 +46,12 @@ const COLORS = {
   warning: "#F59E0B",
   danger: "#EF4444",
   info: "#3B82F6",
-  chart: ["#4F46E5", "#7C3AED", "#EC4899", "#F59E0B", "#10B981", "#3B82F6", "#6366F1", "#8B5CF6"]
+  venn: {
+    introduction: "#0D9488", // Teal for Bonds
+    analysis: "#3B82F6",     // Blue for Real Estate
+    opened: "#F59E0B"        // Amber/Tan for Both
+  },
+  chart: ["#0D9488", "#D4A574", "#93C5FD", "#86EFAC", "#1E40AF", "#22C55E", "#7C3AED", "#EC4899"]
 };
 
 // Format currency for INR (Crores)
@@ -59,6 +71,113 @@ const formatAEDMillions = (value) => {
   return `AED ${value.toLocaleString()}`;
 };
 
+// Format current date/time in the required format: "02:10 AM | Tuesday, 23rd Mar 2020"
+const formatDateTime = () => {
+  const now = new Date();
+  
+  // Time format: "02:10 AM"
+  const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+  const timeStr = now.toLocaleTimeString('en-US', timeOptions);
+  
+  // Day of week
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayName = days[now.getDay()];
+  
+  // Day with ordinal suffix
+  const day = now.getDate();
+  const suffix = (day === 1 || day === 21 || day === 31) ? 'st' 
+               : (day === 2 || day === 22) ? 'nd' 
+               : (day === 3 || day === 23) ? 'rd' 
+               : 'th';
+  
+  // Month abbreviation
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthName = months[now.getMonth()];
+  
+  // Year
+  const year = now.getFullYear();
+  
+  return `${timeStr} | ${dayName}, ${day}${suffix} ${monthName} ${year}`;
+};
+
+// Venn Diagram Component
+const VennDiagram = ({ bondOnly, realEstateOnly, both, total }) => {
+  const overlap = both;
+  
+  return (
+    <div className="relative w-full h-48 flex items-center justify-center">
+      {/* Venn Circles */}
+      <svg viewBox="0 0 280 180" className="w-full h-full max-w-[320px]">
+        {/* Definitions for clip paths */}
+        <defs>
+          <clipPath id="leftCircle">
+            <circle cx="100" cy="90" r="65" />
+          </clipPath>
+          <clipPath id="rightCircle">
+            <circle cx="180" cy="90" r="65" />
+          </clipPath>
+        </defs>
+        
+        {/* Left circle (Bonds Only) - Teal */}
+        <circle 
+          cx="100" 
+          cy="90" 
+          r="65" 
+          fill={COLORS.venn.introduction}
+          fillOpacity="0.8"
+        />
+        
+        {/* Right circle (Real Estate Only) - Blue */}
+        <circle 
+          cx="180" 
+          cy="90" 
+          r="65" 
+          fill={COLORS.venn.analysis}
+          fillOpacity="0.8"
+        />
+        
+        {/* Overlap area - Different color blending */}
+        <g clipPath="url(#leftCircle)">
+          <circle 
+            cx="180" 
+            cy="90" 
+            r="65" 
+            fill={COLORS.venn.opened}
+            fillOpacity="0.9"
+          />
+        </g>
+        
+        {/* Numbers on circles */}
+        {/* Bonds Only number (left) */}
+        <text x="70" y="95" textAnchor="middle" className="fill-white font-bold text-xl">
+          {bondOnly}
+        </text>
+        
+        {/* Both products number (center overlap) */}
+        <text x="140" y="95" textAnchor="middle" className="fill-white font-bold text-xl">
+          {both}
+        </text>
+        
+        {/* Real Estate Only number (right) */}
+        <text x="210" y="95" textAnchor="middle" className="fill-white font-bold text-xl">
+          {realEstateOnly}
+        </text>
+        
+        {/* Labels */}
+        <text x="70" y="115" textAnchor="middle" className="fill-white text-[10px] font-medium">
+          Bonds Only
+        </text>
+        <text x="140" y="115" textAnchor="middle" className="fill-white text-[10px] font-medium">
+          Both
+        </text>
+        <text x="210" y="115" textAnchor="middle" className="fill-white text-[10px] font-medium">
+          RE Only
+        </text>
+      </svg>
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -66,15 +185,24 @@ export default function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [aumDistribution, setAumDistribution] = useState({ by_asset_class: [], by_subbroker: [] });
   const [forexRate, setForexRate] = useState(22.5); // Default AED to INR rate
+  const [currentTime, setCurrentTime] = useState(formatDateTime());
+  const [selectedSubBroker, setSelectedSubBroker] = useState("all");
   
   // Reset database state
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetting, setResetting] = useState(false);
 
-  // Set page title
+  // Set page title and update time
   useEffect(() => {
     document.title = "Kinntegraa | Dashboard";
+    
+    // Update time every minute
+    const timer = setInterval(() => {
+      setCurrentTime(formatDateTime());
+    }, 60000);
+    
+    return () => clearInterval(timer);
   }, []);
 
   const handleResetDatabase = async () => {
@@ -172,26 +300,37 @@ export default function Dashboard() {
   const bondOnlyClients = summary?.clients?.bond_only || 0;
   const realEstateOnlyClients = summary?.clients?.real_estate_only || 0;
   const bothProductsClients = summary?.clients?.both_products || 0;
+  const totalClients = summary?.clients?.total || 0;
 
   // Prepare sub-broker AUM data for chart
-  const subBrokerChartData = (aumDistribution.by_subbroker || []).map(sb => ({
+  const subBrokerChartData = (aumDistribution.by_subbroker || []).map((sb, index) => ({
     ...sb,
     bond_aum_display: sb.bond_aum || 0,
     real_estate_aum_aed: sb.real_estate_aum || 0,
-    real_estate_aum_inr: (sb.real_estate_aum || 0) * forexRate
+    real_estate_aum_inr: (sb.real_estate_aum || 0) * forexRate,
+    fill: COLORS.chart[index % COLORS.chart.length]
   }));
+
+  // Filter chart data based on selected sub-broker
+  const filteredChartData = selectedSubBroker === "all" 
+    ? subBrokerChartData 
+    : subBrokerChartData.filter(sb => sb.name === selectedSubBroker);
+
+  // Calculate totals
+  const totalSubBrokers = aumDistribution.by_subbroker?.length || 0;
+  const totalAUM = subBrokerChartData.reduce((acc, sb) => acc + (sb.bond_aum || 0) + ((sb.real_estate_aum || 0) * forexRate), 0);
 
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar user={user} />
       
-      <div className="flex-1 overflow-auto">
-        {/* Header */}
+      <div className="flex-1 overflow-auto md:ml-64">
+        {/* Header with Date/Time */}
         <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">Analytics Dashboard</h1>
-              <p className="text-sm text-gray-500 mt-1">Welcome back, {user.name}</p>
+              <p className="text-sm text-gray-500 mt-1">{currentTime}</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg">
@@ -199,7 +338,7 @@ export default function Dashboard() {
                 <span>1 AED = ₹{forexRate.toFixed(2)}</span>
               </div>
               <button 
-                onClick={() => { fetchDashboardData(); fetchForexRate(); }}
+                onClick={() => { fetchDashboardData(); fetchForexRate(); setCurrentTime(formatDateTime()); }}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 data-testid="refresh-dashboard-btn"
               >
@@ -214,78 +353,38 @@ export default function Dashboard() {
           {/* Dashboard Cards - Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="kpi-cards">
             
-            {/* Total Clients - Index Style */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="clients-index-card">
-              <div className="flex items-center justify-between mb-4">
+            {/* Total Clients - Venn Diagram Style */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="clients-venn-card">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-indigo-500/10">
                     <Users className="h-5 w-5 text-indigo-500" />
                   </div>
-                  <h3 className="font-semibold text-gray-800">Total Clients</h3>
+                  <h3 className="font-semibold text-gray-800">Clients</h3>
                 </div>
-                <p className="text-3xl font-bold text-indigo-600">{summary?.clients?.total || 0}</p>
               </div>
               
-              {/* Client Index Breakdown */}
-              <div className="space-y-3">
-                {/* Bonds Only */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                    <span className="text-sm text-gray-600">Bonds Only</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-800">{bondOnlyClients}</span>
-                    <span className="text-xs text-gray-400">
-                      ({summary?.clients?.total > 0 ? Math.round((bondOnlyClients / summary.clients.total) * 100) : 0}%)
-                    </span>
-                  </div>
+              {/* Venn Diagram */}
+              <VennDiagram 
+                bondOnly={bondOnlyClients}
+                realEstateOnly={realEstateOnlyClients}
+                both={bothProductsClients}
+                total={totalClients}
+              />
+              
+              {/* Legend */}
+              <div className="flex justify-center gap-4 mt-2 pt-3 border-t">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.venn.introduction }}></div>
+                  <span className="text-xs text-gray-600">Bonds Only ({bondOnlyClients})</span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div 
-                    className="bg-amber-500 h-2 rounded-full transition-all" 
-                    style={{ width: `${summary?.clients?.total > 0 ? (bondOnlyClients / summary.clients.total) * 100 : 0}%` }}
-                  />
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.venn.analysis }}></div>
+                  <span className="text-xs text-gray-600">RE Only ({realEstateOnlyClients})</span>
                 </div>
-
-                {/* Real Estate Only */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-pink-500"></div>
-                    <span className="text-sm text-gray-600">Real Estate Only</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-800">{realEstateOnlyClients}</span>
-                    <span className="text-xs text-gray-400">
-                      ({summary?.clients?.total > 0 ? Math.round((realEstateOnlyClients / summary.clients.total) * 100) : 0}%)
-                    </span>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div 
-                    className="bg-pink-500 h-2 rounded-full transition-all" 
-                    style={{ width: `${summary?.clients?.total > 0 ? (realEstateOnlyClients / summary.clients.total) * 100 : 0}%` }}
-                  />
-                </div>
-
-                {/* Both Products */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                    <span className="text-sm text-gray-600">Both Products</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-800">{bothProductsClients}</span>
-                    <span className="text-xs text-gray-400">
-                      ({summary?.clients?.total > 0 ? Math.round((bothProductsClients / summary.clients.total) * 100) : 0}%)
-                    </span>
-                  </div>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div 
-                    className="bg-purple-500 h-2 rounded-full transition-all" 
-                    style={{ width: `${summary?.clients?.total > 0 ? (bothProductsClients / summary.clients.total) * 100 : 0}%` }}
-                  />
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.venn.opened }}></div>
+                  <span className="text-xs text-gray-600">Both ({bothProductsClients})</span>
                 </div>
               </div>
             </div>
@@ -405,31 +504,100 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* AUM by Sub-Broker - Enhanced with Both Bonds and Real Estate */}
+          {/* AUM by Sub-Broker - New Design with Dropdown */}
           <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="subbroker-aum-chart">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-violet-500" />
-                AUM by Sub-Broker
-              </h3>
-              <div className="flex items-center gap-4 text-xs">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-amber-500"></div>
-                  <span className="text-gray-600">Bonds (INR)</span>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-violet-500/10">
+                  <User className="h-5 w-5 text-violet-500" />
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-pink-500"></div>
-                  <span className="text-gray-600">Real Estate (AED)</span>
-                </div>
+                <h3 className="text-lg font-semibold text-gray-800">AUM basis Sublogin</h3>
               </div>
+              
+              {/* Sub-Broker Dropdown */}
+              <Select value={selectedSubBroker} onValueChange={setSelectedSubBroker}>
+                <SelectTrigger className="w-[200px]" data-testid="subbroker-select">
+                  <SelectValue placeholder="Select Advisor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Advisors</SelectItem>
+                  {subBrokerChartData.map((sb, index) => (
+                    <SelectItem key={index} value={sb.name}>{sb.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             {subBrokerChartData.length > 0 ? (
               <div className="space-y-4">
-                <div className="h-[350px]">
+                {/* Stacked Bar Chart - Horizontal */}
+                <div className="h-16 bg-gray-50 rounded-lg overflow-hidden flex">
+                  {subBrokerChartData.map((sb, index) => {
+                    const sbAUM = (sb.bond_aum || 0) + ((sb.real_estate_aum || 0) * forexRate);
+                    const percentage = totalAUM > 0 ? (sbAUM / totalAUM) * 100 : 0;
+                    
+                    if (percentage < 0.5) return null; // Skip very small segments
+                    
+                    return (
+                      <div 
+                        key={index}
+                        className="h-full flex items-center justify-center relative group cursor-pointer transition-opacity hover:opacity-90"
+                        style={{ 
+                          width: `${percentage}%`,
+                          backgroundColor: sb.fill,
+                          minWidth: percentage > 3 ? '40px' : '20px'
+                        }}
+                        title={`${sb.name}: ${formatINRCrores(sbAUM)}`}
+                      >
+                        {/* Tooltip on hover */}
+                        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none shadow-lg">
+                          <div className="font-semibold">{sb.name}</div>
+                          <div>{formatINRCrores(sbAUM)}</div>
+                          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900"></div>
+                        </div>
+                        
+                        {percentage > 8 && (
+                          <span className="text-white text-xs font-medium truncate px-1">
+                            {sb.name.split(' ')[0]}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Summary Stats */}
+                <div className="flex justify-between items-center pt-2">
+                  <div className="flex items-center gap-6">
+                    <div>
+                      <span className="text-sm text-gray-500">Total Advisors</span>
+                      <p className="text-xl font-bold text-gray-800">{totalSubBrokers}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500">Total AUM</span>
+                      <p className="text-xl font-bold text-indigo-600">{formatINRCrores(totalAUM)}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Legend - showing top contributors */}
+                  <div className="flex flex-wrap gap-2 max-w-md justify-end">
+                    {subBrokerChartData.slice(0, 5).map((sb, index) => (
+                      <div key={index} className="flex items-center gap-1.5 text-xs">
+                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: sb.fill }}></div>
+                        <span className="text-gray-600">{sb.name?.split(' ')[0]}</span>
+                      </div>
+                    ))}
+                    {subBrokerChartData.length > 5 && (
+                      <span className="text-xs text-gray-400">+{subBrokerChartData.length - 5} more</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Detailed Bar Chart */}
+                <div className="h-[300px] mt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart 
-                      data={subBrokerChartData.slice(0, 8)} 
+                      data={filteredChartData.slice(0, 8)} 
                       margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -487,9 +655,14 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {subBrokerChartData.map((sb, index) => (
+                      {filteredChartData.map((sb, index) => (
                         <tr key={index} className="hover:bg-gray-50">
-                          <td className="py-3 px-4 font-medium text-gray-800">{sb.name}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: sb.fill }}></div>
+                              <span className="font-medium text-gray-800">{sb.name}</span>
+                            </div>
+                          </td>
                           <td className="py-3 px-4 text-gray-600">{sb.partner_code}</td>
                           <td className="py-3 px-4 text-right text-amber-700 font-medium">
                             {formatINRCrores(sb.bond_aum)}
@@ -498,15 +671,11 @@ export default function Dashboard() {
                             {formatAEDMillions(sb.real_estate_aum)}
                           </td>
                           <td className="py-3 px-4 text-right text-indigo-700 font-medium">
-                            {sb.real_estate_aum > 0 ? (
-                              <span title={`Converted at 1 AED = ₹${forexRate.toFixed(2)}`}>
-                                {formatINRCrores(sb.real_estate_aum * forexRate)}
-                              </span>
-                            ) : '-'}
+                            {formatINRCrores(sb.real_estate_aum_inr)}
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
-                              {sb.client_count}
+                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                              {sb.client_count || 0}
                             </span>
                           </td>
                         </tr>
@@ -516,145 +685,95 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <div className="h-[200px] flex items-center justify-center text-gray-400">
-                <div className="text-center">
-                  <Briefcase className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No sub-broker data available</p>
-                </div>
+              <div className="text-center py-12 text-gray-500">
+                <Briefcase className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>No sub-broker data available</p>
               </div>
             )}
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-              <button
-                onClick={() => navigate("/broker/admin/bonds")}
-                className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-amber-400 transition-all group"
-                data-testid="quick-action-bonds"
-              >
-                <Landmark className="h-8 w-8 text-indigo-500 group-hover:scale-110 transition-transform" />
-                <span className="mt-2 text-sm font-medium text-gray-700">Manage Bonds</span>
-              </button>
-              <button
-                onClick={() => navigate("/broker/admin/real-estate")}
-                className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-pink-400 transition-all group"
-                data-testid="quick-action-real-estate"
-              >
-                <Building2 className="h-8 w-8 text-pink-500 group-hover:scale-110 transition-transform" />
-                <span className="mt-2 text-sm font-medium text-gray-700">Real Estate</span>
-              </button>
-              <button
-                onClick={() => navigate("/broker/admin/clients")}
-                className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-emerald-400 transition-all group"
-                data-testid="quick-action-clients"
-              >
-                <Users className="h-8 w-8 text-emerald-500 group-hover:scale-110 transition-transform" />
-                <span className="mt-2 text-sm font-medium text-gray-700">Manage Clients</span>
-              </button>
-              <button
-                onClick={() => navigate("/broker/admin/sub-brokers")}
-                className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-violet-400 transition-all group"
-                data-testid="quick-action-subbrokers"
-              >
-                <Briefcase className="h-8 w-8 text-violet-500 group-hover:scale-110 transition-transform" />
-                <span className="mt-2 text-sm font-medium text-gray-700">Sub-Brokers</span>
-              </button>
-              <button
-                onClick={() => setShowResetModal(true)}
-                className="flex flex-col items-center justify-center p-4 bg-red-50 hover:bg-red-100 rounded-xl border border-red-200 hover:border-red-400 transition-all group"
-                data-testid="quick-action-reset"
-              >
-                <Trash2 className="h-8 w-8 text-red-500 group-hover:scale-110 transition-transform" />
-                <span className="mt-2 text-sm font-medium text-red-700">Reset Data</span>
-              </button>
-            </div>
+          <div className="flex flex-wrap gap-3" data-testid="quick-actions">
+            <button
+              onClick={() => navigate("/broker/opportunities")}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm"
+            >
+              View Opportunities
+            </button>
+            <button
+              onClick={() => navigate("/broker/admin/clients")}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
+            >
+              Manage Clients
+            </button>
+            <button
+              onClick={() => navigate("/broker/admin/sub-brokers")}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
+            >
+              Manage Sub-Brokers
+            </button>
+            <button
+              onClick={() => setShowResetModal(true)}
+              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors text-sm flex items-center gap-2"
+              data-testid="reset-database-btn"
+            >
+              <Trash2 className="h-4 w-4" />
+              Reset Database
+            </button>
           </div>
         </div>
       </div>
-      
+
       {/* Reset Database Modal */}
       {showResetModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-100 rounded-full">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900">Reset Database</h3>
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
-              <button
-                onClick={() => {
-                  setShowResetModal(false);
-                  setResetConfirmText("");
-                }}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              <h2 className="text-xl font-bold text-gray-800">Reset Database</h2>
+              <button 
+                onClick={() => setShowResetModal(false)}
+                className="ml-auto text-gray-400 hover:text-gray-600"
               >
-                <X className="h-5 w-5 text-gray-500" />
+                <X className="h-5 w-5" />
               </button>
             </div>
             
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-red-800 font-medium mb-2">
-                This action will permanently delete:
-              </p>
-              <ul className="text-sm text-red-700 space-y-1 ml-4">
-                <li>All clients & client documents</li>
-                <li>All sub-brokers</li>
-                <li>All bonds & bond documents</li>
-                <li>All real estate deals & attachments</li>
-                <li>All trades, investments & cashflows</li>
-                <li>All CAS analyses & reports</li>
-                <li>All uploaded files</li>
-              </ul>
-              <p className="text-sm text-red-800 font-medium mt-3">
-                Broker accounts will be preserved
-              </p>
-            </div>
+            <p className="text-gray-600 mb-4">
+              This action will <strong>permanently delete</strong> all data including clients, investments, holdings, and transactions. This cannot be undone.
+            </p>
             
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Type <span className="font-bold text-red-600">RESET</span> to confirm
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type <strong>RESET</strong> to confirm
               </label>
               <input
                 type="text"
                 value={resetConfirmText}
                 onChange={(e) => setResetConfirmText(e.target.value)}
-                placeholder="Type RESET"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="RESET"
                 data-testid="reset-confirm-input"
               />
             </div>
             
             <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setShowResetModal(false);
-                  setResetConfirmText("");
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                onClick={() => setShowResetModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleResetDatabase}
                 disabled={resetConfirmText !== "RESET" || resetting}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                data-testid="reset-confirm-button"
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                data-testid="confirm-reset-btn"
               >
-                {resetting ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Resetting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4" />
-                    Reset Database
-                  </>
-                )}
+                {resetting && <RefreshCw className="h-4 w-4 animate-spin" />}
+                Reset Database
               </button>
             </div>
           </div>
