@@ -80,6 +80,24 @@ export default function RealEstateDetails() {
     }
   }, [id]);
 
+  const handleDeleteOpportunity = async () => {
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API}/real-estate-opportunities/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Property deleted successfully");
+      navigate("/broker/admin/real-estate");
+    } catch (error) {
+      console.error("Error deleting opportunity:", error);
+      toast.error(error.response?.data?.detail || "Failed to delete property");
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
