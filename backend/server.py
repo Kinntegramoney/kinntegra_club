@@ -14801,29 +14801,54 @@ class CurrencyRateProjection(BaseModel):
     currency: str  # INR, USD, EUR, GBP, etc.
     projected_rate: float  # Rate per 1 AED (e.g., 22.5 INR = 1 AED)
 
+class DldProjection(BaseModel):
+    year: int
+    dld_percentage: float  # DLD percentage (typically 4%)
+
+class AdminFeeProjection(BaseModel):
+    year: int
+    admin_fee_percentage: float  # Admin fee percentage
+
 class CurrencyRateProjectionsUpdate(BaseModel):
     projections: List[CurrencyRateProjection]
+    dld_projections: Optional[List[DldProjection]] = None
+    admin_projections: Optional[List[AdminFeeProjection]] = None
 
 @api_router.get("/settings/currency-projections")
 async def get_currency_projections(current_user: dict = Depends(get_current_user)):
-    """Get projected currency rates for XIRR calculations"""
+    """Get projected currency rates, DLD and admin fee for XIRR calculations"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can access settings")
     
     broker_id = current_user['id']
+    current_year = datetime.now().year
     
     settings = await db.broker_settings.find_one({"broker_id": broker_id}, {"_id": 0})
     if not settings:
         # Return default projections for current and next 5 years
-        from datetime import datetime
-        current_year = datetime.now().year
         default_projections = [
             {"year": current_year + i, "currency": "INR", "projected_rate": 22.5}
             for i in range(6)
         ]
-        return {"projections": default_projections}
+        default_dld = [
+            {"year": current_year + i, "dld_percentage": 4.0}
+            for i in range(6)
+        ]
+        default_admin = [
+            {"year": current_year + i, "admin_fee_percentage": 2.0}
+            for i in range(6)
+        ]
+        return {
+            "projections": default_projections,
+            "dld_projections": default_dld,
+            "admin_projections": default_admin
+        }
     
-    return {"projections": settings.get("currency_projections", [])}
+    return {
+        "projections": settings.get("currency_projections", []),
+        "dld_projections": settings.get("dld_projections", []),
+        "admin_projections": settings.get("admin_projections", [])
+    }
 
 @api_router.put("/settings/currency-projections")
 async def update_currency_projections(
