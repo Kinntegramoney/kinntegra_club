@@ -4950,14 +4950,115 @@ function DldAdminUploadModal({ opportunity, investor, uploadType, amounts, onClo
 function SellUnitModal({ opportunity, onClose, onSuccess }) {
   const [saleDate, setSaleDate] = useState('');
   const [salePrice, setSalePrice] = useState('');
-  const [brokerageFee, setBrokerageFee] = useState('');
-  const [sellingFeePercentage, setSellingFeePercentage] = useState('2');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const API = process.env.REACT_APP_BACKEND_URL;
 
-  const calculatedBrokerage = salePrice ? (parseFloat(salePrice) * parseFloat(sellingFeePercentage || 0) / 100) : 0;
-  const netProceeds = salePrice ? (parseFloat(salePrice) - calculatedBrokerage) : 0;
+  // Auto-populate selling fee % from opportunity data
+  const sellingFeePercentage = opportunity?.unit_selling_fee_percentage || opportunity?.selling_fee_percentage || 0;
+  
+  // Format currency helper
+  const formatCurrency = (amt) => new Intl.NumberFormat('en-AE').format(Math.round(amt || 0));
+
+  // Calculate XIRR for the sale (reusing the same logic)
+  const calculateSaleXIRR = () => {
+    if (!opportunity || !opportunity.unit_price || !opportunity.payment_schedule || !saleDate || !salePrice) {
+      return null;
+    }
+    
+    const sortedSchedule = [...opportunity.payment_schedule]
+      .filter(p => p.date && p.percentage)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    if (sortedSchedule.length === 0) return null;
+
+    const cashFlows = [];
+    const unitPrice = opportunity.unit_price;
+    const dldFee = opportunity.dld_fee || 0;
+    const adminFee = opportunity.admin_fee || 0;
+    const upfrontFees = dldFee + adminFee;
+    
+    // For sold properties, assume 100% paid (fully invested)
+    let totalPaidTowardsUnit = 0;
+    let isFirstPayment = true;
+    
+    sortedSchedule.forEach(milestone => {
+      const pct = parseFloat(milestone.percentage) || 0;
+      const paymentAmount = unitPrice * pct / 100;
+      totalPaidTowardsUnit += paymentAmount;
+      
+      const totalOutflow = isFirstPayment ? paymentAmount + upfrontFees : paymentAmount;
+      
+      cashFlows.push({ 
+        date: new Date(milestone.date), 
+        amount: -totalOutflow,
+        description: isFirstPayment ? `${milestone.description || 'Booking'} + DLD + Admin` : (milestone.description || `Payment`),
+        percentage: pct,
+        isOutflow: true
+      });
+      isFirstPayment = false;
+    });
+
+    // Calculate sale proceeds using actual sale price
+    const grossSaleValue = parseFloat(salePrice);
+    const sellingFee = grossSaleValue * sellingFeePercentage / 100;
+    
+    // Outstanding amount = 0 for fully invested properties
+    const outstandingAmount = 0;
+    
+    // Net proceeds = Gross Sale - Selling Fee
+    const netSaleProceeds = grossSaleValue - sellingFee;
+    
+    cashFlows.push({ 
+      date: new Date(saleDate), 
+      amount: netSaleProceeds,
+      description: 'Sale Proceeds (Net)',
+      isOutflow: false
+    });
+
+    // Calculate XIRR using Newton-Raphson
+    let xirr = null;
+    try {
+      const tol = 0.0001, maxIter = 100;
+      let rate = 0.1;
+      const firstDate = cashFlows[0].date;
+      
+      for (let i = 0; i < maxIter; i++) {
+        let npvVal = 0, dnpvVal = 0;
+        cashFlows.forEach(cf => {
+          const years = (cf.date - firstDate) / (365 * 24 * 60 * 60 * 1000);
+          npvVal += cf.amount / Math.pow(1 + rate, years);
+          dnpvVal -= years * cf.amount / Math.pow(1 + rate, years + 1);
+        });
+        if (Math.abs(dnpvVal) < 1e-10) break;
+        const newRate = rate - npvVal / dnpvVal;
+        if (Math.abs(newRate - rate) < tol) {
+          xirr = newRate * 100;
+          break;
+        }
+        rate = newRate;
+      }
+      if (xirr === null) xirr = rate * 100;
+    } catch (e) { 
+      xirr = null;
+    }
+
+    return {
+      xirr,
+      totalInvested: totalPaidTowardsUnit + upfrontFees,
+      unitPricePaid: totalPaidTowardsUnit,
+      upfrontFees,
+      dldFee,
+      adminFee,
+      grossSaleValue,
+      sellingFee,
+      outstandingAmount,
+      netSaleProceeds,
+      netProfit: netSaleProceeds - (totalPaidTowardsUnit + upfrontFees)
+    };
+  };
+
+  const xirrResult = calculateSaleXIRR();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -4975,9 +5076,12 @@ function SellUnitModal({ opportunity, onClose, onSuccess }) {
         {
           sale_date: saleDate,
           sale_price: parseFloat(salePrice),
-          brokerage_fee: parseFloat(brokerageFee || calculatedBrokerage),
-          selling_fee_percentage: parseFloat(sellingFeePercentage || 2),
-          net_proceeds: netProceeds,
+          brokerage_fee: xirrResult?.sellingFee || 0,
+          selling_fee_percentage: sellingFeePercentage,
+          net_proceeds: xirrResult?.netSaleProceeds || parseFloat(salePrice),
+          total_invested: xirrResult?.totalInvested || 0,
+          net_profit: xirrResult?.netProfit || 0,
+          xirr: xirrResult?.xirr || 0,
           notes: notes
         },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -4993,9 +5097,9 @@ function SellUnitModal({ opportunity, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8">
+        <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-emerald-50 to-green-50">
           <div>
             <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-emerald-600" />
@@ -5008,89 +5112,121 @@ function SellUnitModal({ opportunity, onClose, onSuccess }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* Property Summary */}
           <div className="bg-gray-50 rounded-lg p-3 text-sm">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <span className="text-gray-500">Purchase Price:</span>
-                <span className="ml-2 font-medium">AED {opportunity?.unit_price?.toLocaleString()}</span>
+                <span className="text-gray-500 text-xs">Purchase Price</span>
+                <p className="font-semibold text-gray-800">AED {formatCurrency(opportunity?.unit_price)}</p>
               </div>
               <div>
-                <span className="text-gray-500">Investors:</span>
-                <span className="ml-2 font-medium">{opportunity?.investors?.length || 0}</span>
+                <span className="text-gray-500 text-xs">Total Area</span>
+                <p className="font-semibold text-gray-800">{opportunity?.total_area?.toLocaleString()} sqft</p>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs">Selling Fee</span>
+                <p className="font-semibold text-gray-800">{sellingFeePercentage}%</p>
               </div>
             </div>
           </div>
 
-          {/* Sale Date */}
-          <div>
-            <Label htmlFor="saleDate">Sale Date *</Label>
-            <Input
-              id="saleDate"
-              type="date"
-              value={saleDate}
-              onChange={(e) => setSaleDate(e.target.value)}
-              required
-              className="mt-1"
-              data-testid="sale-date-input"
-            />
-          </div>
-
-          {/* Sale Price */}
-          <div>
-            <Label htmlFor="salePrice">Sale Price (AED) *</Label>
-            <Input
-              id="salePrice"
-              type="number"
-              value={salePrice}
-              onChange={(e) => setSalePrice(e.target.value)}
-              placeholder="e.g., 2500000"
-              required
-              className="mt-1"
-              data-testid="sale-price-input"
-            />
-          </div>
-
-          {/* Brokerage Fee */}
+          {/* Sale Inputs */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="sellingFeePercentage">Selling Fee (%)</Label>
+              <Label htmlFor="saleDate">Sale Date *</Label>
               <Input
-                id="sellingFeePercentage"
-                type="number"
-                step="0.1"
-                value={sellingFeePercentage}
-                onChange={(e) => setSellingFeePercentage(e.target.value)}
-                placeholder="2"
+                id="saleDate"
+                type="date"
+                value={saleDate}
+                onChange={(e) => setSaleDate(e.target.value)}
+                required
                 className="mt-1"
+                data-testid="sale-date-input"
               />
             </div>
             <div>
-              <Label htmlFor="brokerageFee">Brokerage Fee (AED)</Label>
+              <Label htmlFor="salePrice">Sale Price (AED) *</Label>
               <Input
-                id="brokerageFee"
+                id="salePrice"
                 type="number"
-                value={brokerageFee || calculatedBrokerage.toFixed(2)}
-                onChange={(e) => setBrokerageFee(e.target.value)}
-                placeholder="Auto-calculated"
+                value={salePrice}
+                onChange={(e) => setSalePrice(e.target.value)}
+                placeholder="e.g., 4500000"
+                required
                 className="mt-1"
+                data-testid="sale-price-input"
               />
+              {salePrice && opportunity?.total_area && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Rate: AED {formatCurrency(parseFloat(salePrice) / opportunity.total_area)}/sqft
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Net Proceeds Preview */}
-          {salePrice && (
-            <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
-              <div className="flex justify-between items-center">
-                <span className="text-emerald-700 font-medium">Net Proceeds:</span>
-                <span className="text-xl font-bold text-emerald-800">
-                  AED {netProceeds.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          {/* XIRR Returns Preview - Shown when sale price entered */}
+          {xirrResult && (
+            <div className="bg-gray-50 rounded-xl p-4 border" data-testid="xirr-preview">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Projected Returns</h4>
+              
+              {/* Investment Section */}
+              <div className="space-y-1 mb-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Investment (Outflows)</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Unit Price Paid (100%)</span>
+                  <span className="text-red-600 font-medium">-AED {formatCurrency(xirrResult.unitPricePaid)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">DLD + Admin (Upfront)</span>
+                  <span className="text-red-600 font-medium">-AED {formatCurrency(xirrResult.upfrontFees)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-semibold border-t pt-1 mt-1">
+                  <span className="text-gray-800">Total Invested</span>
+                  <span className="text-red-600">-AED {formatCurrency(xirrResult.totalInvested)}</span>
+                </div>
+              </div>
+              
+              {/* Sale Proceeds Section */}
+              <div className="space-y-1 mb-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Sale Proceeds (Inflow)</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Gross Sale ({opportunity?.total_area?.toLocaleString()} sqft)</span>
+                  <span className="text-gray-800">AED {formatCurrency(xirrResult.grossSaleValue)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Less: Selling Fee ({sellingFeePercentage}%)</span>
+                  <span className="text-red-600">-AED {formatCurrency(xirrResult.sellingFee)}</span>
+                </div>
+                {xirrResult.outstandingAmount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Less: Outstanding</span>
+                    <span className="text-red-600">-AED {formatCurrency(xirrResult.outstandingAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-semibold border-t pt-1 mt-1">
+                  <span className="text-gray-800">Net Proceeds</span>
+                  <span className="text-gray-800">+AED {formatCurrency(xirrResult.netSaleProceeds)}</span>
+                </div>
+              </div>
+              
+              {/* Net Profit */}
+              <div className="bg-white rounded-lg p-3 border flex justify-between items-center mb-3">
+                <span className="font-semibold text-gray-800">Net Profit</span>
+                <span className={`text-xl font-bold ${xirrResult.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  AED {formatCurrency(Math.abs(xirrResult.netProfit))}
+                  {xirrResult.netProfit < 0 && ' (Loss)'}
                 </span>
               </div>
-              <p className="text-xs text-emerald-600 mt-1">
-                Sale Price ({parseFloat(salePrice).toLocaleString()}) - Brokerage ({calculatedBrokerage.toLocaleString()})
-              </p>
+              
+              {/* Expected XIRR */}
+              <div className="bg-blue-50 rounded-lg p-4 text-center">
+                <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Expected XIRR</p>
+                <p className={`text-3xl font-bold ${xirrResult.xirr >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                  {xirrResult.xirr !== null ? `${xirrResult.xirr.toFixed(2)}%` : 'N/A'}
+                </p>
+                <p className="text-xs text-blue-500">Annualized return</p>
+              </div>
             </div>
           )}
 
