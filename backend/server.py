@@ -1733,6 +1733,11 @@ async def bulk_upload_indian_clients(
             if not pd.isna(row.get('pan')):
                 bank_by_pan[str(row['pan']).upper().strip()] = row
     
+    if not df_intl_bank.empty and 'pan' in df_intl_bank.columns:
+        for _, row in df_intl_bank.iterrows():
+            if not pd.isna(row.get('pan')):
+                intl_bank_by_pan[str(row['pan']).upper().strip()] = row
+    
     if not df_passport.empty and 'pan' in df_passport.columns:
         for _, row in df_passport.iterrows():
             if not pd.isna(row.get('pan')):
