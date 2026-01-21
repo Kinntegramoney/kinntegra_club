@@ -391,7 +391,7 @@ export default function SubBrokerProfile() {
               </div>
 
               {/* PIN Section */}
-              <div>
+              <div className="border-b border-gray-100 pb-6">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Lock className="h-5 w-5 text-gray-400" />
@@ -442,6 +442,89 @@ export default function SubBrokerProfile() {
                   </div>
                 ) : (
                   <p className="text-gray-600 ml-7">••••</p>
+                )}
+              </div>
+
+              {/* Address Section */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-gray-400" />
+                    <Label className="font-medium text-gray-700">Address</Label>
+                  </div>
+                  {!editingAddress && (
+                    <Button variant="ghost" size="sm" onClick={() => setEditingAddress(true)}>
+                      {profile?.address_line1 ? 'Edit' : 'Add'}
+                    </Button>
+                  )}
+                </div>
+                {editingAddress ? (
+                  <div className="space-y-3 ml-7">
+                    <Input
+                      value={addressLine1}
+                      onChange={(e) => setAddressLine1(e.target.value)}
+                      placeholder="Address Line 1"
+                    />
+                    <Input
+                      value={addressLine2}
+                      onChange={(e) => setAddressLine2(e.target.value)}
+                      placeholder="Address Line 2 (optional)"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="City"
+                      />
+                      <Input
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        placeholder="State"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        value={pincode}
+                        onChange={(e) => setPincode(e.target.value)}
+                        placeholder="Pincode"
+                      />
+                      <Input
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                        placeholder="Country"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleUpdateAddress} size="sm">
+                        <Save className="h-4 w-4 mr-1" /> Save Address
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setEditingAddress(false);
+                        // Reset to profile values
+                        setAddressLine1(profile?.address_line1 || "");
+                        setAddressLine2(profile?.address_line2 || "");
+                        setCity(profile?.city || "");
+                        setState(profile?.state || "");
+                        setPincode(profile?.pincode || "");
+                        setCountry(profile?.country || "India");
+                      }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-gray-600 ml-7">
+                    {profile?.address_line1 ? (
+                      <div className="text-sm">
+                        <p>{profile.address_line1}</p>
+                        {profile.address_line2 && <p>{profile.address_line2}</p>}
+                        <p>{profile.city}, {profile.state} {profile.pincode}</p>
+                        <p>{profile.country}</p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 italic">No address added</p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
