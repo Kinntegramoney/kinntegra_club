@@ -4,8 +4,9 @@ import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreatePartnerModal from "@/components/CreatePartnerModal";
 import EditPartnerModal from "@/components/EditPartnerModal";
-import { Plus, Edit2, Trash2, RefreshCw, UserX, Upload, MoreVertical, Mail, KeyRound, UserMinus } from "lucide-react";
+import { Plus, Edit2, Trash2, RefreshCw, UserX, Upload, MoreVertical, Mail, KeyRound, UserMinus, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -25,6 +26,11 @@ export default function AdminSubBrokers() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPartner, setEditingPartner] = useState(null);
+  
+  // Search and Sort state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState("name");
+  const [sortDirection, setSortDirection] = useState("asc");
 
   // Set page title
   useEffect(() => {
