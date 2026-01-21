@@ -1195,7 +1195,7 @@ async def create_client_by_subbroker(
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
     
-    broker_id = partner.get('broker_id')
+    broker_id = partner.get('created_by') or partner.get('broker_id')
     
     # Determine PAN - could be pan_number or pan
     pan = client_data.get('pan_number', client_data.get('pan', '')).upper()
@@ -1323,7 +1323,7 @@ async def sub_broker_bulk_upload_indian_clients(
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
     
-    broker_id = partner.get('broker_id')
+    broker_id = partner.get('created_by') or partner.get('broker_id')
     
     try:
         contents = await file.read()
@@ -1416,7 +1416,7 @@ async def sub_broker_bulk_upload_foreign_clients(
     if not partner:
         raise HTTPException(status_code=404, detail="Partner not found")
     
-    broker_id = partner.get('broker_id')
+    broker_id = partner.get('created_by') or partner.get('broker_id')
     
     try:
         contents = await file.read()
