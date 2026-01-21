@@ -4193,71 +4193,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
 
                 {/* RIGHT COLUMN - Cashflow Table */}
                 <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-600">Investor: {report.investor.name} ({report.investor.share_percentage}% Share)</p>
-                <p className="text-xs text-gray-400">Generated on {new Date().toLocaleDateString()}</p>
-              </div>
-              
-              {/* Summary Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-indigo-50 rounded-lg p-4">
-                  <p className="text-xs text-indigo-600 font-medium">Expected XIRR</p>
-                  <p className="text-2xl font-bold text-indigo-800">
-                    {report.summary.xirr_projected !== null ? `${report.summary.xirr_projected.toFixed(2)}%` : 'N/A'}
-                  </p>
-                  <p className="text-xs text-gray-500">Using projected rates</p>
-                </div>
-                <div className="bg-emerald-50 rounded-lg p-4">
-                  <p className="text-xs text-emerald-600 font-medium">Actual XIRR</p>
-                  <p className="text-2xl font-bold text-emerald-800">
-                    {report.summary.xirr_actual !== null ? `${report.summary.xirr_actual.toFixed(2)}%` : 'N/A'}
-                  </p>
-                  <p className="text-xs text-gray-500">Using actual rates</p>
-                </div>
-                <div className={`rounded-lg p-4 ${report.summary.xirr_difference >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <p className="text-xs text-gray-600 font-medium">XIRR Difference</p>
-                  <p className={`text-2xl font-bold ${report.summary.xirr_difference >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-                    {report.summary.xirr_difference !== null ? `${report.summary.xirr_difference >= 0 ? '+' : ''}${report.summary.xirr_difference.toFixed(2)}%` : 'N/A'}
-                  </p>
-                  <p className="text-xs text-gray-500">{report.summary.xirr_difference >= 0 ? 'Better than expected' : 'Below expected'}</p>
-                </div>
-                {/* Currency Impact = Projected - Actual + Today (only show when actual payments exist) */}
-                {(() => {
-                  const hasActualPayments = report.cashflows_actual?.some(cf => cf.is_paid === true);
-                  if (!hasActualPayments || !currentRate) {
-                    return (
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <p className="text-xs text-gray-500 font-medium">Currency Impact</p>
-                        <p className="text-2xl font-bold text-gray-400">-</p>
-                        <p className="text-xs text-gray-400">No payments yet</p>
-                      </div>
-                    );
-                  }
-                  const todayTotal = report.summary.total_investment_aed * currentRate;
-                  const currencyImpact = report.summary.total_projected_home_currency - report.summary.total_actual_home_currency + todayTotal;
-                  const isPositive = currencyImpact >= 0;
-                  return (
-                    <div className={`rounded-lg p-4 ${isPositive ? 'bg-green-50' : 'bg-red-50'}`}>
-                      <p className="text-xs text-gray-600 font-medium">Currency Impact</p>
-                      <p className={`text-2xl font-bold ${isPositive ? 'text-green-800' : 'text-red-800'}`}>
-                        {isPositive ? '+' : ''}{report.investor.currency} {formatCurrency(Math.abs(currencyImpact))}
-                      </p>
-                      <p className="text-xs text-gray-500">Projected - Actual + Today</p>
-                    </div>
-                  );
-                })()}
-              </div>
-              
-              {/* Investment Summary */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-medium text-gray-800 mb-3">Investment Summary</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-500">Total AED Investment</p>
-                    <p className="font-semibold">AED {formatCurrency(report.summary.total_investment_aed)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Projected Total ({report.investor.currency})</p>
-                    <p className="font-semibold text-indigo-600">{report.investor.currency} {formatCurrency(report.summary.total_projected_home_currency)}</p>
+                  <h3 className="font-semibold text-gray-800 text-sm mb-2">Cashflow Comparison</h3>
                   </div>
                   <div>
                     <p className="text-gray-500">Actual Total ({report.investor.currency})</p>
