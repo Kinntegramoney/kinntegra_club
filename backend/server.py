@@ -14412,6 +14412,53 @@ async def record_investor_payment(
         {"$push": {"investor_payments": payment_record}}
     )
     
+    # Auto-populate currency projections if this is a new currency
+    if home_currency and home_currency != "AED":
+        broker_id = opportunity.get('created_by')
+        if broker_id:
+            # Get existing broker settings
+            broker_settings = await db.broker_settings.find_one({"broker_id": broker_id}, {"_id": 0})
+            existing_projections = broker_settings.get("currency_projections", []) if broker_settings else []
+            
+            # Check if this currency already exists in projections
+            existing_currencies = set(p.get('currency') for p in existing_projections)
+            
+            if home_currency not in existing_currencies:
+                # Add projections for this new currency (next 6 years)
+                current_year = datetime.now().year
+                
+                # Default rates for common currencies (per 1 AED)
+                default_rates = {
+                    "INR": 22.5,
+                    "USD": 0.27,
+                    "EUR": 0.25,
+                    "GBP": 0.21,
+                    "SGD": 0.37,
+                    "AUD": 0.42,
+                    "CAD": 0.37,
+                    "CHF": 0.24,
+                    "JPY": 40.0
+                }
+                
+                # Calculate actual rate from this payment
+                calculated_rate = home_currency_amount / aed_amount if aed_amount > 0 else default_rates.get(home_currency, 22.5)
+                
+                # Create projections for new currency
+                new_projections = [
+                    {"year": current_year + i, "currency": home_currency, "projected_rate": round(calculated_rate, 4)}
+                    for i in range(6)
+                ]
+                
+                # Update broker settings with new currency projections
+                await db.broker_settings.update_one(
+                    {"broker_id": broker_id},
+                    {
+                        "$set": {"broker_id": broker_id, "updated_at": datetime.now(timezone.utc).isoformat()},
+                        "$push": {"currency_projections": {"$each": new_projections}}
+                    },
+                    upsert=True
+                )
+    
     # Notify broker about pending payment verification (only if not already verified by broker)
     broker_id = opportunity.get('created_by')
     if broker_id and current_user['id'] != broker_id and payment_status == "pending_verification":
