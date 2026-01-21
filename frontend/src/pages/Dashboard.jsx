@@ -100,64 +100,54 @@ const formatDateTime = () => {
   return `${timeStr} | ${dayName}, ${day}${suffix} ${monthName} ${year}`;
 };
 
-// Venn Diagram Component - Shows only numbers, labels in legend
+// Venn Diagram Component - Softer colors, cleaner design
 const VennDiagram = ({ bondOnly, realEstateOnly, both }) => {
   return (
     <div className="relative w-full h-44 flex items-center justify-center">
-      {/* Venn Circles */}
-      <svg viewBox="0 0 280 160" className="w-full h-full max-w-[300px]">
-        {/* Definitions for clip paths */}
+      <svg viewBox="0 0 280 160" className="w-full h-full max-w-[280px]">
         <defs>
           <clipPath id="leftCircle">
-            <circle cx="95" cy="80" r="60" />
-          </clipPath>
-          <clipPath id="rightCircle">
-            <circle cx="175" cy="80" r="60" />
+            <circle cx="95" cy="80" r="55" />
           </clipPath>
         </defs>
         
-        {/* Left circle (Bonds Only) - Teal */}
+        {/* Left circle (Bonds) */}
         <circle 
           cx="95" 
           cy="80" 
-          r="60" 
-          fill={COLORS.venn.introduction}
-          fillOpacity="0.85"
+          r="55" 
+          fill={COLORS.venn.bonds}
+          fillOpacity="0.75"
         />
         
-        {/* Right circle (Real Estate Only) - Blue */}
+        {/* Right circle (Real Estate) */}
         <circle 
-          cx="175" 
+          cx="170" 
           cy="80" 
-          r="60" 
-          fill={COLORS.venn.analysis}
-          fillOpacity="0.85"
+          r="55" 
+          fill={COLORS.venn.realEstate}
+          fillOpacity="0.75"
         />
         
-        {/* Overlap area - Different color blending */}
+        {/* Overlap */}
         <g clipPath="url(#leftCircle)">
           <circle 
-            cx="175" 
+            cx="170" 
             cy="80" 
-            r="60" 
-            fill={COLORS.venn.opened}
-            fillOpacity="0.95"
+            r="55" 
+            fill={COLORS.venn.both}
+            fillOpacity="0.9"
           />
         </g>
         
-        {/* Numbers only on circles - no labels */}
-        {/* Bonds Only number (left) */}
-        <text x="65" y="85" textAnchor="middle" className="fill-white font-bold" style={{ fontSize: '22px' }}>
+        {/* Numbers */}
+        <text x="65" y="85" textAnchor="middle" className="fill-white font-semibold" style={{ fontSize: '20px' }}>
           {bondOnly}
         </text>
-        
-        {/* Both products number (center overlap) */}
-        <text x="135" y="85" textAnchor="middle" className="fill-white font-bold" style={{ fontSize: '22px' }}>
+        <text x="132" y="85" textAnchor="middle" className="fill-white font-semibold" style={{ fontSize: '20px' }}>
           {both}
         </text>
-        
-        {/* Real Estate Only number (right) */}
-        <text x="205" y="85" textAnchor="middle" className="fill-white font-bold" style={{ fontSize: '22px' }}>
+        <text x="200" y="85" textAnchor="middle" className="fill-white font-semibold" style={{ fontSize: '20px' }}>
           {realEstateOnly}
         </text>
       </svg>
