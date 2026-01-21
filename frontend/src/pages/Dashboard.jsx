@@ -312,15 +312,15 @@ export default function Dashboard() {
               <div className="flex justify-center gap-4 mt-2 pt-3 border-t">
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.venn.bonds }}></div>
-                  <span className="text-xs text-gray-600">Bonds ({bondOnlyClients})</span>
+                  <span className="text-xs text-gray-600">Bonds</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.venn.realEstate }}></div>
-                  <span className="text-xs text-gray-600">RE ({realEstateOnlyClients})</span>
+                  <span className="text-xs text-gray-600">Real Estate</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.venn.both }}></div>
-                  <span className="text-xs text-gray-600">Both ({bothProductsClients})</span>
+                  <span className="text-xs text-gray-600">Both</span>
                 </div>
               </div>
             </div>
