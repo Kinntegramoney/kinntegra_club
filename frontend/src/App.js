@@ -307,6 +307,16 @@ function App() {
             } 
           />
           
+          {/* Sub-Broker Client Details Route */}
+          <Route 
+            path="/sub-broker/clients/:clientId" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <SubBrokerClientDetails />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Sub-Broker Reinvestment Route */}
           <Route 
             path="/sub-broker/reinvestment" 
