@@ -3515,6 +3515,8 @@ async def download_real_estate_template(current_user: dict = Depends(get_current
         "• Broker Fee: Brokerage fee in AED (if any)",
         "• Other Fees: Any other fees in AED",
         "• Unit Selling Fee: Fee percentage when selling (0-2.5%)",
+        "• Developer Discount (AED): Discount amount offered by developer in AED",
+        "• Developer Discount (%): Or discount as percentage (use one or the other)",
         "",
         "═══════════════════════════════════════════════════════════════",
         "SHEET 3 - Unit Details (Purple)",
