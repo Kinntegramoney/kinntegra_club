@@ -3824,12 +3824,26 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
+  const [currentRate, setCurrentRate] = useState(null);
   
   useEffect(() => {
     if (investor?.client_id) {
       fetchReport();
+      fetchCurrentRate();
     }
   }, [investor]);
+  
+  const fetchCurrentRate = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/forex/aed-to-inr`);
+      if (response.data?.rate) {
+        setCurrentRate(response.data.rate);
+      }
+    } catch (err) {
+      console.error("Error fetching current rate:", err);
+      setCurrentRate(22.5); // Fallback default
+    }
+  };
   
   const fetchReport = async () => {
     setLoading(true);
