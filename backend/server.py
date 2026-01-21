@@ -1802,14 +1802,31 @@ async def bulk_upload_indian_clients(
             
             # Get bank details (required for bonds)
             bank_row = bank_by_pan.get(pan, {})
+            intl_bank_row = intl_bank_by_pan.get(pan, {})
+            is_nri = country_of_residency.lower() != 'india'
+            
             if 'bonds' in opportunities:
                 bank_name = get_val(bank_row, 'bank_name')
                 account_number = get_val(bank_row, 'account_number')
                 ifsc_code = get_val(bank_row, 'ifsc_code')
-                if not bank_name or not account_number or not ifsc_code:
-                    results['errors'].append(f"Row {idx+2}: Bank details required for Bond investments (PAN: {pan})")
+                account_type = get_val(bank_row, 'account_type')
+                
+                if not bank_name or not account_number or not ifsc_code or not account_type:
+                    results['errors'].append(f"Row {idx+2}: Indian bank details (Bank Name, Account Number, IFSC, Account Type) required for Bond investments (PAN: {pan})")
                     results['failed'] += 1
                     continue
+                
+                # NRIs also need international bank details
+                if is_nri:
+                    intl_bank_name = get_val(intl_bank_row, 'intl_bank_name')
+                    intl_account_number = get_val(intl_bank_row, 'intl_account_number')
+                    intl_iban = get_val(intl_bank_row, 'iban')
+                    intl_swift_code = get_val(intl_bank_row, 'swift_code')
+                    
+                    if not intl_bank_name or not intl_account_number or not intl_iban or not intl_swift_code:
+                        results['errors'].append(f"Row {idx+2}: International bank details (Bank Name, Account Number, IBAN, SWIFT) required for NRIs (PAN: {pan})")
+                        results['failed'] += 1
+                        continue
             
             # Get passport details (required for real_estate)
             passport_row = passport_by_pan.get(pan, {})
