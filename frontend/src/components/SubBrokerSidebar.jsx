@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { TrendingUp, LogOut, Menu, X, Wallet, FileBarChart } from "lucide-react";
+import { LayoutGrid, TrendingUp, LogOut, Menu, X, Wallet, FileBarChart, UserCheck, Tag, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function SubBrokerSidebar({ user }) {
@@ -19,7 +19,17 @@ export default function SubBrokerSidebar({ user }) {
     navigate("/login");
   };
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + "/");
+
+  const menuItems = [
+    { path: "/sub-broker/dashboard", label: "Dashboard", icon: LayoutGrid },
+    { path: "/sub-broker/opportunities", label: "Opportunities", icon: TrendingUp },
+    { path: "/sub-broker/holdings", label: "Holdings", icon: Wallet },
+    { path: "/sub-broker/clients", label: "Clients", icon: UserCheck },
+    { path: "/sub-broker/reinvestment", label: "Reinv Tag", icon: Tag },
+    { path: "/sub-broker/analysis", label: "Analysis", icon: FileBarChart },
+    { path: "/sub-broker/profile", label: "Profile", icon: User },
+  ];
 
   const SidebarContent = () => (
     <>
@@ -37,45 +47,25 @@ export default function SubBrokerSidebar({ user }) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 md:p-4 space-y-1">
-        <button
-          onClick={() => navigate("/sub-broker/opportunities")}
-          className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
-            isActive("/sub-broker/opportunities")
-              ? 'bg-amber-50 text-amber-700'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-          data-testid="nav-opportunities"
-        >
-          <TrendingUp className="h-5 w-5 flex-shrink-0" />
-          <span className="font-medium text-sm md:text-base">Opportunities</span>
-        </button>
-        
-        <button
-          onClick={() => navigate("/sub-broker/holdings")}
-          className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
-            isActive("/sub-broker/holdings")
-              ? 'bg-amber-50 text-amber-700'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-          data-testid="nav-holdings"
-        >
-          <Wallet className="h-5 w-5 flex-shrink-0" />
-          <span className="font-medium text-sm md:text-base">Holdings</span>
-        </button>
-        
-        <button
-          onClick={() => navigate("/analysis")}
-          className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
-            isActive("/analysis")
-              ? 'bg-amber-50 text-amber-700'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-          data-testid="nav-analysis"
-        >
-          <FileBarChart className="h-5 w-5 flex-shrink-0" />
-          <span className="font-medium text-sm md:text-base">Analysis</span>
-        </button>
+      <nav className="flex-1 p-3 md:p-4 space-y-1 overflow-y-auto">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
+                isActive(item.path)
+                  ? 'bg-amber-50 text-amber-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+              data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
+            >
+              <Icon className="h-5 w-5 flex-shrink-0" />
+              <span className="font-medium text-sm md:text-base">{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
 
       {/* Logout */}
