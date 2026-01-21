@@ -4031,9 +4031,9 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
   };
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-auto">
-        <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between z-10">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
+      <div className="bg-white rounded-xl w-full max-w-[95vw] max-h-[95vh] overflow-auto">
+        <div className="sticky top-0 bg-white border-b p-3 flex items-center justify-between z-10">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-indigo-600" />
@@ -4051,7 +4051,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
           </div>
         </div>
         
-        <div className="p-4">
+        <div className="p-3">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -4063,11 +4063,136 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
               <Button variant="outline" onClick={fetchReport} className="mt-4">Retry</Button>
             </div>
           ) : report ? (
-            <div id="xirr-report-content" className="space-y-6 bg-white">
-              {/* PDF Header - Only visible in PDF */}
-              <div className="hidden print:block mb-4 pb-4 border-b">
-                <h1 className="text-xl font-bold text-gray-800">XIRR Comparison Report</h1>
-                <p className="text-sm text-gray-600">{report.opportunity.building_name} - Unit {report.opportunity.unit_number}</p>
+            <div id="xirr-report-content" className="bg-white">
+              {/* Two Column Layout - Left: Info, Right: Cashflow */}
+              <div className="flex gap-4">
+                {/* LEFT COLUMN - Property Info & Summary */}
+                <div className="w-[320px] flex-shrink-0 space-y-3">
+                  {/* Property Details Card */}
+                  <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-3 border border-indigo-100">
+                    <h3 className="font-semibold text-gray-800 text-sm mb-2 flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-indigo-600" />
+                      Property Details
+                    </h3>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Building:</span>
+                        <span className="font-medium text-gray-800">{report.opportunity.building_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Unit:</span>
+                        <span className="font-medium">{report.opportunity.unit_number}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Unit Price:</span>
+                        <span className="font-medium">AED {report.opportunity.unit_price?.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Investor Details Card */}
+                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg p-3 border border-emerald-100">
+                    <h3 className="font-semibold text-gray-800 text-sm mb-2 flex items-center gap-2">
+                      <User className="h-4 w-4 text-emerald-600" />
+                      Investor Details
+                    </h3>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Name:</span>
+                        <span className="font-medium text-gray-800">{report.investor.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Share:</span>
+                        <span className="font-medium">{report.investor.share_percentage}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Currency:</span>
+                        <span className="font-medium">{report.investor.currency}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Investment:</span>
+                        <span className="font-medium text-emerald-700">AED {formatCurrency(report.summary.total_investment_aed)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* XIRR Summary Cards */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-indigo-50 rounded-lg p-2 text-center">
+                      <p className="text-[10px] text-indigo-600 font-medium">Expected XIRR</p>
+                      <p className="text-lg font-bold text-indigo-800">
+                        {report.summary.xirr_projected !== null ? `${report.summary.xirr_projected.toFixed(1)}%` : 'N/A'}
+                      </p>
+                    </div>
+                    <div className="bg-emerald-50 rounded-lg p-2 text-center">
+                      <p className="text-[10px] text-emerald-600 font-medium">Actual XIRR</p>
+                      <p className="text-lg font-bold text-emerald-800">
+                        {report.summary.xirr_actual !== null ? `${report.summary.xirr_actual.toFixed(1)}%` : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Currency Impact */}
+                  {(() => {
+                    const hasActualPayments = report.cashflows_actual?.some(cf => cf.is_paid === true);
+                    if (!hasActualPayments || !currentRate) {
+                      return (
+                        <div className="bg-gray-50 rounded-lg p-2 text-center">
+                          <p className="text-[10px] text-gray-500 font-medium">Currency Impact</p>
+                          <p className="text-lg font-bold text-gray-400">-</p>
+                          <p className="text-[10px] text-gray-400">No payments yet</p>
+                        </div>
+                      );
+                    }
+                    const todayTotal = report.summary.total_investment_aed * currentRate;
+                    const currencyImpact = report.summary.total_projected_home_currency - report.summary.total_actual_home_currency + todayTotal;
+                    const isPositive = currencyImpact >= 0;
+                    return (
+                      <div className={`rounded-lg p-2 text-center ${isPositive ? 'bg-green-50' : 'bg-red-50'}`}>
+                        <p className="text-[10px] text-gray-600 font-medium">Currency Impact</p>
+                        <p className={`text-lg font-bold ${isPositive ? 'text-green-800' : 'text-red-800'}`}>
+                          {isPositive ? '+' : ''}{report.investor.currency} {formatCurrency(Math.abs(currencyImpact))}
+                        </p>
+                        <p className="text-[10px] text-gray-500">Projected - Actual + Today</p>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Investment Totals */}
+                  <div className="bg-gray-50 rounded-lg p-3 border">
+                    <h4 className="text-xs font-semibold text-gray-700 mb-2">Investment Summary</h4>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Total AED:</span>
+                        <span className="font-mono font-medium">AED {formatCurrency(report.summary.total_investment_aed)}</span>
+                      </div>
+                      <div className="flex justify-between text-indigo-700">
+                        <span>Projected {report.investor.currency}:</span>
+                        <span className="font-mono font-medium">{formatCurrency(report.summary.total_projected_home_currency)}</span>
+                      </div>
+                      <div className="flex justify-between text-emerald-700">
+                        <span>Actual {report.investor.currency}:</span>
+                        <span className="font-mono font-medium">{formatCurrency(report.summary.total_actual_home_currency)}</span>
+                      </div>
+                      {currentRate && (
+                        <div className="flex justify-between text-purple-700 pt-1 border-t">
+                          <span>Today's {report.investor.currency}:</span>
+                          <span className="font-mono font-medium">{formatCurrency(report.summary.total_investment_aed * currentRate)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Current Rate Info */}
+                  {currentRate && (
+                    <div className="text-center text-[10px] text-gray-500 bg-gray-100 rounded py-1">
+                      Today's Rate: 1 AED = {currentRate.toFixed(2)} {report.investor.currency}
+                    </div>
+                  )}
+                </div>
+
+                {/* RIGHT COLUMN - Cashflow Table */}
+                <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-600">Investor: {report.investor.name} ({report.investor.share_percentage}% Share)</p>
                 <p className="text-xs text-gray-400">Generated on {new Date().toLocaleDateString()}</p>
               </div>
