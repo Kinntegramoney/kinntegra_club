@@ -15384,6 +15384,71 @@ async def test_email(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to send test email. Check server logs.")
 
 
+# Sell Unit Model
+class SellUnitRequest(BaseModel):
+    sale_date: str
+    sale_price: float
+    brokerage_fee: Optional[float] = 0
+    selling_fee_percentage: Optional[float] = 2
+    net_proceeds: Optional[float] = 0
+    notes: Optional[str] = ""
+
+@api_router.post("/real-estate-opportunities/{opportunity_id}/sell")
+async def sell_real_estate_unit(
+    opportunity_id: str,
+    data: SellUnitRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Sell a fully funded real estate unit and mark it as closed"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can sell units")
+    
+    # Get the opportunity
+    opp = await db.real_estate_opportunities.find_one({"id": opportunity_id}, {"_id": 0})
+    if not opp:
+        raise HTTPException(status_code=404, detail="Property not found")
+    
+    # Verify it's fully invested
+    if opp.get('status') != 'fully_invested':
+        raise HTTPException(status_code=400, detail="Only fully invested properties can be sold")
+    
+    # Calculate profit/loss
+    purchase_price = opp.get('unit_price', 0)
+    profit_loss = data.sale_price - purchase_price - data.brokerage_fee
+    profit_percentage = (profit_loss / purchase_price * 100) if purchase_price > 0 else 0
+    
+    # Update the opportunity with sale details
+    sale_record = {
+        "sale_date": data.sale_date,
+        "sale_price": data.sale_price,
+        "brokerage_fee": data.brokerage_fee,
+        "selling_fee_percentage": data.selling_fee_percentage,
+        "net_proceeds": data.net_proceeds or (data.sale_price - data.brokerage_fee),
+        "profit_loss": profit_loss,
+        "profit_percentage": round(profit_percentage, 2),
+        "notes": data.notes,
+        "sold_by": current_user['id'],
+        "sold_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {
+            "$set": {
+                "status": "closed",
+                "sale_record": sale_record,
+                "closed_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {
+        "message": "Unit sold successfully",
+        "sale_record": sale_record
+    }
+
+
 # ==================== DASHBOARD ANALYTICS ENDPOINTS ====================
 
 @api_router.get("/dashboard/summary")
