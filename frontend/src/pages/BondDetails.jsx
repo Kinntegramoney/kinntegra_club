@@ -979,6 +979,125 @@ export default function BondDetails() {
           )}
         </div>
       </div>
+      
+      {/* Cashflow Modal - Popup for broker */}
+      {showCashflowModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-teal-50 to-blue-50">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <svg className="h-5 w-5 text-teal-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                Cashflow Schedule - {bondData.name}
+              </h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowCashflowModal(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Total Interest</p>
+                  <p className="font-bold text-blue-700">
+                    ₹{displayInterestPayments.reduce((sum, ip) => sum + (ip.amount || 0), 0).toLocaleString('en-IN')}
+                  </p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Total Principal</p>
+                  <p className="font-bold text-green-700">
+                    ₹{displayPrincipalPayments.reduce((sum, pp) => sum + (pp.amount || 0), 0).toLocaleString('en-IN')}
+                  </p>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Total Cashflow</p>
+                  <p className="font-bold text-purple-700">
+                    ₹{(displayInterestPayments.reduce((sum, ip) => sum + (ip.amount || 0), 0) + displayPrincipalPayments.reduce((sum, pp) => sum + (pp.amount || 0), 0)).toLocaleString('en-IN')}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Chart */}
+              <div className="mb-4 bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-semibold mb-3">Cashflow Timeline</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} />
+                    <Tooltip 
+                      contentStyle={{ fontFamily: 'JetBrains Mono', fontSize: 11 }}
+                      formatter={(value) => `₹${value.toLocaleString()}`}
+                    />
+                    <Legend />
+                    <Bar dataKey="Interest" fill="#2563EB" />
+                    <Bar dataKey="Principal" fill="#10B981" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              
+              {/* Table */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="max-h-72 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="text-left p-3 font-semibold text-gray-700 border-b">Date</th>
+                        <th className="text-right p-3 font-semibold text-blue-700 border-b">Interest</th>
+                        <th className="text-right p-3 font-semibold text-green-700 border-b">Principal</th>
+                        <th className="text-right p-3 font-semibold text-purple-700 border-b">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const allDates = new Set();
+                        displayInterestPayments.forEach(ip => allDates.add(ip.date));
+                        displayPrincipalPayments.forEach(pp => allDates.add(pp.date));
+                        const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
+                        
+                        if (sortedDates.length === 0) {
+                          return (
+                            <tr><td colSpan="4" className="text-center p-6 text-gray-500">No cashflows scheduled</td></tr>
+                          );
+                        }
+                        
+                        return sortedDates.map((date, idx) => {
+                          const interest = displayInterestPayments.find(ip => ip.date === date)?.amount || 0;
+                          const principal = displayPrincipalPayments.find(pp => pp.date === date)?.amount || 0;
+                          const total = interest + principal;
+                          const isPast = new Date(date) < new Date();
+                          
+                          return (
+                            <tr key={idx} className={`border-b last:border-0 ${isPast ? 'bg-gray-50 text-gray-400' : 'hover:bg-gray-50'}`}>
+                              <td className="p-3">
+                                <span className="font-medium">{format(new Date(date), "dd MMM yyyy")}</span>
+                                {isPast && <span className="ml-2 text-xs text-gray-400">(Past)</span>}
+                              </td>
+                              <td className="p-3 text-right font-mono">{interest > 0 ? <span className="text-blue-600">₹{interest.toLocaleString('en-IN')}</span> : <span className="text-gray-300">-</span>}</td>
+                              <td className="p-3 text-right font-mono">{principal > 0 ? <span className="text-green-600">₹{principal.toLocaleString('en-IN')}</span> : <span className="text-gray-300">-</span>}</td>
+                              <td className="p-3 text-right font-mono font-semibold"><span className="text-purple-600">₹{total.toLocaleString('en-IN')}</span></td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
