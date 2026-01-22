@@ -162,6 +162,15 @@ Complete 3-phase approval workflow for sub-broker actions:
 4. **Bug Fix**:
    - Fixed sub-broker partner lookup to use `created_by` field for broker_id
 
+### Profile Data Parity Fix (Jan 22, 2026)
+- **Issue**: Profile information on Holdings page was not visible to clients and sub-brokers
+- **Root Cause**: `GET /api/clients/{client_id}` only allowed broker and sub-broker access, not clients viewing their own profile
+- **Fix Applied**:
+  1. Modified `GET /api/clients/{client_id}` (server.py lines 6736-6759) to add client role check: allows clients to access their own profile via `user_id` match
+  2. Modified `GET /api/holdings/clients` (server.py lines 7971-7986) to handle client role: clients now see only themselves in the list
+  3. Updated `Holdings.jsx` to import `ClientSidebar` for proper navigation when client accesses the Holdings page
+- **Verified**: All 11 backend tests pass, frontend UI verified for all three roles
+
 ## P0 - Critical/In Progress
 1. **Kinntegra API Integration**: Awaiting API authentication details from user
 
