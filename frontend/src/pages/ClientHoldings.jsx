@@ -312,7 +312,7 @@ export default function ClientHoldings() {
                 </div>
               </div>
                   </>
-                )}
+                )
               )}
 
               {/* Trades Tab */}
