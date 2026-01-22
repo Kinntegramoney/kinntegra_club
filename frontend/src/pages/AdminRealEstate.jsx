@@ -172,9 +172,23 @@ export default function AdminRealEstate() {
                     <tr key={opp.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-teal-600" />
-                          </div>
+                          {/* Property Image */}
+                          {opp.images && opp.images.length > 0 ? (
+                            <img 
+                              src={`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/images/${opp.images[0].id}`}
+                              alt={opp.building_name}
+                              className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = '';
+                                e.target.parentElement.innerHTML = '<div class="w-16 h-16 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0"><svg class="h-6 w-6 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg></div>';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-16 h-16 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Building2 className="h-6 w-6 text-teal-600" />
+                            </div>
+                          )}
                           <div>
                             <p className="font-medium text-gray-800">{opp.building_name}</p>
                             <p className="text-sm text-gray-500">Unit {opp.unit_no} • {opp.unit_type} • Floor {opp.floor}</p>
@@ -182,11 +196,6 @@ export default function AdminRealEstate() {
                               <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                                 <MapPin className="h-3 w-3" />
                                 {opp.location}
-                              </p>
-                            )}
-                            {opp.description && (
-                              <p className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-xs" title={opp.description}>
-                                {opp.description.length > 100 ? `${opp.description.slice(0, 100)}...` : opp.description}
                               </p>
                             )}
                           </div>
