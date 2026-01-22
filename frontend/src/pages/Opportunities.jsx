@@ -477,7 +477,28 @@ export default function Opportunities() {
           
           {/* Expected XIRR - Calculated from payment schedule and expected sale */}
           <div className="bg-purple-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Expected XIRR</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-500 mb-1">Expected XIRR</p>
+              {(() => {
+                const breakdown = getXirrCashflowsBreakdown(opp);
+                if (breakdown) {
+                  return (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setXirrModalData(breakdown);
+                      }}
+                      className="text-purple-600 hover:text-purple-800 p-1 rounded hover:bg-purple-100 transition-colors"
+                      title="View XIRR calculation"
+                      data-testid={`view-xirr-${opp.id}`}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
+                  );
+                }
+                return null;
+              })()}
+            </div>
             <p className="font-semibold text-purple-700">
               {(() => {
                 const calculatedXirr = calculatePropertyXIRR(opp);
