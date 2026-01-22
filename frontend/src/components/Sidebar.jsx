@@ -32,8 +32,7 @@ export default function Sidebar({ user }) {
   const brokerMenuItems = [
     { path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid },
     { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
-    { path: "/broker/pending-approvals", label: "Approvals", icon: CheckSquare },
-    { path: "/broker/approval-logs", label: "Logs", icon: History },
+    { path: "/broker/approvals", label: "Approvals & Logs", icon: CheckSquare },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
     { path: "/broker/reinvestment", label: "Reinv Tag", icon: Tag },
