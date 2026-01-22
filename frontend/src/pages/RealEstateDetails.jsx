@@ -2885,8 +2885,23 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
   const [selectedClients, setSelectedClients] = useState([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sendEmail, setSendEmail] = useState(true);
+  const [includePhotos, setIncludePhotos] = useState(true);
   
   const formatCurrency = (amt) => new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(amt || 0);
+
+  // Filter clients based on search query
+  const filteredClients = useMemo(() => {
+    if (!searchQuery.trim()) return clients;
+    const query = searchQuery.toLowerCase();
+    return clients.filter(client => 
+      client.name?.toLowerCase().includes(query) ||
+      client.email?.toLowerCase().includes(query) ||
+      client.phone?.includes(query) ||
+      client.pan_number?.toLowerCase().includes(query)
+    );
+  }, [clients, searchQuery]);
 
   const toggleClient = (clientId) => {
     setSelectedClients(prev => 
@@ -2897,10 +2912,16 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
   };
 
   const selectAll = () => {
-    if (selectedClients.length === clients.length) {
-      setSelectedClients([]);
+    // Select/deselect all filtered clients
+    const filteredIds = filteredClients.map(c => c.id);
+    const allFilteredSelected = filteredIds.every(id => selectedClients.includes(id));
+    
+    if (allFilteredSelected) {
+      // Deselect all filtered
+      setSelectedClients(prev => prev.filter(id => !filteredIds.includes(id)));
     } else {
-      setSelectedClients(clients.map(c => c.id));
+      // Select all filtered (add to existing selection)
+      setSelectedClients(prev => [...new Set([...prev, ...filteredIds])]);
     }
   };
 
@@ -2915,6 +2936,8 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
     try {
       const token = localStorage.getItem("token");
       const API = process.env.REACT_APP_BACKEND_URL;
+      
+      // First, create share records in the system
       await axios.post(
         `${API}/api/real-estate-opportunities/${opportunity.id}/share`,
         { 
@@ -2923,6 +2946,28 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      // If sendEmail is enabled, also send email with property details
+      if (sendEmail) {
+        try {
+          await axios.post(
+            `${API}/api/real-estate-opportunities/${opportunity.id}/share-email`,
+            { 
+              client_ids: selectedClients,
+              personal_message: message,
+              include_photos: includePhotos
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          toast.success(`Property shared and emails sent to ${selectedClients.length} client(s)`);
+        } catch (emailError) {
+          console.error("Email sending failed:", emailError);
+          toast.warning("Property shared but some emails may not have been sent");
+        }
+      } else {
+        toast.success(`Property shared with ${selectedClients.length} client(s)`);
+      }
+      
       onSuccess();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Failed to share opportunity");
@@ -2930,6 +2975,14 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
       setLoading(false);
     }
   };
+
+  // Count clients with email for info display
+  const clientsWithEmail = useMemo(() => {
+    return selectedClients.filter(id => {
+      const client = clients.find(c => c.id === id);
+      return client?.email;
+    }).length;
+  }, [selectedClients, clients]);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -2942,7 +2995,7 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
             </h2>
             <p className="text-sm text-gray-500">{opportunity.building_name} - Unit {opportunity.unit_no}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg" data-testid="close-share-modal"><X className="h-5 w-5" /></button>
         </div>
         
         <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
@@ -2955,37 +3008,60 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
               <p className="text-lg font-bold text-teal-800 mt-2">AED {formatCurrency(opportunity.total_cost)}</p>
             </div>
             
-            {/* Client Selection */}
+            {/* Client Selection with Search */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-sm font-medium">Select Clients</Label>
-                <Button type="button" variant="ghost" size="sm" onClick={selectAll}>
-                  {selectedClients.length === clients.length ? 'Deselect All' : 'Select All'}
+                <Button type="button" variant="ghost" size="sm" onClick={selectAll} data-testid="select-all-clients-btn">
+                  {filteredClients.length > 0 && filteredClients.every(c => selectedClients.includes(c.id)) ? 'Deselect All' : 'Select All'}
                 </Button>
               </div>
               
+              {/* Search Input */}
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search by name, email, phone or PAN..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                  data-testid="client-search-input"
+                />
+              </div>
+              
               {clients.length > 0 ? (
-                <div className="border rounded-lg max-h-48 overflow-y-auto">
-                  {clients.map((client) => (
-                    <div 
-                      key={client.id} 
-                      className={`flex items-center gap-3 p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 ${
-                        selectedClients.includes(client.id) ? 'bg-teal-50' : ''
-                      }`}
-                      onClick={() => toggleClient(client.id)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedClients.includes(client.id)}
-                        onChange={() => toggleClient(client.id)}
-                        className="h-4 w-4 text-teal-600 rounded"
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800">{client.name}</p>
-                        <p className="text-xs text-gray-500">{client.email || client.phone}</p>
+                <div className="border rounded-lg max-h-48 overflow-y-auto" data-testid="client-list">
+                  {filteredClients.length > 0 ? (
+                    filteredClients.map((client) => (
+                      <div 
+                        key={client.id} 
+                        className={`flex items-center gap-3 p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 ${
+                          selectedClients.includes(client.id) ? 'bg-teal-50' : ''
+                        }`}
+                        onClick={() => toggleClient(client.id)}
+                        data-testid={`client-item-${client.id}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedClients.includes(client.id)}
+                          onChange={() => toggleClient(client.id)}
+                          className="h-4 w-4 text-teal-600 rounded"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-800 truncate">{client.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{client.email || client.phone || 'No contact info'}</p>
+                        </div>
+                        {client.email && (
+                          <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" title="Has email" />
+                        )}
                       </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-gray-500 text-sm">
+                      <p>No clients match "{searchQuery}"</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-8 bg-gray-50 rounded-lg">
@@ -2993,7 +3069,54 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
                   <p className="text-gray-500 text-sm">No clients found</p>
                 </div>
               )}
-              <p className="text-xs text-gray-500 mt-2">{selectedClients.length} client(s) selected</p>
+              <p className="text-xs text-gray-500 mt-2">
+                {selectedClients.length} client(s) selected
+                {searchQuery && filteredClients.length !== clients.length && (
+                  <span className="ml-2 text-teal-600">• Showing {filteredClients.length} of {clients.length}</span>
+                )}
+              </p>
+            </div>
+            
+            {/* Email Options */}
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-gray-600" />
+                  <Label className="text-sm font-medium cursor-pointer" htmlFor="send-email-toggle">Send via Email</Label>
+                </div>
+                <input
+                  type="checkbox"
+                  id="send-email-toggle"
+                  checked={sendEmail}
+                  onChange={(e) => setSendEmail(e.target.checked)}
+                  className="h-4 w-4 text-teal-600 rounded"
+                  data-testid="send-email-toggle"
+                />
+              </div>
+              
+              {sendEmail && (
+                <>
+                  <div className="flex items-center justify-between pl-6">
+                    <div className="flex items-center gap-2">
+                      <Image className="h-4 w-4 text-gray-500" />
+                      <Label className="text-sm text-gray-600 cursor-pointer" htmlFor="include-photos-toggle">Include Property Photos</Label>
+                    </div>
+                    <input
+                      type="checkbox"
+                      id="include-photos-toggle"
+                      checked={includePhotos}
+                      onChange={(e) => setIncludePhotos(e.target.checked)}
+                      className="h-4 w-4 text-teal-600 rounded"
+                      data-testid="include-photos-toggle"
+                    />
+                  </div>
+                  {selectedClients.length > 0 && clientsWithEmail < selectedClients.length && (
+                    <p className="text-xs text-amber-600 pl-6">
+                      ⚠️ {selectedClients.length - clientsWithEmail} client(s) don't have email addresses
+                    </p>
+                  )}
+                </>
+              )}
             </div>
             
             {/* Message */}
@@ -3005,19 +3128,25 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={3}
+                data-testid="share-message-input"
               />
             </div>
           </div>
           
           <div className="p-6 border-t bg-gray-50">
             <div className="flex gap-3">
-              <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+              <Button type="button" variant="outline" className="flex-1" onClick={onClose} data-testid="cancel-share-btn">Cancel</Button>
               <Button 
                 type="submit" 
                 disabled={loading || selectedClients.length === 0} 
                 className="flex-1 bg-teal-600 hover:bg-teal-700"
+                data-testid="submit-share-btn"
               >
-                {loading ? "Sending..." : `Share with ${selectedClients.length} Client(s)`}
+                {loading ? "Sending..." : (
+                  sendEmail 
+                    ? `Share & Email ${selectedClients.length} Client(s)` 
+                    : `Share with ${selectedClients.length} Client(s)`
+                )}
               </Button>
             </div>
           </div>
