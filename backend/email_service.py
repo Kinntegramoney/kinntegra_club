@@ -632,11 +632,36 @@ def send_real_estate_opportunity_email(
     recipient_name: str,
     property_details: dict,
     sender_name: str,
-    personal_message: Optional[str] = None
+    personal_message: Optional[str] = None,
+    include_photos: bool = True
 ) -> bool:
     """Send real estate opportunity details to a client"""
     
     subject = f"Property Investment: {property_details.get('building_name', 'Property')} - {property_details.get('location', '')}"
+    
+    # Build photos section if enabled and photos exist
+    photos_html = ""
+    if include_photos:
+        images = property_details.get('images', [])
+        if images:
+            photos_list = []
+            for i, img in enumerate(images[:4]):  # Limit to 4 photos
+                img_url = img if isinstance(img, str) else img.get('url', '')
+                if img_url:
+                    # Ensure full URL
+                    if not img_url.startswith('http'):
+                        img_url = f"https://kinntegraa.club{img_url}"
+                    photos_list.append(f'<img src="{img_url}" alt="Property Photo {i+1}" style="width: 48%; height: 150px; object-fit: cover; border-radius: 8px; margin: 4px;">')
+            
+            if photos_list:
+                photos_html = f'''
+                <div style="margin: 20px 0; padding: 15px; background: #f3f4f6; border-radius: 10px;">
+                    <div style="font-size: 14px; font-weight: bold; color: #374151; margin-bottom: 10px;">📸 Property Photos</div>
+                    <div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
+                        {"".join(photos_list)}
+                    </div>
+                </div>
+                '''
     
     html_content = f"""
     <!DOCTYPE html>
@@ -681,6 +706,8 @@ def send_real_estate_opportunity_email(
                         <div class="property-name">{property_details.get('building_name', 'Property')}</div>
                         <div class="property-location">📍 {property_details.get('location', 'N/A')} | Unit: {property_details.get('unit_number', 'N/A')}</div>
                     </div>
+                    
+                    {photos_html}
                     
                     <div class="price-tag">
                         <div style="font-size: 12px; opacity: 0.9;">Total Investment</div>
