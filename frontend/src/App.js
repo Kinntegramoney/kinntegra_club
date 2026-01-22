@@ -232,7 +232,7 @@ function App() {
             path="/client/opportunities" 
             element={
               <ProtectedRoute allowedRoles={["client"]}>
-                <ClientOpportunities />
+                <Opportunities />
               </ProtectedRoute>
             } 
           />
