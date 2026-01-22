@@ -968,7 +968,7 @@ export default function RealEstateDetails() {
                                           <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
                                           <button className="text-[8px] text-blue-600 hover:text-blue-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}`, '_blank')}>View</button>
                                         </>
-                                      ) : user?.role === 'broker' ? (
+                                      ) : canManageInvestorPayment(investor.client_id) ? (
                                         <>
                                           <button className="w-6 h-6 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center" onClick={() => { setSelectedInvoiceMilestone({ milestone: { ...milestone, index: idx }, investor, amount: investorAmount }); setShowInvoiceUploadModal(true); }} title="Upload Invoice"><Upload className="h-3 w-3" /></button>
                                           <span className="text-[8px] text-gray-400">Upload</span>
@@ -1010,7 +1010,7 @@ export default function RealEstateDetails() {
                                             <span className="text-[8px] text-amber-500">Pending</span>
                                           )}
                                         </>
-                                      ) : canUploadSwift ? (
+                                      ) : canUploadSwift && canManageInvestorPayment(investor.client_id) ? (
                                         <>
                                           <button className="w-6 h-6 rounded bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center" onClick={() => { setSelectedPaymentMilestone({ ...milestone, index: idx, selectedInvestor: investor }); setShowPaymentRecordModal(true); }} title="Upload SWIFT"><Upload className="h-3 w-3" /></button>
                                           <span className="text-[8px] text-gray-400">Upload</span>
