@@ -10965,21 +10965,61 @@ async def create_bond(bond_input: BondCreate):
     return bond_obj
 
 
-@api_router.get("/bonds", response_model=List[Bond])
-async def get_bonds(current_user: dict = Depends(get_current_user)):
-    """Get all bonds (brokers only see their own)"""
-    bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
+@api_router.get("/bonds")
+async def get_bonds(
+    page: int = 1,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all bonds with pagination (brokers only see their own)"""
+    skip = (page - 1) * limit
+    
+    # Optimized projection - exclude heavy cashflow data for list view
+    projection = {
+        "_id": 0,
+        "id": 1,
+        "bond_code": 1,
+        "name": 1,
+        "principal_amount": 1,
+        "coupon_rate": 1,
+        "primary_irr": 1,
+        "secondary_irr": 1,
+        "start_date": 1,
+        "end_date": 1,
+        "total_units": 1,
+        "units_sold": 1,
+        "interest_payment_frequency": 1,
+        "listing_status": 1,
+        "issuer": 1,
+        "description": 1,
+        "face_value": 1,
+        "created_at": 1,
+        "created_by": 1
+        # Exclude heavy fields: cashflows_per_unit, interest_payments, principal_payments, combined_schedule
+    }
+    
+    bonds = await db.bonds.find({}, projection).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     
     for bond in bonds:
-        if isinstance(bond['created_at'], str):
+        if isinstance(bond.get('created_at'), str):
             bond['created_at'] = datetime.fromisoformat(bond['created_at'])
         # Calculate and add status dynamically
         bond['status'] = calculate_bond_status(bond)
     
-    return bonds
+    total = await db.bonds.count_documents({})
+    
+    return {
+        "data": bonds,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "pages": (total + limit - 1) // limit
+        }
+    }
 
 
-@api_router.get("/bonds/available", response_model=List[Bond])
+@api_router.get("/bonds/available")
 async def get_available_bonds(current_user: dict = Depends(get_current_user)):
     """Get bonds with available units (for sub-brokers and clients)"""
     # For sub-brokers and clients, only show 'active' listed bonds
@@ -10988,13 +11028,33 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
     if current_user['role'] in ['sub_broker', 'client']:
         query['listing_status'] = 'active'
     
+    # Optimized projection
+    projection = {
+        "_id": 0,
+        "id": 1,
+        "bond_code": 1,
+        "name": 1,
+        "principal_amount": 1,
+        "coupon_rate": 1,
+        "primary_irr": 1,
+        "secondary_irr": 1,
+        "start_date": 1,
+        "end_date": 1,
+        "total_units": 1,
+        "units_sold": 1,
+        "listing_status": 1,
+        "issuer": 1,
+        "face_value": 1,
+        "created_at": 1
+    }
+    
     # Get bonds
-    bonds = await db.bonds.find(query, {"_id": 0}).to_list(1000)
+    bonds = await db.bonds.find(query, projection).to_list(1000)
     
     # Filter bonds with available units and not closed
     available_bonds = []
     for bond in bonds:
-        if isinstance(bond['created_at'], str):
+        if isinstance(bond.get('created_at'), str):
             bond['created_at'] = datetime.fromisoformat(bond['created_at'])
         
         # Calculate status
