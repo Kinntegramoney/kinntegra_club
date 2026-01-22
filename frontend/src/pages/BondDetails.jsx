@@ -929,13 +929,14 @@ export default function BondDetails() {
               </div>
             )}
 
-            {calculation && selectedUnits && (
+            {/* Block Units Section - Show after calculator results */}
+            {enhancedCalculation && (selectedUnits || enhancedCalculation.units_requested > 0) && (
               <div className="mt-6 pt-6 border-t border-border">
                 {/* Book Units Section */}
                 <div className="p-4 md:p-6 bg-amber-50 border border-amber-200 rounded-md">
                   <h3 className="font-semibold mb-4 flex items-center gap-2 text-base md:text-lg">
                     <ShoppingCart className="h-5 w-5 text-amber-600" />
-                    {user?.role === 'client' ? 'Book Units' : 'Book Units for Client'}
+                    {user?.role === 'client' ? 'Book Units' : 'Block Units for Client'}
                   </h3>
                   
                   <div className="space-y-4">
@@ -962,9 +963,41 @@ export default function BondDetails() {
                       </div>
                     )}
 
+                    {/* Investment Date */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Date of Investment *</Label>
+                      <Input
+                        type="date"
+                        value={settlementDate}
+                        onChange={(e) => setSettlementDate(e.target.value)}
+                        min={bondData.start_date}
+                        max={bondData.end_date}
+                        data-testid="investment-date-input"
+                      />
+                    </div>
+
+                    {/* Units and Amount Display */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">No. of Units Bought</Label>
+                        <div className="h-10 px-3 flex items-center bg-white border rounded-md font-mono font-bold">
+                          {selectedUnits || enhancedCalculation.units_requested}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Amount Transferred (₹)</Label>
+                        <Input
+                          type="text"
+                          defaultValue={(Math.ceil(enhancedCalculation.total_consideration || enhancedCalculation.total_clean_price) + 1).toLocaleString('en-IN')}
+                          data-testid="amount-transferred-input"
+                          className="font-mono"
+                        />
+                      </div>
+                    </div>
+
                     {/* Payment Reference */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Payment Reference / UTR</Label>
+                      <Label className="text-sm font-medium">UTR Number *</Label>
                       <Input
                         value={paymentReference}
                         onChange={(e) => setPaymentReference(e.target.value)}
@@ -975,7 +1008,7 @@ export default function BondDetails() {
 
                     {/* Payment Proof Upload */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Payment Proof (Screenshot)</Label>
+                      <Label className="text-sm font-medium">UTR Copy (Screenshot) *</Label>
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <Input
                           type="file"
@@ -997,7 +1030,7 @@ export default function BondDetails() {
                           ) : (
                             <>
                               <Upload className="h-5 w-5 text-amber-500" />
-                              <span className="text-sm text-amber-700">Upload payment screenshot</span>
+                              <span className="text-sm text-amber-700">Upload UTR screenshot</span>
                             </>
                           )}
                         </label>
