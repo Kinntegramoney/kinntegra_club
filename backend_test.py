@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
 class BondFlowAPITester:
-    def __init__(self, base_url="https://profilesync-1.preview.emergentagent.com"):
+    def __init__(self, base_url="https://perm-unified.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
