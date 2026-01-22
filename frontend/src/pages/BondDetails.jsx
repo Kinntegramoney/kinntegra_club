@@ -512,7 +512,8 @@ export default function BondDetails() {
             </div>
           </div>
 
-          {/* Cashflow Timeline */}
+          {/* Cashflow Timeline - Only visible to broker */}
+          {user?.role === 'broker' && (
           <div className="lg:col-span-3 metric-card rounded-md">
             <h2 className="text-xl font-semibold mb-4">Cashflow Timeline</h2>
             <ResponsiveContainer width="100%" height={300}>
@@ -536,8 +537,10 @@ export default function BondDetails() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          )}
 
-          {/* Combined Cashflow Schedule - XIRR Style Table */}
+          {/* Combined Cashflow Schedule - Only visible to broker */}
+          {user?.role === 'broker' && (
           <div className="lg:col-span-3 metric-card rounded-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
