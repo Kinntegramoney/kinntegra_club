@@ -968,7 +968,20 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                       </div>
                       <button
                         type="button"
-                        onClick={() => setExistingPresentations(existingPresentations.filter((_, i) => i !== idx))}
+                        onClick={async () => {
+                          if (opportunity?.id && pres.id) {
+                            try {
+                              await axios.delete(`${API}/real-estate-opportunities/${opportunity.id}/presentations/${pres.id}`, {
+                                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                              });
+                              toast.success("Presentation deleted");
+                            } catch (err) {
+                              toast.error("Failed to delete presentation");
+                              return;
+                            }
+                          }
+                          setExistingPresentations(existingPresentations.filter((_, i) => i !== idx));
+                        }}
                         className="p-1 text-red-500 hover:bg-red-50 rounded"
                       >
                         <Trash2 className="h-4 w-4" />
