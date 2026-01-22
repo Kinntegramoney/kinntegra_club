@@ -156,25 +156,44 @@ export default function ClientHoldings() {
           {loading ? (
             <div className="text-center py-12 text-gray-500">Loading holdings...</div>
           ) : (
-            <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
-              <TabsList className="mb-6">
-                <TabsTrigger value="bonds" className="gap-2">
-                  <Wallet className="h-4 w-4" /> Bonds
+            <>
+              {/* Header Tabs - Same style as broker Holdings */}
+              <div className="flex items-center gap-6 mb-6 border-b border-gray-200">
+                <button 
+                  onClick={() => setMainTab("bonds")}
+                  className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
+                    mainTab === "bonds" 
+                      ? "border-amber-600 text-amber-700" 
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                  data-testid="tab-bonds"
+                >
+                  <Wallet className="h-4 w-4" />
+                  Bonds
                   {holdings?.holdings?.length > 0 && (
-                    <Badge variant="secondary" className="ml-1">{holdings.holdings.length}</Badge>
+                    <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-700">{holdings.holdings.length}</Badge>
                   )}
-                </TabsTrigger>
-                <TabsTrigger value="real-estate" className="gap-2">
-                  <Building2 className="h-4 w-4" /> Real Estate
+                </button>
+                <button 
+                  onClick={() => setMainTab("real-estate")}
+                  className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
+                    mainTab === "real-estate" 
+                      ? "border-amber-600 text-amber-700" 
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                  data-testid="tab-real-estate"
+                >
+                  <Building2 className="h-4 w-4" />
+                  Real Estate
                   {realEstateHoldings.length > 0 && (
-                    <Badge variant="secondary" className="ml-1">{realEstateHoldings.length}</Badge>
+                    <Badge variant="secondary" className="ml-1 bg-teal-100 text-teal-700">{realEstateHoldings.length}</Badge>
                   )}
-                </TabsTrigger>
-              </TabsList>
+                </button>
+              </div>
 
               {/* Bonds Tab */}
-              <TabsContent value="bonds">
-                {!holdings || holdings.holdings?.length === 0 ? (
+              {mainTab === "bonds" && (
+                !holdings || holdings.holdings?.length === 0 ? (
                   <div className="text-center py-12">
                     <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">No bond holdings yet</p>
