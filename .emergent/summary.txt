@@ -1,194 +1,170 @@
 <analysis>**original_problem_statement:**
 The user's initial goal was to build a multi-step approval workflow for sub-brokers, fix several critical bugs (bulk upload, real estate investment flow), and improve the UI.
 
-During this session, the user's focus shifted to a series of rapid, iterative UI/UX enhancements and feature additions, primarily concentrated on the Broker's Dashboard and the Real Estate Details page.
-
-Key new requirements implemented include:
+The focus of the recent sessions has been a series of rapid, iterative UI/UX enhancements and critical bug fixes across the application, including:
 - A complete redesign of the Broker Dashboard UI.
-- Adding logic to capture and display Emirates ID for UAE residents, including updates to the bulk client upload process.
-- A massive overhaul of the XIRR (Extended Internal Rate of Return) report on the  page. This included:
-    - Adding dynamic currency conversion and a Notional Currency Gain feature.
-    - Restructuring the report into a two-column landscape layout.
-    - Changing the export format from Excel to a pixel-perfect PDF.
-    - Dynamically including DLD (Dubai Land Department) and Admin fees as line items in the cashflow table.
-- Adding a Sell Unit feature for fully funded properties.
-- Merging the DLD and Admin fee payment tracking into the main payment schedule table for a unified view.
-- Automating the creation of currency projections based on payment data.
+- Adding logic to capture and display Emirates ID for UAE residents.
+- A massive overhaul of the XIRR report on the  page, including a pixel-perfect PDF export.
+- A Sell Unit feature with an XIRR preview modal.
+- Combining DLD/Admin fees into the main payment schedule.
+- Fixing a Network Error during bulk real estate uploads.
+- Correcting multiple data parsing issues in the CAS (Consolidated Account Statement) PDF analysis for Mutual Fund transactions, including fixing incorrect NAV and transaction descriptions.
+- Resolving a bug preventing property edits after uploading images or presentations.
+- Enhancing the UI to show property images on listing cards and addressing numerous permission and visibility issues for the  user role.
+- The current task is to ensure profile information is consistent across all user roles (broker, sub-broker, client).
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application's dashboard UI has been completely revamped according to the user's latest requests, removing the AUM section and fixing layout issues. The  page now conditionally displays Emirates ID details for UAE residents, and the backend fully supports capturing this data via bulk upload.
-
-The  page has undergone significant transformation. The payment schedule is now a unified table that includes DLD and Admin fees as distinct rows. The XIRR Comparison Report is a highly detailed, two-column component that can be exported to a landscape PDF, showing projected vs. actuals vs. current values, and calculating notional currency gains. A new Sell Unit feature has been implemented with a UI modal and a corresponding backend endpoint to mark a property as Closed.
+The application has undergone significant bug fixing and feature enhancement. The bulk real estate upload now works correctly. The CAS parser in  has been fixed to correctly parse NAVs with commas and handle complex transaction types like Transaction charges and IDCW Payout. The  page has a correctly functioning XIRR report, a combined DLD/Admin fee row in the payment schedule, and an enhanced Sell Unit modal with an XIRR preview. The property editing flow in  is now robust, handling image/presentation uploads and deletions correctly. UI enhancements include property images on listing cards and initial permission fixes for the client view. The agent was last investigating why profile information isn't consistently displayed across different user roles on the  page.
 
 **Last working item**:
--   **Last item agent was working**: The agent was adjusting the UI of the DLD and Admin fee rows within the main payment schedule on the  page. The goal was to make their appearance and structure identical to the other payment milestones (e.g., Booking Amount, 1st Installment).
+-   **Last item agent was working**: The agent was investigating why profile information (especially data from bulk uploads) is not visible to sub-brokers and clients on the  page. The user requested that the information visible to the broker in the profile section should be exactly the same for clients and sub-brokers.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: screenshot tool. The agent needs to log in, navigate to a real estate opportunity's details page, and visually verify that the DLD and Admin Fee rows in the payment schedule table are indistinguishable from the other milestone rows.
+-   **Which testing method agent to use?**: Frontend testing agent. The test will require logging in with three different roles (broker, sub-broker, client), navigating to the 'Holdings' page for the same client, and verifying that the 'Profile' tab displays the identical set of complete information for all three roles.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: UI of DLD/Admin fee rows in payment schedule needs verification (P0)**
+-   **Issue 1: Profile information parity on Holdings page (P0)**
 -   **Issue 2: Sub-broker reset password email flow not verified (P1)**
--   **Issue 3: Incomplete UI update on BondDetails page (P2)**
+-   **Issue 3: Incomplete client login UI/permission polish (P2)**
+-   **Issue 4: Incomplete UI update on BondDetails page (P2)**
 
 **Issues Detail:**
--   **Issue 1: UI of DLD/Admin fee rows in payment schedule needs verification (P0)**
-    -   **Attempted fixes**: The agent applied a  operation to  to restructure the JSX for the DLD and Admin fee rows to match the other milestone rows. A build and verification step is pending.
+-   **Issue 1: Profile information parity on Holdings page (P0)**
+    -   **Attempted fixes**: The agent started investigating the frontend () and backend () to understand the data flow.
     -   **Next debug checklist**:
-        1.  Build the frontend (yarn run v1.22.22
-info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.).
-        2.  Take a screenshot of the  page, focusing on the Payment Schedule section.
-        3.  Confirm that the DLD and Admin Fee rows have the same columns, buttons, and layout as the Booking Amount and installment rows.
-    -   **Why fix this issue and what will be achieved with the fix?**: To ensure a consistent and clean user interface for the payment schedule, as requested by the user.
+        1.  Identify the backend API endpoint that serves client details for the Holdings page (likely ).
+        2.  In , review this endpoint to see if it restricts the data being returned based on the user's role.
+        3.  Modify the endpoint to ensure the full client detail object is returned to any authorized user (the broker, the client themselves, or an associated sub-broker).
+        4.  Verify that  renders all fields received from the API, without any role-based conditional rendering logic that might hide data.
+    -   **Why fix this issue and what will be achieved with the fix?**: This will create a consistent and transparent view of client data for all authorized parties, reducing confusion and support requests.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Should Test frontend/backend/both after fix?**: Both
     -   **Blocked on other issue**: None
 
 -   **Issue 2: Sub-broker reset password email flow not verified (P1)**
-    -   **Attempted fixes**: None in this session.
+    -   **Attempted fixes**: None.
     -   **Next debug checklist**:
-        1.  Trigger the password reset flow from the UI for a test sub-broker.
-        2.  Inspect backend logs to confirm the  endpoint is hit and an email task is queued.
-        3.  Verify the email is sent and the contained link is functional.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical self-service function for sub-broker account management.
+        1.  Log in as a sub-broker and trigger the password reset flow.
+        2.  Check backend logs for a call to .
+        3.  Confirm an email is sent and the reset link works.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical self-service feature for sub-brokers.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Both
     -   **Blocked on other issue**: None
 
--   **Issue 3: Incomplete UI update on BondDetails page (P2)**
-    -   **Attempted fixes**: None in this session.
-    -   **Next debug checklist**: Investigate state management in , focusing on how the radio button group's state is handled between user interactions.
-    -   **Why fix this issue and what will be achieved with the fix?**: Minor UX polish for a recurring issue.
+-   **Issue 3: Incomplete client login UI/permission polish (P2)**
+    -   **Attempted fixes**: Hid Sell Unit and Delete buttons for clients.
+    -   **Next debug checklist**:
+        1.  Log in as a client and navigate to a property they partially own ().
+        2.  Verify payment details can be edited.
+        3.  Verify the passport upload button is enabled.
+        4.  Log in as a *different* client who is also an investor in the same property. Verify they *cannot* edit the first client's payment details or upload a passport for them.
+    -   **Why fix this issue and what will be achieved with the fix?**: Ensures clients can only manage their own personal information and actions, which is critical for data privacy and security.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on other issue**: None
+
+-   **Issue 4: Incomplete UI update on BondDetails page (P2)**
+    -   **Attempted fixes**: None.
+    -   **Next debug checklist**: Investigate state management in .
+    -   **Why fix this issue and what will be achieved with the fix?**: Minor UX polish for a long-standing recurring bug.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend
     -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   None
+-   None.
 
 **Upcoming and Future Tasks**
-
 -   **Upcoming Tasks**:
-    -   **(P0) Verify Sell Unit Feature**: Test the end-to-end flow of selling a fully funded unit, including opening the modal, submitting the form, and confirming the opportunity status changes to Closed.
-    -   **(P0) Implement Phase 3 of Approval Workflow: Kinntegra API Integration**: Implement the  request to the Kinntegra MF Buy Scheduler API () when a client gives final approval. This requires API credentials from the user.
-    -   **(P1) Frontend for Pincode Lookup**: Implement the UI for the existing pincode lookup API in the client creation modal.
+    -   **(P0) Verify Sell Unit Feature**: End-to-end test the flow of selling a unit, confirming the status change and the appearance of the Sale Returns section with correct data.
+    -   **(P1) Implement Phase 3 of Approval Workflow: Kinntegra API Integration**: Implement the  request to the Kinntegra API. This is blocked on receiving API credentials from the user.
+    -   **(P2) Frontend for Pincode Lookup**: Implement the UI for the existing pincode lookup API.
 
 -   **Future Tasks**:
-    -   **(CRITICAL) Refactor Backend & Frontend Monoliths**:  (>16,000 lines) and  (>4,600 lines) are significant maintenance risks. They must be broken down into modular files (s for backend, smaller components for frontend).
+    -   **(CRITICAL) Refactor Backend & Frontend Monoliths**:  (>16,000 lines) and  (>4,600 lines) are a significant maintenance risk and must be broken down into smaller, modular files.
     -   **(P2) Implement Analysis Dashboard**: Build out the placeholder .
     -   **(P2) Email notifications for passport expiry**.
     -   **(P2) Code Cleanup**: Delete obsolete components  and .
 
 **Completed work in this session**
--   **Dashboard Redesign**: Removed AUM basis Sublogin section, fixed alignment, restored quick access buttons, and updated Venn diagram colors and labels.
--   **Emirates ID Feature**: Implemented conditional rendering of Emirates ID fields in  and updated the backend () and bulk upload process to handle  and .
--   **XIRR Report Overhaul ()**:
-    -   Redesigned the report into a two-column landscape layout.
-    -   Changed the export function from Excel to a pixel-perfect PDF using .
-    -   Added DLD and Admin fees as dynamic line items in the cashflow table via backend logic in .
-    -   Implemented a Notional Gain/Loss calculation that appears only when payments have been made.
--   **Sell Unit Feature**: Added a modal and a  endpoint in  to allow fully funded properties to be marked as Closed.
--   **Payment Schedule UI ()**: Merged the separate DLD/Admin fee section into the main payment schedule table for a unified view.
--   **Currency Projections Automation**:
-    -   Updated the  endpoint in  to automatically create currency projection settings for new currencies.
-    -   Added a pulsing alert icon to the Currency Settings button in  if projections are missing.
-
-**Earlier issues found/mentioned but not fixed**
--   **Incomplete UI update on BondDetails page**: A recurring, low-priority UI bug.
-
-**Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork**: Incomplete UI update on BondDetails page.
--   **Recurrence count**: 10+
--   **Status**: NOT STARTED
+-   **Bulk Upload Fix**: Resolved a Network Error during bulk real estate uploads by fixing bugs in  related to column name normalization and error handling.
+-   **MF Transaction Data Integrity**: Fixed multiple critical bugs in the CAS PDF parser () to correctly read NAVs containing commas and to properly parse different transaction formats (Transaction charges, IDCW Payout).
+-   **Edit Property Flow Fix**: Solved a bug where saving a property failed after uploading files. This involved fixing frontend data handling, improving error toasts, and adding a backend endpoint to delete presentations.
+-   **RealEstateDetails UI/UX**:
+    -   Fixed a crash in the XIRR Comparison Report modal.
+    -   Merged the DLD and Admin fees into a single, correctly positioned row in the payment schedule.
+    -   Enhanced the Sell Unit modal to show an XIRR preview.
+    -   Added a Sale Returns section for sold properties.
+    -   Hid Sell and Delete buttons from clients.
+-   **General UI**:
+    -   Added property images to the cards on the  page.
+    -   Added Nominee and UCC details sections to the  page.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **DOM to PDF Generation**: Used  to capture a complex React component's DOM structure and render it as a downloadable PDF, preserving styles and layout.
--   **Complex State Management**: Managed numerous interdependent states in  for modals, report data, currency rates, and UI alerts.
--   **Dynamic Component Generation**: The payment schedule in  and the cashflow report in  now dynamically generate rows for DLD and Admin fees, merging them with the scheduled payments.
--   **Backend-Driven UI State**: The alert for missing currency projections is driven by data fetched from the backend, demonstrating tight coupling between frontend presentation and backend data completeness.
-
-**key DB schema**
--   **real_estate_opportunities**: Implicitly updated. The new  endpoint adds a  object (containing , , ) and updates the  to closed.
--   **clients**: The schema now actively uses  and has a new  field.
--   **settings**: The  object is now automatically populated by the payment recording endpoint.
-
-**changes in tech stack**
--   Added  to the frontend dependencies for PDF generation.
+-   **Complex Data Parsing**: Debugged and fixed a sophisticated PDF parsing service () by correcting regular expressions and state management to handle varied data formats.
+-   **Backend Debugging**: Traced vague frontend errors (Network Error) to specific backend bugs, including Pandas data type errors and Pydantic validation issues.
+-   **Role-Based Access Control (RBAC)**: Implemented UI logic in React to conditionally render components and actions based on user roles.
+-   **Robust Error Handling**: Improved frontend error handling to gracefully manage and display detailed validation errors from the Pydantic backend, preventing UI crashes.
 
 **All files of reference**
 -   
 -   
 -   
 -   
-
-**Areas that need refactoring**:
--   **CRITICAL**:  has grown even larger and is a major bottleneck. It must be modularized into FastAPI s.
--   **CRITICAL**:  is now over 4,600 lines long and is extremely difficult to maintain. It must be broken down into smaller, single-responsibility components (e.g., , , , ).
-
-**key api endpoints**
--   **CREATED**:
-    -   : Marks a property as sold, records sale details, and updates status to closed.
--   **MODIFIED**:
-    -   : Now automatically creates currency projection settings when a payment with a new currency is recorded.
-    -   : Updated to handle DLD and Admin projections (though this was later reverted in the UI).
-    -   : Logic completely rewritten to calculate DLD and Admin fees based on percentage and add them as cashflow line items.
-    -   : Updated to process .
+-   
+-   
 
 **Critical Info for New Agent**
--   The immediate priority is to finish and verify the UI changes to the payment schedule in .
--   The  and  files have accumulated significant technical debt and are now critically large. Propose refactoring them immediately after the current task is verified, as further feature additions will be slow and risky.
--   The Sell Unit feature is implemented but has not been tested by the user. This should be verified soon.
--   The original high-priority task, Kinntegra API integration, is still pending and blocked on user credentials.
+-   Your immediate priority is to fix the profile data visibility issue on the  page. This will likely involve modifying the backend API to stop filtering data based on role.
+-   The user has reported multiple complex issues related to PDF and Excel file parsing. While the agent has fixed the known bugs, be aware that this area is complex and may have other edge cases. Always check  for such issues.
+-   The  and  files are critically large and represent significant technical debt. You should strongly recommend refactoring them into smaller, manageable modules as a top-priority future task.
 
 **documents and test reports created in this job**
--    (updated).
+-    (updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. **User**: also create some more space for Date and Desription. put it on one line .Also once fully funded , create an option to sell the unit where date price and brokerage selling fee is captured.Once submitted , it should move to closed (IN PROGRESS - Sell unit part is done, layout part was being worked on).
-9.  **User**: the XIRR report is still not capturing the DLD and admin fee as a row before booking amount or after booking amount.Also the pdf generated should come only in one page (COMPLETED).
-8.  **User**: Requested a two-column landscape layout for the PDF report. (COMPLETED).
-7.  **User**: currency setting should auto populate currencies for projections basis the payments made by the client at the time of uploading swift codes (COMPLETED).
-6.  **User**: also show an alert icon near if currency projections are not filled (COMPLETED).
-5.  **User**: merge DLD+Admin fees payments with the payments section.This entry can come as a row after booking amount or before booking amount (IN PROGRESS - Merged, but UI needs final polish).
-4.  **User**: the DLD and Admin fee should come between one and 2 and should have exactly the same UI as for other milestones and same fields as for other milestones (IN PROGRESS - This is the last working item).
-3.  **User**: Asked for an update on the DLD/Admin fee task. (Implicitly addressed).
-2.  **User**: Confirmed the agent should proceed with fixing the DLD/Admin fee UI. (Implicitly addressed).
-1.  **User**: Build successful. Now DLD and Admin fees appear as rows in the main payment schedule table - This was the agent's summary before the user asked for the UI to be identical.
+- 10. **User**: The transaction details column is capturing 14975.00 which is incorrect. (COMPLETED)
+- 9. **User**: After uploading images and presentations in edit property section, save property is not working. (COMPLETED)
+- 8. **User**: Similar issue arise for presentation upload too. (COMPLETED)
+- 7. **User**: Show the opportunities with the image too on the card and client login level issues details in the attachment. (IN PROGRESS)
+- 6. **User**: The information visible under profile section of holdings for broker should also be visible to client and the sub broker exactly in a similar way. (IN PROGRESS - Last working item)
+- 5. **User**: The DLD and Admin fee entry has to club together and show as one entry only... XIRR comparison Report is crashing. (COMPLETED)
+- 4. **User**: The current NAV is still not getting captured properly in the mF transaction tab. (COMPLETED)
+- 3. **User**: ...facing issue of network error while uploading bulk Real estate opportunities. (COMPLETED)
+- 2. **User**: MF transactions not capturing fields properly in their respective columns. (COMPLETED)
+- 1. **User**: Please proceed with P0. Also for sell unit module, an XIRR chart should be shown... (COMPLETED)
 
 **Project Health Check:**
--   **Broken**: The final, critical step of the approval workflow (the Kinntegra API call) is not implemented. The sub-broker password reset flow remains unverified.
+-   **Broken**: The sub-broker password reset flow remains unverified. The final step of the Kinntegra approval workflow is not implemented.
 -   **Mocked**:  is a placeholder.
--   **Technical Debt**: **CRITICAL**.  (>16,000 lines) and  (>4,600 lines) are monoliths that severely hinder development velocity and increase the risk of bugs.
+-   **Technical Debt**: **CRITICAL**.  (>16,000 lines) and  (>4,600 lines) are monoliths that severely hinder development and increase bug risk.
 
 **3rd Party Integrations**
 -   **fawazahmed0/currency-api**: Used for live currency conversion.
 -   **Kinntegra MF Buy Scheduler API**: **PENDING INTEGRATION**.
 -   **passlib / bcrypt**: Used for password hashing.
 -   **openpyxl / pandas**: Used for Excel bulk upload processing.
--   **html2pdf.js**: (New) Used for generating PDF reports from DOM elements.
-
-**Testing status**
--   **Testing agent used after significant changes**: NO
--   **Troubleshoot agent used after agent stuck in loop**: NO
--   **Test files created**: None
--   **Known regressions**: None
+-   **html2pdf.js**: Used for generating PDF reports.
+-   **pypdf**: Used for parsing CAS PDF files.
 
 **Credentials to test flow:**
 -   **Broker Login**: PAN: , Password: , PIN: 
 -   **Sub-Broker Login**: PAN: , Password: , PIN: 
+-   **Client Login**: Credentials for a test client associated with an opportunity will be needed. Can be created or found via broker login.
 
 **What agent forgot to execute**
-The user's frequent and high-priority UI requests caused the agent to deprioritize the following planned tasks from the previous session. These remain outstanding:
--   Did not implement the frontend for the Pincode lookup feature.
--   Did not delete the obsolete bond creation files (, ).
--   Did not address the recurring low-priority UI bug on the  page.
--   Did not explicitly test the reset password flow for sub-brokers.</analysis>
+-   The agent has not yet verified all points from the user-provided , particularly around fine-grained editing permissions for clients.
+-   The Pincode lookup frontend remains unimplemented.
+-   Obsolete bond creation files have not been deleted.
+-   The recurring UI bug on the  page has not been addressed.</analysis>
