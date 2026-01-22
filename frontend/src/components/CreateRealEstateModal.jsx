@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { 
   X, Building2, DollarSign, Ruler, Calendar, Upload, 
-  Image, Trash2, Plus, CalendarDays, FileText
+  Image, Trash2, Plus, CalendarDays, FileText, Box
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
