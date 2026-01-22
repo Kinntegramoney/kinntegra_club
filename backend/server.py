@@ -4814,9 +4814,27 @@ async def bulk_upload_real_estate(
     
     # Helper to normalize column names
     def normalize_columns(df):
-        df.columns = [col.replace('*', '').replace('(%)', '').replace('(AED)', '').replace('(sqft)', '')
-                      .replace('(AED/sqft)', '').strip().lower().replace(' ', '_').replace('/', '_') 
-                      for col in df.columns]
+        # Normalize column names but keep indicators for % vs AED columns
+        normalized = []
+        for col in df.columns:
+            # First, identify if it's a percentage or AED column
+            is_percent = '(%)' in col
+            is_aed = '(AED)' in col
+            
+            # Remove markers and clean up
+            name = col.replace('*', '').replace('(%)', '').replace('(AED)', '').replace('(sqft)', '')
+            name = name.replace('(AED/sqft)', '').strip().lower().replace(' ', '_').replace('/', '_')
+            
+            # Add suffix for developer_discount to differentiate
+            if 'developer_discount' in name:
+                if is_percent:
+                    name = 'developer_discount_percentage'
+                else:
+                    name = 'developer_discount_aed'
+            
+            normalized.append(name)
+        
+        df.columns = normalized
         return df
     
     # Read all sheets
