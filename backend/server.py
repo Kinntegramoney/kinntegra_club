@@ -10993,9 +10993,9 @@ async def get_bonds(
         "issuer": 1,
         "description": 1,
         "face_value": 1,
+        "cashflows_per_unit": 1,  # Needed for price calculation
         "created_at": 1,
         "created_by": 1
-        # Exclude heavy fields: cashflows_per_unit, interest_payments, principal_payments, combined_schedule
     }
     
     bonds = await db.bonds.find({}, projection).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
