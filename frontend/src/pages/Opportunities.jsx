@@ -429,21 +429,13 @@ export default function Opportunities() {
         {/* Bond Info Grid - Row 3 */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {/* Maturity */}
-          <div className="bg-rose-50 rounded-lg p-3">
+          <div className="bg-rose-50 rounded-lg p-3 col-span-2">
             <p className="text-xs text-gray-500 mb-1">Maturity Date</p>
             <p className="font-semibold text-rose-700">
               {maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-            </p>
-            <p className="text-xs text-gray-500">
-              {status === 'closed' ? 'Completed' : `${daysToMaturity} days left`}
-            </p>
-          </div>
-          
-          {/* Payment Frequency - from bond.interest_payment_frequency field */}
-          <div className="bg-blue-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Interest Payout</p>
-            <p className="font-semibold text-blue-700 capitalize">
-              {bond.interest_payment_frequency || 'Monthly'}
+              <span className="text-xs text-gray-500 font-normal ml-2">
+                ({status === 'closed' ? 'Completed' : `${daysToMaturity} days left`})
+              </span>
             </p>
           </div>
         </div>
