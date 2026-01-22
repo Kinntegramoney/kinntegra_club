@@ -547,7 +547,8 @@ export default function RealEstateDetails() {
                   Add Investor
                 </Button>
               )}
-              {opp.status === 'fully_invested' && (
+              {/* Sell Unit - Only for broker, not client */}
+              {opp.status === 'fully_invested' && user?.role === 'broker' && (
                 <Button 
                   onClick={() => setShowSellModal(true)} 
                   className="bg-emerald-600 hover:bg-emerald-700"
@@ -557,15 +558,18 @@ export default function RealEstateDetails() {
                   Sell Unit
                 </Button>
               )}
-              <Button 
-                variant="outline" 
-                className="text-red-600 border-red-200 hover:bg-red-50"
-                onClick={() => setShowDeleteConfirm(true)}
-                data-testid="delete-property-btn"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
+              {/* Delete - Only for broker, not client */}
+              {user?.role === 'broker' && (
+                <Button 
+                  variant="outline" 
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  data-testid="delete-property-btn"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              )}
             </div>
           </div>
         </div>
