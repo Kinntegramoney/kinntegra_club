@@ -267,7 +267,14 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
 
       onSuccess();
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to save property");
+      const errorDetail = error.response?.data?.detail;
+      // Handle Pydantic validation errors (array of objects)
+      if (Array.isArray(errorDetail)) {
+        const errorMsg = errorDetail.map(e => `${e.loc?.join('.')}: ${e.msg}`).join(', ');
+        toast.error(errorMsg || "Validation error");
+      } else {
+        toast.error(errorDetail || "Failed to save property");
+      }
     } finally {
       setLoading(false);
     }
