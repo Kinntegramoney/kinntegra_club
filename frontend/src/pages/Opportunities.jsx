@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
@@ -14,6 +14,92 @@ import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// XIRR Calculation Function
+const calculateXIRR = (cashflows) => {
+  // cashflows is array of {date: Date, amount: number} where negative = outflow, positive = inflow
+  if (!cashflows || cashflows.length < 2) return null;
+  
+  // Need at least one positive and one negative cashflow
+  const hasPositive = cashflows.some(cf => cf.amount > 0);
+  const hasNegative = cashflows.some(cf => cf.amount < 0);
+  if (!hasPositive || !hasNegative) return null;
+  
+  const daysBetween = (d1, d2) => (d2 - d1) / (1000 * 60 * 60 * 24);
+  const firstDate = cashflows[0].date;
+  
+  // Newton-Raphson method to find XIRR
+  let rate = 0.1; // Initial guess 10%
+  
+  for (let iteration = 0; iteration < 100; iteration++) {
+    let npv = 0;
+    let dnpv = 0;
+    
+    for (const cf of cashflows) {
+      const years = daysBetween(firstDate, cf.date) / 365;
+      const factor = Math.pow(1 + rate, years);
+      npv += cf.amount / factor;
+      dnpv -= (years * cf.amount) / (factor * (1 + rate));
+    }
+    
+    if (Math.abs(npv) < 0.0001) {
+      return Math.round(rate * 10000) / 100; // Return as percentage with 2 decimals
+    }
+    
+    const newRate = rate - npv / dnpv;
+    if (Math.abs(newRate - rate) < 0.0001) {
+      return Math.round(newRate * 10000) / 100;
+    }
+    rate = newRate;
+    
+    // Prevent extreme values
+    if (rate < -0.99) rate = -0.99;
+    if (rate > 10) rate = 10;
+  }
+  
+  return Math.round(rate * 10000) / 100;
+};
+
+// Calculate Expected XIRR for a property
+const calculatePropertyXIRR = (opp) => {
+  if (!opp.payment_schedule || !opp.estimated_sell_date || !opp.expected_sale_rate || !opp.total_area) {
+    return null;
+  }
+  
+  const cashflows = [];
+  
+  // Add DLD + Admin fee as first outflow (paid at booking)
+  const dldAdminFee = (opp.dld_fee || 0) + (opp.admin_fee || 0);
+  if (dldAdminFee > 0) {
+    const bookingDate = opp.payment_schedule[0]?.date || opp.created_at;
+    cashflows.push({
+      date: new Date(bookingDate),
+      amount: -dldAdminFee
+    });
+  }
+  
+  // Add all installment payments as outflows
+  for (const payment of opp.payment_schedule || []) {
+    if (payment.date && payment.amount) {
+      cashflows.push({
+        date: new Date(payment.date),
+        amount: -payment.amount
+      });
+    }
+  }
+  
+  // Add expected sale proceeds as final inflow
+  const expectedSaleProceeds = opp.expected_sale_rate * opp.total_area;
+  cashflows.push({
+    date: new Date(opp.estimated_sell_date),
+    amount: expectedSaleProceeds
+  });
+  
+  // Sort by date
+  cashflows.sort((a, b) => a.date - b.date);
+  
+  return calculateXIRR(cashflows);
+};
 
 export default function Opportunities() {
   const navigate = useNavigate();
