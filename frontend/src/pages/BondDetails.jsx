@@ -725,24 +725,7 @@ export default function BondDetails() {
               </div>
             )}
 
-            {/* Investment Value Display - when units are entered (not amount) */}
-            {!approximateAmount && enhancedCalculation && enhancedCalculation.units_requested > 0 && (
-              <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                <p className="text-sm font-medium mb-2 text-emerald-800">Investment Value</p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">{enhancedCalculation.units_requested} units × ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-mono font-bold text-emerald-700">
-                      ₹{(Math.ceil(enhancedCalculation.total_clean_price) + 1).toLocaleString('en-IN')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Clean Price Display - Main Result */}
+            {/* Clean Price Display - Main Result - Only Price Per Unit */}
             {enhancedCalculation && (
               <div className="space-y-4">
                 {/* Primary Price Display - Only Clean Price */}
@@ -751,29 +734,6 @@ export default function BondDetails() {
                   <p className="text-4xl font-mono font-bold text-white" data-testid="clean-price-display">
                     ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}
                   </p>
-                  {enhancedCalculation.units_requested > 1 && (
-                    <div className="mt-4 pt-4 border-t border-emerald-400">
-                      <p className="text-sm text-emerald-100">Total for {enhancedCalculation.units_requested} units</p>
-                      <p className="text-2xl font-mono font-bold text-white">
-                        ₹{(Math.ceil(enhancedCalculation.total_clean_price) + 1).toLocaleString('en-IN')}
-                      </p>
-                      {/* Stamp Duty and Final Total */}
-                      <div className="mt-3 pt-3 border-t border-emerald-400/50 space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-emerald-100">Stamp Duty (0.0001%)</span>
-                          <span className="text-white font-mono" data-testid="stamp-duty-display">
-                            ₹{Math.ceil(enhancedCalculation.stamp_duty || 0).toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-base font-bold">
-                          <span className="text-emerald-100">Total Consideration</span>
-                          <span className="text-white font-mono" data-testid="total-consideration-display">
-                            ₹{(Math.ceil(enhancedCalculation.total_consideration || enhancedCalculation.total_clean_price) + 1).toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Download Cashflow Button */}
