@@ -6735,17 +6735,23 @@ async def migrate_clients_to_new_schema(current_user: dict = Depends(get_current
 
 @api_router.get("/clients/{client_id}")
 async def get_client(client_id: str, current_user: dict = Depends(get_current_user)):
-    """Get a specific client"""
+    """Get a specific client - accessible by broker (creator), sub-broker (linked), or the client themselves"""
     client = await db.clients.find_one({"id": client_id}, {"_id": 0})
     
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Check access
+    # Check access based on role
     if current_user['role'] == 'broker':
+        # Broker can access clients they created
         if client.get('created_by') != current_user['id']:
             raise HTTPException(status_code=403, detail="Access denied")
+    elif current_user['role'] == 'client':
+        # Client can access their own profile data
+        if client.get('user_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
     else:
+        # Sub-broker can access linked clients
         if client.get('linked_subbroker_id') != current_user['id']:
             raise HTTPException(status_code=403, detail="Access denied")
     
