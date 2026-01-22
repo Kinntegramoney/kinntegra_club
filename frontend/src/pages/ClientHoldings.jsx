@@ -74,6 +74,18 @@ export default function ClientHoldings() {
     }
   };
 
+  const fetchClientTrades = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/client/trades`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setClientTrades(response.data || []);
+    } catch (error) {
+      console.error("Error fetching client trades:", error);
+    }
+  };
+
   const formatINR = (amount) => {
     return `₹ ${(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
