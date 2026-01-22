@@ -67,6 +67,7 @@ const calculatePropertyXIRR = (opp) => {
   }
   
   const cashflows = [];
+  const totalCost = opp.total_cost || 0;
   
   // Add DLD + Admin fee as first outflow (paid at booking)
   const dldAdminFee = (opp.dld_fee || 0) + (opp.admin_fee || 0);
@@ -79,12 +80,16 @@ const calculatePropertyXIRR = (opp) => {
   }
   
   // Add all installment payments as outflows
+  // Calculate amount from percentage if not provided
   for (const payment of opp.payment_schedule || []) {
-    if (payment.date && payment.amount) {
-      cashflows.push({
-        date: new Date(payment.date),
-        amount: -payment.amount
-      });
+    if (payment.date) {
+      const amount = payment.amount || (totalCost * (payment.percentage || 0) / 100);
+      if (amount > 0) {
+        cashflows.push({
+          date: new Date(payment.date),
+          amount: -amount
+        });
+      }
     }
   }
   
@@ -108,6 +113,7 @@ const getXirrCashflowsBreakdown = (opp) => {
   }
   
   const cashflows = [];
+  const totalCost = opp.total_cost || 0;
   
   // Add DLD + Admin fee as first outflow
   const dldFee = opp.dld_fee || 0;
@@ -124,15 +130,18 @@ const getXirrCashflowsBreakdown = (opp) => {
     });
   }
   
-  // Add all installment payments
+  // Add all installment payments - calculate amount from percentage if not provided
   for (const payment of opp.payment_schedule || []) {
-    if (payment.date && payment.amount) {
-      cashflows.push({
-        date: new Date(payment.date),
-        amount: -payment.amount,
-        description: payment.description || `Installment (${payment.percentage}%)`,
-        type: 'outflow'
-      });
+    if (payment.date) {
+      const amount = payment.amount || (totalCost * (payment.percentage || 0) / 100);
+      if (amount > 0) {
+        cashflows.push({
+          date: new Date(payment.date),
+          amount: -amount,
+          description: payment.description || `Installment (${payment.percentage}%)`,
+          type: 'outflow'
+        });
+      }
     }
   }
   
