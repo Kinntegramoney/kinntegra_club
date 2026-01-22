@@ -13104,7 +13104,45 @@ async def upload_opportunity_presentations(
     }
 
 
-@api_router.get("/real-estate-opportunities/{opportunity_id}/presentations/{presentation_id}")
+@api_router.delete("/real-estate-opportunities/{opportunity_id}/presentations/{presentation_id}")
+async def delete_real_estate_presentation(
+    opportunity_id: str,
+    presentation_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a presentation from a real estate opportunity"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can delete presentations")
+    
+    opportunity = await db.real_estate_opportunities.find_one({
+        "id": opportunity_id,
+        "created_by": current_user['id']
+    }, {"_id": 0})
+    
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+    
+    presentations = opportunity.get('presentations', [])
+    presentation = next((p for p in presentations if p['id'] == presentation_id), None)
+    
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+    
+    # Remove the file from disk if it exists
+    import os
+    file_path = f"/app/uploads/presentations/{presentation.get('saved_filename', '')}"
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    
+    # Update the opportunity to remove this presentation
+    updated_presentations = [p for p in presentations if p['id'] != presentation_id]
+    
+    await db.real_estate_opportunities.update_one(
+        {"id": opportunity_id},
+        {"$set": {"presentations": updated_presentations, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Presentation deleted successfully", "remaining_presentations": len(updated_presentations)}
 async def download_presentation(
     opportunity_id: str,
     presentation_id: str,
