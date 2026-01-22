@@ -806,7 +806,8 @@ export default function RealEstateDetails() {
               )}
             </div>
           )}
-          {opp.payment_schedule && opp.payment_schedule.length > 0 && (
+          {/* Payment Schedule - Only visible to broker, managing sub-broker (with linked client), or investor client */}
+          {canViewPaymentManagement && opp.payment_schedule && opp.payment_schedule.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               {/* Header - matches other sections */}
               <div className="flex items-center justify-between mb-4">
