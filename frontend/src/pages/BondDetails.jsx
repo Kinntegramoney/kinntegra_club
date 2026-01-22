@@ -1066,31 +1066,35 @@ export default function BondDetails() {
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <p className="text-gray-500 text-xs">Units</p>
-                            <p className="font-mono font-bold text-lg">{selectedUnits}</p>
+                            <p className="font-mono font-bold text-lg">{selectedUnits || enhancedCalculation.units_requested}</p>
                           </div>
                           <div>
                             <p className="text-gray-500 text-xs">Price/Unit</p>
-                            <p className="font-mono font-bold text-sm md:text-base">₹{calculation.price_per_unit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            <p className="font-mono font-bold text-sm md:text-base">₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</p>
                           </div>
                         </div>
                         <div className="pt-2 border-t border-gray-200 space-y-1">
                           <div className="flex justify-between">
-                            <span className="text-gray-500 text-xs">Clean Price</span>
-                            <span className="font-mono text-sm">₹{calculation.total_price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="text-gray-500 text-xs">Investment Date</span>
+                            <span className="font-mono text-sm">{settlementDate}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-500 text-xs">Stamp Duty (0.0001%)</span>
-                            <span className="font-mono text-sm" data-testid="order-stamp-duty">₹{(calculation.stamp_duty || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="text-gray-500 text-xs">Clean Price</span>
+                            <span className="font-mono text-sm">₹{Math.ceil(enhancedCalculation.total_clean_price).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500 text-xs">Stamp Duty</span>
+                            <span className="font-mono text-sm" data-testid="order-stamp-duty">₹{Math.ceil(enhancedCalculation.stamp_duty || 0).toLocaleString('en-IN')}</span>
                           </div>
                           <div className="flex justify-between pt-1 border-t border-gray-200">
                             <span className="text-gray-600 font-medium text-xs">Total Consideration</span>
-                            <span className="font-mono font-bold text-amber-600 text-base" data-testid="order-total-consideration">₹{(calculation.total_consideration || calculation.total_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="font-mono font-bold text-amber-600 text-base" data-testid="order-total-consideration">₹{(Math.ceil(enhancedCalculation.total_consideration || enhancedCalculation.total_clean_price) + 1).toLocaleString('en-IN')}</span>
                           </div>
                         </div>
                         <div className="pt-2">
                           <p className="text-gray-500 text-xs">Status</p>
                           <p className={`font-medium text-sm ${user?.role === 'broker' ? 'text-green-600' : 'text-amber-600'}`}>
-                            {user?.role === 'broker' ? 'Auto-Approved' : 'Pending Approval'}
+                            {user?.role === 'broker' ? 'Auto-Approved (Future Cashflows Recorded)' : 'Pending Broker Verification'}
                           </p>
                         </div>
                       </div>
