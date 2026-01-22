@@ -12801,6 +12801,9 @@ async def get_real_estate_opportunities(
         "expected_xirr": 1,
         "expected_sale_rate": 1,
         "estimated_sell_date": 1,
+        "dld_fee": 1,
+        "admin_fee": 1,
+        "payment_schedule": 1,  # Needed for XIRR calculation
         "status": 1,
         "invested_percentage": 1,
         "max_co_owners": 1,
@@ -12810,7 +12813,7 @@ async def get_real_estate_opportunities(
         "interested_count": 1,
         "current_investors": 1,
         "total_payment_percentage_completed": 1,
-        # Exclude heavy fields: images, presentations, payment_schedule details
+        # Exclude heavy fields: images, presentations
     }
     
     skip = (page - 1) * limit
