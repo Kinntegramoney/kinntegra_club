@@ -292,7 +292,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     { id: "payments", label: "Payment Schedule", icon: CalendarDays },
     { id: "sale", label: "Sale Settings", icon: Calendar },
     { id: "images", label: "Images", icon: Image },
-    { id: "presentations", label: "Presentations", icon: FileText }
+    { id: "presentations", label: "Presentations", icon: FileText },
+    { id: "3dview", label: "3D View", icon: Box }
   ];
 
   return (
