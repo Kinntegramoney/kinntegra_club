@@ -241,6 +241,10 @@ export default function BondDetails() {
     }
   };
 
+  // State for cashflow report modal
+  const [showCashflowReport, setShowCashflowReport] = useState(false);
+  const [cashflowReportData, setCashflowReportData] = useState(null);
+
   const downloadCashflow = async () => {
     if (!enhancedCalculation) {
       toast.error("Please calculate price first");
@@ -260,44 +264,56 @@ export default function BondDetails() {
         units: unitsToDownload
       });
       
-      // Create CSV content WITHOUT rupee symbol to avoid encoding issues
-      const data = response.data;
-      let csv = `Bond Name,${data.bond_name}\n`;
-      csv += `Investment Date,${data.investment_date}\n`;
-      csv += `Units,${data.units}\n`;
-      csv += `Price Paid,${data.price_paid.toFixed(2)}\n\n`;
-      csv += `Date,Month,Principal Payment,Interest Payment,TDS Deducted (10%),Net Interest,Total Net Payment\n`;
-      
-      data.cashflows.forEach(cf => {
-        csv += `${cf.date},${cf.month},${cf.principal_payment.toFixed(2)},${cf.interest_payment.toFixed(2)},${cf.tds_deducted.toFixed(2)},${cf.net_interest.toFixed(2)},${cf.total_net_payment.toFixed(2)}\n`;
-      });
-      
-      csv += `\nSummary\n`;
-      csv += `Total Principal,${data.total_principal.toFixed(2)}\n`;
-      csv += `Total Interest,${data.total_interest.toFixed(2)}\n`;
-      csv += `Total TDS,${data.total_tds.toFixed(2)}\n`;
-      csv += `Total Net Received,${data.total_net_received.toFixed(2)}\n`;
-      csv += `\nNote: All amounts are in INR (Indian Rupees)\n`;
-      csv += `Note: Cashflows shown are only from investment date onwards (excluding ${bondData.cutoff_days || 15} days cutoff)\n`;
-      
-      // Download CSV
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cashflow_${bondData.name.replace(/\s+/g, '_')}_${data.investment_date}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      
-      toast.success("Cashflow downloaded successfully!");
+      setCashflowReportData(response.data);
+      setShowCashflowReport(true);
     } catch (error) {
       console.error("Error downloading cashflow:", error);
-      toast.error("Failed to download cashflow");
+      toast.error("Failed to load cashflow report");
     } finally {
       setDownloading(false);
     }
+  };
+
+  const exportCashflowToPDF = async () => {
+    if (!cashflowReportData) return;
+    
+    const reportElement = document.getElementById('cashflow-report-content');
+    if (!reportElement) {
+      toast.error("Unable to generate PDF");
+      return;
+    }
+    
+    toast.info("Generating PDF...");
+    
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      
+      const opt = {
+        margin: [5, 5, 5, 5],
+        filename: `Cashflow_Report_${cashflowReportData.bond_name.replace(/\s+/g, '_')}_${cashflowReportData.investment_date}.pdf`,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { 
+          scale: 1.5,
+          useCORS: true,
+          logging: false,
+          letterRendering: true,
+          scrollY: 0
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait' 
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+      
+      await html2pdf().set(opt).from(reportElement).save();
+      toast.success("PDF exported successfully!");
+    } catch (err) {
+      console.error("PDF export error:", err);
+      toast.error("Failed to export PDF");
+    }
+  };
   };
 
   const formatINR = (amount) => {
