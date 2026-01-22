@@ -203,7 +203,7 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
         carpet_area: parseFloat(formData.carpet_area),
         balcony_area: parseFloat(formData.balcony_area) || 0,
         unit_type: formData.unit_type,
-        floor: parseInt(formData.floor),
+        floor: String(formData.floor),  // Backend expects string
         parking_spaces: parseInt(formData.parking_spaces) || 0,
         payment_schedule: paymentSchedule.filter(p => p.date && p.percentage).map(p => ({
           date: p.date,
