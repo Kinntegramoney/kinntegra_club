@@ -16766,7 +16766,7 @@ async def seed_default_broker():
             broker_data = {
                 "id": str(uuid.uuid4()),
                 "pan": "ANVPB5297J",
-                "name": "Broker Admin",
+                "name": "Punit Bisani",
                 "email": "pbisani89@gmail.com",
                 "phone": "+91-9999999999",
                 "password_hash": get_password_hash("Laksh@0208"),
