@@ -12877,7 +12877,7 @@ async def upload_opportunity_images(
     files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload images for a real estate opportunity (max 12 images)"""
+    """Upload images for a real estate opportunity (max 20 images)"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can upload images")
     
@@ -12892,10 +12892,10 @@ async def upload_opportunity_images(
     current_images = opportunity.get('images', [])
     
     # Check total image limit
-    if len(current_images) + len(files) > 12:
+    if len(current_images) + len(files) > 20:
         raise HTTPException(
             status_code=400, 
-            detail=f"Maximum 12 images allowed. Currently have {len(current_images)}, trying to add {len(files)}"
+            detail=f"Maximum 20 images allowed. Currently have {len(current_images)}, trying to add {len(files)}"
         )
     
     # Validate file types
