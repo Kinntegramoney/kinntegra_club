@@ -227,6 +227,17 @@ Complete 3-phase approval workflow for sub-broker actions:
   4. Both pages now have: Bonds, Trades, Real Estate tabs (broker also has Profile)
 - **Verified**: Screenshots confirm aligned tab structure
 
+### Payment & XIRR Visibility Restrictions (Jan 22, 2026)
+- **Issue**: Non-investor clients and sub-brokers without linked clients could see Payment Schedule and XIRR Comparison Report
+- **User Requirements**:
+  - Client: Only see Payment/XIRR if they are an investor in that property
+  - Sub-broker: Only see Payment/XIRR if at least one of their linked clients is an investor
+- **Fix Applied**:
+  1. Added `canViewPaymentManagement` check to Payment Schedule section
+  2. Added `canViewPaymentManagement` check to XIRR Comparison Report section
+  3. These checks use existing `isClientInvestor()` and `isSubBrokerLinkedInvestor()` helper functions
+- **Verified**: Screenshots confirm non-investor clients only see basic property info
+
 ## P0 - Critical/In Progress
 1. **Kinntegra API Integration**: Awaiting API authentication details from user
 
