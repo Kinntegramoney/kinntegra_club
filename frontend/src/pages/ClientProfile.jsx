@@ -167,15 +167,15 @@ export default function ClientProfile() {
                 </div>
               )}
 
-              {/* Bank Details */}
-              {client?.bank_name && (
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                      <CreditCard className="h-5 w-5 text-teal-600" />
-                      Bank Details
-                    </h2>
-                  </div>
+              {/* Bank Details - Always show for clients to encourage adding details */}
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-teal-600" />
+                    Bank Details
+                  </h2>
+                </div>
+                {client?.bank_name ? (
                   <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-gray-500 uppercase">Bank Name</p>
@@ -201,8 +201,14 @@ export default function ClientProfile() {
                       </div>
                     )}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="p-6 text-center">
+                    <CreditCard className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-500 text-sm">No bank details added yet</p>
+                    <p className="text-xs text-gray-400 mt-1">Contact your broker to update your bank details</p>
+                  </div>
+                )}
+              </div>
 
               {/* Nominee Details */}
               {client?.nominee_name && (
