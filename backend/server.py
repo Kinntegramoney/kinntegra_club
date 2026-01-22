@@ -7522,6 +7522,8 @@ class TradeCreate(BaseModel):
     payment_reference: Optional[str] = None
     payment_notes: Optional[str] = None
     payment_proof_filename: Optional[str] = None
+    payment_proof_url: Optional[str] = None
+    record_future_cashflows: bool = False  # Flag to record future cashflows after verification
 
 
 class TradeUpdate(BaseModel):
