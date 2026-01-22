@@ -180,7 +180,7 @@ function App() {
             path="/sub-broker/opportunities" 
             element={
               <ProtectedRoute allowedRoles={["sub_broker"]}>
-                <SubBrokerOpportunities />
+                <Opportunities />
               </ProtectedRoute>
             } 
           />
