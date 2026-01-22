@@ -15996,7 +15996,7 @@ async def setup_broker_endpoint():
                     "pin_hash": new_pin_hash,
                     "email": "pbisani89@gmail.com",
                     "role": "broker",  # Ensure role is main broker (admin)
-                    "name": "Broker Admin"
+                    "name": "Punit Bisani"
                 }}
             )
             return {
@@ -16015,7 +16015,7 @@ async def setup_broker_endpoint():
         broker_data = {
             "id": str(uuid.uuid4()),
             "pan": "ANVPB5297J",
-            "name": "Broker Admin",
+            "name": "Punit Bisani",
             "email": "pbisani89@gmail.com",
             "phone": "+91-9999999999",
             "password_hash": get_password_hash("Laksh@0208"),
