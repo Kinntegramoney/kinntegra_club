@@ -413,7 +413,12 @@ export default function RealEstateDetails() {
   // Check if current user is a co-owner of this property
   const isCoOwner = useMemo(() => {
     if (!user || !opportunity) return false;
-    return opportunity.investors?.some(inv => inv.client_id === user.id || inv.user_id === user.id);
+    // Check if user.id, user.user_id, or user.client_id matches any investor's client_id or user_id
+    return opportunity.investors?.some(inv => 
+      inv.client_id === user.id || 
+      inv.user_id === user.id || 
+      (user.client_id && inv.client_id === user.client_id)
+    );
   }, [user, opportunity]);
 
   // Check if current user is the sub-broker managing any co-owner
