@@ -11042,9 +11042,11 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
         "end_date": 1,
         "total_units": 1,
         "units_sold": 1,
+        "interest_payment_frequency": 1,
         "listing_status": 1,
         "issuer": 1,
         "face_value": 1,
+        "cashflows_per_unit": 1,  # Needed for price calculation
         "created_at": 1
     }
     
