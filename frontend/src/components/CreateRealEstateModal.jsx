@@ -882,7 +882,7 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
               >
                 <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
                 <p className="text-gray-600">Click to upload images</p>
-                <p className="text-sm text-gray-400">Max 12 images (PNG, JPG)</p>
+                <p className="text-sm text-gray-400">Max 20 images (PNG, JPG)</p>
                 <input
                   ref={fileInputRef}
                   type="file"
