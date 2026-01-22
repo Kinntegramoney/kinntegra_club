@@ -219,7 +219,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
         developer_name: formData.developer_name || null,
         location: formData.location || null,
         handover_date: formData.handover_date || null,
-        description: formData.description || null
+        description: formData.description || null,
+        view_3d_url: formData.view_3d_url || null
       };
 
       let opportunityId;
