@@ -451,13 +451,13 @@ export default function Opportunities() {
             <div>
               <h3 className="text-lg font-semibold text-gray-800">{opp.building_name}</h3>
               <p className="text-sm text-gray-500">Unit {opp.unit_no} • Floor {opp.floor}</p>
+              {opp.unit_type && (
+                <p className="text-xs text-teal-600 font-medium">{opp.unit_type}</p>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">Off-Plan</Badge>
-            {opp.unit_type && (
-              <span className="px-2 py-1 bg-teal-50 text-teal-700 text-xs font-medium rounded-full">{opp.unit_type}</span>
-            )}
             {status === 'available' && (
               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Available</span>
             )}
