@@ -12799,12 +12799,17 @@ async def get_real_estate_opportunities(
         "unit_price": 1,
         "price_per_sqft": 1,
         "expected_xirr": 1,
+        "expected_sale_rate": 1,
+        "estimated_sell_date": 1,
         "status": 1,
         "invested_percentage": 1,
         "max_co_owners": 1,
         "handover_date": 1,
         "created_at": 1,
         "investors": 1,  # Needed for count
+        "interested_count": 1,
+        "current_investors": 1,
+        "total_payment_percentage_completed": 1,
         # Exclude heavy fields: images, presentations, payment_schedule details
     }
     
