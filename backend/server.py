@@ -11187,8 +11187,9 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
             except:
                 continue
             
-            principal = cf.get('principal', 0) or 0
-            interest = cf.get('interest', 0) or 0
+            # Support both 'principal' and 'principal_per_unit' key names
+            principal = cf.get('principal', cf.get('principal_per_unit', 0)) or 0
+            interest = cf.get('interest', cf.get('interest_per_unit', 0)) or 0
             total_cf = principal + interest
             
             # Calculate days from investment
@@ -11199,10 +11200,16 @@ async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCa
                 remaining_dates.append(cf_date)
                 remaining_cashflows_gross.append(total_cf)
         
+        # Helper to get cashflow amounts (support both key name formats)
+        def get_principal(cf):
+            return cf.get('principal', cf.get('principal_per_unit', 0)) or 0
+        def get_interest(cf):
+            return cf.get('interest', cf.get('interest_per_unit', 0)) or 0
+        
         # Calculate remaining principal/interest from included cashflows
-        remaining_principal = sum(cf.get('principal', 0) or 0 for cf in bond['cashflows_per_unit'] 
+        remaining_principal = sum(get_principal(cf) for cf in bond['cashflows_per_unit'] 
                                   if (datetime.fromisoformat(str(cf.get('date', '')).split('T')[0].split(' ')[0]) - investment_date).days > cutoff_days)
-        remaining_interest_gross = sum(cf.get('interest', 0) or 0 for cf in bond['cashflows_per_unit']
+        remaining_interest_gross = sum(get_interest(cf) for cf in bond['cashflows_per_unit']
                                        if (datetime.fromisoformat(str(cf.get('date', '')).split('T')[0].split(' ')[0]) - investment_date).days > cutoff_days)
     else:
         # Fallback to old format: interest_payments and principal_payments
