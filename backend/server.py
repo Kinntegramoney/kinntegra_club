@@ -11388,18 +11388,22 @@ async def calculate_enhanced_secondary_price(bond_id: str, calculation: Enhanced
         principal_payments = []
         for cf in cashflows_per_unit:
             cf_date = cf.get('date')
-            if cf.get('interest', 0) > 0:
+            # Support both 'interest' and 'interest_per_unit' key names
+            interest_amount = cf.get('interest', cf.get('interest_per_unit', 0))
+            principal_amount = cf.get('principal', cf.get('principal_per_unit', 0))
+            
+            if interest_amount > 0:
                 interest_payments.append({
                     'date': cf_date,
-                    'amount': cf.get('interest', 0)
+                    'amount': interest_amount
                 })
-            if cf.get('principal', 0) > 0:
+            if principal_amount > 0:
                 # Convert to percentage format for compatibility
-                principal_pct = (cf.get('principal', 0) / face_value) * 100 if face_value > 0 else 0
+                principal_pct = (principal_amount / face_value) * 100 if face_value > 0 else 0
                 principal_payments.append({
                     'date': cf_date,
                     'percentage': principal_pct,
-                    'amount': cf.get('principal', 0)  # Also store absolute amount
+                    'amount': principal_amount  # Also store absolute amount
                 })
     
     # Get cutoff days / record day convention (days before payment date that determines ownership)
