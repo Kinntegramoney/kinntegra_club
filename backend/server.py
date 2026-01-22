@@ -12583,25 +12583,94 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
     # Calculate price per unit using record date logic
     secondary_irr_decimal = bond['secondary_irr'] / 100
     
-    # Get remaining cashflows using RECORD DATE logic
-    # Payment is received only if: investment_date <= record_date (payment_date - cutoff_days)
+    # Check if bond uses cashflows_per_unit format (new format)
+    if bond.get('cashflows_per_unit') and len(bond.get('cashflows_per_unit', [])) > 0:
+        # New format: cashflows_per_unit contains date, interest_per_unit, principal_per_unit
+        cashflows_data = bond['cashflows_per_unit']
+        
+        # Build cashflow schedule - Only include cashflows FROM investment date onwards
+        cashflows = []
+        total_principal = 0
+        total_interest = 0
+        total_tds = 0
+        
+        for cf in cashflows_data:
+            cf_date = datetime.fromisoformat(str(cf.get('date', '')).split('T')[0].split(' ')[0])
+            days_from_investment = (cf_date - investment_date).days
+            
+            # Only include cashflows that are MORE than cutoff_days from investment (buyer receives these)
+            if days_from_investment > cutoff_days:
+                # Support both 'interest' and 'interest_per_unit' keys
+                interest_per_unit = cf.get('interest', cf.get('interest_per_unit', 0)) or 0
+                principal_per_unit = cf.get('principal', cf.get('principal_per_unit', 0)) or 0
+                
+                # Multiply by units
+                interest_payment = interest_per_unit * units
+                principal_payment = principal_per_unit * units
+                
+                # Calculate TDS on interest
+                tds_deducted = interest_payment * 0.10
+                net_interest = interest_payment - tds_deducted
+                total_net_payment = principal_payment + net_interest
+                
+                total_principal += principal_payment
+                total_interest += interest_payment
+                total_tds += tds_deducted
+                
+                cashflows.append({
+                    "date": cf_date.isoformat(),
+                    "month": cf_date.strftime("%B %Y"),
+                    "principal_payment": round(principal_payment, 2),
+                    "interest_payment": round(interest_payment, 2),
+                    "tds_deducted": round(tds_deducted, 2),
+                    "net_interest": round(net_interest, 2),
+                    "total_net_payment": round(total_net_payment, 2)
+                })
+        
+        # Calculate discounted price
+        remaining_dates = []
+        remaining_cashflows = []
+        for cf in cashflows_data:
+            cf_date = datetime.fromisoformat(str(cf.get('date', '')).split('T')[0].split(' ')[0])
+            days_from_investment = (cf_date - investment_date).days
+            if days_from_investment > cutoff_days:
+                interest = cf.get('interest', cf.get('interest_per_unit', 0)) or 0
+                principal = cf.get('principal', cf.get('principal_per_unit', 0)) or 0
+                remaining_dates.append(cf_date)
+                remaining_cashflows.append(interest + principal)
+        
+        price_per_unit = calculate_price_for_irr(secondary_irr_decimal, remaining_dates, remaining_cashflows, investment_date)
+        total_price = price_per_unit * units
+        
+        return {
+            "bond_name": bond['name'],
+            "investment_date": calculation.investment_date,
+            "units": units,
+            "price_paid": round(total_price, 2),
+            "cashflows": cashflows,
+            "total_principal": round(total_principal, 2),
+            "total_interest": round(total_interest, 2),
+            "total_tds": round(total_tds, 2),
+            "total_net_received": round(total_principal + total_interest - total_tds, 2)
+        }
+    
+    # Old format: interest_payments and principal_payments arrays
     remaining_dates = []
     remaining_cashflows = []
     
-    for ip in bond['interest_payments']:
+    for ip in bond.get('interest_payments', []):
         ip_date = datetime.fromisoformat(ip['date'])
-        record_date = ip_date - timedelta(days=cutoff_days)
-        # Buyer receives this payment only if they invested ON or BEFORE the record date
-        if investment_date <= record_date:
+        days_from_investment = (ip_date - investment_date).days
+        if days_from_investment > cutoff_days:
             remaining_dates.append(ip_date)
             remaining_cashflows.append(ip['amount'])
     
-    for pp in bond['principal_payments']:
+    for pp in bond.get('principal_payments', []):
         pp_date = datetime.fromisoformat(pp['date'])
-        record_date = pp_date - timedelta(days=cutoff_days)
-        if investment_date <= record_date:
+        days_from_investment = (pp_date - investment_date).days
+        if days_from_investment > cutoff_days:
             remaining_dates.append(pp_date)
-            remaining_cashflows.append(bond['principal_amount'] * pp['percentage'] / 100)
+            remaining_cashflows.append(bond.get('principal_amount', bond.get('face_value', 0)) * pp['percentage'] / 100)
     
     date_cashflow_map = {}
     for d, cf in zip(remaining_dates, remaining_cashflows):
@@ -12617,17 +12686,16 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
     total_price = price_per_unit * units
     
     # Build cashflow schedule - MULTIPLY BY UNITS
-    # Only include payments where buyer will receive based on record date
     cashflows = []
     total_principal = 0
     total_interest = 0
     total_tds = 0
     
     for payment_date in sorted(date_cashflow_map.keys()):
-        record_date = payment_date - timedelta(days=cutoff_days)
+        days_from_investment = (payment_date - investment_date).days
         
-        # Skip payments where record date has passed (buyer won't receive)
-        if investment_date > record_date:
+        # Skip payments within cutoff
+        if days_from_investment <= cutoff_days:
             continue
         
         # Separate principal and interest for this date
@@ -12635,17 +12703,15 @@ async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculatio
         interest_payment = 0
         
         # Check principal payments
-        for pp in bond['principal_payments']:
+        for pp in bond.get('principal_payments', []):
             pp_date = datetime.fromisoformat(pp['date'])
-            pp_record_date = pp_date - timedelta(days=cutoff_days)
-            if pp_date == payment_date and investment_date <= pp_record_date:
-                principal_payment += (bond['principal_amount'] * pp['percentage'] / 100) * units
+            if pp_date == payment_date:
+                principal_payment += (bond.get('principal_amount', bond.get('face_value', 0)) * pp['percentage'] / 100) * units
         
         # Check interest payments
-        for ip in bond['interest_payments']:
+        for ip in bond.get('interest_payments', []):
             ip_date = datetime.fromisoformat(ip['date'])
-            ip_record_date = ip_date - timedelta(days=cutoff_days)
-            if ip_date == payment_date and investment_date <= ip_record_date:
+            if ip_date == payment_date:
                 interest_payment += ip['amount'] * units
         
         # Calculate TDS on interest
