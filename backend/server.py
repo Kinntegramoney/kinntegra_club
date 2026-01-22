@@ -10994,6 +10994,7 @@ async def get_bonds(
         "description": 1,
         "face_value": 1,
         "cashflows_per_unit": 1,  # Needed for price calculation
+        "cutoff_days": 1,  # Needed for price calculation (record day convention)
         "created_at": 1,
         "created_by": 1
     }
