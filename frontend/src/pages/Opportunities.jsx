@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
+import SubBrokerSidebar from "@/components/SubBrokerSidebar";
+import ClientSidebar from "@/components/ClientSidebar";
 import CreateRealEstateModal from "@/components/CreateRealEstateModal";
 import EditBondModal from "@/components/EditBondModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, TrendingUp, Plus, Pencil } from "lucide-react";
+import { Building2, MapPin, TrendingUp, Plus, Pencil, Share2, Eye, Users, Lock } from "lucide-react";
+import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -21,6 +24,7 @@ export default function Opportunities() {
   const [showRealEstateModal, setShowRealEstateModal] = useState(false);
   const [editingBond, setEditingBond] = useState(null);
   const [editingRealEstate, setEditingRealEstate] = useState(null);
+  const [clientInvestments, setClientInvestments] = useState([]); // Track which properties client has invested in
 
   // Set page title
   useEffect(() => {
@@ -35,28 +39,66 @@ export default function Opportunities() {
     }
     
     const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== "broker") {
-      navigate("/sub-broker/opportunities");
-      return;
-    }
-    
     setUser(parsedUser);
-    fetchData();
+    fetchData(parsedUser);
   }, [navigate]);
 
-  const fetchData = async () => {
+  const fetchData = async (currentUser) => {
     try {
       const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+      
       const [bondsRes, realEstateRes] = await Promise.all([
-        axios.get(`${API}/bonds`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API}/real-estate-opportunities`, { headers: { Authorization: `Bearer ${token}` } })
+        axios.get(`${API}/bonds`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API}/real-estate-opportunities`, { headers }).catch(() => ({ data: [] }))
       ]);
-      setBonds(bondsRes.data);
-      setRealEstateOpps(realEstateRes.data);
+      
+      setBonds(bondsRes.data || []);
+      setRealEstateOpps(realEstateRes.data || []);
+      
+      // For clients, also fetch their investments to determine access level
+      if (currentUser?.role === 'client' && currentUser?.client_id) {
+        try {
+          const investmentsRes = await axios.get(`${API}/holdings/client/${currentUser.client_id}`, { headers });
+          const investedPropertyIds = (investmentsRes.data?.real_estate_holdings || []).map(h => h.property_id);
+          setClientInvestments(investedPropertyIds);
+        } catch (err) {
+          console.error("Error fetching client investments:", err);
+        }
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
       setLoading(false);
+    }
+  };
+
+  // Check if client has detailed access to a property
+  const hasDetailedAccess = (propertyId) => {
+    if (!user) return false;
+    if (user.role === 'broker' || user.role === 'sub_broker') return true;
+    // Client only has detailed access to properties they've invested in
+    return clientInvestments.includes(propertyId);
+  };
+
+  // Share functionality for sub-brokers
+  const handleShare = (item, type) => {
+    let shareText = "";
+    if (type === 'bond') {
+      shareText = `Investment Opportunity: ${item.name}\n\nPrincipal: ₹${item.principal_amount?.toLocaleString()}\nIRR: ${item.secondary_irr}%\nUnits Available: ${(item.total_units || 1) - (item.units_sold || 0)}\n\nView details and calculate returns!`;
+    } else {
+      shareText = `Real Estate Opportunity: ${item.building_name}\n\nUnit: ${item.unit_no}\nPrice: ${item.total_cost ? `AED ${item.total_cost.toLocaleString()}` : 'Contact for details'}\nType: ${item.unit_type || 'N/A'}\n\nView details!`;
+    }
+    
+    if (navigator.share) {
+      navigator.share({ title: item.name || item.building_name, text: shareText }).catch(() => {
+        navigator.clipboard.writeText(shareText);
+        toast.success("Details copied to clipboard!");
+      });
+    } else {
+      navigator.clipboard.writeText(shareText);
+      toast.success("Details copied to clipboard!");
     }
   };
 
@@ -65,7 +107,7 @@ export default function Opportunities() {
   const fundedBonds = bonds.filter(b => b.status === 'funded');
   const closedBonds = bonds.filter(b => b.status === 'closed');
 
-  // Real Estate: available OR partially_invested should show in "Open" section
+  // Real Estate: available OR partially_invested should show in "Available" section
   const availableRE = realEstateOpps.filter(r => r.status === 'available' || r.status === 'partially_invested');
   const investedRE = realEstateOpps.filter(r => r.status === 'fully_invested');
   const closedRE = realEstateOpps.filter(r => r.status === 'closed' || r.status === 'sold');
@@ -75,9 +117,25 @@ export default function Opportunities() {
   const fundedCount = fundedBonds.length + investedRE.length;
   const closedCount = closedBonds.length + closedRE.length;
 
+  const formatCurrency = (amount, currency = 'INR') => {
+    if (currency === 'AED') {
+      return `AED ${new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0)}`;
+    }
+    return `₹${(amount || 0).toLocaleString()}`;
+  };
+
+  const getDetailPath = (type, id) => {
+    const prefix = user?.role === 'broker' ? '/broker' : user?.role === 'sub_broker' ? '/sub-broker' : '/client';
+    if (type === 'bond') return `/bonds/${id}`;
+    return `${prefix}/real-estate/${id}`;
+  };
+
+  // Bond Card - Same layout for all roles
   const BondCard = ({ bond, status }) => {
     const unitsAvailable = (bond.total_units || 1) - (bond.units_sold || 0);
     const daysToMaturity = Math.ceil((new Date(bond.end_date) - new Date()) / (1000 * 60 * 60 * 24));
+    const isBroker = user?.role === 'broker';
+    const isSubBroker = user?.role === 'sub_broker';
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-amber-500 transition-colors">
@@ -103,7 +161,7 @@ export default function Opportunities() {
         <div className="space-y-2 text-sm mb-4">
           <div className="flex justify-between">
             <span className="text-gray-600">Principal:</span>
-            <span className="font-mono font-medium">₹{bond.principal_amount.toLocaleString()}</span>
+            <span className="font-mono font-medium">{formatCurrency(bond.principal_amount)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">IRR:</span>
@@ -123,35 +181,51 @@ export default function Opportunities() {
 
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/bonds/${bond.id}`)}>
+            <Eye className="h-4 w-4 mr-1" />
             View Details
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-            onClick={(e) => { e.stopPropagation(); setEditingBond(bond); }}
-            title="Edit Bond"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          {isBroker && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+              onClick={(e) => { e.stopPropagation(); setEditingBond(bond); }}
+              title="Edit Bond"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {isSubBroker && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="px-3 text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-200"
+              onClick={(e) => { e.stopPropagation(); handleShare(bond, 'bond'); }}
+              title="Share"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     );
   };
 
+  // Real Estate Card - Same layout for all roles, with conditional details
   const RealEstateCard = ({ opp, status }) => {
-    const formatCurrency = (amount) => {
-      return new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
-    };
+    const isBroker = user?.role === 'broker';
+    const isSubBroker = user?.role === 'sub_broker';
+    const isClient = user?.role === 'client';
+    const canSeeDetails = hasDetailedAccess(opp.id);
 
-    // Cost breakdown for tooltip
-    const costBreakdown = [
+    // Cost breakdown for tooltip (only for users with access)
+    const costBreakdown = canSeeDetails ? [
       { label: "Unit Price", value: opp.unit_price },
       { label: "DLD Fee", value: opp.dld_fee },
       { label: "Admin Fee", value: opp.admin_fee },
       { label: "Brokerage", value: opp.broker_fee },
       { label: "Other Fees", value: opp.other_fees },
-    ].filter(item => item.value > 0);
+    ].filter(item => item.value > 0) : [];
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-teal-500 transition-colors">
@@ -174,6 +248,9 @@ export default function Opportunities() {
             {status === 'invested' && (
               <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Invested</span>
             )}
+            {status === 'closed' && (
+              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">Closed</span>
+            )}
           </div>
         </div>
 
@@ -186,27 +263,30 @@ export default function Opportunities() {
             <p className="text-sm text-gray-600">{opp.total_area} sqft</p>
           </div>
           
-          {/* Total Cost with Tooltip */}
+          {/* Total Cost with Tooltip (detailed for authorized users) */}
           <div className="bg-gray-50 rounded-lg p-3 relative group cursor-help">
-            <p className="text-xs text-gray-500 mb-1">Total Cost <span className="text-orange-500">*</span></p>
-            <p className="font-semibold text-teal-700">AED {formatCurrency(opp.total_cost)}</p>
+            <p className="text-xs text-gray-500 mb-1">
+              Total Cost {canSeeDetails && <span className="text-orange-500">*</span>}
+            </p>
+            <p className="font-semibold text-teal-700">{formatCurrency(opp.total_cost, 'AED')}</p>
             
-            {/* Tooltip on hover */}
-            <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-xs rounded-lg p-3 w-48 -right-2 top-full mt-1 shadow-lg">
-              <p className="font-medium mb-2 text-gray-200">Cost Breakdown</p>
-              {costBreakdown.map((item, idx) => (
-                <div key={idx} className="flex justify-between py-0.5">
-                  <span className="text-gray-400">{item.label}</span>
-                  <span>AED {formatCurrency(item.value)}</span>
+            {/* Tooltip on hover - only for users with detailed access */}
+            {canSeeDetails && costBreakdown.length > 0 && (
+              <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-xs rounded-lg p-3 w-48 -right-2 top-full mt-1 shadow-lg">
+                <p className="font-medium mb-2 text-gray-200">Cost Breakdown</p>
+                {costBreakdown.map((item, idx) => (
+                  <div key={idx} className="flex justify-between py-0.5">
+                    <span className="text-gray-400">{item.label}</span>
+                    <span>{formatCurrency(item.value, 'AED')}</span>
+                  </div>
+                ))}
+                <div className="border-t border-gray-700 mt-2 pt-2 flex justify-between font-medium">
+                  <span>Total</span>
+                  <span>{formatCurrency(opp.total_cost, 'AED')}</span>
                 </div>
-              ))}
-              <div className="border-t border-gray-700 mt-2 pt-2 flex justify-between font-medium">
-                <span>Total</span>
-                <span>AED {formatCurrency(opp.total_cost)}</span>
+                <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
               </div>
-              {/* Tooltip arrow */}
-              <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -218,21 +298,37 @@ export default function Opportunities() {
           </div>
         )}
 
-        {/* Interest & Investors */}
+        {/* Interest & Investors - Different visibility based on role */}
         <div className="flex items-center justify-between mb-4 py-3 border-t border-b border-gray-100">
-          <div className="text-center flex-1">
-            <p className="text-xs text-gray-500">Interested</p>
-            <p className="font-bold text-amber-600">{opp.interested_count || 0}</p>
-          </div>
-          <div className="w-px h-8 bg-gray-200"></div>
-          <div className="text-center flex-1">
-            <p className="text-xs text-gray-500">Investors</p>
-            <p className="font-bold text-purple-600">{opp.current_investors || 0} <span className="text-gray-400 font-normal">/ 4</span></p>
-          </div>
+          {canSeeDetails ? (
+            <>
+              <div className="text-center flex-1">
+                <p className="text-xs text-gray-500">Interested</p>
+                <p className="font-bold text-amber-600">{opp.interested_count || 0}</p>
+              </div>
+              <div className="w-px h-8 bg-gray-200"></div>
+              <div className="text-center flex-1">
+                <p className="text-xs text-gray-500">Investors</p>
+                <p className="font-bold text-purple-600">{opp.current_investors || 0} <span className="text-gray-400 font-normal">/ 4</span></p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-center flex-1">
+                <p className="text-xs text-gray-500">Status</p>
+                <p className="font-medium text-gray-700 capitalize">{status}</p>
+              </div>
+              <div className="w-px h-8 bg-gray-200"></div>
+              <div className="text-center flex-1 flex items-center justify-center gap-1">
+                <Lock className="h-3 w-3 text-gray-400" />
+                <p className="text-xs text-gray-400">Invest to view details</p>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Payment Progress - only show if payments exist */}
-        {opp.payment_schedule && opp.payment_schedule.length > 0 && (
+        {/* Payment Progress - only show for users with detailed access */}
+        {canSeeDetails && opp.payment_schedule && opp.payment_schedule.length > 0 && (
           <div className="mb-4">
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="text-gray-500">Payment Progress</span>
@@ -245,18 +341,37 @@ export default function Opportunities() {
         )}
 
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/broker/real-estate/${opp.id}`)}>
-            View Details
-          </Button>
           <Button 
             variant="outline" 
             size="sm" 
-            className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-            onClick={(e) => { e.stopPropagation(); setEditingRealEstate(opp); }}
-            title="Edit Property"
+            className="flex-1" 
+            onClick={() => navigate(getDetailPath('real-estate', opp.id))}
           >
-            <Pencil className="h-4 w-4" />
+            <Eye className="h-4 w-4 mr-1" />
+            View Details
           </Button>
+          {isBroker && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+              onClick={(e) => { e.stopPropagation(); setEditingRealEstate(opp); }}
+              title="Edit Property"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {isSubBroker && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="px-3 text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-200"
+              onClick={(e) => { e.stopPropagation(); handleShare(opp, 'real-estate'); }}
+              title="Share"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -264,35 +379,48 @@ export default function Opportunities() {
 
   if (!user) return null;
 
+  // Select sidebar based on role
+  const SidebarComponent = user.role === 'broker' ? Sidebar : user.role === 'client' ? ClientSidebar : SubBrokerSidebar;
+  const isBroker = user.role === 'broker';
+
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar user={user} />
+      <SidebarComponent user={user} />
       
       <div className="flex-1 overflow-auto">
-        {/* Header with Add Buttons */}
+        {/* Header with Add Buttons (Broker only) */}
         <div className="bg-white border-b border-gray-200 px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Opportunities</h1>
+              <h1 className="text-2xl font-bold text-gray-800" data-testid="page-title">Opportunities</h1>
               <p className="text-sm text-gray-500 mt-1">All investment opportunities - Bonds and Real Estate</p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button 
-                onClick={() => navigate("/bonds/create")} 
-                className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Bonds
-              </Button>
-              <Button 
-                onClick={() => setShowRealEstateModal(true)} 
-                variant="outline"
-                className="border-teal-500 text-teal-600 hover:bg-teal-50 gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Real Estate
-              </Button>
-            </div>
+            {isBroker && (
+              <div className="flex items-center gap-3">
+                <Button 
+                  onClick={() => navigate("/bonds/create")} 
+                  className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Bonds
+                </Button>
+                <Button 
+                  onClick={() => setShowRealEstateModal(true)} 
+                  variant="outline"
+                  className="border-teal-500 text-teal-600 hover:bg-teal-50 gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Real Estate
+                </Button>
+              </div>
+            )}
+            {!isBroker && (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-teal-100 text-teal-700 text-sm rounded-full font-medium">
+                  {availableCount + fundedCount + closedCount} Total
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -301,7 +429,7 @@ export default function Opportunities() {
           <EditBondModal 
             bond={editingBond}
             onClose={() => setEditingBond(null)} 
-            onSuccess={() => { setEditingBond(null); fetchData(); }}
+            onSuccess={() => { setEditingBond(null); fetchData(user); }}
           />
         )}
 
@@ -309,7 +437,7 @@ export default function Opportunities() {
         {showRealEstateModal && (
           <CreateRealEstateModal 
             onClose={() => setShowRealEstateModal(false)} 
-            onSuccess={fetchData}
+            onSuccess={() => fetchData(user)}
           />
         )}
 
@@ -318,7 +446,7 @@ export default function Opportunities() {
           <CreateRealEstateModal 
             opportunity={editingRealEstate}
             onClose={() => setEditingRealEstate(null)} 
-            onSuccess={() => { setEditingRealEstate(null); fetchData(); }}
+            onSuccess={() => { setEditingRealEstate(null); fetchData(user); }}
           />
         )}
 
@@ -326,14 +454,14 @@ export default function Opportunities() {
         <div className="p-8">
           <Tabs defaultValue="available" className="w-full">
             <TabsList className="mb-6">
-              <TabsTrigger value="available" className="px-8">
+              <TabsTrigger value="available" className="px-8" data-testid="tab-available">
                 Available ({availableCount})
               </TabsTrigger>
-              <TabsTrigger value="funded" className="px-8">
+              <TabsTrigger value="funded" className="px-8" data-testid="tab-funded">
                 Funded/Invested ({fundedCount})
               </TabsTrigger>
-              <TabsTrigger value="closed" className="px-8">
-                Closed ({closedCount})
+              <TabsTrigger value="closed" className="px-8" data-testid="tab-closed">
+                Closed/Exited ({closedCount})
               </TabsTrigger>
             </TabsList>
 
@@ -342,9 +470,14 @@ export default function Opportunities() {
                 <p className="text-center text-gray-500 py-12">Loading...</p>
               ) : availableCount === 0 ? (
                 <div className="text-center py-12">
+                  <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 mb-4">No available opportunities</p>
-                  <Button onClick={() => navigate("/broker/admin/bonds")} className="mr-2">Add Bond</Button>
-                  <Button onClick={() => navigate("/broker/admin/real-estate")} variant="outline">Add Real Estate</Button>
+                  {isBroker && (
+                    <>
+                      <Button onClick={() => navigate("/bonds/create")} className="mr-2">Add Bond</Button>
+                      <Button onClick={() => setShowRealEstateModal(true)} variant="outline">Add Real Estate</Button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -363,6 +496,7 @@ export default function Opportunities() {
                 <p className="text-center text-gray-500 py-12">Loading...</p>
               ) : fundedCount === 0 ? (
                 <div className="text-center py-12">
+                  <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">No funded/invested opportunities yet</p>
                 </div>
               ) : (
@@ -382,6 +516,7 @@ export default function Opportunities() {
                 <p className="text-center text-gray-500 py-12">Loading...</p>
               ) : closedCount === 0 ? (
                 <div className="text-center py-12">
+                  <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">No closed opportunities yet</p>
                 </div>
               ) : (
