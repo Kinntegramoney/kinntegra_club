@@ -337,6 +337,16 @@ function App() {
             } 
           />
           
+          {/* Client Approval Logs Route */}
+          <Route 
+            path="/client/approval-logs" 
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ApprovalLogs />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Analysis Dashboard - Opens in new tab */}
           <Route 
             path="/analysis/dashboard/:analysisId" 
