@@ -311,12 +311,9 @@ export default function Opportunities() {
       const secondaryIRR = (bond.secondary_irr || bond.primary_irr || 12) / 100; // Annual rate
       const cutoffDays = bond.cutoff_days ?? 15; // Default 15 days cutoff, use ?? to handle 0
       
-      console.log(`[Price Calc] Bond: ${bond.name}, cutoff_days: ${bond.cutoff_days}, using: ${cutoffDays}, IRR: ${secondaryIRR}`);
-      
       // If bond has cashflows_per_unit, use those with cutoff logic
       if (bond.cashflows_per_unit && bond.cashflows_per_unit.length > 0) {
         let npv = 0;
-        let includedCount = 0;
         for (const cf of bond.cashflows_per_unit) {
           const cfDate = new Date(cf.date);
           const daysFromToday = Math.floor((cfDate - today) / (1000 * 60 * 60 * 24));
@@ -328,10 +325,8 @@ export default function Opportunities() {
             const totalCashflow = (cf.interest_per_unit || cf.interest || 0) + (cf.principal_per_unit || cf.principal || 0);
             // Discount formula: CF / (1 + IRR)^years
             npv += totalCashflow / Math.pow(1 + secondaryIRR, yearsToPayment);
-            includedCount++;
           }
         }
-        console.log(`[Price Calc] ${bond.name}: Included ${includedCount}/${bond.cashflows_per_unit.length} cashflows, NPV: ${npv.toFixed(2)}`);
         return npv > 0 ? npv : faceValue;
       }
       
