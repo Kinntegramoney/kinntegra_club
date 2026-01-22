@@ -181,6 +181,21 @@ Complete 3-phase approval workflow for sub-broker actions:
   4. Same icon colors: amber-600 for main sections, with specific colors for conditional sections
 - **Verified**: All 29 frontend layout tests pass, visual comparison confirms identical layouts
 
+### Opportunities & Logs Module Alignment (Jan 22, 2026)
+- **Issue**: Opportunities and Logs pages had different layouts and features for different roles
+- **Requirements**:
+  - Same layout for all roles
+  - All opportunities visible to all roles (available, funded, exited)
+  - Detailed visibility for linked/invested clients, basic info for others
+- **Fix Applied**:
+  1. Unified `Opportunities.jsx` to work for all roles (broker, sub-broker, client)
+  2. Same tabs across all roles: Available, Funded/Invested, Closed/Exited
+  3. Same card layout: Property name, unit info, size, cost, location
+  4. Role-specific buttons: Edit (Broker), Share (Sub-broker), None (Client)
+  5. Conditional detailed access: Clients see investor counts/payment progress only for invested properties
+  6. Added `Approval Logs` to ClientSidebar and created `/client/approval-logs` route
+- **Verified**: All 23 frontend tests pass, visual comparison confirms identical layouts
+
 ## P0 - Critical/In Progress
 1. **Kinntegra API Integration**: Awaiting API authentication details from user
 
