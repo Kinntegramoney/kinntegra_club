@@ -443,6 +443,26 @@ export default function Opportunities() {
           </p>
         </div>
 
+        {/* Quick Calculator - Investment Range */}
+        {status === 'available' && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 mb-4">
+            <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+              <Calculator className="h-3 w-3" />
+              Quick Calculator
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <p className="text-gray-500">1 Unit</p>
+                <p className="font-mono font-semibold text-blue-700">{formatCurrency(Math.round(todayPrice))}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">5 Units</p>
+                <p className="font-mono font-semibold text-blue-700">{formatCurrency(Math.round(todayPrice * 5))}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/bonds/${bond.id}`)}>
@@ -450,15 +470,27 @@ export default function Opportunities() {
             View Details
           </Button>
           {isBroker && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-              onClick={(e) => { e.stopPropagation(); setEditingBond(bond); }}
-              title="Edit Bond"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
+            <>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                onClick={(e) => { e.stopPropagation(); setEditingBond(bond); }}
+                title="Edit Bond"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                onClick={(e) => { e.stopPropagation(); handleDeleteBond(bond.id); }}
+                title="Delete Bond"
+                data-testid={`delete-bond-${bond.id}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
           )}
           {isSubBroker && (
             <Button 
