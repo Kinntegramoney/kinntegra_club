@@ -196,6 +196,15 @@ Complete 3-phase approval workflow for sub-broker actions:
   6. Added `Approval Logs` to ClientSidebar and created `/client/approval-logs` route
 - **Verified**: All 23 frontend tests pass, visual comparison confirms identical layouts
 
+### DLD+Admin Row Alignment with Installments (Jan 22, 2026)
+- **Issue**: DLD+Admin Fee row only had simple "D" and "A" buttons, not the full Upload Invoice/Swift/Receipt sections like installment rows
+- **Fix Applied**:
+  1. Updated DLD+Admin row to use same 3-column layout (Invoice, Swift, Receipt)
+  2. Sequential workflow: Invoice → SWIFT (verify by broker) → Receipt (approve by broker)
+  3. Uses `dld_admin_documents` array with fields: invoice_url, swift_url, swift_verified, receipt_url, receipt_approved
+  4. Updated progress bars to show document upload status per investor
+- **Verified**: All 10 frontend tests pass, layout matches installment rows exactly
+
 ## P0 - Critical/In Progress
 1. **Kinntegra API Integration**: Awaiting API authentication details from user
 
