@@ -1553,8 +1553,13 @@ export default function RealEstateDetails() {
             )}
           </div>
 
-          {/* Interest & Participation Section - Only for Clients */}
-          {user?.role === 'client' && (
+          {/* Interest & Participation Section - Only for Clients who don't already own 100% */}
+          {user?.role === 'client' && !isFullyAllocated && (() => {
+            // Check if client already has 100% ownership
+            const clientInvestor = opp.investors?.find(inv => inv.client_id === user.id);
+            const clientOwnership = clientInvestor?.share_percentage || 0;
+            return clientOwnership < 100;
+          })() && (
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-2">Interested in this Property?</h2>
               <p className="text-gray-600 mb-6">Express your interest or confirm your participation as one of the 4 co-owners.</p>
