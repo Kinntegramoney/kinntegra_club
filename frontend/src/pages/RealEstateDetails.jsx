@@ -607,24 +607,88 @@ export default function RealEstateDetails() {
               <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-teal-600" />
                 Property Images
+                <span className="text-sm font-normal text-gray-500 ml-2">({opp.images.length} photos)</span>
               </h2>
-              <div className="grid grid-cols-3 gap-4">
-                {opp.images.map((img, idx) => {
-                  // Handle different image formats: base64 data, url string, or object with url
-                  const imgSrc = img.data 
-                    ? (img.data.startsWith('data:') ? img.data : `data:${img.content_type || 'image/jpeg'};base64,${img.data}`)
-                    : (img.url || img);
-                  return (
-                    <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-gray-100">
+              
+              {/* Main Image Slider */}
+              <div className="relative">
+                {/* Main Image Display */}
+                <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100">
+                  {(() => {
+                    const img = opp.images[currentImageIndex];
+                    const imgSrc = img?.data 
+                      ? (img.data.startsWith('data:') ? img.data : `data:${img.content_type || 'image/jpeg'};base64,${img.data}`)
+                      : (img?.url || img);
+                    return (
                       <img 
                         src={imgSrc}
-                        alt={`${opp.building_name} - Image ${idx + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                        alt={`${opp.building_name} - Image ${currentImageIndex + 1}`}
+                        className="w-full h-full object-cover cursor-pointer"
                         onClick={() => window.open(imgSrc, '_blank')}
+                        data-testid="main-slider-image"
                       />
-                    </div>
-                  );
-                })}
+                    );
+                  })()}
+                  
+                  {/* Navigation Arrows */}
+                  {opp.images.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setCurrentImageIndex(prev => prev === 0 ? opp.images.length - 1 : prev - 1)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                        data-testid="slider-prev-btn"
+                      >
+                        <ChevronLeft className="h-6 w-6 text-gray-700" />
+                      </button>
+                      <button
+                        onClick={() => setCurrentImageIndex(prev => prev === opp.images.length - 1 ? 0 : prev + 1)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                        data-testid="slider-next-btn"
+                      >
+                        <ChevronRight className="h-6 w-6 text-gray-700" />
+                      </button>
+                    </>
+                  )}
+                  
+                  {/* Image Counter */}
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
+                    {currentImageIndex + 1} / {opp.images.length}
+                  </div>
+                  
+                  {/* Fullscreen hint */}
+                  <div className="absolute top-3 right-3 bg-black/50 text-white px-2 py-1 rounded text-xs">
+                    Click to enlarge
+                  </div>
+                </div>
+                
+                {/* Thumbnail Strip */}
+                {opp.images.length > 1 && (
+                  <div className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                    {opp.images.map((img, idx) => {
+                      const imgSrc = img.data 
+                        ? (img.data.startsWith('data:') ? img.data : `data:${img.content_type || 'image/jpeg'};base64,${img.data}`)
+                        : (img.url || img);
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentImageIndex(idx)}
+                          className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                            idx === currentImageIndex 
+                              ? 'border-teal-500 ring-2 ring-teal-200' 
+                              : 'border-transparent hover:border-gray-300'
+                          }`}
+                          data-testid={`thumbnail-${idx}`}
+                        >
+                          <img 
+                            src={imgSrc}
+                            alt={`Thumbnail ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
