@@ -395,19 +395,10 @@ export default function Opportunities() {
           </div>
         </div>
 
-        {/* Deal ID & Company - Row 0 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          {/* Deal ID */}
-          <div className="bg-slate-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Deal ID</p>
-            <p className="font-semibold text-slate-700">{bond.bond_code}</p>
-          </div>
-          
-          {/* Company - full width */}
-          <div className="bg-slate-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Company</p>
-            <p className="font-semibold text-slate-700">{bond.issuer || 'NCD'}</p>
-          </div>
+        {/* Deal ID - Full Width */}
+        <div className="bg-slate-50 rounded-lg p-3 mb-4">
+          <p className="text-xs text-gray-500 mb-1">Deal ID</p>
+          <p className="font-semibold text-slate-700">{bond.bond_code}</p>
         </div>
 
         {/* Price/Unit - Full Width */}
