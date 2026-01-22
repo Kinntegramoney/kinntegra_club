@@ -893,20 +893,20 @@ export default function BondDetails() {
                     <div className="mt-4 pt-4 border-t border-emerald-400">
                       <p className="text-sm text-emerald-100">Total for {enhancedCalculation.units_requested} units</p>
                       <p className="text-2xl font-mono font-bold text-white">
-                        ₹{enhancedCalculation.total_clean_price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ₹{(Math.ceil(enhancedCalculation.total_clean_price) + 1).toLocaleString('en-IN')}
                       </p>
                       {/* Stamp Duty and Final Total */}
                       <div className="mt-3 pt-3 border-t border-emerald-400/50 space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="text-emerald-100">Stamp Duty (0.0001%)</span>
                           <span className="text-white font-mono" data-testid="stamp-duty-display">
-                            ₹{(enhancedCalculation.stamp_duty || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ₹{Math.ceil(enhancedCalculation.stamp_duty || 0).toLocaleString('en-IN')}
                           </span>
                         </div>
                         <div className="flex justify-between text-base font-bold">
                           <span className="text-emerald-100">Total Consideration</span>
                           <span className="text-white font-mono" data-testid="total-consideration-display">
-                            ₹{(enhancedCalculation.total_consideration || enhancedCalculation.total_clean_price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ₹{(Math.ceil(enhancedCalculation.total_consideration || enhancedCalculation.total_clean_price) + 1).toLocaleString('en-IN')}
                           </span>
                         </div>
                       </div>
