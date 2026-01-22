@@ -424,9 +424,9 @@ export default function ClientHoldings() {
                       })}
                     </div>
                   </>
-                )}
-              </TabsContent>
-            </Tabs>
+                )
+              )}
+            </>
           )}
         </div>
       </div>
