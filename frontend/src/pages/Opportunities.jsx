@@ -402,7 +402,9 @@ export default function Opportunities() {
           
           {/* Today's Price Per Unit (calculated using secondary IRR) */}
           <div className="bg-amber-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Price/Unit (Today)</p>
+            <p className="text-xs text-gray-500 mb-1">
+              Price/Unit ({new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})
+            </p>
             <p className="font-semibold text-amber-700">{formatCurrency(Math.round(todayPrice))}</p>
           </div>
         </div>
@@ -437,7 +439,7 @@ export default function Opportunities() {
             </p>
           </div>
           
-          {/* Payment Frequency */}
+          {/* Payment Frequency - from bond.interest_payment_frequency field */}
           <div className="bg-blue-50 rounded-lg p-3">
             <p className="text-xs text-gray-500 mb-1">Interest Payout</p>
             <p className="font-semibold text-blue-700 capitalize">
