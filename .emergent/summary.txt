@@ -1,121 +1,138 @@
 <analysis>**original_problem_statement:**
-The user's initial goal was to build a multi-step approval workflow for sub-brokers, fix several critical bugs (bulk upload, real estate investment flow), and improve the UI.
+The user's initial goal was to build a multi-step approval workflow and fix bugs. The scope then expanded significantly into a series of rapid, iterative UI/UX enhancements and new feature requests.
 
-The focus of the recent sessions has been a series of rapid, iterative UI/UX enhancements and critical bug fixes across the application, including:
-- A complete redesign of the Broker Dashboard UI.
-- Adding logic to capture and display Emirates ID for UAE residents.
-- A massive overhaul of the XIRR report on the  page, including a pixel-perfect PDF export.
-- A Sell Unit feature with an XIRR preview modal.
-- Combining DLD/Admin fees into the main payment schedule.
-- Fixing a Network Error during bulk real estate uploads.
-- Correcting multiple data parsing issues in the CAS (Consolidated Account Statement) PDF analysis for Mutual Fund transactions, including fixing incorrect NAV and transaction descriptions.
-- Resolving a bug preventing property edits after uploading images or presentations.
-- Enhancing the UI to show property images on listing cards and addressing numerous permission and visibility issues for the  user role.
-- The current task is to ensure profile information is consistent across all user roles (broker, sub-broker, client).
+Key features and fixes addressed in the last session include:
+- **Share with Clients Modal**: Added client search and email functionality.
+- **Bulk Bond Upload**: Simplified the Excel template and fixed a critical bug preventing uploads.
+- **Performance Optimization**: Implemented pagination and database indexing for major listing pages (, ), significantly improving load times.
+- **3D View & Image Handling**: Added a 3D View feature for properties, increased the photo upload limit to 20, and implemented an image slider on the details page.
+- **UI/UX Overhaul**: Extensively redesigned the Real Estate and Bond opportunity cards, adding new data points like a dynamically calculated XIRR, , and . This involved numerous small, iterative changes based on user feedback.
+- **Data Integrity**: Fixed an issue where cashflows from bulk-uploaded bonds were not being displayed on the bond details page.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application has undergone significant bug fixing and feature enhancement. The bulk real estate upload now works correctly. The CAS parser in  has been fixed to correctly parse NAVs with commas and handle complex transaction types like Transaction charges and IDCW Payout. The  page has a correctly functioning XIRR report, a combined DLD/Admin fee row in the payment schedule, and an enhanced Sell Unit modal with an XIRR preview. The property editing flow in  is now robust, handling image/presentation uploads and deletions correctly. UI enhancements include property images on listing cards and initial permission fixes for the client view. The agent was last investigating why profile information isn't consistently displayed across different user roles on the  page.
+The application has undergone significant performance optimization and UI redesign, especially on the  page. The APIs for listing opportunities and bonds are now paginated. The bond and real estate opportunity cards display a rich set of data, including dynamically calculated values like XIRR. The bulk bond upload feature is fixed and functional with a new, simpler template. The agent was in the process of refactoring the cashflow display on the  page to use a more user-friendly table format.
 
 **Last working item**:
--   **Last item agent was working**: The agent was investigating why profile information (especially data from bulk uploads) is not visible to sub-brokers and clients on the  page. The user requested that the information visible to the broker in the profile section should be exactly the same for clients and sub-brokers.
+-   **Last item agent was working**: Refactoring the cashflow display on the  page. The goal is to replace two separate lists for principal and interest payments with a single, consolidated table that shows Date, Principal, Interest, and Total for each cashflow, matching the style of other tables in the app.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Frontend testing agent. The test will require logging in with three different roles (broker, sub-broker, client), navigating to the 'Holdings' page for the same client, and verifying that the 'Profile' tab displays the identical set of complete information for all three roles.
+-   **Which testing method agent to use?**: Frontend testing agent. The test should involve logging in, navigating to a bond's detail page, and verifying the new combined cashflow table is displayed correctly with accurate data.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Profile information parity on Holdings page (P0)**
--   **Issue 2: Sub-broker reset password email flow not verified (P1)**
--   **Issue 3: Incomplete client login UI/permission polish (P2)**
--   **Issue 4: Incomplete UI update on BondDetails page (P2)**
+-   **Issue 1: Update cashflow UI on BondDetails page (P0)**
+-   **Issue 2: Sub-broker/Client permission fix on  page (P0)**
+-   **Issue 3: Sub-broker reset password email flow not verified (P1)**
+-   **Issue 4: Incomplete client login UI/permission polish (P2)**
+-   **Issue 5: Incomplete UI update on BondDetails page (P2)**
 
 **Issues Detail:**
--   **Issue 1: Profile information parity on Holdings page (P0)**
-    -   **Attempted fixes**: The agent started investigating the frontend () and backend () to understand the data flow.
+-   **Issue 1: Update cashflow UI on BondDetails page (P0)**
+    -   **Attempted fixes**: The agent located the code in , corrected the data mapping ( and ), and started creating a combined  array. The next step is to implement the JSX for the new table.
     -   **Next debug checklist**:
-        1.  Identify the backend API endpoint that serves client details for the Holdings page (likely ).
-        2.  In , review this endpoint to see if it restricts the data being returned based on the user's role.
-        3.  Modify the endpoint to ensure the full client detail object is returned to any authorized user (the broker, the client themselves, or an associated sub-broker).
-        4.  Verify that  renders all fields received from the API, without any role-based conditional rendering logic that might hide data.
-    -   **Why fix this issue and what will be achieved with the fix?**: This will create a consistent and transparent view of client data for all authorized parties, reducing confusion and support requests.
-    -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on other issue**: None
-
--   **Issue 2: Sub-broker reset password email flow not verified (P1)**
-    -   **Attempted fixes**: None.
-    -   **Next debug checklist**:
-        1.  Log in as a sub-broker and trigger the password reset flow.
-        2.  Check backend logs for a call to .
-        3.  Confirm an email is sent and the reset link works.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical self-service feature for sub-brokers.
-    -   **Status**: NOT STARTED
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on other issue**: None
-
--   **Issue 3: Incomplete client login UI/permission polish (P2)**
-    -   **Attempted fixes**: Hid Sell Unit and Delete buttons for clients.
-    -   **Next debug checklist**:
-        1.  Log in as a client and navigate to a property they partially own ().
-        2.  Verify payment details can be edited.
-        3.  Verify the passport upload button is enabled.
-        4.  Log in as a *different* client who is also an investor in the same property. Verify they *cannot* edit the first client's payment details or upload a passport for them.
-    -   **Why fix this issue and what will be achieved with the fix?**: Ensures clients can only manage their own personal information and actions, which is critical for data privacy and security.
+        1.  In , replace the existing s that map over  and  with a new component that renders a single table from the  array.
+        2.  The table should have columns: , , , and .
+        3.  Style the table to be consistent with the XIRR comparison table.
+    -   **Why fix this issue and what will be achieved with the fix?**: To fulfill the user's request for a clearer and more consolidated view of bond cashflows, improving UI/UX.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Frontend
     -   **Blocked on other issue**: None
 
--   **Issue 4: Incomplete UI update on BondDetails page (P2)**
+-   **Issue 2: Sub-broker/Client permission fix on  page (P0)**
+    -   **Attempted fixes**: Logic was implemented in  to hide Edit/Remove investor buttons from non-brokers and disable payment uploads for sub-brokers on clients they don't manage. However, this critical fix was never tested.
+    -   **Next debug checklist**: Use the frontend testing agent to perform multi-role testing:
+        1.  As **Sub-Broker**: Verify upload buttons are disabled for non-managed clients and Edit/Remove buttons are hidden.
+        2.  As **Client**: Verify Edit/Remove buttons are hidden.
+        3.  As **Broker**: Verify all controls are visible and enabled.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical security and data integrity fix to enforce role-based access control.
+    -   **Status**: TESTING PENDING
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on other issue**: None
+
+-   **Issue 3: Sub-broker reset password email flow not verified (P1)**
     -   **Attempted fixes**: None.
-    -   **Next debug checklist**: Investigate state management in .
-    -   **Why fix this issue and what will be achieved with the fix?**: Minor UX polish for a long-standing recurring bug.
+    -   **Next debug checklist**: Log in as a sub-broker, use the Forgot Password feature, and verify that the reset email is sent and the link functions correctly.
+    -   **Why fix this issue and what will be achieved with the fix?**: To enable a critical self-service feature for sub-brokers.
     -   **Status**: NOT STARTED
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on other issue**: None
+
+-   **Issue 4: Incomplete client login UI/permission polish (P2)**
+    -   **Attempted fixes**: Some high-level permissions were set, but fine-grained control is missing.
+    -   **Next debug checklist**: Log in as a client and verify they can only manage their own data, especially in shared contexts like a co-investment property.
+    -   **Why fix this issue and what will be achieved with the fix?**: To ensure data privacy between clients.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on other issue**: None
+
+-   **Issue 5: Incomplete UI update on BondDetails page (P2)**
+    -   **Attempted fixes**: The  on the opportunities page was heavily redesigned. The  page itself had a data mapping fix. The current task to update the cashflow table is part of this larger issue.
+    -   **Next debug checklist**: Complete the cashflow table UI update (Issue #1).
+    -   **Why fix this issue and what will be achieved with the fix?**: To achieve UI consistency and improve user experience.
+    -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on other issue**: None
+    -   **Blocked on other issue**: Issue 1
 
 **In progress Task List**:
--   None.
+-   **Task 1: Refactor cashflow display on **
+    -   **Where to resume**: . The agent has fixed the data access logic. The next step is to implement the new unified table component in JSX to render the combined cashflows.
+    -   **What will be achieved with this?**: A cleaner, user-friendly UI for bond cashflows, as requested.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **(P0) Verify Sell Unit Feature**: End-to-end test the flow of selling a unit, confirming the status change and the appearance of the Sale Returns section with correct data.
-    -   **(P1) Implement Phase 3 of Approval Workflow: Kinntegra API Integration**: Implement the  request to the Kinntegra API. This is blocked on receiving API credentials from the user.
-    -   **(P2) Frontend for Pincode Lookup**: Implement the UI for the existing pincode lookup API.
-
+    -   **(P0) Verify Sell Unit Feature**: End-to-end test the flow of selling a unit, confirming status changes and data accuracy.
+    -   **(P1) Implement Phase 3 of Approval Workflow: Kinntegra API Integration**: Blocked on receiving API credentials.
+    -   **(P2) Frontend for Pincode Lookup**: Implement the UI for the existing backend API.
 -   **Future Tasks**:
-    -   **(CRITICAL) Refactor Backend & Frontend Monoliths**:  (>16,000 lines) and  (>4,600 lines) are a significant maintenance risk and must be broken down into smaller, modular files.
+    -   **(CRITICAL) Refactor Monoliths**:  (>16,000 lines), , and  are all critically large and must be broken down into smaller, maintainable modules.
     -   **(P2) Implement Analysis Dashboard**: Build out the placeholder .
     -   **(P2) Email notifications for passport expiry**.
-    -   **(P2) Code Cleanup**: Delete obsolete components  and .
+    -   **(P2) Code Cleanup**: Delete obsolete components (, , ).
 
 **Completed work in this session**
--   **Bulk Upload Fix**: Resolved a Network Error during bulk real estate uploads by fixing bugs in  related to column name normalization and error handling.
--   **MF Transaction Data Integrity**: Fixed multiple critical bugs in the CAS PDF parser () to correctly read NAVs containing commas and to properly parse different transaction formats (Transaction charges, IDCW Payout).
--   **Edit Property Flow Fix**: Solved a bug where saving a property failed after uploading files. This involved fixing frontend data handling, improving error toasts, and adding a backend endpoint to delete presentations.
--   **RealEstateDetails UI/UX**:
-    -   Fixed a crash in the XIRR Comparison Report modal.
-    -   Merged the DLD and Admin fees into a single, correctly positioned row in the payment schedule.
-    -   Enhanced the Sell Unit modal to show an XIRR preview.
-    -   Added a Sale Returns section for sold properties.
-    -   Hid Sell and Delete buttons from clients.
--   **General UI**:
-    -   Added property images to the cards on the  page.
-    -   Added Nominee and UCC details sections to the  page.
+-   **Share with Clients Modal Enhancement**: Added client search and email sending with photo attachments.
+-   **Bulk Bond Template Simplification**: Removed Principal Payments sheet and unnecessary columns, updating backend parsing logic.
+-   **Performance Optimization**: Implemented pagination and database indexing for  and  APIs, dramatically improving load times. Frontend pages were updated to use the new paginated responses.
+-   **Real Estate & Bond Card Redesign**: Overhauled the UI for both opportunity cards, adding new fields, a dynamic XIRR calculation with a details popup, and aligning the visual styles.
+-   **Feature Additions**: Added a  URL for properties, increased the image upload limit to 20, and implemented an image slider on the details page.
+-   **Critical Bug Fixes**:
+    -   Resolved a bug in the bulk bond upload process caused by an incorrect code reference ().
+    -   Fixed an issue in  where cashflows were not displaying due to incorrect field name mapping ( vs ).
+-   **Broker Name Update**: Updated the default broker admin name to Punit Bisani.
+
+**Earlier issues found/mentioned but not fixed**
+-   The critical permission checks on , which were the P0 task from the previous session, were implemented but not tested. The agent was diverted by a new user request before verification.
+
+**Known issue recurrence from previous fork**
+-   **Issue recurrence in previous fork**: Incomplete UI update on BondDetails page.
+-   **Recurrence count**: 2
+-   **Status**: IN PROGRESS
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Complex Data Parsing**: Debugged and fixed a sophisticated PDF parsing service () by correcting regular expressions and state management to handle varied data formats.
--   **Backend Debugging**: Traced vague frontend errors (Network Error) to specific backend bugs, including Pandas data type errors and Pydantic validation issues.
--   **Role-Based Access Control (RBAC)**: Implemented UI logic in React to conditionally render components and actions based on user roles.
--   **Robust Error Handling**: Improved frontend error handling to gracefully manage and display detailed validation errors from the Pydantic backend, preventing UI crashes.
+-   **API Performance Optimization**: Using pagination (, ), field projection in MongoDB queries, and creating database indexes on startup.
+-   **Client-Side Financial Calculation**: Implemented a  function in React using cashflow data fetched from the backend.
+-   **Dynamic UI Redesign**: Iteratively modifying React components () based on rapid user feedback to change layouts and data displays.
+-   **File Template Handling**: Modifying  logic in the backend to generate and parse a simplified Excel template for bulk uploads.
+
+**key DB schema**
+-   **real_estate_opportunities**: Added optional  (string).
+-   **bonds**: No schema change, but  is now a critical field for frontend calculations.
+
+**changes in tech stack**
+-   None.
 
 **All files of reference**
 -   
@@ -125,46 +142,59 @@ The application has undergone significant bug fixing and feature enhancement. Th
 -   
 -   
 
+**Areas that need refactoring**:
+-   **CRITICAL**:  is now over 16,000 lines.  and  have also become large and complex. These monoliths must be broken down into smaller, focused modules to ensure maintainability.
+-   The obsolete components (, etc.) still exist and should be deleted.
+
+**key api endpoints**
+-   **MODIFIED**:  (paginated, projected)
+-   **MODIFIED**:  (paginated, projected)
+-   **MODIFIED**:  (accepts )
+-   **MODIFIED**:  (handles new 4-sheet template)
+-   **MODIFIED**:  (generates simplified template)
+-   **MODIFIED**:  (accepts )
+
 **Critical Info for New Agent**
--   Your immediate priority is to fix the profile data visibility issue on the  page. This will likely involve modifying the backend API to stop filtering data based on role.
--   The user has reported multiple complex issues related to PDF and Excel file parsing. While the agent has fixed the known bugs, be aware that this area is complex and may have other edge cases. Always check  for such issues.
--   The  and  files are critically large and represent significant technical debt. You should strongly recommend refactoring them into smaller, manageable modules as a top-priority future task.
+-   Your immediate priority is to complete the UI refactor for the cashflow table in .
+-   **Crucially, you must then test the pending permission fix on  (Issue #2).** This was the top priority from the last handoff and was skipped. It is a critical security task.
+-   The user is focused on rapid UI iteration. Be prepared for frequent, small-scale frontend adjustments.
+-   The codebase has significant technical debt. The monoliths (, , ) need to be flagged for a major refactoring effort soon.
 
 **documents and test reports created in this job**
--    (updated)
+-   
+-    (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-- 10. **User**: The transaction details column is capturing 14975.00 which is incorrect. (COMPLETED)
-- 9. **User**: After uploading images and presentations in edit property section, save property is not working. (COMPLETED)
-- 8. **User**: Similar issue arise for presentation upload too. (COMPLETED)
-- 7. **User**: Show the opportunities with the image too on the card and client login level issues details in the attachment. (IN PROGRESS)
-- 6. **User**: The information visible under profile section of holdings for broker should also be visible to client and the sub broker exactly in a similar way. (IN PROGRESS - Last working item)
-- 5. **User**: The DLD and Admin fee entry has to club together and show as one entry only... XIRR comparison Report is crashing. (COMPLETED)
-- 4. **User**: The current NAV is still not getting captured properly in the mF transaction tab. (COMPLETED)
-- 3. **User**: ...facing issue of network error while uploading bulk Real estate opportunities. (COMPLETED)
-- 2. **User**: MF transactions not capturing fields properly in their respective columns. (COMPLETED)
-- 1. **User**: Please proceed with P0. Also for sell unit module, an XIRR chart should be shown... (COMPLETED)
+-   10.  (IN PROGRESS - Last working item)
+-   9.  (COMPLETED)
+-   8.  (COMPLETED)
+-   7.  (COMPLETED)
+-   6.  (COMPLETED)
+-   5.  (COMPLETED)
+-   4.  (COMPLETED)
+-   3.  (COMPLETED)
+-   2.  (COMPLETED)
+-   1.  (COMPLETED)
 
 **Project Health Check:**
--   **Broken**: The sub-broker password reset flow remains unverified. The final step of the Kinntegra approval workflow is not implemented.
--   **Mocked**:  is a placeholder.
--   **Technical Debt**: **CRITICAL**.  (>16,000 lines) and  (>4,600 lines) are monoliths that severely hinder development and increase bug risk.
+-   **Broken**: Sub-broker password reset flow remains unverified. Critical permissions on  are implemented but untested.
+-   **Mocked**:  is still a placeholder.
+-   **Technical Debt**: **CRITICAL**. , , and  are large monoliths that urgently need refactoring. Obsolete React components also need to be deleted.
 
 **3rd Party Integrations**
--   **fawazahmed0/currency-api**: Used for live currency conversion.
--   **Kinntegra MF Buy Scheduler API**: **PENDING INTEGRATION**.
--   **passlib / bcrypt**: Used for password hashing.
--   **openpyxl / pandas**: Used for Excel bulk upload processing.
--   **html2pdf.js**: Used for generating PDF reports.
--   **pypdf**: Used for parsing CAS PDF files.
+-   None new.
+
+**Testing status**
+-   **Testing agent used after significant changes**: YES (for Share with Clients feature).
+-   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Test files created**: 
+-   **Known regressions**: None.
 
 **Credentials to test flow:**
 -   **Broker Login**: PAN: , Password: , PIN: 
 -   **Sub-Broker Login**: PAN: , Password: , PIN: 
--   **Client Login**: Credentials for a test client associated with an opportunity will be needed. Can be created or found via broker login.
+-   **Client Login**: Use a known client PAN (e.g., ), Password: , PIN: .
 
 **What agent forgot to execute**
--   The agent has not yet verified all points from the user-provided , particularly around fine-grained editing permissions for clients.
--   The Pincode lookup frontend remains unimplemented.
--   Obsolete bond creation files have not been deleted.
--   The recurring UI bug on the  page has not been addressed.</analysis>
+-   The agent did not test the P0 permission fix on  from the previous handoff. A new user request came in, and the agent switched tasks without verifying the completed critical work.
+-   The agent has still not deleted the obsolete React components (, , ). This is a recurring cleanup task.</analysis>
