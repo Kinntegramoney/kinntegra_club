@@ -315,6 +315,85 @@ export default function ClientHoldings() {
                 )}
               )}
 
+              {/* Trades Tab */}
+              {mainTab === "trades" && (
+                clientTrades.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">No trades found</p>
+                    <p className="text-sm text-gray-400 mt-2">Your bond trades will appear here</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Bond</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Type</th>
+                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Units</th>
+                            <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {clientTrades.map((trade) => (
+                            <tr key={trade.id} className="hover:bg-gray-50">
+                              <td className="py-3 px-4">
+                                <p className="text-sm text-gray-800">
+                                  {trade.trade_date ? format(new Date(trade.trade_date), "MMM dd, yyyy") : '-'}
+                                </p>
+                              </td>
+                              <td className="py-3 px-4">
+                                <p className="font-medium text-gray-800">{trade.bond_name || '-'}</p>
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge className={trade.trade_type === 'buy' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+                                  {trade.trade_type === 'buy' ? 'Buy' : 'Sell'}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <p className="font-mono font-medium text-gray-800">{formatINR(trade.amount)}</p>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <p className="font-medium text-gray-800">{trade.units || 1}</p>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <Badge className={
+                                  trade.status === 'verified' ? 'bg-green-100 text-green-700' :
+                                  trade.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }>
+                                  {trade.status === 'verified' ? (
+                                    <><Check className="h-3 w-3 mr-1" />Verified</>
+                                  ) : trade.status === 'pending' ? (
+                                    <><Clock className="h-3 w-3 mr-1" />Pending</>
+                                  ) : (
+                                    trade.status || 'N/A'
+                                  )}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => navigate(`/bonds/${trade.bond_id}`)}
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  View
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
+              )}
+
               {/* Real Estate Tab */}
               {mainTab === "real-estate" && (
                 realEstateHoldings.length === 0 ? (
