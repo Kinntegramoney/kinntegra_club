@@ -828,36 +828,52 @@ export default function BondDetails() {
                       </div>
                     )}
 
-                    {/* Investment Date */}
+                    {/* Investment Date - Editable */}
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Date of Investment *</Label>
                       <Input
                         type="date"
-                        value={settlementDate}
-                        onChange={(e) => setSettlementDate(e.target.value)}
+                        value={bookingInvestmentDate}
+                        onChange={(e) => setBookingInvestmentDate(e.target.value)}
                         min={bondData.start_date}
                         max={bondData.end_date}
+                        placeholder="Select transaction date"
                         data-testid="investment-date-input"
                       />
                     </div>
 
-                    {/* Units and Amount Display */}
+                    {/* Units and Amount - Editable */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">No. of Units Bought</Label>
-                        <div className="h-10 px-3 flex items-center bg-white border rounded-md font-mono font-bold">
-                          {selectedUnits || enhancedCalculation.units_requested}
-                        </div>
+                        <Label className="text-sm font-medium">No. of Units Bought *</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max={bondData.total_units - (bondData.units_sold || 0)}
+                          value={bookingUnitsCount}
+                          onChange={(e) => setBookingUnitsCount(e.target.value)}
+                          placeholder="Enter units"
+                          data-testid="booking-units-input"
+                          className="font-mono"
+                        />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Amount Transferred (₹)</Label>
+                        <Label className="text-sm font-medium">Amount Transferred (₹) *</Label>
                         <Input
                           type="text"
-                          defaultValue={(Math.ceil(enhancedCalculation.total_consideration || enhancedCalculation.total_clean_price) + 1).toLocaleString('en-IN')}
+                          value={bookingAmountTransferred}
+                          onChange={(e) => setBookingAmountTransferred(e.target.value)}
+                          placeholder="Enter amount"
                           data-testid="amount-transferred-input"
                           className="font-mono"
                         />
                       </div>
+                    </div>
+
+                    {/* Reference Price Info */}
+                    <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
+                      <p className="font-medium mb-1">Reference from Calculator:</p>
+                      <p>Price/Unit: ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')} | Settlement Date: {settlementDate}</p>
                     </div>
 
                     {/* Payment Reference */}
@@ -912,17 +928,40 @@ export default function BondDetails() {
                       </div>
                     </div>
 
-                    {/* Order Summary */}
+                    {/* Order Summary - Only show when fields are filled */}
+                    {bookingUnitsCount && bookingAmountTransferred && (
                     <div className="bg-white p-3 md:p-4 rounded-md border border-amber-200">
                       <p className="text-xs text-gray-500 uppercase mb-2 font-medium">Order Summary</p>
                       <div className="space-y-2 text-sm">
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <p className="text-gray-500 text-xs">Units</p>
-                            <p className="font-mono font-bold text-lg">{selectedUnits || enhancedCalculation.units_requested}</p>
+                            <p className="font-mono font-bold text-lg">{bookingUnitsCount}</p>
                           </div>
                           <div>
-                            <p className="text-gray-500 text-xs">Price/Unit</p>
+                            <p className="text-gray-500 text-xs">Amount Transferred</p>
+                            <p className="font-mono font-bold text-lg text-amber-600">₹{bookingAmountTransferred}</p>
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t border-gray-200 space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500 text-xs">Investment Date</span>
+                            <span className="font-mono text-sm">{bookingInvestmentDate || 'Not selected'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500 text-xs">Reference Price/Unit</span>
+                            <span className="font-mono text-sm">₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</span>
+                          </div>
+                        </div>
+                        <div className="pt-2">
+                          <p className="text-gray-500 text-xs">Status</p>
+                          <p className={`font-medium text-sm ${user?.role === 'broker' ? 'text-green-600' : 'text-amber-600'}`}>
+                            {user?.role === 'broker' ? 'Auto-Approved (Future Cashflows Recorded)' : 'Pending Broker Verification'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    )}
                             <p className="font-mono font-bold text-sm md:text-base">₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</p>
                           </div>
                         </div>
