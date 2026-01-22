@@ -584,7 +584,7 @@ export default function Holdings() {
                   }`}
                   data-testid="tab-holdings"
                 >
-                  Holdings
+                  Bonds
                 </button>
                 <button 
                   onClick={() => setMainTab("trades")}
