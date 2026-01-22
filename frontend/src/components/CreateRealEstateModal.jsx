@@ -125,8 +125,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     const files = Array.from(e.target.files);
     const totalImages = images.length + existingImages.length + files.length;
     
-    if (totalImages > 12) {
-      toast.error("Maximum 12 images allowed");
+    if (totalImages > 20) {
+      toast.error("Maximum 20 images allowed");
       return;
     }
 
