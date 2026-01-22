@@ -415,11 +415,17 @@ export default function Opportunities() {
             </p>
           </div>
           
-          {/* Expected XIRR */}
+          {/* Expected XIRR - Calculated from payment schedule and expected sale */}
           <div className="bg-purple-50 rounded-lg p-3">
             <p className="text-xs text-gray-500 mb-1">Expected XIRR</p>
             <p className="font-semibold text-purple-700">
-              {opp.expected_xirr ? `${opp.expected_xirr}%` : 'Calculate in details'}
+              {(() => {
+                const calculatedXirr = calculatePropertyXIRR(opp);
+                if (calculatedXirr !== null) {
+                  return `${calculatedXirr}%`;
+                }
+                return opp.expected_xirr ? `${opp.expected_xirr}%` : 'Set sale details';
+              })()}
             </p>
           </div>
         </div>
