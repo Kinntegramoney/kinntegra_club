@@ -12524,6 +12524,7 @@ class RealEstateOpportunityCreate(BaseModel):
     location: Optional[str] = None
     handover_date: Optional[str] = None
     description: Optional[str] = None
+    view_3d_url: Optional[str] = None
 
 
 class RealEstateOpportunityUpdate(BaseModel):
