@@ -265,6 +265,29 @@ export default function Opportunities() {
     }
   };
 
+  // Delete bond functionality for broker
+  const handleDeleteBond = async (bondId) => {
+    if (!window.confirm("Are you sure you want to delete this bond? This action cannot be undone.")) {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API}/bonds/${bondId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Bond deleted successfully");
+      // Refresh the bonds list
+      const response = await axios.get(`${API}/bonds`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBonds(response.data.data || []);
+    } catch (error) {
+      console.error("Error deleting bond:", error);
+      toast.error(error.response?.data?.detail || "Failed to delete bond");
+    }
+  };
+
   // Categorize by status
   const availableBonds = bonds.filter(b => b.status === 'available');
   const fundedBonds = bonds.filter(b => b.status === 'funded');
