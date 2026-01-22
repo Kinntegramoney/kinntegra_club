@@ -1363,8 +1363,8 @@ export default function RealEstateDetails() {
             </div>
           )}
 
-          {/* XIRR Comparison Report Section - Below Payments */}
-          {isFullyAllocated && opp.investors && opp.investors.length > 0 && (
+          {/* XIRR Comparison Report Section - Only visible to broker, managing sub-broker (with linked client), or investor client */}
+          {canViewPaymentManagement && isFullyAllocated && opp.investors && opp.investors.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
