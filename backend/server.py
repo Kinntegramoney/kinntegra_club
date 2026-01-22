@@ -4472,12 +4472,30 @@ async def bulk_upload_bonds(
             principal = float(row['principal_amount'])
             coupon_rate_val = float(row['coupon_rate'])
             
-            # Check if we have custom principal payment schedule from Sheet 4
-            # If yes, use combined schedule (interest paid monthly, principal per schedule)
+            # Check if we have exact cashflows per unit from Sheet 4
+            # If yes, derive principal payments from cashflows
             # If no, use standard interest schedule based on frequency
             
-            if bond_code in principal_payments_map and len(principal_payments_map[bond_code]) > 0:
-                # Use combined payment schedule - monthly interest, principal per schedule
+            cashflows_per_unit = cashflows_per_unit_map.get(bond_code, [])
+            
+            if cashflows_per_unit and len(cashflows_per_unit) > 0:
+                # Derive principal payments from cashflows (dates where principal_per_unit > 0)
+                principal_payments = []
+                total_principal_per_unit = sum(cf.get('principal_per_unit', 0) for cf in cashflows_per_unit)
+                
+                for cf in cashflows_per_unit:
+                    if cf.get('principal_per_unit', 0) > 0:
+                        percentage = (cf['principal_per_unit'] / total_principal_per_unit * 100) if total_principal_per_unit > 0 else 0
+                        principal_payments.append({
+                            "date": cf['date'],
+                            "percentage": round(percentage, 2)
+                        })
+                
+                # If no principal payments found in cashflows, default to 100% at maturity
+                if not principal_payments:
+                    principal_payments = [{"date": end_date, "percentage": 100.0}]
+                
+                # Use combined payment schedule - derive from cashflows
                 schedule_result = generate_combined_payment_schedule(
                     start_date=start_date,
                     end_date=end_date,
@@ -4488,7 +4506,8 @@ async def bulk_upload_bonds(
                 interest_payments = schedule_result['interest_payments']
                 combined_schedule = schedule_result['combined_schedule']
             else:
-                # Use standard interest payment schedule based on frequency
+                # No cashflows provided - use standard interest payment schedule based on frequency
+                principal_payments = [{"date": end_date, "percentage": 100.0}]
                 interest_payments = generate_interest_payment_schedule(
                     start_date=start_date,
                     end_date=end_date,
@@ -4499,9 +4518,6 @@ async def bulk_upload_bonds(
                 combined_schedule = None
             
             bond_id = str(uuid.uuid4())
-            
-            # Check if we have exact cashflows per unit (preferred for secondary market bonds)
-            cashflows_per_unit = cashflows_per_unit_map.get(bond_code, [])
             
             bond = {
                 "id": bond_id,
