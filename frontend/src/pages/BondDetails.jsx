@@ -94,45 +94,72 @@ export default function BondDetails() {
       toast.error("Please select a client");
       return;
     }
-    if (!calculation || !selectedUnits) {
+    if (!enhancedCalculation) {
       toast.error("Please calculate price first");
       return;
     }
+    if (!paymentReference) {
+      toast.error("Please enter UTR number");
+      return;
+    }
+    if (!paymentProof) {
+      toast.error("Please upload UTR copy");
+      return;
+    }
+
+    const unitsToBook = selectedUnits || enhancedCalculation.units_requested;
+    const totalAmount = Math.ceil(enhancedCalculation.total_consideration || enhancedCalculation.total_clean_price) + 1;
 
     setBookingUnits(true);
     try {
       const token = localStorage.getItem("token");
+      
+      // First upload the payment proof
+      let paymentProofUrl = null;
+      if (paymentProof) {
+        const formData = new FormData();
+        formData.append('file', paymentProof);
+        const uploadResponse = await axios.post(`${API}/upload`, formData, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        paymentProofUrl = uploadResponse.data.url;
+      }
       
       // Different endpoint for clients
       const endpoint = user?.role === 'client' ? `${API}/client/trades` : `${API}/trades`;
       
       await axios.post(endpoint, {
         bond_id: id,
-        client_id: selectedClient || null, // null for clients (backend will use their client_id)
-        units: selectedUnits,
-        investment_date: investmentDate,
-        calculated_price: calculation.price_per_unit,
-        total_amount: calculation.total_price,
+        client_id: selectedClient || null,
+        units: unitsToBook,
+        investment_date: settlementDate,
+        calculated_price: Math.ceil(enhancedCalculation.clean_price_per_unit),
+        total_amount: totalAmount,
         payment_reference: paymentReference,
         payment_notes: paymentNotes,
-        payment_proof_filename: paymentProof?.name || null
+        payment_proof_url: paymentProofUrl,
+        // Flag to record future cashflows after broker verification
+        record_future_cashflows: true
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (user?.role === 'broker') {
-        toast.success("Trade booked and approved successfully!");
+        toast.success("Units blocked and future cashflows recorded!");
         navigate("/broker/trades");
       } else if (user?.role === 'client') {
         toast.success("Trade request submitted! Your sub-broker has been notified.");
         navigate("/client/trades");
       } else {
-        toast.success("Trade request submitted for broker approval!");
+        toast.success("Units blocked! Awaiting broker verification for cashflow recording.");
         navigate("/sub-broker/opportunities");
       }
     } catch (error) {
       console.error("Error booking units:", error);
-      toast.error(error.response?.data?.detail || "Failed to book units");
+      toast.error(error.response?.data?.detail || "Failed to block units");
     } finally {
       setBookingUnits(false);
     }
