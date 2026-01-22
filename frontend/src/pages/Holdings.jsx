@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
+import ClientSidebar from "@/components/ClientSidebar";
 import { format } from "date-fns";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
