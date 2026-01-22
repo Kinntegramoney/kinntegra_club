@@ -434,16 +434,22 @@ export default function Opportunities() {
             </p>
           </div>
           
-          {/* Maturity */}
-          <div className="bg-rose-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Maturity Date</p>
-            <p className="font-semibold text-rose-700">
-              {maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-              <span className="text-xs text-gray-500 font-normal ml-2">
-                ({status === 'closed' ? 'Completed' : `${daysToMaturity} days left`})
-              </span>
-            </p>
+          {/* Expected IRR - moved here */}
+          <div className="bg-green-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Expected IRR</p>
+            <p className="font-semibold text-green-700">{bond.secondary_irr || bond.primary_irr}%</p>
           </div>
+        </div>
+
+        {/* Maturity - Full Width */}
+        <div className="bg-rose-50 rounded-lg p-3 mb-4">
+          <p className="text-xs text-gray-500 mb-1">Maturity Date</p>
+          <p className="font-semibold text-rose-700">
+            {maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+            <span className="text-xs text-gray-500 font-normal ml-2">
+              ({status === 'closed' ? 'Completed' : `${daysToMaturity} days left`})
+            </span>
+          </p>
         </div>
 
         {/* Action Buttons */}
