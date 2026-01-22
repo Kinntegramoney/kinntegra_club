@@ -375,11 +375,6 @@ export default function Opportunities() {
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Bond</Badge>
-            {bond.interest_payment_frequency && (
-              <span className="px-2 py-1 bg-orange-50 text-orange-700 text-xs font-medium rounded-full capitalize">
-                {bond.interest_payment_frequency}
-              </span>
-            )}
             {status === 'available' && (
               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Available</span>
             )}
