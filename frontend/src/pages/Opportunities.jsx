@@ -50,11 +50,15 @@ export default function Opportunities() {
       
       const [bondsRes, realEstateRes] = await Promise.all([
         axios.get(`${API}/bonds`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API}/real-estate-opportunities`, { headers }).catch(() => ({ data: [] }))
+        axios.get(`${API}/real-estate-opportunities`, { headers }).catch(() => ({ data: { data: [], pagination: {} } }))
       ]);
       
       setBonds(bondsRes.data || []);
-      setRealEstateOpps(realEstateRes.data || []);
+      // Handle both old format (array) and new paginated format (object with data property)
+      const realEstateData = Array.isArray(realEstateRes.data) 
+        ? realEstateRes.data 
+        : (realEstateRes.data?.data || []);
+      setRealEstateOpps(realEstateData);
       
       // For clients, also fetch their investments to determine access level
       if (currentUser?.role === 'client' && currentUser?.client_id) {
