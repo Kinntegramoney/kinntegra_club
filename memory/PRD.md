@@ -164,6 +164,44 @@ Complete 3-phase approval workflow for sub-broker actions:
 
 ## Recent Changes (Jan 22, 2026)
 
+### Bond Card Quick Calculator Enhancement (NEW)
+**Feature Request**: Add amount input to Quick Calculator with range bounds
+
+**Changes Implemented**:
+1. **Deal ID + Expected IRR Combined**: Now displayed on one line in the bond card
+2. **Amount Input in Quick Calculator**: 
+   - Added "Amount (₹)" input field alongside Units
+   - When amount entered, shows range bounds (Lower/Upper) with unit counts and amounts
+   - Automatic Indian number formatting (e.g., 10,00,000)
+3. **Range Bounds Display**:
+   - Lower Bound: floor(amount/price) units with exact cost
+   - Upper Bound: ceil(amount/price) units with exact cost
+
+**Files Modified**:
+- `/app/frontend/src/pages/Opportunities.jsx` - Bond card layout and Quick Calculator
+
+### Block Units Form Editable (Jan 22, 2026)
+**Feature Request**: Block Units for Client form should be editable, not pre-filled
+
+**Changes Implemented**:
+1. Form fields (Date of Investment, No. of Units Bought, Amount Transferred) are now empty/editable
+2. Reference info from Calculator shown separately as a guide
+3. Form submission uses user-entered values, not calculator values
+
+**Files Modified**:
+- `/app/frontend/src/pages/BondDetails.jsx` - bookUnits function and form fields
+
+### Cashflow Report Landscape Mode (Jan 22, 2026)
+**Feature Request**: Generate cashflow report in landscape mode for better spacing
+
+**Changes Implemented**:
+1. PDF export orientation changed to 'landscape'
+2. Modal layout optimized for landscape (summary cards horizontal, table full-width)
+3. Better spacing and readability for the cashflow schedule
+
+**Files Modified**:
+- `/app/frontend/src/pages/BondDetails.jsx` - exportCashflowToPDF and modal layout
+
 ### Share with Clients Modal Improvements (NEW)
 **Feature Request**: Add search functionality and email integration to the Share with Clients modal
 
