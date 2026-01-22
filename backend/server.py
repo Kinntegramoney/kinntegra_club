@@ -16801,6 +16801,71 @@ async def seed_default_broker():
     except Exception as e:
         logger.error(f"Error seeding default broker: {e}")
 
+@app.on_event("startup")
+async def create_database_indexes():
+    """Create database indexes for better query performance"""
+    try:
+        logger.info("Creating database indexes...")
+        
+        # Users collection indexes
+        await db.users.create_index("pan", unique=True, sparse=True)
+        await db.users.create_index("id", unique=True)
+        await db.users.create_index("email", sparse=True)
+        await db.users.create_index("role")
+        await db.users.create_index("created_by")  # For sub-broker queries
+        
+        # Bonds collection indexes
+        await db.bonds.create_index("id", unique=True)
+        await db.bonds.create_index("bond_code", unique=True)
+        await db.bonds.create_index("created_by")
+        await db.bonds.create_index("listing_status")
+        await db.bonds.create_index([("created_at", -1)])  # For sorting
+        
+        # Real estate opportunities indexes
+        await db.real_estate_opportunities.create_index("id", unique=True)
+        await db.real_estate_opportunities.create_index("created_by")
+        await db.real_estate_opportunities.create_index("status")
+        await db.real_estate_opportunities.create_index([("created_at", -1)])
+        await db.real_estate_opportunities.create_index("investors.client_id")  # For client investment queries
+        await db.real_estate_opportunities.create_index("investors.user_id")
+        
+        # Clients collection indexes
+        await db.clients.create_index("id", unique=True)
+        await db.clients.create_index("pan_number", sparse=True)
+        await db.clients.create_index("created_by")
+        await db.clients.create_index("sub_broker_id", sparse=True)
+        await db.clients.create_index([("name", 1)])  # For search
+        
+        # Trades collection indexes
+        await db.trades.create_index("id", unique=True)
+        await db.trades.create_index("bond_id")
+        await db.trades.create_index("client_id")
+        await db.trades.create_index("broker_id")
+        await db.trades.create_index([("trade_date", -1)])
+        await db.trades.create_index("status")
+        
+        # Activity logs indexes
+        await db.activity_logs.create_index([("timestamp", -1)])
+        await db.activity_logs.create_index("user_id")
+        await db.activity_logs.create_index("action_type")
+        
+        # Approval workflows indexes
+        await db.approval_workflows.create_index("id", unique=True)
+        await db.approval_workflows.create_index("status")
+        await db.approval_workflows.create_index("workflow_type")
+        await db.approval_workflows.create_index([("created_at", -1)])
+        
+        # Notifications indexes
+        await db.notifications.create_index("user_id")
+        await db.notifications.create_index([("created_at", -1)])
+        await db.notifications.create_index("is_read")
+        
+        logger.info("Database indexes created successfully")
+    except Exception as e:
+        logger.error(f"Error creating indexes: {e}")
+    except Exception as e:
+        logger.error(f"Error seeding default broker: {e}")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
