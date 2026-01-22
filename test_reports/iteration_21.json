@@ -1,0 +1,47 @@
+{
+  "summary": "Frontend testing of DLD+Admin row layout in Payment Schedule. All features working correctly - DLD+Admin row now has same 3-column layout (Invoice, Swift, Receipt) as installment rows with proper Upload buttons, View buttons, and Verify/Approve functionality.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "DLD+Admin row has same 3-column layout as installment rows (Invoice, Swift, Receipt)",
+    "Upload Invoice button appears for broker when no invoice uploaded (3 buttons for 3 investors)",
+    "Upload Invoice modal opens correctly with DLD+Admin fee breakdown (DLD Fee, Admin Fee, Total)",
+    "Swift column shows Pending status when no Swift uploaded",
+    "Receipt column shows Pending status when no Receipt uploaded",
+    "Per-investor amounts displayed correctly in DLD+Admin row",
+    "Progress bars present for Invoice/Swift/Receipt tracking (6 progress bars)",
+    "DLD+Admin row structure matches installment row structure exactly",
+    "Investor column headers display correctly with share percentages (34%, 25%, 41%)",
+    "Combined DLD+Admin amount displayed correctly: AED 144,792"
+  ],
+  "test_report_links": [
+    "/app/frontend/src/pages/RealEstateDetails.jsx",
+    "/app/backend/server.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "DLD+Admin row (lines 1173-1342) correctly implements same 3-column layout as installment rows (lines 940-1050)",
+    "Sequential workflow properly enforced: Invoice → SWIFT (verify) → Receipt (approve)",
+    "Backend endpoints for DLD Admin documents properly implemented: upload, verify-swift, approve-receipt",
+    "Color coding consistent: Blue (Invoice), Teal (Swift), Purple (Receipt)"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend only testing)",
+    "frontend": "100% (All tests passed)"
+  },
+  "test_credentials": {
+    "broker": {"PAN": "ANVPB5297J", "Password": "Laksh@0208", "PIN": "0516"}
+  },
+  "seed_data_creation": "Used existing test data - Property ID: 382086b4-b653-4557-8f58-31827dd877f3 (25HOURS HEIMAT DUBAI with 3 investors)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "DLD+Admin row in Payment Schedule now has same 3-column layout as installment rows. Property 382086b4-b653-4557-8f58-31827dd877f3 has 3 investors (34%, 25%, 41% shares). DLD Admin documents stored in opp.dld_admin_documents with fields: investor_id, invoice_url, swift_url, swift_verified, receipt_url, receipt_approved. Sequential workflow: Invoice → SWIFT (verify by broker) → Receipt (approve by broker). Currently no documents uploaded so all columns show Upload buttons for broker."
+}
