@@ -12671,6 +12671,7 @@ async def create_real_estate_opportunity(
         "location": opportunity_data.location,
         "handover_date": opportunity_data.handover_date,
         "description": opportunity_data.description,
+        "view_3d_url": opportunity_data.view_3d_url,
         "images": [],
         "status": "available",
         "created_by": current_user['id'],
