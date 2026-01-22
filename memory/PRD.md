@@ -214,6 +214,19 @@ Complete 3-phase approval workflow for sub-broker actions:
   4. Activity Logs tab shows all workflow activities with filtering
 - **Verified**: Screenshot confirms both tabs work correctly
 
+### Holdings Tab Alignment (Jan 22, 2026)
+- **Issue**: Client Holdings page had different tab structure than Broker Holdings page
+- **User Requirements**:
+  - Sidebar = "Holdings" (keep as is)
+  - Inside page = tabs should be "Bonds", "Trades", "Real Estate" (not "Holdings")
+  - Trades tab shows only that client's trades
+- **Fix Applied**:
+  1. Renamed "Holdings" tab to "Bonds" in broker Holdings page
+  2. Updated Client Holdings page to use same underline-style tabs
+  3. Added "Trades" tab to Client Holdings page with client-specific trades
+  4. Both pages now have: Bonds, Trades, Real Estate tabs (broker also has Profile)
+- **Verified**: Screenshots confirm aligned tab structure
+
 ## P0 - Critical/In Progress
 1. **Kinntegra API Integration**: Awaiting API authentication details from user
 
