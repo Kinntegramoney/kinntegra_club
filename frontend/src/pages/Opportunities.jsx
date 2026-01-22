@@ -101,6 +101,65 @@ const calculatePropertyXIRR = (opp) => {
   return calculateXIRR(cashflows);
 };
 
+// Get detailed cashflows for XIRR calculation display
+const getXirrCashflowsBreakdown = (opp) => {
+  if (!opp.payment_schedule || !opp.estimated_sell_date || !opp.expected_sale_rate || !opp.total_area) {
+    return null;
+  }
+  
+  const cashflows = [];
+  
+  // Add DLD + Admin fee as first outflow
+  const dldFee = opp.dld_fee || 0;
+  const adminFee = opp.admin_fee || 0;
+  const dldAdminFee = dldFee + adminFee;
+  
+  if (dldAdminFee > 0) {
+    const bookingDate = opp.payment_schedule[0]?.date || opp.created_at;
+    cashflows.push({
+      date: new Date(bookingDate),
+      amount: -dldAdminFee,
+      description: `DLD Fee (${dldFee.toLocaleString()}) + Admin Fee (${adminFee.toLocaleString()})`,
+      type: 'outflow'
+    });
+  }
+  
+  // Add all installment payments
+  for (const payment of opp.payment_schedule || []) {
+    if (payment.date && payment.amount) {
+      cashflows.push({
+        date: new Date(payment.date),
+        amount: -payment.amount,
+        description: payment.description || `Installment (${payment.percentage}%)`,
+        type: 'outflow'
+      });
+    }
+  }
+  
+  // Add expected sale proceeds
+  const expectedSaleProceeds = opp.expected_sale_rate * opp.total_area;
+  cashflows.push({
+    date: new Date(opp.estimated_sell_date),
+    amount: expectedSaleProceeds,
+    description: `Sale Proceeds (${opp.expected_sale_rate.toLocaleString()} × ${opp.total_area.toLocaleString()} sqft)`,
+    type: 'inflow'
+  });
+  
+  // Sort by date
+  cashflows.sort((a, b) => a.date - b.date);
+  
+  const xirr = calculateXIRR(cashflows.map(cf => ({ date: cf.date, amount: cf.amount })));
+  
+  return {
+    property: opp.building_name,
+    unit: opp.unit_no,
+    cashflows,
+    xirr,
+    totalOutflow: cashflows.filter(cf => cf.amount < 0).reduce((sum, cf) => sum + Math.abs(cf.amount), 0),
+    totalInflow: cashflows.filter(cf => cf.amount > 0).reduce((sum, cf) => sum + cf.amount, 0)
+  };
+};
+
 export default function Opportunities() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
