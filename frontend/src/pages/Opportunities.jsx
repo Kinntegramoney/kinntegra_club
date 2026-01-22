@@ -405,6 +405,9 @@ export default function Opportunities() {
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">Off-Plan</Badge>
+            {opp.unit_type && (
+              <span className="px-2 py-1 bg-teal-50 text-teal-700 text-xs font-medium rounded-full">{opp.unit_type}</span>
+            )}
             {status === 'available' && (
               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Available</span>
             )}
@@ -419,11 +422,10 @@ export default function Opportunities() {
 
         {/* Property Info Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          {/* Size/Type */}
+          {/* Size - Area only */}
           <div className="bg-gray-50 rounded-lg p-3">
             <p className="text-xs text-gray-500 mb-1">Size</p>
-            <p className="font-semibold text-gray-800">{opp.unit_type}</p>
-            <p className="text-sm text-gray-600">{opp.total_area} sqft</p>
+            <p className="font-semibold text-gray-800">{opp.total_area?.toLocaleString()} sqft</p>
           </div>
           
           {/* Total Cost with Tooltip (detailed for authorized users) */}
