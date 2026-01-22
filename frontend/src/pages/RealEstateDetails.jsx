@@ -660,6 +660,34 @@ export default function RealEstateDetails() {
             </div>
           )}
 
+          {/* 3D View Section - Only show if URL exists */}
+          {opp.view_3d_url && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <svg className="h-5 w-5 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3l9 4.5v9L12 21l-9-4.5v-9L12 3z"/>
+                  <path d="M12 12l9-4.5"/>
+                  <path d="M12 12v9"/>
+                  <path d="M12 12L3 7.5"/>
+                </svg>
+                3D Property View
+              </h2>
+              <p className="text-sm text-gray-500 mb-4">Explore this property in interactive 3D. Use your mouse to navigate and zoom.</p>
+              <div className="border rounded-lg overflow-hidden bg-gray-100" style={{ height: '500px' }}>
+                <iframe
+                  src={opp.view_3d_url}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  allowFullScreen
+                  title="3D Property View"
+                  className="w-full h-full"
+                  data-testid="3d-view-iframe"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Property Overview Card */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
