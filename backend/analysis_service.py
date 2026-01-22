@@ -387,9 +387,9 @@ class CASParser:
             
             # Detect current NAV
             if 'NAV on' in line:
-                nav_match = re.search(r'NAV on [^:]+:\s*INR\s*([\d.]+)', line)
+                nav_match = re.search(r'NAV on [^:]+:\s*INR\s*([\d,.]+)', line)
                 if nav_match and current_key and current_key in self.folios:
-                    self.folios[current_key]['current_nav'] = float(nav_match.group(1))
+                    self.folios[current_key]['current_nav'] = float(nav_match.group(1).replace(',', ''))
             
             # Detect Market Value
             if 'Market Value on' in line:
