@@ -300,8 +300,61 @@ export default function Opportunities() {
     const isBroker = user?.role === 'broker';
     const isSubBroker = user?.role === 'sub_broker';
     
-    // Calculate today's price per unit (face value or principal/units)
-    const pricePerUnit = bond.face_value || (bond.principal_amount / (bond.total_units || 1));
+    // Face value per unit
+    const faceValue = bond.face_value || (bond.principal_amount / (bond.total_units || 1));
+    
+    // Calculate today's price per unit using secondary IRR
+    // Price = NPV of remaining cashflows discounted at secondary IRR
+    const calculateTodayPrice = () => {
+      const today = new Date();
+      const secondaryIRR = (bond.secondary_irr || bond.primary_irr || 12) / 100; // Annual rate
+      
+      // If bond has cashflows_per_unit, use those
+      if (bond.cashflows_per_unit && bond.cashflows_per_unit.length > 0) {
+        let npv = 0;
+        for (const cf of bond.cashflows_per_unit) {
+          const cfDate = new Date(cf.date);
+          if (cfDate > today) {
+            const yearsToPayment = (cfDate - today) / (1000 * 60 * 60 * 24 * 365);
+            const totalCashflow = (cf.interest_per_unit || 0) + (cf.principal_per_unit || 0);
+            npv += totalCashflow / Math.pow(1 + secondaryIRR, yearsToPayment);
+          }
+        }
+        return npv > 0 ? npv : faceValue;
+      }
+      
+      // Fallback: Simple calculation based on remaining time and IRR
+      // Price = Face Value / (1 + IRR)^years_remaining
+      const maturityDate = new Date(bond.end_date);
+      if (maturityDate <= today) return faceValue; // Already matured
+      
+      const yearsToMaturity = (maturityDate - today) / (1000 * 60 * 60 * 24 * 365);
+      
+      // Estimate remaining interest payments
+      const couponRate = (bond.coupon_rate || 0) / 100;
+      const annualInterest = faceValue * couponRate;
+      
+      // NPV of remaining interest + principal at maturity
+      let npv = 0;
+      const paymentsPerYear = bond.interest_payment_frequency === 'monthly' ? 12 : 
+                              bond.interest_payment_frequency === 'quarterly' ? 4 : 
+                              bond.interest_payment_frequency === 'semi-annual' ? 2 : 1;
+      
+      const paymentAmount = annualInterest / paymentsPerYear;
+      const totalPayments = Math.ceil(yearsToMaturity * paymentsPerYear);
+      
+      for (let i = 1; i <= totalPayments; i++) {
+        const yearsToPayment = i / paymentsPerYear;
+        npv += paymentAmount / Math.pow(1 + secondaryIRR, yearsToPayment);
+      }
+      
+      // Add principal at maturity
+      npv += faceValue / Math.pow(1 + secondaryIRR, yearsToMaturity);
+      
+      return npv > 0 ? npv : faceValue;
+    };
+    
+    const todayPrice = calculateTodayPrice();
     
     // Calculate maturity date display
     const maturityDate = new Date(bond.end_date);
@@ -341,16 +394,17 @@ export default function Opportunities() {
 
         {/* Bond Info Grid - Row 1 */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          {/* Principal Amount */}
+          {/* Face Value */}
           <div className="bg-gray-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Principal Amount</p>
-            <p className="font-semibold text-gray-800">{formatCurrency(bond.principal_amount)}</p>
+            <p className="text-xs text-gray-500 mb-1">Face Value/Unit</p>
+            <p className="font-semibold text-gray-800">{formatCurrency(faceValue)}</p>
           </div>
           
-          {/* Today's Price Per Unit */}
+          {/* Today's Price Per Unit (calculated using secondary IRR) */}
           <div className="bg-amber-50 rounded-lg p-3">
             <p className="text-xs text-gray-500 mb-1">Price/Unit (Today)</p>
-            <p className="font-semibold text-amber-700">{formatCurrency(pricePerUnit)}</p>
+            <p className="font-semibold text-amber-700">{formatCurrency(Math.round(todayPrice))}</p>
+            <p className="text-xs text-gray-400">@ {bond.secondary_irr || bond.primary_irr}% IRR</p>
           </div>
         </div>
 
