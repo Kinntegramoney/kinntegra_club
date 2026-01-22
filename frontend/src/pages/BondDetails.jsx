@@ -241,10 +241,6 @@ export default function BondDetails() {
     }
   };
 
-  // State for cashflow report modal
-  const [showCashflowReport, setShowCashflowReport] = useState(false);
-  const [cashflowReportData, setCashflowReportData] = useState(null);
-
   const downloadCashflow = async () => {
     if (!enhancedCalculation) {
       toast.error("Please calculate price first");
