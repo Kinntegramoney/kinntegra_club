@@ -7574,6 +7574,8 @@ async def create_trade(trade_data: TradeCreate, current_user: dict = Depends(get
         "payment_reference": trade_data.payment_reference,
         "payment_notes": trade_data.payment_notes,
         "payment_proof_filename": trade_data.payment_proof_filename,
+        "payment_proof_url": trade_data.payment_proof_url,
+        "record_future_cashflows": trade_data.record_future_cashflows,
         "status": status,
         "created_by": current_user['id'],
         "created_by_name": current_user.get('name', 'Unknown'),
@@ -7607,6 +7609,52 @@ async def create_trade(trade_data: TradeCreate, current_user: dict = Depends(get
             {"id": trade_data.client_id},
             {"$push": {"bond_allocations": allocation}}
         )
+        
+        # Record future cashflows for the client (reinvestment/retag option)
+        if trade_data.record_future_cashflows and bond.get('cashflows_per_unit'):
+            investment_date = datetime.fromisoformat(trade_data.investment_date)
+            cutoff_days = bond.get('cutoff_days', 15)
+            
+            future_cashflows = []
+            for cf in bond['cashflows_per_unit']:
+                cf_date = datetime.fromisoformat(str(cf.get('date', '')).split('T')[0].split(' ')[0])
+                days_from_investment = (cf_date - investment_date).days
+                
+                # Only record cashflows beyond cutoff (buyer receives these)
+                if days_from_investment > cutoff_days:
+                    interest = cf.get('interest', cf.get('interest_per_unit', 0)) or 0
+                    principal = cf.get('principal', cf.get('principal_per_unit', 0)) or 0
+                    
+                    future_cashflows.append({
+                        "id": str(uuid.uuid4()),
+                        "date": cf.get('date'),
+                        "interest_amount": round(interest * trade_data.units, 2),
+                        "principal_amount": round(principal * trade_data.units, 2),
+                        "total_amount": round((interest + principal) * trade_data.units, 2),
+                        "status": "pending",
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    })
+            
+            # Store future cashflows in client's record under reinvestment tag
+            if future_cashflows:
+                client_cashflow_record = {
+                    "id": str(uuid.uuid4()),
+                    "trade_id": trade_dict['id'],
+                    "bond_id": trade_data.bond_id,
+                    "bond_name": bond['name'],
+                    "units": trade_data.units,
+                    "investment_date": trade_data.investment_date,
+                    "cashflows": future_cashflows,
+                    "total_expected_interest": sum(cf['interest_amount'] for cf in future_cashflows),
+                    "total_expected_principal": sum(cf['principal_amount'] for cf in future_cashflows),
+                    "tag": "reinvestment",
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                
+                await db.clients.update_one(
+                    {"id": trade_data.client_id},
+                    {"$push": {"bond_cashflow_records": client_cashflow_record}}
+                )
     
     if '_id' in trade_dict:
         del trade_dict['_id']
