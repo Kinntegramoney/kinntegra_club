@@ -7975,6 +7975,10 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
     # Get clients based on role
     if current_user['role'] == 'broker':
         clients = await db.clients.find({"created_by": current_user['id']}, {"_id": 0}).to_list(1000)
+    elif current_user['role'] == 'client':
+        # Clients see only themselves
+        client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
+        clients = [client] if client else []
     else:
         # Sub-brokers see only linked clients
         clients = await db.clients.find({"linked_subbroker_id": current_user['id']}, {"_id": 0}).to_list(1000)
