@@ -49,12 +49,16 @@ export default function Opportunities() {
       const headers = { Authorization: `Bearer ${token}` };
       
       const [bondsRes, realEstateRes] = await Promise.all([
-        axios.get(`${API}/bonds`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API}/bonds`, { headers }).catch(() => ({ data: { data: [], pagination: {} } })),
         axios.get(`${API}/real-estate-opportunities`, { headers }).catch(() => ({ data: { data: [], pagination: {} } }))
       ]);
       
-      setBonds(bondsRes.data || []);
       // Handle both old format (array) and new paginated format (object with data property)
+      const bondsData = Array.isArray(bondsRes.data) 
+        ? bondsRes.data 
+        : (bondsRes.data?.data || []);
+      setBonds(bondsData);
+      
       const realEstateData = Array.isArray(realEstateRes.data) 
         ? realEstateRes.data 
         : (realEstateRes.data?.data || []);
