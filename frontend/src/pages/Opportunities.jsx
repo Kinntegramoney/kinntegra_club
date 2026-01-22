@@ -417,15 +417,6 @@ export default function Opportunities() {
             <p className="font-semibold text-gray-800">{formatCurrency(faceValue)}</p>
           </div>
           
-          {/* Expected IRR */}
-          <div className="bg-green-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Expected IRR</p>
-            <p className="font-semibold text-green-700">{bond.secondary_irr || bond.primary_irr}%</p>
-          </div>
-        </div>
-
-        {/* Bond Info Grid - Row 2 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
           {/* Units Available */}
           <div className="bg-purple-50 rounded-lg p-3">
             <p className="text-xs text-gray-500 mb-1">Units Available</p>
@@ -433,12 +424,12 @@ export default function Opportunities() {
               {status === 'available' ? `${unitsAvailable} of ${bond.total_units || 1}` : `${bond.total_units || 1} (Sold)`}
             </p>
           </div>
-          
-          {/* Expected IRR - moved here */}
-          <div className="bg-green-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Expected IRR</p>
-            <p className="font-semibold text-green-700">{bond.secondary_irr || bond.primary_irr}%</p>
-          </div>
+        </div>
+
+        {/* Expected IRR - Full Width */}
+        <div className="bg-green-50 rounded-lg p-3 mb-4">
+          <p className="text-xs text-gray-500 mb-1">Expected IRR</p>
+          <p className="font-semibold text-green-700">{bond.secondary_irr || bond.primary_irr}%</p>
         </div>
 
         {/* Maturity - Full Width */}
