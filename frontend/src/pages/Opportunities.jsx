@@ -298,6 +298,46 @@ export default function Opportunities() {
           </div>
         </div>
 
+        {/* Price & Returns Info - Second Row */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {/* Price per sqft */}
+          <div className="bg-blue-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Price/sqft</p>
+            <p className="font-semibold text-blue-700">{formatCurrency(opp.price_per_sqft || (opp.total_cost / opp.total_area), 'AED')}</p>
+          </div>
+          
+          {/* Expected Sale Price */}
+          <div className="bg-green-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Expected Sale/sqft</p>
+            <p className="font-semibold text-green-700">
+              {opp.expected_sale_rate ? formatCurrency(opp.expected_sale_rate, 'AED') : 'TBD'}
+            </p>
+          </div>
+        </div>
+
+        {/* Sale & Returns Info - Third Row */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {/* Expected Sale Date */}
+          <div className="bg-amber-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Expected Sale Date</p>
+            <p className="font-semibold text-amber-700">
+              {opp.estimated_sell_date 
+                ? new Date(opp.estimated_sell_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) 
+                : (opp.handover_date 
+                  ? new Date(opp.handover_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+                  : 'TBD')}
+            </p>
+          </div>
+          
+          {/* Expected XIRR */}
+          <div className="bg-purple-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Expected XIRR</p>
+            <p className="font-semibold text-purple-700">
+              {opp.expected_xirr ? `${opp.expected_xirr}%` : 'Calculate in details'}
+            </p>
+          </div>
+        </div>
+
         {/* Location if present */}
         {opp.location && (
           <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
