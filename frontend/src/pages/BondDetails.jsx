@@ -673,18 +673,23 @@ export default function BondDetails() {
             {/* Unit Bounds Display - when amount is entered */}
             {approximateAmount && enhancedCalculation && enhancedCalculation.clean_price_per_unit > 0 && (
               <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg">
-                <p className="text-sm font-medium mb-3 text-blue-800">For approximate amount of ₹{parseInt(approximateAmount).toLocaleString('en-IN')}</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-blue-800">For approximate amount of ₹{parseInt(approximateAmount).toLocaleString('en-IN')}</p>
+                  <div className="bg-emerald-100 px-3 py-1 rounded-full">
+                    <p className="text-xs font-mono font-semibold text-emerald-700">Price/Unit: ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {/* Lower Bound */}
                   {(() => {
                     const lowerUnits = Math.floor(parseFloat(approximateAmount) / enhancedCalculation.clean_price_per_unit);
-                    const lowerAmount = Math.ceil(lowerUnits * enhancedCalculation.clean_price_per_unit) + 1; // Round up + 1 rupee
+                    const lowerAmount = Math.ceil(lowerUnits * enhancedCalculation.clean_price_per_unit) + 1;
                     return (
                       <div 
-                        className={`p-3 rounded-md transition-all cursor-pointer ${
+                        className={`p-4 rounded-lg transition-all cursor-pointer ${
                           selectedBound === 'lower' 
-                            ? 'border-2 border-blue-500 bg-blue-50 ring-2 ring-blue-200' 
-                            : 'border border-gray-200 hover:border-blue-400'
+                            ? 'border-2 border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200' 
+                            : 'border border-gray-200 hover:border-emerald-400 bg-gray-50'
                         }`}
                         onClick={() => {
                           if (lowerUnits >= 1 && lowerUnits <= enhancedCalculation.units_available) {
@@ -697,28 +702,29 @@ export default function BondDetails() {
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-gray-600">Lower Bound</span>
                           {selectedBound === 'lower' && (
-                            <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">✓ Selected</span>
+                            <span className="text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-1 rounded">✓ Selected</span>
                           )}
                         </div>
-                        <p className="text-lg font-mono font-bold" data-testid="lower-bound-units">
+                        <p className="text-2xl font-mono font-bold text-gray-800" data-testid="lower-bound-units">
                           {lowerUnits} units
                         </p>
-                        <p className="text-xl text-blue-700 font-mono font-bold">
+                        <p className="text-xl text-emerald-700 font-mono font-bold mt-1">
                           ₹{lowerAmount.toLocaleString('en-IN')}
                         </p>
+                        <p className="text-xs text-gray-500 mt-2">{lowerUnits} × ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</p>
                       </div>
                     );
                   })()}
                   {/* Upper Bound */}
                   {(() => {
                     const upperUnits = Math.ceil(parseFloat(approximateAmount) / enhancedCalculation.clean_price_per_unit);
-                    const upperAmount = Math.ceil(upperUnits * enhancedCalculation.clean_price_per_unit) + 1; // Round up + 1 rupee
+                    const upperAmount = Math.ceil(upperUnits * enhancedCalculation.clean_price_per_unit) + 1;
                     return (
                       <div 
-                        className={`p-3 rounded-md transition-all cursor-pointer ${
+                        className={`p-4 rounded-lg transition-all cursor-pointer ${
                           selectedBound === 'upper' 
-                            ? 'border-2 border-blue-500 bg-blue-50 ring-2 ring-blue-200' 
-                            : 'border border-gray-200 hover:border-blue-400'
+                            ? 'border-2 border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200' 
+                            : 'border border-gray-200 hover:border-emerald-400 bg-gray-50'
                         }`}
                         onClick={() => {
                           if (upperUnits >= 1 && upperUnits <= enhancedCalculation.units_available) {
@@ -731,46 +737,56 @@ export default function BondDetails() {
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-gray-600">Upper Bound</span>
                           {selectedBound === 'upper' && (
-                            <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">✓ Selected</span>
+                            <span className="text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-1 rounded">✓ Selected</span>
                           )}
                         </div>
-                        <p className="text-lg font-mono font-bold" data-testid="upper-bound-units">
+                        <p className="text-2xl font-mono font-bold text-gray-800" data-testid="upper-bound-units">
                           {upperUnits} units
                         </p>
-                        <p className="text-xl text-blue-700 font-mono font-bold">
+                        <p className="text-xl text-emerald-700 font-mono font-bold mt-1">
                           ₹{upperAmount.toLocaleString('en-IN')}
                         </p>
+                        <p className="text-xs text-gray-500 mt-2">{upperUnits} × ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</p>
                       </div>
                     );
                   })()}
                 </div>
-                <p className="text-xs text-gray-500 mt-3">Click on a bound to select and proceed to booking</p>
+                <p className="text-xs text-gray-500 mt-3 text-center">Click on a bound to select and proceed to booking</p>
               </div>
             )}
 
-            {/* Clean Price Display - Main Result - Only Price Per Unit */}
-            {enhancedCalculation && (
-              <div className="space-y-4">
-                {/* Primary Price Display - Only Clean Price */}
-                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-lg shadow-lg text-center">
-                  <p className="text-sm text-emerald-100 font-semibold mb-2">PRICE PER UNIT</p>
-                  <p className="text-4xl font-mono font-bold text-white" data-testid="clean-price-display">
-                    ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}
-                  </p>
+            {/* Units mode - Show price directly in a compact card */}
+            {!approximateAmount && enhancedCalculation && enhancedCalculation.units_requested > 0 && (
+              <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">For {enhancedCalculation.units_requested} unit{enhancedCalculation.units_requested > 1 ? 's' : ''}</p>
+                    <p className="text-xs text-gray-500 mt-1">{enhancedCalculation.units_requested} × ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-emerald-600 font-medium">Price/Unit</p>
+                    <p className="text-lg font-mono font-bold text-emerald-700">₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="text-right pl-4 border-l border-emerald-200">
+                    <p className="text-xs text-emerald-600 font-medium">Total</p>
+                    <p className="text-2xl font-mono font-bold text-emerald-700">₹{(Math.ceil(enhancedCalculation.total_clean_price) + 1).toLocaleString('en-IN')}</p>
+                  </div>
                 </div>
+              </div>
+            )}
 
-                {/* Download Cashflow Button */}
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    data-testid="download-cashflow-btn"
-                    onClick={downloadCashflow}
-                    disabled={downloading}
-                    variant="outline"
-                    className="btn-scale"
-                  >
-                    {downloading ? "Downloading..." : "Download Monthly Cashflow (CSV)"}
-                  </Button>
-                </div>
+            {/* Download Cashflow Report Button - Only show after calculation */}
+            {enhancedCalculation && (
+              <div className="mb-4 flex justify-center">
+                <Button
+                  data-testid="download-cashflow-btn"
+                  onClick={downloadCashflow}
+                  disabled={downloading}
+                  variant="outline"
+                  className="btn-scale"
+                >
+                  {downloading ? "Loading..." : "View Cashflow Report"}
+                </Button>
               </div>
             )}
 
