@@ -7765,6 +7765,52 @@ async def verify_trade(trade_id: str, update: TradeUpdate, current_user: dict = 
             {"id": trade['client_id']},
             {"$push": {"bond_allocations": allocation}}
         )
+        
+        # Record future cashflows for the client (reinvestment/retag option) if flagged
+        if trade.get('record_future_cashflows') and bond and bond.get('cashflows_per_unit'):
+            investment_date = datetime.fromisoformat(trade['investment_date'])
+            cutoff_days = bond.get('cutoff_days', 15)
+            
+            future_cashflows = []
+            for cf in bond['cashflows_per_unit']:
+                cf_date = datetime.fromisoformat(str(cf.get('date', '')).split('T')[0].split(' ')[0])
+                days_from_investment = (cf_date - investment_date).days
+                
+                # Only record cashflows beyond cutoff (buyer receives these)
+                if days_from_investment > cutoff_days:
+                    interest = cf.get('interest', cf.get('interest_per_unit', 0)) or 0
+                    principal = cf.get('principal', cf.get('principal_per_unit', 0)) or 0
+                    
+                    future_cashflows.append({
+                        "id": str(uuid.uuid4()),
+                        "date": cf.get('date'),
+                        "interest_amount": round(interest * trade['units'], 2),
+                        "principal_amount": round(principal * trade['units'], 2),
+                        "total_amount": round((interest + principal) * trade['units'], 2),
+                        "status": "pending",
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    })
+            
+            # Store future cashflows in client's record under reinvestment tag
+            if future_cashflows:
+                client_cashflow_record = {
+                    "id": str(uuid.uuid4()),
+                    "trade_id": trade_id,
+                    "bond_id": trade['bond_id'],
+                    "bond_name": trade['bond_name'],
+                    "units": trade['units'],
+                    "investment_date": trade['investment_date'],
+                    "cashflows": future_cashflows,
+                    "total_expected_interest": sum(cf['interest_amount'] for cf in future_cashflows),
+                    "total_expected_principal": sum(cf['principal_amount'] for cf in future_cashflows),
+                    "tag": "reinvestment",
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                
+                await db.clients.update_one(
+                    {"id": trade['client_id']},
+                    {"$push": {"bond_cashflow_records": client_cashflow_record}}
+                )
     
     return {"message": f"Trade {update.status}", "trade_id": trade_id}
 
