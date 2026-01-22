@@ -418,10 +418,16 @@ export default function Opportunities() {
           </div>
         </div>
 
-        {/* Deal ID - Full Width */}
-        <div className="bg-slate-50 rounded-lg p-3 mb-4">
-          <p className="text-xs text-gray-500 mb-1">Deal ID</p>
-          <p className="font-semibold text-slate-700">{bond.bond_code}</p>
+        {/* Deal ID + Expected IRR - One Line */}
+        <div className="bg-slate-50 rounded-lg p-3 mb-4 flex justify-between items-center">
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Deal ID</p>
+            <p className="font-semibold text-slate-700">{bond.bond_code}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-500 mb-1">Expected IRR</p>
+            <p className="font-semibold text-green-700">{bond.secondary_irr || bond.primary_irr}%</p>
+          </div>
         </div>
 
         {/* Price/Unit - Full Width */}
