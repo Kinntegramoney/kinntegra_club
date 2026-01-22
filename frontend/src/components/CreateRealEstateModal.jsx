@@ -1014,6 +1014,46 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
               )}
             </div>
           )}
+
+          {/* 3D View Section */}
+          {activeSection === "3dview" && (
+            <div className="space-y-4">
+              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <h3 className="font-medium text-purple-800 mb-2">3D Property View</h3>
+                <p className="text-sm text-purple-600">Add a 3D view link for this property. This can be a Matterport tour, 3D floor plan, or any interactive 3D visualization URL that clients can explore.</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="view_3d_url">3D View URL</Label>
+                <Input
+                  id="view_3d_url"
+                  type="url"
+                  placeholder="https://my.matterport.com/show/?m=..."
+                  value={formData.view_3d_url}
+                  onChange={(e) => handleChange("view_3d_url", e.target.value)}
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">Paste the embed URL from Matterport, 3DVista, or any 3D tour provider</p>
+              </div>
+              
+              {formData.view_3d_url && (
+                <div className="mt-4">
+                  <Label className="mb-2 block">Preview</Label>
+                  <div className="border rounded-lg overflow-hidden bg-gray-100" style={{ height: '400px' }}>
+                    <iframe
+                      src={formData.view_3d_url}
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      allowFullScreen
+                      title="3D Property View"
+                      className="w-full h-full"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </form>
 
         {/* Footer - Fixed */}
