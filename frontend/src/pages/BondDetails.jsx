@@ -314,7 +314,6 @@ export default function BondDetails() {
       toast.error("Failed to export PDF");
     }
   };
-  };
 
   const formatINR = (amount) => {
     return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
