@@ -188,6 +188,21 @@ export default function ClientHoldings() {
                   )}
                 </button>
                 <button 
+                  onClick={() => setMainTab("trades")}
+                  className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
+                    mainTab === "trades" 
+                      ? "border-amber-600 text-amber-700" 
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                  data-testid="tab-trades"
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  Trades
+                  {clientTrades.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 bg-blue-100 text-blue-700">{clientTrades.length}</Badge>
+                  )}
+                </button>
+                <button 
                   onClick={() => setMainTab("real-estate")}
                   className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
                     mainTab === "real-estate" 
