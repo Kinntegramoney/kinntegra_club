@@ -15455,7 +15455,8 @@ async def share_real_estate_via_email(
             recipient_name=client.get('name', 'Investor'),
             property_details=opp,
             sender_name=sender_name,
-            personal_message=request.personal_message
+            personal_message=request.personal_message,
+            include_photos=request.include_photos
         )
         clients_sent.append({"id": client_id, "name": client.get('name'), "email": client['email']})
     
