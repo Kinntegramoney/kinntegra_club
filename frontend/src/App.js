@@ -31,6 +31,7 @@ import AnalysisDashboard from "@/pages/AnalysisDashboard";
 import AdminSchemeMaster from "@/pages/AdminSchemeMaster";
 import ReinvestmentTagging from "@/pages/ReinvestmentTagging";
 import ApprovalLogs from "@/pages/ApprovalLogs";
+import ApprovalCenter from "@/pages/ApprovalCenter";
 import PendingApprovals from "@/pages/PendingApprovals";
 import SubBrokerClientDetails from "@/pages/SubBrokerClientDetails";
 import { Toaster } from "@/components/ui/sonner";
