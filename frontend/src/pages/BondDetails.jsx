@@ -108,6 +108,18 @@ export default function BondDetails() {
       toast.error("Please calculate price first");
       return;
     }
+    if (!bookingInvestmentDate) {
+      toast.error("Please select investment date");
+      return;
+    }
+    if (!bookingUnitsCount || parseInt(bookingUnitsCount) < 1) {
+      toast.error("Please enter number of units");
+      return;
+    }
+    if (!bookingAmountTransferred) {
+      toast.error("Please enter amount transferred");
+      return;
+    }
     if (!paymentReference) {
       toast.error("Please enter UTR number");
       return;
@@ -117,8 +129,9 @@ export default function BondDetails() {
       return;
     }
 
-    const unitsToBook = selectedUnits || enhancedCalculation.units_requested;
-    const totalAmount = Math.ceil(enhancedCalculation.total_consideration || enhancedCalculation.total_clean_price) + 1;
+    // Use editable form values instead of calculator values
+    const unitsToBook = parseInt(bookingUnitsCount);
+    const totalAmount = parseFloat(bookingAmountTransferred.replace(/,/g, ''));
 
     setBookingUnits(true);
     try {
@@ -145,7 +158,7 @@ export default function BondDetails() {
         bond_id: id,
         client_id: selectedClient || null,
         units: unitsToBook,
-        investment_date: settlementDate,
+        investment_date: bookingInvestmentDate,
         calculated_price: Math.ceil(enhancedCalculation.clean_price_per_unit),
         total_amount: totalAmount,
         payment_reference: paymentReference,
@@ -307,7 +320,7 @@ export default function BondDetails() {
         jsPDF: { 
           unit: 'mm', 
           format: 'a4', 
-          orientation: 'portrait' 
+          orientation: 'landscape' 
         },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
