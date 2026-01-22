@@ -1276,7 +1276,7 @@ export default function RealEstateDetails() {
                                               <span className="text-[8px] text-amber-500">Pending</span>
                                             )}
                                           </>
-                                        ) : canUploadSwift ? (
+                                        ) : canUploadSwiftDld && canManageThisInvestor ? (
                                           <>
                                             <button 
                                               className="w-6 h-6 rounded bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center" 
@@ -1328,7 +1328,7 @@ export default function RealEstateDetails() {
                                               <span className="text-[8px] text-amber-500">Pending</span>
                                             )}
                                           </>
-                                        ) : canUploadReceipt ? (
+                                        ) : canUploadReceiptDld && canManageThisInvestor ? (
                                           <>
                                             <button 
                                               className="w-6 h-6 rounded bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center" 
