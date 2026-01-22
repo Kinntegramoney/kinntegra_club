@@ -38,6 +38,40 @@ A wealth management platform for brokers to manage clients, bonds, real estate i
   - Real Estate AUM (AED with INR conversion)
   - Quick Actions
 
+### Real Estate Investment Management (Updated: Jan 22, 2026)
+#### Payment Schedule
+- **Combined DLD + Admin Fee Row**: DLD and Admin fees are merged into ONE row positioned between Booking Amount and 1st Installment
+- Per-investor tracking with separate D (DLD) and A (Admin) badges for individual payment tracking
+- Progress bars for Invoices, Payments, Receipts
+- "$" icon for the combined fee row
+
+#### Sell Unit Feature (Enhanced: Jan 22, 2026)
+- Auto-populates selling fee % from opportunity data
+- **XIRR Preview** shown BEFORE submission with:
+  - Investment (Outflows): Unit Price Paid, DLD + Admin
+  - Sale Proceeds (Inflow): Gross Sale, Less: Selling Fee
+  - Net Profit calculation
+  - Expected XIRR percentage (annualized return)
+- **Sale Returns Section**: Displays after property is sold (closed status) with:
+  - Sale Date, Sale Price, Selling Fee %, Net Proceeds
+  - Total Invested, Net Profit, Profit %, XIRR
+
+#### XIRR Comparison Report
+- Fixed crash caused by missing `User` icon import
+- Modal shows full cashflow comparison with DLD and Admin fee rows
+- Export to PDF functionality
+
+#### Bulk Real Estate Upload (Fixed: Jan 22, 2026)
+- Fixed "Network Error" caused by:
+  1. Missing `idx` variable in error handling
+  2. Duplicate column names after normalization (`Developer Discount (AED)` and `Developer Discount (%)` both becoming `developer_discount`)
+- Now properly handles multi-sheet Excel format with columns:
+  - Basic Information: Building Name, Unit No, Developer Name, Location, Description, Handover Date
+  - Pricing & Fees: Unit Price, DLD Fee %, Admin Fee, Broker Fee, Other Fees, Unit Selling Fee %, Developer Discount (AED), Developer Discount (%)
+  - Unit Details: Unit Type, Floor, Total Area, Carpet Area, Balcony Area, Parking Spaces
+  - Sale Settings: Expected Sale Rate, Estimated Sell Date, Eligible to Sell After %
+  - Payment Schedule: Payment Description, Due Date, Percentage
+
 ### Approval Workflow System (NEW - Jan 21, 2026)
 Complete 3-phase approval workflow for sub-broker actions:
 
