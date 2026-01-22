@@ -205,6 +205,15 @@ Complete 3-phase approval workflow for sub-broker actions:
   4. Updated progress bars to show document upload status per investor
 - **Verified**: All 10 frontend tests pass, layout matches installment rows exactly
 
+### Broker Approvals & Logs Combined (Jan 22, 2026)
+- **Issue**: Broker had separate menu items for "Approvals" and "Logs"
+- **Fix Applied**:
+  1. Created `ApprovalCenter.jsx` with combined tabs for Pending Approvals and Activity Logs
+  2. Updated broker sidebar to show single "Approvals & Logs" menu item
+  3. Pending Approvals tab has sub-tabs for Clients and Reinvestments
+  4. Activity Logs tab shows all workflow activities with filtering
+- **Verified**: Screenshot confirms both tabs work correctly
+
 ## P0 - Critical/In Progress
 1. **Kinntegra API Integration**: Awaiting API authentication details from user
 
