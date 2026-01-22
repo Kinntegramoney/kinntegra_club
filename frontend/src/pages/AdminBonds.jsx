@@ -49,7 +49,11 @@ export default function AdminBonds() {
       const response = await axios.get(`${API}/bonds`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setBonds(response.data);
+      // Handle both old format (array) and new paginated format
+      const data = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data?.data || []);
+      setBonds(data);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching bonds:", error);
