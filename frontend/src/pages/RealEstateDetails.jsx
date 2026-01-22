@@ -424,6 +424,25 @@ export default function RealEstateDetails() {
            clients.some(c => opportunity.investors?.some(inv => inv.client_id === c.id));
   }, [user, opportunity, clients]);
 
+  // Check if a specific investor is linked to the current sub-broker
+  const isSubBrokerLinkedClient = (investorClientId) => {
+    if (!user || user.role !== 'sub_broker') return false;
+    // Check if this investor's client_id is in the sub-broker's client list
+    return clients.some(c => c.id === investorClientId);
+  };
+
+  // Check if user can manage a specific investor's payment
+  // Broker: can manage all
+  // Sub-broker: can only manage their linked clients
+  // Client: can only manage their own (if applicable)
+  const canManageInvestorPayment = (investorClientId) => {
+    if (!user) return false;
+    if (user.role === 'broker') return true;
+    if (user.role === 'sub_broker') return isSubBrokerLinkedClient(investorClientId);
+    if (user.role === 'client') return user.client_id === investorClientId;
+    return false;
+  };
+
   // Check if opportunity is fully allocated (100% invested or status is fully_invested)
   const isFullyAllocated = useMemo(() => {
     if (!opportunity) return false;
