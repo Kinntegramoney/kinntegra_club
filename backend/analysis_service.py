@@ -498,6 +498,13 @@ class CASParser:
                             i += 1
                             continue
                         
+                        # Handle Transaction charges - these are fees paid to distributors
+                        # Format: Date, Amount (25.00), *** Transaction charges ***
+                        # Skip these as they're not investment transactions
+                        if '*** Transaction charges ***' in nav_str or 'Transaction charges' in nav_str:
+                            i += 1
+                            continue
+                        
                         # Check if amount_str looks like a TDS total payout (amount in parentheses)
                         # These appear after TDS entries and look like: (6,975.00), (99,808.00), etc.
                         # BUT amounts in parentheses are also valid for redemptions and dishonoured transactions!
