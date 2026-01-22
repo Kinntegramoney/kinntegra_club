@@ -788,64 +788,95 @@ export default function BondDetails() {
             {/* Unit Bounds Display - when amount is entered */}
             {approximateAmount && enhancedCalculation && enhancedCalculation.clean_price_per_unit > 0 && (
               <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg">
-                <p className="text-sm font-medium mb-3 text-blue-800">For approximate amount of ₹{parseFloat(approximateAmount).toLocaleString('en-IN')}</p>
+                <p className="text-sm font-medium mb-3 text-blue-800">For approximate amount of ₹{parseInt(approximateAmount).toLocaleString('en-IN')}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div 
-                    className={`p-3 rounded-md transition-all cursor-pointer ${
-                      selectedBound === 'lower' 
-                        ? 'border-2 border-blue-500 bg-blue-50 ring-2 ring-blue-200' 
-                        : 'border border-gray-200 hover:border-blue-400'
-                    }`}
-                    onClick={() => {
-                      const lowerUnits = Math.floor(parseFloat(approximateAmount) / enhancedCalculation.clean_price_per_unit);
-                      if (lowerUnits >= 1 && lowerUnits <= enhancedCalculation.units_available) {
-                        setSelectedBound('lower');
-                        calculateEnhancedPrice(lowerUnits);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-600">Lower Bound</span>
-                      {selectedBound === 'lower' && (
-                        <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">✓ Selected</span>
-                      )}
-                    </div>
-                    <p className="text-lg font-mono font-bold" data-testid="lower-bound-units">
-                      {Math.floor(parseFloat(approximateAmount) / enhancedCalculation.clean_price_per_unit)} units
-                    </p>
-                    <p className="text-sm text-gray-500 font-mono">
-                      ₹{(Math.floor(parseFloat(approximateAmount) / enhancedCalculation.clean_price_per_unit) * enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </p>
+                  {/* Lower Bound */}
+                  {(() => {
+                    const lowerUnits = Math.floor(parseFloat(approximateAmount) / enhancedCalculation.clean_price_per_unit);
+                    const lowerAmount = Math.ceil(lowerUnits * enhancedCalculation.clean_price_per_unit) + 1; // Round up + 1 rupee
+                    return (
+                      <div 
+                        className={`p-3 rounded-md transition-all cursor-pointer ${
+                          selectedBound === 'lower' 
+                            ? 'border-2 border-blue-500 bg-blue-50 ring-2 ring-blue-200' 
+                            : 'border border-gray-200 hover:border-blue-400'
+                        }`}
+                        onClick={() => {
+                          if (lowerUnits >= 1 && lowerUnits <= enhancedCalculation.units_available) {
+                            setSelectedBound('lower');
+                            setSelectedUnits(lowerUnits);
+                            calculateEnhancedPrice(lowerUnits);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-600">Lower Bound</span>
+                          {selectedBound === 'lower' && (
+                            <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">✓ Selected</span>
+                          )}
+                        </div>
+                        <p className="text-lg font-mono font-bold" data-testid="lower-bound-units">
+                          {lowerUnits} units
+                        </p>
+                        <p className="text-xl text-blue-700 font-mono font-bold">
+                          ₹{lowerAmount.toLocaleString('en-IN')}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                  {/* Upper Bound */}
+                  {(() => {
+                    const upperUnits = Math.ceil(parseFloat(approximateAmount) / enhancedCalculation.clean_price_per_unit);
+                    const upperAmount = Math.ceil(upperUnits * enhancedCalculation.clean_price_per_unit) + 1; // Round up + 1 rupee
+                    return (
+                      <div 
+                        className={`p-3 rounded-md transition-all cursor-pointer ${
+                          selectedBound === 'upper' 
+                            ? 'border-2 border-blue-500 bg-blue-50 ring-2 ring-blue-200' 
+                            : 'border border-gray-200 hover:border-blue-400'
+                        }`}
+                        onClick={() => {
+                          if (upperUnits >= 1 && upperUnits <= enhancedCalculation.units_available) {
+                            setSelectedBound('upper');
+                            setSelectedUnits(upperUnits);
+                            calculateEnhancedPrice(upperUnits);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-600">Upper Bound</span>
+                          {selectedBound === 'upper' && (
+                            <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">✓ Selected</span>
+                          )}
+                        </div>
+                        <p className="text-lg font-mono font-bold" data-testid="upper-bound-units">
+                          {upperUnits} units
+                        </p>
+                        <p className="text-xl text-blue-700 font-mono font-bold">
+                          ₹{upperAmount.toLocaleString('en-IN')}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <p className="text-xs text-gray-500 mt-3">Click on a bound to select and proceed to booking</p>
+              </div>
+            )}
+
+            {/* Investment Value Display - when units are entered (not amount) */}
+            {!approximateAmount && enhancedCalculation && enhancedCalculation.units_requested > 0 && (
+              <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <p className="text-sm font-medium mb-2 text-emerald-800">Investment Value</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">{enhancedCalculation.units_requested} units × ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</p>
                   </div>
-                  <div 
-                    className={`p-3 rounded-md transition-all cursor-pointer ${
-                      selectedBound === 'upper' 
-                        ? 'border-2 border-blue-500 bg-blue-50 ring-2 ring-blue-200' 
-                        : 'border border-gray-200 hover:border-blue-400'
-                    }`}
-                    onClick={() => {
-                      const upperUnits = Math.ceil(parseFloat(approximateAmount) / enhancedCalculation.clean_price_per_unit);
-                      if (upperUnits >= 1 && upperUnits <= enhancedCalculation.units_available) {
-                        setSelectedBound('upper');
-                        calculateEnhancedPrice(upperUnits);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-600">Upper Bound</span>
-                      {selectedBound === 'upper' && (
-                        <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">✓ Selected</span>
-                      )}
-                    </div>
-                    <p className="text-lg font-mono font-bold" data-testid="upper-bound-units">
-                      {Math.ceil(parseFloat(approximateAmount) / enhancedCalculation.clean_price_per_unit)} units
-                    </p>
-                    <p className="text-sm text-gray-500 font-mono">
-                      ₹{(Math.ceil(parseFloat(approximateAmount) / enhancedCalculation.clean_price_per_unit) * enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  <div className="text-right">
+                    <p className="text-2xl font-mono font-bold text-emerald-700">
+                      ₹{(Math.ceil(enhancedCalculation.total_clean_price) + 1).toLocaleString('en-IN')}
                     </p>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-3">Click on a bound to select and calculate exact price</p>
               </div>
             )}
 
@@ -856,7 +887,7 @@ export default function BondDetails() {
                 <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-lg shadow-lg text-center">
                   <p className="text-sm text-emerald-100 font-semibold mb-2">PRICE PER UNIT</p>
                   <p className="text-4xl font-mono font-bold text-white" data-testid="clean-price-display">
-                    ₹{enhancedCalculation.clean_price_per_unit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}
                   </p>
                   {enhancedCalculation.units_requested > 1 && (
                     <div className="mt-4 pt-4 border-t border-emerald-400">
