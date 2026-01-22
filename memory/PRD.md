@@ -162,7 +162,54 @@ Complete 3-phase approval workflow for sub-broker actions:
 4. **Bug Fix**:
    - Fixed sub-broker partner lookup to use `created_by` field for broker_id
 
-### Profile Data Parity Fix (Jan 22, 2026)
+## Recent Changes (Jan 22, 2026)
+
+### Share with Clients Modal Improvements (NEW)
+**Feature Request**: Add search functionality and email integration to the Share with Clients modal
+
+**Changes Implemented**:
+1. **Search Functionality**:
+   - Added search input with placeholder "Search by name, email, phone or PAN..."
+   - Real-time filtering of client list as user types
+   - Shows "Showing X of Y" count when search is active
+   - Select All works with filtered results only
+
+2. **Email Integration**:
+   - Added "Send via Email" toggle (ON by default)
+   - Added "Include Property Photos" checkbox (visible when email is enabled)
+   - Submit button text changes: "Share & Email X Client(s)" vs "Share with X Client(s)"
+   - Shows warning for clients without email addresses
+   - Emails include property photos (up to 4) when enabled
+
+3. **UI Enhancements**:
+   - Mail icon shown next to clients with email addresses
+   - Email options in a distinct gray background section
+   - Proper data-testid attributes for all interactive elements
+
+**Files Modified**:
+- `/app/frontend/src/pages/RealEstateDetails.jsx` - ShareWithClientsModal component
+- `/app/backend/server.py` - Added `include_photos` parameter to EmailShareRequest
+- `/app/backend/email_service.py` - Updated `send_real_estate_opportunity_email` to include photos
+
+### Fine-grained Permission Fix (RealEstateDetails page)
+**Feature Request**: Restrict actions based on user role and client linkage
+
+**Changes Implemented**:
+1. **XIRR Summary Report Section**:
+   - "Edit %" and "Remove" investor buttons visible ONLY to broker role
+   - Sub-brokers and clients cannot see these buttons
+
+2. **Payment Schedule & DLD+Admin Row**:
+   - Upload buttons (Invoice/Swift/Receipt) restricted by `canManageInvestorPayment()` function
+   - Broker: Can manage all investors
+   - Sub-broker: Can only manage their linked clients
+   - Client: Can only manage their own payments
+
+3. **Client Co-Owner Detection Fix**:
+   - Fixed `isCoOwner` check to properly match client users with investors
+   - Now checks: `inv.client_id === user.id || inv.user_id === user.id || (user.client_id && inv.client_id === user.client_id)`
+
+### Profile Data Parity Fix
 - **Issue**: Profile information on Holdings page was not visible to clients and sub-brokers
 - **Root Cause**: `GET /api/clients/{client_id}` only allowed broker and sub-broker access, not clients viewing their own profile
 - **Fix Applied**:
