@@ -171,6 +171,16 @@ Complete 3-phase approval workflow for sub-broker actions:
   3. Updated `Holdings.jsx` to import `ClientSidebar` for proper navigation when client accesses the Holdings page
 - **Verified**: All 11 backend tests pass, frontend UI verified for all three roles
 
+### Profile Layout Alignment Fix (Jan 22, 2026)
+- **Issue**: Client Profile page (`/client/profile`) had a completely different layout from the Broker Holdings Profile tab
+- **Root Cause**: `ClientProfile.jsx` used a compact card-style design while `Holdings.jsx` Profile tab used a comprehensive grid layout
+- **Fix Applied**:
+  1. Completely rewrote `ClientProfile.jsx` to match the exact JSX structure of `Holdings.jsx` Profile tab
+  2. Sections now match: Personal Details (3-col), Address Details (3-col), Bank Details (4-col), Nominee Details (4-col)
+  3. Conditional sections added: International Bank (NRI), Passport Details, Emirates ID (UAE), UCC List
+  4. Same icon colors: amber-600 for main sections, with specific colors for conditional sections
+- **Verified**: All 29 frontend layout tests pass, visual comparison confirms identical layouts
+
 ## P0 - Critical/In Progress
 1. **Kinntegra API Integration**: Awaiting API authentication details from user
 
