@@ -62,7 +62,10 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     developer_name: opportunity?.developer_name || "",
     location: opportunity?.location || "",
     handover_date: opportunity?.handover_date || "",
-    description: opportunity?.description || ""
+    description: opportunity?.description || "",
+    
+    // 3D View
+    view_3d_url: opportunity?.view_3d_url || ""
   });
 
   // Payment Schedule - percentages based on unit price only
