@@ -12555,6 +12555,7 @@ class RealEstateOpportunityUpdate(BaseModel):
     description: Optional[str] = None
     developer_discount: Optional[float] = None
     developer_discount_percentage: Optional[float] = None
+    view_3d_url: Optional[str] = None
 
 
 class InvestorAllocation(BaseModel):
