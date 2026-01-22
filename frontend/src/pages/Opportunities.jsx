@@ -293,55 +293,105 @@ export default function Opportunities() {
     return `${prefix}/real-estate/${id}`;
   };
 
-  // Bond Card - Same layout for all roles
+  // Bond Card - Same layout for all roles (matching Real Estate card style)
   const BondCard = ({ bond, status }) => {
     const unitsAvailable = (bond.total_units || 1) - (bond.units_sold || 0);
     const daysToMaturity = Math.ceil((new Date(bond.end_date) - new Date()) / (1000 * 60 * 60 * 24));
     const isBroker = user?.role === 'broker';
     const isSubBroker = user?.role === 'sub_broker';
+    
+    // Calculate today's price per unit (face value or principal/units)
+    const pricePerUnit = bond.face_value || (bond.principal_amount / (bond.total_units || 1));
+    
+    // Calculate maturity date display
+    const maturityDate = new Date(bond.end_date);
+    const startDate = new Date(bond.start_date);
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-amber-500 transition-colors">
+        {/* Header - Bond Name */}
         <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-amber-600" />
-            <h3 className="text-lg font-semibold text-gray-800">{bond.name}</h3>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">{bond.name}</h3>
+              <p className="text-sm text-gray-500">{bond.bond_code} • {bond.issuer || 'NCD'}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-amber-600 border-amber-300">Bond</Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Bond</Badge>
+            {bond.interest_payment_frequency && (
+              <span className="px-2 py-1 bg-orange-50 text-orange-700 text-xs font-medium rounded-full capitalize">
+                {bond.interest_payment_frequency}
+              </span>
+            )}
             {status === 'available' && (
               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Available</span>
             )}
             {status === 'funded' && (
-              <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">Funded</span>
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Fully Subscribed</span>
             )}
             {status === 'closed' && (
-              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">Closed</span>
+              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">Matured</span>
             )}
           </div>
         </div>
 
-        <div className="space-y-2 text-sm mb-4">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Principal:</span>
-            <span className="font-mono font-medium">{formatCurrency(bond.principal_amount)}</span>
+        {/* Bond Info Grid - Row 1 */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {/* Principal Amount */}
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Principal Amount</p>
+            <p className="font-semibold text-gray-800">{formatCurrency(bond.principal_amount)}</p>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">IRR:</span>
-            <span className="font-mono font-medium text-amber-600">{bond.secondary_irr}%</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Units:</span>
-            <span className="font-mono font-medium">
-              {status === 'available' ? `${unitsAvailable} of ${bond.total_units || 1}` : `${bond.total_units || 1} (All)`}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Maturity:</span>
-            <span className="text-xs">{status === 'closed' ? 'Completed' : `${daysToMaturity} days`}</span>
+          
+          {/* Today's Price Per Unit */}
+          <div className="bg-amber-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Price/Unit (Today)</p>
+            <p className="font-semibold text-amber-700">{formatCurrency(pricePerUnit)}</p>
           </div>
         </div>
 
+        {/* Bond Info Grid - Row 2 */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {/* Coupon Rate */}
+          <div className="bg-blue-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Coupon Rate</p>
+            <p className="font-semibold text-blue-700">{bond.coupon_rate}%</p>
+          </div>
+          
+          {/* IRR */}
+          <div className="bg-green-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Expected IRR</p>
+            <p className="font-semibold text-green-700">{bond.secondary_irr || bond.primary_irr}%</p>
+          </div>
+        </div>
+
+        {/* Bond Info Grid - Row 3 */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {/* Units Available */}
+          <div className="bg-purple-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Units Available</p>
+            <p className="font-semibold text-purple-700">
+              {status === 'available' ? `${unitsAvailable} of ${bond.total_units || 1}` : `${bond.total_units || 1} (Sold)`}
+            </p>
+          </div>
+          
+          {/* Maturity */}
+          <div className="bg-rose-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 mb-1">Maturity Date</p>
+            <p className="font-semibold text-rose-700">
+              {maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </p>
+            <p className="text-xs text-gray-500">
+              {status === 'closed' ? 'Completed' : `${daysToMaturity} days left`}
+            </p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/bonds/${bond.id}`)}>
             <Eye className="h-4 w-4 mr-1" />
