@@ -204,6 +204,84 @@ export default function ClientProfile() {
                 </div>
               )}
 
+              {/* Nominee Details */}
+              {client?.nominee_name && (
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                      <Users className="h-5 w-5 text-teal-600" />
+                      Nominee Details
+                    </h2>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Nominee Name</p>
+                      <p className="font-medium">{client.nominee_name}</p>
+                    </div>
+                    {client.nominee_relationship && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Relationship</p>
+                        <p className="font-medium">{client.nominee_relationship}</p>
+                      </div>
+                    )}
+                    {client.nominee_dob && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Date of Birth</p>
+                        <p className="font-medium">{client.nominee_dob}</p>
+                      </div>
+                    )}
+                    {client.nominee_pan && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">PAN Number</p>
+                        <p className="font-mono">{client.nominee_pan}</p>
+                      </div>
+                    )}
+                    {client.nominee_address && (
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-gray-500 uppercase">Address</p>
+                        <p className="font-medium">{client.nominee_address}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* UCC Details */}
+              {client?.ucc_code && (
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-teal-600" />
+                      UCC Details
+                    </h2>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">UCC Code</p>
+                      <p className="font-mono font-medium">{client.ucc_code}</p>
+                    </div>
+                    {client.demat_id && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Demat ID</p>
+                        <p className="font-mono">{client.demat_id}</p>
+                      </div>
+                    )}
+                    {client.dp_id && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">DP ID</p>
+                        <p className="font-mono">{client.dp_id}</p>
+                      </div>
+                    )}
+                    {client.client_id && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Client ID</p>
+                        <p className="font-mono">{client.client_id}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Broker & Sub-broker Details */}
               <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
