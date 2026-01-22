@@ -285,11 +285,11 @@ export default function ClientHoldings() {
               </div>
                   </>
                 )}
-              </TabsContent>
+              )}
 
               {/* Real Estate Tab */}
-              <TabsContent value="real-estate">
-                {realEstateHoldings.length === 0 ? (
+              {mainTab === "real-estate" && (
+                realEstateHoldings.length === 0 ? (
                   <div className="text-center py-12">
                     <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">No real estate holdings yet</p>
