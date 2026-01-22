@@ -4414,26 +4414,6 @@ async def bulk_upload_bonds(
     
     results = {"success": 0, "failed": 0, "errors": [], "created_bonds": []}
     
-    # Group principal payments by bond_code
-    principal_payments_map = {}
-    for _, prow in df_principal.iterrows():
-        bc = str(prow.get('bond_code', '')).strip()
-        if bc and not pd.isna(bc):
-            if bc not in principal_payments_map:
-                principal_payments_map[bc] = []
-            payment_date = prow.get('payment_date')
-            percentage = prow.get('percentage')
-            if not pd.isna(payment_date) and not pd.isna(percentage):
-                try:
-                    date_str = pd.to_datetime(payment_date).strftime('%Y-%m-%d')
-                    principal_payments_map[bc].append({
-                        "date": date_str,
-                        "percentage": float(percentage),
-                        "description": str(prow.get('payment_description', '')) if not pd.isna(prow.get('payment_description')) else ''
-                    })
-                except:
-                    pass
-    
     # Group cashflows per unit by bond_code (for exact cashflow schedules)
     cashflows_per_unit_map = {}
     if not df_cashflows.empty:
@@ -4484,13 +4464,11 @@ async def bulk_upload_bonds(
             start_date = pd.to_datetime(row['start_date']).strftime('%Y-%m-%d')
             end_date = pd.to_datetime(row['maturity_date']).strftime('%Y-%m-%d')
             
-            # Get principal payments from Sheet 4 or default to 100% at maturity
-            principal_payments = principal_payments_map.get(bond_code, [{"date": end_date, "percentage": 100.0}])
-            if not principal_payments:
-                principal_payments = [{"date": end_date, "percentage": 100.0}]
+            # Principal payments are derived from cashflows - default to 100% at maturity if no cashflows
+            principal_payments = [{"date": end_date, "percentage": 100.0}]
             
-            # Get financial details
-            frequency = str(row.get('interest_payment_frequency', 'quarterly')).lower().strip() if not pd.isna(row.get('interest_payment_frequency')) else 'quarterly'
+            # Get financial details - frequency derived from cashflow data if available
+            frequency = 'quarterly'  # Default frequency
             principal = float(row['principal_amount'])
             coupon_rate_val = float(row['coupon_rate'])
             
