@@ -1173,7 +1173,7 @@ export default function RealEstateDetails() {
                             {/* Per-Investor columns for combined DLD + Admin - Same as installment rows */}
                             {opp.investors?.map((investor) => {
                               // Get DLD and Admin payment records for this investor
-                              const invDldAdmin = opp.dld_admin_payments?.find(p => p.investor_id === investor.client_id) || {};
+                              const invDldAdmin = opp.dld_admin_documents?.find(p => p.investor_id === investor.client_id) || {};
                               const sharePercent = investor.share_percentage || (100 / opp.investors.length);
                               const investorDldAmount = dldFeeAmount * sharePercent / 100;
                               const investorAdminAmount = adminFeeAmount * sharePercent / 100;
@@ -1181,7 +1181,7 @@ export default function RealEstateDetails() {
                               
                               // Document status
                               const hasInvoice = !!invDldAdmin.invoice_url;
-                              const hasSwift = !!invDldAdmin.swift_copy;
+                              const hasSwift = !!invDldAdmin.swift_url;
                               const hasReceipt = !!invDldAdmin.receipt_url;
                               const isVerified = invDldAdmin.swift_verified;
                               const isPending = hasSwift && !isVerified;
@@ -1233,14 +1233,14 @@ export default function RealEstateDetails() {
                                             <span className={`w-6 h-6 rounded flex items-center justify-center ${isVerified ? 'bg-teal-100 text-teal-600' : 'bg-amber-100 text-amber-600'}`}>
                                               {isVerified ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </span>
-                                            <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.swift_copy}`, '_blank')}>View</button>
+                                            <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.swift_url}`, '_blank')}>View</button>
                                             {isPending && user?.role === 'broker' && (
                                               <button 
                                                 className="text-[8px] text-green-600 hover:text-green-800 font-medium"
                                                 onClick={async () => {
                                                   try {
                                                     const token = localStorage.getItem("token");
-                                                    await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/dld-admin/${investor.client_id}/verify`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                                    await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/dld-admin/${investor.client_id}/verify-swift`, {}, { headers: { Authorization: `Bearer ${token}` } });
                                                     fetchData();
                                                     toast.success("SWIFT verified!");
                                                   } catch (error) {
