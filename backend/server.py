@@ -4397,15 +4397,10 @@ async def bulk_upload_bonds(
         df_units = pd.read_excel(excel_file, sheet_name=2)
         df_units.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_units.columns]
         
-        # Sheet 4: Principal Payments
-        excel_file.seek(0)
-        df_principal = pd.read_excel(excel_file, sheet_name=3)
-        df_principal.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_principal.columns]
-        
-        # Sheet 5: Cashflows Per Unit (optional but recommended)
+        # Sheet 4: Cashflows Per Unit (required for cashflow schedules)
         excel_file.seek(0)
         try:
-            df_cashflows = pd.read_excel(excel_file, sheet_name=4)
+            df_cashflows = pd.read_excel(excel_file, sheet_name=3)
             df_cashflows.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_cashflows.columns]
         except:
             df_cashflows = pd.DataFrame()  # Empty if sheet doesn't exist
