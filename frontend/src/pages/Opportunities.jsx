@@ -305,18 +305,25 @@ export default function Opportunities() {
     
     // Calculate today's price per unit using secondary IRR
     // Price = NPV of remaining cashflows discounted at secondary IRR
+    // Uses cutoff_days logic: only include payments more than cutoff_days from today
     const calculateTodayPrice = () => {
       const today = new Date();
       const secondaryIRR = (bond.secondary_irr || bond.primary_irr || 12) / 100; // Annual rate
+      const cutoffDays = bond.cutoff_days || 15; // Default 15 days cutoff
       
-      // If bond has cashflows_per_unit, use those
+      // If bond has cashflows_per_unit, use those with cutoff logic
       if (bond.cashflows_per_unit && bond.cashflows_per_unit.length > 0) {
         let npv = 0;
         for (const cf of bond.cashflows_per_unit) {
           const cfDate = new Date(cf.date);
-          if (cfDate > today) {
-            const yearsToPayment = (cfDate - today) / (1000 * 60 * 60 * 24 * 365);
-            const totalCashflow = (cf.interest_per_unit || 0) + (cf.principal_per_unit || 0);
+          const daysFromToday = Math.floor((cfDate - today) / (1000 * 60 * 60 * 24));
+          
+          // Only include cashflows that are MORE than cutoff_days away
+          // (payments within cutoff period go to seller, not buyer)
+          if (daysFromToday > cutoffDays) {
+            const yearsToPayment = daysFromToday / 365;
+            const totalCashflow = (cf.interest_per_unit || cf.interest || 0) + (cf.principal_per_unit || cf.principal || 0);
+            // Discount formula: CF / (1 + IRR)^years
             npv += totalCashflow / Math.pow(1 + secondaryIRR, yearsToPayment);
           }
         }
@@ -345,7 +352,9 @@ export default function Opportunities() {
       
       for (let i = 1; i <= totalPayments; i++) {
         const yearsToPayment = i / paymentsPerYear;
-        npv += paymentAmount / Math.pow(1 + secondaryIRR, yearsToPayment);
+        if (yearsToPayment * 365 > cutoffDays) { // Apply cutoff
+          npv += paymentAmount / Math.pow(1 + secondaryIRR, yearsToPayment);
+        }
       }
       
       // Add principal at maturity
