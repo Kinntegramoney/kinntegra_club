@@ -1052,7 +1052,7 @@ export default function RealEstateDetails() {
                                             <span className="text-[8px] text-amber-500">Pending</span>
                                           )}
                                         </>
-                                      ) : canUploadReceipt ? (
+                                      ) : canUploadReceipt && canManageInvestorPayment(investor.client_id) ? (
                                         <>
                                           <button className="w-6 h-6 rounded bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center" onClick={() => { setSelectedPaymentForReceipt({ payment, investor, milestone: { ...milestone, index: idx } }); setShowDeveloperReceiptModal(true); }} title="Upload Receipt"><Upload className="h-3 w-3" /></button>
                                           <span className="text-[8px] text-gray-400">Upload</span>
