@@ -500,7 +500,7 @@ export default function Holdings() {
 
   if (!user) return null;
 
-  const SidebarComponent = user.role === 'broker' ? Sidebar : SubBrokerSidebar;
+  const SidebarComponent = user.role === 'broker' ? Sidebar : user.role === 'client' ? ClientSidebar : SubBrokerSidebar;
   const consolidatedCashflows = modalData ? getConsolidatedCashflowsByDate(modalData.trades) : [];
 
   return (
