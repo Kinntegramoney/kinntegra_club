@@ -32,16 +32,16 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     // Admin Fee (absolute amount - paid upfront with booking)
     admin_fee: opportunity?.admin_fee || "",
     
-    // Other Fees
-    broker_fee: opportunity?.broker_fee || "",
+    // Other Fees (handle both field names for backward compatibility)
+    broker_fee: opportunity?.broker_fee ?? opportunity?.brokerage_fee ?? "",
     other_fees: opportunity?.other_fees || "",
     
     // Developer Discount
     developer_discount: opportunity?.developer_discount || "",
     developer_discount_percentage: opportunity?.developer_discount_percentage || "",
     
-    // Unit Selling Fee (% of selling price, 0-2.5%)
-    unit_selling_fee_percentage: opportunity?.unit_selling_fee_percentage || "",
+    // Unit Selling Fee (% of selling price, 0-2.5%) - handle both field names
+    unit_selling_fee_percentage: opportunity?.unit_selling_fee_percentage ?? opportunity?.selling_fee_percentage ?? "",
     
     // Area (sqft)
     total_area: opportunity?.total_area || "",
