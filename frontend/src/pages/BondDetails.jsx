@@ -38,6 +38,11 @@ export default function BondDetails() {
   const [paymentProof, setPaymentProof] = useState(null);
   const [bookingUnits, setBookingUnits] = useState(false);
   
+  // Block Units form fields (editable, not prefilled)
+  const [bookingInvestmentDate, setBookingInvestmentDate] = useState("");
+  const [bookingUnitsCount, setBookingUnitsCount] = useState("");
+  const [bookingAmountTransferred, setBookingAmountTransferred] = useState("");
+  
   // Enhanced calculator state
   const [enhancedCalculation, setEnhancedCalculation] = useState(null);
   const [calculatingEnhanced, setCalculatingEnhanced] = useState(false);
