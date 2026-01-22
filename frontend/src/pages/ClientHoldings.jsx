@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import ClientSidebar from "@/components/ClientSidebar";
-import { Wallet, TrendingUp, Calendar, Download, ChevronDown, ChevronUp, Check, Clock, X, Building2, MapPin, Percent, ChevronRight } from "lucide-react";
+import { Wallet, TrendingUp, Calendar, Download, ChevronDown, ChevronUp, Check, Clock, X, Building2, MapPin, Percent, ChevronRight, ClipboardList, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -22,6 +22,7 @@ export default function ClientHoldings() {
   const [user, setUser] = useState(null);
   const [holdings, setHoldings] = useState(null);
   const [realEstateHoldings, setRealEstateHoldings] = useState([]);
+  const [clientTrades, setClientTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedHolding, setSelectedHolding] = useState(null);
   const [showCashflowModal, setShowCashflowModal] = useState(false);
@@ -44,6 +45,7 @@ export default function ClientHoldings() {
     setUser(parsedUser);
     fetchHoldings();
     fetchRealEstateHoldings();
+    fetchClientTrades();
   }, [navigate]);
 
   const fetchHoldings = async () => {
