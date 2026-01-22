@@ -155,7 +155,7 @@ function App() {
             path="/broker/pending-approvals" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
-                <PendingApprovals />
+                <ApprovalCenter />
               </ProtectedRoute>
             } 
           />
@@ -163,7 +163,15 @@ function App() {
             path="/broker/approval-logs" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
-                <ApprovalLogs />
+                <ApprovalCenter />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/approvals" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <ApprovalCenter />
               </ProtectedRoute>
             } 
           />
