@@ -177,18 +177,16 @@ export default function AdminRealEstate() {
                             <img 
                               src={`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/images/${opp.images[0].id}`}
                               alt={opp.building_name}
-                              className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                              className="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100"
                               onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = '';
-                                e.target.parentElement.innerHTML = '<div class="w-16 h-16 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0"><svg class="h-6 w-6 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg></div>';
+                                e.target.style.display = 'none';
+                                e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'flex');
                               }}
                             />
-                          ) : (
-                            <div className="w-16 h-16 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Building2 className="h-6 w-6 text-teal-600" />
-                            </div>
-                          )}
+                          ) : null}
+                          <div className={`w-16 h-16 bg-teal-100 rounded-lg items-center justify-center flex-shrink-0 ${opp.images && opp.images.length > 0 ? 'hidden' : 'flex'}`}>
+                            <Building2 className="h-6 w-6 text-teal-600" />
+                          </div>
                           <div>
                             <p className="font-medium text-gray-800">{opp.building_name}</p>
                             <p className="text-sm text-gray-500">Unit {opp.unit_no} • {opp.unit_type} • Floor {opp.floor}</p>
