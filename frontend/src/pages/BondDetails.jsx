@@ -1074,18 +1074,6 @@ export default function BondDetails() {
                       </div>
                     </div>
 
-                    {/* Payment Notes */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Payment Notes</Label>
-                      <Textarea
-                        value={paymentNotes}
-                        onChange={(e) => setPaymentNotes(e.target.value)}
-                        placeholder="Any additional notes about the payment..."
-                        rows={2}
-                        data-testid="payment-notes-input"
-                      />
-                    </div>
-
                     {/* Order Summary */}
                     <div className="bg-white p-3 md:p-4 rounded-md border border-amber-200">
                       <p className="text-xs text-gray-500 uppercase mb-2 font-medium">Order Summary</p>
