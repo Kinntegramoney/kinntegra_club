@@ -754,6 +754,118 @@ export default function Opportunities() {
           </Tabs>
         </div>
       </div>
+
+      {/* XIRR Calculation Modal */}
+      {xirrModalData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setXirrModalData(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+              <div className="flex items-center gap-3">
+                <Calculator className="h-6 w-6" />
+                <div>
+                  <h2 className="text-lg font-semibold">XIRR Calculation</h2>
+                  <p className="text-sm text-purple-200">{xirrModalData.property} - Unit {xirrModalData.unit}</p>
+                </div>
+              </div>
+              <button onClick={() => setXirrModalData(null)} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto max-h-[60vh]">
+              {/* Summary */}
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                <div className="bg-red-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Total Investment</p>
+                  <p className="font-bold text-red-600">AED {xirrModalData.totalOutflow.toLocaleString()}</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Sale Proceeds</p>
+                  <p className="font-bold text-green-600">AED {xirrModalData.totalInflow.toLocaleString()}</p>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Expected XIRR</p>
+                  <p className="font-bold text-purple-600">{xirrModalData.xirr}%</p>
+                </div>
+              </div>
+              
+              {/* Cashflows Table */}
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-3 font-medium text-gray-600">Date</th>
+                      <th className="text-left p-3 font-medium text-gray-600">Description</th>
+                      <th className="text-right p-3 font-medium text-gray-600">Amount (AED)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {xirrModalData.cashflows.map((cf, idx) => (
+                      <tr key={idx} className={`border-t ${cf.type === 'inflow' ? 'bg-green-50' : ''}`}>
+                        <td className="p-3 text-gray-700">
+                          {cf.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="p-3 text-gray-600 text-xs">{cf.description}</td>
+                        <td className={`p-3 text-right font-medium ${cf.type === 'inflow' ? 'text-green-600' : 'text-red-600'}`}>
+                          {cf.type === 'inflow' ? '+' : '-'}{Math.abs(cf.amount).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Profit */}
+              <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Net Profit</span>
+                  <span className="font-bold text-green-700 text-lg">
+                    AED {(xirrModalData.totalInflow - xirrModalData.totalOutflow).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 border-t bg-gray-50 flex gap-3">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => {
+                  // Generate CSV content
+                  let csv = 'Date,Description,Amount (AED),Type\n';
+                  xirrModalData.cashflows.forEach(cf => {
+                    csv += `${cf.date.toISOString().split('T')[0]},"${cf.description}",${cf.amount},${cf.type}\n`;
+                  });
+                  csv += `\nTotal Investment,,${-xirrModalData.totalOutflow},outflow\n`;
+                  csv += `Total Sale Proceeds,,${xirrModalData.totalInflow},inflow\n`;
+                  csv += `Net Profit,,${xirrModalData.totalInflow - xirrModalData.totalOutflow},\n`;
+                  csv += `Expected XIRR,,${xirrModalData.xirr}%,\n`;
+                  
+                  // Download
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `XIRR_${xirrModalData.property}_Unit${xirrModalData.unit}.csv`;
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  toast.success('XIRR calculation downloaded');
+                }}
+                data-testid="download-xirr-btn"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download CSV
+              </Button>
+              <Button 
+                className="flex-1 bg-purple-600 hover:bg-purple-700"
+                onClick={() => setXirrModalData(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
