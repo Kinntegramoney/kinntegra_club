@@ -659,6 +659,7 @@ export default function BondDetails() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Secondary Market Calculator - Only show if bond is not fully funded or closed */}
           {isCalculatorDisabled ? (
