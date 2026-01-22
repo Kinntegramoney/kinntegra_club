@@ -11981,6 +11981,28 @@ async def update_bond(bond_id: str, bond_update: BondUpdate, current_user: dict 
     return updated_bond
 
 
+@api_router.delete("/bonds/{bond_id}")
+async def delete_bond(bond_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a bond (brokers only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can delete bonds")
+    
+    # Check if bond exists
+    bond = await db.bonds.find_one({"id": bond_id})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Check if bond has any trades
+    trades_count = await db.trades.count_documents({"bond_id": bond_id})
+    if trades_count > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete bond with existing trades ({trades_count} trades found)")
+    
+    # Delete the bond
+    await db.bonds.delete_one({"id": bond_id})
+    
+    return {"message": "Bond deleted successfully", "bond_id": bond_id}
+
+
 @api_router.post("/bonds/upload-calculator")
 async def upload_bond_calculator(
     file: UploadFile = File(...),
