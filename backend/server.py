@@ -5058,7 +5058,7 @@ async def bulk_upload_real_estate(
             })
             
         except Exception as e:
-            results['errors'].append(f"Row {idx+2}: {str(e)}")
+            results['errors'].append(f"{building_name} - Unit {unit_no}: {str(e)}")
             results['failed'] += 1
     
     return results
