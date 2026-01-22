@@ -1085,18 +1085,16 @@ export default function RealEstateDetails() {
                         const adminFeeAmount = opp.admin_fee || 0;
                         const combinedAmount = dldFeeAmount + adminFeeAmount;
                         
-                        // Combine DLD and Admin payments for tracking
-                        const dldPayments = opp.dld_admin_payments?.filter(p => p.type === 'dld') || [];
-                        const adminPayments = opp.dld_admin_payments?.filter(p => p.type === 'admin') || [];
+                        // Use unified dld_admin_documents for tracking
+                        const dldAdminDocs = opp.dld_admin_documents || [];
                         const totalInvestorsDld = opp.investors?.length || 0;
                         
-                        // Count statuses from both types
-                        const invoicesSentDld = dldPayments.filter(p => p.invoice_url).length + adminPayments.filter(p => p.invoice_url).length;
-                        const verifiedCountDld = dldPayments.filter(p => p.swift_verified).length;
-                        const verifiedCountAdmin = adminPayments.filter(p => p.swift_verified).length;
-                        const allVerifiedDld = totalInvestorsDld > 0 && verifiedCountDld === totalInvestorsDld && verifiedCountAdmin === totalInvestorsDld;
-                        const pendingCountDld = dldPayments.filter(p => p.swift_copy && !p.swift_verified).length + adminPayments.filter(p => p.swift_copy && !p.swift_verified).length;
-                        const receiptsUploadedDld = dldPayments.filter(p => p.receipt_url).length + adminPayments.filter(p => p.receipt_url).length;
+                        // Count statuses
+                        const invoicesSentDld = dldAdminDocs.filter(d => d.invoice_url).length;
+                        const verifiedCountDld = dldAdminDocs.filter(d => d.swift_verified).length;
+                        const allVerifiedDld = totalInvestorsDld > 0 && verifiedCountDld === totalInvestorsDld;
+                        const pendingCountDld = dldAdminDocs.filter(d => d.swift_url && !d.swift_verified).length;
+                        const receiptsUploadedDld = dldAdminDocs.filter(d => d.receipt_url).length;
                         
                         rows.push(
                           <tr key="dld-admin-combined" className={`border-b border-gray-100 hover:bg-amber-50/30 ${allVerifiedDld ? 'bg-green-50/50' : 'bg-amber-50/20'}`}>
@@ -1133,21 +1131,21 @@ export default function RealEstateDetails() {
                                 <div className="flex items-center gap-2 justify-center">
                                   <div className="flex flex-col items-center" title="Invoices">
                                     <div className="w-12 bg-gray-200 rounded-full h-1.5">
-                                      <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(invoicesSentDld / (totalInvestorsDld * 2)) * 100}%` }} />
+                                      <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(invoicesSentDld / totalInvestorsDld) * 100}%` }} />
                                     </div>
-                                    <span className="text-[10px] text-blue-600">{invoicesSentDld}/{totalInvestorsDld * 2}</span>
+                                    <span className="text-[10px] text-blue-600">{invoicesSentDld}/{totalInvestorsDld}</span>
                                   </div>
                                   <div className="flex flex-col items-center" title="Payments">
                                     <div className="w-12 bg-gray-200 rounded-full h-1.5">
-                                      <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${((verifiedCountDld + verifiedCountAdmin) / (totalInvestorsDld * 2)) * 100}%` }} />
+                                      <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${(verifiedCountDld / totalInvestorsDld) * 100}%` }} />
                                     </div>
-                                    <span className="text-[10px] text-green-600">{verifiedCountDld + verifiedCountAdmin}/{totalInvestorsDld * 2}</span>
+                                    <span className="text-[10px] text-green-600">{verifiedCountDld}/{totalInvestorsDld}</span>
                                   </div>
                                   <div className="flex flex-col items-center" title="Receipts">
                                     <div className="w-12 bg-gray-200 rounded-full h-1.5">
-                                      <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(receiptsUploadedDld / (totalInvestorsDld * 2)) * 100}%` }} />
+                                      <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(receiptsUploadedDld / totalInvestorsDld) * 100}%` }} />
                                     </div>
-                                    <span className="text-[10px] text-purple-600">{receiptsUploadedDld}/{totalInvestorsDld * 2}</span>
+                                    <span className="text-[10px] text-purple-600">{receiptsUploadedDld}/{totalInvestorsDld}</span>
                                   </div>
                                 </div>
                               ) : (
@@ -1161,7 +1159,7 @@ export default function RealEstateDetails() {
                                 <Badge className="bg-blue-100 text-blue-700">Open</Badge>
                               ) : allVerifiedDld ? (
                                 <Badge className="bg-green-100 text-green-700"><Check className="h-3 w-3 mr-1" />Complete</Badge>
-                              ) : (verifiedCountDld + verifiedCountAdmin) > 0 ? (
+                              ) : verifiedCountDld > 0 ? (
                                 <Badge className="bg-blue-100 text-blue-700">Partial</Badge>
                               ) : pendingCountDld > 0 ? (
                                 <Badge className="bg-amber-100 text-amber-700"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
