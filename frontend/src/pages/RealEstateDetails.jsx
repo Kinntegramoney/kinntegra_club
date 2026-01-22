@@ -1170,63 +1170,174 @@ export default function RealEstateDetails() {
                               )}
                             </td>
                             
-                            {/* Per-Investor columns for combined DLD + Admin */}
+                            {/* Per-Investor columns for combined DLD + Admin - Same as installment rows */}
                             {opp.investors?.map((investor) => {
-                              const invDld = dldPayments.find(p => p.investor_id === investor.client_id);
-                              const invAdmin = adminPayments.find(p => p.investor_id === investor.client_id);
+                              // Get DLD and Admin payment records for this investor
+                              const invDldAdmin = opp.dld_admin_payments?.find(p => p.investor_id === investor.client_id) || {};
                               const sharePercent = investor.share_percentage || (100 / opp.investors.length);
                               const investorDldAmount = dldFeeAmount * sharePercent / 100;
                               const investorAdminAmount = adminFeeAmount * sharePercent / 100;
                               const investorTotalAmount = investorDldAmount + investorAdminAmount;
                               
-                              // Determine combined status
-                              const hasDldSwift = invDld?.swift_copy;
-                              const hasAdminSwift = invAdmin?.swift_copy;
-                              const dldVerified = invDld?.swift_verified;
-                              const adminVerified = invAdmin?.swift_verified;
-                              const bothVerified = dldVerified && adminVerified;
-                              const anyPending = (hasDldSwift && !dldVerified) || (hasAdminSwift && !adminVerified);
+                              // Document status
+                              const hasInvoice = !!invDldAdmin.invoice_url;
+                              const hasSwift = !!invDldAdmin.swift_copy;
+                              const hasReceipt = !!invDldAdmin.receipt_url;
+                              const isVerified = invDldAdmin.swift_verified;
+                              const isPending = hasSwift && !isVerified;
+                              const receiptApproved = invDldAdmin.receipt_approved;
+                              
+                              // Sequential workflow: Invoice → SWIFT (verify) → Receipt (approve)
+                              const canUploadSwift = hasInvoice && !hasSwift;
+                              const canUploadReceipt = hasSwift && isVerified && !hasReceipt;
                               
                               return (
-                                <td key={investor.client_id} className="py-3 px-2 text-center">
-                                  <div className="flex flex-col items-center gap-1.5">
-                                    <div className="flex items-center gap-1">
-                                      {/* DLD Payment Status */}
-                                      <div 
-                                        className={`w-5 h-5 rounded text-[9px] font-bold flex items-center justify-center cursor-pointer ${
-                                          dldVerified ? 'bg-green-100 text-green-600' :
-                                          hasDldSwift ? 'bg-amber-100 text-amber-600' :
-                                          'bg-gray-100 text-gray-400'
-                                        }`}
-                                        title={`DLD: ${dldVerified ? 'Verified' : hasDldSwift ? 'Pending' : 'Not Paid'}`}
-                                        onClick={() => {
-                                          if (!dldVerified) {
-                                            setSelectedDldAdminPayment({ investor, type: 'dld', existing: invDld });
-                                            setShowDldAdminModal(true);
-                                          }
-                                        }}
-                                      >
-                                        D
+                                <td key={investor.client_id} className="py-2 px-2 text-center border-l border-gray-100">
+                                  <div className="flex flex-col items-center gap-0.5">
+                                    {/* Document Columns - Same as installment rows */}
+                                    <div className="flex items-start gap-1">
+                                      {/* 1. Invoice Column */}
+                                      <div className="flex flex-col items-center w-8">
+                                        {hasInvoice ? (
+                                          <>
+                                            <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
+                                            <button className="text-[8px] text-blue-600 hover:text-blue-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.invoice_url}`, '_blank')}>View</button>
+                                          </>
+                                        ) : user?.role === 'broker' ? (
+                                          <>
+                                            <button 
+                                              className="w-6 h-6 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center" 
+                                              onClick={() => { 
+                                                setSelectedDldAdminInvestor({ investor, dldFee: investorDldAmount, adminFee: investorAdminAmount, total: investorTotalAmount }); 
+                                                setDldAdminUploadType('invoice'); 
+                                                setShowDldAdminModal(true); 
+                                              }} 
+                                              title="Upload Invoice"
+                                            >
+                                              <Upload className="h-3 w-3" />
+                                            </button>
+                                            <span className="text-[8px] text-gray-400">Upload</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span className="w-6 h-6 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-3 w-3" /></span>
+                                            <span className="text-[8px] text-gray-400">Pending</span>
+                                          </>
+                                        )}
                                       </div>
-                                      {/* Admin Payment Status */}
-                                      <div 
-                                        className={`w-5 h-5 rounded text-[9px] font-bold flex items-center justify-center cursor-pointer ${
-                                          adminVerified ? 'bg-green-100 text-green-600' :
-                                          hasAdminSwift ? 'bg-amber-100 text-amber-600' :
-                                          'bg-gray-100 text-gray-400'
-                                        }`}
-                                        title={`Admin: ${adminVerified ? 'Verified' : hasAdminSwift ? 'Pending' : 'Not Paid'}`}
-                                        onClick={() => {
-                                          if (!adminVerified) {
-                                            setSelectedDldAdminPayment({ investor, type: 'admin', existing: invAdmin });
-                                            setShowDldAdminModal(true);
-                                          }
-                                        }}
-                                      >
-                                        A
+                                      
+                                      {/* 2. SWIFT Column */}
+                                      <div className="flex flex-col items-center w-8">
+                                        {hasSwift ? (
+                                          <>
+                                            <span className={`w-6 h-6 rounded flex items-center justify-center ${isVerified ? 'bg-teal-100 text-teal-600' : 'bg-amber-100 text-amber-600'}`}>
+                                              {isVerified ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </span>
+                                            <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.swift_copy}`, '_blank')}>View</button>
+                                            {isPending && user?.role === 'broker' && (
+                                              <button 
+                                                className="text-[8px] text-green-600 hover:text-green-800 font-medium"
+                                                onClick={async () => {
+                                                  try {
+                                                    const token = localStorage.getItem("token");
+                                                    await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/dld-admin/${investor.client_id}/verify`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                                    fetchData();
+                                                    toast.success("SWIFT verified!");
+                                                  } catch (error) {
+                                                    toast.error("Failed to verify");
+                                                  }
+                                                }}
+                                              >
+                                                Verify
+                                              </button>
+                                            )}
+                                            {isPending && user?.role !== 'broker' && (
+                                              <span className="text-[8px] text-amber-500">Pending</span>
+                                            )}
+                                          </>
+                                        ) : canUploadSwift ? (
+                                          <>
+                                            <button 
+                                              className="w-6 h-6 rounded bg-teal-500 hover:bg-teal-600 text-white flex items-center justify-center" 
+                                              onClick={() => { 
+                                                setSelectedDldAdminInvestor({ investor, dldFee: investorDldAmount, adminFee: investorAdminAmount, total: investorTotalAmount }); 
+                                                setDldAdminUploadType('swift'); 
+                                                setShowDldAdminModal(true); 
+                                              }} 
+                                              title="Upload SWIFT"
+                                            >
+                                              <Upload className="h-3 w-3" />
+                                            </button>
+                                            <span className="text-[8px] text-gray-400">Upload</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span className="w-6 h-6 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-3 w-3" /></span>
+                                            <span className="text-[8px] text-gray-400">Pending</span>
+                                          </>
+                                        )}
+                                      </div>
+                                      
+                                      {/* 3. Receipt Column */}
+                                      <div className="flex flex-col items-center w-8">
+                                        {hasReceipt ? (
+                                          <>
+                                            <span className={`w-6 h-6 rounded flex items-center justify-center ${receiptApproved ? 'bg-purple-100 text-purple-600' : 'bg-amber-100 text-amber-600'}`}>
+                                              {receiptApproved ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </span>
+                                            <button className="text-[8px] text-purple-600 hover:text-purple-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.receipt_url}`, '_blank')}>View</button>
+                                            {!receiptApproved && user?.role === 'broker' && (
+                                              <button 
+                                                className="text-[8px] text-green-600 hover:text-green-800 font-medium"
+                                                onClick={async () => {
+                                                  try {
+                                                    const token = localStorage.getItem("token");
+                                                    await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/dld-admin/${investor.client_id}/approve-receipt`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                                    fetchData();
+                                                    toast.success("Receipt approved!");
+                                                  } catch (error) {
+                                                    toast.error("Failed to approve");
+                                                  }
+                                                }}
+                                              >
+                                                Approve
+                                              </button>
+                                            )}
+                                            {!receiptApproved && user?.role !== 'broker' && (
+                                              <span className="text-[8px] text-amber-500">Pending</span>
+                                            )}
+                                          </>
+                                        ) : canUploadReceipt ? (
+                                          <>
+                                            <button 
+                                              className="w-6 h-6 rounded bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center" 
+                                              onClick={() => { 
+                                                setSelectedDldAdminInvestor({ investor, dldFee: investorDldAmount, adminFee: investorAdminAmount, total: investorTotalAmount }); 
+                                                setDldAdminUploadType('receipt'); 
+                                                setShowDldAdminModal(true); 
+                                              }} 
+                                              title="Upload Receipt"
+                                            >
+                                              <Upload className="h-3 w-3" />
+                                            </button>
+                                            <span className="text-[8px] text-gray-400">Upload</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span className="w-6 h-6 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-3 w-3" /></span>
+                                            <span className="text-[8px] text-gray-400">Pending</span>
+                                          </>
+                                        )}
                                       </div>
                                     </div>
-                                    <span className="text-[9px] font-medium text-amber-600">AED {formatCurrency(investorTotalAmount)}</span>
+                                    
+                                    {/* Status & Amount */}
+                                    <div className="text-[10px]">
+                                      <span className={`font-medium ${isVerified ? 'text-green-600' : isPending ? 'text-amber-600' : 'text-gray-400'}`}>
+                                        {isVerified ? '✓' : isPending ? '⏳' : '○'}
+                                      </span>
+                                      <span className="text-amber-600 ml-1">AED {formatCurrency(investorTotalAmount)}</span>
+                                    </div>
                                   </div>
                                 </td>
                               );
