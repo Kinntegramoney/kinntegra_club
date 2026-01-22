@@ -345,19 +345,23 @@ export default function BondDetails() {
       const dateStr = format(cfDate, "MMM dd, yyyy");
       const dateValue = cfDate.getTime();
       
+      // Handle both naming conventions: interest/principal or interest_per_unit/principal_per_unit
+      const interestAmount = cf.interest_per_unit || cf.interest || 0;
+      const principalAmount = cf.principal_per_unit || cf.principal || 0;
+      
       chartData.push({
         date: dateStr,
         dateValue: dateValue,
-        Interest: cf.interest || 0,
-        Principal: cf.principal || 0
+        Interest: interestAmount,
+        Principal: principalAmount
       });
       
       // Build display arrays
-      if (cf.interest && cf.interest > 0) {
-        displayInterestPayments.push({ date: cf.date, amount: cf.interest });
+      if (interestAmount > 0) {
+        displayInterestPayments.push({ date: cf.date, amount: interestAmount });
       }
-      if (cf.principal && cf.principal > 0) {
-        displayPrincipalPayments.push({ date: cf.date, amount: cf.principal });
+      if (principalAmount > 0) {
+        displayPrincipalPayments.push({ date: cf.date, amount: principalAmount });
       }
     });
   } else {
