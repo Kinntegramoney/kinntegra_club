@@ -466,22 +466,38 @@ export default function Opportunities() {
           </p>
         </div>
 
-        {/* Quick Calculator - Investment Range */}
+        {/* Quick Calculator - Fillable Input */}
         {status === 'available' && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 mb-4">
             <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
               <Calculator className="h-3 w-3" />
-              Quick Calculator
+              Quick Calculator (Price/Unit: {formatCurrency(Math.round(todayPrice))})
             </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <p className="text-gray-500">1 Unit</p>
-                <p className="font-mono font-semibold text-blue-700">{formatCurrency(Math.round(todayPrice))}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">5 Units</p>
-                <p className="font-mono font-semibold text-blue-700">{formatCurrency(Math.round(todayPrice * 5))}</p>
-              </div>
+            <div className="flex gap-2 items-center">
+              <input 
+                type="number" 
+                min="1" 
+                max={unitsAvailable}
+                placeholder="Units"
+                className="w-20 px-2 py-1 text-xs border rounded focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                onChange={(e) => {
+                  const units = parseInt(e.target.value) || 0;
+                  const resultEl = e.target.parentElement.querySelector('.calc-result');
+                  if (resultEl && units > 0) {
+                    const total = Math.round(todayPrice * units);
+                    resultEl.textContent = `₹${total.toLocaleString('en-IN')}`;
+                    resultEl.classList.remove('text-gray-400');
+                    resultEl.classList.add('text-emerald-700');
+                  } else if (resultEl) {
+                    resultEl.textContent = 'Enter units';
+                    resultEl.classList.add('text-gray-400');
+                    resultEl.classList.remove('text-emerald-700');
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <span className="text-gray-400 text-xs">=</span>
+              <span className="calc-result flex-1 font-mono font-semibold text-sm text-gray-400">Enter units</span>
             </div>
           </div>
         )}
