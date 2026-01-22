@@ -394,11 +394,19 @@ export default function Opportunities() {
             <p className="font-semibold text-slate-700">{bond.bond_code}</p>
           </div>
           
-          {/* Company */}
+          {/* Company - full width */}
           <div className="bg-slate-50 rounded-lg p-3">
             <p className="text-xs text-gray-500 mb-1">Company</p>
             <p className="font-semibold text-slate-700">{bond.issuer || 'NCD'}</p>
           </div>
+        </div>
+
+        {/* Price/Unit - Full Width */}
+        <div className="bg-amber-50 rounded-lg p-3 mb-4">
+          <p className="text-xs text-gray-500 mb-1">
+            Price/Unit ({new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})
+          </p>
+          <p className="font-semibold text-amber-700">{formatCurrency(Math.round(todayPrice))}</p>
         </div>
 
         {/* Bond Info Grid - Row 1 */}
@@ -409,23 +417,15 @@ export default function Opportunities() {
             <p className="font-semibold text-gray-800">{formatCurrency(faceValue)}</p>
           </div>
           
-          {/* Today's Price Per Unit (calculated using secondary IRR) */}
-          <div className="bg-amber-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">
-              Price/Unit ({new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})
-            </p>
-            <p className="font-semibold text-amber-700">{formatCurrency(Math.round(todayPrice))}</p>
-          </div>
-        </div>
-
-        {/* Bond Info Grid - Row 2 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
           {/* Expected IRR */}
           <div className="bg-green-50 rounded-lg p-3">
             <p className="text-xs text-gray-500 mb-1">Expected IRR</p>
             <p className="font-semibold text-green-700">{bond.secondary_irr || bond.primary_irr}%</p>
           </div>
-          
+        </div>
+
+        {/* Bond Info Grid - Row 2 */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
           {/* Units Available */}
           <div className="bg-purple-50 rounded-lg p-3">
             <p className="text-xs text-gray-500 mb-1">Units Available</p>
@@ -433,12 +433,9 @@ export default function Opportunities() {
               {status === 'available' ? `${unitsAvailable} of ${bond.total_units || 1}` : `${bond.total_units || 1} (Sold)`}
             </p>
           </div>
-        </div>
-
-        {/* Bond Info Grid - Row 3 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+          
           {/* Maturity */}
-          <div className="bg-rose-50 rounded-lg p-3 col-span-2">
+          <div className="bg-rose-50 rounded-lg p-3">
             <p className="text-xs text-gray-500 mb-1">Maturity Date</p>
             <p className="font-semibold text-rose-700">
               {maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
