@@ -497,7 +497,7 @@ export default function BondDetails() {
                 <p className="text-2xl font-mono font-bold" data-testid="bond-principal-display">₹{bondData.principal_amount.toLocaleString()}</p>
               </div>
               <div className="metric-card rounded-md">
-                <p className="text-xs text-muted-foreground mb-1">Secondary IRR</p>
+                <p className="text-xs text-muted-foreground mb-1">XIRR</p>
                 <p className="text-2xl font-mono font-bold text-accent">{bondData.secondary_irr}%</p>
               </div>
               <div className="metric-card rounded-md">
