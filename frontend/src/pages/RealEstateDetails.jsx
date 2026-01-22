@@ -1206,8 +1206,11 @@ export default function RealEstateDetails() {
                               const receiptApproved = invDldAdmin.receipt_approved;
                               
                               // Sequential workflow: Invoice → SWIFT (verify) → Receipt (approve)
-                              const canUploadSwift = hasInvoice && !hasSwift;
-                              const canUploadReceipt = hasSwift && isVerified && !hasReceipt;
+                              const canUploadSwiftDld = hasInvoice && !hasSwift;
+                              const canUploadReceiptDld = hasSwift && isVerified && !hasReceipt;
+                              
+                              // Check if user can manage this investor's payment
+                              const canManageThisInvestor = canManageInvestorPayment(investor.client_id);
                               
                               return (
                                 <td key={investor.client_id} className="py-2 px-2 text-center border-l border-gray-100">
@@ -1221,7 +1224,7 @@ export default function RealEstateDetails() {
                                             <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
                                             <button className="text-[8px] text-blue-600 hover:text-blue-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.invoice_url}`, '_blank')}>View</button>
                                           </>
-                                        ) : user?.role === 'broker' ? (
+                                        ) : canManageThisInvestor ? (
                                           <>
                                             <button 
                                               className="w-6 h-6 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center" 
