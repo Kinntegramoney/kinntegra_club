@@ -4261,11 +4261,10 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
     for col, value in enumerate(financial_sample, 1):
         ws_financial.cell(row=2, column=col, value=value)
     
-    # Sheet 3: Units & Limits
+    # Sheet 3: Units & Limits (simplified - removed Interest Frequency and Cutoff Days)
     ws_units = wb.create_sheet("Units & Limits")
     
-    units_headers = ["Bond Code*", "Total Units*", "Minimum Units per Order", 
-                    "Interest Payment Frequency", "Cutoff Days"]
+    units_headers = ["Bond Code*", "Total Units*", "Minimum Units per Order"]
     for col, header in enumerate(units_headers, 1):
         cell = ws_units.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
@@ -4273,30 +4272,11 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
         cell.alignment = Alignment(horizontal="center", wrap_text=True)
         ws_units.column_dimensions[get_column_letter(col)].width = 25
     
-    units_sample = ["ABC-NCD-2025", 10, 1, "quarterly", 15]
+    units_sample = ["ABC-NCD-2025", 10, 1]
     for col, value in enumerate(units_sample, 1):
         ws_units.cell(row=2, column=col, value=value)
     
-    # Sheet 4: Principal Payments
-    ws_principal = wb.create_sheet("Principal Payments")
-    
-    principal_headers = ["Bond Code*", "Payment Description*", "Payment Date*", "Percentage*"]
-    for col, header in enumerate(principal_headers, 1):
-        cell = ws_principal.cell(row=1, column=col, value=header)
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = PatternFill(start_color="DC2626", end_color="DC2626", fill_type="solid")
-        cell.alignment = Alignment(horizontal="center", wrap_text=True)
-        ws_principal.column_dimensions[get_column_letter(col)].width = 22
-    
-    principal_samples = [
-        ["ABC-NCD-2025", "Partial Principal 1", "2026-07-15", 50],
-        ["ABC-NCD-2025", "Final Principal", "2027-01-15", 50],
-    ]
-    for row_idx, sample in enumerate(principal_samples, 2):
-        for col, value in enumerate(sample, 1):
-            ws_principal.cell(row=row_idx, column=col, value=value)
-    
-    # Sheet 5: Cashflows Per Unit (NEW - for exact cashflow schedules)
+    # Sheet 4: Cashflows Per Unit (Primary sheet for cashflow schedules)
     ws_cashflows = wb.create_sheet("Cashflows Per Unit")
     
     cashflow_headers = ["Bond Code*", "Payment Date*", "Interest Per Unit*", "Principal Per Unit*"]
