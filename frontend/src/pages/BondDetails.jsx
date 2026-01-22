@@ -42,6 +42,10 @@ export default function BondDetails() {
   const [enhancedCalculation, setEnhancedCalculation] = useState(null);
   const [calculatingEnhanced, setCalculatingEnhanced] = useState(false);
   const [settlementDate, setSettlementDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // Cashflow report modal state
+  const [showCashflowReport, setShowCashflowReport] = useState(false);
+  const [cashflowReportData, setCashflowReportData] = useState(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
