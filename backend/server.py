@@ -12708,9 +12708,11 @@ async def create_real_estate_opportunity(
 async def get_real_estate_opportunities(
     status: Optional[str] = None,
     property_type: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get all real estate opportunities"""
+    """Get all real estate opportunities with pagination and optimized fields"""
     query = {}
     
     if current_user['role'] == 'broker':
@@ -12722,8 +12724,48 @@ async def get_real_estate_opportunities(
     if property_type:
         query["property_type"] = property_type
     
-    opportunities = await db.real_estate_opportunities.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    return opportunities
+    # Optimized projection - exclude heavy fields for list view
+    projection = {
+        "_id": 0,
+        "id": 1,
+        "building_name": 1,
+        "project_name": 1,
+        "developer_name": 1,
+        "unit_no": 1,
+        "unit_type": 1,
+        "location": 1,
+        "total_area": 1,
+        "total_cost": 1,
+        "unit_price": 1,
+        "price_per_sqft": 1,
+        "expected_xirr": 1,
+        "status": 1,
+        "invested_percentage": 1,
+        "max_co_owners": 1,
+        "handover_date": 1,
+        "created_at": 1,
+        "investors": 1,  # Needed for count
+        # Exclude heavy fields: images, presentations, payment_schedule details
+    }
+    
+    skip = (page - 1) * limit
+    
+    opportunities = await db.real_estate_opportunities.find(
+        query, projection
+    ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Get total count for pagination info
+    total = await db.real_estate_opportunities.count_documents(query)
+    
+    return {
+        "data": opportunities,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "pages": (total + limit - 1) // limit
+        }
+    }
 
 
 @api_router.get("/real-estate-opportunities/client/{client_id}")
