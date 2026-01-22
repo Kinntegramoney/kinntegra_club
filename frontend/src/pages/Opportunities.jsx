@@ -111,6 +111,7 @@ export default function Opportunities() {
   const [editingBond, setEditingBond] = useState(null);
   const [editingRealEstate, setEditingRealEstate] = useState(null);
   const [clientInvestments, setClientInvestments] = useState([]); // Track which properties client has invested in
+  const [xirrModalData, setXirrModalData] = useState(null); // For XIRR calculation popup
 
   // Set page title
   useEffect(() => {
