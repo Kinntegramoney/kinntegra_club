@@ -242,16 +242,22 @@ export default function BondDetails() {
   };
 
   const downloadCashflow = async () => {
-    if (!calculation || !selectedUnits) {
+    if (!enhancedCalculation) {
       toast.error("Please calculate price first");
+      return;
+    }
+
+    const unitsToDownload = selectedUnits || enhancedCalculation.units_requested;
+    if (!unitsToDownload || unitsToDownload <= 0) {
+      toast.error("Please enter units");
       return;
     }
 
     setDownloading(true);
     try {
       const response = await axios.post(`${API}/bonds/${id}/download-cashflow`, {
-        investment_date: investmentDate,
-        units: selectedUnits
+        investment_date: settlementDate,
+        units: unitsToDownload
       });
       
       // Create CSV content WITHOUT rupee symbol to avoid encoding issues
@@ -272,6 +278,7 @@ export default function BondDetails() {
       csv += `Total TDS,${data.total_tds.toFixed(2)}\n`;
       csv += `Total Net Received,${data.total_net_received.toFixed(2)}\n`;
       csv += `\nNote: All amounts are in INR (Indian Rupees)\n`;
+      csv += `Note: Cashflows shown are only from investment date onwards (excluding ${bondData.cutoff_days || 15} days cutoff)\n`;
       
       // Download CSV
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
