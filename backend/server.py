@@ -15366,6 +15366,7 @@ async def get_xirr_comparison_report(
 class EmailShareRequest(BaseModel):
     client_ids: List[str]
     personal_message: Optional[str] = None
+    include_photos: Optional[bool] = True
 
 @api_router.post("/bonds/{bond_id}/share-email")
 async def share_bond_via_email(
