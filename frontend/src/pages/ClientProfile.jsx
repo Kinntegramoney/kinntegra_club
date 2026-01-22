@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import ClientSidebar from "@/components/ClientSidebar";
-import { User, Building2, Phone, Mail, MapPin, CreditCard, Users, Check, Shield } from "lucide-react";
+import { User, Building2, MapPin, CreditCard, UserCheck, FileText, Check } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -11,8 +12,12 @@ const API = `${BACKEND_URL}/api`;
 export default function ClientProfile() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const [clientDetails, setClientDetails] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    document.title = "Kinntegraa | My Profile";
+  }, []);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -28,16 +33,16 @@ export default function ClientProfile() {
     }
     
     setUser(parsedUser);
-    fetchProfile();
+    fetchProfile(parsedUser.client_id);
   }, [navigate]);
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (clientId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/client/profile`, {
+      const response = await axios.get(`${API}/clients/${clientId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setProfile(response.data);
+      setClientDetails(response.data);
     } catch (error) {
       console.error("Error fetching profile:", error);
       toast.error("Failed to load profile");
@@ -47,10 +52,6 @@ export default function ClientProfile() {
   };
 
   if (!user) return null;
-
-  const client = profile?.client;
-  const broker = profile?.broker;
-  const subbroker = profile?.subbroker;
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -68,7 +69,7 @@ export default function ClientProfile() {
                 View your profile and contact information
               </p>
             </div>
-            {client?.verification_status === 'verified' && (
+            {clientDetails?.verification_status === 'verified' && (
               <span className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full font-medium flex items-center gap-1">
                 <Check className="h-4 w-4" /> Verified
               </span>
@@ -77,10 +78,10 @@ export default function ClientProfile() {
         </div>
 
         {/* Content */}
-        <div className="p-4 md:p-8">
+        <div className="p-6">
           {loading ? (
             <div className="text-center py-12 text-gray-500">Loading profile...</div>
-          ) : !profile ? (
+          ) : !clientDetails ? (
             <div className="text-center py-12">
               <User className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">Profile not found</p>
@@ -88,267 +89,256 @@ export default function ClientProfile() {
           ) : (
             <div className="space-y-6">
               {/* Personal Details */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <User className="h-5 w-5 text-teal-600" />
-                    Personal Details
-                  </h2>
+              <div className="bg-white rounded-lg border border-gray-200 p-5">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <User className="h-5 w-5 text-amber-600" />
+                  <h3 className="font-semibold text-gray-800">Personal Details</h3>
                 </div>
-                <div className="p-6">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-teal-700">
-                        {client?.name?.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-800">{client?.name}</h3>
-                      <p className="text-sm text-gray-500 font-mono">{client?.pan_number}</p>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Full Name</p>
+                    <p className="font-medium text-gray-800">{clientDetails.name || '-'}</p>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Email</p>
-                        <p className="font-medium">{client?.email || '-'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Phone className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Mobile</p>
-                        <p className="font-medium">{client?.mobile || '-'}</p>
-                      </div>
-                    </div>
-                    {client?.occupation && (
-                      <div className="flex items-center gap-3">
-                        <Building2 className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase">Occupation</p>
-                          <p className="font-medium">{client.occupation}</p>
-                        </div>
-                      </div>
-                    )}
-                    {client?.date_of_birth && (
-                      <div className="flex items-center gap-3">
-                        <User className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase">Date of Birth</p>
-                          <p className="font-medium">{client.date_of_birth}</p>
-                        </div>
-                      </div>
-                    )}
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">PAN Number</p>
+                    <p className="font-mono font-medium text-gray-800">{clientDetails.pan_number || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Date of Birth</p>
+                    <p className="font-medium text-gray-800">
+                      {clientDetails.date_of_birth ? format(new Date(clientDetails.date_of_birth), "MMM dd, yyyy") : '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Father/Husband Name</p>
+                    <p className="font-medium text-gray-800">{clientDetails.father_husband_name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Occupation</p>
+                    <p className="font-medium text-gray-800">{clientDetails.occupation || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Demat Account No.</p>
+                    <p className="font-mono font-medium text-gray-800">{clientDetails.demat_account_no || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Email</p>
+                    <p className="font-medium text-gray-800">{clientDetails.email || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Mobile</p>
+                    <p className="font-medium text-gray-800">{clientDetails.mobile || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Country of Residency</p>
+                    <p className="font-medium text-gray-800">{clientDetails.country_of_residency || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Passport Type</p>
+                    <p className="font-medium text-gray-800 capitalize">{clientDetails.passport_type || 'Indian'}</p>
                   </div>
                 </div>
               </div>
-
-              {/* Address */}
-              {(client?.address_line1 || client?.city) && (
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                      <MapPin className="h-5 w-5 text-teal-600" />
-                      Address
-                    </h2>
+              
+              {/* Address Details */}
+              <div className="bg-white rounded-lg border border-gray-200 p-5">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <MapPin className="h-5 w-5 text-amber-600" />
+                  <h3 className="font-semibold text-gray-800">Address Details</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="lg:col-span-2">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Address Line 1</p>
+                    <p className="font-medium text-gray-800">{clientDetails.address_line1 || '-'}</p>
                   </div>
-                  <div className="p-6">
-                    <p className="text-gray-700">
-                      {client.address_line1}
-                      {client.address_line2 && <>, {client.address_line2}</>}
-                    </p>
-                    <p className="text-gray-700">
-                      {client.city}{client.state && `, ${client.state}`} - {client.pincode}
-                    </p>
-                    <p className="text-gray-500">{client.country}</p>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Address Line 2</p>
+                    <p className="font-medium text-gray-800">{clientDetails.address_line2 || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">City</p>
+                    <p className="font-medium text-gray-800">{clientDetails.city || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">State</p>
+                    <p className="font-medium text-gray-800">{clientDetails.state || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Pincode</p>
+                    <p className="font-mono font-medium text-gray-800">{clientDetails.pincode || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Country</p>
+                    <p className="font-medium text-gray-800">{clientDetails.country || 'India'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Bank Details */}
+              <div className="bg-white rounded-lg border border-gray-200 p-5">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <Building2 className="h-5 w-5 text-amber-600" />
+                  <h3 className="font-semibold text-gray-800">Bank Details</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Name</p>
+                    <p className="font-medium text-gray-800">{clientDetails.bank_name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Account Number</p>
+                    <p className="font-mono font-medium text-gray-800">{clientDetails.account_number || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Branch</p>
+                    <p className="font-medium text-gray-800">{clientDetails.branch || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">IFSC Code</p>
+                    <p className="font-mono font-medium text-gray-800">{clientDetails.ifsc_code || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Account Type</p>
+                    <p className="font-medium text-gray-800">{clientDetails.account_type || '-'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* International Bank Details (NRI) */}
+              {(clientDetails.passport_type === 'foreign' || clientDetails.intl_bank_name) && (
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                    <Building2 className="h-5 w-5 text-blue-600" />
+                    <h3 className="font-semibold text-gray-800">International Bank Details</h3>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded ml-auto">NRI</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Name</p>
+                      <p className="font-medium text-gray-800">{clientDetails.intl_bank_name || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Account Number</p>
+                      <p className="font-mono font-medium text-gray-800">{clientDetails.intl_account_number || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">IBAN</p>
+                      <p className="font-mono font-medium text-gray-800">{clientDetails.intl_iban || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">SWIFT Code</p>
+                      <p className="font-mono font-medium text-gray-800">{clientDetails.intl_swift_code || '-'}</p>
+                    </div>
                   </div>
                 </div>
               )}
-
-              {/* Bank Details - Always show for clients to encourage adding details */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-teal-600" />
-                    Bank Details
-                  </h2>
-                </div>
-                {client?.bank_name ? (
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* Passport Details */}
+              {(clientDetails.passport_number || clientDetails.passport_type === 'foreign') && (
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                    <CreditCard className="h-5 w-5 text-indigo-600" />
+                    <h3 className="font-semibold text-gray-800">Passport Details</h3>
+                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded ml-auto capitalize">{clientDetails.passport_type || 'Indian'}</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Bank Name</p>
-                      <p className="font-medium">{client.bank_name}</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Passport Number</p>
+                      <p className="font-mono font-medium text-gray-800">{clientDetails.passport_number || '-'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Account Number</p>
-                      <p className="font-mono">
-                        {'*'.repeat(Math.max(0, (client.account_number?.length || 0) - 4))}
-                        {client.account_number?.slice(-4)}
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Valid From</p>
+                      <p className="font-medium text-gray-800">
+                        {clientDetails.passport_valid_from ? format(new Date(clientDetails.passport_valid_from), "MMM dd, yyyy") : '-'}
                       </p>
                     </div>
-                    {client.branch && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Valid Until</p>
+                      <p className="font-medium text-gray-800">
+                        {clientDetails.passport_valid_until ? format(new Date(clientDetails.passport_valid_until), "MMM dd, yyyy") : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Country of Issue</p>
+                      <p className="font-medium text-gray-800">{clientDetails.passport_country_of_issue || '-'}</p>
+                    </div>
+                    {clientDetails.country_of_residency && (
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">Branch</p>
-                        <p className="font-medium">{client.branch}</p>
-                      </div>
-                    )}
-                    {client.ifsc_code && (
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">IFSC Code</p>
-                        <p className="font-mono">{client.ifsc_code}</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Country of Residency</p>
+                        <p className="font-medium text-gray-800">{clientDetails.country_of_residency || '-'}</p>
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="p-6 text-center">
-                    <CreditCard className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">No bank details added yet</p>
-                    <p className="text-xs text-gray-400 mt-1">Contact your broker to update your bank details</p>
+                </div>
+              )}
+              
+              {/* Emirates ID Details - Shows when country of residency is UAE */}
+              {clientDetails.country_of_residency && 
+               (clientDetails.country_of_residency.toLowerCase().includes('emirates') || 
+                clientDetails.country_of_residency.toLowerCase() === 'uae') && (
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                    <CreditCard className="h-5 w-5 text-teal-600" />
+                    <h3 className="font-semibold text-gray-800">Emirates ID Details</h3>
+                    <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded ml-auto">UAE Resident</span>
                   </div>
-                )}
-              </div>
-
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Emirates ID Number</p>
+                      <p className="font-mono font-medium text-gray-800">{clientDetails.emirates_id || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Emirates ID Expiry</p>
+                      <p className="font-medium text-gray-800">
+                        {clientDetails.emirates_id_expiry ? format(new Date(clientDetails.emirates_id_expiry), "MMM dd, yyyy") : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* UCC List */}
+              {clientDetails.ucc_list && clientDetails.ucc_list.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                    <FileText className="h-5 w-5 text-green-600" />
+                    <h3 className="font-semibold text-gray-800">UCC List</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {clientDetails.ucc_list.map((ucc, idx) => (
+                      <span key={idx} className="px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-sm font-mono">
+                        {ucc}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               {/* Nominee Details */}
-              {client?.nominee_name && (
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                      <Users className="h-5 w-5 text-teal-600" />
-                      Nominee Details
-                    </h2>
-                  </div>
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase">Nominee Name</p>
-                      <p className="font-medium">{client.nominee_name}</p>
-                    </div>
-                    {client.nominee_relationship && (
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Relationship</p>
-                        <p className="font-medium">{client.nominee_relationship}</p>
-                      </div>
-                    )}
-                    {client.nominee_dob && (
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Date of Birth</p>
-                        <p className="font-medium">{client.nominee_dob}</p>
-                      </div>
-                    )}
-                    {client.nominee_pan && (
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">PAN Number</p>
-                        <p className="font-mono">{client.nominee_pan}</p>
-                      </div>
-                    )}
-                    {client.nominee_address && (
-                      <div className="md:col-span-2">
-                        <p className="text-xs text-gray-500 uppercase">Address</p>
-                        <p className="font-medium">{client.nominee_address}</p>
-                      </div>
-                    )}
-                  </div>
+              <div className="bg-white rounded-lg border border-gray-200 p-5">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <UserCheck className="h-5 w-5 text-amber-600" />
+                  <h3 className="font-semibold text-gray-800">Nominee Details</h3>
                 </div>
-              )}
-
-              {/* UCC Details */}
-              {client?.ucc_code && (
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-teal-600" />
-                      UCC Details
-                    </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Nominee Name</p>
+                    <p className="font-medium text-gray-800">{clientDetails.nominee_name || '-'}</p>
                   </div>
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase">UCC Code</p>
-                      <p className="font-mono font-medium">{client.ucc_code}</p>
-                    </div>
-                    {client.demat_id && (
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Demat ID</p>
-                        <p className="font-mono">{client.demat_id}</p>
-                      </div>
-                    )}
-                    {client.dp_id && (
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">DP ID</p>
-                        <p className="font-mono">{client.dp_id}</p>
-                      </div>
-                    )}
-                    {client.client_id && (
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Client ID</p>
-                        <p className="font-mono">{client.client_id}</p>
-                      </div>
-                    )}
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Relationship</p>
+                    <p className="font-medium text-gray-800">{clientDetails.nominee_relationship || '-'}</p>
                   </div>
-                </div>
-              )}
-
-              {/* Broker & Sub-broker Details */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-teal-600" />
-                    Your Representatives
-                  </h2>
-                </div>
-                <div className="p-6 space-y-6">
-                  {/* Broker */}
-                  <div className="flex items-start gap-4 p-4 bg-amber-50 rounded-lg">
-                    <div className="w-12 h-12 rounded-full bg-amber-200 flex items-center justify-center flex-shrink-0">
-                      <Building2 className="h-6 w-6 text-amber-700" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-amber-600 uppercase font-medium">Your Broker</p>
-                      <p className="text-lg font-semibold text-gray-800">{broker?.name}</p>
-                      <div className="mt-2 space-y-1 text-sm text-gray-600">
-                        {broker?.email && (
-                          <p className="flex items-center gap-2">
-                            <Mail className="h-4 w-4" /> {broker.email}
-                          </p>
-                        )}
-                        {broker?.phone && (
-                          <p className="flex items-center gap-2">
-                            <Phone className="h-4 w-4" /> {broker.phone}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Date of Birth</p>
+                    <p className="font-medium text-gray-800">
+                      {clientDetails.nominee_dob ? format(new Date(clientDetails.nominee_dob), "MMM dd, yyyy") : '-'}
+                    </p>
                   </div>
-
-                  {/* Sub-broker */}
-                  {subbroker && (
-                    <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-lg">
-                      <div className="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center flex-shrink-0">
-                        <Users className="h-6 w-6 text-blue-700" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-blue-600 uppercase font-medium">Your Sub-Broker</p>
-                        <p className="text-lg font-semibold text-gray-800">{subbroker?.name}</p>
-                        <div className="mt-2 space-y-1 text-sm text-gray-600">
-                          {subbroker?.email && (
-                            <p className="flex items-center gap-2">
-                              <Mail className="h-4 w-4" /> {subbroker.email}
-                            </p>
-                          )}
-                          {subbroker?.phone && (
-                            <p className="flex items-center gap-2">
-                              <Phone className="h-4 w-4" /> {subbroker.phone}
-                            </p>
-                          )}
-                          {subbroker?.partner_details?.partner_code && (
-                            <p className="text-xs text-gray-500 font-mono mt-1">
-                              Code: {subbroker.partner_details.partner_code}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Mobile</p>
+                    <p className="font-medium text-gray-800">{clientDetails.nominee_mobile || '-'}</p>
+                  </div>
                 </div>
               </div>
             </div>
