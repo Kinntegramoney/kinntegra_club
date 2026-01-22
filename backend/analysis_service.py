@@ -505,6 +505,36 @@ class CASParser:
                             i += 1
                             continue
                         
+                        # Handle IDCW Payout (Dividend) transactions
+                        # Format: Date, Amount, ***IDCW Payout @ Rs.X.XX per unit***
+                        # These are dividend payouts that don't have NAV/Units
+                        if '***IDCW Payout' in nav_str or '***Dividend' in nav_str:
+                            try:
+                                payout_amount = float(amount_str.replace(',', '').replace('(', '-').replace(')', ''))
+                                if abs(payout_amount) > 0:
+                                    transaction = {
+                                        'date': date_str,
+                                        'amount': abs(payout_amount),
+                                        'nav': 0,
+                                        'units': 0,
+                                        'transaction_type': 'Dividend Payout',
+                                        'balance': 0,
+                                        'folio': current_folio,
+                                        'scheme': current_scheme,
+                                        'isin': current_isin,
+                                        'pan': current_pan,
+                                        'amc': current_amc,
+                                        'advisor': current_advisor,
+                                        'is_redemption': True  # Dividend is an outflow/income
+                                    }
+                                    self.transactions.append(transaction)
+                                    if current_key in self.folios:
+                                        self.folios[current_key]['transactions'].append(transaction)
+                            except ValueError:
+                                pass
+                            i += 1
+                            continue
+                        
                         # Check if amount_str looks like a TDS total payout (amount in parentheses)
                         # These appear after TDS entries and look like: (6,975.00), (99,808.00), etc.
                         # BUT amounts in parentheses are also valid for redemptions and dishonoured transactions!
