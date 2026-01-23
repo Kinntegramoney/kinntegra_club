@@ -143,10 +143,17 @@ export default function ReinvestmentTagging() {
               client_name: entry.client_name,
               client_pan: entry.client_pan,
               client_email: entry.client_email,
-              ucc_list: entry.ucc_list || [],
+              ucc_list: entry.ucc_list || entry.client_ucc_list || [],
               entries: []
             };
           }
+          // Ensure ucc_list is the union of all entries' ucc_lists
+          const newUccs = entry.ucc_list || entry.client_ucc_list || [];
+          newUccs.forEach(ucc => {
+            if (!groups[clientId].ucc_list.includes(ucc)) {
+              groups[clientId].ucc_list.push(ucc);
+            }
+          });
           groups[clientId].entries.push(entry);
         });
         return Object.values(groups);
