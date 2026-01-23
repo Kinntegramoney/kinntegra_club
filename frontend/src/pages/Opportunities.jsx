@@ -181,6 +181,7 @@ const getXirrCashflowsBreakdown = (opp) => {
 
 export default function Opportunities() {
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
   const [user, setUser] = useState(null);
   const [bonds, setBonds] = useState([]);
   const [realEstateOpps, setRealEstateOpps] = useState([]);
@@ -191,6 +192,14 @@ export default function Opportunities() {
   const [clientInvestments, setClientInvestments] = useState([]); // Track which properties client has invested in
   const [xirrModalData, setXirrModalData] = useState(null); // For XIRR calculation popup
   const [interestModal, setInterestModal] = useState(null); // For client interest modal {type: 'bond'/'real_estate', opportunity: {...}}
+  
+  // Permission checks
+  const canCreateBond = hasPermission("opportunities_bonds", "create");
+  const canEditBond = hasPermission("opportunities_bonds", "edit");
+  const canDeleteBond = hasPermission("opportunities_bonds", "delete");
+  const canCreateRealEstate = hasPermission("opportunities_real_estate", "create");
+  const canEditRealEstate = hasPermission("opportunities_real_estate", "edit");
+  const canDeleteRealEstate = hasPermission("opportunities_real_estate", "delete");
 
   // Set page title
   useEffect(() => {
