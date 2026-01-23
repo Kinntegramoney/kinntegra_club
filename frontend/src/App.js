@@ -365,6 +365,26 @@ function App() {
             } 
           />
           
+          {/* Sub-Broker Lead Management Route */}
+          <Route 
+            path="/sub-broker/leads" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <LeadManagement />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Sub-Broker Logs Route */}
+          <Route 
+            path="/sub-broker/logs" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <TradeLogs />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Sub-Broker Approval Logs Route */}
           <Route 
             path="/sub-broker/approval-logs" 
