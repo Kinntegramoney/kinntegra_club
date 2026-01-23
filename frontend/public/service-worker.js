@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-globals */
 
-const CACHE_NAME = 'kinntegraa-cache-v1';
+const CACHE_NAME = 'kinntegraa-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,6 +8,16 @@ const STATIC_ASSETS = [
   '/favicon.ico',
   '/logo192.png',
   '/logo512.png'
+];
+
+// API endpoints to cache responses
+const API_CACHE_NAME = 'kinntegraa-api-cache-v1';
+const CACHEABLE_API_ROUTES = [
+  '/api/clients',
+  '/api/holdings',
+  '/api/reinvestment/upcoming',
+  '/api/bonds',
+  '/api/opportunities'
 ];
 
 // Install event - cache static assets
@@ -29,7 +39,9 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((cacheName) => cacheName !== CACHE_NAME)
+          .filter((cacheName) => 
+            cacheName !== CACHE_NAME && cacheName !== API_CACHE_NAME
+          )
           .map((cacheName) => {
             console.log('[ServiceWorker] Removing old cache:', cacheName);
             return caches.delete(cacheName);
@@ -40,18 +52,48 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - network first, fallback to cache
+// Fetch event - network first with cache fallback
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') {
     return;
   }
 
-  // Skip API calls - always fetch from network
-  if (event.request.url.includes('/api/')) {
+  const url = new URL(event.request.url);
+
+  // Handle API requests
+  if (url.pathname.startsWith('/api/')) {
+    // Check if this is a cacheable API route
+    const isCacheable = CACHEABLE_API_ROUTES.some(route => 
+      url.pathname.startsWith(route)
+    );
+
+    if (isCacheable) {
+      event.respondWith(
+        fetch(event.request)
+          .then((response) => {
+            // Clone and cache successful responses
+            if (response.status === 200) {
+              const responseClone = response.clone();
+              caches.open(API_CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseClone);
+              });
+            }
+            return response;
+          })
+          .catch(() => {
+            // Network failed, try cache
+            return caches.match(event.request);
+          })
+      );
+      return;
+    }
+    
+    // Non-cacheable API - just try network
     return;
   }
 
+  // Handle static assets
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -85,7 +127,23 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Handle push notifications (for future use)
+// Background Sync - process pending data when online
+self.addEventListener('sync', (event) => {
+  console.log('[ServiceWorker] Background sync:', event.tag);
+  
+  if (event.tag === 'sync-data') {
+    event.waitUntil(
+      // Notify all clients to process their sync queues
+      self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'SYNC_DATA' });
+        });
+      })
+    );
+  }
+});
+
+// Handle push notifications
 self.addEventListener('push', (event) => {
   if (event.data) {
     const data = event.data.json();
@@ -96,7 +154,11 @@ self.addEventListener('push', (event) => {
       vibrate: [100, 50, 100],
       data: {
         url: data.url || '/'
-      }
+      },
+      actions: [
+        { action: 'open', title: 'Open' },
+        { action: 'dismiss', title: 'Dismiss' }
+      ]
     };
     
     event.waitUntil(
@@ -109,7 +171,18 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
+  if (event.action === 'dismiss') {
+    return;
+  }
+  
   event.waitUntil(
     clients.openWindow(event.notification.data.url || '/')
   );
+});
+
+// Handle messages from main thread
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
