@@ -527,7 +527,6 @@ export default function Opportunities() {
             <p className="text-xs text-gray-500 mb-1">Investors</p>
             <p className="text-2xl font-bold text-indigo-600">
               {bond.unique_investors || bond.investor_count || 0}
-              <span className="text-gray-400 text-lg">/{bond.total_units || 1}</span>
             </p>
           </div>
         </div>
