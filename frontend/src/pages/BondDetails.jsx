@@ -160,7 +160,7 @@ export default function BondDetails() {
         client_id: selectedClient || null,
         units: unitsToBook,
         investment_date: bookingInvestmentDate,
-        calculated_price: Math.ceil(enhancedCalculation.clean_price_per_unit),
+        calculated_price: calculatedPricePerUnit,
         total_amount: totalAmount,
         payment_reference: paymentReference,
         payment_notes: paymentNotes,
