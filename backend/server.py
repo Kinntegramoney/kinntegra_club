@@ -11146,6 +11146,9 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
         "issuer": 1,
         "face_value": 1,
         "cashflows_per_unit": 1,  # Needed for price calculation
+        "cutoff_days": 1,  # Needed for price calculation
+        "interested_count": 1,  # For display on card
+        "current_investors": 1,  # For display on card
         "created_at": 1
     }
     
