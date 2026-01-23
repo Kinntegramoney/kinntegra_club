@@ -420,10 +420,22 @@ Complete 3-phase approval workflow for sub-broker actions:
 1. **Removed Tabs**: Logs page now shows a single unified view (no "Trade Logs" / "Reinvestment Approvals" tabs)
 2. **Merged Data Sources**: All data (trades, reinvestment logs, tagging logs) combined into one table
 3. **Column Change**: "Payment Mode" column replaced with "Portfolio" column
-4. **Trade Type Display**: Shows "Full Amount", "Partial", "No Reinvest" etc. for reinvestment entries
+4. **Trade Type Display**: Shows "Reinv-Principal", "Reinv-Interest", "Reinv-Both", "Reinv-None", "Reinv-Custom" for reinvestment entries
+5. **Date Display**: Uses `expected_date` (historical/future date) instead of `created_at` for reinvestment entries
 
 **Files Modified**:
-- `/app/frontend/src/pages/TradeLogs.jsx` - Removed tabs, changed `payment_mode` to `portfolio`
+- `/app/frontend/src/pages/TradeLogs.jsx` - Removed tabs, changed `payment_mode` to `portfolio`, updated type format
+
+### Tag Options Corrected (COMPLETED)
+**User Request**: Tag options should be Principal, Interest, Both, None, Custom (not Full Amount, Partial, No Reinvest)
+
+**Changes Implemented**:
+1. Updated `TAG_OPTIONS` array in `ReinvestmentTagging.jsx`
+2. Updated tag display in Tagged section to show correct labels
+3. Updated Logs page to show "Reinv-{tag}" format in Type column
+
+**Files Modified**:
+- `/app/frontend/src/pages/ReinvestmentTagging.jsx` - Updated TAG_OPTIONS and tag display
 
 ### Reinvestment Tagging Page - Backend Fix (COMPLETED)
 **Issue**: Historical entries were not appearing for broker users due to critical indentation bug.
