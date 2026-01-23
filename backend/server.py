@@ -5558,9 +5558,13 @@ async def bulk_upload_historical_trades(
                             results['failed'] += 1
                             continue
                         
-                        # Create trade
+                        # Create trade - set as UNTAGGED for tagging workflow
                         trade_id = str(uuid.uuid4())
                         price_per_unit = amount / units if units > 0 else 0
+                        
+                        # Determine if past or future dated
+                        inv_date_obj = datetime.fromisoformat(inv_date_str) if isinstance(inv_date_str, str) else inv_date
+                        is_past_dated = inv_date_obj.date() <= datetime.now().date()
                         
                         trade_dict = {
                             "id": trade_id,
@@ -5575,13 +5579,20 @@ async def bulk_upload_historical_trades(
                             "calculated_price": price_per_unit,
                             "total_amount": amount,
                             "payment_reference": utr,
-                            "status": "approved",
+                            "status": "untagged",  # All bulk uploads start as untagged
+                            "is_past_dated": is_past_dated,
+                            "tagging_status": "pending",  # pending -> tagged -> (client_approved for future)
+                            "ucc": None,  # To be filled during tagging
+                            "portfolio": None,  # To be filled during tagging
+                            "tagged_amount": None,  # Can be different from total_amount
+                            "tagged_by": None,
+                            "tagged_at": None,
+                            "client_approved": False,
+                            "client_approved_at": None,
                             "created_by": current_user['id'],
                             "created_by_name": current_user.get('name', 'System'),
                             "created_by_role": "broker",
-                            "broker_notes": "Historical import via bulk upload",
-                            "approved_by": current_user['id'],
-                            "approved_at": datetime.now(timezone.utc).isoformat(),
+                            "broker_notes": "Historical import via bulk upload - pending tagging",
                             "created_at": datetime.now(timezone.utc).isoformat(),
                             "is_historical": True
                         }
