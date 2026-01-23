@@ -1504,8 +1504,10 @@ async def create_client_by_subbroker(
     # Create client with pending approval status - include ALL fields from broker modal
     new_client = {
         "id": client_id,
-        "pan": pan,
-        "pan_number": pan,
+        "pan": login_id,  # Login ID (PAN or PAN+1 for role overlap)
+        "pan_number": pan,  # Original PAN stored separately
+        "original_pan": original_pan,
+        "is_role_overlap": is_role_overlap,
         "name": client_data.get('name', ''),
         "email": client_data.get('email', ''),
         "phone": client_data.get('mobile', client_data.get('phone', '')),
