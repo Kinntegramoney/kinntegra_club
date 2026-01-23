@@ -247,6 +247,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/broker/trade-tagging" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <UntaggedTrades />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Shared Routes */}
           <Route 
