@@ -644,11 +644,42 @@ export default function AdminClients() {
                     />
                   </div>
                   <div>
-                    <Label>Country of Residency</Label>
+                    <Label>Date of Birth</Label>
                     <Input
-                      value={editFormData.country_of_residency || ''}
-                      onChange={(e) => setEditFormData({...editFormData, country_of_residency: e.target.value})}
+                      type="date"
+                      value={editFormData.date_of_birth?.split('T')[0] || ''}
+                      onChange={(e) => setEditFormData({...editFormData, date_of_birth: e.target.value})}
                     />
+                  </div>
+                  <div>
+                    <Label>Occupation</Label>
+                    <Input
+                      value={editFormData.occupation || ''}
+                      onChange={(e) => setEditFormData({...editFormData, occupation: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Father/Husband Name</Label>
+                    <Input
+                      value={editFormData.father_husband_name || ''}
+                      onChange={(e) => setEditFormData({...editFormData, father_husband_name: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Country of Residency</Label>
+                    <Select 
+                      value={editFormData.country_of_residency || ''} 
+                      onValueChange={(v) => setEditFormData({...editFormData, country_of_residency: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.filter(c => c !== '---').map(country => (
+                          <SelectItem key={country} value={country}>{country}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   {editFormData.country_of_residency?.toLowerCase().includes('arab') && (
                     <div>
@@ -662,13 +693,6 @@ export default function AdminClients() {
                   <div>
                     <Label>Opportunities</Label>
                     <Input value={(editFormData.opportunities || []).join(', ')} disabled className="bg-gray-100" />
-                  </div>
-                  <div>
-                    <Label>Occupation</Label>
-                    <Input
-                      value={editFormData.occupation || ''}
-                      onChange={(e) => setEditFormData({...editFormData, occupation: e.target.value})}
-                    />
                   </div>
                 </div>
               </div>
@@ -824,17 +848,26 @@ export default function AdminClients() {
                   </div>
                   <div>
                     <Label>Country</Label>
-                    <Input
-                      value={editFormData.country || 'India'}
-                      onChange={(e) => setEditFormData({...editFormData, country: e.target.value})}
-                    />
+                    <Select 
+                      value={editFormData.country || 'India'} 
+                      onValueChange={(v) => setEditFormData({...editFormData, country: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.filter(c => c !== '---').map(country => (
+                          <SelectItem key={country} value={country}>{country}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
               
               {/* Bank Details */}
               <div className="space-y-3">
-                <h3 className="font-medium text-gray-700 border-b pb-2">Bank Details</h3>
+                <h3 className="font-medium text-gray-700 border-b pb-2">Indian Bank Details</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Bank Name</Label>
@@ -863,6 +896,105 @@ export default function AdminClients() {
                       value={editFormData.ifsc_code || ''}
                       onChange={(e) => setEditFormData({...editFormData, ifsc_code: e.target.value})}
                     />
+                  </div>
+                  <div>
+                    <Label>Account Type</Label>
+                    <Select 
+                      value={editFormData.account_type || ''} 
+                      onValueChange={(v) => setEditFormData({...editFormData, account_type: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Account Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Savings">Savings</SelectItem>
+                        <SelectItem value="Current">Current</SelectItem>
+                        <SelectItem value="NRE">NRE</SelectItem>
+                        <SelectItem value="NRO">NRO</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* International Bank Details - For NRIs/Foreign passport */}
+              {(editFormData.country_of_residency && editFormData.country_of_residency !== 'India') || editFormData.passport_type === 'foreign' ? (
+                <div className="space-y-3">
+                  <h3 className="font-medium text-gray-700 border-b pb-2">International Bank Details</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Bank Name</Label>
+                      <Input
+                        value={editFormData.intl_bank_name || ''}
+                        onChange={(e) => setEditFormData({...editFormData, intl_bank_name: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label>Account Number</Label>
+                      <Input
+                        value={editFormData.intl_account_number || ''}
+                        onChange={(e) => setEditFormData({...editFormData, intl_account_number: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label>IBAN</Label>
+                      <Input
+                        value={editFormData.intl_iban || ''}
+                        onChange={(e) => setEditFormData({...editFormData, intl_iban: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label>SWIFT Code</Label>
+                      <Input
+                        value={editFormData.intl_swift_code || ''}
+                        onChange={(e) => setEditFormData({...editFormData, intl_swift_code: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Nominee Details */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-gray-700 border-b pb-2">Nominee Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Nominee Name</Label>
+                    <Input
+                      value={editFormData.nominee_name || ''}
+                      onChange={(e) => setEditFormData({...editFormData, nominee_name: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Nominee Date of Birth</Label>
+                    <Input
+                      type="date"
+                      value={editFormData.nominee_dob?.split('T')[0] || ''}
+                      onChange={(e) => setEditFormData({...editFormData, nominee_dob: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Nominee Mobile</Label>
+                    <Input
+                      value={editFormData.nominee_mobile || ''}
+                      onChange={(e) => setEditFormData({...editFormData, nominee_mobile: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Relationship</Label>
+                    <Select 
+                      value={editFormData.nominee_relationship || ''} 
+                      onValueChange={(v) => setEditFormData({...editFormData, nominee_relationship: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Relationship" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RELATIONSHIPS.map(rel => (
+                          <SelectItem key={rel} value={rel}>{rel}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
