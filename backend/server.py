@@ -17667,6 +17667,179 @@ async def get_lead(lead_id: str, current_user: dict = Depends(get_current_user))
     return lead
 
 
+# ==================== PROJECTED VS ACTUALS COMPARISON ====================
+
+@api_router.get("/holdings/cashflow-comparison/{client_id}")
+async def get_cashflow_comparison(
+    client_id: str,
+    bond_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get projected vs actual cashflow comparison for a client.
+    Returns both projected cashflows (system-generated) and actual repayments (uploaded via historical trades).
+    """
+    # Clients can only view their own data
+    if current_user['role'] == 'client':
+        if current_user.get('client_id') != client_id:
+            raise HTTPException(status_code=403, detail="You can only view your own cashflow comparison")
+    
+    # Build query for projected cashflows
+    projected_query = {"client_id": client_id}
+    if bond_id:
+        projected_query["bond_id"] = bond_id
+    
+    # Get projected cashflows
+    projected = await db.holding_cashflows.find(projected_query, {"_id": 0}).to_list(10000)
+    
+    # Get actual repayments
+    actual_query = {"client_id": client_id}
+    if bond_id:
+        actual_query["bond_id"] = bond_id
+    
+    actuals = await db.actual_repayments.find(actual_query, {"_id": 0}).to_list(10000)
+    
+    # Get client's bond investments for context
+    trades = await db.trades.find(
+        {"client_id": client_id, "status": "approved"}, 
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Group by bond and date for comparison
+    comparison = {}
+    
+    # Process projected cashflows
+    for cf in projected:
+        bond_id_key = cf.get('bond_id', 'unknown')
+        date_key = cf.get('date', cf.get('payment_date', ''))
+        
+        if bond_id_key not in comparison:
+            comparison[bond_id_key] = {
+                "bond_name": cf.get('bond_name', ''),
+                "dates": {}
+            }
+        
+        if date_key not in comparison[bond_id_key]['dates']:
+            comparison[bond_id_key]['dates'][date_key] = {
+                "projected_interest": 0,
+                "projected_principal": 0,
+                "projected_total": 0,
+                "actual_interest": 0,
+                "actual_principal": 0,
+                "actual_gross": 0,
+                "actual_tds": 0,
+                "actual_net": 0,
+                "variance": 0,
+                "status": "pending"
+            }
+        
+        comparison[bond_id_key]['dates'][date_key]['projected_interest'] += cf.get('interest', cf.get('interest_amount', 0)) or 0
+        comparison[bond_id_key]['dates'][date_key]['projected_principal'] += cf.get('principal', cf.get('principal_amount', 0)) or 0
+        comparison[bond_id_key]['dates'][date_key]['projected_total'] = (
+            comparison[bond_id_key]['dates'][date_key]['projected_interest'] + 
+            comparison[bond_id_key]['dates'][date_key]['projected_principal']
+        )
+    
+    # Process actual repayments
+    for ar in actuals:
+        bond_id_key = ar.get('bond_id', 'unknown')
+        date_key = ar.get('repayment_date', '')
+        
+        if bond_id_key not in comparison:
+            comparison[bond_id_key] = {
+                "bond_name": ar.get('bond_name', ''),
+                "dates": {}
+            }
+        
+        if date_key not in comparison[bond_id_key]['dates']:
+            comparison[bond_id_key]['dates'][date_key] = {
+                "projected_interest": 0,
+                "projected_principal": 0,
+                "projected_total": 0,
+                "actual_interest": 0,
+                "actual_principal": 0,
+                "actual_gross": 0,
+                "actual_tds": 0,
+                "actual_net": 0,
+                "variance": 0,
+                "status": "unplanned"  # Actual without projected
+            }
+        
+        comparison[bond_id_key]['dates'][date_key]['actual_interest'] += ar.get('interest', 0) or 0
+        comparison[bond_id_key]['dates'][date_key]['actual_principal'] += ar.get('principal', 0) or 0
+        comparison[bond_id_key]['dates'][date_key]['actual_gross'] += ar.get('gross_amount', 0) or 0
+        comparison[bond_id_key]['dates'][date_key]['actual_tds'] += ar.get('tds', 0) or 0
+        comparison[bond_id_key]['dates'][date_key]['actual_net'] += ar.get('net_amount', 0) or 0
+    
+    # Calculate variance and status for each date
+    summary = {
+        "total_projected": 0,
+        "total_actual": 0,
+        "total_variance": 0,
+        "on_track": 0,
+        "shortfall": 0,
+        "excess": 0,
+        "pending": 0
+    }
+    
+    for bond_id_key, bond_data in comparison.items():
+        for date_key, data in bond_data['dates'].items():
+            projected = data['projected_total']
+            actual = data['actual_net']
+            
+            data['variance'] = actual - projected
+            
+            summary['total_projected'] += projected
+            summary['total_actual'] += actual
+            summary['total_variance'] += data['variance']
+            
+            # Determine status
+            if projected > 0 and actual > 0:
+                variance_pct = abs(data['variance']) / projected * 100 if projected > 0 else 0
+                if variance_pct <= 5:
+                    data['status'] = 'on_track'
+                    summary['on_track'] += 1
+                elif actual < projected:
+                    data['status'] = 'shortfall'
+                    summary['shortfall'] += 1
+                else:
+                    data['status'] = 'excess'
+                    summary['excess'] += 1
+            elif projected > 0 and actual == 0:
+                data['status'] = 'pending'
+                summary['pending'] += 1
+            elif actual > 0:
+                data['status'] = 'unplanned'
+    
+    return {
+        "client_id": client_id,
+        "comparison": comparison,
+        "summary": summary,
+        "trades": trades
+    }
+
+
+@api_router.get("/actual-repayments")
+async def get_actual_repayments(
+    client_id: Optional[str] = None,
+    bond_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get actual repayment records"""
+    query = {}
+    
+    if current_user['role'] == 'client':
+        query['client_id'] = current_user.get('client_id')
+    elif client_id:
+        query['client_id'] = client_id
+    
+    if bond_id:
+        query['bond_id'] = bond_id
+    
+    repayments = await db.actual_repayments.find(query, {"_id": 0}).sort("repayment_date", -1).to_list(10000)
+    return repayments
+
+
 # Reset broker password endpoint
 @api_router.get("/reset-broker-password")
 async def reset_broker_password():
