@@ -111,24 +111,34 @@ export default function TradeLogs() {
       }));
 
       // New reinvestment tagging logs
-      const taggingLogs = (reinvestmentTaggingRes.data || []).map(log => ({
-        id: log.id,
-        type: "reinvestment_tag",
-        client_name: log.client_name || "N/A",
-        ucc: log.target_ucc || "-",
-        date: log.created_at,
-        trade_type: log.reinvestment_tag === 'full' ? "Full Amount" : 
-                    log.reinvestment_tag === 'partial' ? "Partial" : 
-                    log.reinvestment_tag === 'no_reinvest' ? "No Reinvest" : log.reinvestment_tag,
-        amount: log.net_amount || 0,
-        portfolio: log.portfolio_category || "-",
-        advisor: log.tagged_by_name || "-",
-        status: log.approval_status || "pending",
-        bond_name: log.bond_name,
-        expected_date: log.expected_date,
-        is_past_date: log.is_past_date,
-        client_approved: log.client_approved,
-      }));
+      const taggingLogs = (reinvestmentTaggingRes.data || []).map(log => {
+        // Determine type label based on reinvestment_tag
+        let typeLabel = 'Reinv';
+        const tag = log.reinvestment_tag || '';
+        if (tag === 'principal') typeLabel = 'Reinv-Principal';
+        else if (tag === 'interest') typeLabel = 'Reinv-Interest';
+        else if (tag === 'both') typeLabel = 'Reinv-Both';
+        else if (tag === 'none') typeLabel = 'Reinv-None';
+        else if (tag === 'custom') typeLabel = 'Reinv-Custom';
+        else if (tag) typeLabel = `Reinv-${tag.charAt(0).toUpperCase() + tag.slice(1)}`;
+        
+        return {
+          id: log.id,
+          type: "reinvestment_tag",
+          client_name: log.client_name || "N/A",
+          ucc: log.target_ucc || "-",
+          date: log.expected_date || log.created_at, // Use expected_date (historical date) instead of created_at
+          trade_type: typeLabel,
+          amount: log.net_amount || 0,
+          portfolio: log.portfolio_category || "-",
+          advisor: log.tagged_by_name || "-",
+          status: log.approval_status || "pending",
+          bond_name: log.bond_name,
+          expected_date: log.expected_date,
+          is_past_date: log.is_past_date,
+          client_approved: log.client_approved,
+        };
+      });
 
       setLogs([...tradeLogs, ...reinvestmentLogs, ...taggingLogs].sort((a, b) => 
         new Date(b.date) - new Date(a.date)

@@ -35,9 +35,11 @@ const PORTFOLIO_OPTIONS = [
 ];
 
 const TAG_OPTIONS = [
-  { value: 'full', label: 'Full Amount' },
-  { value: 'partial', label: 'Partial' },
-  { value: 'no_reinvest', label: 'No Reinvest' }
+  { value: 'principal', label: 'Principal' },
+  { value: 'interest', label: 'Interest' },
+  { value: 'both', label: 'Both' },
+  { value: 'none', label: 'None' },
+  { value: 'custom', label: 'Custom' }
 ];
 
 export default function ReinvestmentTagging() {
