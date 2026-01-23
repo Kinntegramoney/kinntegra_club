@@ -718,7 +718,143 @@ async def customer_signup(signup: CustomerSignup):
     }
 
 
-@api_router.post("/auth/register")
+# ==================== ROLE PERMISSIONS ENDPOINTS ====================
+
+@api_router.get("/role-permissions")
+async def get_role_permissions(current_user: dict = Depends(get_current_user)):
+    """Get all role permissions. Broker can view and modify, others can only view their own permissions."""
+    # Get permissions from database or use defaults
+    permissions_doc = await db.role_permissions.find_one({"type": "master"})
+    
+    if permissions_doc:
+        permissions = permissions_doc.get("permissions", DEFAULT_ROLE_PERMISSIONS)
+    else:
+        # Initialize with defaults
+        await db.role_permissions.insert_one({
+            "type": "master",
+            "permissions": DEFAULT_ROLE_PERMISSIONS,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": None
+        })
+        permissions = DEFAULT_ROLE_PERMISSIONS
+    
+    # Remove MongoDB _id field
+    return {
+        "permissions": permissions,
+        "user_role": current_user.get("role"),
+        "can_edit": current_user.get("role") == "broker"
+    }
+
+@api_router.put("/role-permissions")
+async def update_role_permissions(
+    data: RolePermissionsUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update role permissions. Only brokers can modify permissions."""
+    if current_user.get("role") != "broker":
+        raise HTTPException(status_code=403, detail="Only brokers can modify role permissions")
+    
+    # Validate permissions structure
+    for perm in data.permissions:
+        if not all(key in perm for key in ["feature", "action", "broker", "sub_broker", "client"]):
+            raise HTTPException(status_code=400, detail="Invalid permission structure")
+    
+    # Update in database
+    await db.role_permissions.update_one(
+        {"type": "master"},
+        {
+            "$set": {
+                "permissions": data.permissions,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": current_user.get("id")
+            }
+        },
+        upsert=True
+    )
+    
+    return {"message": "Role permissions updated successfully", "permissions": data.permissions}
+
+@api_router.get("/role-permissions/check/{feature}/{action}")
+async def check_permission(
+    feature: str,
+    action: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Check if current user has permission for a specific feature and action"""
+    user_role = current_user.get("role", "client")
+    
+    # Get permissions
+    permissions_doc = await db.role_permissions.find_one({"type": "master"})
+    permissions = permissions_doc.get("permissions", DEFAULT_ROLE_PERMISSIONS) if permissions_doc else DEFAULT_ROLE_PERMISSIONS
+    
+    # Find matching permission
+    for perm in permissions:
+        if perm.get("feature") == feature and perm.get("action") == action:
+            has_permission = perm.get(user_role, False)
+            return {
+                "feature": feature,
+                "action": action,
+                "user_role": user_role,
+                "has_permission": has_permission,
+                "description": perm.get("description", "")
+            }
+    
+    # Default to False if permission not found
+    return {
+        "feature": feature,
+        "action": action,
+        "user_role": user_role,
+        "has_permission": False,
+        "description": "Permission not defined"
+    }
+
+@api_router.get("/role-permissions/user")
+async def get_user_permissions(current_user: dict = Depends(get_current_user)):
+    """Get all permissions for the current user based on their role"""
+    user_role = current_user.get("role", "client")
+    
+    # Get permissions
+    permissions_doc = await db.role_permissions.find_one({"type": "master"})
+    permissions = permissions_doc.get("permissions", DEFAULT_ROLE_PERMISSIONS) if permissions_doc else DEFAULT_ROLE_PERMISSIONS
+    
+    # Filter permissions for user's role
+    user_permissions = {}
+    for perm in permissions:
+        feature = perm.get("feature")
+        action = perm.get("action")
+        has_permission = perm.get(user_role, False)
+        
+        if feature not in user_permissions:
+            user_permissions[feature] = {}
+        user_permissions[feature][action] = has_permission
+    
+    return {
+        "user_role": user_role,
+        "permissions": user_permissions
+    }
+
+@api_router.post("/role-permissions/reset")
+async def reset_role_permissions(current_user: dict = Depends(get_current_user)):
+    """Reset role permissions to default. Only brokers can reset."""
+    if current_user.get("role") != "broker":
+        raise HTTPException(status_code=403, detail="Only brokers can reset role permissions")
+    
+    await db.role_permissions.update_one(
+        {"type": "master"},
+        {
+            "$set": {
+                "permissions": DEFAULT_ROLE_PERMISSIONS,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": current_user.get("id"),
+                "reset_at": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    
+    return {"message": "Role permissions reset to default", "permissions": DEFAULT_ROLE_PERMISSIONS}
+
+
 async def register_user(user_data: UserCreate):
     """Register a new user (broker or sub-broker)"""
     # Check if PAN already exists
