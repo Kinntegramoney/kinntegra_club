@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -19,26 +18,26 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { 
   Tag, RefreshCw, ChevronDown, ChevronUp, Mail, Save, 
-  Clock, CheckCircle, History, ArrowRight, Users, Search,
-  Check, X
+  Clock, CheckCircle, History, ArrowRight, Check, X
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const TAG_OPTIONS = [
-  { value: "reinvest", label: "Reinvest" },
-  { value: "withdraw", label: "Withdraw" },
-  { value: "not_invest", label: "Not Invest" },
-  { value: "other", label: "Other" },
+// Original options
+const PORTFOLIO_OPTIONS = [
+  { value: 'wealth', label: 'Wealth' },
+  { value: 'tax', label: 'Tax' },
+  { value: 'short_term', label: 'Short Term' },
+  { value: 'commodities', label: 'Commodities' },
+  { value: 'bonds', label: 'Bonds' },
+  { value: 'real_estate', label: 'Real Estate' }
 ];
 
-const PORTFOLIO_OPTIONS = [
-  { value: "equity", label: "Equity" },
-  { value: "debt", label: "Debt" },
-  { value: "hybrid", label: "Hybrid" },
-  { value: "gold", label: "Gold" },
-  { value: "real_estate", label: "Real Estate" },
+const TAG_OPTIONS = [
+  { value: 'full', label: 'Full Amount' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'no_reinvest', label: 'No Reinvest' }
 ];
 
 export default function ReinvestmentTagging() {
@@ -46,23 +45,30 @@ export default function ReinvestmentTagging() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("untagged");
-  const [activeSection, setActiveSection] = useState("past"); // "past" or "upcoming"
+  const [untaggedSection, setUntaggedSection] = useState("past");
+  const [taggedSection, setTaggedSection] = useState("past");
   
   // Data grouped by client
-  const [clientGroups, setClientGroups] = useState({ past: [], upcoming: [] });
-  const [taggedGroups, setTaggedGroups] = useState([]);
+  const [untaggedPast, setUntaggedPast] = useState([]);
+  const [untaggedUpcoming, setUntaggedUpcoming] = useState([]);
+  const [taggedPast, setTaggedPast] = useState([]);
+  const [taggedUpcoming, setTaggedUpcoming] = useState([]);
   
   // Expanded clients
   const [expandedClients, setExpandedClients] = useState({});
   
-  // Selection state for mass operations
+  // Selection state
   const [selectedEntries, setSelectedEntries] = useState({});
-  const [massTagValues, setMassTagValues] = useState({ tag: "", portfolio: "", ucc: "" });
   
-  // Local tag changes (per cashflow)
+  // Mass tag values
+  const [massUcc, setMassUcc] = useState("");
+  const [massPortfolio, setMassPortfolio] = useState("");
+  const [massTag, setMassTag] = useState("");
+  
+  // Local changes per entry
   const [localChanges, setLocalChanges] = useState({});
   
-  // Saving state
+  // Saving/sending state
   const [savingClient, setSavingClient] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(null);
 
@@ -91,20 +97,30 @@ export default function ReinvestmentTagging() {
       
       const data = response.data;
       
-      // Separate into past, upcoming, and tagged
-      const pastEntries = [];
-      const upcomingEntries = [];
-      const taggedEntries = [];
+      // Separate into categories
+      const untaggedPastItems = [];
+      const untaggedUpcomingItems = [];
+      const taggedPastItems = [];
+      const taggedUpcomingItems = [];
       
       // Flatten months data
       (data.months || []).forEach(month => {
         (month.items || []).forEach(item => {
-          if (item.reinvestment_tag && item.reinvestment_tag !== 'not_tagged') {
-            taggedEntries.push(item);
-          } else if (item.is_past_date) {
-            pastEntries.push(item);
+          const isTagged = item.reinvestment_tag && item.reinvestment_tag !== 'not_tagged';
+          const isPast = item.is_past_date;
+          
+          if (isTagged) {
+            if (isPast) {
+              taggedPastItems.push(item);
+            } else {
+              taggedUpcomingItems.push(item);
+            }
           } else {
-            upcomingEntries.push(item);
+            if (isPast) {
+              untaggedPastItems.push(item);
+            } else {
+              untaggedUpcomingItems.push(item);
+            }
           }
         });
       });
@@ -129,11 +145,10 @@ export default function ReinvestmentTagging() {
         return Object.values(groups);
       };
       
-      setClientGroups({
-        past: groupByClient(pastEntries),
-        upcoming: groupByClient(upcomingEntries)
-      });
-      setTaggedGroups(groupByClient(taggedEntries));
+      setUntaggedPast(groupByClient(untaggedPastItems));
+      setUntaggedUpcoming(groupByClient(untaggedUpcomingItems));
+      setTaggedPast(groupByClient(taggedPastItems));
+      setTaggedUpcoming(groupByClient(taggedUpcomingItems));
       
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -143,10 +158,11 @@ export default function ReinvestmentTagging() {
     }
   };
 
-  const toggleClientExpand = (clientId) => {
+  const toggleClientExpand = (clientId, section) => {
+    const key = `${section}_${clientId}`;
     setExpandedClients(prev => ({
       ...prev,
-      [clientId]: !prev[clientId]
+      [key]: !prev[key]
     }));
   };
 
@@ -157,7 +173,7 @@ export default function ReinvestmentTagging() {
     }));
   };
 
-  const handleSelectAllForClient = (clientId, entries, checked) => {
+  const handleSelectAllForClient = (entries, checked) => {
     const updates = {};
     entries.forEach(entry => {
       updates[entry.id] = checked;
@@ -175,6 +191,10 @@ export default function ReinvestmentTagging() {
     }));
   };
 
+  const getSelectedCount = () => {
+    return Object.values(selectedEntries).filter(Boolean).length;
+  };
+
   const applyMassTag = () => {
     const selectedIds = Object.keys(selectedEntries).filter(id => selectedEntries[id]);
     if (selectedIds.length === 0) {
@@ -182,71 +202,76 @@ export default function ReinvestmentTagging() {
       return;
     }
     
+    if (!massUcc && !massPortfolio && !massTag) {
+      toast.error("Please select at least one value to apply");
+      return;
+    }
+    
     const updates = {};
     selectedIds.forEach(id => {
       updates[id] = {
         ...localChanges[id],
-        ...(massTagValues.tag && { reinvestment_tag: massTagValues.tag }),
-        ...(massTagValues.portfolio && { portfolio_category: massTagValues.portfolio }),
-        ...(massTagValues.ucc && { target_ucc: massTagValues.ucc })
+        ...(massUcc && { target_ucc: massUcc }),
+        ...(massPortfolio && { portfolio_category: massPortfolio }),
+        ...(massTag && { reinvestment_tag: massTag })
       };
     });
     setLocalChanges(prev => ({ ...prev, ...updates }));
     toast.success(`Applied to ${selectedIds.length} entries`);
+    
+    // Clear mass values
+    setMassUcc("");
+    setMassPortfolio("");
+    setMassTag("");
   };
 
-  const isEntryComplete = (entry) => {
-    const changes = localChanges[entry.id] || {};
-    const tag = changes.reinvestment_tag || entry.reinvestment_tag;
-    const portfolio = changes.portfolio_category || entry.portfolio_category;
-    const ucc = changes.target_ucc || entry.target_ucc;
-    
-    // All 3 fields must be filled
-    return tag && tag !== 'not_tagged' && portfolio && ucc;
+  const clearSelection = () => {
+    setSelectedEntries({});
+    setMassUcc("");
+    setMassPortfolio("");
+    setMassTag("");
   };
 
-  const saveClientTags = async (clientGroup) => {
-    // Validate all entries have complete data
-    const incompleteEntries = clientGroup.entries.filter(entry => {
-      const changes = localChanges[entry.id] || {};
-      const tag = changes.reinvestment_tag || entry.reinvestment_tag;
-      const portfolio = changes.portfolio_category || entry.portfolio_category;
-      const ucc = changes.target_ucc || entry.target_ucc;
-      
-      // If there's a change, all 3 fields must be present
-      if (changes.reinvestment_tag || changes.portfolio_category || changes.target_ucc) {
-        return !tag || tag === 'not_tagged' || !portfolio || !ucc;
-      }
-      return false;
-    });
+  const saveClientTags = async (clientGroup, isPast) => {
+    // Validate: all 3 fields must be filled for entries with changes
+    const entriesToSave = clientGroup.entries.filter(entry => localChanges[entry.id]);
     
-    if (incompleteEntries.length > 0) {
-      toast.error("Please fill UCC, Portfolio, and Tag for all modified entries");
+    if (entriesToSave.length === 0) {
+      toast.error("No changes to save");
       return;
+    }
+    
+    for (const entry of entriesToSave) {
+      const changes = localChanges[entry.id];
+      const ucc = changes.target_ucc || entry.target_ucc;
+      const portfolio = changes.portfolio_category || entry.portfolio_category;
+      const tag = changes.reinvestment_tag || entry.reinvestment_tag;
+      
+      if (!ucc || !portfolio || !tag || tag === 'not_tagged') {
+        toast.error("Please fill UCC, Portfolio, and Tag for all modified entries");
+        return;
+      }
     }
     
     setSavingClient(clientGroup.client_id);
     try {
       const token = localStorage.getItem("token");
       
-      // Save each entry that has changes
-      for (const entry of clientGroup.entries) {
+      for (const entry of entriesToSave) {
         const changes = localChanges[entry.id];
-        if (changes && Object.keys(changes).length > 0) {
-          await axios.put(
-            `${API}/reinvestment/tag/${entry.id}`,
-            {
-              reinvestment_tag: changes.reinvestment_tag || entry.reinvestment_tag || 'reinvest',
-              portfolio_category: changes.portfolio_category || entry.portfolio_category,
-              target_ucc: changes.target_ucc || entry.target_ucc,
-              custom_amount: changes.custom_amount
-            },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-        }
+        await axios.put(
+          `${API}/reinvestment/tag/${entry.id}`,
+          {
+            reinvestment_tag: changes.reinvestment_tag || entry.reinvestment_tag,
+            portfolio_category: changes.portfolio_category || entry.portfolio_category,
+            target_ucc: changes.target_ucc || entry.target_ucc,
+            custom_amount: changes.custom_amount
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
       }
       
-      toast.success("Tags saved successfully");
+      toast.success(isPast ? "Tags saved and auto-approved (historical)" : "Tags saved successfully");
       
       // Clear local changes for this client
       const newLocalChanges = { ...localChanges };
@@ -255,7 +280,6 @@ export default function ReinvestmentTagging() {
       });
       setLocalChanges(newLocalChanges);
       
-      // Refresh data
       fetchData();
     } catch (error) {
       console.error("Error saving tags:", error);
@@ -266,20 +290,18 @@ export default function ReinvestmentTagging() {
   };
 
   const sendEmailToClient = async (clientGroup) => {
+    const taggedEntryIds = clientGroup.entries
+      .filter(e => e.reinvestment_tag && e.reinvestment_tag !== 'not_tagged' && !e.client_approved)
+      .map(e => e.id);
+    
+    if (taggedEntryIds.length === 0) {
+      toast.error("No entries pending approval");
+      return;
+    }
+    
     setSendingEmail(clientGroup.client_id);
     try {
       const token = localStorage.getItem("token");
-      
-      // Get all tagged entries for this client
-      const taggedEntryIds = clientGroup.entries
-        .filter(e => e.reinvestment_tag && e.reinvestment_tag !== 'not_tagged')
-        .map(e => e.id);
-      
-      if (taggedEntryIds.length === 0) {
-        toast.error("No tagged entries to send");
-        return;
-      }
-      
       await axios.post(
         `${API}/reinvestment/send-approval-email`,
         {
@@ -289,7 +311,7 @@ export default function ReinvestmentTagging() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      toast.success("Email sent to client for approval");
+      toast.success("Approval email sent to client");
       fetchData();
     } catch (error) {
       console.error("Error sending email:", error);
@@ -309,45 +331,51 @@ export default function ReinvestmentTagging() {
     return <SubBrokerSidebar user={user} />;
   };
 
-  const getSelectedCount = () => {
-    return Object.values(selectedEntries).filter(Boolean).length;
+  // Get all unique UCCs from all client groups for mass selection
+  const getAllUccs = () => {
+    const uccs = new Set();
+    [...untaggedPast, ...untaggedUpcoming].forEach(group => {
+      (group.ucc_list || []).forEach(ucc => uccs.add(ucc));
+    });
+    return Array.from(uccs);
   };
 
-  const renderClientGroup = (clientGroup, isPast = false) => {
-    const isExpanded = expandedClients[clientGroup.client_id];
+  const renderUntaggedClientGroup = (clientGroup, isPast, section) => {
+    const key = `${section}_${clientGroup.client_id}`;
+    const isExpanded = expandedClients[key];
     const hasChanges = clientGroup.entries.some(e => localChanges[e.id]);
     const allSelected = clientGroup.entries.every(e => selectedEntries[e.id]);
-    const someSelected = clientGroup.entries.some(e => selectedEntries[e.id]);
+    const totalAmount = clientGroup.entries.reduce((sum, e) => sum + (e.net_amount || 0), 0);
     
     return (
-      <div key={clientGroup.client_id} className="bg-white rounded-lg border mb-4" data-testid={`client-group-${clientGroup.client_id}`}>
+      <div key={key} className="bg-white rounded-lg border mb-3 overflow-hidden">
         {/* Client Header */}
         <div 
-          className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
-          onClick={() => toggleClientExpand(clientGroup.client_id)}
+          className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b"
+          onClick={() => toggleClientExpand(clientGroup.client_id, section)}
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Checkbox
               checked={allSelected}
-              onCheckedChange={(checked) => {
-                handleSelectAllForClient(clientGroup.client_id, clientGroup.entries, checked);
-              }}
+              onCheckedChange={(checked) => handleSelectAllForClient(clientGroup.entries, checked)}
               onClick={(e) => e.stopPropagation()}
             />
             <div>
               <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
-              <p className="text-sm text-gray-500">{clientGroup.client_pan} • {clientGroup.entries.length} entries</p>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>{clientGroup.client_pan}</span>
+                <span>•</span>
+                <span>{clientGroup.entries.length} entries</span>
+                <span>•</span>
+                <span className="font-medium text-gray-700">{formatCurrency(totalAmount)}</span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className={isPast ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}>
-              {isPast ? <History className="h-3 w-3 mr-1" /> : <ArrowRight className="h-3 w-3 mr-1" />}
-              {isPast ? "Historical" : "Upcoming"}
-            </Badge>
+          <div className="flex items-center gap-2">
             {hasChanges && (
               <Button
                 size="sm"
-                onClick={(e) => { e.stopPropagation(); saveClientTags(clientGroup); }}
+                onClick={(e) => { e.stopPropagation(); saveClientTags(clientGroup, isPast); }}
                 disabled={savingClient === clientGroup.client_id}
                 className="bg-green-600 hover:bg-green-700"
               >
@@ -361,60 +389,57 @@ export default function ReinvestmentTagging() {
                 )}
               </Button>
             )}
-            {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
           </div>
         </div>
         
         {/* Expanded Entries */}
         {isExpanded && (
-          <div className="border-t">
-            <table className="w-full">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="w-10 px-4 py-2"></th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">BOND</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">DATE</th>
-                  <th className="text-right px-4 py-2 text-xs font-semibold text-gray-600">AMOUNT</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">UCC *</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">PORTFOLIO *</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">TAG *</th>
+                  <th className="w-10 px-3 py-2"></th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Amount</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">UCC *</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio *</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Tag *</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {clientGroup.entries.map(entry => {
                   const changes = localChanges[entry.id] || {};
-                  const currentTag = changes.reinvestment_tag || entry.reinvestment_tag || '';
-                  const currentPortfolio = changes.portfolio_category || entry.portfolio_category || '';
                   const currentUcc = changes.target_ucc || entry.target_ucc || '';
+                  const currentPortfolio = changes.portfolio_category || entry.portfolio_category || '';
+                  const currentTag = changes.reinvestment_tag || entry.reinvestment_tag || '';
                   
                   return (
                     <tr key={entry.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2">
                         <Checkbox
                           checked={selectedEntries[entry.id] || false}
                           onCheckedChange={(checked) => handleEntrySelect(entry.id, checked)}
                         />
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-sm">{entry.bond_name}</div>
+                      <td className="px-3 py-2">
+                        <div className="font-medium">{entry.bond_name}</div>
                         <div className="text-xs text-gray-500">{entry.bond_code}</div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm">{format(new Date(entry.expected_date), "dd MMM yyyy")}</div>
-                        {entry.is_past_date && (
-                          <span className="text-xs text-blue-600">Past</span>
-                        )}
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {format(new Date(entry.expected_date), "dd MMM yyyy")}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="font-mono font-semibold">{formatCurrency(entry.net_amount)}</div>
+                      <td className="px-3 py-2 text-right font-mono">
+                        {formatCurrency(entry.net_amount)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2">
                         <Select
                           value={currentUcc}
                           onValueChange={(v) => handleLocalChange(entry.id, 'target_ucc', v)}
                         >
-                          <SelectTrigger className="w-32 h-8 text-xs">
-                            <SelectValue placeholder="Select UCC" />
+                          <SelectTrigger className="w-28 h-8 text-xs">
+                            <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
                             {(clientGroup.ucc_list || []).map(ucc => (
@@ -423,13 +448,13 @@ export default function ReinvestmentTagging() {
                           </SelectContent>
                         </Select>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2">
                         <Select
                           value={currentPortfolio}
                           onValueChange={(v) => handleLocalChange(entry.id, 'portfolio_category', v)}
                         >
                           <SelectTrigger className="w-28 h-8 text-xs">
-                            <SelectValue placeholder="Portfolio" />
+                            <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
                             {PORTFOLIO_OPTIONS.map(opt => (
@@ -438,13 +463,13 @@ export default function ReinvestmentTagging() {
                           </SelectContent>
                         </Select>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2">
                         <Select
                           value={currentTag}
                           onValueChange={(v) => handleLocalChange(entry.id, 'reinvestment_tag', v)}
                         >
                           <SelectTrigger className="w-28 h-8 text-xs">
-                            <SelectValue placeholder="Tag" />
+                            <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
                             {TAG_OPTIONS.map(opt => (
@@ -464,113 +489,118 @@ export default function ReinvestmentTagging() {
     );
   };
 
-  const renderTaggedClientGroup = (clientGroup) => {
-    const isExpanded = expandedClients[`tagged_${clientGroup.client_id}`];
-    const pendingApproval = clientGroup.entries.filter(e => e.approval_status === 'pending');
-    const approved = clientGroup.entries.filter(e => e.client_approved);
+  const renderTaggedClientGroup = (clientGroup, isPast, section) => {
+    const key = `tagged_${section}_${clientGroup.client_id}`;
+    const isExpanded = expandedClients[key];
+    const pendingCount = clientGroup.entries.filter(e => !e.client_approved && e.approval_status !== 'approved').length;
+    const approvedCount = clientGroup.entries.filter(e => e.client_approved || e.approval_status === 'approved').length;
+    const totalAmount = clientGroup.entries.reduce((sum, e) => sum + (e.net_amount || 0), 0);
     
     return (
-      <div key={clientGroup.client_id} className="bg-white rounded-lg border mb-4">
+      <div key={key} className="bg-white rounded-lg border mb-3 overflow-hidden">
         {/* Client Header */}
         <div 
-          className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
-          onClick={() => setExpandedClients(prev => ({
-            ...prev,
-            [`tagged_${clientGroup.client_id}`]: !prev[`tagged_${clientGroup.client_id}`]
-          }))}
+          className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b"
+          onClick={() => setExpandedClients(prev => ({ ...prev, [key]: !prev[key] }))}
         >
-          <div className="flex items-center gap-4">
-            <div>
-              <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
-              <p className="text-sm text-gray-500">{clientGroup.client_pan} • {clientGroup.entries.length} tagged</p>
+          <div>
+            <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span>{clientGroup.client_pan}</span>
+              <span>•</span>
+              <span>{clientGroup.entries.length} entries</span>
+              <span>•</span>
+              <span className="font-medium text-gray-700">{formatCurrency(totalAmount)}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {pendingApproval.length > 0 && (
-              <Badge className="bg-amber-100 text-amber-700">
-                <Clock className="h-3 w-3 mr-1" />
-                {pendingApproval.length} Pending
-              </Badge>
-            )}
-            {approved.length > 0 && (
+          <div className="flex items-center gap-2">
+            {approvedCount > 0 && (
               <Badge className="bg-green-100 text-green-700">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                {approved.length} Approved
+                <Check className="h-3 w-3 mr-1" />
+                {approvedCount} Approved
               </Badge>
             )}
-            {pendingApproval.length > 0 && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => { e.stopPropagation(); sendEmailToClient(clientGroup); }}
-                disabled={sendingEmail === clientGroup.client_id}
-                className="text-blue-600 border-blue-200 hover:bg-blue-50"
-              >
-                {sendingEmail === clientGroup.client_id ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Mail className="h-4 w-4 mr-1" />
-                    Email Client
-                  </>
+            {pendingCount > 0 && (
+              <>
+                <Badge className="bg-amber-100 text-amber-700">
+                  <Clock className="h-3 w-3 mr-1" />
+                  {pendingCount} Pending
+                </Badge>
+                {!isPast && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => { e.stopPropagation(); sendEmailToClient(clientGroup); }}
+                    disabled={sendingEmail === clientGroup.client_id}
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  >
+                    {sendingEmail === clientGroup.client_id ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Mail className="h-4 w-4 mr-1" />
+                        Send Email
+                      </>
+                    )}
+                  </Button>
                 )}
-              </Button>
+              </>
             )}
-            {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
           </div>
         </div>
         
         {/* Expanded Entries */}
         {isExpanded && (
-          <div className="border-t">
-            <table className="w-full">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">BOND</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">DATE</th>
-                  <th className="text-right px-4 py-2 text-xs font-semibold text-gray-600">AMOUNT</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">UCC</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">PORTFOLIO</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">TAG</th>
-                  <th className="text-center px-4 py-2 text-xs font-semibold text-gray-600">STATUS</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Amount</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Tag</th>
+                  <th className="text-center px-3 py-2 font-medium text-gray-600">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {clientGroup.entries.map(entry => (
                   <tr key={entry.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-sm">{entry.bond_name}</div>
+                    <td className="px-3 py-2">
+                      <div className="font-medium">{entry.bond_name}</div>
                       <div className="text-xs text-gray-500">{entry.bond_code}</div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">{format(new Date(entry.expected_date), "dd MMM yyyy")}</div>
-                      {entry.is_past_date && (
-                        <span className="text-xs text-blue-600">Historical</span>
-                      )}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {format(new Date(entry.expected_date), "dd MMM yyyy")}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold">
+                    <td className="px-3 py-2 text-right font-mono">
                       {formatCurrency(entry.net_amount)}
                     </td>
-                    <td className="px-4 py-3 text-sm">{entry.target_ucc || '-'}</td>
-                    <td className="px-4 py-3 text-sm capitalize">{entry.portfolio_category || '-'}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant="outline" className="capitalize">
-                        {entry.reinvestment_tag}
+                    <td className="px-3 py-2">{entry.target_ucc || '-'}</td>
+                    <td className="px-3 py-2 capitalize">{entry.portfolio_category?.replace('_', ' ') || '-'}</td>
+                    <td className="px-3 py-2">
+                      <Badge variant="outline" className="text-xs">
+                        {entry.reinvestment_tag === 'full' ? 'Full Amount' :
+                         entry.reinvestment_tag === 'partial' ? 'Partial' :
+                         entry.reinvestment_tag === 'no_reinvest' ? 'No Reinvest' :
+                         entry.reinvestment_tag}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      {entry.client_approved ? (
-                        <Badge className="bg-green-100 text-green-700">
+                    <td className="px-3 py-2 text-center">
+                      {entry.client_approved || entry.approval_status === 'approved' ? (
+                        <Badge className="bg-green-100 text-green-700 text-xs">
                           <Check className="h-3 w-3 mr-1" />
                           Approved
                         </Badge>
                       ) : entry.approval_status === 'rejected' ? (
-                        <Badge className="bg-red-100 text-red-700">
+                        <Badge className="bg-red-100 text-red-700 text-xs">
                           <X className="h-3 w-3 mr-1" />
                           Rejected
                         </Badge>
                       ) : (
-                        <Badge className="bg-amber-100 text-amber-700">
+                        <Badge className="bg-amber-100 text-amber-700 text-xs">
                           <Clock className="h-3 w-3 mr-1" />
                           Pending
                         </Badge>
@@ -585,6 +615,10 @@ export default function ReinvestmentTagging() {
       </div>
     );
   };
+
+  const currentUntaggedGroups = untaggedSection === "past" ? untaggedPast : untaggedUpcoming;
+  const currentTaggedGroups = taggedSection === "past" ? taggedPast : taggedUpcoming;
+  const allUccs = getAllUccs();
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -609,28 +643,28 @@ export default function ReinvestmentTagging() {
             </div>
           </div>
           
-          {/* Tabs */}
+          {/* Main Tabs */}
           <div className="px-6 border-t">
             <div className="flex">
               <button
                 onClick={() => setActiveTab("untagged")}
-                className={`px-4 py-3 text-sm font-medium border-b-2 ${
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "untagged"
                     ? "border-amber-600 text-amber-600"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Untagged
+                Untagged ({untaggedPast.length + untaggedUpcoming.length} clients)
               </button>
               <button
                 onClick={() => setActiveTab("tagged")}
-                className={`px-4 py-3 text-sm font-medium border-b-2 ${
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "tagged"
                     ? "border-amber-600 text-amber-600"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Tagged
+                Tagged ({taggedPast.length + taggedUpcoming.length} clients)
               </button>
             </div>
           </div>
@@ -646,23 +680,25 @@ export default function ReinvestmentTagging() {
             <>
               {/* Mass Tag Controls */}
               {getSelectedCount() > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-2">
-                      <Badge className="bg-amber-600">{getSelectedCount()} selected</Badge>
-                      <span className="text-sm text-amber-800">Apply to all selected:</span>
+                      <Badge className="bg-amber-600 text-white">{getSelectedCount()} selected</Badge>
+                      <span className="text-sm text-amber-800">Apply to selected:</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Select value={massTagValues.ucc} onValueChange={(v) => setMassTagValues(prev => ({ ...prev, ucc: v }))}>
-                        <SelectTrigger className="w-32 h-9">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Select value={massUcc} onValueChange={setMassUcc}>
+                        <SelectTrigger className="w-32 h-8 text-xs bg-white">
                           <SelectValue placeholder="UCC" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="KWPL000231">KWPL000231</SelectItem>
+                          {allUccs.map(ucc => (
+                            <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                      <Select value={massTagValues.portfolio} onValueChange={(v) => setMassTagValues(prev => ({ ...prev, portfolio: v }))}>
-                        <SelectTrigger className="w-28 h-9">
+                      <Select value={massPortfolio} onValueChange={setMassPortfolio}>
+                        <SelectTrigger className="w-28 h-8 text-xs bg-white">
                           <SelectValue placeholder="Portfolio" />
                         </SelectTrigger>
                         <SelectContent>
@@ -671,8 +707,8 @@ export default function ReinvestmentTagging() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Select value={massTagValues.tag} onValueChange={(v) => setMassTagValues(prev => ({ ...prev, tag: v }))}>
-                        <SelectTrigger className="w-28 h-9">
+                      <Select value={massTag} onValueChange={setMassTag}>
+                        <SelectTrigger className="w-28 h-8 text-xs bg-white">
                           <SelectValue placeholder="Tag" />
                         </SelectTrigger>
                         <SelectContent>
@@ -681,8 +717,11 @@ export default function ReinvestmentTagging() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button onClick={applyMassTag} className="bg-amber-600 hover:bg-amber-700">
+                      <Button size="sm" onClick={applyMassTag} className="bg-amber-600 hover:bg-amber-700 h-8">
                         Apply
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={clearSelection} className="h-8">
+                        Clear
                       </Button>
                     </div>
                   </div>
@@ -690,56 +729,80 @@ export default function ReinvestmentTagging() {
               )}
 
               {/* Section Toggle */}
-              <div className="flex gap-2 mb-6">
+              <div className="flex gap-2 mb-4">
                 <Button
-                  variant={activeSection === "past" ? "default" : "outline"}
-                  onClick={() => setActiveSection("past")}
-                  className={activeSection === "past" ? "bg-blue-600" : ""}
+                  variant={untaggedSection === "past" ? "default" : "outline"}
+                  onClick={() => setUntaggedSection("past")}
+                  className={untaggedSection === "past" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  size="sm"
                 >
-                  <History className="h-4 w-4 mr-2" />
-                  Historical ({clientGroups.past.length} clients)
+                  <History className="h-4 w-4 mr-1" />
+                  Historical ({untaggedPast.length})
                 </Button>
                 <Button
-                  variant={activeSection === "upcoming" ? "default" : "outline"}
-                  onClick={() => setActiveSection("upcoming")}
-                  className={activeSection === "upcoming" ? "bg-amber-600" : ""}
+                  variant={untaggedSection === "upcoming" ? "default" : "outline"}
+                  onClick={() => setUntaggedSection("upcoming")}
+                  className={untaggedSection === "upcoming" ? "bg-amber-600 hover:bg-amber-700" : ""}
+                  size="sm"
                 >
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Upcoming ({clientGroups.upcoming.length} clients)
+                  <ArrowRight className="h-4 w-4 mr-1" />
+                  Upcoming ({untaggedUpcoming.length})
                 </Button>
               </div>
 
               {/* Client Groups */}
-              {activeSection === "past" ? (
-                clientGroups.past.length === 0 ? (
-                  <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+              {currentUntaggedGroups.length === 0 ? (
+                <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+                  {untaggedSection === "past" ? (
                     <History className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                    <p>No historical entries to tag</p>
-                  </div>
-                ) : (
-                  clientGroups.past.map(group => renderClientGroup(group, true))
-                )
-              ) : (
-                clientGroups.upcoming.length === 0 ? (
-                  <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+                  ) : (
                     <ArrowRight className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                    <p>No upcoming entries to tag</p>
-                  </div>
-                ) : (
-                  clientGroups.upcoming.map(group => renderClientGroup(group, false))
+                  )}
+                  <p>No {untaggedSection === "past" ? "historical" : "upcoming"} entries to tag</p>
+                </div>
+              ) : (
+                currentUntaggedGroups.map(group => 
+                  renderUntaggedClientGroup(group, untaggedSection === "past", untaggedSection)
                 )
               )}
             </>
           ) : (
             /* Tagged Tab */
-            taggedGroups.length === 0 ? (
-              <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
-                <Tag className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                <p>No tagged entries yet</p>
+            <>
+              {/* Section Toggle */}
+              <div className="flex gap-2 mb-4">
+                <Button
+                  variant={taggedSection === "past" ? "default" : "outline"}
+                  onClick={() => setTaggedSection("past")}
+                  className={taggedSection === "past" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  size="sm"
+                >
+                  <History className="h-4 w-4 mr-1" />
+                  Historical ({taggedPast.length})
+                </Button>
+                <Button
+                  variant={taggedSection === "upcoming" ? "default" : "outline"}
+                  onClick={() => setTaggedSection("upcoming")}
+                  className={taggedSection === "upcoming" ? "bg-amber-600 hover:bg-amber-700" : ""}
+                  size="sm"
+                >
+                  <ArrowRight className="h-4 w-4 mr-1" />
+                  Upcoming ({taggedUpcoming.length})
+                </Button>
               </div>
-            ) : (
-              taggedGroups.map(group => renderTaggedClientGroup(group))
-            )
+
+              {/* Client Groups */}
+              {currentTaggedGroups.length === 0 ? (
+                <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+                  <Tag className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                  <p>No {taggedSection === "past" ? "historical" : "upcoming"} tagged entries</p>
+                </div>
+              ) : (
+                currentTaggedGroups.map(group => 
+                  renderTaggedClientGroup(group, taggedSection === "past", taggedSection)
+                )
+              )}
+            </>
           )}
         </div>
       </div>
