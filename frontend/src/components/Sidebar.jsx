@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, User, CheckSquare, History, Settings } from "lucide-react";
+import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, User, CheckSquare, History, Settings, UserPlus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar({ user }) {
@@ -32,8 +32,10 @@ export default function Sidebar({ user }) {
   const brokerMenuItems = [
     { path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid },
     { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
-    { path: "/broker/approvals", label: "Approvals & Logs", icon: CheckSquare },
+    { path: "/broker/approvals", label: "Approvals", icon: CheckSquare },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
+    { path: "/broker/leads", label: "Lead Mgmt", icon: UserPlus },
+    { path: "/broker/logs", label: "Logs", icon: FileText },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
     { path: "/broker/reinvestment", label: "Reinv Tag", icon: Tag },
     { path: "/broker/admin/sub-brokers", label: "Sub Broker", icon: Users },
@@ -48,8 +50,9 @@ export default function Sidebar({ user }) {
     { path: "/sub-broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
     { path: "/sub-broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/sub-broker/clients", label: "Clients", icon: UserCheck },
+    { path: "/sub-broker/leads", label: "Lead Mgmt", icon: UserPlus },
     { path: "/sub-broker/reinvestment", label: "Reinv Tag", icon: Tag },
-    { path: "/sub-broker/approval-logs", label: "Logs", icon: History },
+    { path: "/sub-broker/logs", label: "Logs", icon: FileText },
     { path: "/sub-broker/analysis", label: "Analysis", icon: FileBarChart },
     { path: "/sub-broker/profile", label: "Profile", icon: User },
   ];
