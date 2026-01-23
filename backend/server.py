@@ -3718,8 +3718,10 @@ async def bulk_upload_indian_clients(
             client_dict = {
                 "id": client_id,
                 "name": name,
-                "photo_id": pan,
-                "pan_number": pan,
+                "photo_id": login_id,  # Use login_id (PAN or PAN+1 for role overlap)
+                "pan_number": pan,  # Original PAN stored separately
+                "original_pan": original_pan,  # Store original for reference
+                "is_role_overlap": is_role_overlap,  # Track if sub-broker is also client
                 "passport_type": "indian",
                 "country_of_residency": country_of_residency,
                 "opportunities": opportunities,
@@ -3765,7 +3767,7 @@ async def bulk_upload_indian_clients(
             # Create user account
             user_data = {
                 "id": user_id,
-                "pan": pan,
+                "pan": login_id,  # Use login_id (PAN or PAN+1 for role overlap)
                 "name": name,
                 "email": email,
                 "phone": mobile,
@@ -3776,14 +3778,21 @@ async def bulk_upload_indian_clients(
                 "client_id": client_id,
                 "broker_id": current_user['id'],
                 "passport_type": "indian",
+                "is_role_overlap": is_role_overlap,
+                "original_pan": original_pan,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             
             await db.users.insert_one(user_data)
             await db.clients.insert_one(client_dict)
             
+            # Include login_id in success message if role overlap
+            success_info = {"name": name, "pan": pan}
+            if is_role_overlap:
+                success_info["client_login_id"] = login_id
+                success_info["note"] = "Sub-broker is also a client - uses PAN+1 for client login"
             results['success'] += 1
-            results['created_clients'].append({"name": name, "pan": pan})
+            results['created_clients'].append(success_info)
             
         except Exception as e:
             results['errors'].append(f"Row {idx+2}: Error - {str(e)}")
