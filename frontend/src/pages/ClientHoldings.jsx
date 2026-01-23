@@ -283,8 +283,8 @@ export default function ClientHoldings() {
                           </td>
                           <td className="py-3 px-4 text-center font-mono">{holding.units}</td>
                           <td className="py-3 px-4 text-right font-mono">{formatINR(holding.invested_amount)}</td>
-                          <td className="py-3 px-4 text-right font-mono text-green-600">{formatINR(holding.total_repaid)}</td>
-                          <td className="py-3 px-4 text-right font-mono text-blue-600">{formatINR(holding.total_upcoming)}</td>
+                          <td className="py-3 px-4 text-right font-mono text-green-600">{formatINR(holding.net_repaid)}</td>
+                          <td className="py-3 px-4 text-right font-mono text-blue-600">{formatINR(holding.upcoming_expected)}</td>
                           <td className="py-3 px-4 text-center">
                             {holding.status === 'completed' ? (
                               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
