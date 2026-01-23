@@ -89,7 +89,7 @@ export default function TradeLogs() {
         date: trade.created_at || trade.investment_date,
         trade_type: trade.trade_type || "Buy",
         amount: trade.total_amount || trade.amount || 0,
-        payment_mode: trade.payment_mode || "NEFT",
+        portfolio: trade.portfolio_category || "-",
         advisor: trade.advisor_name || trade.sub_broker_name || "-",
         status: trade.status || "pending",
         bond_name: trade.bond_name,
@@ -104,7 +104,7 @@ export default function TradeLogs() {
         date: log.created_at,
         trade_type: "Reinvestment",
         amount: log.amount || 0,
-        payment_mode: "-",
+        portfolio: log.portfolio_category || "-",
         advisor: log.performed_by_name || "-",
         status: log.action || log.status || "pending",
         details: log.details,
@@ -117,11 +117,11 @@ export default function TradeLogs() {
         client_name: log.client_name || "N/A",
         ucc: log.target_ucc || "-",
         date: log.created_at,
-        trade_type: log.reinvestment_tag === 'reinvest' ? "Reinvest" : 
-                    log.reinvestment_tag === 'withdraw' ? "Withdraw" : 
-                    log.reinvestment_tag === 'other' ? "Other" : log.reinvestment_tag,
+        trade_type: log.reinvestment_tag === 'full' ? "Full Amount" : 
+                    log.reinvestment_tag === 'partial' ? "Partial" : 
+                    log.reinvestment_tag === 'no_reinvest' ? "No Reinvest" : log.reinvestment_tag,
         amount: log.net_amount || 0,
-        payment_mode: log.portfolio_category || "-",
+        portfolio: log.portfolio_category || "-",
         advisor: log.tagged_by_name || "-",
         status: log.approval_status || "pending",
         bond_name: log.bond_name,
@@ -293,7 +293,7 @@ export default function TradeLogs() {
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Type</th>
                       <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Payment Mode</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Portfolio</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Advisor</th>
                       <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Status</th>
                       <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase w-12"></th>
@@ -330,7 +330,7 @@ export default function TradeLogs() {
                           <td className="px-4 py-3 text-sm text-gray-800 text-right font-mono">
                             ₹{log.amount?.toLocaleString('en-IN') || 0}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{log.payment_mode}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600 capitalize">{log.portfolio?.replace('_', ' ')}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{log.advisor}</td>
                           <td className="px-4 py-3 text-center">
                             {getStatusBadge(log.status)}
