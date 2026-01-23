@@ -1208,8 +1208,8 @@ export default function Holdings() {
                   </div>
                 </div>
                 
-                {/* Bulk Repayment Update Section - Broker Only */}
-                {user?.role === 'broker' && (
+                {/* Bulk Repayment Update Section - Broker and Sub-Broker Only */}
+                {(user?.role === 'broker' || user?.role === 'sub_broker') && (
                 <div className="p-4 bg-blue-50 border-b border-blue-100">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
