@@ -27,10 +27,8 @@ export default function AdminClients() {
   const [searchQuery, setSearchQuery] = useState("");
   const [linkingClient, setLinkingClient] = useState(null);
   
-  // Edit modal state
+  // Edit modal state - now uses EditClientModal component
   const [editingClient, setEditingClient] = useState(null);
-  const [editFormData, setEditFormData] = useState({});
-  const [editLoading, setEditLoading] = useState(false);
   
   // Credentials modal state
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
