@@ -394,6 +394,16 @@ function App() {
             } 
           />
           
+          {/* Sub-Broker Trade Tagging Route */}
+          <Route 
+            path="/sub-broker/trade-tagging" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <UntaggedTrades />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Sub-Broker Approval Logs Route */}
           <Route 
             path="/sub-broker/approval-logs" 
