@@ -526,7 +526,7 @@ export default function Opportunities() {
           <div className="bg-indigo-50 rounded-lg p-3 text-center">
             <p className="text-xs text-gray-500 mb-1">Investors</p>
             <p className="text-2xl font-bold text-indigo-600">
-              {bond.current_investors || bond.units_sold || 0}
+              {bond.unique_investors || bond.investor_count || 0}
               <span className="text-gray-400 text-lg">/{bond.total_units || 1}</span>
             </p>
           </div>
