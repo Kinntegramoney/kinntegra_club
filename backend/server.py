@@ -17827,6 +17827,271 @@ async def get_actual_repayments(
     return repayments
 
 
+# ==================== TRADE TAGGING WORKFLOW ====================
+
+class TagTradeRequest(BaseModel):
+    """Request model for tagging a trade"""
+    ucc: str
+    portfolio: str
+    tagged_amount: Optional[float] = None
+    notes: Optional[str] = None
+
+
+@api_router.get("/trades/untagged")
+async def get_untagged_trades(
+    client_id: Optional[str] = None,
+    bond_id: Optional[str] = None,
+    date_filter: Optional[str] = None,  # 'past' or 'future'
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all untagged trades for broker/sub-broker to tag"""
+    if current_user['role'] == 'client':
+        raise HTTPException(status_code=403, detail="Clients cannot access untagged trades")
+    
+    query = {"status": "untagged"}
+    
+    if client_id:
+        query["client_id"] = client_id
+    if bond_id:
+        query["bond_id"] = bond_id
+    
+    # Filter by date type
+    if date_filter == 'past':
+        query["is_past_dated"] = True
+    elif date_filter == 'future':
+        query["is_past_dated"] = False
+    
+    # Sub-brokers can only see their clients' trades
+    if current_user['role'] == 'sub_broker':
+        sub_broker_clients = await db.clients.find(
+            {"created_by": current_user['id']}, 
+            {"_id": 0, "id": 1}
+        ).to_list(1000)
+        client_ids = [c['id'] for c in sub_broker_clients]
+        query["client_id"] = {"$in": client_ids}
+    
+    trades = await db.trades.find(query, {"_id": 0}).sort("investment_date", 1).to_list(10000)
+    return trades
+
+
+@api_router.get("/trades/pending-approval")
+async def get_pending_approval_trades(current_user: dict = Depends(get_current_user)):
+    """Get trades pending client approval (future-dated, tagged but not approved)"""
+    query = {
+        "tagging_status": "tagged",
+        "is_past_dated": False,
+        "client_approved": False
+    }
+    
+    if current_user['role'] == 'client':
+        query["client_id"] = current_user.get('client_id')
+    elif current_user['role'] == 'sub_broker':
+        sub_broker_clients = await db.clients.find(
+            {"created_by": current_user['id']}, 
+            {"_id": 0, "id": 1}
+        ).to_list(1000)
+        client_ids = [c['id'] for c in sub_broker_clients]
+        query["client_id"] = {"$in": client_ids}
+    
+    trades = await db.trades.find(query, {"_id": 0}).sort("investment_date", 1).to_list(10000)
+    return trades
+
+
+@api_router.put("/trades/{trade_id}/tag")
+async def tag_trade(
+    trade_id: str,
+    request: TagTradeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Tag a trade with UCC, portfolio, and amount.
+    For past-dated: Automatically approved after tagging
+    For future-dated: Requires client approval after tagging
+    """
+    if current_user['role'] == 'client':
+        raise HTTPException(status_code=403, detail="Clients cannot tag trades")
+    
+    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    # Check if already client approved (cannot edit)
+    if trade.get('client_approved'):
+        raise HTTPException(status_code=400, detail="Cannot edit a client-approved trade")
+    
+    # Sub-broker can only tag their clients' trades
+    if current_user['role'] == 'sub_broker':
+        client = await db.clients.find_one({"id": trade['client_id']}, {"_id": 0})
+        if not client or client.get('created_by') != current_user['id']:
+            raise HTTPException(status_code=403, detail="You can only tag your own clients' trades")
+    
+    tagged_amount = request.tagged_amount or trade.get('total_amount', 0)
+    is_past_dated = trade.get('is_past_dated', True)
+    
+    update_data = {
+        "ucc": request.ucc,
+        "portfolio": request.portfolio,
+        "tagged_amount": tagged_amount,
+        "tagged_by": current_user['id'],
+        "tagged_by_name": current_user.get('name', ''),
+        "tagged_at": datetime.now(timezone.utc).isoformat(),
+        "tagging_status": "tagged",
+        "broker_notes": request.notes or trade.get('broker_notes', '')
+    }
+    
+    # For past-dated trades, auto-approve and finalize
+    if is_past_dated:
+        update_data["status"] = "approved"
+        update_data["approved_by"] = current_user['id']
+        update_data["approved_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Update bond units and client allocation
+        bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
+        if bond:
+            await db.bonds.update_one(
+                {"id": trade['bond_id']},
+                {"$inc": {"units_sold": trade['units']}}
+            )
+            
+            allocation = {
+                "bond_id": trade['bond_id'],
+                "bond_name": trade['bond_name'],
+                "units_blocked": trade['units'],
+                "units_paid": trade['units'],
+                "status": "fully_paid",
+                "trade_id": trade_id,
+                "ucc": request.ucc,
+                "portfolio": request.portfolio,
+                "allocated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.clients.update_one(
+                {"id": trade['client_id']},
+                {"$push": {"bond_allocations": allocation}}
+            )
+            
+            # Generate cashflows
+            trade_with_updates = {**trade, **update_data}
+            cashflows = generate_client_cashflows(trade_with_updates, bond)
+            if cashflows:
+                for cf in cashflows:
+                    cf['client_id'] = trade['client_id']
+                    cf['bond_id'] = trade['bond_id']
+                    cf['type'] = 'projected'
+                await db.holding_cashflows.insert_many(cashflows)
+    
+    await db.trades.update_one({"id": trade_id}, {"$set": update_data})
+    
+    return {
+        "message": "Trade tagged successfully" + (" and approved" if is_past_dated else " - pending client approval"),
+        "trade_id": trade_id,
+        "status": update_data.get("status", "untagged"),
+        "requires_client_approval": not is_past_dated
+    }
+
+
+@api_router.put("/trades/{trade_id}/client-approve")
+async def client_approve_trade(trade_id: str, current_user: dict = Depends(get_current_user)):
+    """Client approves a tagged future-dated trade"""
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can approve trades")
+    
+    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    # Verify client owns this trade
+    if trade.get('client_id') != current_user.get('client_id'):
+        raise HTTPException(status_code=403, detail="You can only approve your own trades")
+    
+    # Must be tagged first
+    if trade.get('tagging_status') != 'tagged':
+        raise HTTPException(status_code=400, detail="Trade must be tagged before approval")
+    
+    # Must be future-dated
+    if trade.get('is_past_dated'):
+        raise HTTPException(status_code=400, detail="Past-dated trades are auto-approved")
+    
+    # Already approved?
+    if trade.get('client_approved'):
+        raise HTTPException(status_code=400, detail="Trade already approved")
+    
+    # Approve and finalize
+    update_data = {
+        "client_approved": True,
+        "client_approved_at": datetime.now(timezone.utc).isoformat(),
+        "status": "approved",
+        "approved_by": current_user['id'],
+        "approved_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Update bond units and client allocation
+    bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
+    if bond:
+        await db.bonds.update_one(
+            {"id": trade['bond_id']},
+            {"$inc": {"units_sold": trade['units']}}
+        )
+        
+        allocation = {
+            "bond_id": trade['bond_id'],
+            "bond_name": trade['bond_name'],
+            "units_blocked": trade['units'],
+            "units_paid": trade['units'],
+            "status": "fully_paid",
+            "trade_id": trade_id,
+            "ucc": trade.get('ucc'),
+            "portfolio": trade.get('portfolio'),
+            "allocated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.clients.update_one(
+            {"id": trade['client_id']},
+            {"$push": {"bond_allocations": allocation}}
+        )
+        
+        # Generate cashflows
+        trade_with_updates = {**trade, **update_data}
+        cashflows = generate_client_cashflows(trade_with_updates, bond)
+        if cashflows:
+            for cf in cashflows:
+                cf['client_id'] = trade['client_id']
+                cf['bond_id'] = trade['bond_id']
+                cf['type'] = 'projected'
+            await db.holding_cashflows.insert_many(cashflows)
+    
+    await db.trades.update_one({"id": trade_id}, {"$set": update_data})
+    
+    return {"message": "Trade approved successfully", "trade_id": trade_id}
+
+
+@api_router.put("/trades/{trade_id}/reject")
+async def client_reject_trade(trade_id: str, reason: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Client rejects a tagged future-dated trade"""
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can reject trades")
+    
+    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    if trade.get('client_id') != current_user.get('client_id'):
+        raise HTTPException(status_code=403, detail="You can only reject your own trades")
+    
+    if trade.get('client_approved'):
+        raise HTTPException(status_code=400, detail="Cannot reject an already approved trade")
+    
+    await db.trades.update_one(
+        {"id": trade_id},
+        {"$set": {
+            "status": "rejected",
+            "rejected_by": current_user['id'],
+            "rejected_at": datetime.now(timezone.utc).isoformat(),
+            "rejection_reason": reason
+        }}
+    )
+    
+    return {"message": "Trade rejected", "trade_id": trade_id}
+
+
 # Reset broker password endpoint
 @api_router.get("/reset-broker-password")
 async def reset_broker_password():
