@@ -5817,6 +5817,9 @@ async def fix_historical_repayments(current_user: dict = Depends(get_current_use
         "total_checked": len(past_cashflows),
         "updated": updated_count
     }
+
+
+def calculate_xnpv_price(
     face_value: float,
     investment_date: datetime,
     client_irr: float,
