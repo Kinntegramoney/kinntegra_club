@@ -9753,6 +9753,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                     "client_approved": cf.get('client_approved', False),
                     "tagged_at": cf.get('tagged_at'),
                     "month": cf_date.strftime("%B %Y"),
+                    "is_past_date": cf_date < today,  # True if date has passed - no client approval needed
                     # Prepayment-related fields
                     "is_amended": cf.get('is_amended', False),
                     "prepayment_affected": cf.get('prepayment_affected', False),
