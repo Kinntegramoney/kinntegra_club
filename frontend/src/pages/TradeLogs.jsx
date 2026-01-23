@@ -360,14 +360,14 @@ export default function TradeLogs() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filteredLogs.length === 0 ? (
+                    {paginatedLogs.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
                           No logs found
                         </td>
                       </tr>
                     ) : (
-                      filteredLogs.map((log) => (
+                      paginatedLogs.map((log) => (
                         <tr key={log.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3">
                             <div className="font-medium text-gray-800">{log.client_name}</div>
@@ -381,7 +381,7 @@ export default function TradeLogs() {
                           </td>
                           <td className="px-4 py-3">
                             <span className={`text-sm font-medium ${
-                              log.trade_type === "Reinvestment" ? "text-purple-600" : "text-blue-600"
+                              log.trade_type?.startsWith("Reinv") ? "text-purple-600" : "text-blue-600"
                             }`}>
                               {log.trade_type}
                             </span>
@@ -420,6 +420,76 @@ export default function TradeLogs() {
                   </tbody>
                 </table>
               </div>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>Show</span>
+                    <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                      <SelectTrigger className="w-16 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span>entries</span>
+                    <span className="ml-2 text-gray-400">|</span>
+                    <span className="ml-2">
+                      Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    
+                    {getPageNumbers().map((page, idx) => (
+                      page === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
+                      ) : (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => goToPage(page)}
+                          className={`h-8 w-8 p-0 ${currentPage === page ? 'bg-amber-600 hover:bg-amber-700' : ''}`}
+                        >
+                          {page}
+                        </Button>
+                      )
+                    ))}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Show total when pagination not needed */}
+              {totalPages <= 1 && totalItems > 0 && (
+                <div className="px-4 py-3 border-t bg-gray-50 text-sm text-gray-600">
+                  Showing {totalItems} {totalItems === 1 ? 'entry' : 'entries'}
+                </div>
+              )}
             </div>
           )}
         </div>
