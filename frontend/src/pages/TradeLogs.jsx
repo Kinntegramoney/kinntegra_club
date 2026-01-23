@@ -234,16 +234,6 @@ export default function TradeLogs() {
               >
                 Reinvestment Approvals
               </button>
-              <button
-                onClick={() => setActiveTab("challan")}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "challan"
-                    ? "border-blue-600 text-blue-600 bg-white"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Challan Download
-              </button>
             </div>
           </div>
         </div>
