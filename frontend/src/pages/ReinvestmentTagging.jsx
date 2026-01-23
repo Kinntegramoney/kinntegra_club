@@ -1,852 +1,745 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { format } from "date-fns";
-import Sidebar from "../components/Sidebar";
+import Sidebar from "@/components/Sidebar";
+import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import { 
-  RefreshCw, Save, CheckCircle, AlertCircle, ChevronUp, ChevronDown,
-  Mail, Tag
+  Tag, RefreshCw, ChevronDown, ChevronUp, Mail, Save, 
+  Clock, CheckCircle, History, ArrowRight, Users, Search,
+  Check, X
 } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL + "/api";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+const TAG_OPTIONS = [
+  { value: "reinvest", label: "Reinvest" },
+  { value: "withdraw", label: "Withdraw" },
+  { value: "not_invest", label: "Not Invest" },
+  { value: "other", label: "Other" },
+];
+
+const PORTFOLIO_OPTIONS = [
+  { value: "equity", label: "Equity" },
+  { value: "debt", label: "Debt" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "gold", label: "Gold" },
+  { value: "real_estate", label: "Real Estate" },
+];
 
 export default function ReinvestmentTagging() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [reinvestmentData, setReinvestmentData] = useState(null);
-  const [loadingReinvestment, setLoadingReinvestment] = useState(false);
-  const [reinvestmentSection, setReinvestmentSection] = useState("untagged");
-  const [localTags, setLocalTags] = useState({});
-  const [customAmounts, setCustomAmounts] = useState({});
-  const [savingClient, setSavingClient] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("untagged");
+  const [activeSection, setActiveSection] = useState("past"); // "past" or "upcoming"
+  
+  // Data grouped by client
+  const [clientGroups, setClientGroups] = useState({ past: [], upcoming: [] });
+  const [taggedGroups, setTaggedGroups] = useState([]);
+  
+  // Expanded clients
   const [expandedClients, setExpandedClients] = useState({});
-  const [selectedClientEntries, setSelectedClientEntries] = useState({});
-  const [sendingApproval, setSendingApproval] = useState(null);
-  const [portfolioCategories, setPortfolioCategories] = useState({});
-  const [targetUccs, setTargetUccs] = useState({}); // Track selected UCC for each cashflow
-
-  // Portfolio category options
-  const PORTFOLIO_OPTIONS = [
-    { value: '', label: 'Select Portfolio' },
-    { value: 'wealth', label: 'Wealth' },
-    { value: 'tax', label: 'Tax' },
-    { value: 'short_term', label: 'Short Term' },
-    { value: 'commodities', label: 'Commodities' },
-    { value: 'bonds', label: 'Bonds' },
-    { value: 'real_estate', label: 'Real Estate' }
-  ];
+  
+  // Selection state for mass operations
+  const [selectedEntries, setSelectedEntries] = useState({});
+  const [massTagValues, setMassTagValues] = useState({ tag: "", portfolio: "", ucc: "" });
+  
+  // Local tag changes (per cashflow)
+  const [localChanges, setLocalChanges] = useState({});
+  
+  // Saving state
+  const [savingClient, setSavingClient] = useState(null);
+  const [sendingEmail, setSendingEmail] = useState(null);
 
   useEffect(() => {
     document.title = "Kinntegraa | Reinvestment Tagging";
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-    fetchReinvestmentData();
   }, []);
 
-  const getAuthHeaders = () => ({
-    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-  });
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (!userData) {
+      navigate("/login");
+      return;
+    }
+    const parsedUser = JSON.parse(userData);
+    setUser(parsedUser);
+    fetchData();
+  }, [navigate]);
 
-  const fetchReinvestmentData = async () => {
-    setLoadingReinvestment(true);
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      const response = await axios.get(`${API}/reinvestment/upcoming`, getAuthHeaders());
-      setReinvestmentData(response.data);
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/reinvestment/upcoming`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       
-      // Initialize local tags, portfolio categories, and target UCCs from data
-      const tags = {};
-      const portfolios = {};
-      const uccs = {};
-      response.data?.by_client?.forEach(client => {
-        client.entries.forEach(item => {
-          tags[item.cashflow_id] = item.reinvestment_tag || 'not_tagged';
-          portfolios[item.cashflow_id] = item.portfolio_category || '';
-          uccs[item.cashflow_id] = item.target_ucc || '';
+      const data = response.data;
+      
+      // Separate into past, upcoming, and tagged
+      const pastEntries = [];
+      const upcomingEntries = [];
+      const taggedEntries = [];
+      
+      // Flatten months data
+      (data.months || []).forEach(month => {
+        (month.items || []).forEach(item => {
+          if (item.reinvestment_tag && item.reinvestment_tag !== 'not_tagged') {
+            taggedEntries.push(item);
+          } else if (item.is_past_date) {
+            pastEntries.push(item);
+          } else {
+            upcomingEntries.push(item);
+          }
         });
       });
-      setLocalTags(tags);
-      setPortfolioCategories(portfolios);
-      setTargetUccs(uccs);
-    } catch (error) {
-      console.error("Error fetching reinvestment data:", error);
-      toast.error("Failed to load reinvestment data");
-    } finally {
-      setLoadingReinvestment(false);
-    }
-  };
-
-  const handleTagChange = (cashflowId, tag) => {
-    setLocalTags(prev => ({ ...prev, [cashflowId]: tag }));
-  };
-
-  const handleCustomAmountChange = (cashflowId, amount) => {
-    setCustomAmounts(prev => ({ ...prev, [cashflowId]: amount }));
-  };
-
-  const handlePortfolioCategoryChange = (cashflowId, category) => {
-    setPortfolioCategories(prev => ({ ...prev, [cashflowId]: category }));
-  };
-
-  const handleTargetUccChange = (cashflowId, ucc) => {
-    setTargetUccs(prev => ({ ...prev, [cashflowId]: ucc }));
-  };
-
-  const handleSaveEntryTag = async (cashflowId) => {
-    setSavingClient(cashflowId);
-    try {
-      await axios.put(`${API}/reinvestment/tag/${cashflowId}`, 
-        { 
-          reinvestment_tag: localTags[cashflowId],
-          custom_amount: localTags[cashflowId] === 'other' ? parseFloat(customAmounts[cashflowId]) : null,
-          portfolio_category: portfolioCategories[cashflowId] || null,
-          target_ucc: targetUccs[cashflowId] || null
-        },
-        getAuthHeaders()
-      );
-      toast.success("Tag saved");
-      fetchReinvestmentData();
-    } catch (error) {
-      console.error("Error saving tag:", error);
-      toast.error("Failed to save tag");
-    } finally {
-      setSavingClient(null);
-    }
-  };
-
-  // Untag an entry - reset tag and portfolio, move back to Untagged section
-  const handleUntag = async (cashflowId) => {
-    setSavingClient(cashflowId);
-    try {
-      await axios.put(`${API}/reinvestment/tag/${cashflowId}`, 
-        { 
-          reinvestment_tag: 'not_tagged',
-          custom_amount: null,
-          portfolio_category: null
-        },
-        getAuthHeaders()
-      );
-      // Update local state
-      setLocalTags(prev => ({ ...prev, [cashflowId]: 'not_tagged' }));
-      setPortfolioCategories(prev => ({ ...prev, [cashflowId]: '' }));
-      setCustomAmounts(prev => {
-        const newAmounts = { ...prev };
-        delete newAmounts[cashflowId];
-        return newAmounts;
-      });
-      toast.success("Entry untagged successfully");
-      fetchReinvestmentData();
-    } catch (error) {
-      console.error("Error untagging entry:", error);
-      toast.error("Failed to untag entry");
-    } finally {
-      setSavingClient(null);
-    }
-  };
-
-  // Save all tags for a client - only when ALL entries are tagged
-  const handleSaveAllClientTags = async (client) => {
-    // Check if all entries are complete (tagged + portfolio)
-    const allComplete = client.entries.every(e => {
-      const tag = localTags[e.cashflow_id] || e.currentTag;
-      const portfolio = portfolioCategories[e.cashflow_id] || e.portfolio_category || '';
       
-      // Entry is complete if:
-      // 1. It's 'not_invest' (no portfolio needed), OR
-      // 2. It has both tag and portfolio
-      if (!tag || tag === 'not_tagged') return false;
-      if (tag === 'not_invest') return true;
-      return !!portfolio;
-    });
-    
-    if (!allComplete) {
-      toast.error("Please complete both Tag and Portfolio for all entries before saving");
-      return;
-    }
-
-    setSavingClient(client.client_id);
-    try {
-      // Save all tags for this client
-      await Promise.all(
-        client.entries.map(entry => 
-          axios.put(`${API}/reinvestment/tag/${entry.cashflow_id}`, 
-            { 
-              reinvestment_tag: localTags[entry.cashflow_id] || entry.currentTag,
-              custom_amount: (localTags[entry.cashflow_id] || entry.currentTag) === 'other' 
-                ? parseFloat(customAmounts[entry.cashflow_id] || entry.custom_amount) 
-                : null,
-              portfolio_category: portfolioCategories[entry.cashflow_id] || entry.portfolio_category || null,
-              target_ucc: targetUccs[entry.cashflow_id] || entry.target_ucc || null
-            },
-            getAuthHeaders()
-          )
-        )
-      );
-      toast.success(`All tags saved for ${client.client_name}`);
-      fetchReinvestmentData();
-    } catch (error) {
-      console.error("Error saving tags:", error);
-      toast.error("Failed to save tags");
-    } finally {
-      setSavingClient(null);
-    }
-  };
-
-  const handleSendForApproval = async (client) => {
-    const selectedEntries = selectedClientEntries[client.client_id] || [];
-    if (selectedEntries.length === 0) {
-      toast.error("Please select entries to send for approval");
-      return;
-    }
-    
-    setSendingApproval(client.client_id);
-    try {
-      await axios.post(`${API}/reinvestment/send-approval`, 
-        { 
-          client_id: client.client_id,
-          cashflow_ids: selectedEntries
-        },
-        getAuthHeaders()
-      );
-      toast.success(`Approval request sent to ${client.client_name}`);
-      fetchReinvestmentData();
-      setSelectedClientEntries(prev => ({ ...prev, [client.client_id]: [] }));
-    } catch (error) {
-      console.error("Error sending approval:", error);
-      toast.error("Failed to send approval request");
-    } finally {
-      setSendingApproval(null);
-    }
-  };
-
-  // Process and categorize clients
-  // IMPORTANT: A client only goes to "Tagged" when ALL entries are:
-  //   1. Tagged (not 'not_tagged')
-  //   2. Have portfolio category selected (except for 'not_invest' entries)
-  // If even one entry is incomplete, the client stays in "Untagged" section
-  const { untaggedClients, taggedClients, sentClients } = useMemo(() => {
-    if (!reinvestmentData?.by_client) return { untaggedClients: [], taggedClients: [], sentClients: [] };
-    
-    const untagged = [];
-    const tagged = [];
-    const sent = [];
-    
-    reinvestmentData.by_client.forEach(client => {
-      const entriesWithTags = client.entries.map(entry => {
-        const currentTag = localTags[entry.cashflow_id] || entry.reinvestment_tag || 'not_tagged';
-        const currentPortfolio = portfolioCategories[entry.cashflow_id] || entry.portfolio_category || '';
-        
-        // An entry is "complete" if:
-        // 1. It's tagged as 'not_invest' (no portfolio needed), OR
-        // 2. It has a tag AND a portfolio category
-        const isComplete = currentTag === 'not_invest' || 
-          (currentTag !== 'not_tagged' && (currentTag === 'not_invest' || currentPortfolio));
-        
-        return {
-          ...entry,
-          currentTag,
-          currentPortfolio,
-          isComplete
-        };
-      });
-      
-      const untaggedCount = entriesWithTags.filter(e => e.currentTag === 'not_tagged').length;
-      const incompleteCount = entriesWithTags.filter(e => !e.isComplete).length;
-      const taggedCount = entriesWithTags.filter(e => e.currentTag !== 'not_tagged').length;
-      const completeCount = entriesWithTags.filter(e => e.isComplete).length;
-      const sentCount = entriesWithTags.filter(e => e.approval_status && e.approval_status !== 'not_sent').length;
-      
-      const clientWithStats = {
-        ...client,
-        entries: entriesWithTags,
-        untaggedCount,
-        incompleteCount,
-        taggedCount,
-        completeCount,
-        totalEntries: entriesWithTags.length,
-        allComplete: incompleteCount === 0 && completeCount > 0, // All entries must be complete (tag + portfolio)
-        taggedAmount: entriesWithTags
-          .filter(e => e.currentTag !== 'not_tagged' && e.currentTag !== 'not_invest')
-          .reduce((sum, e) => {
-            if (e.currentTag === 'principal') return sum + (e.principal_net || 0);
-            if (e.currentTag === 'interest') return sum + (e.interest_net || 0);
-            if (e.currentTag === 'net_amount') return sum + (e.net_amount || 0);
-            if (e.currentTag === 'other') return sum + (parseFloat(customAmounts[e.cashflow_id]) || e.custom_amount || 0);
-            return sum;
-          }, 0)
+      // Group by client
+      const groupByClient = (entries) => {
+        const groups = {};
+        entries.forEach(entry => {
+          const clientId = entry.client_id;
+          if (!groups[clientId]) {
+            groups[clientId] = {
+              client_id: clientId,
+              client_name: entry.client_name,
+              client_pan: entry.client_pan,
+              client_email: entry.client_email,
+              ucc_list: entry.ucc_list || [],
+              entries: []
+            };
+          }
+          groups[clientId].entries.push(entry);
+        });
+        return Object.values(groups);
       };
       
-      // Sent section: entries that have been sent for approval
-      if (sentCount > 0) {
-        sent.push(clientWithStats);
-      }
+      setClientGroups({
+        past: groupByClient(pastEntries),
+        upcoming: groupByClient(upcomingEntries)
+      });
+      setTaggedGroups(groupByClient(taggedEntries));
       
-      // Tagged section: ALL entries must be complete (tag + portfolio)
-      // If even ONE entry is incomplete, the client goes to Untagged section
-      if (incompleteCount === 0 && completeCount > 0 && sentCount === 0) {
-        tagged.push(clientWithStats);
-      } else if (incompleteCount > 0 || sentCount === 0) {
-        // Any incomplete entries = client goes to Untagged section
-        untagged.push(clientWithStats);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load reinvestment data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleClientExpand = (clientId) => {
+    setExpandedClients(prev => ({
+      ...prev,
+      [clientId]: !prev[clientId]
+    }));
+  };
+
+  const handleEntrySelect = (entryId, checked) => {
+    setSelectedEntries(prev => ({
+      ...prev,
+      [entryId]: checked
+    }));
+  };
+
+  const handleSelectAllForClient = (clientId, entries, checked) => {
+    const updates = {};
+    entries.forEach(entry => {
+      updates[entry.id] = checked;
+    });
+    setSelectedEntries(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleLocalChange = (entryId, field, value) => {
+    setLocalChanges(prev => ({
+      ...prev,
+      [entryId]: {
+        ...prev[entryId],
+        [field]: value
       }
+    }));
+  };
+
+  const applyMassTag = () => {
+    const selectedIds = Object.keys(selectedEntries).filter(id => selectedEntries[id]);
+    if (selectedIds.length === 0) {
+      toast.error("Please select entries first");
+      return;
+    }
+    
+    const updates = {};
+    selectedIds.forEach(id => {
+      updates[id] = {
+        ...localChanges[id],
+        ...(massTagValues.tag && { reinvestment_tag: massTagValues.tag }),
+        ...(massTagValues.portfolio && { portfolio_category: massTagValues.portfolio }),
+        ...(massTagValues.ucc && { target_ucc: massTagValues.ucc })
+      };
+    });
+    setLocalChanges(prev => ({ ...prev, ...updates }));
+    toast.success(`Applied to ${selectedIds.length} entries`);
+  };
+
+  const isEntryComplete = (entry) => {
+    const changes = localChanges[entry.id] || {};
+    const tag = changes.reinvestment_tag || entry.reinvestment_tag;
+    const portfolio = changes.portfolio_category || entry.portfolio_category;
+    const ucc = changes.target_ucc || entry.target_ucc;
+    
+    // All 3 fields must be filled
+    return tag && tag !== 'not_tagged' && portfolio && ucc;
+  };
+
+  const saveClientTags = async (clientGroup) => {
+    // Validate all entries have complete data
+    const incompleteEntries = clientGroup.entries.filter(entry => {
+      const changes = localChanges[entry.id] || {};
+      const tag = changes.reinvestment_tag || entry.reinvestment_tag;
+      const portfolio = changes.portfolio_category || entry.portfolio_category;
+      const ucc = changes.target_ucc || entry.target_ucc;
+      
+      // If there's a change, all 3 fields must be present
+      if (changes.reinvestment_tag || changes.portfolio_category || changes.target_ucc) {
+        return !tag || tag === 'not_tagged' || !portfolio || !ucc;
+      }
+      return false;
     });
     
-    return { untaggedClients: untagged, taggedClients: tagged, sentClients: sent };
-  }, [reinvestmentData, localTags, customAmounts, portfolioCategories]);
-
-  const getTagColor = (tag) => {
-    switch(tag) {
-      case 'principal': return 'bg-blue-100 text-blue-700 border-blue-300';
-      case 'interest': return 'bg-green-100 text-green-700 border-green-300';
-      case 'net_amount': return 'bg-purple-100 text-purple-700 border-purple-300';
-      case 'other': return 'bg-orange-100 text-orange-700 border-orange-300';
-      case 'not_invest': return 'bg-red-100 text-red-700 border-red-300';
-      default: return 'bg-gray-100 text-gray-600 border-gray-300';
+    if (incompleteEntries.length > 0) {
+      toast.error("Please fill UCC, Portfolio, and Tag for all modified entries");
+      return;
+    }
+    
+    setSavingClient(clientGroup.client_id);
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Save each entry that has changes
+      for (const entry of clientGroup.entries) {
+        const changes = localChanges[entry.id];
+        if (changes && Object.keys(changes).length > 0) {
+          await axios.put(
+            `${API}/reinvestment/tag/${entry.id}`,
+            {
+              reinvestment_tag: changes.reinvestment_tag || entry.reinvestment_tag || 'reinvest',
+              portfolio_category: changes.portfolio_category || entry.portfolio_category,
+              target_ucc: changes.target_ucc || entry.target_ucc,
+              custom_amount: changes.custom_amount
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        }
+      }
+      
+      toast.success("Tags saved successfully");
+      
+      // Clear local changes for this client
+      const newLocalChanges = { ...localChanges };
+      clientGroup.entries.forEach(entry => {
+        delete newLocalChanges[entry.id];
+      });
+      setLocalChanges(newLocalChanges);
+      
+      // Refresh data
+      fetchData();
+    } catch (error) {
+      console.error("Error saving tags:", error);
+      toast.error(error.response?.data?.detail || "Failed to save tags");
+    } finally {
+      setSavingClient(null);
     }
   };
 
-  const getTagLabel = (tag) => {
-    switch(tag) {
-      case 'principal': return 'Principal';
-      case 'interest': return 'Interest';
-      case 'net_amount': return 'Net Amount';
-      case 'other': return 'Custom';
-      case 'not_invest': return 'Not Investing';
-      default: return 'Not Tagged';
+  const sendEmailToClient = async (clientGroup) => {
+    setSendingEmail(clientGroup.client_id);
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Get all tagged entries for this client
+      const taggedEntryIds = clientGroup.entries
+        .filter(e => e.reinvestment_tag && e.reinvestment_tag !== 'not_tagged')
+        .map(e => e.id);
+      
+      if (taggedEntryIds.length === 0) {
+        toast.error("No tagged entries to send");
+        return;
+      }
+      
+      await axios.post(
+        `${API}/reinvestment/send-approval-email`,
+        {
+          client_id: clientGroup.client_id,
+          cashflow_ids: taggedEntryIds
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success("Email sent to client for approval");
+      fetchData();
+    } catch (error) {
+      console.error("Error sending email:", error);
+      toast.error(error.response?.data?.detail || "Failed to send email");
+    } finally {
+      setSendingEmail(null);
     }
   };
 
-  const getApprovalStatusBadge = (status) => {
-    switch(status) {
-      case 'pending':
-        return <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">Pending</span>;
-      case 'approved':
-        return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">Approved</span>;
-      case 'rejected':
-        return <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">Rejected</span>;
-      default:
-        return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">Not Sent</span>;
-    }
+  const formatCurrency = (amount) => {
+    if (!amount) return "₹0";
+    return `₹${parseFloat(amount).toLocaleString('en-IN')}`;
+  };
+
+  const getSidebar = () => {
+    if (user?.role === "broker") return <Sidebar user={user} />;
+    return <SubBrokerSidebar user={user} />;
+  };
+
+  const getSelectedCount = () => {
+    return Object.values(selectedEntries).filter(Boolean).length;
+  };
+
+  const renderClientGroup = (clientGroup, isPast = false) => {
+    const isExpanded = expandedClients[clientGroup.client_id];
+    const hasChanges = clientGroup.entries.some(e => localChanges[e.id]);
+    const allSelected = clientGroup.entries.every(e => selectedEntries[e.id]);
+    const someSelected = clientGroup.entries.some(e => selectedEntries[e.id]);
+    
+    return (
+      <div key={clientGroup.client_id} className="bg-white rounded-lg border mb-4" data-testid={`client-group-${clientGroup.client_id}`}>
+        {/* Client Header */}
+        <div 
+          className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+          onClick={() => toggleClientExpand(clientGroup.client_id)}
+        >
+          <div className="flex items-center gap-4">
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={(checked) => {
+                handleSelectAllForClient(clientGroup.client_id, clientGroup.entries, checked);
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div>
+              <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
+              <p className="text-sm text-gray-500">{clientGroup.client_pan} • {clientGroup.entries.length} entries</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className={isPast ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}>
+              {isPast ? <History className="h-3 w-3 mr-1" /> : <ArrowRight className="h-3 w-3 mr-1" />}
+              {isPast ? "Historical" : "Upcoming"}
+            </Badge>
+            {hasChanges && (
+              <Button
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); saveClientTags(clientGroup); }}
+                disabled={savingClient === clientGroup.client_id}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {savingClient === clientGroup.client_id ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-1" />
+                    Save
+                  </>
+                )}
+              </Button>
+            )}
+            {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          </div>
+        </div>
+        
+        {/* Expanded Entries */}
+        {isExpanded && (
+          <div className="border-t">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="w-10 px-4 py-2"></th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">BOND</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">DATE</th>
+                  <th className="text-right px-4 py-2 text-xs font-semibold text-gray-600">AMOUNT</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">UCC *</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">PORTFOLIO *</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">TAG *</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {clientGroup.entries.map(entry => {
+                  const changes = localChanges[entry.id] || {};
+                  const currentTag = changes.reinvestment_tag || entry.reinvestment_tag || '';
+                  const currentPortfolio = changes.portfolio_category || entry.portfolio_category || '';
+                  const currentUcc = changes.target_ucc || entry.target_ucc || '';
+                  
+                  return (
+                    <tr key={entry.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <Checkbox
+                          checked={selectedEntries[entry.id] || false}
+                          onCheckedChange={(checked) => handleEntrySelect(entry.id, checked)}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-sm">{entry.bond_name}</div>
+                        <div className="text-xs text-gray-500">{entry.bond_code}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm">{format(new Date(entry.expected_date), "dd MMM yyyy")}</div>
+                        {entry.is_past_date && (
+                          <span className="text-xs text-blue-600">Past</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="font-mono font-semibold">{formatCurrency(entry.net_amount)}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Select
+                          value={currentUcc}
+                          onValueChange={(v) => handleLocalChange(entry.id, 'target_ucc', v)}
+                        >
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectValue placeholder="Select UCC" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(clientGroup.ucc_list || []).map(ucc => (
+                              <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Select
+                          value={currentPortfolio}
+                          onValueChange={(v) => handleLocalChange(entry.id, 'portfolio_category', v)}
+                        >
+                          <SelectTrigger className="w-28 h-8 text-xs">
+                            <SelectValue placeholder="Portfolio" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PORTFOLIO_OPTIONS.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Select
+                          value={currentTag}
+                          onValueChange={(v) => handleLocalChange(entry.id, 'reinvestment_tag', v)}
+                        >
+                          <SelectTrigger className="w-28 h-8 text-xs">
+                            <SelectValue placeholder="Tag" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TAG_OPTIONS.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderTaggedClientGroup = (clientGroup) => {
+    const isExpanded = expandedClients[`tagged_${clientGroup.client_id}`];
+    const pendingApproval = clientGroup.entries.filter(e => e.approval_status === 'pending');
+    const approved = clientGroup.entries.filter(e => e.client_approved);
+    
+    return (
+      <div key={clientGroup.client_id} className="bg-white rounded-lg border mb-4">
+        {/* Client Header */}
+        <div 
+          className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+          onClick={() => setExpandedClients(prev => ({
+            ...prev,
+            [`tagged_${clientGroup.client_id}`]: !prev[`tagged_${clientGroup.client_id}`]
+          }))}
+        >
+          <div className="flex items-center gap-4">
+            <div>
+              <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
+              <p className="text-sm text-gray-500">{clientGroup.client_pan} • {clientGroup.entries.length} tagged</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {pendingApproval.length > 0 && (
+              <Badge className="bg-amber-100 text-amber-700">
+                <Clock className="h-3 w-3 mr-1" />
+                {pendingApproval.length} Pending
+              </Badge>
+            )}
+            {approved.length > 0 && (
+              <Badge className="bg-green-100 text-green-700">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                {approved.length} Approved
+              </Badge>
+            )}
+            {pendingApproval.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => { e.stopPropagation(); sendEmailToClient(clientGroup); }}
+                disabled={sendingEmail === clientGroup.client_id}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                {sendingEmail === clientGroup.client_id ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4 mr-1" />
+                    Email Client
+                  </>
+                )}
+              </Button>
+            )}
+            {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          </div>
+        </div>
+        
+        {/* Expanded Entries */}
+        {isExpanded && (
+          <div className="border-t">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">BOND</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">DATE</th>
+                  <th className="text-right px-4 py-2 text-xs font-semibold text-gray-600">AMOUNT</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">UCC</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">PORTFOLIO</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-600">TAG</th>
+                  <th className="text-center px-4 py-2 text-xs font-semibold text-gray-600">STATUS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {clientGroup.entries.map(entry => (
+                  <tr key={entry.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-sm">{entry.bond_name}</div>
+                      <div className="text-xs text-gray-500">{entry.bond_code}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm">{format(new Date(entry.expected_date), "dd MMM yyyy")}</div>
+                      {entry.is_past_date && (
+                        <span className="text-xs text-blue-600">Historical</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono font-semibold">
+                      {formatCurrency(entry.net_amount)}
+                    </td>
+                    <td className="px-4 py-3 text-sm">{entry.target_ucc || '-'}</td>
+                    <td className="px-4 py-3 text-sm capitalize">{entry.portfolio_category || '-'}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant="outline" className="capitalize">
+                        {entry.reinvestment_tag}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {entry.client_approved ? (
+                        <Badge className="bg-green-100 text-green-700">
+                          <Check className="h-3 w-3 mr-1" />
+                          Approved
+                        </Badge>
+                      ) : entry.approval_status === 'rejected' ? (
+                        <Badge className="bg-red-100 text-red-700">
+                          <X className="h-3 w-3 mr-1" />
+                          Rejected
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-amber-100 text-amber-700">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pending
+                        </Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar user={user} />
+    <div className="min-h-screen bg-gray-50 flex">
+      {getSidebar()}
       
-      <div className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-auto">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800" data-testid="reinvestment-title">
-                <Tag className="h-6 w-6 inline-block mr-2 text-amber-500" />
-                Reinv Tag
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">Tag upcoming cashflows for reinvestment and send for client approval</p>
+        <div className="bg-white border-b sticky top-0 z-10">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <Tag className="h-5 w-5 text-amber-600" />
+                  Reinvestment Tagging
+                </h1>
+                <p className="text-sm text-gray-500">Tag client cashflows for reinvestment</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchData}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh
+              </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={fetchReinvestmentData} className="gap-2">
-              <RefreshCw className={`h-4 w-4 ${loadingReinvestment ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+          </div>
+          
+          {/* Tabs */}
+          <div className="px-6 border-t">
+            <div className="flex">
+              <button
+                onClick={() => setActiveTab("untagged")}
+                className={`px-4 py-3 text-sm font-medium border-b-2 ${
+                  activeTab === "untagged"
+                    ? "border-amber-600 text-amber-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Untagged
+              </button>
+              <button
+                onClick={() => setActiveTab("tagged")}
+                className={`px-4 py-3 text-sm font-medium border-b-2 ${
+                  activeTab === "tagged"
+                    ? "border-amber-600 text-amber-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Tagged
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto p-8">
-          {/* Sub-tabs */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
-              <button
-                onClick={() => setReinvestmentSection("untagged")}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  reinvestmentSection === "untagged"
-                    ? "bg-white text-amber-700 shadow-sm"
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                Untagged ({untaggedClients.length} clients)
-              </button>
-              <button
-                onClick={() => setReinvestmentSection("tagged")}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  reinvestmentSection === "tagged"
-                    ? "bg-white text-amber-700 shadow-sm"
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                Tagged ({taggedClients.length} clients)
-              </button>
-              <button
-                onClick={() => setReinvestmentSection("sent")}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
-                  reinvestmentSection === "sent"
-                    ? "bg-white text-amber-700 shadow-sm"
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                <Mail className="h-4 w-4" />
-                Sent for Approval ({sentClients.length})
-              </button>
+        {/* Content */}
+        <div className="p-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <RefreshCw className="h-8 w-8 animate-spin text-amber-600" />
             </div>
-          </div>
+          ) : activeTab === "untagged" ? (
+            <>
+              {/* Mass Tag Controls */}
+              {getSelectedCount() > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-amber-600">{getSelectedCount()} selected</Badge>
+                      <span className="text-sm text-amber-800">Apply to all selected:</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Select value={massTagValues.ucc} onValueChange={(v) => setMassTagValues(prev => ({ ...prev, ucc: v }))}>
+                        <SelectTrigger className="w-32 h-9">
+                          <SelectValue placeholder="UCC" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="KWPL000231">KWPL000231</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={massTagValues.portfolio} onValueChange={(v) => setMassTagValues(prev => ({ ...prev, portfolio: v }))}>
+                        <SelectTrigger className="w-28 h-9">
+                          <SelectValue placeholder="Portfolio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PORTFOLIO_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={massTagValues.tag} onValueChange={(v) => setMassTagValues(prev => ({ ...prev, tag: v }))}>
+                        <SelectTrigger className="w-28 h-9">
+                          <SelectValue placeholder="Tag" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TAG_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={applyMassTag} className="bg-amber-600 hover:bg-amber-700">
+                        Apply
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-          {loadingReinvestment ? (
-            <div className="text-center py-12 text-gray-500">Loading reinvestment data...</div>
+              {/* Section Toggle */}
+              <div className="flex gap-2 mb-6">
+                <Button
+                  variant={activeSection === "past" ? "default" : "outline"}
+                  onClick={() => setActiveSection("past")}
+                  className={activeSection === "past" ? "bg-blue-600" : ""}
+                >
+                  <History className="h-4 w-4 mr-2" />
+                  Historical ({clientGroups.past.length} clients)
+                </Button>
+                <Button
+                  variant={activeSection === "upcoming" ? "default" : "outline"}
+                  onClick={() => setActiveSection("upcoming")}
+                  className={activeSection === "upcoming" ? "bg-amber-600" : ""}
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Upcoming ({clientGroups.upcoming.length} clients)
+                </Button>
+              </div>
+
+              {/* Client Groups */}
+              {activeSection === "past" ? (
+                clientGroups.past.length === 0 ? (
+                  <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+                    <History className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                    <p>No historical entries to tag</p>
+                  </div>
+                ) : (
+                  clientGroups.past.map(group => renderClientGroup(group, true))
+                )
+              ) : (
+                clientGroups.upcoming.length === 0 ? (
+                  <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+                    <ArrowRight className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                    <p>No upcoming entries to tag</p>
+                  </div>
+                ) : (
+                  clientGroups.upcoming.map(group => renderClientGroup(group, false))
+                )
+              )}
+            </>
           ) : (
-            <div className="space-y-4">
-              {/* UNTAGGED SECTION */}
-              {reinvestmentSection === "untagged" && (
-                untaggedClients.length === 0 ? (
-                  <div className="text-center py-12">
-                    <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
-                    <p className="text-gray-500">All clients have been tagged!</p>
-                    <p className="text-sm text-gray-400 mt-2">Move to &ldquo;Tagged&rdquo; section to send for approval</p>
-                  </div>
-                ) : (
-                  untaggedClients.map((client) => (
-                    <div key={client.client_id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                      <div 
-                        className="px-4 py-3 bg-amber-50 flex items-center justify-between cursor-pointer hover:bg-amber-100"
-                        onClick={() => setExpandedClients(prev => ({...prev, [client.client_id]: !prev[client.client_id]}))}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center">
-                            <span className="text-amber-800 font-semibold">{client.client_name?.charAt(0).toUpperCase()}</span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-800">{client.client_name}</p>
-                            <p className="text-xs text-gray-500 font-mono">{client.client_pan}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <p className="text-sm text-gray-500">Entries</p>
-                            <p className="font-semibold">{client.entries.length}</p>
-                          </div>
-                          <div className="flex gap-2 text-xs flex-wrap">
-                            {client.untaggedCount > 0 && (
-                              <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full">{client.untaggedCount} untagged</span>
-                            )}
-                            {client.incompleteCount > 0 && client.incompleteCount !== client.untaggedCount && (
-                              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">{client.incompleteCount - client.untaggedCount} need portfolio</span>
-                            )}
-                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">{client.completeCount} complete</span>
-                          </div>
-                          {expandedClients[client.client_id] ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                        </div>
-                      </div>
-                      
-                      {expandedClients[client.client_id] && (
-                        <div className="border-t">
-                          <table className="w-full">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="text-left py-2 px-4 text-xs font-medium text-gray-500 uppercase">Deal ID</th>
-                                <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
-                                <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Principal</th>
-                                <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Interest</th>
-                                <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Net Amt</th>
-                                <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
-                                <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Custom Amt</th>
-                                <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Portfolio</th>
-                                <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Target UCC</th>
-                                <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Save</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {client.entries.map((entry) => {
-                                const needsPortfolio = entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest' && !entry.currentPortfolio;
-                                // Get client's UCC list for this entry
-                                const clientUccList = entry.client_ucc_list || [];
-                                return (
-                                <tr key={entry.cashflow_id} className={`border-t hover:bg-gray-50 ${entry.currentTag === 'not_tagged' ? 'bg-red-50/30' : ''} ${needsPortfolio ? 'bg-yellow-50/50' : ''} ${entry.prepayment_affected ? 'bg-amber-50/50' : ''} ${entry.isComplete ? 'bg-green-50/30' : ''}`}>
-                                  <td className="py-2 px-4 text-sm">
-                                    <div className="flex flex-col gap-0.5">
-                                      <div className="flex items-center gap-1">
-                                        <span className="font-mono text-gray-700">{entry.bond_code || entry.deal_id || 'N/A'}</span>
-                                        {entry.is_amended && (
-                                          <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded" title={entry.amendment_reason || 'Amount revised due to prepayment'}>
-                                            Revised
-                                          </span>
-                                        )}
-                                      </div>
-                                      {entry.bond_name && (
-                                        <span className="text-xs text-gray-500">{entry.bond_name.slice(0, 25)}</span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="py-2 px-4 text-center text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yy")}</td>
-                                  <td className="py-2 px-4 text-right text-sm font-mono">₹{entry.principal_net?.toLocaleString('en-IN')}</td>
-                                  <td className="py-2 px-4 text-right text-sm font-mono">
-                                    <div className="flex flex-col items-end">
-                                      <span>₹{entry.interest_net?.toLocaleString('en-IN')}</span>
-                                      {entry.original_interest_component && entry.original_interest_component !== entry.interest_net && (
-                                        <span className="text-[10px] text-gray-400 line-through">₹{(entry.original_interest_component - (entry.original_interest_component * 0.1))?.toLocaleString('en-IN')}</span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="py-2 px-4 text-right text-sm font-mono text-green-600 font-medium">
-                                    <div className="flex flex-col items-end">
-                                      <span>₹{entry.net_amount?.toLocaleString('en-IN')}</span>
-                                      {entry.original_net_amount && entry.original_net_amount !== entry.net_amount && (
-                                        <span className="text-[10px] text-gray-400 line-through">₹{entry.original_net_amount?.toLocaleString('en-IN')}</span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="py-2 px-4">
-                                    <select
-                                      value={entry.currentTag}
-                                      onChange={(e) => handleTagChange(entry.cashflow_id, e.target.value)}
-                                      className={`px-2 py-1 text-xs rounded-lg border focus:outline-none w-full ${getTagColor(entry.currentTag)}`}
-                                    >
-                                      <option value="not_tagged">Select Tag</option>
-                                      <option value="principal">Principal</option>
-                                      <option value="interest">Interest</option>
-                                      <option value="net_amount">Net Amount</option>
-                                      <option value="other">Other (Custom)</option>
-                                      <option value="not_invest">Not Invest</option>
-                                    </select>
-                                  </td>
-                                  <td className="py-2 px-4 text-center">
-                                    {entry.currentTag === 'other' && (
-                                      <input
-                                        type="number"
-                                        placeholder="Amount"
-                                        value={customAmounts[entry.cashflow_id] || entry.custom_amount || ''}
-                                        onChange={(e) => handleCustomAmountChange(entry.cashflow_id, e.target.value)}
-                                        className="px-2 py-1 text-xs rounded border w-24 text-center"
-                                      />
-                                    )}
-                                  </td>
-                                  <td className="py-2 px-4 text-center">
-                                    {entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest' && (
-                                      <select
-                                        value={portfolioCategories[entry.cashflow_id] || entry.portfolio_category || ''}
-                                        onChange={(e) => handlePortfolioCategoryChange(entry.cashflow_id, e.target.value)}
-                                        className="px-2 py-1 text-xs rounded-lg border focus:outline-none bg-purple-50 border-purple-200 text-purple-800"
-                                        data-testid={`portfolio-select-${entry.cashflow_id}`}
-                                      >
-                                        {PORTFOLIO_OPTIONS.map(opt => (
-                                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                        ))}
-                                      </select>
-                                    )}
-                                  </td>
-                                  <td className="py-2 px-4 text-center">
-                                    {entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest' && clientUccList.length > 0 && (
-                                      <select
-                                        value={targetUccs[entry.cashflow_id] || entry.target_ucc || ''}
-                                        onChange={(e) => handleTargetUccChange(entry.cashflow_id, e.target.value)}
-                                        className="px-2 py-1 text-xs rounded-lg border focus:outline-none bg-blue-50 border-blue-200 text-blue-800"
-                                        data-testid={`ucc-select-${entry.cashflow_id}`}
-                                      >
-                                        <option value="">Select UCC</option>
-                                        {clientUccList.map(ucc => (
-                                          <option key={ucc} value={ucc}>{ucc}</option>
-                                        ))}
-                                      </select>
-                                    )}
-                                    {clientUccList.length === 0 && entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest' && (
-                                      <span className="text-xs text-gray-400">No UCCs</span>
-                                    )}
-                                  </td>
-                                  <td className="py-2 px-4 text-center">
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleSaveEntryTag(entry.cashflow_id)}
-                                      disabled={savingClient === entry.cashflow_id}
-                                      className="h-7 px-2"
-                                    >
-                                      {savingClient === entry.cashflow_id ? (
-                                        <RefreshCw className="h-3 w-3 animate-spin" />
-                                      ) : (
-                                        <Save className="h-3 w-3" />
-                                      )}
-                                    </Button>
-                                  </td>
-                                </tr>
-                              )})}
-                            </tbody>
-                          </table>
-                          <div className="px-4 py-3 bg-gray-50 border-t">
-                            <div className="flex items-center justify-between text-sm mb-2">
-                              <span className="text-gray-600">Completion Progress</span>
-                              <span className="font-medium">{client.completeCount}/{client.entries.length}</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                              <div 
-                                className="bg-green-500 h-2 rounded-full transition-all"
-                                style={{ width: `${(client.completeCount / client.entries.length) * 100}%` }}
-                              />
-                            </div>
-                            {/* Save All button - only enabled when ALL entries are tagged */}
-                            <div className="flex items-center justify-between">
-                              {client.allTagged ? (
-                                <p className="text-xs text-green-600 flex items-center gap-1">
-                                  <CheckCircle className="h-3 w-3" /> All entries tagged - Ready to save!
-                                </p>
-                              ) : (
-                                <p className="text-xs text-amber-600">
-                                  Tag all {client.untaggedCount} remaining entries to save
-                                </p>
-                              )}
-                              <Button
-                                size="sm"
-                                onClick={() => handleSaveAllClientTags(client)}
-                                disabled={!client.allTagged || savingClient === client.client_id}
-                                className={`gap-2 ${client.allTagged ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'}`}
-                              >
-                                {savingClient === client.client_id ? (
-                                  <>
-                                    <RefreshCw className="h-4 w-4 animate-spin" />
-                                    Saving...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Save className="h-4 w-4" />
-                                    Save All Tags
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )
-              )}
-
-              {/* TAGGED SECTION */}
-              {reinvestmentSection === "tagged" && (
-                taggedClients.length === 0 ? (
-                  <div className="text-center py-12">
-                    <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No clients ready for approval</p>
-                    <p className="text-sm text-gray-400 mt-2">Tag all entries for a client first</p>
-                  </div>
-                ) : (
-                  taggedClients.map((client) => (
-                    <div key={client.client_id} className="bg-white rounded-lg border border-green-200 overflow-hidden">
-                      <div className="px-4 py-3 bg-green-50 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-green-200 flex items-center justify-center">
-                            <CheckCircle className="h-5 w-5 text-green-700" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-800">{client.client_name}</p>
-                            <p className="text-xs text-gray-500">{client.entries.length} entries tagged • Total: ₹{client.taggedAmount?.toLocaleString('en-IN')}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <label className="flex items-center gap-2 text-sm text-gray-600 mr-4">
-                            <input
-                              type="checkbox"
-                              checked={selectedClientEntries[client.client_id]?.length === client.entries.filter(e => e.currentTag !== 'not_invest').length}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedClientEntries(prev => ({
-                                    ...prev,
-                                    [client.client_id]: client.entries.filter(e => e.currentTag !== 'not_invest').map(e => e.cashflow_id)
-                                  }));
-                                } else {
-                                  setSelectedClientEntries(prev => ({
-                                    ...prev,
-                                    [client.client_id]: []
-                                  }));
-                                }
-                              }}
-                              className="rounded border-gray-300"
-                            />
-                            Select All
-                          </label>
-                          <Button
-                            size="sm"
-                            onClick={() => handleSendForApproval(client)}
-                            disabled={sendingApproval === client.client_id || !selectedClientEntries[client.client_id]?.length}
-                            className="gap-2 bg-green-600 hover:bg-green-700"
-                          >
-                            {sendingApproval === client.client_id ? (
-                              <>
-                                <RefreshCw className="h-4 w-4 animate-spin" />
-                                Sending...
-                              </>
-                            ) : (
-                              <>
-                                <Mail className="h-4 w-4" />
-                                Send for Approval ({selectedClientEntries[client.client_id]?.length || 0})
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        <table className="w-full">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="w-8 py-2 px-2"></th>
-                              <th className="text-left py-2 px-4 text-xs font-medium text-gray-500 uppercase">Portfolio</th>
-                              <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
-                              <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
-                              <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
-                              <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {client.entries.map((entry) => (
-                              <tr key={entry.cashflow_id} className="border-t">
-                                <td className="py-2 px-2">
-                                  {entry.currentTag !== 'not_invest' && (
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedClientEntries[client.client_id]?.includes(entry.cashflow_id)}
-                                      onChange={(e) => {
-                                        setSelectedClientEntries(prev => {
-                                          const current = prev[client.client_id] || [];
-                                          if (e.target.checked) {
-                                            return { ...prev, [client.client_id]: [...current, entry.cashflow_id] };
-                                          } else {
-                                            return { ...prev, [client.client_id]: current.filter(id => id !== entry.cashflow_id) };
-                                          }
-                                        });
-                                      }}
-                                      className="rounded border-gray-300"
-                                    />
-                                  )}
-                                </td>
-                                <td className="py-2 px-4 text-sm">
-                                  <div className="flex flex-col gap-0.5">
-                                    {(entry.currentPortfolio || entry.portfolio_category) ? (
-                                      <span className="text-purple-700 font-medium">
-                                        {PORTFOLIO_OPTIONS.find(p => p.value === (entry.currentPortfolio || entry.portfolio_category))?.label || (entry.currentPortfolio || entry.portfolio_category)}
-                                      </span>
-                                    ) : (
-                                      <span className="text-gray-500 italic">No portfolio selected</span>
-                                    )}
-                                    {entry.bond_code && (
-                                      <span className="text-xs text-gray-500 font-mono">{entry.bond_code}</span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="py-2 px-4 text-center text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yy")}</td>
-                                <td className="py-2 px-4 text-center">
-                                  <span className={`px-2 py-1 text-xs rounded-lg border ${getTagColor(entry.currentTag)}`}>
-                                    {getTagLabel(entry.currentTag)}
-                                  </span>
-                                </td>
-                                <td className="py-2 px-4 text-right text-sm font-mono font-medium">
-                                  {entry.currentTag === 'principal' && `₹${entry.principal_net?.toLocaleString('en-IN')}`}
-                                  {entry.currentTag === 'interest' && `₹${entry.interest_net?.toLocaleString('en-IN')}`}
-                                  {entry.currentTag === 'net_amount' && `₹${entry.net_amount?.toLocaleString('en-IN')}`}
-                                  {entry.currentTag === 'other' && `₹${entry.custom_amount?.toLocaleString('en-IN')}`}
-                                  {entry.currentTag === 'not_invest' && <span className="text-red-500">Not Investing</span>}
-                                </td>
-                                <td className="py-2 px-4 text-center">
-                                  <button
-                                    onClick={() => handleUntag(entry.cashflow_id)}
-                                    disabled={savingClient === entry.cashflow_id}
-                                    className="px-2 py-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded border border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Remove tag and move back to Untagged"
-                                    data-testid={`untag-btn-${entry.cashflow_id}`}
-                                  >
-                                    {savingClient === entry.cashflow_id ? 'Untagging...' : 'Untag'}
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ))
-                )
-              )}
-
-              {/* SENT FOR APPROVAL SECTION */}
-              {reinvestmentSection === "sent" && (
-                sentClients.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Mail className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No approvals sent yet</p>
-                    <p className="text-sm text-gray-400 mt-2">Tag and send entries for client approval</p>
-                  </div>
-                ) : (
-                  sentClients.map((client) => {
-                    const sentEntries = client.entries.filter(e => e.approval_status && e.approval_status !== 'not_sent');
-                    return (
-                      <div key={client.client_id} className="bg-white rounded-lg border border-blue-200 overflow-hidden">
-                        <div className="px-4 py-3 bg-blue-50 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center">
-                              <Mail className="h-5 w-5 text-blue-700" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-800">{client.client_name}</p>
-                              <p className="text-xs text-gray-500">{sentEntries.length} entries sent for approval</p>
-                            </div>
-                          </div>
-                        </div>
-                        {sentEntries.length > 0 && (
-                          <div className="p-4">
-                            <table className="w-full">
-                              <thead className="bg-gray-50">
-                                <tr>
-                                  <th className="text-left py-2 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
-                                  <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
-                                  <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
-                                  <th className="text-right py-2 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
-                                  <th className="text-center py-2 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {sentEntries.map((entry) => (
-                                  <tr key={entry.cashflow_id} className="border-t">
-                                    <td className="py-2 px-4 text-sm">
-                                      <div className="flex flex-col gap-0.5">
-                                        <span>
-                                          {entry.bond_name?.slice(0, 25) || (
-                                            (entry.currentPortfolio || entry.portfolio_category) 
-                                              ? <span className="text-purple-700 font-medium">
-                                                  Portfolio - {PORTFOLIO_OPTIONS.find(p => p.value === (entry.currentPortfolio || entry.portfolio_category))?.label || (entry.currentPortfolio || entry.portfolio_category)}
-                                                </span>
-                                              : (entry.currentTag && entry.currentTag !== 'not_tagged' && entry.currentTag !== 'not_invest')
-                                                ? <span className="text-purple-600">Portfolio</span>
-                                                : 'N/A'
-                                          )}
-                                        </span>
-                                        {entry.bond_name && (entry.currentPortfolio || entry.portfolio_category) && (
-                                          <span className="text-xs text-purple-600 font-medium">
-                                            Portfolio: {PORTFOLIO_OPTIONS.find(p => p.value === (entry.currentPortfolio || entry.portfolio_category))?.label || (entry.currentPortfolio || entry.portfolio_category)}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="py-2 px-4 text-center text-sm font-mono">{format(new Date(entry.expected_date), "dd-MMM-yy")}</td>
-                                    <td className="py-2 px-4 text-center">
-                                      <span className={`px-2 py-1 text-xs rounded-lg border ${getTagColor(entry.currentTag)}`}>
-                                        {getTagLabel(entry.currentTag)}
-                                      </span>
-                                    </td>
-                                    <td className="py-2 px-4 text-right text-sm font-mono font-medium">
-                                      ₹{(entry.custom_amount || entry.net_amount)?.toLocaleString('en-IN')}
-                                    </td>
-                                    <td className="py-2 px-4 text-center">
-                                      {getApprovalStatusBadge(entry.approval_status)}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )
-              )}
-            </div>
+            /* Tagged Tab */
+            taggedGroups.length === 0 ? (
+              <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+                <Tag className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                <p>No tagged entries yet</p>
+              </div>
+            ) : (
+              taggedGroups.map(group => renderTaggedClientGroup(group))
+            )
           )}
         </div>
       </div>
