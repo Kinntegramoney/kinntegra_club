@@ -6,6 +6,7 @@ import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import ClientSidebar from "@/components/ClientSidebar";
 import CreateRealEstateModal from "@/components/CreateRealEstateModal";
 import EditBondModal from "@/components/EditBondModal";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
