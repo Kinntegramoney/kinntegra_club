@@ -17338,6 +17338,187 @@ async def get_sub_broker_dashboard_summary(current_user: dict = Depends(get_curr
     }
 
 
+# ==================== LEADS MANAGEMENT ====================
+
+class CreateLeadRequest(BaseModel):
+    """Request model for creating a lead from client interest"""
+    opportunity_type: str  # 'bond' or 'real_estate'
+    opportunity_id: str
+    investment_amount: Optional[float] = None  # For bonds
+    interest_percentage: Optional[float] = None  # For real estate
+    notes: str = ""
+
+
+class UpdateLeadStatusRequest(BaseModel):
+    """Request model for updating lead status"""
+    status: str  # 'open', 'closed', 'not_interested'
+
+
+@api_router.post("/leads")
+async def create_lead(request: CreateLeadRequest, current_user: dict = Depends(get_current_user)):
+    """Create a new lead when client expresses interest"""
+    # Get opportunity details
+    if request.opportunity_type == 'bond':
+        opportunity = await db.bonds.find_one({"id": request.opportunity_id}, {"_id": 0})
+        if not opportunity:
+            raise HTTPException(status_code=404, detail="Bond not found")
+        product_name = opportunity.get('name', 'Unknown Bond')
+        product_code = opportunity.get('bond_code', '')
+    else:
+        opportunity = await db.real_estate_opportunities.find_one({"id": request.opportunity_id}, {"_id": 0})
+        if not opportunity:
+            raise HTTPException(status_code=404, detail="Real estate opportunity not found")
+        product_name = f"{opportunity.get('building_name', 'Unknown')} - Unit {opportunity.get('unit_no', '')}"
+        product_code = opportunity.get('id', '')[:8]
+    
+    # Get client details
+    client = None
+    if current_user['role'] == 'client':
+        client = await db.clients.find_one({"id": current_user.get('client_id')}, {"_id": 0})
+    
+    # Find the sub-broker/broker who shared this with the client
+    shared_by_id = None
+    shared_by_name = None
+    
+    if request.opportunity_type == 'real_estate':
+        shares = opportunity.get('shares', [])
+        for share in shares:
+            if share.get('client_id') == current_user.get('client_id', current_user['id']):
+                shared_by_id = share.get('shared_by')
+                # Get the name of who shared
+                sharer = await db.users.find_one({"id": shared_by_id}, {"_id": 0, "name": 1})
+                if sharer:
+                    shared_by_name = sharer.get('name')
+                break
+    
+    # Create lead record
+    lead = {
+        "id": str(uuid.uuid4()),
+        "client_id": current_user.get('client_id', current_user['id']),
+        "client_name": client.get('name') if client else current_user.get('name', 'Unknown'),
+        "client_pan": client.get('pan_number') if client else current_user.get('pan_number', ''),
+        "client_mobile": client.get('mobile') if client else '',
+        "client_email": client.get('email') if client else '',
+        "client_city": client.get('city') if client else '',
+        "opportunity_type": request.opportunity_type,
+        "opportunity_id": request.opportunity_id,
+        "product_name": product_name,
+        "product_code": product_code,
+        "investment_amount": request.investment_amount,
+        "interest_percentage": request.interest_percentage,
+        "notes": request.notes,
+        "status": "open",
+        "shared_by_id": shared_by_id,
+        "shared_by_name": shared_by_name,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.leads.insert_one(lead)
+    
+    # Update interested_count on the opportunity
+    if request.opportunity_type == 'bond':
+        await db.bonds.update_one(
+            {"id": request.opportunity_id},
+            {"$inc": {"interested_count": 1}}
+        )
+    else:
+        await db.real_estate_opportunities.update_one(
+            {"id": request.opportunity_id},
+            {"$inc": {"interested_count": 1}}
+        )
+    
+    # Create notification for broker/sub-broker
+    broker = await db.users.find_one({"role": "broker"}, {"_id": 0, "id": 1})
+    if broker:
+        notification = {
+            "id": str(uuid.uuid4()),
+            "user_id": shared_by_id or broker['id'],
+            "type": "new_lead",
+            "title": "New Lead Created!",
+            "message": f"{lead['client_name']} expressed interest in {product_name}" + 
+                       (f" - ₹{request.investment_amount:,.0f}" if request.investment_amount else "") +
+                       (f" - {request.interest_percentage}%" if request.interest_percentage else ""),
+            "lead_id": lead['id'],
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.notifications.insert_one(notification)
+    
+    return {"message": "Interest recorded successfully", "lead_id": lead['id']}
+
+
+@api_router.get("/leads")
+async def get_leads(
+    status: Optional[str] = None,
+    opportunity_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all leads - for brokers/sub-brokers"""
+    if current_user['role'] == 'client':
+        raise HTTPException(status_code=403, detail="Clients cannot access leads")
+    
+    query = {}
+    
+    # Sub-brokers only see leads from their shared opportunities
+    if current_user['role'] == 'sub_broker':
+        query["shared_by_id"] = current_user['id']
+    
+    if status:
+        query["status"] = status
+    if opportunity_type:
+        query["opportunity_type"] = opportunity_type
+    
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return leads
+
+
+@api_router.put("/leads/{lead_id}/status")
+async def update_lead_status(
+    lead_id: str,
+    request: UpdateLeadStatusRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update lead status"""
+    if current_user['role'] == 'client':
+        raise HTTPException(status_code=403, detail="Clients cannot update leads")
+    
+    if request.status not in ['open', 'closed', 'not_interested']:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Sub-brokers can only update their own leads
+    if current_user['role'] == 'sub_broker' and lead.get('shared_by_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="You can only update your own leads")
+    
+    await db.leads.update_one(
+        {"id": lead_id},
+        {"$set": {
+            "status": request.status,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": current_user['id']
+        }}
+    )
+    
+    return {"message": "Lead status updated successfully"}
+
+
+@api_router.get("/leads/{lead_id}")
+async def get_lead(lead_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a single lead by ID"""
+    if current_user['role'] == 'client':
+        raise HTTPException(status_code=403, detail="Clients cannot access leads")
+    
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    return lead
+
+
 # Reset broker password endpoint
 @api_router.get("/reset-broker-password")
 async def reset_broker_password():
