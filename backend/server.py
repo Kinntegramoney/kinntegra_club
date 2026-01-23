@@ -9795,21 +9795,47 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         if item['client_approved']:
             by_client[client_id]['approved_count'] += 1
     
-    # Generate next 6 months list
+    # Generate next 6 months list plus include all past months from the data
     month_list = []
+    
+    # First, collect all unique months from the data (including past)
+    all_months_data = []
+    for month_name, items in months.items():
+        all_months_data.append({
+            "name": month_name,
+            "items": items,
+            "count": len(items)
+        })
+    
+    # Sort by date (parsing month name)
+    from calendar import month_name as cal_month_names
+    def parse_month_key(month_str):
+        parts = month_str.split(' ')
+        month_idx = list(cal_month_names).index(parts[0])
+        year = int(parts[1])
+        return year * 12 + month_idx
+    
+    all_months_data.sort(key=lambda x: parse_month_key(x['name']))
+    month_list = all_months_data
+    
+    # Also ensure next 6 months are included even if empty
     current_date = today.replace(day=1)
+    existing_month_names = {m['name'] for m in month_list}
     for i in range(6):
         month_name = current_date.strftime("%B %Y")
-        month_list.append({
-            "name": month_name,
-            "items": months.get(month_name, []),
-            "count": len(months.get(month_name, []))
-        })
-        # Move to next month
+        if month_name not in existing_month_names:
+            month_list.append({
+                "name": month_name,
+                "items": [],
+                "count": 0
+            })
         if current_date.month == 12:
             current_date = current_date.replace(year=current_date.year + 1, month=1)
         else:
             current_date = current_date.replace(month=current_date.month + 1)
+    
+    # Re-sort after adding empty months
+    month_list.sort(key=lambda x: parse_month_key(x['name']))
     
     return {
         "months": month_list,
