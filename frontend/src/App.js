@@ -35,6 +35,8 @@ import ApprovalCenter from "@/pages/ApprovalCenter";
 import PendingApprovals from "@/pages/PendingApprovals";
 import SubBrokerClientDetails from "@/pages/SubBrokerClientDetails";
 import BrokerSettings from "@/pages/BrokerSettings";
+import LeadManagement from "@/pages/LeadManagement";
+import TradeLogs from "@/pages/TradeLogs";
 import { Toaster } from "@/components/ui/sonner";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 
