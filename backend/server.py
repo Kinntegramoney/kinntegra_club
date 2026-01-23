@@ -341,6 +341,75 @@ class PasswordResetConfirm(BaseModel):
     new_password: str
     new_pin: str
 
+# ==================== ROLE PERMISSIONS MODEL ====================
+class RolePermission(BaseModel):
+    """Model for role-based access control permissions"""
+    feature: str
+    action: str  # create, edit, view, delete, special
+    broker: bool = True
+    sub_broker: bool = False
+    client: bool = False
+    description: Optional[str] = None
+
+class RolePermissionsUpdate(BaseModel):
+    """Model for updating role permissions"""
+    permissions: List[dict]
+
+# Default role permissions based on master_role.xlsx
+DEFAULT_ROLE_PERMISSIONS = [
+    # Opportunities - Bonds
+    {"feature": "opportunities_bonds", "action": "create", "broker": True, "sub_broker": False, "client": False, "description": "Create bond opportunities"},
+    {"feature": "opportunities_bonds", "action": "edit", "broker": True, "sub_broker": False, "client": False, "description": "Edit bond opportunities"},
+    {"feature": "opportunities_bonds", "action": "view", "broker": True, "sub_broker": True, "client": True, "description": "View bond opportunities"},
+    {"feature": "opportunities_bonds", "action": "delete", "broker": True, "sub_broker": False, "client": False, "description": "Delete bond opportunities"},
+    
+    # Opportunities - Real Estate
+    {"feature": "opportunities_real_estate", "action": "create", "broker": True, "sub_broker": False, "client": False, "description": "Create real estate opportunities"},
+    {"feature": "opportunities_real_estate", "action": "edit", "broker": True, "sub_broker": False, "client": False, "description": "Edit real estate opportunities"},
+    {"feature": "opportunities_real_estate", "action": "view", "broker": True, "sub_broker": True, "client": True, "description": "View real estate opportunities"},
+    {"feature": "opportunities_real_estate", "action": "delete", "broker": True, "sub_broker": False, "client": False, "description": "Delete real estate opportunities"},
+    
+    # User - Sub Broker
+    {"feature": "user_sub_broker", "action": "create", "broker": True, "sub_broker": False, "client": False, "description": "Create sub-brokers"},
+    {"feature": "user_sub_broker", "action": "edit", "broker": True, "sub_broker": True, "client": False, "description": "Edit sub-broker details"},
+    {"feature": "user_sub_broker", "action": "view", "broker": True, "sub_broker": True, "client": False, "description": "View sub-brokers"},
+    {"feature": "user_sub_broker", "action": "delete", "broker": True, "sub_broker": False, "client": False, "description": "Delete sub-brokers"},
+    
+    # User - Client
+    {"feature": "user_client", "action": "create", "broker": True, "sub_broker": False, "client": False, "description": "Create clients"},
+    {"feature": "user_client", "action": "edit", "broker": True, "sub_broker": True, "client": True, "description": "Edit client details"},
+    {"feature": "user_client", "action": "view", "broker": True, "sub_broker": True, "client": True, "description": "View clients"},
+    {"feature": "user_client", "action": "delete", "broker": True, "sub_broker": False, "client": False, "description": "Delete clients"},
+    
+    # Holdings
+    {"feature": "holdings", "action": "view_all", "broker": True, "sub_broker": False, "client": False, "description": "View holdings for all clients"},
+    {"feature": "holdings", "action": "view_tagged", "broker": True, "sub_broker": True, "client": False, "description": "View holdings for tagged clients"},
+    {"feature": "holdings", "action": "view_self", "broker": True, "sub_broker": True, "client": True, "description": "View own holdings"},
+    
+    # Logs
+    {"feature": "logs", "action": "view_all", "broker": True, "sub_broker": False, "client": False, "description": "View logs for all clients"},
+    {"feature": "logs", "action": "view_tagged", "broker": True, "sub_broker": True, "client": False, "description": "View logs for tagged clients"},
+    {"feature": "logs", "action": "view_self", "broker": True, "sub_broker": True, "client": True, "description": "View own logs"},
+    
+    # Reinvestment
+    {"feature": "reinvestment", "action": "tag_all", "broker": True, "sub_broker": False, "client": False, "description": "Tag reinvestment for all clients"},
+    {"feature": "reinvestment", "action": "tag_tagged", "broker": True, "sub_broker": True, "client": False, "description": "Tag reinvestment for tagged clients"},
+    {"feature": "reinvestment", "action": "approve_reject", "broker": True, "sub_broker": True, "client": True, "description": "Approve/Reject reinvestment"},
+    
+    # API Trigger
+    {"feature": "api_trigger", "action": "trigger", "broker": True, "sub_broker": False, "client": False, "description": "Trigger API and notify sub-broker"},
+    {"feature": "api_trigger", "action": "approve_reject", "broker": True, "sub_broker": True, "client": True, "description": "Approve/Reject API trigger"},
+    
+    # Tagged Tab
+    {"feature": "tagged_tab", "action": "view", "broker": True, "sub_broker": True, "client": True, "description": "View tagged tab"},
+    
+    # Analysis
+    {"feature": "analysis", "action": "view", "broker": True, "sub_broker": True, "client": False, "description": "View analysis dashboard"},
+    
+    # Upload
+    {"feature": "upload", "action": "bulk_upload", "broker": True, "sub_broker": False, "client": False, "description": "Bulk upload data"},
+]
+
 class CustomerSignup(BaseModel):
     pan: str
     name: str
