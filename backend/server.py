@@ -9884,22 +9884,63 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         # Clear target UCC if not investing
         update_data['target_ucc'] = None
     
-    # If broker/sub-broker is tagging, set pending approval
+    # Check if this is a past date or future date
+    today = datetime.now(timezone.utc).date()
+    cf_date = datetime.fromisoformat(cashflow['date']).date()
+    is_past_date = cf_date < today
+    
+    # If broker/sub-broker is tagging:
+    # - Past dates: Auto-approve (no client approval needed)
+    # - Future dates: Set to pending approval
     if current_user['role'] in ['broker', 'sub_broker'] and update.reinvestment_tag not in ['not_tagged']:
-        update_data['client_approved'] = False
-        update_data['approval_status'] = 'pending'
+        if is_past_date:
+            # Past date - auto approve, no client approval needed
+            update_data['client_approved'] = True
+            update_data['approval_status'] = 'approved'
+            update_data['approved_at'] = datetime.now(timezone.utc).isoformat()
+            update_data['approved_by'] = current_user['id']
+            update_data['auto_approved'] = True  # Mark as auto-approved for past dates
+        else:
+            # Future date - requires client approval
+            update_data['client_approved'] = False
+            update_data['approval_status'] = 'pending'
     
     await db.holding_cashflows.update_one(
         {"id": cashflow_id},
         {"$set": update_data}
     )
     
+    # Create a log entry for Reinvestment Approvals tab
+    log_entry = {
+        "id": str(uuid.uuid4()),
+        "type": "reinvestment_tag",
+        "cashflow_id": cashflow_id,
+        "client_id": cashflow['client_id'],
+        "client_name": client.get('name', ''),
+        "bond_id": cashflow.get('bond_id'),
+        "bond_name": cashflow.get('bond_name', ''),
+        "expected_date": cashflow['date'],
+        "net_amount": cashflow.get('net_amount', 0),
+        "reinvestment_tag": update.reinvestment_tag,
+        "portfolio_category": update.portfolio_category,
+        "target_ucc": update.target_ucc,
+        "tagged_by": current_user['id'],
+        "tagged_by_name": current_user.get('name', ''),
+        "is_past_date": is_past_date,
+        "approval_status": update_data.get('approval_status', 'pending'),
+        "client_approved": update_data.get('client_approved', False),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.reinvestment_logs.insert_one(log_entry)
+    
     return {
-        "message": "Tag updated successfully", 
+        "message": "Tag updated successfully" + (" (auto-approved for past date)" if is_past_date else " (pending client approval)"), 
         "reinvestment_tag": update.reinvestment_tag, 
         "custom_amount": update.custom_amount,
         "portfolio_category": update.portfolio_category,
-        "target_ucc": update.target_ucc
+        "target_ucc": update.target_ucc,
+        "is_past_date": is_past_date,
+        "approval_status": update_data.get('approval_status')
     }
 
 
