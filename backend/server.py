@@ -11601,6 +11601,10 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
         status = calculate_bond_status(bond)
         bond['status'] = status
         
+        # Calculate unique investors count from trades
+        unique_investors = await db.trades.distinct("client_id", {"bond_id": bond['id'], "status": "approved"})
+        bond['unique_investors'] = len(unique_investors)
+        
         # Only include bonds that are 'available' (not funded or closed)
         if status == 'available':
             available_bonds.append(bond)
