@@ -40,6 +40,7 @@ import TradeLogs from "@/pages/TradeLogs";
 import UntaggedTrades from "@/pages/UntaggedTrades";
 import { Toaster } from "@/components/ui/sonner";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
+import InstallPWA from "@/components/InstallPWA";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
