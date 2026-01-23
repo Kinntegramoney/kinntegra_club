@@ -455,6 +455,21 @@ export default function Opportunities() {
           </div>
         </div>
 
+        {/* Interested / Investors Row */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-orange-50 rounded-lg p-3 text-center">
+            <p className="text-xs text-gray-500 mb-1">Interested</p>
+            <p className="text-2xl font-bold text-orange-500">{bond.interested_count || 0}</p>
+          </div>
+          <div className="bg-indigo-50 rounded-lg p-3 text-center">
+            <p className="text-xs text-gray-500 mb-1">Investors</p>
+            <p className="text-2xl font-bold text-indigo-600">
+              {bond.current_investors || bond.units_sold || 0}
+              <span className="text-gray-400 text-lg">/{bond.total_units || 1}</span>
+            </p>
+          </div>
+        </div>
+
         {/* Maturity - Full Width */}
         <div className="bg-rose-50 rounded-lg p-3 mb-4">
           <p className="text-xs text-gray-500 mb-1">Maturity Date</p>
