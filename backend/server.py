@@ -9686,11 +9686,22 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
     }, {"_id": 0}).to_list(10000)
     
     # Filter by date and group by month
+    # Include ALL untagged cashflows (past and future) plus tagged cashflows within 6 months
     upcoming = []
     for cf in cashflows:
         try:
             cf_date = datetime.fromisoformat(cf['date']).date()
-            if today <= cf_date <= six_months_later:
+            reinvestment_tag = cf.get('reinvestment_tag', 'not_tagged')
+            
+            # Include if:
+            # 1. Untagged (any date - past or future)
+            # 2. Tagged but within 6 months window
+            if reinvestment_tag == 'not_tagged' or (today <= cf_date <= six_months_later):
+                # Get client details including ucc_list
+                client = await db.clients.find_one({"id": cf['client_id']}, {"_id": 0, "name": 1, "pan_number": 1, "email": 1, "ucc_list": 1, "ucc": 1})
+                
+                # Get trade details
+                trade = await db.trades.find_one({"id": cf['trade_id']}, {"_id": 0})
                 # Get client details including ucc_list
                 client = await db.clients.find_one({"id": cf['client_id']}, {"_id": 0, "name": 1, "pan_number": 1, "email": 1, "ucc_list": 1, "ucc": 1})
                 
