@@ -857,7 +857,20 @@ export default function Opportunities() {
               variant="outline" 
               size="sm" 
               className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-              onClick={(e) => { e.stopPropagation(); setEditingRealEstate(opp); }}
+              onClick={async (e) => { 
+                e.stopPropagation(); 
+                // Fetch full opportunity details for editing
+                try {
+                  const token = localStorage.getItem("token");
+                  const response = await axios.get(`${API}/real-estate-opportunities/${opp.id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  setEditingRealEstate(response.data);
+                } catch (error) {
+                  console.error("Error fetching opportunity details:", error);
+                  toast.error("Failed to load property details");
+                }
+              }}
               title="Edit Property"
             >
               <Pencil className="h-4 w-4" />
