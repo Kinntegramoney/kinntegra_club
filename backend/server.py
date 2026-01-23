@@ -1459,18 +1459,40 @@ async def create_client_by_subbroker(
     # Determine PAN - could be pan_number or pan
     pan = client_data.get('pan_number', client_data.get('pan', '')).upper()
     passport_type = client_data.get('passport_type', 'indian')
+    original_pan = pan
+    is_role_overlap = False
+    login_id = pan
     
     # Check if PAN/Passport already exists
     if passport_type == 'indian' and pan:
         existing = await db.clients.find_one({"$or": [{"pan": pan}, {"pan_number": pan}]})
         if existing:
             raise HTTPException(status_code=400, detail="Client with this PAN already exists")
+        
+        # ROLE OVERLAP HANDLING: Check if PAN exists as sub-broker
+        existing_user = await db.users.find_one({"pan": pan})
+        if existing_user:
+            if existing_user.get('role') == 'sub_broker':
+                # Create client login with PAN + "1" suffix for role overlap
+                login_id = f"{pan}1"
+                is_role_overlap = True
+                
+                # Verify the modified login_id doesn't exist
+                existing_modified = await db.users.find_one({"pan": login_id})
+                if existing_modified:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Client login for sub-broker PAN {pan} already exists (Login: {login_id})"
+                    )
+            else:
+                raise HTTPException(status_code=400, detail="User with this PAN already exists")
     elif passport_type == 'foreign':
         passport_number = client_data.get('passport_number', '').upper()
         if passport_number:
             existing = await db.clients.find_one({"passport_number": passport_number})
             if existing:
                 raise HTTPException(status_code=400, detail="Client with this passport number already exists")
+            login_id = passport_number
     
     # Generate client ID
     client_id = str(uuid.uuid4())
