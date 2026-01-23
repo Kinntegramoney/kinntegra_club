@@ -458,6 +458,7 @@ function App() {
         </BrowserRouter>
       </PermissionsProvider>
       <Toaster />
+      <InstallPWA />
     </div>
   );
 }
