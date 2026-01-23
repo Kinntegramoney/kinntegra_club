@@ -90,7 +90,7 @@ export default function TradeLogs() {
         type: "trade",
         client_name: trade.client_name || "N/A",
         ucc: trade.ucc || trade.client_ucc || "-",
-        date: trade.created_at || trade.investment_date,
+        date: trade.investment_date || trade.created_at, // Use investment_date first for Buy entries
         trade_type: trade.trade_type || "Buy",
         amount: trade.total_amount || trade.amount || 0,
         portfolio: trade.portfolio_category || "-",
