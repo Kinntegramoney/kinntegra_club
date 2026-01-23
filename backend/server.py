@@ -3616,6 +3616,29 @@ async def bulk_upload_indian_clients(
                 results['failed'] += 1
                 continue
             
+            # ROLE OVERLAP HANDLING: Check if PAN exists as sub-broker
+            existing_user = await db.users.find_one({"pan": pan})
+            original_pan = pan
+            is_role_overlap = False
+            login_id = pan
+            
+            if existing_user:
+                if existing_user.get('role') == 'sub_broker':
+                    # Create client login with PAN + "1" suffix for role overlap
+                    login_id = f"{pan}1"
+                    is_role_overlap = True
+                    
+                    # Verify the modified login_id doesn't exist
+                    existing_modified = await db.users.find_one({"pan": login_id})
+                    if existing_modified:
+                        results['errors'].append(f"Row {idx+2}: Client login for sub-broker PAN {pan} already exists (Login: {login_id})")
+                        results['failed'] += 1
+                        continue
+                else:
+                    results['errors'].append(f"Row {idx+2}: User with PAN {pan} already exists")
+                    results['failed'] += 1
+                    continue
+            
             # Parse opportunities
             opportunities = []
             if opportunities_str:
