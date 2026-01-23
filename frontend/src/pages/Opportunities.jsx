@@ -373,6 +373,7 @@ export default function Opportunities() {
     const daysToMaturity = Math.ceil((new Date(bond.end_date) - new Date()) / (1000 * 60 * 60 * 24));
     const isBroker = user?.role === 'broker';
     const isSubBroker = user?.role === 'sub_broker';
+    const isClient = user?.role === 'client';
     
     // Face value per unit
     const faceValue = bond.face_value || (bond.principal_amount / (bond.total_units || 1));
