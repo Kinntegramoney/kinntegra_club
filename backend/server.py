@@ -12772,6 +12772,10 @@ class RealEstateOpportunityCreate(BaseModel):
     broker_fee: float = 0
     other_fees: float = 0
     
+    # Developer Discount
+    developer_discount: float = 0  # Absolute discount amount (AED)
+    developer_discount_percentage: float = 0  # Discount as percentage
+    
     # Unit Selling Fee (% of selling price, 0-2.5%)
     unit_selling_fee_percentage: float = 0
     
