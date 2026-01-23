@@ -298,6 +298,47 @@ export default function Opportunities() {
     }
   };
 
+  // Handle client interest submission
+  const handleInterestSubmit = async (e) => {
+    e.preventDefault();
+    if (!interestModal) return;
+    
+    const formData = new FormData(e.target);
+    const amount = formData.get('amount');
+    const percentage = formData.get('percentage');
+    
+    if (interestModal.type === 'bond' && (!amount || parseFloat(amount) <= 0)) {
+      toast.error("Please enter a valid investment amount");
+      return;
+    }
+    
+    if (interestModal.type === 'real_estate' && (!percentage || parseFloat(percentage) <= 0 || parseFloat(percentage) > 100)) {
+      toast.error("Please enter a valid percentage (1-100)");
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/leads`, {
+        opportunity_type: interestModal.type,
+        opportunity_id: interestModal.opportunity.id,
+        investment_amount: interestModal.type === 'bond' ? parseFloat(amount.replace(/,/g, '')) : null,
+        interest_percentage: interestModal.type === 'real_estate' ? parseFloat(percentage) : null,
+        notes: formData.get('notes') || ''
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success("Your interest has been recorded! A representative will contact you soon.");
+      setInterestModal(null);
+      // Refresh data to update interested count
+      fetchData(user);
+    } catch (error) {
+      console.error("Error submitting interest:", error);
+      toast.error(error.response?.data?.detail || "Failed to submit interest");
+    }
+  };
+
   // Categorize by status
   const availableBonds = bonds.filter(b => b.status === 'available');
   const fundedBonds = bonds.filter(b => b.status === 'funded');
