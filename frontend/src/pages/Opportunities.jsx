@@ -996,26 +996,30 @@ export default function Opportunities() {
               <h1 className="text-2xl font-bold text-gray-800" data-testid="page-title">Opportunities</h1>
               <p className="text-sm text-gray-500 mt-1">All investment opportunities - Bonds and Real Estate</p>
             </div>
-            {isBroker && (
+            {(canCreateBond || canCreateRealEstate) && (
               <div className="flex items-center gap-3">
-                <Button 
-                  onClick={() => navigate("/bonds/create")} 
-                  className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Bonds
-                </Button>
-                <Button 
-                  onClick={() => setShowRealEstateModal(true)} 
-                  variant="outline"
-                  className="border-teal-500 text-teal-600 hover:bg-teal-50 gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Real Estate
-                </Button>
+                {canCreateBond && (
+                  <Button 
+                    onClick={() => navigate("/bonds/create")} 
+                    className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Bonds
+                  </Button>
+                )}
+                {canCreateRealEstate && (
+                  <Button 
+                    onClick={() => setShowRealEstateModal(true)} 
+                    variant="outline"
+                    className="border-teal-500 text-teal-600 hover:bg-teal-50 gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Real Estate
+                  </Button>
+                )}
               </div>
             )}
-            {!isBroker && (
+            {!isBroker && !canCreateBond && !canCreateRealEstate && (
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 bg-teal-100 text-teal-700 text-sm rounded-full font-medium">
                   {availableCount + fundedCount + closedCount} Total
