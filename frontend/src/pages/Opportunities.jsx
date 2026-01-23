@@ -1236,6 +1236,98 @@ export default function Opportunities() {
           </div>
         </div>
       )}
+
+      {/* Interest Modal for Clients */}
+      <Dialog open={!!interestModal} onOpenChange={() => setInterestModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-rose-500" />
+              Express Interest
+            </DialogTitle>
+            <DialogDescription>
+              {interestModal?.type === 'bond' 
+                ? `Share your potential investment amount for ${interestModal?.opportunity?.name}`
+                : `Share your interest percentage in ${interestModal?.opportunity?.building_name} - Unit ${interestModal?.opportunity?.unit_no}`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleInterestSubmit} className="space-y-4">
+            {interestModal?.type === 'bond' ? (
+              <div className="space-y-2">
+                <Label htmlFor="amount">Potential Investment Amount (₹)</Label>
+                <Input
+                  id="amount"
+                  name="amount"
+                  type="text"
+                  placeholder="e.g., 5,00,000"
+                  className="text-lg"
+                  data-testid="interest-amount-input"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/,/g, '');
+                    if (!isNaN(value) && value !== '') {
+                      e.target.value = parseInt(value).toLocaleString('en-IN');
+                    }
+                  }}
+                />
+                <p className="text-xs text-gray-500">
+                  Enter the approximate amount you're considering to invest
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="percentage">Interest Percentage (%)</Label>
+                <Input
+                  id="percentage"
+                  name="percentage"
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="1"
+                  placeholder="e.g., 25"
+                  className="text-lg"
+                  data-testid="interest-percentage-input"
+                />
+                <p className="text-xs text-gray-500">
+                  Enter the share percentage you're interested in (1-100%)
+                </p>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="notes">Additional Notes (Optional)</Label>
+              <textarea
+                id="notes"
+                name="notes"
+                rows={2}
+                placeholder="Any specific questions or requirements..."
+                className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
+                data-testid="interest-notes-input"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setInterestModal(null)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                className="flex-1 bg-rose-500 hover:bg-rose-600"
+                data-testid="submit-interest-btn"
+              >
+                <Heart className="h-4 w-4 mr-2" />
+                Submit Interest
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
