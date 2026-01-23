@@ -317,3 +317,7 @@ frontend/node_modules/.cache/default-development/3.pack_
 *.env
 *.env.*
 electron-app/node_modules/electron/dist/electron
+-e 
+# Environment files
+*.env
+*.env.*
