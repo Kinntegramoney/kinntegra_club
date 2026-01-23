@@ -9693,31 +9693,25 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
             cf_date = datetime.fromisoformat(cf['date']).date()
             reinvestment_tag = cf.get('reinvestment_tag', 'not_tagged')
             
-            # Include if:
-            # 1. Untagged (any date - past or future)
-            # 2. Tagged but within 6 months window
-            if reinvestment_tag == 'not_tagged' or (today <= cf_date <= six_months_later):
-                # Get client details including ucc_list
-                client = await db.clients.find_one({"id": cf['client_id']}, {"_id": 0, "name": 1, "pan_number": 1, "email": 1, "ucc_list": 1, "ucc": 1})
-                
-                # Get trade details
-                trade = await db.trades.find_one({"id": cf['trade_id']}, {"_id": 0})
-                # Get client details including ucc_list
-                client = await db.clients.find_one({"id": cf['client_id']}, {"_id": 0, "name": 1, "pan_number": 1, "email": 1, "ucc_list": 1, "ucc": 1})
-                
-                # Get trade details
-                trade = await db.trades.find_one({"id": cf['trade_id']}, {"_id": 0})
-                
-                # Check access based on role
-                if current_user['role'] == 'broker':
-                    if client and trade:
-                        pass  # Brokers can see all
-                else:
-                    # Sub-broker can only see their linked clients
-                    if not client or client.get('linked_subbroker_id') != current_user['id']:
-                        continue
-                
-                # Get bond_code from trade or bond document
+            # Include ALL cashflows - both past and future, tagged and untagged
+            # Frontend will filter and categorize them
+            
+            # Get client details including ucc_list
+            client = await db.clients.find_one({"id": cf['client_id']}, {"_id": 0, "name": 1, "pan_number": 1, "email": 1, "ucc_list": 1, "ucc": 1})
+            
+            # Get trade details
+            trade = await db.trades.find_one({"id": cf['trade_id']}, {"_id": 0})
+            
+            # Check access based on role
+            if current_user['role'] == 'broker':
+                if client and trade:
+                    pass  # Brokers can see all
+            else:
+                # Sub-broker can only see their linked clients
+                if not client or client.get('linked_subbroker_id') != current_user['id']:
+                    continue
+            
+            # Get bond_code from trade or bond document
                 bond_code = trade.get('bond_code', '') if trade else ''
                 if not bond_code and cf.get('bond_id'):
                     bond = await db.bonds.find_one({"id": cf['bond_id']}, {"_id": 0, "bond_code": 1})
