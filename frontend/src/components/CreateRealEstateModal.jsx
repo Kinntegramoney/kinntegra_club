@@ -130,6 +130,16 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
       return;
     }
 
+    // Check file sizes - max 250KB per image
+    const MAX_SIZE = 250 * 1024; // 250KB in bytes
+    const oversizedFiles = files.filter(file => file.size > MAX_SIZE);
+    
+    if (oversizedFiles.length > 0) {
+      const oversizedNames = oversizedFiles.map(f => `${f.name} (${(f.size / 1024).toFixed(1)}KB)`).join(', ');
+      toast.error(`Images must be under 250KB each. Oversized: ${oversizedNames}`);
+      return;
+    }
+
     const newImages = files.map(file => ({
       file,
       preview: URL.createObjectURL(file)
