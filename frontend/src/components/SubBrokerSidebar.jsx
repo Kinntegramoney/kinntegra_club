@@ -26,6 +26,7 @@ export default function SubBrokerSidebar({ user }) {
     { path: "/sub-broker/opportunities", label: "Opportunities", icon: TrendingUp },
     { path: "/sub-broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/sub-broker/clients", label: "Clients", icon: UserCheck },
+    { path: "/sub-broker/trade-tagging", label: "Trade Tag", icon: Tag },
     { path: "/sub-broker/leads", label: "Lead Mgmt", icon: UserPlus },
     { path: "/sub-broker/reinvestment", label: "Reinv Tag", icon: Tag },
     { path: "/sub-broker/logs", label: "Logs", icon: FileText },
