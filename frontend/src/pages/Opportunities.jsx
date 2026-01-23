@@ -667,28 +667,28 @@ export default function Opportunities() {
             <Eye className="h-4 w-4 mr-1" />
             View Details
           </Button>
-          {isBroker && (
-            <>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-                onClick={(e) => { e.stopPropagation(); setEditingBond(bond); }}
-                title="Edit Bond"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                onClick={(e) => { e.stopPropagation(); handleDeleteBond(bond.id); }}
-                title="Delete Bond"
-                data-testid={`delete-bond-${bond.id}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </>
+          {canEditBond && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+              onClick={(e) => { e.stopPropagation(); setEditingBond(bond); }}
+              title="Edit Bond"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {canDeleteBond && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              onClick={(e) => { e.stopPropagation(); handleDeleteBond(bond.id); }}
+              title="Delete Bond"
+              data-testid={`delete-bond-${bond.id}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           )}
           {isSubBroker && (
             <Button 
