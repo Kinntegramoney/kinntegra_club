@@ -5721,18 +5721,17 @@ async def bulk_upload_historical_trades(
         # Update bond statuses based on investments and dates
         updated_bonds = set()
         for trade in results.get('created_trades', []):
-            bond_id = await db.trades.find_one({"id": trade['trade_id']}, {"_id": 0, "bond_id": 1})
-            if bond_id:
-                updated_bonds.add(bond_id['bond_id'])
+            # Get bond_id from the trade we just created
+            trade_doc = await db.trades.find_one({"id": trade['trade_id']}, {"_id": 0, "bond_id": 1})
+            if trade_doc:
+                updated_bonds.add(trade_doc['bond_id'])
         
         for bond_id in updated_bonds:
-            bond = bond_by_id.get(bond_id)
+            # Get fresh bond data from database (includes updated units_sold)
+            bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
             if bond:
-                # Check if fully funded
                 total_units = bond.get('total_units', 0)
-                units_sold = bond.get('units_sold', 0) + await db.trades.count_documents({
-                    "bond_id": bond_id, "status": "approved"
-                })
+                units_sold = bond.get('units_sold', 0)
                 
                 # Check if bond end date has passed
                 end_date_str = bond.get('end_date', '')
@@ -5748,7 +5747,7 @@ async def bulk_upload_historical_trades(
                 if is_closed:
                     new_status = 'closed'
                     results['bonds_updated_to_closed'].append(bond.get('name', bond_id))
-                elif units_sold >= total_units:
+                elif units_sold >= total_units and total_units > 0:
                     new_status = 'funded'
                     results['bonds_updated_to_funded'].append(bond.get('name', bond_id))
                 
