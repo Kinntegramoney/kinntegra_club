@@ -6674,14 +6674,37 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
             raise HTTPException(status_code=400, detail="Client with this PAN already exists")
     
     # Check if user with same photo_id already exists
+    # ROLE OVERLAP HANDLING: If PAN exists as sub-broker, allow creating client with PAN+1
     existing_user = await db.users.find_one({"pan": photo_id})
+    original_photo_id = photo_id  # Keep original PAN for reference
+    is_role_overlap = False
+    
     if existing_user:
-        raise HTTPException(status_code=400, detail=f"User with this {'PAN' if client_data.passport_type == 'indian' else 'Passport Number'} already exists")
+        # Check if existing user is a sub-broker - allow role overlap
+        if existing_user.get('role') == 'sub_broker':
+            # Create client login with PAN + "1" suffix
+            photo_id = f"{original_photo_id}1"
+            is_role_overlap = True
+            
+            # Verify the modified photo_id doesn't exist
+            existing_modified = await db.users.find_one({"pan": photo_id})
+            if existing_modified:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Client login for this sub-broker already exists. Login ID: {photo_id}"
+                )
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"User with this {'PAN' if client_data.passport_type == 'indian' else 'Passport Number'} already exists"
+            )
     
     client_dict = client_data.model_dump()
     client_id = str(uuid.uuid4())
     client_dict['id'] = client_id
-    client_dict['photo_id'] = photo_id  # The login ID (PAN for Indian, Passport for Foreign)
+    client_dict['photo_id'] = photo_id  # The login ID (PAN for Indian, Passport for Foreign, or PAN+1 for role overlap)
+    client_dict['original_pan'] = original_photo_id  # Store original PAN for reference
+    client_dict['is_role_overlap'] = is_role_overlap  # Track if this is a sub-broker who is also a client
     if client_dict.get('pan_number'):
         client_dict['pan_number'] = client_dict['pan_number'].upper()
     if client_dict.get('passport_number'):
