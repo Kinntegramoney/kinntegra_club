@@ -180,6 +180,7 @@ export default function Opportunities() {
   const [editingRealEstate, setEditingRealEstate] = useState(null);
   const [clientInvestments, setClientInvestments] = useState([]); // Track which properties client has invested in
   const [xirrModalData, setXirrModalData] = useState(null); // For XIRR calculation popup
+  const [interestModal, setInterestModal] = useState(null); // For client interest modal {type: 'bond'/'real_estate', opportunity: {...}}
 
   // Set page title
   useEffect(() => {
