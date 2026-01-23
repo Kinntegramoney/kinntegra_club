@@ -5558,13 +5558,9 @@ async def bulk_upload_historical_trades(
                             results['failed'] += 1
                             continue
                         
-                        # Create trade - set as UNTAGGED for tagging workflow
+                        # Create trade - APPROVED status, will create cashflows
                         trade_id = str(uuid.uuid4())
                         price_per_unit = amount / units if units > 0 else 0
-                        
-                        # Determine if past or future dated
-                        inv_date_obj = datetime.fromisoformat(inv_date_str) if isinstance(inv_date_str, str) else inv_date
-                        is_past_dated = inv_date_obj.date() <= datetime.now().date()
                         
                         trade_dict = {
                             "id": trade_id,
@@ -5579,29 +5575,49 @@ async def bulk_upload_historical_trades(
                             "calculated_price": price_per_unit,
                             "total_amount": amount,
                             "payment_reference": utr,
-                            "status": "untagged",  # All bulk uploads start as untagged
-                            "is_past_dated": is_past_dated,
-                            "tagging_status": "pending",  # pending -> tagged -> (client_approved for future)
-                            "ucc": None,  # To be filled during tagging
-                            "portfolio": None,  # To be filled during tagging
-                            "tagged_amount": None,  # Can be different from total_amount
-                            "tagged_by": None,
-                            "tagged_at": None,
-                            "client_approved": False,
-                            "client_approved_at": None,
+                            "status": "approved",
                             "created_by": current_user['id'],
                             "created_by_name": current_user.get('name', 'System'),
                             "created_by_role": "broker",
-                            "broker_notes": "Historical import via bulk upload - pending tagging",
+                            "broker_notes": "Historical import via bulk upload",
+                            "approved_by": current_user['id'],
+                            "approved_at": datetime.now(timezone.utc).isoformat(),
                             "created_at": datetime.now(timezone.utc).isoformat(),
                             "is_historical": True
                         }
                         
                         await db.trades.insert_one(trade_dict)
                         
-                        # NOTE: Bond units and client allocations are NOT updated here
-                        # They will be updated when the trade is tagged and approved
-                        # This allows for editing before final approval
+                        # Update bond units sold
+                        await db.bonds.update_one(
+                            {"id": bond['id']},
+                            {"$inc": {"units_sold": units}}
+                        )
+                        
+                        # Add to client's bond allocations
+                        allocation = {
+                            "bond_id": bond['id'],
+                            "bond_name": bond['name'],
+                            "units_blocked": units,
+                            "units_paid": units,
+                            "status": "fully_paid",
+                            "trade_id": trade_id,
+                            "allocated_at": datetime.now(timezone.utc).isoformat()
+                        }
+                        await db.clients.update_one(
+                            {"id": client['id']},
+                            {"$push": {"bond_allocations": allocation}}
+                        )
+                        
+                        # Generate projected cashflows - these will appear in Reinv Tag > Untagged
+                        cashflows = generate_client_cashflows(trade_dict, bond)
+                        if cashflows:
+                            for cf in cashflows:
+                                cf['client_id'] = client['id']
+                                cf['bond_id'] = bond['id']
+                                cf['trade_id'] = trade_id
+                                cf['reinvestment_tag'] = 'not_tagged'  # Will appear in untagged section
+                            await db.holding_cashflows.insert_many(cashflows)
                         
                         results['investments_created'] += 1
                         results['success'] += 1
@@ -5610,9 +5626,7 @@ async def bulk_upload_historical_trades(
                             "client": client['name'],
                             "bond": bond['name'],
                             "units": units,
-                            "amount": amount,
-                            "status": "untagged",
-                            "is_past_dated": is_past_dated
+                            "amount": amount
                         })
                         
                     except Exception as e:
