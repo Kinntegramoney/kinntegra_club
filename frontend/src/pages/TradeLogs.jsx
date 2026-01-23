@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { 
   Search, Download, Calendar, Filter, RefreshCw,
   CheckCircle, XCircle, Clock, Users,
-  ChevronDown, Eye, MoreVertical
+  ChevronDown, Eye, MoreVertical, ChevronLeft, ChevronRight
 } from "lucide-react";
 import {
   Select,
@@ -51,6 +51,10 @@ export default function TradeLogs() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     document.title = "Kinntegraa | Logs";
