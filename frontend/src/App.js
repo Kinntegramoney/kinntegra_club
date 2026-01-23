@@ -37,6 +37,7 @@ import SubBrokerClientDetails from "@/pages/SubBrokerClientDetails";
 import BrokerSettings from "@/pages/BrokerSettings";
 import LeadManagement from "@/pages/LeadManagement";
 import TradeLogs from "@/pages/TradeLogs";
+import UntaggedTrades from "@/pages/UntaggedTrades";
 import { Toaster } from "@/components/ui/sonner";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 
