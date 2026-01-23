@@ -414,6 +414,16 @@ function App() {
             } 
           />
           
+          {/* Client Trade Approvals Route */}
+          <Route 
+            path="/client/trade-approvals" 
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <UntaggedTrades />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Client Approval Logs Route */}
           <Route 
             path="/client/approval-logs" 
