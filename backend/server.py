@@ -5773,7 +5773,50 @@ async def bulk_upload_historical_trades(
     return results
 
 
-def calculate_xnpv_price(
+@api_router.post("/holdings/fix-historical-repayments")
+async def fix_historical_repayments(current_user: dict = Depends(get_current_user)):
+    """
+    Fix existing historical cashflows by marking past-dated ones as repaid.
+    This is a one-time fix for existing data that was uploaded before the auto-repaid logic was added.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can run this fix")
+    
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).date()
+    
+    # Find all cashflows that are past-dated but not marked as repaid
+    past_cashflows = await db.holding_cashflows.find({
+        "is_repaid": {"$ne": True}
+    }, {"_id": 0, "id": 1, "date": 1, "net_amount": 1}).to_list(10000)
+    
+    updated_count = 0
+    for cf in past_cashflows:
+        try:
+            cf_date_str = cf.get('date', '')
+            if not cf_date_str:
+                continue
+            cf_date = datetime.fromisoformat(cf_date_str.split('T')[0]).date()
+            
+            if cf_date < today:
+                await db.holding_cashflows.update_one(
+                    {"id": cf['id']},
+                    {"$set": {
+                        "is_repaid": True,
+                        "repaid_at": datetime.now(timezone.utc).isoformat(),
+                        "repaid_actual_amount": cf.get('net_amount', 0)
+                    }}
+                )
+                updated_count += 1
+        except Exception as e:
+            print(f"Error processing cashflow {cf.get('id')}: {e}")
+            continue
+    
+    return {
+        "message": f"Fixed {updated_count} historical cashflows",
+        "total_checked": len(past_cashflows),
+        "updated": updated_count
+    }
     face_value: float,
     investment_date: datetime,
     client_irr: float,
