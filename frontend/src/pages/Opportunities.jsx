@@ -1272,7 +1272,7 @@ export default function Opportunities() {
                   }}
                 />
                 <p className="text-xs text-gray-500">
-                  Enter the approximate amount you're considering to invest
+                  Enter the approximate amount you are considering to invest
                 </p>
               </div>
             ) : (
@@ -1290,7 +1290,7 @@ export default function Opportunities() {
                   data-testid="interest-percentage-input"
                 />
                 <p className="text-xs text-gray-500">
-                  Enter the share percentage you're interested in (1-100%)
+                  Enter the share percentage you are interested in (1-100%)
                 </p>
               </div>
             )}
