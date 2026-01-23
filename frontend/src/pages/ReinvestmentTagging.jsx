@@ -24,13 +24,6 @@ export default function ReinvestmentTagging() {
   const [sendingApproval, setSendingApproval] = useState(null);
   const [portfolioCategories, setPortfolioCategories] = useState({});
   const [targetUccs, setTargetUccs] = useState({}); // Track selected UCC for each cashflow
-  
-  // Historical trades state
-  const [untaggedTrades, setUntaggedTrades] = useState([]);
-  const [loadingTrades, setLoadingTrades] = useState(false);
-  const [activeMainTab, setActiveMainTab] = useState("reinvestment"); // "reinvestment" or "historical"
-  const [tradeTagForm, setTradeTagForm] = useState({});
-  const [savingTrade, setSavingTrade] = useState(null);
 
   // Portfolio category options
   const PORTFOLIO_OPTIONS = [
