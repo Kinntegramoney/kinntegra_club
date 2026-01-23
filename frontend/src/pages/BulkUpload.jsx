@@ -472,11 +472,11 @@ export default function BulkUpload() {
                         )}
                         {activeTab === "historical-trades" && (
                           <>
-                            <li>• Deal ID (Bond Code) - must exist in system</li>
-                            <li>• Investment Date, Investor Name</li>
-                            <li>• Units purchased and Purchase Price</li>
-                            <li>• Validates against system-calculated price</li>
-                            <li>• Creates trade and generates cashflows</li>
+                            <li>• <strong>Sheet 1 - Investment Details:</strong></li>
+                            <li className="ml-4">Deal ID, Date, PAN, Units, Amount, UTR</li>
+                            <li>• <strong>Sheet 2 - Repayment Details (Actuals):</strong></li>
+                            <li className="ml-4">Deal ID, Date, PAN, Principal, Interest, TDS, Net</li>
+                            <li className="text-amber-700 font-medium mt-2">⚠️ Create bonds & clients FIRST!</li>
                           </>
                         )}
                       </ul>
