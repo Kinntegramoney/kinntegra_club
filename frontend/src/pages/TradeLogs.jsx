@@ -47,7 +47,6 @@ export default function TradeLogs() {
   const [user, setUser] = useState(null);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("trade_logs");
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -282,16 +281,6 @@ export default function TradeLogs() {
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : activeTab === "challan" ? (
-            <div className="bg-white rounded-lg border p-8 text-center">
-              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-800 mb-2">Challan Download</h3>
-              <p className="text-gray-500 mb-4">Download TDS challans and payment receipts</p>
-              <Button variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Download All Challans
-              </Button>
             </div>
           ) : (
             <div className="bg-white rounded-lg border overflow-hidden">
