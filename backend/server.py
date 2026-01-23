@@ -9736,8 +9736,14 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
     six_months_later = today + timedelta(days=180)
     
     # Get all holding cashflows
+    # Include: 
+    # 1. All untagged cashflows (past and future, regardless of is_repaid status)
+    # 2. Tagged but not fully approved upcoming cashflows
     cashflows = await db.holding_cashflows.find({
-        "is_repaid": {"$ne": True}
+        "$or": [
+            {"reinvestment_tag": {"$in": ["not_tagged", None, ""]}},  # All untagged
+            {"is_repaid": {"$ne": True}}  # Or not yet repaid
+        ]
     }, {"_id": 0}).to_list(10000)
     
     # Filter by date and group by month
