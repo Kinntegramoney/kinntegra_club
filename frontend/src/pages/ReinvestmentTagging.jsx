@@ -598,9 +598,11 @@ export default function ReinvestmentTagging() {
                     <td className="px-3 py-2 capitalize">{entry.portfolio_category?.replace('_', ' ') || '-'}</td>
                     <td className="px-3 py-2">
                       <Badge variant="outline" className="text-xs">
-                        {entry.reinvestment_tag === 'full' ? 'Full Amount' :
-                         entry.reinvestment_tag === 'partial' ? 'Partial' :
-                         entry.reinvestment_tag === 'no_reinvest' ? 'No Reinvest' :
+                        {entry.reinvestment_tag === 'principal' ? 'Principal' :
+                         entry.reinvestment_tag === 'interest' ? 'Interest' :
+                         entry.reinvestment_tag === 'both' ? 'Both' :
+                         entry.reinvestment_tag === 'none' ? 'None' :
+                         entry.reinvestment_tag === 'custom' ? 'Custom' :
                          entry.reinvestment_tag}
                       </Badge>
                     </td>
