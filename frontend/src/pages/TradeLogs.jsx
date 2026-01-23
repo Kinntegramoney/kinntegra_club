@@ -74,10 +74,11 @@ export default function TradeLogs() {
     try {
       const token = localStorage.getItem("token");
       
-      // Fetch both trade logs and reinvestment logs
-      const [tradesRes, reinvestmentRes] = await Promise.all([
+      // Fetch trade logs, reinvestment approval logs, and new reinvestment tagging logs
+      const [tradesRes, reinvestmentRes, reinvestmentTaggingRes] = await Promise.all([
         axios.get(`${API}/trades/all`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
-        axios.get(`${API}/approval-logs?entity_type=reinvestment`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }))
+        axios.get(`${API}/approval-logs?entity_type=reinvestment`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
+        axios.get(`${API}/reinvestment/logs`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }))
       ]);
       
       // Combine and format logs
@@ -110,7 +111,27 @@ export default function TradeLogs() {
         details: log.details,
       }));
 
-      setLogs([...tradeLogs, ...reinvestmentLogs].sort((a, b) => 
+      // New reinvestment tagging logs
+      const taggingLogs = (reinvestmentTaggingRes.data || []).map(log => ({
+        id: log.id,
+        type: "reinvestment_tag",
+        client_name: log.client_name || "N/A",
+        ucc: log.target_ucc || "-",
+        date: log.created_at,
+        trade_type: log.reinvestment_tag === 'reinvest' ? "Reinvest" : 
+                    log.reinvestment_tag === 'withdraw' ? "Withdraw" : 
+                    log.reinvestment_tag === 'other' ? "Other" : log.reinvestment_tag,
+        amount: log.net_amount || 0,
+        payment_mode: log.portfolio_category || "-",
+        advisor: log.tagged_by_name || "-",
+        status: log.approval_status || "pending",
+        bond_name: log.bond_name,
+        expected_date: log.expected_date,
+        is_past_date: log.is_past_date,
+        client_approved: log.client_approved,
+      }));
+
+      setLogs([...tradeLogs, ...reinvestmentLogs, ...taggingLogs].sort((a, b) => 
         new Date(b.date) - new Date(a.date)
       ));
     } catch (error) {
