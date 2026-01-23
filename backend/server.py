@@ -11536,6 +11536,10 @@ async def get_bonds(
             bond['created_at'] = datetime.fromisoformat(bond['created_at'])
         # Calculate and add status dynamically
         bond['status'] = calculate_bond_status(bond)
+        
+        # Calculate unique investors count from trades
+        unique_investors = await db.trades.distinct("client_id", {"bond_id": bond['id'], "status": "approved"})
+        bond['unique_investors'] = len(unique_investors)
     
     total = await db.bonds.count_documents({})
     
