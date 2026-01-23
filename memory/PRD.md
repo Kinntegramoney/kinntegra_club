@@ -408,4 +408,74 @@ Complete 3-phase approval workflow for sub-broker actions:
 
 ## Test Credentials
 - **Broker**: PAN: `ANVPB5297J`, Password: `Laksh@0208`, PIN: `0516`
-- **Test Sub-Broker**: PAN: `TESTSB1234`, Password: `Test@123`, PIN: `1234`
+- **Sub-Broker**: PAN: `AKQPR6699J`, Password: `kinntegra123`, PIN: `1234`
+- **Client**: PAN: `AJMPD3987G`, Password: `kinntegra123`, PIN: `1234`
+
+## Recent Changes (Jan 23, 2026)
+
+### Logs Page - Unified View & Portfolio Column (COMPLETED)
+**User Request**: Remove "Reinvestment Approvals" tab from Logs, show all entries in Trade Logs. Show Portfolio instead of Payment Mode.
+
+**Changes Implemented**:
+1. **Removed Tabs**: Logs page now shows a single unified view (no "Trade Logs" / "Reinvestment Approvals" tabs)
+2. **Merged Data Sources**: All data (trades, reinvestment logs, tagging logs) combined into one table
+3. **Column Change**: "Payment Mode" column replaced with "Portfolio" column
+4. **Trade Type Display**: Shows "Full Amount", "Partial", "No Reinvest" etc. for reinvestment entries
+
+**Files Modified**:
+- `/app/frontend/src/pages/TradeLogs.jsx` - Removed tabs, changed `payment_mode` to `portfolio`
+
+### Reinvestment Tagging Page - Backend Fix (COMPLETED)
+**Issue**: Historical entries were not appearing for broker users due to critical indentation bug.
+
+**Root Cause**: Lines 9714-9758 in `/api/reinvestment/upcoming` endpoint were incorrectly indented inside the `else` block (sub-broker only), meaning brokers saw empty data.
+
+**Fix Applied**:
+1. Fixed indentation to ensure brokers AND sub-brokers can see data
+2. Updated backend to return ALL months (including past dates) not just next 6 months
+3. Fixed frontend to properly map `cashflow_id` to `id` and `client_ucc_list` to `ucc_list`
+
+**Files Modified**:
+- `/app/backend/server.py` - Fixed indentation in `/api/reinvestment/upcoming` (line ~9705-9760)
+- `/app/frontend/src/pages/ReinvestmentTagging.jsx` - Fixed data normalization
+
+### Historical Trade Upload & Tagging Workflow (CLARIFIED)
+**User Clarification** (from handwritten notes):
+1. When bond is added in Opportunity → Cashflows are derived
+2. Historical data upload has two sheets: Investment Dates + Repayment Schedule
+3. System creates cashflows from Investment Dates (both historical and future)
+4. Under "Reinv Tag", ALL untagged cashflows appear in "Untagged" section
+5. After tagging with UCC, Portfolio, Tag:
+   - **Historical entries** → Auto-approved → Appear in Trade Logs as "Approved"
+   - **Upcoming entries** → Stay in "Tagged" section → Send to client for approval
+6. After client approves → Status changes to "Complete" in Trade Logs
+
+**Current Implementation Status**:
+- ✅ Historical entries auto-approve when tagged (backend logic exists)
+- ✅ Upcoming entries require client approval (email flow implemented)
+- ✅ Reinv Tag page shows Historical/Upcoming sub-sections
+- ✅ Logs page shows Portfolio column
+
+## Known Issues & Next Steps
+
+### P0 - Critical
+1. **Test the tagging workflow end-to-end**: Tag some historical entries and verify they appear in Logs as "Approved"
+2. **Test email approval flow**: Tag upcoming entries, send email to client, verify approval process
+
+### P1 - High Priority
+1. **Apply RBAC permissions globally**: Currently partially implemented in SubBrokerClients and Opportunities
+2. **Sub-broker/Client permission fix on RealEstateDetails page**: Implemented but untested
+3. **Verify "Sell Unit" Feature**: End-to-end test needed
+
+### P2 - Medium Priority
+1. **Sub-broker password reset email flow**: Not verified
+2. **Build Projected vs Actuals frontend UI**: Backend endpoint exists
+3. **Pincode Lookup frontend implementation**
+
+### Future/Backlog
+1. **CRITICAL REFACTORING**: 
+   - `server.py` (18,000+ lines) needs to be split into routers
+   - `ReinvestmentTagging.jsx`, `Opportunities.jsx` need to be broken down
+2. **Delete obsolete components**: `SubBrokerOpportunities.jsx`, `ClientOpportunities.jsx`, `PendingApprovals.jsx`
+3. **Build Analysis Dashboard**
+4. **Kinntegra API Integration**: Blocked on credentials
