@@ -129,71 +129,23 @@ export default function AdminClients() {
     }
   };
 
-  // Edit client functions
+  // Edit client functions - now uses EditClientModal component
   const handleEditClick = async (client) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(`${API}/clients/${client.id}/details`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      // Load UCC list for editing (handle both old ucc and new ucc_list)
-      const clientData = { ...response.data };
-      if (clientData.ucc_list && Array.isArray(clientData.ucc_list) && clientData.ucc_list.length > 0) {
-        clientData.uccs = [...clientData.ucc_list];
-      } else if (clientData.ucc && typeof clientData.ucc === 'string') {
-        clientData.uccs = [clientData.ucc];
-      } else {
-        clientData.uccs = [''];
-      }
-      
-      setEditFormData(clientData);
-      setEditingClient(client);
+      setEditingClient(response.data);
     } catch (error) {
       // Fallback to basic client data if details endpoint fails
-      const clientData = { ...client };
-      if (clientData.ucc_list && Array.isArray(clientData.ucc_list) && clientData.ucc_list.length > 0) {
-        clientData.uccs = [...clientData.ucc_list];
-      } else if (clientData.ucc && typeof clientData.ucc === 'string') {
-        clientData.uccs = [clientData.ucc];
-      } else {
-        clientData.uccs = [''];
-      }
-      
-      setEditFormData(clientData);
       setEditingClient(client);
     }
   };
 
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    setEditLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      
-      // Prepare form data with UCCs handling - send as ucc_list array
-      const submitData = { ...editFormData };
-      if (editFormData.uccs) {
-        // Filter out empty UCCs
-        const validUccs = editFormData.uccs.filter(ucc => ucc && ucc.trim() !== '');
-        submitData.ucc_list = validUccs.length > 0 ? validUccs : [''];
-        delete submitData.uccs; // Remove the temporary uccs array
-      }
-      // Remove old ucc field if present
-      delete submitData.ucc;
-      
-      await axios.put(`${API}/clients/${editingClient.id}`, submitData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success("Client updated successfully");
-      setEditingClient(null);
-      fetchData();
-    } catch (error) {
-      console.error("Error updating client:", error);
-      toast.error(error.response?.data?.detail || "Failed to update client");
-    } finally {
-      setEditLoading(false);
-    }
+  const handleEditSuccess = () => {
+    setEditingClient(null);
+    fetchData();
   };
 
   // Resend credentials
