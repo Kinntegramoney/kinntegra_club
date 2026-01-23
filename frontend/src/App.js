@@ -218,6 +218,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/broker/settings" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <BrokerSettings />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Shared Routes */}
           <Route 
