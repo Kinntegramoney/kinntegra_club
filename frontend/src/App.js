@@ -386,7 +386,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
-        </Routes>
+          </Routes>
         </BrowserRouter>
       </PermissionsProvider>
       <Toaster />
