@@ -65,19 +65,20 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 function App() {
   return (
     <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<CustomerSignup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          
-          {/* Broker Routes */}
-          <Route 
-            path="/broker/dashboard" 
-            element={
-              <ProtectedRoute allowedRoles={["broker"]}>
-                <Dashboard />
+      <PermissionsProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<CustomerSignup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            
+            {/* Broker Routes */}
+            <Route 
+              path="/broker/dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={["broker"]}>
+                  <Dashboard />
               </ProtectedRoute>
             } 
           />
