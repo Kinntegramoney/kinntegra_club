@@ -13277,7 +13277,7 @@ async def get_real_estate_opportunities(
     if property_type:
         query["property_type"] = property_type
     
-    # Optimized projection - exclude heavy fields for list view
+    # Optimized projection - include all fields needed for list view and edit
     projection = {
         "_id": 0,
         "id": 1,
@@ -13287,26 +13287,42 @@ async def get_real_estate_opportunities(
         "unit_no": 1,
         "unit_type": 1,
         "location": 1,
+        "floor": 1,
+        "parking_spaces": 1,
+        "description": 1,
         "total_area": 1,
+        "carpet_area": 1,
+        "balcony_area": 1,
         "total_cost": 1,
         "unit_price": 1,
+        "dld_fee": 1,
+        "dld_fee_percentage": 1,
+        "admin_fee": 1,
+        "broker_fee": 1,
+        "brokerage_fee": 1,
+        "other_fees": 1,
+        "developer_discount": 1,
+        "developer_discount_percentage": 1,
+        "unit_selling_fee_percentage": 1,
+        "selling_fee_percentage": 1,
         "price_per_sqft": 1,
         "expected_xirr": 1,
         "expected_sale_rate": 1,
         "estimated_sell_date": 1,
-        "dld_fee": 1,
-        "admin_fee": 1,
-        "payment_schedule": 1,  # Needed for XIRR calculation
+        "eligible_to_sell_after_percentage": 1,
+        "payment_schedule": 1,
         "status": 1,
         "invested_percentage": 1,
         "max_co_owners": 1,
         "handover_date": 1,
+        "view_3d_url": 1,
+        "images": 1,
+        "presentations": 1,
         "created_at": 1,
-        "investors": 1,  # Needed for count
+        "investors": 1,
         "interested_count": 1,
         "current_investors": 1,
         "total_payment_percentage_completed": 1,
-        # Exclude heavy fields: images, presentations
     }
     
     skip = (page - 1) * limit
