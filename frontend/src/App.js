@@ -34,6 +34,7 @@ import ApprovalLogs from "@/pages/ApprovalLogs";
 import ApprovalCenter from "@/pages/ApprovalCenter";
 import PendingApprovals from "@/pages/PendingApprovals";
 import SubBrokerClientDetails from "@/pages/SubBrokerClientDetails";
+import BrokerSettings from "@/pages/BrokerSettings";
 import { Toaster } from "@/components/ui/sonner";
 
 // Protected Route Component
