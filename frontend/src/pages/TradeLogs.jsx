@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { 
   Search, Download, Calendar, Filter, RefreshCw,
-  CheckCircle, XCircle, Clock, FileText, Users,
+  CheckCircle, XCircle, Clock, Users,
   ChevronDown, Eye, MoreVertical
 } from "lucide-react";
 import {
