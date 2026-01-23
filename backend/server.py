@@ -12924,6 +12924,8 @@ async def create_real_estate_opportunity(
         "upfront_amount": round(upfront_amount, 2),  # DLD + Admin (paid with booking)
         "broker_fee": broker_fee,
         "other_fees": other_fees,
+        "developer_discount": opportunity_data.developer_discount,
+        "developer_discount_percentage": opportunity_data.developer_discount_percentage,
         "unit_selling_fee_percentage": opportunity_data.unit_selling_fee_percentage,
         "total_cost": round(total_cost, 2),
         "total_area": opportunity_data.total_area,
