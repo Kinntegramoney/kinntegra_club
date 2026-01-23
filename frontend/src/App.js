@@ -387,7 +387,8 @@ function App() {
             } 
           />
         </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </PermissionsProvider>
       <Toaster />
     </div>
   );
