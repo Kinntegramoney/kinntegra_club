@@ -5612,11 +5612,20 @@ async def bulk_upload_historical_trades(
                         # Generate projected cashflows - these will appear in Reinv Tag > Untagged
                         cashflows = generate_client_cashflows(trade_dict, bond)
                         if cashflows:
+                            today = datetime.now(timezone.utc).date()
                             for cf in cashflows:
                                 cf['client_id'] = client['id']
                                 cf['bond_id'] = bond['id']
                                 cf['trade_id'] = trade_id
                                 cf['reinvestment_tag'] = 'not_tagged'  # Will appear in untagged section
+                                
+                                # For historical imports: Mark past-dated cashflows as repaid
+                                cf_date = datetime.fromisoformat(cf['date'].split('T')[0]).date() if isinstance(cf['date'], str) else cf['date']
+                                if cf_date < today:
+                                    cf['is_repaid'] = True
+                                    cf['repaid_at'] = datetime.now(timezone.utc).isoformat()
+                                    cf['repaid_actual_amount'] = cf.get('net_amount', 0)
+                                    
                             await db.holding_cashflows.insert_many(cashflows)
                         
                         results['investments_created'] += 1
