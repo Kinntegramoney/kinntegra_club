@@ -163,7 +163,7 @@ export default function TradeLogs() {
 
   const handleDownload = () => {
     // Export filtered logs to CSV
-    const headers = ["Client Name", "UCC", "Date", "Type", "Amount", "Payment Mode", "Advisor", "Status"];
+    const headers = ["Client Name", "UCC", "Date", "Type", "Amount", "Portfolio", "Advisor", "Status"];
     const csvContent = [
       headers.join(","),
       ...filteredLogs.map(log => [
@@ -172,7 +172,7 @@ export default function TradeLogs() {
         format(new Date(log.date), "dd/MM/yyyy"),
         log.trade_type,
         log.amount,
-        log.payment_mode,
+        log.portfolio,
         log.advisor,
         log.status
       ].join(","))
