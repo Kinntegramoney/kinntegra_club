@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="14" time="15.686" timestamp="2026-01-23T08:22:17.675704+00:00" hostname="agent-env-4f330229-17d7-4781-83ab-39724e472624"><testcase classname="backend.tests.test_leads_api.TestHealthCheck" name="test_health_endpoint" time="0.064"><failure message="requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)">/root/.venv/lib/python3.11/site-packages/requests/models.py:976: in json
+    return complexjson.loads(self.text, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:337: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:355: in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+E   json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+During handling of the above exception, another exception occurred:
+backend/tests/test_leads_api.py:48: in test_health_endpoint
+    data = response.json()
+           ^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/models.py:980: in json
+    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)
+E   requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)</failure></testcase><testcase classname="backend.tests.test_leads_api.TestAuthentication" name="test_broker_login" time="0.585" /><testcase classname="backend.tests.test_leads_api.TestAuthentication" name="test_sub_broker_login" time="0.548" /><testcase classname="backend.tests.test_leads_api.TestAuthentication" name="test_client_login" time="0.559" /><testcase classname="backend.tests.test_leads_api.TestLeadsAPI" name="test_get_leads_broker" time="1.721" /><testcase classname="backend.tests.test_leads_api.TestLeadsAPI" name="test_get_leads_sub_broker" time="1.745" /><testcase classname="backend.tests.test_leads_api.TestLeadsAPI" name="test_get_leads_client_forbidden" time="1.734" /><testcase classname="backend.tests.test_leads_api.TestLeadsAPI" name="test_create_lead_requires_auth" time="1.774" /><testcase classname="backend.tests.test_leads_api.TestLeadsAPI" name="test_update_lead_status_invalid_status" time="1.694" /><testcase classname="backend.tests.test_leads_api.TestLeadsAPI" name="test_update_lead_status_not_found" time="1.675" /><testcase classname="backend.tests.test_leads_api.TestLeadsAPI" name="test_client_cannot_update_lead" time="1.720" /><testcase classname="backend.tests.test_leads_api.TestBondsAPI" name="test_get_bonds" time="0.585" /><testcase classname="backend.tests.test_leads_api.TestRealEstateAPI" name="test_get_real_estate_opportunities" time="0.580" /><testcase classname="backend.tests.test_leads_api.TestTradesAPI" name="test_get_all_trades" time="0.600" /></testsuite></testsuites>
