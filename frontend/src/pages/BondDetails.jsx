@@ -807,39 +807,37 @@ export default function BondDetails() {
               </div>
             )}
 
-            {/* Block Units Section - Show after calculator results */}
-            {enhancedCalculation && (selectedUnits || enhancedCalculation.units_requested > 0) && (
+            {/* Block Units Section - Always visible for brokers/sub-brokers to tag client investments */}
+            {user?.role !== 'client' && (
               <div className="mt-6 pt-6 border-t border-border">
                 {/* Book Units Section */}
                 <div className="p-4 md:p-6 bg-amber-50 border border-amber-200 rounded-md">
                   <h3 className="font-semibold mb-4 flex items-center gap-2 text-base md:text-lg">
                     <ShoppingCart className="h-5 w-5 text-amber-600" />
-                    {user?.role === 'client' ? 'Book Units' : 'Block Units for Client'}
+                    Block Units for Client
                   </h3>
                   
                   <div className="space-y-4">
-                    {/* Client Selection - Only for broker/sub-broker */}
-                    {user?.role !== 'client' && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Select Client *</Label>
-                        <Select value={selectedClient} onValueChange={setSelectedClient}>
-                          <SelectTrigger data-testid="select-client-booking" className="w-full">
-                            <SelectValue placeholder="Choose a client..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {clients.length === 0 ? (
-                              <SelectItem value="none" disabled>No clients available</SelectItem>
-                            ) : (
-                              clients.map(client => (
-                                <SelectItem key={client.id} value={client.id}>
-                                  {client.name} ({client.pan_number})
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                    {/* Client Selection */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Select Client *</Label>
+                      <Select value={selectedClient} onValueChange={setSelectedClient}>
+                        <SelectTrigger data-testid="select-client-booking" className="w-full">
+                          <SelectValue placeholder="Choose a client..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients.length === 0 ? (
+                            <SelectItem value="none" disabled>No clients available</SelectItem>
+                          ) : (
+                            clients.map(client => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.name} ({client.pan_number})
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
                     {/* Investment Date - Editable */}
                     <div className="space-y-2">
@@ -883,11 +881,13 @@ export default function BondDetails() {
                       </div>
                     </div>
 
-                    {/* Reference Price Info */}
-                    <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
-                      <p className="font-medium mb-1">Reference from Calculator:</p>
-                      <p>Price/Unit: ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')} | Settlement Date: {settlementDate}</p>
-                    </div>
+                    {/* Reference Price Info - Show only if calculator was used */}
+                    {enhancedCalculation && enhancedCalculation.clean_price_per_unit > 0 && (
+                      <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
+                        <p className="font-medium mb-1">Reference from Calculator:</p>
+                        <p>Price/Unit: ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')} | Settlement Date: {settlementDate}</p>
+                      </div>
+                    )}
 
                     {/* Payment Reference */}
                     <div className="space-y-2">
