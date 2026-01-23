@@ -460,6 +460,7 @@ function App() {
       </PermissionsProvider>
       <Toaster />
       <InstallPWA />
+      <SyncStatus />
     </div>
   );
 }
