@@ -9991,6 +9991,34 @@ async def approve_reinvestment_tag(cashflow_id: str, approval: ReinvestmentAppro
     return {"message": f"Tag {'approved' if approval.approved else 'rejected'} successfully"}
 
 
+@api_router.get("/reinvestment/logs")
+async def get_reinvestment_logs(
+    status: Optional[str] = None,
+    client_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get reinvestment tagging logs for the Logs > Reinvestment Approvals tab"""
+    query = {}
+    
+    if status:
+        query["approval_status"] = status
+    if client_id:
+        query["client_id"] = client_id
+    
+    # Sub-brokers can only see their clients' logs
+    if current_user['role'] == 'sub_broker':
+        # Get sub-broker's client IDs
+        clients = await db.clients.find(
+            {"linked_subbroker_id": current_user['id']}, 
+            {"_id": 0, "id": 1}
+        ).to_list(1000)
+        client_ids = [c['id'] for c in clients]
+        query["client_id"] = {"$in": client_ids}
+    
+    logs = await db.reinvestment_logs.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return logs
+
+
 @api_router.post("/reinvestment/send-approval-email")
 async def send_reinvestment_approval_email(
     request: SendReinvestmentApprovalRequest,
