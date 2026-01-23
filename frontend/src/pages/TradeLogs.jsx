@@ -143,10 +143,6 @@ export default function TradeLogs() {
   };
 
   const filteredLogs = logs.filter(log => {
-    // Tab filter
-    if (activeTab === "trade_logs" && log.type !== "trade") return false;
-    if (activeTab === "reinvestment" && log.type !== "reinvestment") return false;
-    
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -232,31 +228,6 @@ export default function TradeLogs() {
             </div>
           </div>
           
-          {/* Tabs */}
-          <div className="px-6 border-t bg-gray-50">
-            <div className="flex gap-1">
-              <button
-                onClick={() => setActiveTab("trade_logs")}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "trade_logs"
-                    ? "border-blue-600 text-blue-600 bg-white"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Trade Logs
-              </button>
-              <button
-                onClick={() => setActiveTab("reinvestment")}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "reinvestment"
-                    ? "border-blue-600 text-blue-600 bg-white"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Reinvestment Approvals
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Filters */}
