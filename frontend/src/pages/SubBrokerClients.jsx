@@ -231,22 +231,26 @@ export default function SubBrokerClients() {
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowBulkUploadModal(true)}
-                data-testid="bulk-upload-btn"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Bulk Upload
-              </Button>
-              <Button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-amber-700 hover:bg-amber-800"
-                data-testid="create-client-btn"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Client
-              </Button>
+              {canBulkUpload && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowBulkUploadModal(true)}
+                  data-testid="bulk-upload-btn"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Upload
+                </Button>
+              )}
+              {canCreateClient && (
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-amber-700 hover:bg-amber-800"
+                  data-testid="create-client-btn"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Client
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -262,14 +266,18 @@ export default function SubBrokerClients() {
               <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 mb-4">No clients linked yet</p>
               <div className="flex gap-2 justify-center">
-                <Button onClick={() => setShowCreateModal(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Your First Client
-                </Button>
-                <Button variant="outline" onClick={() => setShowBulkUploadModal(true)}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Bulk Upload
-                </Button>
+                {canCreateClient && (
+                  <Button onClick={() => setShowCreateModal(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Client
+                  </Button>
+                )}
+                {canBulkUpload && (
+                  <Button variant="outline" onClick={() => setShowBulkUploadModal(true)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Bulk Upload
+                  </Button>
+                )}
               </div>
             </div>
           ) : filteredClients.length === 0 ? (
