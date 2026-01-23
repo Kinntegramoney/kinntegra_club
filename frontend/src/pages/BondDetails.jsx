@@ -104,10 +104,6 @@ export default function BondDetails() {
       toast.error("Please select a client");
       return;
     }
-    if (!enhancedCalculation) {
-      toast.error("Please calculate price first");
-      return;
-    }
     if (!bookingInvestmentDate) {
       toast.error("Please select investment date");
       return;
@@ -132,6 +128,11 @@ export default function BondDetails() {
     // Use editable form values instead of calculator values
     const unitsToBook = parseInt(bookingUnitsCount);
     const totalAmount = parseFloat(bookingAmountTransferred.replace(/,/g, ''));
+    
+    // Calculate price per unit from entered values (or use calculator if available)
+    const calculatedPricePerUnit = enhancedCalculation?.clean_price_per_unit 
+      ? Math.ceil(enhancedCalculation.clean_price_per_unit)
+      : Math.ceil(totalAmount / unitsToBook);
 
     setBookingUnits(true);
     try {
