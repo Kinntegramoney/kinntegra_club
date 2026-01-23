@@ -75,7 +75,7 @@ export default function TradeLogs() {
       
       // Fetch trade logs, reinvestment approval logs, and new reinvestment tagging logs
       const [tradesRes, reinvestmentRes, reinvestmentTaggingRes] = await Promise.all([
-        axios.get(`${API}/trades/all`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
+        axios.get(`${API}/trades`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
         axios.get(`${API}/approval-logs?entity_type=reinvestment`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
         axios.get(`${API}/reinvestment/logs`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }))
       ]);
