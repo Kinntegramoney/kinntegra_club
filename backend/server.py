@@ -5599,35 +5599,9 @@ async def bulk_upload_historical_trades(
                         
                         await db.trades.insert_one(trade_dict)
                         
-                        # Update bond units sold
-                        await db.bonds.update_one(
-                            {"id": bond['id']},
-                            {"$inc": {"units_sold": units}}
-                        )
-                        
-                        # Add to client's bond allocations
-                        allocation = {
-                            "bond_id": bond['id'],
-                            "bond_name": bond['name'],
-                            "units_blocked": units,
-                            "units_paid": units,
-                            "status": "fully_paid",
-                            "trade_id": trade_id,
-                            "allocated_at": datetime.now(timezone.utc).isoformat()
-                        }
-                        await db.clients.update_one(
-                            {"id": client['id']},
-                            {"$push": {"bond_allocations": allocation}}
-                        )
-                        
-                        # Generate projected cashflows
-                        cashflows = generate_client_cashflows(trade_dict, bond)
-                        if cashflows:
-                            for cf in cashflows:
-                                cf['client_id'] = client['id']
-                                cf['bond_id'] = bond['id']
-                                cf['type'] = 'projected'  # Mark as projected
-                            await db.holding_cashflows.insert_many(cashflows)
+                        # NOTE: Bond units and client allocations are NOT updated here
+                        # They will be updated when the trade is tagged and approved
+                        # This allows for editing before final approval
                         
                         results['investments_created'] += 1
                         results['success'] += 1
@@ -5636,7 +5610,9 @@ async def bulk_upload_historical_trades(
                             "client": client['name'],
                             "bond": bond['name'],
                             "units": units,
-                            "amount": amount
+                            "amount": amount,
+                            "status": "untagged",
+                            "is_past_dated": is_past_dated
                         })
                         
                     except Exception as e:
