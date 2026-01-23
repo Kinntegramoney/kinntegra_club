@@ -5303,92 +5303,135 @@ async def bulk_upload_real_estate(
 
 @api_router.get("/bulk/template/historical-trades")
 async def download_historical_trades_template(current_user: dict = Depends(get_current_user)):
-    """Download Excel template for bulk historical client bond investments upload"""
+    """Download Excel template for bulk historical deals upload (investments + repayments)"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can download templates")
     
     wb = Workbook()
     
-    # Main sheet: Historical Investments
-    ws = wb.active
-    ws.title = "Historical Investments"
+    # Sheet 1: Investment Details
+    ws_investments = wb.active
+    ws_investments.title = "Investment Details"
     
-    headers = [
-        "Deal ID*", "Investment Date*", "Investor Name*", "Investor PAN",
-        "Units*", "Purchase Price*", "Cutoff Days", "IFA Name", "Notes"
-    ]
+    inv_headers = ["Deal ID*", "Date of Investment*", "PAN*", "No of Units*", "Amount*", "UTR"]
     
     header_fill = PatternFill(start_color="B45309", end_color="B45309", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
     
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=header)
+    for col, header in enumerate(inv_headers, 1):
+        cell = ws_investments.cell(row=1, column=col, value=header)
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal="center", wrap_text=True)
-        ws.column_dimensions[get_column_letter(col)].width = 20
+        ws_investments.column_dimensions[get_column_letter(col)].width = 20
     
-    # Sample data rows
-    sample_data = [
-        ["CDNRE001", "2025-04-30", "FALI ADI UNWALLA", "ABCDE1234F", 34, 3916923.08, 15, "Kinntegraa L.L.C-FZ", "Initial investment"],
-        ["CDNRE001", "2025-05-02", "ANINHA ILDA DACUNHA", "XYZPQ5678G", 43, 4956833, 15, "Kinntegraa L.L.C-FZ", ""],
+    # Sample investment data
+    inv_sample = [
+        ["CDNRE001", "2025-04-30", "ABCDE1234F", 34, 3916923.08, "UTR123456789"],
+        ["CDNRE001", "2025-05-02", "XYZPQ5678G", 43, 4956833, "UTR987654321"],
     ]
-    
-    for row_idx, row_data in enumerate(sample_data, 2):
+    for row_idx, row_data in enumerate(inv_sample, 2):
         for col, value in enumerate(row_data, 1):
-            ws.cell(row=row_idx, column=col, value=value)
+            ws_investments.cell(row=row_idx, column=col, value=value)
+    
+    # Sheet 2: Repayment Details
+    ws_repayments = wb.create_sheet("Repayment Details")
+    
+    rep_headers = ["Deal ID*", "Repayment Date*", "PAN*", "Principal", "Interest", "Gross Amount*", "TDS", "Net Amount*"]
+    
+    rep_header_fill = PatternFill(start_color="166534", end_color="166534", fill_type="solid")
+    
+    for col, header in enumerate(rep_headers, 1):
+        cell = ws_repayments.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = rep_header_fill
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_repayments.column_dimensions[get_column_letter(col)].width = 18
+    
+    # Sample repayment data
+    rep_sample = [
+        ["CDNRE001", "2025-06-15", "ABCDE1234F", 0, 32640.77, 32640.77, 3264.08, 29376.69],
+        ["CDNRE001", "2025-06-15", "XYZPQ5678G", 0, 41306.92, 41306.92, 4130.69, 37176.23],
+    ]
+    for row_idx, row_data in enumerate(rep_sample, 2):
+        for col, value in enumerate(row_data, 1):
+            ws_repayments.cell(row=row_idx, column=col, value=value)
     
     # Instructions sheet
     ws_instructions = wb.create_sheet("Instructions")
     instructions = [
-        "BULK HISTORICAL TRADES UPLOAD INSTRUCTIONS",
+        "═══════════════════════════════════════════════════════════════════",
+        "       HISTORICAL DEALS UPLOAD - IMPORTANT INSTRUCTIONS",
+        "═══════════════════════════════════════════════════════════════════",
         "",
-        "Upload historical client bond investments with actual transaction data.",
+        "⚠️  PREREQUISITE: CREATE BONDS FIRST!",
+        "────────────────────────────────────────────────────────────────────",
+        "Before uploading historical transactions, you MUST:",
+        "1. Create all bonds/deals in the system first (Go to Opportunities > Create Bond)",
+        "2. Create all clients in the system (Go to Client Management > Add Client)",
+        "3. The Deal ID in this file must match the Bond Code in the system",
         "",
-        "═══════════════════════════════════════════════════════════════",
-        "REQUIRED FIELDS",
-        "═══════════════════════════════════════════════════════════════",
+        "═══════════════════════════════════════════════════════════════════",
+        "SHEET 1: INVESTMENT DETAILS",
+        "═══════════════════════════════════════════════════════════════════",
+        "Records when clients invested in a bond",
+        "",
+        "Required Fields:",
         "• Deal ID*: Bond code (must match existing bond in system)",
-        "• Investment Date*: Date client invested (YYYY-MM-DD format)",
-        "• Investor Name*: Client name (must match existing client)",
-        "• Units*: Number of units purchased (as per actual transaction)",
-        "• Purchase Price*: Actual amount invested by client",
+        "• Date of Investment*: When the investment was made (YYYY-MM-DD)",
+        "• PAN*: Client's PAN number (must match existing client)",
+        "• No of Units*: Number of units purchased",
+        "• Amount*: Total investment amount",
         "",
-        "═══════════════════════════════════════════════════════════════",
-        "OPTIONAL FIELDS",
-        "═══════════════════════════════════════════════════════════════",
-        "• Investor PAN: Client PAN (helps match client more accurately)",
-        "• Cutoff Days: Days after investment where payments are still missed (default: 15)",
-        "  - E.g., Investment on May 13, Cutoff=15 means payments until May 28 are missed",
-        "  - Use this to handle secondary market timing",
-        "• IFA Name: Name of the introducing advisor",
-        "• Notes: Any additional notes about the trade",
+        "Optional Fields:",
+        "• UTR: Unique Transaction Reference for the payment",
         "",
-        "═══════════════════════════════════════════════════════════════",
-        "HOW IT WORKS",
-        "═══════════════════════════════════════════════════════════════",
-        "1. Deal ID must exist in the system as a valid bond code",
-        "2. Investor must exist as a client in the system (by name or PAN)",
-        "3. Units and Purchase Price are TRUSTED as provided",
-        "4. Price per unit is calculated as: Purchase Price ÷ Units",
-        "5. Cashflows are generated based on remaining bond payments",
-        "6. Secondary market purchases at discount are supported",
+        "═══════════════════════════════════════════════════════════════════",
+        "SHEET 2: REPAYMENT DETAILS (ACTUALS)",
+        "═══════════════════════════════════════════════════════════════════",
+        "Records actual repayments received by clients (interest/principal)",
         "",
-        "═══════════════════════════════════════════════════════════════",
-        "SECONDARY MARKET NOTES",
-        "═══════════════════════════════════════════════════════════════",
-        "• For secondary purchases, price may differ from face value",
-        "• The system accepts the actual negotiated price",
-        "• Cashflows are calculated from investment date onwards",
-        "• Missed payments (before investment) are excluded",
+        "Required Fields:",
+        "• Deal ID*: Bond code (must match existing bond)",
+        "• Repayment Date*: When the repayment was made (YYYY-MM-DD)",
+        "• PAN*: Client's PAN number",
+        "• Gross Amount*: Total repayment before TDS",
+        "• Net Amount*: Amount received after TDS",
+        "",
+        "Optional Fields:",
+        "• Principal: Principal portion of repayment",
+        "• Interest: Interest portion of repayment",
+        "• TDS: Tax Deducted at Source",
+        "",
+        "═══════════════════════════════════════════════════════════════════",
+        "WHAT HAPPENS AFTER UPLOAD",
+        "═══════════════════════════════════════════════════════════════════",
+        "1. Investments are tagged to active deals",
+        "2. Deals are moved to:",
+        "   - FUNDED section if fully invested",
+        "   - CLOSED section if end date has passed",
+        "3. Repayments are stored as ACTUALS",
+        "4. System compares ACTUALS vs PROJECTED cashflows",
+        "5. Clients can see gaps in their Holdings > XIRR Report",
+        "",
+        "═══════════════════════════════════════════════════════════════════",
+        "PROJECTED vs ACTUALS TRACKING",
+        "═══════════════════════════════════════════════════════════════════",
+        "• PROJECTED: System-calculated expected cashflows from bond schedule",
+        "• ACTUALS: Real repayments uploaded via this sheet",
+        "• Clients can compare both in their Holdings section",
+        "• Gaps highlight delayed or missed payments",
+        "",
     ]
     
     for row, text in enumerate(instructions, 1):
         cell = ws_instructions.cell(row=row, column=1, value=text)
-        if text.startswith("═") or text.startswith("REQUIRED") or text.startswith("OPTIONAL") or \
-           text.startswith("VALIDATION") or text.startswith("ERROR") or text.startswith("BULK"):
+        if text.startswith("═") or text.startswith("SHEET") or text.startswith("⚠️") or \
+           text.startswith("WHAT HAPPENS") or text.startswith("PROJECTED"):
             cell.font = Font(bold=True)
-        ws_instructions.column_dimensions['A'].width = 70
+        if "⚠️" in text or "PREREQUISITE" in text:
+            cell.fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
+        ws_instructions.column_dimensions['A'].width = 75
     
     output = io.BytesIO()
     wb.save(output)
@@ -5397,7 +5440,7 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=historical_trades_template.xlsx"}
+        headers={"Content-Disposition": "attachment; filename=historical_deals_template.xlsx"}
     )
 
 
