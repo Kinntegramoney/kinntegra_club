@@ -230,6 +230,22 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/broker/leads" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <LeadManagement />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/logs" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <TradeLogs />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Shared Routes */}
           <Route 
