@@ -623,8 +623,7 @@ export default function RealEstateDetails() {
                       <img 
                         src={imgSrc}
                         alt={`${opp.building_name} - Image ${currentImageIndex + 1}`}
-                        className="w-full h-full object-cover cursor-pointer"
-                        onClick={() => window.open(imgSrc, '_blank')}
+                        className="w-full h-full object-cover"
                         data-testid="main-slider-image"
                       />
                     );
@@ -653,11 +652,6 @@ export default function RealEstateDetails() {
                   {/* Image Counter */}
                   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
                     {currentImageIndex + 1} / {opp.images.length}
-                  </div>
-                  
-                  {/* Fullscreen hint */}
-                  <div className="absolute top-3 right-3 bg-black/50 text-white px-2 py-1 rounded text-xs">
-                    Click to enlarge
                   </div>
                 </div>
                 
