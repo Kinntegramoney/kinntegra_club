@@ -9704,58 +9704,58 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
             
             # Check access based on role
             if current_user['role'] == 'broker':
-                if client and trade:
-                    pass  # Brokers can see all
+                if not (client and trade):
+                    continue  # Skip if missing data
             else:
                 # Sub-broker can only see their linked clients
                 if not client or client.get('linked_subbroker_id') != current_user['id']:
                     continue
             
             # Get bond_code from trade or bond document
-                bond_code = trade.get('bond_code', '') if trade else ''
-                if not bond_code and cf.get('bond_id'):
-                    bond = await db.bonds.find_one({"id": cf['bond_id']}, {"_id": 0, "bond_code": 1})
-                    bond_code = bond.get('bond_code', '') if bond else ''
-                
-                # Get client's UCC list (handle both old single ucc and new ucc_list)
-                client_ucc_list = client.get('ucc_list', []) if client else []
-                if not client_ucc_list and client and client.get('ucc'):
-                    client_ucc_list = [client.get('ucc')]  # Convert old single UCC to list
-                
-                upcoming.append({
-                    "cashflow_id": cf['id'],
-                    "client_id": cf['client_id'],
-                    "client_name": client['name'] if client else 'Unknown',
-                    "client_pan": client.get('pan_number', '') if client else '',
-                    "client_email": client.get('email', '') if client else '',
-                    "client_ucc_list": client_ucc_list,  # Client's available UCCs for reinvestment
-                    "bond_id": cf['bond_id'],
-                    "bond_name": cf.get('bond_name', ''),
-                    "bond_code": bond_code,  # Added bond_code (Deal ID)
-                    "trade_id": cf['trade_id'],
-                    "amount_invested": trade.get('total_amount', 0) if trade else 0,
-                    "units": trade.get('units', 0) if trade else 0,
-                    "expected_date": cf['date'],
-                    "principal_net": cf.get('principal_component', 0),
-                    "interest_net": cf.get('interest_component', 0) - cf.get('tds_amount', 0),
-                    "net_amount": cf.get('net_amount', 0),
-                    "reinvestment_tag": cf.get('reinvestment_tag', 'not_tagged'),
-                    "custom_amount": cf.get('custom_amount'),
-                    "portfolio_category": cf.get('portfolio_category'),
-                    "target_ucc": cf.get('target_ucc'),  # Selected UCC for reinvestment
-                    "approval_status": cf.get('approval_status', 'not_sent'),  # not_sent, pending, approved, rejected
-                    "client_approved": cf.get('client_approved', False),
-                    "tagged_at": cf.get('tagged_at'),
-                    "month": cf_date.strftime("%B %Y"),
-                    "is_past_date": cf_date < today,  # True if date has passed - no client approval needed
-                    # Prepayment-related fields
-                    "is_amended": cf.get('is_amended', False),
-                    "prepayment_affected": cf.get('prepayment_affected', False),
-                    "reinvestment_tag_needs_update": cf.get('reinvestment_tag_needs_update', False),
-                    "original_net_amount": cf.get('original_net_amount'),
-                    "original_interest_component": cf.get('original_interest_component'),
-                    "amendment_reason": cf.get('amendment_reason', '')
-                })
+            bond_code = trade.get('bond_code', '') if trade else ''
+            if not bond_code and cf.get('bond_id'):
+                bond = await db.bonds.find_one({"id": cf['bond_id']}, {"_id": 0, "bond_code": 1})
+                bond_code = bond.get('bond_code', '') if bond else ''
+            
+            # Get client's UCC list (handle both old single ucc and new ucc_list)
+            client_ucc_list = client.get('ucc_list', []) if client else []
+            if not client_ucc_list and client and client.get('ucc'):
+                client_ucc_list = [client.get('ucc')]  # Convert old single UCC to list
+            
+            upcoming.append({
+                "cashflow_id": cf['id'],
+                "client_id": cf['client_id'],
+                "client_name": client['name'] if client else 'Unknown',
+                "client_pan": client.get('pan_number', '') if client else '',
+                "client_email": client.get('email', '') if client else '',
+                "client_ucc_list": client_ucc_list,  # Client's available UCCs for reinvestment
+                "bond_id": cf['bond_id'],
+                "bond_name": cf.get('bond_name', ''),
+                "bond_code": bond_code,  # Added bond_code (Deal ID)
+                "trade_id": cf['trade_id'],
+                "amount_invested": trade.get('total_amount', 0) if trade else 0,
+                "units": trade.get('units', 0) if trade else 0,
+                "expected_date": cf['date'],
+                "principal_net": cf.get('principal_component', 0),
+                "interest_net": cf.get('interest_component', 0) - cf.get('tds_amount', 0),
+                "net_amount": cf.get('net_amount', 0),
+                "reinvestment_tag": cf.get('reinvestment_tag', 'not_tagged'),
+                "custom_amount": cf.get('custom_amount'),
+                "portfolio_category": cf.get('portfolio_category'),
+                "target_ucc": cf.get('target_ucc'),  # Selected UCC for reinvestment
+                "approval_status": cf.get('approval_status', 'not_sent'),  # not_sent, pending, approved, rejected
+                "client_approved": cf.get('client_approved', False),
+                "tagged_at": cf.get('tagged_at'),
+                "month": cf_date.strftime("%B %Y"),
+                "is_past_date": cf_date < today,  # True if date has passed - no client approval needed
+                # Prepayment-related fields
+                "is_amended": cf.get('is_amended', False),
+                "prepayment_affected": cf.get('prepayment_affected', False),
+                "reinvestment_tag_needs_update": cf.get('reinvestment_tag_needs_update', False),
+                "original_net_amount": cf.get('original_net_amount'),
+                "original_interest_component": cf.get('original_interest_component'),
+                "amendment_reason": cf.get('amendment_reason', '')
+            })
         except (ValueError, TypeError):
             continue
     
