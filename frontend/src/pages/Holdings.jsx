@@ -1208,7 +1208,8 @@ export default function Holdings() {
                   </div>
                 </div>
                 
-                {/* Bulk Repayment Update Section */}
+                {/* Bulk Repayment Update Section - Broker Only */}
+                {user?.role === 'broker' && (
                 <div className="p-4 bg-blue-50 border-b border-blue-100">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
@@ -1253,6 +1254,7 @@ export default function Holdings() {
                     </div>
                   </div>
                 </div>
+                )}
                 
                 <div className="overflow-x-auto">
                   <table className="w-full">
