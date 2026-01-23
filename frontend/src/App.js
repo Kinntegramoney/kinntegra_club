@@ -36,6 +36,7 @@ import PendingApprovals from "@/pages/PendingApprovals";
 import SubBrokerClientDetails from "@/pages/SubBrokerClientDetails";
 import BrokerSettings from "@/pages/BrokerSettings";
 import { Toaster } from "@/components/ui/sonner";
+import { PermissionsProvider } from "@/contexts/PermissionsContext";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
