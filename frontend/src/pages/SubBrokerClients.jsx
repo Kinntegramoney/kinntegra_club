@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import CreateClientModal from "@/components/CreateClientModal";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import { 
   Plus, Search, Users, RefreshCw, Upload, MoreVertical, 
   Mail, Phone, CheckCircle, Clock, XCircle, Eye, Download,
@@ -31,12 +32,18 @@ const API = `${BACKEND_URL}/api`;
 
 export default function SubBrokerClients() {
   const navigate = useNavigate();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [user, setUser] = useState(null);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+  
+  // Permission checks
+  const canCreateClient = hasPermission("user_client", "create");
+  const canEditClient = hasPermission("user_client", "edit");
+  const canBulkUpload = hasPermission("upload", "bulk_upload");
   
   // Bulk upload state
   const [uploadFile, setUploadFile] = useState(null);
