@@ -106,20 +106,27 @@ export default function ReinvestmentTagging() {
       // Flatten months data
       (data.months || []).forEach(month => {
         (month.items || []).forEach(item => {
-          const isTagged = item.reinvestment_tag && item.reinvestment_tag !== 'not_tagged';
-          const isPast = item.is_past_date;
+          // Normalize id field - backend returns cashflow_id
+          const normalizedItem = {
+            ...item,
+            id: item.cashflow_id || item.id,
+            ucc_list: item.client_ucc_list || item.ucc_list || []
+          };
+          
+          const isTagged = normalizedItem.reinvestment_tag && normalizedItem.reinvestment_tag !== 'not_tagged';
+          const isPast = normalizedItem.is_past_date;
           
           if (isTagged) {
             if (isPast) {
-              taggedPastItems.push(item);
+              taggedPastItems.push(normalizedItem);
             } else {
-              taggedUpcomingItems.push(item);
+              taggedUpcomingItems.push(normalizedItem);
             }
           } else {
             if (isPast) {
-              untaggedPastItems.push(item);
+              untaggedPastItems.push(normalizedItem);
             } else {
-              untaggedUpcomingItems.push(item);
+              untaggedUpcomingItems.push(normalizedItem);
             }
           }
         });
