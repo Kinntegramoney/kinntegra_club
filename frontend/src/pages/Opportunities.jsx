@@ -951,6 +951,18 @@ export default function Opportunities() {
               <Share2 className="h-4 w-4" />
             </Button>
           )}
+          {isClient && (status === 'available' || status === 'partially_invested') && (
+            <Button 
+              size="sm" 
+              className="bg-rose-500 hover:bg-rose-600 text-white"
+              onClick={(e) => { e.stopPropagation(); setInterestModal({ type: 'real_estate', opportunity: opp }); }}
+              title="I'm Interested"
+              data-testid={`interest-re-${opp.id}`}
+            >
+              <Heart className="h-4 w-4 mr-1" />
+              Interested
+            </Button>
+          )}
         </div>
       </div>
     );
