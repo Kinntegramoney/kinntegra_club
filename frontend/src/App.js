@@ -41,6 +41,7 @@ import UntaggedTrades from "@/pages/UntaggedTrades";
 import { Toaster } from "@/components/ui/sonner";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import InstallPWA from "@/components/InstallPWA";
+import SyncStatus from "@/components/SyncStatus";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
