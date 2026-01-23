@@ -11091,6 +11091,8 @@ async def get_bonds(
         "face_value": 1,
         "cashflows_per_unit": 1,  # Needed for price calculation
         "cutoff_days": 1,  # Needed for price calculation (record day convention)
+        "interested_count": 1,  # For display on card
+        "current_investors": 1,  # For display on card
         "created_at": 1,
         "created_by": 1
     }
