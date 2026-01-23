@@ -5450,9 +5450,9 @@ async def bulk_upload_historical_trades(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Bulk upload historical client bond investments.
-    Validates that uploaded purchase price matches system-calculated expected amount.
-    Creates trades and generates cashflow schedules.
+    Bulk upload historical deals - investments and repayments.
+    Sheet 1: Investment Details - creates trades
+    Sheet 2: Repayment Details - records actual payments for projected vs actuals comparison
     """
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can bulk upload historical trades")
@@ -5464,83 +5464,304 @@ async def bulk_upload_historical_trades(
     
     content = await file.read()
     
-    try:
-        # Read the main sheet
-        df = pd.read_excel(io.BytesIO(content), sheet_name=0)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error reading Excel file: {str(e)}")
-    
-    # Normalize column names
-    df.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df.columns]
-    
-    # Required columns check
-    required_cols = ['deal_id', 'investment_date', 'investor_name', 'units', 'purchase_price']
-    missing_cols = [col for col in required_cols if col not in df.columns]
-    if missing_cols:
-        raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing_cols)}")
-    
     results = {
         "success": 0,
         "failed": 0,
         "errors": [],
+        "investments_created": 0,
+        "repayments_recorded": 0,
+        "bonds_updated_to_funded": [],
+        "bonds_updated_to_closed": [],
         "created_trades": [],
         "validation_summary": {
-            "total_rows": len(df),
-            "matched_amounts": 0,
-            "mismatched_amounts": 0
+            "total_investment_rows": 0,
+            "total_repayment_rows": 0
         }
     }
     
     # Get all bonds and clients for lookup
     all_bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
-    all_clients = await db.clients.find({"created_by": current_user['id']}, {"_id": 0}).to_list(1000)
+    all_clients = await db.clients.find({}, {"_id": 0}).to_list(10000)
     
     # Create lookup dictionaries
     bond_lookup = {b.get('bond_code', '').strip().upper(): b for b in all_bonds if b.get('bond_code')}
-    client_by_name = {c['name'].strip().upper(): c for c in all_clients}
+    bond_by_id = {b['id']: b for b in all_bonds}
     client_by_pan = {c.get('pan_number', '').strip().upper(): c for c in all_clients if c.get('pan_number')}
     
-    for idx, row in df.iterrows():
-        row_num = idx + 2  # Excel row number (1-indexed + header)
-        
+    try:
+        # Read Sheet 1: Investment Details
         try:
-            # Skip empty rows
-            if pd.isna(row.get('deal_id')) or pd.isna(row.get('investor_name')):
-                continue
+            df_investments = pd.read_excel(io.BytesIO(content), sheet_name="Investment Details")
+            df_investments.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_investments.columns]
+        except Exception as e:
+            df_investments = None
+            results['errors'].append(f"Could not read 'Investment Details' sheet: {str(e)}")
+        
+        # Read Sheet 2: Repayment Details
+        try:
+            df_repayments = pd.read_excel(io.BytesIO(content), sheet_name="Repayment Details")
+            df_repayments.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_repayments.columns]
+        except Exception as e:
+            df_repayments = None
+            results['errors'].append(f"Could not read 'Repayment Details' sheet: {str(e)}")
+        
+        # Process Investment Details
+        if df_investments is not None and len(df_investments) > 0:
+            results['validation_summary']['total_investment_rows'] = len(df_investments)
             
-            deal_id = str(row['deal_id']).strip().upper()
-            investor_name = str(row['investor_name']).strip().upper()
-            investor_pan = str(row.get('investor_pan', '')).strip().upper() if pd.notna(row.get('investor_pan')) else None
-            units = int(row['units'])
-            purchase_price = float(row['purchase_price'])
-            
-            # Parse investment date
-            investment_date = row['investment_date']
-            if isinstance(investment_date, str):
-                investment_date = datetime.fromisoformat(investment_date.replace('/', '-'))
-            elif hasattr(investment_date, 'isoformat'):
-                pass  # Already a datetime
+            required_inv_cols = ['deal_id', 'date_of_investment', 'pan', 'no_of_units', 'amount']
+            missing_cols = [col for col in required_inv_cols if col not in df_investments.columns]
+            if missing_cols:
+                results['errors'].append(f"Investment sheet missing columns: {', '.join(missing_cols)}")
             else:
-                raise ValueError(f"Invalid date format: {investment_date}")
+                for idx, row in df_investments.iterrows():
+                    row_num = idx + 2
+                    try:
+                        if pd.isna(row.get('deal_id')) or pd.isna(row.get('pan')):
+                            continue
+                        
+                        deal_id = str(row['deal_id']).strip().upper()
+                        pan = str(row['pan']).strip().upper()
+                        units = int(row['no_of_units'])
+                        amount = float(row['amount'])
+                        utr = str(row.get('utr', '')) if pd.notna(row.get('utr')) else None
+                        
+                        # Parse investment date
+                        inv_date = row['date_of_investment']
+                        if isinstance(inv_date, str):
+                            inv_date = datetime.fromisoformat(inv_date.replace('/', '-'))
+                        inv_date_str = inv_date.strftime('%Y-%m-%d') if hasattr(inv_date, 'strftime') else str(inv_date)
+                        
+                        # Find bond
+                        bond = bond_lookup.get(deal_id)
+                        if not bond:
+                            results['errors'].append(f"Investment Row {row_num}: Bond '{deal_id}' not found. Create the bond first.")
+                            results['failed'] += 1
+                            continue
+                        
+                        # Find client by PAN
+                        client = client_by_pan.get(pan)
+                        if not client:
+                            results['errors'].append(f"Investment Row {row_num}: Client with PAN '{pan}' not found. Create the client first.")
+                            results['failed'] += 1
+                            continue
+                        
+                        # Check for duplicate
+                        existing = await db.trades.find_one({
+                            "bond_id": bond['id'],
+                            "client_id": client['id'],
+                            "investment_date": inv_date_str,
+                            "units": units
+                        })
+                        if existing:
+                            results['errors'].append(f"Investment Row {row_num}: Duplicate trade already exists")
+                            results['failed'] += 1
+                            continue
+                        
+                        # Create trade
+                        trade_id = str(uuid.uuid4())
+                        price_per_unit = amount / units if units > 0 else 0
+                        
+                        trade_dict = {
+                            "id": trade_id,
+                            "bond_id": bond['id'],
+                            "bond_name": bond['name'],
+                            "bond_code": bond.get('bond_code', deal_id),
+                            "client_id": client['id'],
+                            "client_name": client['name'],
+                            "client_pan": pan,
+                            "units": units,
+                            "investment_date": inv_date_str,
+                            "calculated_price": price_per_unit,
+                            "total_amount": amount,
+                            "payment_reference": utr,
+                            "status": "approved",
+                            "created_by": current_user['id'],
+                            "created_by_name": current_user.get('name', 'System'),
+                            "created_by_role": "broker",
+                            "broker_notes": "Historical import via bulk upload",
+                            "approved_by": current_user['id'],
+                            "approved_at": datetime.now(timezone.utc).isoformat(),
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "is_historical": True
+                        }
+                        
+                        await db.trades.insert_one(trade_dict)
+                        
+                        # Update bond units sold
+                        await db.bonds.update_one(
+                            {"id": bond['id']},
+                            {"$inc": {"units_sold": units}}
+                        )
+                        
+                        # Add to client's bond allocations
+                        allocation = {
+                            "bond_id": bond['id'],
+                            "bond_name": bond['name'],
+                            "units_blocked": units,
+                            "units_paid": units,
+                            "status": "fully_paid",
+                            "trade_id": trade_id,
+                            "allocated_at": datetime.now(timezone.utc).isoformat()
+                        }
+                        await db.clients.update_one(
+                            {"id": client['id']},
+                            {"$push": {"bond_allocations": allocation}}
+                        )
+                        
+                        # Generate projected cashflows
+                        cashflows = generate_client_cashflows(trade_dict, bond)
+                        if cashflows:
+                            for cf in cashflows:
+                                cf['client_id'] = client['id']
+                                cf['bond_id'] = bond['id']
+                                cf['type'] = 'projected'  # Mark as projected
+                            await db.holding_cashflows.insert_many(cashflows)
+                        
+                        results['investments_created'] += 1
+                        results['success'] += 1
+                        results['created_trades'].append({
+                            "trade_id": trade_id,
+                            "client": client['name'],
+                            "bond": bond['name'],
+                            "units": units,
+                            "amount": amount
+                        })
+                        
+                    except Exception as e:
+                        results['errors'].append(f"Investment Row {row_num}: {str(e)}")
+                        results['failed'] += 1
+        
+        # Process Repayment Details (Actuals)
+        if df_repayments is not None and len(df_repayments) > 0:
+            results['validation_summary']['total_repayment_rows'] = len(df_repayments)
             
-            investment_date_str = investment_date.strftime('%Y-%m-%d')
-            
-            # Find the bond
-            bond = bond_lookup.get(deal_id)
-            if not bond:
-                results['errors'].append(f"Row {row_num}: Bond with code '{deal_id}' not found in system")
-                results['failed'] += 1
-                continue
-            
-            # Find the client (try PAN first, then name)
-            client = None
-            if investor_pan:
-                client = client_by_pan.get(investor_pan)
-            if not client:
-                client = client_by_name.get(investor_name)
-            
-            if not client:
-                results['errors'].append(f"Row {row_num}: Client '{investor_name}' (PAN: {investor_pan or 'N/A'}) not found in system")
+            required_rep_cols = ['deal_id', 'repayment_date', 'pan', 'gross_amount', 'net_amount']
+            missing_cols = [col for col in required_rep_cols if col not in df_repayments.columns]
+            if missing_cols:
+                results['errors'].append(f"Repayment sheet missing columns: {', '.join(missing_cols)}")
+            else:
+                for idx, row in df_repayments.iterrows():
+                    row_num = idx + 2
+                    try:
+                        if pd.isna(row.get('deal_id')) or pd.isna(row.get('pan')):
+                            continue
+                        
+                        deal_id = str(row['deal_id']).strip().upper()
+                        pan = str(row['pan']).strip().upper()
+                        
+                        # Parse repayment date
+                        rep_date = row['repayment_date']
+                        if isinstance(rep_date, str):
+                            rep_date = datetime.fromisoformat(rep_date.replace('/', '-'))
+                        rep_date_str = rep_date.strftime('%Y-%m-%d') if hasattr(rep_date, 'strftime') else str(rep_date)
+                        
+                        principal = float(row.get('principal', 0)) if pd.notna(row.get('principal')) else 0
+                        interest = float(row.get('interest', 0)) if pd.notna(row.get('interest')) else 0
+                        gross_amount = float(row['gross_amount'])
+                        tds = float(row.get('tds', 0)) if pd.notna(row.get('tds')) else 0
+                        net_amount = float(row['net_amount'])
+                        
+                        # Find bond
+                        bond = bond_lookup.get(deal_id)
+                        if not bond:
+                            results['errors'].append(f"Repayment Row {row_num}: Bond '{deal_id}' not found")
+                            results['failed'] += 1
+                            continue
+                        
+                        # Find client
+                        client = client_by_pan.get(pan)
+                        if not client:
+                            results['errors'].append(f"Repayment Row {row_num}: Client with PAN '{pan}' not found")
+                            results['failed'] += 1
+                            continue
+                        
+                        # Check for duplicate actual repayment
+                        existing = await db.actual_repayments.find_one({
+                            "bond_id": bond['id'],
+                            "client_id": client['id'],
+                            "repayment_date": rep_date_str,
+                            "net_amount": net_amount
+                        })
+                        if existing:
+                            results['errors'].append(f"Repayment Row {row_num}: Duplicate repayment already recorded")
+                            results['failed'] += 1
+                            continue
+                        
+                        # Store actual repayment
+                        actual_repayment = {
+                            "id": str(uuid.uuid4()),
+                            "bond_id": bond['id'],
+                            "bond_name": bond['name'],
+                            "bond_code": deal_id,
+                            "client_id": client['id'],
+                            "client_name": client['name'],
+                            "client_pan": pan,
+                            "repayment_date": rep_date_str,
+                            "principal": principal,
+                            "interest": interest,
+                            "gross_amount": gross_amount,
+                            "tds": tds,
+                            "net_amount": net_amount,
+                            "type": "actual",  # Mark as actual
+                            "created_by": current_user['id'],
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "is_historical": True
+                        }
+                        
+                        await db.actual_repayments.insert_one(actual_repayment)
+                        results['repayments_recorded'] += 1
+                        results['success'] += 1
+                        
+                    except Exception as e:
+                        results['errors'].append(f"Repayment Row {row_num}: {str(e)}")
+                        results['failed'] += 1
+        
+        # Update bond statuses based on investments and dates
+        updated_bonds = set()
+        for trade in results.get('created_trades', []):
+            bond_id = await db.trades.find_one({"id": trade['trade_id']}, {"_id": 0, "bond_id": 1})
+            if bond_id:
+                updated_bonds.add(bond_id['bond_id'])
+        
+        for bond_id in updated_bonds:
+            bond = bond_by_id.get(bond_id)
+            if bond:
+                # Check if fully funded
+                total_units = bond.get('total_units', 0)
+                units_sold = bond.get('units_sold', 0) + await db.trades.count_documents({
+                    "bond_id": bond_id, "status": "approved"
+                })
+                
+                # Check if bond end date has passed
+                end_date_str = bond.get('end_date', '')
+                is_closed = False
+                if end_date_str:
+                    try:
+                        end_date = datetime.fromisoformat(end_date_str.split('T')[0])
+                        is_closed = end_date < datetime.now()
+                    except:
+                        pass
+                
+                new_status = bond.get('status', 'available')
+                if is_closed:
+                    new_status = 'closed'
+                    results['bonds_updated_to_closed'].append(bond.get('name', bond_id))
+                elif units_sold >= total_units:
+                    new_status = 'funded'
+                    results['bonds_updated_to_funded'].append(bond.get('name', bond_id))
+                
+                if new_status != bond.get('status'):
+                    await db.bonds.update_one(
+                        {"id": bond_id},
+                        {"$set": {"status": new_status}}
+                    )
+        
+    except Exception as e:
+        results['errors'].append(f"Error processing file: {str(e)}")
+        results['failed'] += 1
+    
+    return results
                 results['failed'] += 1
                 continue
             
