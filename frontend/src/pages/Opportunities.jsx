@@ -1077,10 +1077,10 @@ export default function Opportunities() {
                 <div className="text-center py-12">
                   <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 mb-4">No available opportunities</p>
-                  {isBroker && (
+                  {(canCreateBond || canCreateRealEstate) && (
                     <>
-                      <Button onClick={() => navigate("/bonds/create")} className="mr-2">Add Bond</Button>
-                      <Button onClick={() => setShowRealEstateModal(true)} variant="outline">Add Real Estate</Button>
+                      {canCreateBond && <Button onClick={() => navigate("/bonds/create")} className="mr-2">Add Bond</Button>}
+                      {canCreateRealEstate && <Button onClick={() => setShowRealEstateModal(true)} variant="outline">Add Real Estate</Button>}
                     </>
                   )}
                 </div>
