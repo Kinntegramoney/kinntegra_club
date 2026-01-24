@@ -981,21 +981,6 @@ export default function Holdings() {
                   )}
                 </div>
               )}
-                                    onClick={() => setOpenTradeMenu(null)}
-                                  >
-                                    <FileImage className="h-4 w-4" />
-                                    View UTR Copy
-                                  </a>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
               
               {/* Real Estate Tab Content */}
               {mainTab === "real-estate" && (
