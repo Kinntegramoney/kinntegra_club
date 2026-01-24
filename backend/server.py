@@ -9130,19 +9130,6 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
                         amounts.append(cf_amount)
                     except:
                         continue
-                
-                # Use gross amount (principal + interest)
-                ar_principal = ar.get('principal', 0) or 0
-                ar_interest = ar.get('interest', 0) or 0
-                ar_gross = ar.get('gross_amount') or (ar_principal + ar_interest)
-                
-                if ar_gross > 0:
-                    try:
-                        ar_date = datetime.strptime(ar_date_str, '%Y-%m-%d')
-                        dates.append(ar_date)
-                        amounts.append(ar_gross)
-                    except:
-                        continue
         
         if len(dates) < 2:
             return None
