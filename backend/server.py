@@ -9450,6 +9450,24 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             if ar.get('repayment_date') and ar['repayment_date'].split('T')[0] not in scheduled_dates
         ]
         
+        # Determine if this bond uses interest-at-maturity model (Book2.xlsx style)
+        # A bond with prepayments has multiple cashflows before maturity
+        # If there's only 1 cashflow (maturity only), use regular XIRR
+        # If there are multiple cashflows, use interest-at-maturity (principal only for prepayments)
+        has_prepayment_cashflows = len(stored_cashflows) > 1
+        
+        # Also check if this bond is marked as having prepayments
+        bond_has_prepayment = bond.get('has_prepayment', False) or bond.get('has_prepayment_schedule', False)
+        
+        # Use interest-at-maturity model only if:
+        # 1. There are multiple cashflows (prepayments + maturity), AND
+        # 2. This looks like a prepayment bond (bond flag or name contains 'nature')
+        use_interest_at_maturity = has_prepayment_cashflows and (
+            bond_has_prepayment or 
+            'nature' in (bond.get('name', '') or '').lower() or
+            'prepay' in (bond.get('name', '') or '').lower()
+        )
+        
         # Calculate Actual XIRR using CURRENT cashflows (after prepayments)
         # This shows the actual return after prepayments have reduced the interest
         actual_xirr = calculate_actual_xirr(
@@ -9457,7 +9475,8 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             investment_amount, 
             stored_cashflows,  # Use current values (after prepayment modifications)
             unscheduled_repayments,
-            bond_start_date
+            bond_start_date,
+            interest_at_maturity=use_interest_at_maturity
         )
         
         # Expected XIRR = Secondary IRR from bond's Financial Details
