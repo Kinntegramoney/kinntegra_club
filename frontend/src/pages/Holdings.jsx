@@ -296,7 +296,7 @@ export default function Holdings() {
       
       // Refresh client details to reload holdings
       if (selectedClient) {
-        handleClientClick(selectedClient);
+        fetchClientHoldings(selectedClient.id);
       }
       
       // Close modal to refresh
