@@ -491,14 +491,19 @@ export default function Holdings() {
 
   const formatINR = (amount) => {
     if (!amount || amount === 0) return '₹ 0';
-    if (amount >= 10000000) {
-      return `₹ ${(amount / 10000000).toFixed(2)} Cr`;
-    } else if (amount >= 100000) {
-      return `₹ ${(amount / 100000).toFixed(2)} L`;
-    } else if (amount >= 1000) {
-      return `₹ ${(amount / 1000).toFixed(2)} K`;
+    const isNegative = amount < 0;
+    const absAmount = Math.abs(amount);
+    let formatted;
+    if (absAmount >= 10000000) {
+      formatted = `₹ ${(absAmount / 10000000).toFixed(2)} Cr`;
+    } else if (absAmount >= 100000) {
+      formatted = `₹ ${(absAmount / 100000).toFixed(2)} L`;
+    } else if (absAmount >= 1000) {
+      formatted = `₹ ${(absAmount / 1000).toFixed(2)} K`;
+    } else {
+      formatted = `₹ ${absAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return isNegative ? `-${formatted}` : formatted;
   };
 
   if (!user) return null;
