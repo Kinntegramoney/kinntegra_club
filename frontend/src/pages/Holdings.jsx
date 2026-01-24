@@ -1038,19 +1038,6 @@ export default function Holdings() {
                           </div>
                         </div>
                       ))}
-                      
-                      {/* Summary Footer */}
-                      <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-gray-50 border-t text-sm font-medium">
-                        <div className="col-span-3 text-gray-600">Total</div>
-                        <div className="col-span-1 text-right font-mono text-gray-800">
-                          {clientTrades.reduce((sum, t) => sum + (t.units || 0), 0)}
-                        </div>
-                        <div className="col-span-2"></div>
-                        <div className="col-span-2 text-right font-mono text-amber-600 font-semibold">
-                          {formatINR(clientTrades.reduce((sum, t) => sum + (t.total_amount || 0), 0))}
-                        </div>
-                        <div className="col-span-4"></div>
-                      </div>
                     </div>
                   )}
                 </div>
