@@ -18777,6 +18777,153 @@ async def debug_actual_repayments(client_id: str, current_user: dict = Depends(g
     }
 
 
+@api_router.post("/admin/sync-prepayments/{client_id}")
+async def sync_prepayments_to_cashflows(client_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Sync unscheduled prepayments from actual_repayments to holding_cashflows.
+    Creates new cashflow entries with is_prepaid=true for prepayments made outside scheduled dates.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can run this")
+    
+    # Get client's trades grouped by bond_id
+    trades = await db.trades.find(
+        {"client_id": client_id, "status": "approved"}, 
+        {"_id": 0}
+    ).to_list(100)
+    
+    if not trades:
+        return {"error": "No approved trades found for client"}
+    
+    # Create lookup: bond_id -> list of trades
+    bond_trades = {}
+    for trade in trades:
+        bond_id = trade['bond_id']
+        if bond_id not in bond_trades:
+            bond_trades[bond_id] = []
+        bond_trades[bond_id].append(trade)
+    
+    # Get existing holding_cashflows dates to avoid duplicates
+    trade_ids = [t['id'] for t in trades]
+    existing_cashflows = await db.holding_cashflows.find(
+        {"trade_id": {"$in": trade_ids}},
+        {"_id": 0, "date": 1, "trade_id": 1, "is_prepaid": 1}
+    ).to_list(1000)
+    
+    # Build set of existing dates per trade
+    existing_dates_by_trade = {}
+    for cf in existing_cashflows:
+        trade_id = cf.get('trade_id')
+        if trade_id not in existing_dates_by_trade:
+            existing_dates_by_trade[trade_id] = set()
+        if cf.get('date'):
+            existing_dates_by_trade[trade_id].add(cf['date'].split('T')[0])
+    
+    # Also get scheduled dates across all trades
+    all_scheduled_dates = set()
+    for dates in existing_dates_by_trade.values():
+        all_scheduled_dates.update(dates)
+    
+    # Get actual repayments for this client
+    actual_repayments = await db.actual_repayments.find(
+        {"client_id": client_id},
+        {"_id": 0}
+    ).to_list(500)
+    
+    results = {
+        "total_repayments": len(actual_repayments),
+        "prepayments_found": 0,
+        "created": 0,
+        "skipped_existing": 0,
+        "skipped_no_trade": 0,
+        "details": []
+    }
+    
+    for ar in actual_repayments:
+        ar_date = ar.get('repayment_date', '')
+        if not ar_date:
+            continue
+        ar_date_short = ar_date.split('T')[0]
+        
+        # Skip if this is a scheduled date (not a prepayment)
+        if ar_date_short in all_scheduled_dates:
+            continue
+        
+        results['prepayments_found'] += 1
+        
+        bond_id = ar.get('bond_id')
+        if bond_id not in bond_trades:
+            results['skipped_no_trade'] += 1
+            continue
+        
+        # Find the best matching trade for this prepayment
+        # Use the first trade for this bond (could be enhanced with amount matching)
+        matching_trades = bond_trades[bond_id]
+        
+        # Distribute prepayment proportionally across trades based on investment amount
+        total_investment = sum(t.get('total_amount', 0) for t in matching_trades)
+        
+        for trade in matching_trades:
+            trade_id = trade['id']
+            
+            # Check if prepayment already exists for this trade and date
+            if trade_id in existing_dates_by_trade and ar_date_short in existing_dates_by_trade[trade_id]:
+                results['skipped_existing'] += 1
+                continue
+            
+            # Calculate this trade's share of the prepayment
+            trade_share = trade.get('total_amount', 0) / total_investment if total_investment > 0 else 1
+            
+            principal = (ar.get('principal', 0) or 0) * trade_share
+            interest = (ar.get('interest', 0) or 0) * trade_share
+            gross = principal + interest
+            tds = (ar.get('tds', 0) or 0) * trade_share
+            net = gross - tds
+            
+            if principal <= 0 and interest <= 0:
+                continue
+            
+            # Create new cashflow entry
+            cashflow_id = str(uuid.uuid4())
+            new_cashflow = {
+                "id": cashflow_id,
+                "trade_id": trade_id,
+                "bond_id": bond_id,
+                "client_id": client_id,
+                "date": ar_date,
+                "principal_component": round(principal, 2),
+                "interest_component": round(interest, 2),
+                "tds_amount": round(tds, 2),
+                "net_amount": round(net, 2),
+                "is_repaid": True,
+                "is_prepaid": True,
+                "repaid_date": ar_date,
+                "repaid_actual_amount": round(gross, 2),
+                "repaid_net_amount": round(net, 2),
+                "repaid_tds": round(tds, 2),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "notes": "Synced from historical prepayment upload"
+            }
+            
+            await db.holding_cashflows.insert_one(new_cashflow)
+            results['created'] += 1
+            
+            # Add to existing dates to avoid duplicates in this run
+            if trade_id not in existing_dates_by_trade:
+                existing_dates_by_trade[trade_id] = set()
+            existing_dates_by_trade[trade_id].add(ar_date_short)
+            
+            results['details'].append({
+                "date": ar_date_short,
+                "trade_id": trade_id,
+                "principal": round(principal, 2),
+                "interest": round(interest, 2),
+                "gross": round(gross, 2)
+            })
+    
+    return results
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
