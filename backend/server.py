@@ -10418,6 +10418,45 @@ async def submit_to_kinntegraa(
     return {"results": results}
 
 
+@api_router.get("/reinvestment-logs")
+async def get_reinvestment_logs(
+    client_id: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get reinvestment logs, optionally filtered by client_id"""
+    query = {}
+    
+    if current_user['role'] == 'broker':
+        # Broker can see all logs
+        if client_id:
+            query['client_id'] = client_id
+    elif current_user['role'] == 'sub_broker':
+        # Sub-broker can only see logs for their clients
+        partner = await db.partners.find_one({"user_id": current_user['id']}, {"_id": 0})
+        if partner:
+            linked_clients = await db.clients.find(
+                {"linked_subbroker_id": partner['id']},
+                {"_id": 0, "id": 1}
+            ).to_list(1000)
+            client_ids = [c['id'] for c in linked_clients]
+            if client_id and client_id in client_ids:
+                query['client_id'] = client_id
+            else:
+                query['client_id'] = {'$in': client_ids}
+    elif current_user['role'] == 'client':
+        # Client can only see their own logs
+        client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
+        if client:
+            query['client_id'] = client['id']
+    
+    logs = await db.reinvestment_logs.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+    
+    return logs
+
+
 # ==================== END REINVESTMENT TAGGING ====================
 
 
