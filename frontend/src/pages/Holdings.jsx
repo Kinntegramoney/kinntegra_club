@@ -434,6 +434,7 @@ export default function Holdings() {
           prepaid_count: 0,
           prepaid_amount: 0,
           xirr: null,
+          actual_xirr: null,
           trades: []
         };
       }
@@ -453,9 +454,15 @@ export default function Holdings() {
       
       // Use the XIRR from the holding if available
       if (holding.xirr !== null && holding.xirr !== undefined) {
-        // If multiple trades, we'll use the weighted average or just take the first non-null
         if (consolidated[bondId].xirr === null) {
           consolidated[bondId].xirr = holding.xirr;
+        }
+      }
+      
+      // Use the Actual XIRR from the holding if available
+      if (holding.actual_xirr !== null && holding.actual_xirr !== undefined) {
+        if (consolidated[bondId].actual_xirr === null) {
+          consolidated[bondId].actual_xirr = holding.actual_xirr;
         }
       }
       
@@ -467,6 +474,7 @@ export default function Holdings() {
         prepaid_count: holding.prepaid_count || 0,
         prepaid_amount: holding.prepaid_amount || 0,
         xirr: holding.xirr,
+        actual_xirr: holding.actual_xirr,
         cashflows: holding.cashflows.sort((a, b) => new Date(a.date) - new Date(b.date))
       });
     });
