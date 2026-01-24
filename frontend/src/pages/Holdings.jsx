@@ -895,7 +895,7 @@ export default function Holdings() {
               
               {/* Trades Tab Content */}
               {mainTab === "trades" && (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {clientTrades.length === 0 ? (
                     <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
                       <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-4" />
@@ -903,48 +903,99 @@ export default function Holdings() {
                     </div>
                   ) : (
                     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                      {/* Table Header */}
-                      <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase">
-                        <div className="col-span-3">Bond</div>
-                        <div className="col-span-2 text-right">Units</div>
-                        <div className="col-span-2 text-right">Amount</div>
-                        <div className="col-span-2 text-center">Date</div>
-                        <div className="col-span-2 text-center">Status</div>
-                        <div className="col-span-1"></div>
+                      {/* Header Section - matching Holdings Report style */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <ClipboardList className="h-5 w-5 text-amber-600" />
+                          <h3 className="text-base font-semibold text-gray-800">Trade History</h3>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {clientTrades.length} trade{clientTrades.length !== 1 ? 's' : ''}
+                        </div>
                       </div>
+                      
+                      {/* Table Header */}
+                      <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="col-span-3">SCHEME</div>
+                        <div className="col-span-1 text-right">UNITS</div>
+                        <div className="col-span-2 text-right">PRICE/UNIT</div>
+                        <div className="col-span-2 text-right">TOTAL</div>
+                        <div className="col-span-2 text-center">INV DATE</div>
+                        <div className="col-span-1 text-center">STATUS</div>
+                        <div className="col-span-1 text-center">ACTION</div>
+                      </div>
+                      
                       {/* Trade Rows */}
                       {clientTrades.map((trade, idx) => (
                         <div
                           key={trade.id}
-                          className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center text-sm ${idx !== clientTrades.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}
+                          className={`grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm ${idx !== clientTrades.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}
                           data-testid={`trade-row-${trade.id}`}
                         >
-                          <div className="col-span-3 truncate font-medium text-gray-800" title={trade.bond_name}>
-                            {trade.bond_name}
+                          {/* Scheme Name */}
+                          <div className="col-span-3">
+                            <p className="font-medium text-gray-800 truncate" title={trade.bond_name}>
+                              {trade.bond_name}
+                            </p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              {format(new Date(trade.created_at), "dd-MMM-yy")}
+                            </p>
                           </div>
-                          <div className="col-span-2 text-right font-mono font-semibold">{trade.units}</div>
-                          <div className="col-span-2 text-right font-mono text-amber-600 font-semibold">
+                          
+                          {/* Units */}
+                          <div className="col-span-1 text-right font-mono font-semibold text-gray-800">
+                            {trade.units}
+                          </div>
+                          
+                          {/* Price per Unit */}
+                          <div className="col-span-2 text-right font-mono text-gray-600">
+                            {formatINR(trade.calculated_price || 0)}
+                          </div>
+                          
+                          {/* Total Amount */}
+                          <div className="col-span-2 text-right font-mono font-semibold text-amber-600">
                             {formatINR(trade.total_amount)}
                           </div>
+                          
+                          {/* Investment Date */}
                           <div className="col-span-2 text-center font-mono text-xs text-gray-600">
                             {format(new Date(trade.investment_date), "dd-MMM-yy")}
                           </div>
-                          <div className="col-span-2 text-center">
+                          
+                          {/* Status */}
+                          <div className="col-span-1 text-center">
                             {trade.status === 'pending' ? (
-                              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded-full font-medium">Pending</span>
+                              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded font-medium">Pending</span>
                             ) : trade.status === 'approved' ? (
-                              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded-full font-medium">Approved</span>
+                              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded font-medium">Approved</span>
                             ) : (
-                              <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium">Rejected</span>
+                              <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded font-medium">Rejected</span>
                             )}
                           </div>
-                          <div className="col-span-1 text-right">
-                            {trade.payment_proof_filename && (
-                              <FileImage className="h-3.5 w-3.5 text-green-600 inline" title="Payment proof attached" />
+                          
+                          {/* Action */}
+                          <div className="col-span-1 text-center">
+                            {trade.payment_proof_filename ? (
+                              <FileImage className="h-4 w-4 text-green-600 inline cursor-pointer hover:text-green-700" title="Payment proof attached" />
+                            ) : (
+                              <span className="text-gray-300">-</span>
                             )}
                           </div>
                         </div>
                       ))}
+                      
+                      {/* Summary Footer */}
+                      <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-gray-50 border-t text-sm font-medium">
+                        <div className="col-span-3 text-gray-600">Total</div>
+                        <div className="col-span-1 text-right font-mono text-gray-800">
+                          {clientTrades.reduce((sum, t) => sum + (t.units || 0), 0)}
+                        </div>
+                        <div className="col-span-2"></div>
+                        <div className="col-span-2 text-right font-mono text-amber-600 font-semibold">
+                          {formatINR(clientTrades.reduce((sum, t) => sum + (t.total_amount || 0), 0))}
+                        </div>
+                        <div className="col-span-4"></div>
+                      </div>
                     </div>
                   )}
                 </div>
