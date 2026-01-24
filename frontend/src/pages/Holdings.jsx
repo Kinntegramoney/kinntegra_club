@@ -1187,7 +1187,7 @@ export default function Holdings() {
                           <td className="py-2 px-2 text-right font-mono text-xs text-emerald-600">{formatINR(totalNetExpected)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <span className={profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {profit >= 0 ? '+' : ''}{formatINR(profit)}
+                              {formatINR(profit)}
                             </span>
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osPrincipal)}</td>
