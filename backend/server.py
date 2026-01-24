@@ -459,11 +459,11 @@ async def process_bond_prepayment(
             original_net_amount = cf.get('original_net_amount') or cf.get('net_amount', 0)
             
             # Calculate new amounts based on CUMULATIVE remaining ratio from ORIGINAL values
-            # Principal: proportionally reduced
-            new_principal = round(original_principal_component * remaining_ratio, 2)
+            # Principal: proportionally reduced based on cumulative remaining ratio
+            new_principal = round(original_principal_component * cumulative_remaining_ratio, 2)
             
             # Interest: recalculated on reduced principal (same coupon rate)
-            new_interest = round(original_interest_component * remaining_ratio, 2)
+            new_interest = round(original_interest_component * cumulative_remaining_ratio, 2)
             
             # TDS: 10% of new interest
             new_tds = round(new_interest * 0.10, 2)
@@ -491,8 +491,9 @@ async def process_bond_prepayment(
                 "prepayment_amended_at": datetime.now(timezone.utc).isoformat(),
                 "prepayment_amended_by": recorded_by,
                 "prepayment_source": source,
-                "remaining_principal_ratio": round(remaining_ratio, 4),
-                "amendment_reason": f"Principal prepayment of ₹{prepayment_amount:,.2f} on {prepayment_date.strftime('%d-%m-%Y')} ({source})"
+                "remaining_principal_ratio": round(cumulative_remaining_ratio, 4),
+                "cumulative_prepaid_amount": round(total_prepaid_after, 2),
+                "amendment_reason": f"Principal prepayment of ₹{prepayment_amount:,.2f} on {prepayment_date.strftime('%d-%m-%Y')} ({source}). Total prepaid: ₹{total_prepaid_after:,.2f}. Cumulative ratio: {cumulative_remaining_ratio:.4f}"
             }
             
             await db_instance.holding_cashflows.update_one(
@@ -515,8 +516,9 @@ async def process_bond_prepayment(
             "original_principal": original_principal,
             "outstanding_before_prepayment": outstanding_principal,
             "remaining_principal": remaining_principal,
-            "remaining_ratio": remaining_ratio,
-            "total_prepaid_to_date": total_previously_prepaid + prepayment_amount,
+            "remaining_ratio": cumulative_remaining_ratio,  # Store cumulative ratio
+            "incremental_ratio": incremental_ratio,  # Also store incremental for audit
+            "total_prepaid_to_date": total_prepaid_after,
             "source": source,
             "notes": notes,
             "recorded_by": recorded_by,
