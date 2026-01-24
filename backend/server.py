@@ -16565,6 +16565,22 @@ async def get_email_processing_logs(
     return {"logs": logs}
 
 
+@api_router.get("/email-reader/list-all")
+async def list_all_inbox_emails(
+    days_back: int = 30,
+    current_user: dict = Depends(get_current_user)
+):
+    """Debug endpoint to list all emails in inbox"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this")
+    
+    emails = list_all_emails(days_back)
+    return {
+        "total_emails": len(emails),
+        "emails": emails
+    }
+
+
 # ==================== SCHEDULED EMAIL PROCESSING ====================
 
 async def scheduled_email_processing():
