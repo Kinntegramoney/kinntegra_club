@@ -502,6 +502,113 @@ export default function LeadManagement() {
             </div>
           )}
 
+          {/* My Reinvestments Tab (Sub-broker only) */}
+          {activeTab === "mysubmissions" && isSubBroker && (
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              {/* Stats Bar */}
+              <div className="px-4 py-3 border-b bg-gray-50 flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Total:</span>
+                  <span className="font-semibold text-gray-800">{mySubmissions.length}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                  <span className="text-sm text-gray-500">Pending:</span>
+                  <span className="font-semibold text-yellow-600">{mySubmissions.filter(s => s.status === 'pending_broker').length}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span className="text-sm text-gray-500">Approved:</span>
+                  <span className="font-semibold text-green-600">{mySubmissions.filter(s => s.status === 'approved' || s.status === 'completed').length}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                  <span className="text-sm text-gray-500">Rejected:</span>
+                  <span className="font-semibold text-red-600">{mySubmissions.filter(s => s.status === 'rejected').length}</span>
+                </div>
+              </div>
+
+              {/* Submissions List */}
+              <div className="p-4">
+                {submissionsLoading ? (
+                  <div className="text-center py-12">
+                    <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-3" />
+                    <p className="text-gray-500">Loading submissions...</p>
+                  </div>
+                ) : mySubmissions.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-gray-600 mb-1">No Reinvestment Submissions</h3>
+                    <p className="text-gray-400 text-sm">Your reinvestment submissions will appear here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {mySubmissions.map((submission) => {
+                      const statusConfig = {
+                        pending_broker: { label: "Pending Approval", color: "bg-yellow-100 text-yellow-800", icon: Clock },
+                        pending_client: { label: "Awaiting Client", color: "bg-blue-100 text-blue-800", icon: Clock },
+                        approved: { label: "Approved", color: "bg-green-100 text-green-800", icon: CheckCircle },
+                        completed: { label: "Completed", color: "bg-green-100 text-green-800", icon: CheckCircle },
+                        rejected: { label: "Rejected", color: "bg-red-100 text-red-800", icon: XCircle },
+                      };
+                      const config = statusConfig[submission.status] || statusConfig.pending_broker;
+                      const StatusIcon = config.icon;
+                      
+                      return (
+                        <div key={submission.id} className="border border-gray-200 rounded-lg overflow-hidden" data-testid={`submission-${submission.id}`}>
+                          <div 
+                            className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                            onClick={() => toggleExpand(`sub-${submission.id}`)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center">
+                                <RefreshCw className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-800 text-sm">{submission.client_name}</p>
+                                <p className="text-xs text-gray-500">₹{formatCurrency(submission.amount)}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+                                <StatusIcon className="h-3 w-3" />
+                                {config.label}
+                              </span>
+                              {expandedItems[`sub-${submission.id}`] ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                            </div>
+                          </div>
+                          
+                          {expandedItems[`sub-${submission.id}`] && (
+                            <div className="p-3 border-t bg-white">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                                <div><p className="text-xs text-gray-500">Cashflow ID</p><p className="font-medium font-mono text-xs">{submission.cashflow_id?.slice(0, 8) || '-'}...</p></div>
+                                <div><p className="text-xs text-gray-500">Tag</p><p className="font-medium capitalize">{submission.reinvestment_tag || '-'}</p></div>
+                                <div><p className="text-xs text-gray-500">Submitted</p><p className="font-medium">{formatDate(submission.created_at)}</p></div>
+                                <div><p className="text-xs text-gray-500">Updated</p><p className="font-medium">{formatDate(submission.updated_at || submission.created_at)}</p></div>
+                              </div>
+                              {submission.broker_notes && (
+                                <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
+                                  <p className="text-xs text-gray-500 mb-1">Broker Notes:</p>
+                                  <p className="text-gray-700">{submission.broker_notes}</p>
+                                </div>
+                              )}
+                              {submission.rejection_reason && (
+                                <div className="mt-2 p-2 bg-red-50 rounded text-sm">
+                                  <p className="text-xs text-red-500 mb-1">Rejection Reason:</p>
+                                  <p className="text-red-700">{submission.rejection_reason}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Client Interest Tab */}
           {activeTab === "leads" && (
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
