@@ -100,6 +100,9 @@ export default function LeadManagement() {
     
     if (parsedUser.role === 'broker') {
       fetchPendingApprovals();
+    } else if (parsedUser.role === 'sub_broker') {
+      fetchMySubmissions();
+      setActiveTab("mysubmissions"); // Default to My Submissions for sub-brokers
     }
     fetchLeads();
   }, [navigate]);
@@ -109,6 +112,21 @@ export default function LeadManagement() {
       fetchLeads();
     }
   }, [leadsFilter, leadsStatusFilter]);
+
+  const fetchMySubmissions = async () => {
+    setSubmissionsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/approval-workflow/my-submissions`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMySubmissions(response.data || []);
+    } catch (error) {
+      console.error("Error fetching submissions:", error);
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  };
 
   const fetchPendingApprovals = async () => {
     setPendingLoading(true);
