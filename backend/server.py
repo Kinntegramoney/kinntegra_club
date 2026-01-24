@@ -9403,6 +9403,10 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         # This is the original expected rate when the deal was added, not calculated from cashflows
         expected_xirr = bond.get('secondary_irr') or bond.get('interest_rate') or bond.get('coupon_rate')
         
+        # GROSS Profit = Gross Expected - Investment
+        gross_expected = total_principal + total_interest_gross
+        gross_profit = gross_expected - investment_amount
+        
         holdings.append({
             "trade_id": trade['id'],
             "bond_id": trade['bond_id'],
@@ -9413,23 +9417,27 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "total_principal": round(total_principal, 2),
             "total_interest_gross": round(total_interest_gross, 2),
             "total_tds": round(total_tds, 2),
+            "gross_expected": round(gross_expected, 2),  # GROSS = Principal + Interest
+            "gross_profit": round(gross_profit, 2),  # GROSS Profit
             "total_net_expected": round(total_principal + total_net_interest, 2),
             "repaid_principal": round(repaid_principal, 2),
             "repaid_interest": round(repaid_interest, 2),
             "repaid_tds": round(repaid_tds, 2),
-            "net_repaid": round(repaid_amount, 2),
-            "upcoming_expected": round(upcoming_amount, 2),
+            "gross_repaid": round(repaid_gross, 2),  # GROSS repaid
+            "net_repaid": round(repaid_principal + repaid_interest - repaid_tds, 2),
+            "gross_upcoming": round(upcoming_gross, 2),  # GROSS upcoming
+            "upcoming_expected": round(upcoming_gross, 2),  # For backward compatibility
             "prepaid_count": len(prepaid_cashflows),
             "prepaid_amount": round(prepaid_amount, 2),
             "xirr": expected_xirr,  # Use bond's Secondary IRR as Expected XIRR
             "actual_xirr": actual_xirr,
             "cashflows": stored_cashflows,
-            "status": "active" if upcoming_amount > 0 else "fully_repaid"
+            "status": "active" if upcoming_gross > 0 else "fully_repaid"
         })
         
         total_investment += investment_amount
-        total_repaid += repaid_amount
-        total_upcoming += upcoming_amount
+        total_repaid += repaid_gross  # Use GROSS repaid
+        total_upcoming += upcoming_gross  # Use GROSS upcoming
     
     return {
         "client": {
