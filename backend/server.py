@@ -19105,6 +19105,248 @@ async def sync_prepayments_to_cashflows(client_id: str, current_user: dict = Dep
     return results
 
 
+@api_router.post("/admin/reprocess-prepayments/{trade_id}")
+async def reprocess_trade_prepayments(trade_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Reprocess prepayments for a specific trade using the new unified logic.
+    This recalculates all cashflows based on recorded prepayments.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can run this")
+    
+    # Get trade
+    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    # Get all prepayment records for this trade
+    prepayments = await db.prepayment_records.find(
+        {"trade_id": trade_id},
+        {"_id": 0}
+    ).sort("prepayment_date", 1).to_list(50)
+    
+    if not prepayments:
+        return {"message": "No prepayments found for this trade", "trade_id": trade_id}
+    
+    # First, reset cashflows to original values
+    await db.holding_cashflows.update_many(
+        {"trade_id": trade_id},
+        {"$unset": {
+            "is_prepayment_amended": "",
+            "prepayment_amended_at": "",
+            "prepayment_amended_by": "",
+            "prepayment_source": "",
+            "remaining_principal_ratio": "",
+            "amendment_reason": ""
+        }}
+    )
+    
+    # Restore original values where available
+    cashflows = await db.holding_cashflows.find({"trade_id": trade_id}, {"_id": 0}).to_list(200)
+    for cf in cashflows:
+        restore_updates = {}
+        if cf.get('original_principal_component') is not None:
+            restore_updates['principal_component'] = cf['original_principal_component']
+        if cf.get('original_interest_component') is not None:
+            restore_updates['interest_component'] = cf['original_interest_component']
+        if cf.get('original_tds_amount') is not None:
+            restore_updates['tds_amount'] = cf['original_tds_amount']
+        if cf.get('original_gross_amount') is not None:
+            restore_updates['gross_amount'] = cf['original_gross_amount']
+        if cf.get('original_net_amount') is not None:
+            restore_updates['net_amount'] = cf['original_net_amount']
+        
+        if restore_updates:
+            await db.holding_cashflows.update_one(
+                {"id": cf['id']},
+                {"$set": restore_updates}
+            )
+    
+    # Delete existing prepayment records (will be recreated)
+    await db.prepayment_records.delete_many({"trade_id": trade_id})
+    
+    # Reset trade prepayment info
+    await db.trades.update_one(
+        {"id": trade_id},
+        {"$unset": {
+            "has_prepayment": "",
+            "total_prepaid_principal": "",
+            "remaining_principal": "",
+            "last_prepayment_date": "",
+            "last_prepayment_source": ""
+        }}
+    )
+    
+    results = {
+        "trade_id": trade_id,
+        "prepayments_found": len(prepayments),
+        "prepayments_processed": 0,
+        "total_cashflows_modified": 0,
+        "errors": []
+    }
+    
+    # Reprocess each prepayment in order
+    for prepay in prepayments:
+        try:
+            prepay_date_str = prepay.get('prepayment_date', '')
+            if not prepay_date_str:
+                continue
+            
+            try:
+                prepay_date = datetime.fromisoformat(prepay_date_str.replace('Z', '+00:00'))
+            except:
+                prepay_date = datetime.strptime(prepay_date_str[:10], '%Y-%m-%d')
+            
+            result = await process_bond_prepayment(
+                db_instance=db,
+                trade_id=trade_id,
+                prepayment_amount=prepay.get('prepaid_amount', 0),
+                prepayment_date=prepay_date,
+                source="reprocess",
+                recorded_by=current_user['id'],
+                notes=f"Reprocessed from original prepayment {prepay.get('id', '')}"
+            )
+            
+            if result.get('success'):
+                results['prepayments_processed'] += 1
+                results['total_cashflows_modified'] += result.get('cashflows_modified', 0)
+            else:
+                results['errors'].append(f"Failed to process prepayment {prepay.get('id')}: {result.get('errors', [])}")
+        except Exception as e:
+            results['errors'].append(f"Error processing prepayment: {str(e)}")
+    
+    return results
+
+
+@api_router.post("/admin/detect-prepayments/{client_id}")
+async def detect_and_process_client_prepayments(client_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Scan a client's actual_repayments for unprocessed prepayments and process them.
+    Uses the new unified prepayment logic.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can run this")
+    
+    # Get client
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Get client's trades
+    trades = await db.trades.find(
+        {"client_id": client_id, "status": "approved"},
+        {"_id": 0}
+    ).to_list(100)
+    
+    if not trades:
+        return {"message": "No approved trades found for client", "client_id": client_id}
+    
+    # Create trade lookup by bond_id and investment_date
+    trade_lookup = {}
+    for trade in trades:
+        bond_id = trade['bond_id']
+        inv_date = trade.get('investment_date', '')[:10] if trade.get('investment_date') else ''
+        key = (bond_id, inv_date)
+        trade_lookup[key] = trade
+    
+    # Get actual repayments for this client
+    actual_repayments = await db.actual_repayments.find(
+        {"client_id": client_id},
+        {"_id": 0}
+    ).to_list(500)
+    
+    results = {
+        "client_id": client_id,
+        "client_name": client.get('name'),
+        "total_repayments_scanned": len(actual_repayments),
+        "prepayments_detected": 0,
+        "prepayments_processed": 0,
+        "total_cashflows_modified": 0,
+        "errors": []
+    }
+    
+    for ar in actual_repayments:
+        ar_principal = ar.get('principal', 0) or 0
+        if ar_principal <= 0:
+            continue
+        
+        ar_date_str = ar.get('repayment_date', '')
+        if not ar_date_str:
+            continue
+        ar_date_short = ar_date_str.split('T')[0]
+        
+        # Find matching trade
+        bond_id = ar.get('bond_id')
+        ar_inv_date = ar.get('investment_date', '')[:10] if ar.get('investment_date') else ''
+        
+        key = (bond_id, ar_inv_date)
+        matching_trade = trade_lookup.get(key)
+        
+        if not matching_trade:
+            # Try finding any trade for this bond
+            for trade in trades:
+                if trade['bond_id'] == bond_id:
+                    matching_trade = trade
+                    break
+        
+        if not matching_trade:
+            results['errors'].append(f"No matching trade for repayment on {ar_date_str}")
+            continue
+        
+        # Get scheduled cashflows for this trade
+        scheduled_cfs = await db.holding_cashflows.find(
+            {"trade_id": matching_trade['id']},
+            {"_id": 0}
+        ).to_list(200)
+        
+        # Find scheduled principal for this date
+        scheduled_principal_for_date = 0
+        for scf in scheduled_cfs:
+            scf_date = scf.get('date', '').split('T')[0]
+            if scf_date == ar_date_short:
+                scheduled_principal_for_date = scf.get('principal_component', 0)
+                break
+        
+        # Calculate excess principal (prepayment)
+        excess_principal = ar_principal - scheduled_principal_for_date
+        
+        if excess_principal > 0.01:  # Tolerance for rounding
+            results['prepayments_detected'] += 1
+            
+            # Check if this prepayment was already processed
+            existing_prepayment = await db.prepayment_records.find_one({
+                "trade_id": matching_trade['id'],
+                "prepayment_date": {"$regex": f"^{ar_date_short}"}
+            })
+            
+            if existing_prepayment:
+                continue  # Already processed
+            
+            # Process the prepayment
+            try:
+                prepay_date = datetime.strptime(ar_date_short, '%Y-%m-%d')
+                
+                result = await process_bond_prepayment(
+                    db_instance=db,
+                    trade_id=matching_trade['id'],
+                    prepayment_amount=excess_principal,
+                    prepayment_date=prepay_date,
+                    source="auto_detection",
+                    recorded_by=current_user['id'],
+                    notes=f"Auto-detected from actual_repayment {ar.get('id', '')}"
+                )
+                
+                if result.get('success'):
+                    results['prepayments_processed'] += 1
+                    results['total_cashflows_modified'] += result.get('cashflows_modified', 0)
+                else:
+                    results['errors'].append(f"Failed to process prepayment on {ar_date_short}: {result.get('errors', [])}")
+            except Exception as e:
+                results['errors'].append(f"Error processing prepayment on {ar_date_short}: {str(e)}")
+    
+    return results
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
