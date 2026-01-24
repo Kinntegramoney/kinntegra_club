@@ -583,36 +583,41 @@ Complete 3-phase approval workflow for sub-broker actions:
 ### Bond Cashflow Prepayment Logic Rework (MAJOR)
 Complete rework of bond cashflow logic to properly handle prepayments (both partial and full):
 
-#### Core Prepayment Logic (`process_bond_prepayment()`)
-New unified function that handles all prepayment scenarios:
-1. **Proportional Principal Reduction**: When a prepayment occurs, ALL remaining future principal payments are proportionally reduced
-2. **Interest Recalculation**: Future interest is recalculated on the reduced principal using the same coupon rate
-3. **Trade Auto-Close**: If remaining principal reaches 0, trade is automatically marked as "closed"
-4. **Prepayment Records**: All prepayments are recorded in `prepayment_records` collection for audit trail
+#### Correct Prepayment Calculation Logic (Based on CDNRE001 Example)
+When prepayments occur:
+1. **Balance Principal reduces immediately** after each prepayment
+2. **Interest is calculated period-by-period** on the current balance:
+   - `Interest = Balance × Coupon Rate × Days / 365`
+3. **All interest accumulates** and is paid at maturity along with remaining principal
+4. **Final maturity payout** = Remaining Principal + Total Accumulated Interest
 
-#### Prepayment Processing Flow
-- **Manual Prepayment**: Via `/api/holdings/trade/{trade_id}/record-prepayment` endpoint
-- **Historical Upload**: Auto-detected when principal in repayment exceeds scheduled principal
-- **Admin Detection**: Via `/api/admin/detect-prepayments/{client_id}` for existing data
+#### Example: 135-unit CDNRE001 Trade
+- Original Principal: ₹1,35,00,000
+- Coupon Rate: 18.73%
+- 6 Prepayments (Oct-Mar): ₹9,45,000 each = ₹56,70,000
+- Remaining at Maturity: ₹78,30,000
+- Total Interest (accumulated): ₹34,73,188.57
+- Final Payout: ₹1,13,03,188.57
 
-#### Data Model Updates
-- `holding_cashflows`: Now tracks `is_prepayment_amended`, `remaining_principal_ratio`, `original_*` values
-- `prepayment_records`: New collection storing all prepayment history
-- `trades`: Updated with `has_prepayment`, `remaining_principal`, `total_prepaid_principal`
+#### Cashflow Structure After Fix
+| Date | Type | Principal | Interest | Balance After |
+|------|------|-----------|----------|---------------|
+| 2025-10-01 | Prepayment | ₹9,45,000 | 0 | ₹1,25,55,000 |
+| 2025-11-05 | Prepayment | ₹9,45,000 | 0 | ₹1,16,10,000 |
+| 2025-12-03 | Prepayment | ₹9,45,000 | 0 | ₹1,06,65,000 |
+| 2026-01-07 | Prepayment | ₹9,45,000 | 0 | ₹97,20,000 |
+| 2026-02-07 | Prepayment | ₹9,45,000 | 0 | ₹87,75,000 |
+| 2026-03-07 | Prepayment | ₹9,45,000 | 0 | ₹78,30,000 |
+| 2026-04-08 | Maturity | ₹78,30,000 | ₹34,73,189 | 0 |
 
-#### Admin Endpoints Added
-- `POST /api/admin/detect-prepayments/{client_id}` - Scan and process undetected prepayments
-- `POST /api/admin/reprocess-prepayments/{trade_id}` - Reprocess prepayments for a specific trade
-
-#### Key Business Rules Confirmed
-1. Partial prepayment proportionally reduces ALL remaining principal payments
-2. Same coupon rate applied on reduced principal (no rate changes)
-3. Prepayments do NOT appear as separate cashflow entries - they modify outstanding principal and expected net amounts
-4. XIRR calculations reflect the modified cashflow schedule
+#### XIRR After Fix
+- Expected XIRR: 10.96%
+- Actual XIRR: 10.96%
+- XIRR is lower than coupon rate (18.73%) because premium paid upfront impacts returns when principal is prepaid early
 
 ### Verified Implementation
-- Successfully tested with existing client data
-- Detected 13 prepayments, processed 4 (some exceeded outstanding principal - data quality issue)
-- Cashflows correctly modified with reduced principal/interest components
-- Prepayment records created with full audit trail
+- Cashflows correctly rebuilt for all 3 Natureresidences trades
+- Interest calculated using day-count method: Balance × Rate × Days / 365
+- Expected XIRR = Actual XIRR (matching correctly)
+- Prepayment cashflows show principal only (interest at maturity)
 
