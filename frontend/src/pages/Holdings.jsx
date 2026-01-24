@@ -1655,7 +1655,7 @@ export default function Holdings() {
                   </div>
                   
                   {/* Summary Footer */}
-                  <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end gap-8 text-sm">
+                  <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end gap-6 text-sm flex-wrap">
                     <div>
                       <span className="text-gray-500">Total Principal:</span>
                       <span className="font-mono font-medium ml-2">{formatINR(modalData.total_principal)}</span>
@@ -1663,6 +1663,10 @@ export default function Holdings() {
                     <div>
                       <span className="text-gray-500">Total Interest:</span>
                       <span className="font-mono font-medium ml-2">{formatINR(modalData.total_interest_gross)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Total Gross:</span>
+                      <span className="font-mono font-semibold ml-2 text-amber-700">{formatINR((modalData.total_principal || 0) + (modalData.total_interest_gross || 0))}</span>
                     </div>
                     <div>
                       <span className="text-gray-500">Total TDS:</span>
