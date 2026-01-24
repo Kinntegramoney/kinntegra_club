@@ -8394,6 +8394,69 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
         return None
 
 
+def calculate_actual_xirr(investment_date: str, investment_amount: float, cashflows: List[dict]) -> Optional[float]:
+    """
+    Calculate Actual XIRR based only on REPAID cashflows (not future expected ones).
+    Uses GROSS amounts (principal + interest) for repaid cashflows only.
+    Returns annualized return rate or None if calculation fails.
+    """
+    try:
+        from scipy.optimize import brentq
+        from datetime import datetime
+        
+        # Build cash flow list: negative for investment, positive for repayments
+        dates = []
+        amounts = []
+        
+        # Parse investment date (strip time and timezone info)
+        inv_date_str = investment_date.split('T')[0] if 'T' in investment_date else investment_date
+        inv_date = datetime.strptime(inv_date_str, '%Y-%m-%d')
+        dates.append(inv_date)
+        amounts.append(-investment_amount)
+        
+        # Add ONLY REPAID cashflows using GROSS amounts (principal + interest)
+        for cf in cashflows:
+            if not cf.get('is_repaid'):
+                continue  # Skip non-repaid cashflows
+                
+            date_str = cf.get('date', '')
+            if not date_str:
+                continue
+                
+            # Parse date (strip time and timezone)
+            date_str = date_str.split('T')[0] if 'T' in date_str else date_str
+            
+            # Calculate gross amount (principal + interest, before TDS)
+            cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+            
+            if cf_amount > 0:
+                try:
+                    cf_date = datetime.strptime(date_str, '%Y-%m-%d')
+                    dates.append(cf_date)
+                    amounts.append(cf_amount)
+                except:
+                    continue
+        
+        if len(dates) < 2:
+            return None  # No repaid cashflows yet
+        
+        # Calculate XIRR
+        min_date = min(dates)
+        day_factors = [(d - min_date).days / 365.0 for d in dates]
+        
+        def npv(rate):
+            return sum(a / ((1 + rate) ** t) for a, t in zip(amounts, day_factors))
+        
+        try:
+            xirr = brentq(npv, -0.99, 10.0, maxiter=1000)
+            return round(xirr * 100, 2)  # Return as percentage
+        except:
+            return None
+    except Exception as e:
+        logger.error(f"Actual XIRR calculation error: {e}")
+        return None
+
+
 def generate_client_cashflows(trade: dict, bond: dict) -> List[dict]:
     """
     Generate cashflow schedule for a client based on their trade and bond details.
