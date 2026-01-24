@@ -438,7 +438,7 @@ export default function Holdings() {
         };
       }
       
-      consolidated[bondId].total_units += holding.units;
+      consolidated[bondId].total_units += holding.units || 0;
       consolidated[bondId].invested_amount += holding.invested_amount;
       consolidated[bondId].total_principal += holding.total_principal;
       consolidated[bondId].total_interest_gross += holding.total_interest_gross;
