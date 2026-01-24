@@ -1992,6 +1992,170 @@ export default function Holdings() {
           </div>
         </div>
       )}
+
+      {/* Trade Details Modal */}
+      {tradeDetailsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Trade Details</h2>
+                <p className="text-sm text-gray-500 mt-1">{tradeDetailsModal.bond_name}</p>
+              </div>
+              <button 
+                onClick={() => setTradeDetailsModal(null)} 
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="p-5 space-y-4">
+              {/* Client Information */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Client Information
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Client Name</p>
+                    <p className="text-sm font-medium text-gray-800">{selectedClient?.name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">PAN</p>
+                    <p className="text-sm font-mono text-gray-800">{selectedClient?.pan || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Email</p>
+                    <p className="text-sm text-gray-800 truncate">{clientDetails?.email || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Phone</p>
+                    <p className="text-sm text-gray-800">{clientDetails?.phone || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trade Information */}
+              <div className="bg-amber-50 rounded-lg p-4">
+                <h3 className="text-xs font-semibold text-amber-700 uppercase mb-3 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Trade Information
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Units</p>
+                    <p className="text-sm font-bold text-gray-800">{tradeDetailsModal.units}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Price/Unit</p>
+                    <p className="text-sm font-mono text-gray-800">{formatINR(tradeDetailsModal.calculated_price || 0)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Total Amount</p>
+                    <p className="text-sm font-bold text-amber-600">{formatINR(tradeDetailsModal.total_amount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Investment Date</p>
+                    <p className="text-sm font-mono text-gray-800">{format(new Date(tradeDetailsModal.investment_date), "dd MMM yyyy")}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Trade Date</p>
+                    <p className="text-sm font-mono text-gray-800">{format(new Date(tradeDetailsModal.created_at), "dd MMM yyyy")}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase">Status</p>
+                    <span className={`px-2 py-0.5 text-xs rounded font-medium ${
+                      tradeDetailsModal.status === 'approved' 
+                        ? 'bg-green-100 text-green-700' 
+                        : tradeDetailsModal.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {tradeDetailsModal.status?.charAt(0).toUpperCase() + tradeDetailsModal.status?.slice(1)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Details */}
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h3 className="text-xs font-semibold text-blue-700 uppercase mb-3 flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Payment Details
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">UTR/Reference</span>
+                    <span className="text-sm font-mono font-medium text-gray-800">
+                      {tradeDetailsModal.payment_reference || '-'}
+                    </span>
+                  </div>
+                  {tradeDetailsModal.payment_proof_url && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">UTR Copy</span>
+                      <a
+                        href={tradeDetailsModal.payment_proof_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      >
+                        <FileImage className="h-4 w-4" />
+                        View Document
+                      </a>
+                    </div>
+                  )}
+                  {tradeDetailsModal.payment_proof_filename && !tradeDetailsModal.payment_proof_url && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">UTR Copy</span>
+                      <span className="text-sm text-green-600 flex items-center gap-1">
+                        <FileImage className="h-4 w-4" />
+                        {tradeDetailsModal.payment_proof_filename}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Remarks */}
+              {(tradeDetailsModal.payment_notes || tradeDetailsModal.broker_notes) && (
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <h3 className="text-xs font-semibold text-slate-700 uppercase mb-3">Remarks</h3>
+                  {tradeDetailsModal.payment_notes && (
+                    <p className="text-sm text-gray-700 mb-2">{tradeDetailsModal.payment_notes}</p>
+                  )}
+                  {tradeDetailsModal.broker_notes && (
+                    <p className="text-sm text-blue-600 italic">{tradeDetailsModal.broker_notes}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Approval Info */}
+              {tradeDetailsModal.approved_at && (
+                <div className="text-center py-2 border-t border-gray-100">
+                  <p className="text-xs text-gray-500">
+                    {tradeDetailsModal.status === 'approved' ? 'Approved' : 'Rejected'} on {format(new Date(tradeDetailsModal.approved_at), "dd MMM yyyy 'at' HH:mm")}
+                    {tradeDetailsModal.approved_by_name && ` by ${tradeDetailsModal.approved_by_name}`}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end p-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                onClick={() => setTradeDetailsModal(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
