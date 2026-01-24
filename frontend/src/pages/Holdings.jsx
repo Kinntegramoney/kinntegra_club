@@ -1774,16 +1774,15 @@ export default function Holdings() {
                                 formatINR(cf.net_amount)
                               )}
                             </td>
-                            <td className="py-3 px-4 text-center font-mono text-sm text-gray-600">
-                              {format(new Date(cf.date), "MMM dd, yyyy")}
-                            </td>
                             <td className="py-3 px-4 text-center font-mono text-sm">
                               {cf.is_repaid && cf.repaid_date ? (
-                                <span className={cf.is_prepaid ? 'text-blue-600 font-medium' : 'text-green-600'}>
+                                <span className={cf.is_prepaid ? 'text-blue-600 font-medium' : 'text-green-600 font-medium'}>
                                   {format(new Date(cf.repaid_date), "MMM dd, yyyy")}
                                 </span>
                               ) : (
-                                <span className="text-gray-400">-</span>
+                                <span className="text-gray-600">
+                                  {format(new Date(cf.date), "MMM dd, yyyy")}
+                                </span>
                               )}
                             </td>
                             <td className="py-3 px-4 text-center">
