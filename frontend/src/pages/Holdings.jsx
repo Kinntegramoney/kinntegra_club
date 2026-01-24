@@ -1878,6 +1878,12 @@ export default function Holdings() {
                       </span>
                     </div>
                     <div>
+                      <span className="text-gray-500">Total Gross:</span>
+                      <span className="font-mono font-semibold ml-2 text-amber-700">
+                        {formatINR(modalData.trades[activeTab].cashflows.reduce((sum, cf) => sum + (cf.principal_component || 0) + (cf.interest_component || 0), 0))}
+                      </span>
+                    </div>
+                    <div>
                       <span className="text-gray-500">Total TDS:</span>
                       <span className="font-mono font-medium ml-2 text-red-600">
                         {formatINR(modalData.trades[activeTab].cashflows.reduce((sum, cf) => sum + cf.tds_amount, 0))}
