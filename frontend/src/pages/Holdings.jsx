@@ -2087,36 +2087,36 @@ export default function Holdings() {
                   <CreditCard className="h-4 w-4" />
                   Payment Details
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">UTR/Reference</span>
                     <span className="text-sm font-mono font-medium text-gray-800">
                       {tradeDetailsModal.payment_reference || '-'}
                     </span>
                   </div>
-                  {tradeDetailsModal.payment_proof_url && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">UTR Copy</span>
+                  
+                  {/* UTR Copy with Eye Icon */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">UTR Copy</span>
+                    {tradeDetailsModal.payment_proof_url ? (
                       <a
                         href={tradeDetailsModal.payment_proof_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors"
                       >
-                        <FileImage className="h-4 w-4" />
-                        View Document
+                        <Eye className="h-4 w-4" />
+                        <span className="text-sm font-medium">View</span>
                       </a>
-                    </div>
-                  )}
-                  {tradeDetailsModal.payment_proof_filename && !tradeDetailsModal.payment_proof_url && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">UTR Copy</span>
-                      <span className="text-sm text-green-600 flex items-center gap-1">
-                        <FileImage className="h-4 w-4" />
-                        {tradeDetailsModal.payment_proof_filename}
-                      </span>
-                    </div>
-                  )}
+                    ) : tradeDetailsModal.payment_proof_filename ? (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-700 rounded-md">
+                        <Eye className="h-4 w-4" />
+                        <span className="text-sm font-medium truncate max-w-[150px]">{tradeDetailsModal.payment_proof_filename}</span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400 italic">Not uploaded</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
