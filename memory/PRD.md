@@ -515,6 +515,22 @@ Complete 3-phase approval workflow for sub-broker actions:
 
 **Verified**: Screenshot confirms breakdown displays correctly with outstanding and repaid amounts.
 
+### XIRR Calculation Fix (COMPLETED)
+**User Request**: XIRR should include outstanding principal and interest in the calculation, not just repaid amounts.
+
+**Root Cause**: The previous XIRR function required `repaid_date` to be set for repaid cashflows. When `is_repaid=True` but `repaid_date=None`, those cashflows were being skipped, resulting in incorrect XIRR (-43.85% instead of ~9.57%).
+
+**Fix Applied**:
+1. Modified `calculate_holding_xirr()` function in `server.py`
+2. For repaid cashflows: uses `repaid_date` if available, otherwise falls back to scheduled `date`
+3. For pending cashflows: uses scheduled `date` with expected `net_amount`
+4. All cashflows are now included in the XIRR calculation
+
+**Files Modified**:
+- `/app/backend/server.py` - Lines 8337-8400
+
+**Result**: XIRR now correctly shows **9.57%** (positive return) instead of -43.85%
+
 ## Known Issues & Next Steps
 
 ### P0 - Critical
