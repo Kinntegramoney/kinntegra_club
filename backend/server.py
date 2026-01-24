@@ -18799,11 +18799,12 @@ async def sync_prepayments_to_cashflows(client_id: str, current_user: dict = Dep
     """
     Sync unscheduled prepayments from actual_repayments to holding_cashflows.
     Creates new cashflow entries with is_prepaid=true for prepayments made outside scheduled dates.
+    Uses investment_date to match prepayments to specific trades.
     """
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can run this")
     
-    # Get client's trades grouped by bond_id
+    # Get client's trades grouped by bond_id and investment_date
     trades = await db.trades.find(
         {"client_id": client_id, "status": "approved"}, 
         {"_id": 0}
@@ -18812,7 +18813,15 @@ async def sync_prepayments_to_cashflows(client_id: str, current_user: dict = Dep
     if not trades:
         return {"error": "No approved trades found for client"}
     
-    # Create lookup: bond_id -> list of trades
+    # Create lookup: (bond_id, investment_date) -> trade
+    trade_lookup = {}
+    for trade in trades:
+        bond_id = trade['bond_id']
+        inv_date = trade.get('investment_date', '')[:10] if trade.get('investment_date') else ''
+        key = (bond_id, inv_date)
+        trade_lookup[key] = trade
+    
+    # Also create bond_id only lookup for fallback
     bond_trades = {}
     for trade in trades:
         bond_id = trade['bond_id']
@@ -18869,15 +18878,23 @@ async def sync_prepayments_to_cashflows(client_id: str, current_user: dict = Dep
         results['prepayments_found'] += 1
         
         bond_id = ar.get('bond_id')
-        if bond_id not in bond_trades:
+        ar_inv_date = ar.get('investment_date', '')[:10] if ar.get('investment_date') else ''
+        
+        # Try to find matching trade using bond_id + investment_date
+        key = (bond_id, ar_inv_date)
+        matching_trade = trade_lookup.get(key)
+        
+        if matching_trade:
+            # Exact match found - use this trade
+            matching_trades = [matching_trade]
+        elif bond_id in bond_trades:
+            # Fallback to all trades for this bond (distribute proportionally)
+            matching_trades = bond_trades[bond_id]
+        else:
             results['skipped_no_trade'] += 1
             continue
         
-        # Find the best matching trade for this prepayment
-        # Use the first trade for this bond (could be enhanced with amount matching)
-        matching_trades = bond_trades[bond_id]
-        
-        # Distribute prepayment proportionally across trades based on investment amount
+        # Distribute prepayment across matching trades based on investment amount
         total_investment = sum(t.get('total_amount', 0) for t in matching_trades)
         
         for trade in matching_trades:
@@ -18890,6 +18907,10 @@ async def sync_prepayments_to_cashflows(client_id: str, current_user: dict = Dep
             
             # Calculate this trade's share of the prepayment
             trade_share = trade.get('total_amount', 0) / total_investment if total_investment > 0 else 1
+            
+            # If exact match, use full amount
+            if len(matching_trades) == 1 and matching_trade:
+                trade_share = 1.0
             
             principal = (ar.get('principal', 0) or 0) * trade_share
             interest = (ar.get('interest', 0) or 0) * trade_share
@@ -18933,6 +18954,7 @@ async def sync_prepayments_to_cashflows(client_id: str, current_user: dict = Dep
             results['details'].append({
                 "date": ar_date_short,
                 "trade_id": trade_id,
+                "investment_date": trade.get('investment_date', '')[:10] if trade.get('investment_date') else '',
                 "principal": round(principal, 2),
                 "interest": round(interest, 2),
                 "gross": round(gross, 2)
