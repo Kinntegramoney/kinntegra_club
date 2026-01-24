@@ -1160,17 +1160,19 @@ export default function Holdings() {
                         <th className="text-left py-2 px-2 text-[10px] font-medium text-gray-500 uppercase sticky left-0 bg-gray-50">Scheme</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Investment</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Net Expected</th>
+                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Profit</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Principal</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Interest</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S TDS</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">XIRR</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Status</th>
-                        <th className="text-center py-2 px-1 w-8"></th>
+                        <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredHoldings.map((holding) => {
                         const totalNetExpected = holding.total_principal + holding.total_interest_gross - holding.total_tds;
+                        const profit = totalNetExpected - holding.invested_amount;
                         const osPrincipal = holding.total_principal - holding.repaid_principal;
                         const osInterest = holding.total_interest_gross - holding.repaid_interest;
                         const osTds = holding.total_tds - holding.repaid_tds;
@@ -1183,6 +1185,11 @@ export default function Holdings() {
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">{formatINR(holding.invested_amount)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-emerald-600">{formatINR(totalNetExpected)}</td>
+                          <td className="py-2 px-2 text-right font-mono text-xs">
+                            <span className={profit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                              {profit >= 0 ? '+' : ''}{formatINR(profit)}
+                            </span>
+                          </td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osPrincipal)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osInterest)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-red-500">{formatINR(osTds)}</td>
@@ -1200,19 +1207,14 @@ export default function Holdings() {
                               {holding.status === 'fully_repaid' ? 'Repaid' : 'Active'}
                             </span>
                           </td>
-                          <td className="py-2 px-1 text-center relative" ref={openMenu === holding.bond_id ? menuRef : null}>
-                            <button onClick={() => setOpenMenu(openMenu === holding.bond_id ? null : holding.bond_id)} className="p-0.5 hover:bg-gray-100 rounded" data-testid={`menu-btn-${holding.bond_id}`}>
-                              <MoreVertical className="h-4 w-4 text-gray-400" />
+                          <td className="py-2 px-2 text-center">
+                            <button 
+                              onClick={() => openCashflowModal(holding)} 
+                              className="px-2 py-1 text-[10px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 transition-colors"
+                              data-testid={`view-details-${holding.bond_id}`}
+                            >
+                              View Details
                             </button>
-                            
-                            {openMenu === holding.bond_id && (
-                              <div className="absolute right-4 top-8 z-50 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-                                <button onClick={() => openCashflowModal(holding)} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50" data-testid={`view-cashflows-${holding.bond_id}`}>
-                                  <Eye className="h-3 w-3" />
-                                  View Cashflows
-                                </button>
-                              </div>
-                            )}
                           </td>
                         </tr>
                         );
