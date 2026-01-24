@@ -8769,10 +8769,12 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         # Filter to only include repayments that match this trade's investment date
         # This allows matching prepayments to specific trades when multiple trades exist for same bond
         trade_inv_date = trade.get('investment_date', '')[:10] if trade.get('investment_date') else ''
-        trade_matched_repayments = [
-            ar for ar in actual_repayments
-            if ar.get('investment_date', '')[:10] == trade_inv_date if ar.get('investment_date') else True
-        ]
+        trade_matched_repayments = []
+        for ar in actual_repayments:
+            ar_inv_date = ar.get('investment_date', '')[:10] if ar.get('investment_date') else ''
+            # Include if investment dates match, or if actual_repayment has no investment_date (legacy data)
+            if ar_inv_date == trade_inv_date or not ar_inv_date:
+                trade_matched_repayments.append(ar)
         
         # Get scheduled dates from THIS TRADE's cashflows to filter out duplicates
         scheduled_dates = set()
