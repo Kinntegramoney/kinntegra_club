@@ -8750,17 +8750,31 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         )
         
         # Fetch actual repayments (unscheduled prepayments from historical uploads)
+        # Note: We only include actual_repayments that are NOT on scheduled dates
+        # to avoid double-counting
         actual_repayments = await db.actual_repayments.find({
             "bond_id": trade['bond_id'],
             "client_id": client_id
         }, {"_id": 0}).to_list(100)
+        
+        # Get scheduled dates from cashflows to filter out duplicates
+        scheduled_dates = set()
+        for cf in stored_cashflows:
+            if cf.get('date'):
+                scheduled_dates.add(cf['date'].split('T')[0])
+        
+        # Filter to only include actual repayments on NON-scheduled dates
+        unscheduled_repayments = [
+            ar for ar in actual_repayments 
+            if ar.get('repayment_date') and ar['repayment_date'].split('T')[0] not in scheduled_dates
+        ]
         
         # Calculate Actual XIRR (includes both scheduled repayments and unscheduled prepayments)
         actual_xirr = calculate_actual_xirr(
             trade['investment_date'], 
             investment_amount, 
             stored_cashflows,
-            actual_repayments
+            unscheduled_repayments
         )
         
         holdings.append({
