@@ -309,6 +309,39 @@ export default function Holdings() {
     }
   };
 
+  const handleGeneratePrepaymentSchedule = async (tradeId) => {
+    if (!tradeId) return;
+    
+    setRebuildingCashflows(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/admin/generate-prepayment-schedule/${tradeId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      const result = response.data;
+      toast.success(
+        `Schedule generated! ${result.cashflows_created} cashflows created. ` +
+        `Monthly: ₹${(result.monthly_principal || 0).toLocaleString('en-IN')}`
+      );
+      
+      // Refresh client details to reload holdings
+      if (selectedClient) {
+        fetchClientHoldings(selectedClient.id);
+      }
+      
+      // Close modal to refresh
+      closeModal();
+    } catch (error) {
+      console.error("Error generating schedule:", error);
+      toast.error(error.response?.data?.detail || "Failed to generate prepayment schedule");
+    } finally {
+      setRebuildingCashflows(false);
+    }
+  };
+
   const handleDownloadExcel = async () => {
     if (!selectedClient) return;
     
