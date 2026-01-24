@@ -9324,11 +9324,17 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         prepaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_prepaid')]
         prepaid_amount = sum(cf.get('repaid_actual_amount', 0) or cf.get('net_amount', 0) for cf in prepaid_cashflows)
         
+        # Get bond start date for XIRR calculation
+        # IMPORTANT: XIRR uses bond start date (not investment date) to properly
+        # reflect impact of premium when bond is sold at secondary market
+        bond_start_date = bond.get('start_date') or bond.get('bond_start_date')
+        
         # Calculate Expected XIRR (all cashflows) for this holding
         holding_xirr = calculate_holding_xirr(
             trade['investment_date'], 
             investment_amount, 
-            stored_cashflows
+            stored_cashflows,
+            bond_start_date
         )
         
         # Fetch actual repayments (unscheduled prepayments from historical uploads)
