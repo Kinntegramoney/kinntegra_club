@@ -11826,13 +11826,33 @@ async def get_bonds(
         unique_investors = await db.trades.distinct("client_id", {"bond_id": bond['id'], "status": "approved"})
         bond['unique_investors'] = len(unique_investors)
         
-        # Calculate interested count from leads
-        interested_count = await db.leads.count_documents({
-            "opportunity_id": bond['id'],
-            "opportunity_type": "bond",
-            "status": "open"
-        })
-        bond['interested_count'] = interested_count
+        # Calculate interested count and total interested amount from leads
+        leads_pipeline = [
+            {
+                "$match": {
+                    "opportunity_id": bond['id'],
+                    "opportunity_type": "bond",
+                    "status": "open"
+                }
+            },
+            {
+                "$group": {
+                    "_id": None,
+                    "count": {"$sum": 1},
+                    "total_amount": {"$sum": {"$ifNull": ["$investment_amount", 0]}}
+                }
+            }
+        ]
+        leads_result = await db.leads.aggregate(leads_pipeline).to_list(1)
+        if leads_result:
+            bond['interested_count'] = leads_result[0].get('count', 0)
+            bond['interested_amount'] = leads_result[0].get('total_amount', 0)
+        else:
+            bond['interested_count'] = 0
+            bond['interested_amount'] = 0
+        
+        # Mark as "In Demand" if there are interested leads
+        bond['in_demand'] = bond['interested_count'] > 0
         
         # Add cashflow repayment counts for funded/closed bonds (by unique dates, not total entries)
         # Get unique date values for total cashflows
