@@ -1473,43 +1473,62 @@ export default function Holdings() {
                       <table className="w-full">
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr>
-                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Repayment Date</th>
-                            <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Transactions</th>
-                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Principal</th>
-                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Interest</th>
-                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">TDS</th>
-                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Net Amount</th>
-                            <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Status</th>
+                            <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Repayment Date</th>
+                            <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Txns</th>
+                            <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Principal</th>
+                            <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Interest</th>
+                            <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">TDS</th>
+                            <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Net Amount</th>
+                            <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Status</th>
+                            <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Deviation</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {consolidatedCashflows.map((cf, idx) => (
-                            <tr key={idx} className={`border-b border-gray-100 ${cf.all_repaid ? 'bg-green-50' : ''}`}>
-                              <td className="py-3 px-4">
+                          {consolidatedCashflows.map((cf, idx) => {
+                            // Check for deviations in any transaction
+                            const hasDeviation = cf.transactions.some(t => 
+                              t.is_prepaid || 
+                              (t.repaid_actual_amount && t.repaid_actual_amount !== t.net_amount)
+                            );
+                            const isPrepaid = cf.transactions.some(t => t.is_prepaid);
+                            
+                            return (
+                            <tr key={idx} className={`border-b border-gray-100 ${cf.all_repaid ? 'bg-green-50' : ''} ${hasDeviation ? 'bg-orange-50' : ''}`}>
+                              <td className="py-3 px-3">
                                 <span className="font-mono text-sm font-medium">{format(new Date(cf.date), "MMM dd, yyyy")}</span>
                               </td>
-                              <td className="py-3 px-4 text-center">
+                              <td className="py-3 px-3 text-center">
                                 <span className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600">
-                                  {cf.transactions.length} txn(s)
+                                  {cf.transactions.length}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.principal_component)}</td>
-                              <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.interest_component)}</td>
-                              <td className="py-3 px-4 text-right font-mono text-sm text-red-600">{formatINR(cf.tds_amount)}</td>
-                              <td className="py-3 px-4 text-right font-mono text-sm font-medium">{formatINR(cf.net_amount)}</td>
-                              <td className="py-3 px-4 text-center">
+                              <td className="py-3 px-3 text-right font-mono text-sm">{formatINR(cf.principal_component)}</td>
+                              <td className="py-3 px-3 text-right font-mono text-sm">{formatINR(cf.interest_component)}</td>
+                              <td className="py-3 px-3 text-right font-mono text-sm text-red-600">{formatINR(cf.tds_amount)}</td>
+                              <td className="py-3 px-3 text-right font-mono text-sm font-medium">{formatINR(cf.net_amount)}</td>
+                              <td className="py-3 px-3 text-center">
                                 {cf.all_repaid ? (
                                   <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
-                                    <Check className="h-3 w-3" /> All Repaid
+                                    <Check className="h-3 w-3" /> Repaid
                                   </span>
                                 ) : (
                                   <span className="text-amber-600 text-xs font-medium">
-                                    {cf.transactions.filter(t => t.is_repaid).length}/{cf.transactions.length} Repaid
+                                    {cf.transactions.filter(t => t.is_repaid).length}/{cf.transactions.length}
                                   </span>
                                 )}
                               </td>
+                              <td className="py-3 px-3 text-center">
+                                {hasDeviation ? (
+                                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded ${isPrepaid ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                                    {isPrepaid ? 'Prepaid' : 'Adjusted'}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">-</span>
+                                )}
+                              </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
