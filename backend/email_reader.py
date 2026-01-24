@@ -263,21 +263,32 @@ async def process_repayment_emails(db, days_back: int = 7) -> Dict:
             try:
                 # Find matching bond by opportunity_id
                 opportunity_id = email_data.get('opportunity_id')
-                if not opportunity_id:
-                    results['errors'].append(f"No opportunity ID found in email")
-                    continue
+                company_name = email_data.get('company_name')
                 
-                # Look up bond by opportunity_id (bond code)
-                bond = await db.bonds.find_one({
-                    '$or': [
+                # Look up bond by opportunity_id (bond code) or company name
+                search_criteria = []
+                if opportunity_id:
+                    search_criteria.extend([
                         {'id': opportunity_id},
                         {'bond_code': opportunity_id},
                         {'name': {'$regex': opportunity_id, '$options': 'i'}}
-                    ]
-                })
+                    ])
+                if company_name:
+                    # Create regex patterns for company name matching
+                    # Handle variations like "UC INCLUSIVE CREDIT" vs "Uc Inclusive Credit Private Limited"
+                    company_words = company_name.upper().split()[:3]  # Take first 3 words
+                    if company_words:
+                        company_pattern = '.*'.join(company_words)
+                        search_criteria.append({'name': {'$regex': company_pattern, '$options': 'i'}})
+                
+                if not search_criteria:
+                    results['errors'].append(f"No opportunity ID or company name found in email")
+                    continue
+                
+                bond = await db.bonds.find_one({'$or': search_criteria})
                 
                 if not bond:
-                    results['errors'].append(f"Bond not found for opportunity: {opportunity_id}")
+                    results['errors'].append(f"Bond not found for: {opportunity_id or company_name}")
                     continue
                 
                 bond_id = bond.get('id')
@@ -308,7 +319,8 @@ async def process_repayment_emails(db, days_back: int = 7) -> Dict:
                     if update_result.modified_count > 0:
                         results['matched'] += 1
                         results['details'].append({
-                            'opportunity_id': opportunity_id,
+                            'bond_name': bond.get('name'),
+                            'bond_id': bond_id,
                             'repayment_date': repayment_date,
                             'gross_amount': email_data.get('gross_amount'),
                             'net_amount': email_data.get('net_amount'),
