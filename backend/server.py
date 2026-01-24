@@ -19904,10 +19904,14 @@ async def recalculate_cashflows_book2(
         "updated_cashflows": []
     }
     
-    # Recalculate interest for each cashflow using Book2.xlsx logic
+    # Recalculate BOTH principal AND interest for each cashflow using Book2.xlsx logic
+    # Book2 specifies: 7% monthly prepayments for 6 months, remaining balance at maturity
     balance = original_principal
     prev_date = bond_start_date  # Start from bond start date as per Book2.xlsx
     total_cashflows = len(existing_cfs)
+    monthly_prepayment = round(original_principal * 0.07, 2)  # 7% per month as per Book2.xlsx
+    
+    results["monthly_prepayment_amount"] = monthly_prepayment
     
     for idx, cf in enumerate(existing_cfs):
         cf_date_str = cf.get('date', '').split('T')[0]
@@ -19934,8 +19938,16 @@ async def recalculate_cashflows_book2(
         # Interest = Balance × Coupon Rate × Days / 365
         calculated_interest = round((balance * coupon_rate * days) / 365, 2)
         
-        # Get principal from existing cashflow
-        principal = cf.get('principal_component', 0) or 0
+        # FIXED: Recalculate principal based on Book2.xlsx logic
+        # For maturity (last payment): remaining balance
+        # For prepayments: 7% of original principal per month
+        old_principal = cf.get('principal_component', 0) or 0
+        if is_last_payment:
+            # Maturity payment: remaining balance (this is the key fix)
+            principal = balance
+        else:
+            # Monthly prepayment: 7% of original principal, capped at remaining balance
+            principal = min(monthly_prepayment, balance)
         
         # Calculate new balance after this payment
         new_balance = balance - principal
@@ -19947,8 +19959,10 @@ async def recalculate_cashflows_book2(
         gross = round(principal + calculated_interest, 2)
         net = round(gross - tds, 2)
         
-        # Update the cashflow
+        # Update the cashflow - NOW including principal_component
         update_data = {
+            "original_principal_component": cf.get('original_principal_component') or old_principal,
+            "principal_component": principal,
             "original_interest_component": cf.get('original_interest_component') or cf.get('interest_component', 0),
             "interest_component": calculated_interest,
             "tds_amount": tds,
@@ -19960,7 +19974,7 @@ async def recalculate_cashflows_book2(
             "coupon_rate_used": coupon_rate * 100,
             "calculation_method": "book2_logic",
             "is_amended": True,
-            "amendment_reason": f"Recalculated using Book2 logic. Days: {days}, Balance: {balance:,.2f}",
+            "amendment_reason": f"Recalculated FULL cashflow using Book2 logic. Days: {days}, Balance: {balance:,.2f}, Principal: {old_principal:,.2f} -> {principal:,.2f}",
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         
@@ -19974,7 +19988,9 @@ async def recalculate_cashflows_book2(
             "date": cf_date_str,
             "days": days,
             "balance_before": round(balance, 2),
-            "principal": principal,
+            "old_principal": old_principal,
+            "new_principal": principal,
+            "principal_changed": abs(old_principal - principal) > 0.01,
             "old_interest": cf.get('interest_component', 0),
             "new_interest": calculated_interest,
             "gross": gross,
