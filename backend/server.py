@@ -9349,89 +9349,23 @@ async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, curren
 
 async def recalculate_interest_after_prepayment(trade_id: str, prepayment_date: datetime, prepaid_principal: float, current_user_id: str) -> int:
     """
+    DEPRECATED: Use process_bond_prepayment() instead.
+    This function is kept for backward compatibility but now delegates to the unified prepayment processor.
+    
     Recalculate interest for all future cashflows after a principal prepayment.
     Returns the number of interest entries amended.
     """
-    # Get all cashflows for this trade
-    all_cashflows = await db.holding_cashflows.find(
-        {"trade_id": trade_id},
-        {"_id": 0}
-    ).to_list(100)
-    
-    if not all_cashflows:
-        return 0
-    
-    # Get trade and bond details
-    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
-    if not trade:
-        return 0
-    
-    bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
-    if not bond:
-        return 0
-    
-    # Calculate total original principal for this trade
-    original_principal = bond.get('principal_amount', 0) * trade.get('units', 0)
-    
-    # Calculate total principal already repaid (including this prepayment)
-    repaid_principal = sum(
-        cf.get('principal_component', 0) 
-        for cf in all_cashflows 
-        if cf.get('is_repaid')
+    result = await process_bond_prepayment(
+        db_instance=db,
+        trade_id=trade_id,
+        prepayment_amount=prepaid_principal,
+        prepayment_date=prepayment_date,
+        source="legacy_recalculate",
+        recorded_by=current_user_id,
+        notes="Called via legacy recalculate_interest_after_prepayment"
     )
     
-    # Remaining principal after prepayment
-    remaining_principal = original_principal - repaid_principal
-    
-    if remaining_principal < 0:
-        remaining_principal = 0
-    
-    # Calculate the reduction ratio
-    if original_principal > 0:
-        reduction_ratio = remaining_principal / original_principal
-    else:
-        reduction_ratio = 1.0
-    
-    amended_count = 0
-    
-    # Update all future interest payments
-    for cf in all_cashflows:
-        cf_date = datetime.fromisoformat(cf['date'].replace('Z', '+00:00')) if 'T' in cf['date'] else datetime.strptime(cf['date'], '%Y-%m-%d')
-        
-        # Only amend future interest payments that haven't been repaid
-        if cf_date.date() > prepayment_date.date() and not cf.get('is_repaid') and cf.get('interest_component', 0) > 0:
-            original_interest = cf.get('original_interest_component') or cf.get('interest_component', 0)
-            original_tds = cf.get('original_tds_amount') or cf.get('tds_amount', 0)
-            original_net = cf.get('original_net_amount') or cf.get('net_amount', 0)
-            
-            # Calculate amended amounts based on remaining principal
-            amended_interest = round(original_interest * reduction_ratio, 2)
-            amended_tds = round(amended_interest * 0.10, 2)  # 10% TDS
-            amended_net = round(amended_interest - amended_tds + cf.get('principal_component', 0), 2)
-            
-            await db.holding_cashflows.update_one(
-                {"id": cf['id']},
-                {"$set": {
-                    # Store original values if not already stored
-                    "original_interest_component": original_interest,
-                    "original_tds_amount": original_tds,
-                    "original_net_amount": original_net,
-                    "original_gross_amount": cf.get('original_gross_amount') or cf.get('gross_amount', 0),
-                    # Update to amended values
-                    "interest_component": amended_interest,
-                    "tds_amount": amended_tds,
-                    "gross_amount": round(amended_interest + cf.get('principal_component', 0), 2),
-                    "net_amount": amended_net,
-                    "is_amended": True,
-                    "amendment_reason": f"Principal prepayment of ₹{prepaid_principal:,.2f} on {prepayment_date.strftime('%d-%m-%Y')}",
-                    "amendment_date": datetime.now(timezone.utc).isoformat(),
-                    "amended_by": current_user_id,
-                    "remaining_principal_ratio": round(reduction_ratio, 4)
-                }}
-            )
-            amended_count += 1
-    
-    return amended_count
+    return result.get('cashflows_modified', 0)
 
 
 @api_router.post("/holdings/cashflow/{cashflow_id}/amend-interest")
