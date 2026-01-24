@@ -1620,6 +1620,30 @@ export default function Holdings() {
                     </div>
                   )}
                   
+                  {/* Rebuild Cashflows Button - for broker to recalculate based on historical data */}
+                  {user?.role === 'broker' && modalData.trades?.length > 0 && (
+                    <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Rebuild Cashflows from Historical Data</p>
+                        <p className="text-xs text-gray-500">Recalculate interest based on prepayments using Book2 logic</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          // Rebuild for all trades of this holding
+                          modalData.trades.forEach(trade => {
+                            handleRebuildCashflowsFromHistory(trade.trade_id);
+                          });
+                        }}
+                        disabled={rebuildingCashflows}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                        data-testid="rebuild-all-cashflows-btn"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${rebuildingCashflows ? 'animate-spin' : ''}`} />
+                        {rebuildingCashflows ? 'Rebuilding...' : 'Rebuild All'}
+                      </button>
+                    </div>
+                  )}
+                  
                   {/* Consolidated Cashflows Table */}
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <div className="max-h-[300px] overflow-y-auto">
