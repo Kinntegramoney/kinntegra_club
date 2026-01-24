@@ -6077,6 +6077,17 @@ async def bulk_upload_historical_trades(
                             results['failed'] += 1
                             continue
                         
+                        # Find matching trade for this repayment
+                        trade_query = {
+                            "bond_id": bond['id'],
+                            "client_id": client['id'],
+                            "status": "approved"
+                        }
+                        if inv_date_str:
+                            trade_query["investment_date"] = inv_date_str
+                        
+                        matching_trade = await db.trades.find_one(trade_query, {"_id": 0})
+                        
                         # Store actual repayment
                         actual_repayment = {
                             "id": str(uuid.uuid4()),
@@ -6096,12 +6107,68 @@ async def bulk_upload_historical_trades(
                             "type": "actual",  # Mark as actual
                             "created_by": current_user['id'],
                             "created_at": datetime.now(timezone.utc).isoformat(),
-                            "is_historical": True
+                            "is_historical": True,
+                            "trade_id": matching_trade['id'] if matching_trade else None
                         }
                         
                         await db.actual_repayments.insert_one(actual_repayment)
                         results['repayments_recorded'] += 1
                         results['success'] += 1
+                        
+                        # PREPAYMENT DETECTION AND PROCESSING
+                        # Check if this repayment contains a prepayment (unscheduled principal)
+                        if matching_trade and principal > 0:
+                            # Get scheduled cashflows for this trade
+                            scheduled_cfs = await db.holding_cashflows.find({
+                                "trade_id": matching_trade['id']
+                            }, {"_id": 0}).to_list(200)
+                            
+                            # Find if there's a scheduled cashflow for this repayment date
+                            scheduled_principal_for_date = 0
+                            for scf in scheduled_cfs:
+                                scf_date = scf.get('date', '').split('T')[0]
+                                if scf_date == rep_date_str:
+                                    scheduled_principal_for_date = scf.get('principal_component', 0)
+                                    break
+                            
+                            # If principal in repayment exceeds scheduled principal, it's a prepayment
+                            excess_principal = principal - scheduled_principal_for_date
+                            
+                            if excess_principal > 0.01:  # Tolerance for rounding
+                                # Parse repayment date for prepayment processing
+                                try:
+                                    prepay_date = datetime.strptime(rep_date_str, '%Y-%m-%d')
+                                except:
+                                    prepay_date = datetime.now()
+                                
+                                # Process the prepayment
+                                prepay_result = await process_bond_prepayment(
+                                    db_instance=db,
+                                    trade_id=matching_trade['id'],
+                                    prepayment_amount=excess_principal,
+                                    prepayment_date=prepay_date,
+                                    source="historical_upload",
+                                    recorded_by=current_user['id'],
+                                    notes=f"Auto-detected from historical upload row {row_num}"
+                                )
+                                
+                                if prepay_result.get('success'):
+                                    if 'prepayments_processed' not in results:
+                                        results['prepayments_processed'] = 0
+                                    results['prepayments_processed'] += 1
+                                    
+                                    if prepay_result.get('trade_closed'):
+                                        if 'trades_closed_by_prepayment' not in results:
+                                            results['trades_closed_by_prepayment'] = []
+                                        results['trades_closed_by_prepayment'].append({
+                                            "trade_id": matching_trade['id'],
+                                            "client": client['name'],
+                                            "bond": bond['name']
+                                        })
+                                else:
+                                    results['errors'].append(
+                                        f"Repayment Row {row_num}: Prepayment detected (₹{excess_principal:,.2f}) but processing failed: {prepay_result.get('errors', [])}"
+                                    )
                         
                     except Exception as e:
                         results['errors'].append(f"Repayment Row {row_num}: {str(e)}")
