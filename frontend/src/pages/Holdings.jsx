@@ -27,10 +27,12 @@ export default function Holdings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [openMenu, setOpenMenu] = useState(null);
+  const [openTradeMenu, setOpenTradeMenu] = useState(null); // For trades tab three-dot menu
   const [modalData, setModalData] = useState(null);
   const [activeTab, setActiveTab] = useState("summary"); // "summary" or trade index
   const [mainTab, setMainTab] = useState("holdings"); // "holdings", "trades", or "profile"
   const menuRef = useRef(null);
+  const tradeMenuRef = useRef(null);
   
   // Prepayment modal state
   const [showPrepaymentModal, setShowPrepaymentModal] = useState(false);
