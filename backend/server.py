@@ -8336,7 +8336,9 @@ class RepaymentUpdate(BaseModel):
 
 def calculate_holding_xirr(investment_date: str, investment_amount: float, cashflows: List[dict]) -> Optional[float]:
     """
-    Calculate XIRR for a holding based on investment and actual repayment dates.
+    Calculate XIRR for a holding based on investment and cashflow dates.
+    For repaid cashflows, uses repaid_date if available, otherwise falls back to scheduled date.
+    For pending cashflows, uses scheduled date (projected XIRR).
     Returns annualized return rate or None if calculation fails.
     """
     try:
@@ -8352,23 +8354,28 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
         dates.append(inv_date)
         amounts.append(-investment_amount)
         
-        # Add repaid cashflows (inflows)
+        # Add all cashflows (both repaid and pending)
         for cf in cashflows:
-            if cf.get('is_repaid') and cf.get('repaid_date'):
-                cf_date = datetime.fromisoformat(cf['repaid_date'].replace('Z', '+00:00')) if 'T' in cf['repaid_date'] else datetime.strptime(cf['repaid_date'], '%Y-%m-%d')
+            # Determine the date to use
+            if cf.get('is_repaid'):
+                # For repaid: use repaid_date if available, otherwise use scheduled date
+                date_str = cf.get('repaid_date') or cf.get('date')
                 cf_amount = cf.get('repaid_actual_amount') or cf.get('net_amount', 0)
-                if cf_amount > 0:
-                    dates.append(cf_date)
-                    amounts.append(cf_amount)
-        
-        # Add pending cashflows at scheduled dates (for projected XIRR)
-        for cf in cashflows:
-            if not cf.get('is_repaid'):
-                cf_date = datetime.fromisoformat(cf['date'].replace('Z', '+00:00')) if 'T' in cf['date'] else datetime.strptime(cf['date'], '%Y-%m-%d')
+            else:
+                # For pending: use scheduled date with expected net amount
+                date_str = cf.get('date')
                 cf_amount = cf.get('net_amount', 0)
-                if cf_amount > 0:
+            
+            if date_str and cf_amount > 0:
+                try:
+                    if 'T' in date_str:
+                        cf_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    else:
+                        cf_date = datetime.strptime(date_str, '%Y-%m-%d')
                     dates.append(cf_date)
                     amounts.append(cf_amount)
+                except:
+                    continue
         
         if len(dates) < 2:
             return None
