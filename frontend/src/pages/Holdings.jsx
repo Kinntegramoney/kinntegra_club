@@ -1321,7 +1321,7 @@ export default function Holdings() {
                       <tr>
                         <th className="text-left py-2 px-2 text-[10px] font-medium text-gray-500 uppercase sticky left-0 bg-gray-50">Scheme</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Investment</th>
-                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Net Expected</th>
+                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Gross Expected</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Profit</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Principal</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Interest</th>
@@ -1333,8 +1333,9 @@ export default function Holdings() {
                     </thead>
                     <tbody>
                       {filteredHoldings.map((holding) => {
-                        const totalNetExpected = holding.total_principal + holding.total_interest_gross - holding.total_tds;
-                        const profit = totalNetExpected - holding.invested_amount;
+                        // GROSS Expected = Principal + Interest (before TDS)
+                        const totalGrossExpected = holding.total_principal + holding.total_interest_gross;
+                        const profit = totalGrossExpected - holding.invested_amount;
                         const osPrincipal = holding.total_principal - holding.repaid_principal;
                         const osInterest = holding.total_interest_gross - holding.repaid_interest;
                         const osTds = holding.total_tds - holding.repaid_tds;
@@ -1346,7 +1347,7 @@ export default function Holdings() {
                             <p className="text-[10px] text-gray-400">{holding.total_units} units</p>
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">{formatINR(holding.invested_amount)}</td>
-                          <td className="py-2 px-2 text-right font-mono text-xs text-emerald-600">{formatINR(totalNetExpected)}</td>
+                          <td className="py-2 px-2 text-right font-mono text-xs text-emerald-600">{formatINR(totalGrossExpected)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <span className={profit >= 0 ? 'text-green-600' : 'text-red-600'}>
                               {formatINR(profit)}
