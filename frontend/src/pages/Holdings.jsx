@@ -1469,7 +1469,7 @@ export default function Holdings() {
                     <div className="bg-green-50 rounded-lg p-4">
                       <p className="text-xs text-green-600 uppercase">Total Gross Expected</p>
                       <p className="text-lg font-semibold text-green-700">
-                        {formatINR(consolidatedCashflows.reduce((sum, cf) => sum + cf.net_amount, 0))}
+                        {formatINR(consolidatedCashflows.reduce((sum, cf) => sum + (cf.principal_component || 0) + (cf.interest_component || 0), 0))}
                       </p>
                     </div>
                     <div className="bg-blue-50 rounded-lg p-4">
