@@ -11699,10 +11699,10 @@ async def get_bonds(
         bond['unique_investors'] = len(unique_investors)
         
         # Add cashflow repayment counts for funded/closed bonds (by unique dates, not total entries)
-        # Get unique expected_date values for total cashflows
-        total_unique_dates = await db.holding_cashflows.distinct("expected_date", {"bond_id": bond['id']})
-        # Get unique expected_date values for repaid cashflows
-        repaid_unique_dates = await db.holding_cashflows.distinct("expected_date", {"bond_id": bond['id'], "is_repaid": True})
+        # Get unique date values for total cashflows
+        total_unique_dates = await db.holding_cashflows.distinct("date", {"bond_id": bond['id']})
+        # Get unique date values for repaid cashflows
+        repaid_unique_dates = await db.holding_cashflows.distinct("date", {"bond_id": bond['id'], "is_repaid": True})
         bond['total_cashflows_count'] = len(total_unique_dates)
         bond['repaid_cashflows_count'] = len(repaid_unique_dates)
     
@@ -11771,10 +11771,10 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
         bond['unique_investors'] = len(unique_investors)
         
         # Add cashflow repayment counts for funded/closed bonds (by unique dates, not total entries)
-        # Get unique expected_date values for total cashflows
-        total_unique_dates = await db.holding_cashflows.distinct("expected_date", {"bond_id": bond['id']})
-        # Get unique expected_date values for repaid cashflows
-        repaid_unique_dates = await db.holding_cashflows.distinct("expected_date", {"bond_id": bond['id'], "is_repaid": True})
+        # Get unique date values for total cashflows
+        total_unique_dates = await db.holding_cashflows.distinct("date", {"bond_id": bond['id']})
+        # Get unique date values for repaid cashflows
+        repaid_unique_dates = await db.holding_cashflows.distinct("date", {"bond_id": bond['id'], "is_repaid": True})
         bond['total_cashflows_count'] = len(total_unique_dates)
         bond['repaid_cashflows_count'] = len(repaid_unique_dates)
         
