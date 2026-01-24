@@ -1154,6 +1154,7 @@ export default function Holdings() {
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Investment</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Net Expected</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Principal</th>
+                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Interest</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S TDS</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">XIRR</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Status</th>
@@ -1164,6 +1165,7 @@ export default function Holdings() {
                       {filteredHoldings.map((holding) => {
                         const totalNetExpected = holding.total_principal + holding.total_interest_gross - holding.total_tds;
                         const osPrincipal = holding.total_principal - holding.repaid_principal;
+                        const osInterest = holding.total_interest_gross - holding.repaid_interest;
                         const osTds = holding.total_tds - holding.repaid_tds;
                         
                         return (
@@ -1175,6 +1177,7 @@ export default function Holdings() {
                           <td className="py-2 px-2 text-right font-mono text-xs">{formatINR(holding.invested_amount)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-emerald-600">{formatINR(totalNetExpected)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osPrincipal)}</td>
+                          <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osInterest)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-red-500">{formatINR(osTds)}</td>
                           <td className="py-2 px-2 text-center">
                             {holding.xirr !== null && holding.xirr !== undefined ? (
