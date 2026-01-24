@@ -8338,8 +8338,6 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
     """
     Calculate XIRR for a holding based on investment and cashflow dates.
     Uses GROSS amounts (principal + interest) for both repaid and expected cashflows.
-    For repaid cashflows, uses repaid_date if available, otherwise falls back to scheduled date.
-    For pending cashflows, uses scheduled date (projected XIRR).
     Returns annualized return rate or None if calculation fails.
     """
     try:
@@ -8350,35 +8348,27 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
         dates = []
         amounts = []
         
-        # Initial investment (outflow)
-        inv_date = datetime.fromisoformat(investment_date.replace('Z', '+00:00')) if 'T' in investment_date else datetime.strptime(investment_date, '%Y-%m-%d')
+        # Parse investment date (strip time and timezone info)
+        inv_date_str = investment_date.split('T')[0] if 'T' in investment_date else investment_date
+        inv_date = datetime.strptime(inv_date_str, '%Y-%m-%d')
         dates.append(inv_date)
         amounts.append(-investment_amount)
         
-        # Add all cashflows (both repaid and pending) using GROSS amounts
+        # Add all cashflows using GROSS amounts (principal + interest)
         for cf in cashflows:
-            # Determine the date to use
-            if cf.get('is_repaid'):
-                # For repaid: use repaid_date if available, otherwise use scheduled date
-                date_str = cf.get('repaid_date') or cf.get('date')
-                # Use actual repaid amount if available, otherwise use gross (principal + interest)
-                if cf.get('repaid_actual_amount'):
-                    cf_amount = cf.get('repaid_actual_amount')
-                else:
-                    # Calculate gross amount (principal + interest, before TDS)
-                    cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
-            else:
-                # For pending: use scheduled date with GROSS expected amount (principal + interest)
-                date_str = cf.get('date')
-                # Use gross amount (principal + interest) for expected XIRR
-                cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+            date_str = cf.get('date', '')
+            if not date_str:
+                continue
+                
+            # Parse date (strip time and timezone)
+            date_str = date_str.split('T')[0] if 'T' in date_str else date_str
             
-            if date_str and cf_amount > 0:
+            # Calculate gross amount (principal + interest, before TDS)
+            cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+            
+            if cf_amount > 0:
                 try:
-                    if 'T' in date_str:
-                        cf_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-                    else:
-                        cf_date = datetime.strptime(date_str, '%Y-%m-%d')
+                    cf_date = datetime.strptime(date_str, '%Y-%m-%d')
                     dates.append(cf_date)
                     amounts.append(cf_amount)
                 except:
