@@ -581,43 +581,37 @@ Complete 3-phase approval workflow for sub-broker actions:
 ## Recent Changes (Jan 24, 2026)
 
 ### Bond Cashflow Prepayment Logic Rework (MAJOR)
-Complete rework of bond cashflow logic to properly handle prepayments (both partial and full):
+Complete rework of bond cashflow logic to properly handle prepayments based on CDNRE001 Excel reference:
 
-#### Correct Prepayment Calculation Logic (Based on CDNRE001 Example)
+#### Correct Prepayment Calculation Logic
 When prepayments occur:
 1. **Balance Principal reduces immediately** after each prepayment
 2. **Interest is calculated period-by-period** on the current balance:
    - `Interest = Balance × Coupon Rate × Days / 365`
 3. **All interest accumulates** and is paid at maturity along with remaining principal
-4. **Final maturity payout** = Remaining Principal + Total Accumulated Interest
+4. **XIRR calculated from Bond Start Date** (not investment date) to reflect premium impact
 
-#### Example: 135-unit CDNRE001 Trade
-- Original Principal: ₹1,35,00,000
-- Coupon Rate: 18.73%
-- 6 Prepayments (Oct-Mar): ₹9,45,000 each = ₹56,70,000
-- Remaining at Maturity: ₹78,30,000
-- Total Interest (accumulated): ₹34,73,188.57
-- Final Payout: ₹1,13,03,188.57
+#### Verified Values (135-unit Trade)
+| Metric | Excel | System |
+|--------|-------|--------|
+| Final Principal | ₹78,30,000 | ₹78,30,000 ✓ |
+| Total Interest | ₹34,82,460.30 | ₹34,82,460.30 ✓ |
+| Total Payout | ₹1,13,12,460.30 | ₹1,13,12,460.30 ✓ |
+| XIRR | 6.33% | 6.33% ✓ |
 
-#### Cashflow Structure After Fix
-| Date | Type | Principal | Interest | Balance After |
-|------|------|-----------|----------|---------------|
-| 2025-10-01 | Prepayment | ₹9,45,000 | 0 | ₹1,25,55,000 |
-| 2025-11-05 | Prepayment | ₹9,45,000 | 0 | ₹1,16,10,000 |
-| 2025-12-03 | Prepayment | ₹9,45,000 | 0 | ₹1,06,65,000 |
-| 2026-01-07 | Prepayment | ₹9,45,000 | 0 | ₹97,20,000 |
-| 2026-02-07 | Prepayment | ₹9,45,000 | 0 | ₹87,75,000 |
-| 2026-03-07 | Prepayment | ₹9,45,000 | 0 | ₹78,30,000 |
-| 2026-04-08 | Maturity | ₹78,30,000 | ₹34,73,189 | 0 |
+#### Cashflow Structure
+| Date | Type | Principal | Interest |
+|------|------|-----------|----------|
+| 2025-10-01 | Prepayment | ₹9,45,000 | 0 |
+| 2025-11-05 | Prepayment | ₹9,45,000 | 0 |
+| 2025-12-03 | Prepayment | ₹9,45,000 | 0 |
+| 2026-01-07 | Prepayment | ₹9,45,000 | 0 |
+| 2026-02-07 | Prepayment | ₹9,45,000 | 0 |
+| 2026-03-07 | Prepayment | ₹9,45,000 | 0 |
+| 2026-04-08 | Maturity | ₹78,30,000 | ₹34,82,460 |
 
-#### XIRR After Fix
-- Expected XIRR: 10.96%
-- Actual XIRR: 10.96%
-- XIRR is lower than coupon rate (18.73%) because premium paid upfront impacts returns when principal is prepaid early
-
-### Verified Implementation
-- Cashflows correctly rebuilt for all 3 Natureresidences trades
-- Interest calculated using day-count method: Balance × Rate × Days / 365
-- Expected XIRR = Actual XIRR (matching correctly)
-- Prepayment cashflows show principal only (interest at maturity)
+#### XIRR Calculation Changes
+- **Changed from Investment Date to Bond Start Date** as reference
+- This correctly reflects the impact of premium paid when bond is sold at secondary market
+- XIRR now shows 6.33% (matching Excel) instead of 11.03% (from investment date)
 
