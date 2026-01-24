@@ -1377,6 +1377,52 @@ export default function Holdings() {
                     </div>
                   </div>
                   
+                  {/* Outstanding Principal & Interest Section */}
+                  <div className="mb-5 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Principal & Interest Breakdown
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-white rounded-lg p-3 border border-slate-100">
+                        <p className="text-xs text-slate-500 uppercase mb-1">Outstanding Principal</p>
+                        <p className="text-lg font-semibold text-slate-800">
+                          {formatINR((modalData.total_principal || 0) - (modalData.repaid_principal || 0))}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Repaid: {formatINR(modalData.repaid_principal || 0)}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-slate-100">
+                        <p className="text-xs text-slate-500 uppercase mb-1">Outstanding Interest</p>
+                        <p className="text-lg font-semibold text-emerald-600">
+                          {formatINR((modalData.total_interest_gross || 0) - (modalData.repaid_interest || 0))}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Repaid: {formatINR(modalData.repaid_interest || 0)}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-slate-100">
+                        <p className="text-xs text-slate-500 uppercase mb-1">Pending TDS</p>
+                        <p className="text-lg font-semibold text-red-600">
+                          {formatINR((modalData.total_tds || 0) - (modalData.repaid_tds || 0))}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Deducted: {formatINR(modalData.repaid_tds || 0)}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-slate-100">
+                        <p className="text-xs text-slate-500 uppercase mb-1">Total Outstanding</p>
+                        <p className="text-lg font-semibold text-blue-600">
+                          {formatINR(modalData.upcoming_expected || 0)}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Received: {formatINR(modalData.net_repaid || 0)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
                   {/* Prepaid Summary (if any) */}
                   {modalData.prepaid_count > 0 && (
                     <div className="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg">
