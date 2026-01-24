@@ -1090,89 +1090,32 @@ export default function Holdings() {
               {/* Holdings Tab Content */}
               {mainTab === "holdings" && (
               <>
-              {/* Overview Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <FileText className="h-5 w-5 text-amber-600" />
-                    <h3 className="font-semibold text-gray-800">Overview</h3>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Investment</span>
-                      <span className="font-mono font-medium">{formatINR(clientHoldings.summary.total_investment)}</span>
+              {/* Compact Summary Bar */}
+              <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">Investment:</span>
+                      <span className="font-mono font-semibold text-gray-800">{formatINR(clientHoldings.summary.total_investment)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Repaid (Net)</span>
-                      <span className="font-mono font-medium text-green-600">{formatINR(clientHoldings.summary.total_repaid)}</span>
+                    <div className="h-4 w-px bg-gray-300"></div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">Repaid:</span>
+                      <span className="font-mono font-semibold text-green-600">{formatINR(clientHoldings.summary.total_repaid)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Upcoming (Expected)</span>
-                      <span className="font-mono font-medium text-blue-600">{formatINR(clientHoldings.summary.total_upcoming)}</span>
+                    <div className="h-4 w-px bg-gray-300"></div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">Upcoming:</span>
+                      <span className="font-mono font-semibold text-blue-600">{formatINR(clientHoldings.summary.total_upcoming)}</span>
                     </div>
-                  </div>
-                  
-                  <div className="mt-6 pt-4 border-t border-gray-100">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Allocation</p>
-                    <div className="flex items-center gap-4">
-                      <div className="relative w-20 h-20">
-                        <svg viewBox="0 0 36 36" className="w-20 h-20 transform -rotate-90">
-                          <circle cx="18" cy="18" r="15.5" fill="none" stroke="#f3f4f6" strokeWidth="3" />
-                          <circle 
-                            cx="18" cy="18" r="15.5" fill="none" 
-                            stroke="#92400e" strokeWidth="3"
-                            strokeDasharray={`${(clientHoldings.summary.total_repaid / clientHoldings.summary.total_expected) * 97.5} 97.5`}
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Total Expected</p>
-                        <p className="text-xl font-bold text-gray-800">{formatINR(clientHoldings.summary.total_expected)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="h-5 w-5 text-amber-600" />
-                    <h3 className="font-semibold text-gray-800">Investment by Asset Class</h3>
-                  </div>
-                  
-                  <div className="flex items-center gap-8">
-                    <div className="relative w-32 h-32">
-                      <svg viewBox="0 0 36 36" className="w-32 h-32 transform -rotate-90">
-                        <circle cx="18" cy="18" r="15.5" fill="none" stroke="#f3f4f6" strokeWidth="3" />
-                        <circle cx="18" cy="18" r="15.5" fill="none" stroke="#92400e" strokeWidth="3" strokeDasharray="97.5 97.5" />
-                      </svg>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-amber-700"></div>
-                        <span className="text-sm text-gray-600">Corporate Debt</span>
-                        <span className="font-mono text-sm font-medium">{formatINR(clientHoldings.summary.total_investment)}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-gray-300"></div>
-                        <span className="text-sm text-gray-400">Asset Backed Leasing</span>
-                        <span className="font-mono text-sm text-gray-400">₹ 0</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                        <span className="text-sm text-gray-400">Invoice Discounting</span>
-                        <span className="font-mono text-sm text-gray-400">₹ 0</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-                        <span className="text-sm text-gray-400">Venture Debt</span>
-                        <span className="font-mono text-sm text-gray-400">₹ 0</span>
-                      </div>
+                    <div className="h-4 w-px bg-gray-300"></div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">Total Expected:</span>
+                      <span className="font-mono font-semibold text-amber-700">{formatINR(clientHoldings.summary.total_expected)}</span>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="radio" name="status" checked={statusFilter === 'all'} onChange={() => setStatusFilter('all')} className="text-amber-600" />
                       <span className="text-sm">All</span>
