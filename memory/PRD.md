@@ -468,16 +468,35 @@ Complete 3-phase approval workflow for sub-broker actions:
 - ✅ Reinv Tag page shows Historical/Upcoming sub-sections
 - ✅ Logs page shows Portfolio column
 
+## Recent Changes (Jan 24, 2026)
+
+### Repayment Count on Funded Bond Cards (COMPLETED)
+**User Request**: Once a bond moves to the "Funded" section in Opportunities, replace "Price/Unit" with "Repayment Count" (e.g., "15/33 Repaid").
+
+**Changes Implemented**:
+1. **Backend**: Modified `/api/bonds` endpoint in `server.py` to return two new fields:
+   - `total_cashflows_count`: Total number of cashflows for the bond (from `holding_cashflows` collection)
+   - `repaid_cashflows_count`: Count of cashflows marked as `is_repaid: true`
+2. **Frontend**: Updated `BondCard` component in `Opportunities.jsx` to conditionally render:
+   - **Funded/Closed bonds**: Shows emerald-green "Repayment Progress" section with "X / Y Repaid" and a visual progress bar
+   - **Available bonds**: Shows original amber "Price/Unit" display with today's calculated price
+
+**Files Modified**:
+- `/app/backend/server.py` - Added cashflow count queries in `get_bonds()` and `get_available_bonds()` functions
+- `/app/frontend/src/pages/Opportunities.jsx` - Updated BondCard JSX with conditional rendering
+
+**Verified**: Screenshot confirms "15 / 33 Repaid" displayed correctly with progress bar on Funded tab.
+
 ## Known Issues & Next Steps
 
 ### P0 - Critical
-1. **Test the tagging workflow end-to-end**: Tag some historical entries and verify they appear in Logs as "Approved"
-2. **Test email approval flow**: Tag upcoming entries, send email to client, verify approval process
+- ✅ **COMPLETED**: Repayment Count on Funded Bond Cards
 
 ### P1 - High Priority
 1. **Apply RBAC permissions globally**: Currently partially implemented in SubBrokerClients and Opportunities
 2. **Sub-broker/Client permission fix on RealEstateDetails page**: Implemented but untested
 3. **Verify "Sell Unit" Feature**: End-to-end test needed
+4. **Verify Real Estate Broker Visibility Fix**: Fix implemented, awaiting user deployment verification
 
 ### P2 - Medium Priority
 1. **Sub-broker password reset email flow**: Not verified
