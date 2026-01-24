@@ -11698,11 +11698,13 @@ async def get_bonds(
         unique_investors = await db.trades.distinct("client_id", {"bond_id": bond['id'], "status": "approved"})
         bond['unique_investors'] = len(unique_investors)
         
-        # Add cashflow repayment counts for funded/closed bonds
-        total_cashflows_count = await db.holding_cashflows.count_documents({"bond_id": bond['id']})
-        repaid_cashflows_count = await db.holding_cashflows.count_documents({"bond_id": bond['id'], "is_repaid": True})
-        bond['total_cashflows_count'] = total_cashflows_count
-        bond['repaid_cashflows_count'] = repaid_cashflows_count
+        # Add cashflow repayment counts for funded/closed bonds (by unique dates, not total entries)
+        # Get unique expected_date values for total cashflows
+        total_unique_dates = await db.holding_cashflows.distinct("expected_date", {"bond_id": bond['id']})
+        # Get unique expected_date values for repaid cashflows
+        repaid_unique_dates = await db.holding_cashflows.distinct("expected_date", {"bond_id": bond['id'], "is_repaid": True})
+        bond['total_cashflows_count'] = len(total_unique_dates)
+        bond['repaid_cashflows_count'] = len(repaid_unique_dates)
     
     total = await db.bonds.count_documents({})
     
@@ -11768,11 +11770,13 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
         unique_investors = await db.trades.distinct("client_id", {"bond_id": bond['id'], "status": "approved"})
         bond['unique_investors'] = len(unique_investors)
         
-        # Add cashflow repayment counts for funded/closed bonds
-        total_cashflows_count = await db.holding_cashflows.count_documents({"bond_id": bond['id']})
-        repaid_cashflows_count = await db.holding_cashflows.count_documents({"bond_id": bond['id'], "is_repaid": True})
-        bond['total_cashflows_count'] = total_cashflows_count
-        bond['repaid_cashflows_count'] = repaid_cashflows_count
+        # Add cashflow repayment counts for funded/closed bonds (by unique dates, not total entries)
+        # Get unique expected_date values for total cashflows
+        total_unique_dates = await db.holding_cashflows.distinct("expected_date", {"bond_id": bond['id']})
+        # Get unique expected_date values for repaid cashflows
+        repaid_unique_dates = await db.holding_cashflows.distinct("expected_date", {"bond_id": bond['id'], "is_repaid": True})
+        bond['total_cashflows_count'] = len(total_unique_dates)
+        bond['repaid_cashflows_count'] = len(repaid_unique_dates)
         
         # Only include bonds that are 'available' (not funded or closed)
         if status == 'available':
