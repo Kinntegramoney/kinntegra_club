@@ -1193,9 +1193,45 @@ export default function Holdings() {
               {/* Holding Report Table */}
               <div className="bg-white rounded-lg border border-gray-200">
                 <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <ClipboardList className="h-5 w-5 text-amber-600" />
-                    <h3 className="font-semibold text-gray-800">Holding Report</h3>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <ClipboardList className="h-5 w-5 text-amber-600" />
+                      <h3 className="font-semibold text-gray-800">Holding Report</h3>
+                    </div>
+                    
+                    {/* Status Filter Radio Buttons */}
+                    <div className="flex items-center gap-4 ml-4 pl-4 border-l border-gray-200">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="holdingStatus" 
+                          checked={statusFilter === 'all'} 
+                          onChange={() => setStatusFilter('all')} 
+                          className="h-3.5 w-3.5 text-amber-600 focus:ring-amber-500" 
+                        />
+                        <span className="text-sm text-gray-600">All</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="holdingStatus" 
+                          checked={statusFilter === 'active'} 
+                          onChange={() => setStatusFilter('active')} 
+                          className="h-3.5 w-3.5 text-amber-600 focus:ring-amber-500" 
+                        />
+                        <span className="text-sm text-gray-600">Active</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="holdingStatus" 
+                          checked={statusFilter === 'fully_repaid'} 
+                          onChange={() => setStatusFilter('fully_repaid')} 
+                          className="h-3.5 w-3.5 text-amber-600 focus:ring-amber-500" 
+                        />
+                        <span className="text-sm text-gray-600">Completed</span>
+                      </label>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Button variant="ghost" size="sm" onClick={handleDownloadExcel} className="text-amber-700 hover:text-amber-800" data-testid="download-holdings-btn">
