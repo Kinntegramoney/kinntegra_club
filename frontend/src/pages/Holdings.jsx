@@ -988,51 +988,31 @@ export default function Holdings() {
                             
                             {/* Dropdown Menu */}
                             {openTradeMenu === trade.id && (
-                              <div className="absolute right-0 top-8 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px] text-left">
-                                {/* Payment Details */}
-                                <div className="px-3 py-2 border-b border-gray-100">
-                                  <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Payment Details</p>
-                                  {trade.payment_reference ? (
-                                    <p className="text-xs text-gray-700">
-                                      <span className="text-gray-500">Ref:</span> {trade.payment_reference}
-                                    </p>
-                                  ) : null}
-                                  {trade.payment_proof_filename ? (
-                                    <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-                                      <FileImage className="h-3 w-3" />
-                                      Proof attached
-                                    </p>
-                                  ) : null}
-                                  {!trade.payment_reference && !trade.payment_proof_filename && (
-                                    <p className="text-xs text-gray-400 italic">No payment details</p>
-                                  )}
-                                </div>
+                              <div className="absolute right-0 top-8 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[180px] text-left">
+                                {/* View Details Option */}
+                                <button
+                                  onClick={() => {
+                                    setTradeDetailsModal(trade);
+                                    setOpenTradeMenu(null);
+                                  }}
+                                  className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                  <Eye className="h-4 w-4 text-gray-500" />
+                                  View Details
+                                </button>
                                 
-                                {/* Remarks/Notes */}
-                                <div className="px-3 py-2">
-                                  <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Remarks</p>
-                                  {trade.payment_notes || trade.broker_notes ? (
-                                    <div className="space-y-1">
-                                      {trade.payment_notes && (
-                                        <p className="text-xs text-gray-700">{trade.payment_notes}</p>
-                                      )}
-                                      {trade.broker_notes && (
-                                        <p className="text-xs text-blue-600">{trade.broker_notes}</p>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <p className="text-xs text-gray-400 italic">No remarks</p>
-                                  )}
-                                </div>
-                                
-                                {/* Approval Info */}
-                                {trade.approved_at && (
-                                  <div className="px-3 py-2 border-t border-gray-100 bg-gray-50">
-                                    <p className="text-[10px] text-gray-500">
-                                      {trade.status === 'approved' ? 'Approved' : 'Rejected'} on {format(new Date(trade.approved_at), "dd MMM yy")}
-                                      {trade.approved_by_name && ` by ${trade.approved_by_name}`}
-                                    </p>
-                                  </div>
+                                {/* View UTR Copy Option */}
+                                {trade.payment_proof_url && (
+                                  <a
+                                    href={trade.payment_proof_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                                    onClick={() => setOpenTradeMenu(null)}
+                                  >
+                                    <FileImage className="h-4 w-4" />
+                                    View UTR Copy
+                                  </a>
                                 )}
                               </div>
                             )}
