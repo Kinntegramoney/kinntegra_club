@@ -1232,66 +1232,48 @@ export default function Holdings() {
                   )}
                 </div>
                 
-                {/* Received vs Outstanding Status Chart - Inside same box */}
+                {/* Received vs Outstanding Status Chart - Compact Linear */}
                 {filteredHoldings.length > 0 && (
-                <div className="p-4 border-t border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-4">Repayment Status Overview</h4>
-                  
+                <div className="px-4 py-3 border-t border-gray-200">
                   {(() => {
                     const totalReceived = filteredHoldings.reduce((sum, h) => sum + (h.net_repaid || 0), 0);
                     const totalOutstanding = filteredHoldings.reduce((sum, h) => sum + (h.upcoming_expected || 0), 0);
                     const grandTotal = totalReceived + totalOutstanding;
                     const receivedPercent = grandTotal > 0 ? (totalReceived / grandTotal) * 100 : 0;
-                    const outstandingPercent = grandTotal > 0 ? (totalOutstanding / grandTotal) * 100 : 0;
                     
                     return (
-                      <div className="space-y-4">
-                        {/* Progress Bar */}
-                        <div className="relative h-8 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Repayment Status:</span>
+                        
+                        {/* Compact Progress Bar */}
+                        <div className="flex-1 relative h-5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-500"
+                            className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-500"
                             style={{ width: `${receivedPercent}%` }}
                           />
                           <div 
-                            className="absolute top-0 h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
-                            style={{ left: `${receivedPercent}%`, width: `${outstandingPercent}%` }}
+                            className="absolute top-0 h-full bg-blue-500 transition-all duration-500"
+                            style={{ left: `${receivedPercent}%`, width: `${100 - receivedPercent}%` }}
                           />
-                          {/* Labels on bar */}
-                          <div className="absolute inset-0 flex items-center justify-between px-3">
-                            <span className="text-xs font-semibold text-white drop-shadow-sm">
-                              {receivedPercent >= 15 ? `Received ${receivedPercent.toFixed(1)}%` : ''}
-                            </span>
-                            <span className="text-xs font-semibold text-white drop-shadow-sm">
-                              {outstandingPercent >= 15 ? `Outstanding ${outstandingPercent.toFixed(1)}%` : ''}
-                            </span>
-                          </div>
                         </div>
                         
-                        {/* Legend & Values */}
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                            <div>
-                              <p className="text-xs text-gray-500">Received (Net)</p>
-                              <p className="font-mono font-semibold text-green-700">{formatINR(totalReceived)}</p>
-                              <p className="text-[10px] text-green-600">{receivedPercent.toFixed(1)}% of total</p>
-                            </div>
+                        {/* Inline Legend */}
+                        <div className="flex items-center gap-4 text-xs whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                            <span className="text-gray-600">Received:</span>
+                            <span className="font-mono font-semibold text-green-700">{formatINR(totalReceived)}</span>
+                            <span className="text-gray-400">({receivedPercent.toFixed(0)}%)</span>
                           </div>
-                          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                            <div>
-                              <p className="text-xs text-gray-500">Outstanding</p>
-                              <p className="font-mono font-semibold text-blue-700">{formatINR(totalOutstanding)}</p>
-                              <p className="text-[10px] text-blue-600">{outstandingPercent.toFixed(1)}% of total</p>
-                            </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+                            <span className="text-gray-600">Outstanding:</span>
+                            <span className="font-mono font-semibold text-blue-700">{formatINR(totalOutstanding)}</span>
+                            <span className="text-gray-400">({(100 - receivedPercent).toFixed(0)}%)</span>
                           </div>
-                          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-                            <div>
-                              <p className="text-xs text-gray-500">Total Expected</p>
-                              <p className="font-mono font-semibold text-gray-800">{formatINR(grandTotal)}</p>
-                              <p className="text-[10px] text-gray-500">100%</p>
-                            </div>
+                          <div className="flex items-center gap-1.5 pl-2 border-l border-gray-300">
+                            <span className="text-gray-600">Total:</span>
+                            <span className="font-mono font-semibold text-gray-800">{formatINR(grandTotal)}</span>
                           </div>
                         </div>
                       </div>
