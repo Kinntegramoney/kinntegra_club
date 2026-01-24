@@ -8407,7 +8407,8 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
     This function considers:
     1. Scheduled cashflows that have been repaid (from holding_cashflows)
     2. Unscheduled prepayments (from actual_repayments) - principal paid outside schedule
-    3. For pending cashflows: Adjusts expected amounts based on any principal prepayments
+       - Only includes actual_repayments that are NOT already in holding_cashflows
+    3. For pending cashflows: Uses scheduled amounts
     
     Actual XIRR = principal + gross_interest (before TDS)
     """
@@ -8424,17 +8425,55 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
         dates.append(inv_date)
         amounts.append(-investment_amount)
         
-        # Track total principal prepaid (for adjusting future interest calculations)
-        total_principal_prepaid = 0
-        prepayment_entries = []
+        # Track dates of scheduled cashflows to avoid double-counting
+        scheduled_dates = set()
         
-        # First, process any actual unscheduled prepayments
+        # Process scheduled cashflows first
+        for cf in cashflows:
+            date_str = cf.get('date', '')
+            if date_str:
+                scheduled_dates.add(date_str.split('T')[0])
+            
+            if cf.get('is_repaid'):
+                # For repaid: use actual repaid date if available, else scheduled date
+                use_date = cf.get('repaid_date') or cf.get('date', '')
+                if not use_date:
+                    use_date = cf.get('date', '')
+                
+                # Use GROSS amount for actual XIRR
+                if cf.get('repaid_actual_amount'):
+                    cf_amount = cf.get('repaid_actual_amount')
+                else:
+                    cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+            else:
+                # For pending: use scheduled date and expected gross amount
+                use_date = cf.get('date', '')
+                cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+            
+            if not use_date:
+                continue
+                
+            use_date = use_date.split('T')[0] if 'T' in use_date else use_date
+            
+            if cf_amount > 0:
+                try:
+                    cf_date = datetime.strptime(use_date, '%Y-%m-%d')
+                    dates.append(cf_date)
+                    amounts.append(cf_amount)
+                except:
+                    continue
+        
+        # Add unscheduled actual repayments (prepayments outside normal schedule)
         if actual_repayments:
             for ar in actual_repayments:
                 ar_date_str = ar.get('repayment_date', '')
                 if not ar_date_str:
                     continue
                 ar_date_str = ar_date_str.split('T')[0] if 'T' in ar_date_str else ar_date_str
+                
+                # Skip if this date is already covered by a scheduled cashflow
+                if ar_date_str in scheduled_dates:
+                    continue
                 
                 # Use gross amount (principal + interest)
                 ar_principal = ar.get('principal', 0) or 0
@@ -8444,56 +8483,10 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
                 if ar_gross > 0:
                     try:
                         ar_date = datetime.strptime(ar_date_str, '%Y-%m-%d')
-                        prepayment_entries.append({
-                            'date': ar_date,
-                            'amount': ar_gross,
-                            'principal': ar_principal
-                        })
-                        total_principal_prepaid += ar_principal
+                        dates.append(ar_date)
+                        amounts.append(ar_gross)
                     except:
                         continue
-        
-        # Add prepayment entries to XIRR calculation
-        for pe in prepayment_entries:
-            dates.append(pe['date'])
-            amounts.append(pe['amount'])
-        
-        # Process scheduled cashflows
-        for cf in cashflows:
-            if cf.get('is_repaid'):
-                # For repaid: use actual repaid date if available, else scheduled date
-                date_str = cf.get('repaid_date') or cf.get('date', '')
-                if not date_str:
-                    date_str = cf.get('date', '')
-                
-                # Use GROSS amount for actual XIRR
-                if cf.get('repaid_actual_amount'):
-                    cf_amount = cf.get('repaid_actual_amount')
-                else:
-                    cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
-            else:
-                # For pending: use scheduled date
-                date_str = cf.get('date', '')
-                
-                # If there were prepayments, future interest may need adjustment
-                # For now, use amended values if available, else original
-                if cf.get('is_amended') and cf.get('interest_component'):
-                    cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
-                else:
-                    cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
-            
-            if not date_str:
-                continue
-                
-            date_str = date_str.split('T')[0] if 'T' in date_str else date_str
-            
-            if cf_amount > 0:
-                try:
-                    cf_date = datetime.strptime(date_str, '%Y-%m-%d')
-                    dates.append(cf_date)
-                    amounts.append(cf_amount)
-                except:
-                    continue
         
         if len(dates) < 2:
             return None
