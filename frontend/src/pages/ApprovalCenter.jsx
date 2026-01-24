@@ -77,6 +77,12 @@ export default function ApprovalCenter() {
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(true);
   const [filterType, setFilterType] = useState("all");
+  
+  // Leads state
+  const [leads, setLeads] = useState([]);
+  const [leadsLoading, setLeadsLoading] = useState(false);
+  const [leadsFilter, setLeadsFilter] = useState("all"); // all, bond, real_estate
+  const [leadsStatusFilter, setLeadsStatusFilter] = useState("all"); // all, open, closed, not_interested
 
   useEffect(() => {
     document.title = "Kinntegraa | Approvals & Logs";
