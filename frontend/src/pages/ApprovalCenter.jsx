@@ -144,6 +144,42 @@ export default function ApprovalCenter() {
     }
   };
 
+  const fetchLeads = async () => {
+    setLeadsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      let params = [];
+      if (leadsFilter !== "all") params.push(`opportunity_type=${leadsFilter}`);
+      if (leadsStatusFilter !== "all") params.push(`status=${leadsStatusFilter}`);
+      const queryString = params.length > 0 ? `?${params.join('&')}` : "";
+      
+      const response = await axios.get(`${API}/leads${queryString}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLeads(response.data);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      toast.error("Failed to load leads");
+    } finally {
+      setLeadsLoading(false);
+    }
+  };
+
+  const updateLeadStatus = async (leadId, newStatus) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API}/leads/${leadId}/status`, 
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      toast.success(`Lead marked as ${newStatus.replace('_', ' ')}`);
+      fetchLeads();
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      toast.error("Failed to update lead status");
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
     try {
