@@ -8402,10 +8402,10 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
 
 def calculate_actual_xirr(investment_date: str, investment_amount: float, cashflows: List[dict]) -> Optional[float]:
     """
-    Calculate Actual XIRR considering deviations from scheduled cashflows.
-    - For repaid cashflows: Uses actual repaid date and actual amount (if different from scheduled)
-    - For pending cashflows: Uses scheduled date and expected amount
-    If no deviations, this should equal Expected XIRR.
+    Calculate Actual XIRR using NET amounts (after TDS deduction).
+    - Expected XIRR uses gross (principal + interest before TDS)
+    - Actual XIRR uses net (principal + interest - TDS)
+    This shows the actual return the investor receives in hand.
     """
     try:
         from scipy.optimize import brentq
@@ -8423,20 +8423,33 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
         for cf in cashflows:
             if cf.get('is_repaid'):
                 # For repaid: use actual repaid date if available, else scheduled date
-                # Use actual amount if available (for prepayments/deviations), else gross scheduled
                 date_str = cf.get('repaid_date') or cf.get('date', '')
                 if not date_str:
                     date_str = cf.get('date', '')
                 
-                # Use actual repaid amount if available, otherwise use gross (principal + interest)
-                if cf.get('repaid_actual_amount'):
-                    cf_amount = cf.get('repaid_actual_amount')
+                # Use NET amount (after TDS) for actual XIRR
+                # Priority: repaid_net_amount > net_amount > (principal + interest - tds)
+                if cf.get('repaid_net_amount'):
+                    cf_amount = cf.get('repaid_net_amount')
+                elif cf.get('net_amount'):
+                    cf_amount = cf.get('net_amount')
                 else:
-                    cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+                    # Calculate net: principal + interest - TDS
+                    principal = cf.get('principal_component', 0)
+                    interest = cf.get('interest_component', 0)
+                    tds = cf.get('tds_amount', 0)
+                    cf_amount = principal + interest - tds
             else:
-                # For pending: use scheduled date and expected gross amount
+                # For pending: use scheduled date and expected NET amount
                 date_str = cf.get('date', '')
-                cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+                # Use net_amount if available, otherwise calculate
+                if cf.get('net_amount'):
+                    cf_amount = cf.get('net_amount')
+                else:
+                    principal = cf.get('principal_component', 0)
+                    interest = cf.get('interest_component', 0)
+                    tds = cf.get('tds_amount', 0)
+                    cf_amount = principal + interest - tds
             
             if not date_str:
                 continue
