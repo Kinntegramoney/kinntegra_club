@@ -8396,38 +8396,46 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
 
 def calculate_actual_xirr(investment_date: str, investment_amount: float, cashflows: List[dict]) -> Optional[float]:
     """
-    Calculate Actual XIRR based only on REPAID cashflows (not future expected ones).
-    Uses GROSS amounts (principal + interest) for repaid cashflows only.
-    Returns annualized return rate or None if calculation fails.
+    Calculate Actual XIRR considering deviations from scheduled cashflows.
+    - For repaid cashflows: Uses actual repaid date and actual amount (if different from scheduled)
+    - For pending cashflows: Uses scheduled date and expected amount
+    If no deviations, this should equal Expected XIRR.
     """
     try:
         from scipy.optimize import brentq
         from datetime import datetime
         
-        # Build cash flow list: negative for investment, positive for repayments
         dates = []
         amounts = []
         
-        # Parse investment date (strip time and timezone info)
+        # Parse investment date
         inv_date_str = investment_date.split('T')[0] if 'T' in investment_date else investment_date
         inv_date = datetime.strptime(inv_date_str, '%Y-%m-%d')
         dates.append(inv_date)
         amounts.append(-investment_amount)
         
-        # Add ONLY REPAID cashflows using GROSS amounts (principal + interest)
         for cf in cashflows:
-            if not cf.get('is_repaid'):
-                continue  # Skip non-repaid cashflows
+            if cf.get('is_repaid'):
+                # For repaid: use actual repaid date if available, else scheduled date
+                # Use actual amount if available (for prepayments/deviations), else gross scheduled
+                date_str = cf.get('repaid_date') or cf.get('date', '')
+                if not date_str:
+                    date_str = cf.get('date', '')
                 
-            date_str = cf.get('date', '')
+                # Use actual repaid amount if available, otherwise use gross (principal + interest)
+                if cf.get('repaid_actual_amount'):
+                    cf_amount = cf.get('repaid_actual_amount')
+                else:
+                    cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+            else:
+                # For pending: use scheduled date and expected gross amount
+                date_str = cf.get('date', '')
+                cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+            
             if not date_str:
                 continue
                 
-            # Parse date (strip time and timezone)
             date_str = date_str.split('T')[0] if 'T' in date_str else date_str
-            
-            # Calculate gross amount (principal + interest, before TDS)
-            cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
             
             if cf_amount > 0:
                 try:
@@ -8438,7 +8446,7 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
                     continue
         
         if len(dates) < 2:
-            return None  # No repaid cashflows yet
+            return None
         
         # Calculate XIRR
         min_date = min(dates)
@@ -8449,7 +8457,7 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
         
         try:
             xirr = brentq(npv, -0.99, 10.0, maxiter=1000)
-            return round(xirr * 100, 2)  # Return as percentage
+            return round(xirr * 100, 2)
         except:
             return None
     except Exception as e:
