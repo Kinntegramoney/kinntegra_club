@@ -342,6 +342,38 @@ export default function Holdings() {
     }
   };
 
+  const handleRecalculateBook2 = async (tradeId) => {
+    if (!tradeId) return;
+    
+    setRebuildingCashflows(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/admin/recalculate-cashflows-book2/${tradeId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      const result = response.data;
+      toast.success(
+        `Interest recalculated! ${result.cashflows_updated} cashflows updated using Book2 logic.`
+      );
+      
+      // Refresh client details to reload holdings
+      if (selectedClient) {
+        fetchClientHoldings(selectedClient.id);
+      }
+      
+      // Close modal to refresh
+      closeModal();
+    } catch (error) {
+      console.error("Error recalculating:", error);
+      toast.error(error.response?.data?.detail || "Failed to recalculate cashflows");
+    } finally {
+      setRebuildingCashflows(false);
+    }
+  };
+
   const handleDownloadExcel = async () => {
     if (!selectedClient) return;
     
