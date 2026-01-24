@@ -508,48 +508,43 @@ export default function Holdings() {
       <SidebarComponent user={user} />
       
       <div className="flex-1 flex overflow-hidden">
-        {/* Client List Panel */}
-        <div className="w-72 bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-200">
+        {/* Client List Panel - Narrower */}
+        <div className="w-60 bg-white border-r border-gray-200 flex flex-col">
+          <div className="p-3 border-b border-gray-200">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 data-testid="search-investor"
-                placeholder="Search Investor"
+                placeholder="Search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-9 h-9 text-sm"
               />
             </div>
           </div>
           
           <div className="flex-1 overflow-y-auto">
             {loading ? (
-              <div className="p-4 text-center text-gray-500">Loading...</div>
+              <div className="p-3 text-center text-gray-500 text-sm">Loading...</div>
             ) : filteredClients.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">No investors found</div>
+              <div className="p-3 text-center text-gray-500 text-sm">No investors found</div>
             ) : (
               filteredClients.map((client) => (
                 <div
                   key={client.id}
                   data-testid={`client-item-${client.id}`}
                   onClick={() => handleClientSelect(client)}
-                  className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                  className={`px-3 py-2.5 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                     selectedClient?.id === client.id ? 'bg-amber-50 border-l-4 border-l-amber-600' : ''
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className={`font-medium ${selectedClient?.id === client.id ? 'text-amber-700' : 'text-gray-800'}`}>
-                        {client.name}
-                      </p>
-                      <p className="text-xs text-gray-500 font-mono">({client.pan_number})</p>
-                    </div>
-                    <FileText className="h-4 w-4 text-gray-400" />
-                  </div>
+                  <p className={`font-medium text-sm truncate ${selectedClient?.id === client.id ? 'text-amber-700' : 'text-gray-800'}`}>
+                    {client.name}
+                  </p>
+                  <p className="text-xs text-gray-500 font-mono">({client.pan_number})</p>
                   {client.total_investment > 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formatINR(client.total_investment)} invested
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {formatINR(client.total_investment)}
                     </p>
                   )}
                 </div>
