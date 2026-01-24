@@ -536,9 +536,21 @@ export default function Opportunities() {
 
         {/* Interested / Investors Row */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-orange-50 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">Interested</p>
+          <div className={`rounded-lg p-3 text-center ${bond.in_demand ? 'bg-orange-100 border border-orange-300' : 'bg-orange-50'}`}>
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <p className="text-xs text-gray-500">Interested</p>
+              {bond.in_demand && (
+                <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[8px] rounded font-bold animate-pulse">
+                  IN DEMAND
+                </span>
+              )}
+            </div>
             <p className="text-2xl font-bold text-orange-500">{bond.interested_count || 0}</p>
+            {bond.interested_amount > 0 && (
+              <p className="text-xs text-orange-600 font-medium">
+                ₹{(bond.interested_amount / 100000).toFixed(1)}L
+              </p>
+            )}
           </div>
           <div className="bg-indigo-50 rounded-lg p-3 text-center">
             <p className="text-xs text-gray-500 mb-1">Investors</p>
