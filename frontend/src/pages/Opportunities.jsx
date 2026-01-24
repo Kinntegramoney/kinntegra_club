@@ -492,13 +492,30 @@ export default function Opportunities() {
           </div>
         </div>
 
-        {/* Price/Unit - Full Width */}
-        <div className="bg-amber-50 rounded-lg p-3 mb-4">
-          <p className="text-xs text-gray-500 mb-1">
-            Price/Unit ({new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})
-          </p>
-          <p className="font-semibold text-amber-700">{formatCurrency(Math.round(todayPrice))}</p>
-        </div>
+        {/* Price/Unit OR Repayment Count - Full Width */}
+        {(status === 'funded' || status === 'closed') && bond.total_cashflows_count > 0 ? (
+          <div className="bg-emerald-50 rounded-lg p-3 mb-4">
+            <p className="text-xs text-gray-500 mb-1">Repayment Progress</p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-emerald-700 text-lg">
+                {bond.repaid_cashflows_count || 0} / {bond.total_cashflows_count} Repaid
+              </p>
+              <div className="flex-1 bg-gray-200 rounded-full h-2 ml-2">
+                <div 
+                  className="bg-emerald-500 h-2 rounded-full transition-all" 
+                  style={{ width: `${((bond.repaid_cashflows_count || 0) / bond.total_cashflows_count) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-amber-50 rounded-lg p-3 mb-4">
+            <p className="text-xs text-gray-500 mb-1">
+              Price/Unit ({new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})
+            </p>
+            <p className="font-semibold text-amber-700">{formatCurrency(Math.round(todayPrice))}</p>
+          </div>
+        )}
 
         {/* Bond Info Grid - Row 1 */}
         <div className="grid grid-cols-2 gap-3 mb-4">
