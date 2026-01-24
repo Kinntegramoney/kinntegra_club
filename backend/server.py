@@ -19565,6 +19565,203 @@ async def detect_and_process_client_prepayments(client_id: str, current_user: di
     return results
 
 
+@api_router.post("/admin/rebuild-cashflows-from-history/{trade_id}")
+async def rebuild_cashflows_from_history(trade_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Rebuild cashflows for a trade based on actual_repayments history.
+    
+    This follows the Book2.xlsx logic:
+    1. Start with original principal
+    2. For each repayment date, reduce principal by the principal portion
+    3. Calculate interest = Balance × Coupon Rate × Days / 365
+    4. Final maturity = Remaining Principal + Accumulated Interest
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can rebuild cashflows")
+    
+    # Get trade
+    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    # Get bond
+    bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Get actual repayments for this trade
+    actual_reps = await db.actual_repayments.find(
+        {"trade_id": trade_id},
+        {"_id": 0}
+    ).sort("repayment_date", 1).to_list(100)
+    
+    if not actual_reps:
+        # Try finding by client_id and bond_id
+        actual_reps = await db.actual_repayments.find(
+            {"client_id": trade['client_id'], "bond_id": trade['bond_id']},
+            {"_id": 0}
+        ).sort("repayment_date", 1).to_list(100)
+    
+    # Get original cashflows
+    original_cashflows = await db.holding_cashflows.find(
+        {"trade_id": trade_id},
+        {"_id": 0}
+    ).sort("date", 1).to_list(100)
+    
+    # Calculate original principal
+    original_principal = trade.get('total_amount', 0)
+    if not original_principal:
+        original_principal = bond.get('principal_amount', 0) * trade.get('units', 0)
+    
+    # Get coupon rate
+    coupon_rate = bond.get('coupon_rate', 0)
+    if coupon_rate > 1:
+        coupon_rate = coupon_rate / 100  # Convert to decimal
+    
+    # Get investment/start date
+    inv_date_str = trade.get('investment_date', '') or bond.get('start_date', '')
+    try:
+        start_date = datetime.fromisoformat(inv_date_str.replace('Z', '+00:00'))
+    except:
+        start_date = datetime.strptime(inv_date_str[:10], '%Y-%m-%d')
+    
+    # Build timeline of principal repayments from actual_repayments
+    principal_payments = []
+    for ar in actual_reps:
+        ar_date_str = ar.get('repayment_date', '')
+        if not ar_date_str:
+            continue
+        try:
+            ar_date = datetime.fromisoformat(ar_date_str.replace('Z', '+00:00'))
+        except:
+            ar_date = datetime.strptime(ar_date_str[:10], '%Y-%m-%d')
+        
+        principal = ar.get('principal', 0) or 0
+        if principal > 0:
+            principal_payments.append({
+                'date': ar_date,
+                'principal': principal,
+                'interest': ar.get('interest', 0) or 0,
+                'gross_amount': ar.get('gross_amount', 0) or 0
+            })
+    
+    # Sort by date
+    principal_payments.sort(key=lambda x: x['date'])
+    
+    results = {
+        "trade_id": trade_id,
+        "original_principal": original_principal,
+        "coupon_rate": coupon_rate,
+        "start_date": start_date.isoformat(),
+        "repayments_found": len(principal_payments),
+        "cashflows_updated": 0,
+        "new_cashflows": []
+    }
+    
+    # Calculate new cashflows based on reducing balance
+    balance = original_principal
+    prev_date = start_date
+    
+    for i, payment in enumerate(principal_payments):
+        payment_date = payment['date']
+        days = (payment_date.replace(tzinfo=None) - prev_date.replace(tzinfo=None)).days
+        if days < 0:
+            days = 0
+        
+        # Interest = Balance × Coupon × Days / 365
+        calculated_interest = (balance * coupon_rate * days) / 365
+        
+        # Reduce balance
+        new_balance = balance - payment['principal']
+        if new_balance < 0:
+            new_balance = 0
+        
+        # Check if this is the final payment (balance goes to 0 or it's the last payment)
+        is_final = (new_balance == 0) or (i == len(principal_payments) - 1)
+        
+        # If final, the principal should be the remaining balance
+        if is_final:
+            final_principal = balance
+            final_interest = calculated_interest
+        else:
+            final_principal = payment['principal']
+            final_interest = calculated_interest
+        
+        # TDS = 10% of interest
+        tds = round(final_interest * 0.10, 2)
+        gross = round(final_principal + final_interest, 2)
+        net = round(gross - tds, 2)
+        
+        new_cf = {
+            "date": payment_date.strftime('%Y-%m-%d'),
+            "days_in_period": days,
+            "balance_before": round(balance, 2),
+            "principal_component": round(final_principal, 2),
+            "interest_component": round(final_interest, 2),
+            "tds_amount": tds,
+            "gross_amount": gross,
+            "net_amount": net,
+            "balance_after": round(new_balance, 2),
+            "is_final": is_final
+        }
+        results["new_cashflows"].append(new_cf)
+        
+        # Update existing cashflow if found, or mark for creation
+        cf_date_str = payment_date.strftime('%Y-%m-%d')
+        matching_cf = None
+        for cf in original_cashflows:
+            if cf.get('date', '').startswith(cf_date_str):
+                matching_cf = cf
+                break
+        
+        if matching_cf:
+            # Store original values if not already stored
+            original_principal_comp = matching_cf.get('original_principal_component') or matching_cf.get('principal_component', 0)
+            original_interest_comp = matching_cf.get('original_interest_component') or matching_cf.get('interest_component', 0)
+            
+            update_data = {
+                "original_principal_component": original_principal_comp,
+                "original_interest_component": original_interest_comp,
+                "original_gross_amount": matching_cf.get('original_gross_amount') or matching_cf.get('gross_amount', 0),
+                "original_net_amount": matching_cf.get('original_net_amount') or matching_cf.get('net_amount', 0),
+                "principal_component": round(final_principal, 2),
+                "interest_component": round(final_interest, 2),
+                "tds_amount": tds,
+                "gross_amount": gross,
+                "net_amount": net,
+                "is_amended": True,
+                "is_prepayment_amended": True,
+                "amendment_reason": f"Rebuilt from history. Balance: {balance:,.2f} → {new_balance:,.2f}",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.holding_cashflows.update_one(
+                {"id": matching_cf['id']},
+                {"$set": update_data}
+            )
+            results["cashflows_updated"] += 1
+        
+        balance = new_balance
+        prev_date = payment_date
+    
+    # Update trade with prepayment info
+    total_prepaid = original_principal - balance
+    await db.trades.update_one(
+        {"id": trade_id},
+        {"$set": {
+            "has_prepayment": True,
+            "total_prepaid_principal": round(total_prepaid, 2),
+            "remaining_principal": round(balance, 2),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    results["remaining_principal"] = round(balance, 2)
+    results["total_prepaid"] = round(total_prepaid, 2)
+    
+    return results
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
