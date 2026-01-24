@@ -169,12 +169,19 @@ export default function Dashboard() {
     
     setResetting(true);
     try {
+      const token = localStorage.getItem("token");
       const response = await axios.post(
-        `${API}/admin/reset-database?secret_key=KINNTEGRAA_RESET_2026`
+        `${API}/admin/reset-database?secret_key=KINNTEGRAA_RESET_2026`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
       );
       
       if (response.data.success) {
-        toast.success("Database reset successful!");
+        toast.success(`Database reset successful! Deleted: ${Object.entries(response.data.deleted || {}).filter(([k,v]) => v > 0).map(([k,v]) => `${k}: ${v}`).join(', ') || 'All data cleared'}`);
         setShowResetModal(false);
         setResetConfirmText("");
         // Refresh dashboard data
