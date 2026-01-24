@@ -5343,7 +5343,7 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
     # Sheet 2: Repayment Details
     ws_repayments = wb.create_sheet("Repayment Details")
     
-    rep_headers = ["Deal ID*", "Repayment Date*", "PAN*", "Principal", "Interest", "Gross Amount*", "TDS", "Net Amount*"]
+    rep_headers = ["Deal ID*", "Date of Investment*", "Repayment Date*", "PAN*", "Principal", "Interest", "Gross Amount*", "TDS", "Net Amount*"]
     
     rep_header_fill = PatternFill(start_color="166534", end_color="166534", fill_type="solid")
     
@@ -5356,8 +5356,8 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
     
     # Sample repayment data
     rep_sample = [
-        ["CDNRE001", "2025-06-15", "ABCDE1234F", 0, 32640.77, 32640.77, 3264.08, 29376.69],
-        ["CDNRE001", "2025-06-15", "XYZPQ5678G", 0, 41306.92, 41306.92, 4130.69, 37176.23],
+        ["CDNRE001", "2025-04-08", "2025-06-15", "ABCDE1234F", 0, 32640.77, 32640.77, 3264.08, 29376.69],
+        ["CDNRE001", "2025-04-08", "2025-06-15", "XYZPQ5678G", 0, 41306.92, 41306.92, 4130.69, 37176.23],
     ]
     for row_idx, row_data in enumerate(rep_sample, 2):
         for col, value in enumerate(row_data, 1):
