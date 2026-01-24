@@ -470,22 +470,50 @@ Complete 3-phase approval workflow for sub-broker actions:
 
 ## Recent Changes (Jan 24, 2026)
 
-### Repayment Count on Funded Bond Cards (COMPLETED)
-**User Request**: Once a bond moves to the "Funded" section in Opportunities, replace "Price/Unit" with "Repayment Count" (e.g., "15/33 Repaid").
+### Repayment Count on Funded Bond Cards - Fixed (COMPLETED)
+**User Request**: Once a bond moves to the "Funded" section in Opportunities, replace "Price/Unit" with "Repayment Count". Count should be unique repayment dates, not total entries for different purchase dates.
 
 **Changes Implemented**:
-1. **Backend**: Modified `/api/bonds` endpoint in `server.py` to return two new fields:
-   - `total_cashflows_count`: Total number of cashflows for the bond (from `holding_cashflows` collection)
-   - `repaid_cashflows_count`: Count of cashflows marked as `is_repaid: true`
+1. **Backend**: Modified `/api/bonds` endpoint in `server.py` to:
+   - Use `distinct("date")` instead of `count_documents()` to get unique payment dates
+   - `total_cashflows_count`: Number of unique payment dates for the bond
+   - `repaid_cashflows_count`: Number of unique payment dates that have been repaid
 2. **Frontend**: Updated `BondCard` component in `Opportunities.jsx` to conditionally render:
    - **Funded/Closed bonds**: Shows emerald-green "Repayment Progress" section with "X / Y Repaid" and a visual progress bar
    - **Available bonds**: Shows original amber "Price/Unit" display with today's calculated price
 
 **Files Modified**:
-- `/app/backend/server.py` - Added cashflow count queries in `get_bonds()` and `get_available_bonds()` functions
-- `/app/frontend/src/pages/Opportunities.jsx` - Updated BondCard JSX with conditional rendering
+- `/app/backend/server.py` - Changed from `count_documents()` to `distinct("date")` for unique counts
+- `/app/frontend/src/pages/Opportunities.jsx` - BondCard conditional rendering
 
-**Verified**: Screenshot confirms "15 / 33 Repaid" displayed correctly with progress bar on Funded tab.
+**Verified**: Screenshot confirms "8 / 17 Repaid" displayed correctly (8 unique repaid dates out of 17 total unique payment dates).
+
+### Removed "Bulk Repayment Update" Section from Holdings (COMPLETED)
+**User Request**: Remove the highlighted "Bulk Repayment Update" section from the Holdings page.
+
+**Changes Implemented**:
+- Removed the entire blue-highlighted section containing Template, Export Cashflows, and Upload Repayments buttons
+
+**Files Modified**:
+- `/app/frontend/src/pages/Holdings.jsx` - Removed lines 1211-1257
+
+**Verified**: Screenshot confirms the section is removed.
+
+### Outstanding Principal & Interest Breakdown in Holdings (COMPLETED)
+**User Request**: Consider outstanding principal and interest payments for XIRR calculation, and show a tab showcasing both.
+
+**Changes Implemented**:
+1. Added new "Principal & Interest Breakdown" section in the Holdings cashflow modal showing:
+   - **Outstanding Principal**: Total principal minus repaid principal
+   - **Outstanding Interest**: Total interest minus repaid interest
+   - **Pending TDS**: Total TDS minus deducted TDS
+   - **Total Outstanding**: Upcoming expected amount
+   - Each card also shows the repaid/received amount below
+
+**Files Modified**:
+- `/app/frontend/src/pages/Holdings.jsx` - Added breakdown section to modal Summary tab
+
+**Verified**: Screenshot confirms breakdown displays correctly with outstanding and repaid amounts.
 
 ## Known Issues & Next Steps
 
