@@ -1239,8 +1239,8 @@ export default function Holdings() {
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Principal</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Interest</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S TDS</th>
-                        <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">XIRR</th>
-                        <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Status</th>
+                        <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Expected XIRR</th>
+                        <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Actual XIRR</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Action</th>
                       </tr>
                     </thead>
@@ -1278,9 +1278,13 @@ export default function Holdings() {
                             )}
                           </td>
                           <td className="py-2 px-2 text-center">
-                            <span className={`inline-block px-1.5 py-0.5 text-[10px] font-medium rounded ${holding.status === 'fully_repaid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                              {holding.status === 'fully_repaid' ? 'Repaid' : 'Active'}
-                            </span>
+                            {holding.actual_xirr !== null && holding.actual_xirr !== undefined ? (
+                              <span className={`font-mono text-xs font-semibold ${holding.actual_xirr >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
+                                {holding.actual_xirr.toFixed(2)}%
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-[10px]">-</span>
+                            )}
                           </td>
                           <td className="py-2 px-2 text-center">
                             <button 
