@@ -11826,6 +11826,14 @@ async def get_bonds(
         unique_investors = await db.trades.distinct("client_id", {"bond_id": bond['id'], "status": "approved"})
         bond['unique_investors'] = len(unique_investors)
         
+        # Calculate interested count from leads
+        interested_count = await db.leads.count_documents({
+            "opportunity_id": bond['id'],
+            "opportunity_type": "bond",
+            "status": "open"
+        })
+        bond['interested_count'] = interested_count
+        
         # Add cashflow repayment counts for funded/closed bonds (by unique dates, not total entries)
         # Get unique date values for total cashflows
         total_unique_dates = await db.holding_cashflows.distinct("date", {"bond_id": bond['id']})
