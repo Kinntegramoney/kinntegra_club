@@ -1143,7 +1143,7 @@ export default function Holdings() {
               <div className="bg-white rounded-lg border border-gray-200">
                 <div className="flex items-center justify-between p-4 border-b border-gray-200">
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-amber-600" />
+                    <ClipboardList className="h-5 w-5 text-amber-600" />
                     <h3 className="font-semibold text-gray-800">Holding Report</h3>
                   </div>
                   <div className="flex items-center gap-3">
