@@ -103,13 +103,51 @@ export default function Holdings() {
         }),
         axios.get(`${API}/real-estate-opportunities/client/${clientId}`, {
           headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => ({ data: [] })) // Handle if endpoint doesn't exist yet
+        }).catch(() => ({ data: [] })), // Handle if endpoint doesn't exist yet
+        axios.get(`${API}/reinvestment-logs?client_id=${clientId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => ({ data: [] })) // Fetch reinvestment logs for trades tab
       ]);
       setClientHoldings(holdingsRes.data);
       setClientDetails(clientRes.data);
-      // Sort trades by created_at date (most recent first)
-      const sortedTrades = (tradesRes.data || []).sort((a, b) => 
-        new Date(b.created_at) - new Date(a.created_at)
+      
+      // Combine trades and reinvestment logs for the Trades tab
+      const trades = tradesRes.data || [];
+      const reinvLogs = reinvLogsRes.data || [];
+      
+      // Transform reinvestment logs to trade-like format
+      const reinvAsTrades = reinvLogs.map(log => ({
+        id: log.id,
+        client_id: log.client_id,
+        client_name: log.client_name,
+        client_pan: log.client_pan,
+        bond_id: log.bond_id,
+        bond_name: log.bond_name,
+        bond_code: log.target_ucc || log.bond_code,
+        units: log.units || 0,
+        total_amount: log.net_amount || log.total_amount || 0,
+        calculated_price: log.net_amount ? Math.round(log.net_amount / (log.units || 1)) : 0,
+        investment_date: log.expected_date || log.created_at,
+        created_at: log.created_at,
+        status: log.approval_status || 'approved',
+        reinvestment_tag: log.reinvestment_tag,
+        is_historical: log.is_past_date || true,
+        portfolio: log.portfolio_category || 'Wealth',
+        created_by_name: log.tagged_by_name,
+        payment_reference: log.payment_reference,
+        broker_notes: log.notes,
+        is_reinvestment_log: true
+      }));
+      
+      // Combine and deduplicate by id
+      const allTrades = [...trades, ...reinvAsTrades];
+      const uniqueTrades = allTrades.filter((trade, index, self) => 
+        index === self.findIndex(t => t.id === trade.id)
+      );
+      
+      // Sort by date (most recent first)
+      const sortedTrades = uniqueTrades.sort((a, b) => 
+        new Date(b.investment_date || b.created_at) - new Date(a.investment_date || a.created_at)
       );
       setClientTrades(sortedTrades);
       setClientRealEstate(realEstateRes.data || []);
