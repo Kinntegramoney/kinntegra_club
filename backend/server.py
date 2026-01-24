@@ -19774,6 +19774,200 @@ async def rebuild_cashflows_from_history(trade_id: str, current_user: dict = Dep
     return results
 
 
+@api_router.post("/admin/generate-prepayment-schedule/{trade_id}")
+async def generate_prepayment_schedule(
+    trade_id: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Generate monthly prepayment cashflows for a trade based on Book2.xlsx logic.
+    
+    This creates the monthly cashflow schedule with:
+    - Monthly principal repayments (7% of original per month)
+    - Interest calculated on reducing balance
+    - Final maturity with remaining principal
+    
+    Use this when the bond only has a single maturity cashflow but should have monthly payments.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can generate prepayment schedules")
+    
+    # Get trade
+    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    # Get bond
+    bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Get existing cashflows
+    existing_cfs = await db.holding_cashflows.find(
+        {"trade_id": trade_id},
+        {"_id": 0}
+    ).to_list(50)
+    
+    # Calculate original principal (face value * units)
+    units = trade.get('units', 0)
+    face_value = bond.get('face_value', 100000)  # Default 1L per unit
+    original_principal = units * face_value
+    
+    # Get coupon rate
+    coupon_rate = bond.get('coupon_rate', 18.0)
+    if coupon_rate > 1:
+        coupon_rate = coupon_rate / 100  # Convert to decimal
+    
+    # Get dates
+    start_date_str = bond.get('start_date', '') or trade.get('investment_date', '')
+    maturity_date_str = bond.get('maturity_date', '') or bond.get('end_date', '')
+    
+    try:
+        start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+    except:
+        start_date = datetime.strptime(start_date_str[:10], '%Y-%m-%d')
+    
+    try:
+        maturity_date = datetime.fromisoformat(maturity_date_str.replace('Z', '+00:00'))
+    except:
+        maturity_date = datetime.strptime(maturity_date_str[:10], '%Y-%m-%d')
+    
+    # Calculate monthly payment (7% of principal per month for 6 months, remaining at maturity)
+    monthly_principal = round(original_principal * 0.07, 2)  # 7% per month
+    
+    # Generate payment schedule (6 monthly payments + 1 final maturity)
+    # Based on Book2.xlsx: Oct, Nov, Dec, Jan, Feb, Mar, Apr
+    payment_dates = []
+    current_date = start_date
+    
+    # Find first payment date (next month from start)
+    if current_date.day > 1:
+        # Move to next month
+        if current_date.month == 12:
+            current_date = datetime(current_date.year + 1, 1, 8)
+        else:
+            current_date = datetime(current_date.year, current_date.month + 1, 8)
+    
+    # Generate 7 payment dates (6 monthly + 1 maturity)
+    for i in range(7):
+        payment_dates.append(current_date)
+        if current_date.month == 12:
+            current_date = datetime(current_date.year + 1, 1, current_date.day)
+        else:
+            current_date = datetime(current_date.year, current_date.month + 1, current_date.day)
+    
+    # Make sure last date is maturity
+    if payment_dates:
+        payment_dates[-1] = maturity_date.replace(tzinfo=None)
+    
+    results = {
+        "trade_id": trade_id,
+        "original_principal": original_principal,
+        "monthly_principal": monthly_principal,
+        "coupon_rate": coupon_rate * 100,
+        "start_date": start_date.isoformat(),
+        "maturity_date": maturity_date.isoformat(),
+        "payment_dates": [d.strftime('%Y-%m-%d') for d in payment_dates],
+        "cashflows_created": 0,
+        "cashflows_updated": 0,
+        "new_cashflows": []
+    }
+    
+    # Delete existing cashflows for this trade (will recreate)
+    await db.holding_cashflows.delete_many({"trade_id": trade_id})
+    
+    # Generate new cashflows
+    balance = original_principal
+    prev_date = start_date
+    
+    for i, payment_date in enumerate(payment_dates):
+        is_final = (i == len(payment_dates) - 1)
+        
+        # Calculate days
+        days = (payment_date.replace(tzinfo=None) - prev_date.replace(tzinfo=None)).days
+        if days < 0:
+            days = 30  # Default to 30 days
+        
+        # Interest = Balance × Coupon × Days / 365
+        interest = round((balance * coupon_rate * days) / 365, 2)
+        
+        # Principal
+        if is_final:
+            principal = balance  # Remaining balance at maturity
+        else:
+            principal = min(monthly_principal, balance)  # Monthly prepayment
+        
+        # Reduce balance
+        new_balance = balance - principal
+        if new_balance < 0:
+            new_balance = 0
+        
+        # TDS = 10% of interest
+        tds = round(interest * 0.10, 2)
+        gross = round(principal + interest, 2)
+        net = round(gross - tds, 2)
+        
+        # Create cashflow record
+        cf_id = str(uuid.uuid4())
+        cashflow = {
+            "id": cf_id,
+            "trade_id": trade_id,
+            "client_id": trade['client_id'],
+            "bond_id": trade['bond_id'],
+            "date": payment_date.strftime('%Y-%m-%dT00:00:00'),
+            "principal_component": principal,
+            "interest_component": interest,
+            "tds_amount": tds,
+            "gross_amount": gross,
+            "net_amount": net,
+            "original_principal_component": principal,
+            "original_interest_component": interest,
+            "original_gross_amount": gross,
+            "original_net_amount": net,
+            "is_repaid": False,
+            "is_prepaid": not is_final,  # Mark non-maturity payments as prepaid
+            "days_in_period": days,
+            "balance_before": round(balance, 2),
+            "balance_after": round(new_balance, 2),
+            "coupon_rate_used": coupon_rate * 100,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": current_user['id'],
+            "generation_method": "prepayment_schedule"
+        }
+        
+        await db.holding_cashflows.insert_one(cashflow)
+        results["cashflows_created"] += 1
+        
+        results["new_cashflows"].append({
+            "date": payment_date.strftime('%Y-%m-%d'),
+            "days": days,
+            "principal": principal,
+            "interest": interest,
+            "gross": gross,
+            "tds": tds,
+            "net": net,
+            "balance_after": new_balance,
+            "is_final": is_final
+        })
+        
+        balance = new_balance
+        prev_date = payment_date
+    
+    # Update trade
+    await db.trades.update_one(
+        {"id": trade_id},
+        {"$set": {
+            "has_prepayment_schedule": True,
+            "prepayment_schedule_generated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    results["remaining_principal"] = round(balance, 2)
+    
+    return results
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
