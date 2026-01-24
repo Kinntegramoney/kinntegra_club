@@ -2119,8 +2119,56 @@ export default function Holdings() {
                 </div>
               )}
 
-              {/* Approval Info */}
-              {tradeDetailsModal.approved_at && (
+              {/* Repayments Section - Show cashflows for this trade */}
+              {(() => {
+                // Find holdings for this bond and client to get cashflows
+                const tradeHolding = clientDetails?.holdings?.find(h => h.bond_id === tradeDetailsModal.bond_id);
+                const tradeCashflows = tradeHolding?.cashflows || [];
+                const repaidCashflows = tradeCashflows.filter(cf => cf.is_repaid);
+                
+                if (tradeCashflows.length === 0) return null;
+                
+                return (
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <h3 className="text-xs font-semibold text-green-700 uppercase mb-3 flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Repayments ({repaidCashflows.length}/{tradeCashflows.length})
+                    </h3>
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {tradeCashflows.slice(0, 10).map((cf, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`flex justify-between items-center py-2 px-3 rounded text-sm ${
+                            cf.is_repaid ? 'bg-green-100' : 'bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {cf.is_repaid ? (
+                              <Check className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <Clock className="h-4 w-4 text-gray-400" />
+                            )}
+                            <span className="font-mono text-xs text-gray-600">
+                              {format(new Date(cf.date), "dd MMM yy")}
+                            </span>
+                          </div>
+                          <span className={`font-mono font-medium ${cf.is_repaid ? 'text-green-700' : 'text-gray-600'}`}>
+                            {formatINR(cf.amount || cf.net_amount || 0)}
+                          </span>
+                        </div>
+                      ))}
+                      {tradeCashflows.length > 10 && (
+                        <p className="text-xs text-gray-500 text-center py-1">
+                          +{tradeCashflows.length - 10} more repayments
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Approval Info - Hide for historical trades */}
+              {tradeDetailsModal.approved_at && !tradeDetailsModal.is_historical && (
                 <div className="text-center py-2 border-t border-gray-100">
                   <p className="text-xs text-gray-500">
                     {tradeDetailsModal.status === 'approved' ? 'Approved' : 'Rejected'} on {format(new Date(tradeDetailsModal.approved_at), "dd MMM yyyy 'at' HH:mm")}
