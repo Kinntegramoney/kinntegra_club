@@ -307,10 +307,18 @@ async def process_bond_prepayment(
     """
     Core function to process a bond principal prepayment.
     
+    LOGIC (based on CDNRE001 transaction example):
+    1. When prepayment happens, the BALANCE PRINCIPAL reduces immediately
+    2. Future INTEREST is calculated on the NEW REDUCED balance for actual days
+    3. Interest = (Balance Principal × Coupon Rate × Days) / 365
+    4. Final maturity payment = Remaining Principal + Accumulated Interest
+    
     This function:
     1. Validates the prepayment against outstanding principal
-    2. Proportionally reduces ALL remaining principal payments
-    3. Recalculates future interest based on reduced principal (same coupon rate)
+    2. Reduces the balance principal
+    3. Recalculates ALL future cashflows:
+       - Interest based on reduced balance × days × coupon rate
+       - Final principal = remaining balance after all prepayments
     4. Updates trade with remaining principal info
     5. Auto-closes trade if fully prepaid
     
