@@ -18632,6 +18632,7 @@ async def reset_broker_password():
 async def fix_repaid_amounts(current_user: dict = Depends(get_current_user)):
     """
     Fix repaid_actual_amount in holding_cashflows to use GROSS amount (principal + interest).
+    Also sets repaid_date to scheduled date if not already set.
     This ensures XIRR calculation uses pre-TDS amounts.
     """
     if current_user['role'] != 'broker':
@@ -18643,6 +18644,7 @@ async def fix_repaid_amounts(current_user: dict = Depends(get_current_user)):
     results = {
         "total_found": len(repaid_cashflows),
         "updated": 0,
+        "dates_fixed": 0,
         "details": []
     }
     
@@ -18653,12 +18655,21 @@ async def fix_repaid_amounts(current_user: dict = Depends(get_current_user)):
         gross_amount = principal + interest
         
         current_actual = cf.get('repaid_actual_amount', 0) or 0
-        scheduled_date = cf.get('date', '')[:10] if cf.get('date') else 'N/A'
+        scheduled_date = cf.get('date', '')[:10] if cf.get('date') else None
+        current_repaid_date = cf.get('repaid_date')
         
-        # Update the record with gross amount
+        # Prepare update
+        update_fields = {"repaid_actual_amount": gross_amount}
+        
+        # Set repaid_date to scheduled date if not already set
+        if not current_repaid_date and scheduled_date:
+            update_fields["repaid_date"] = scheduled_date
+            results['dates_fixed'] += 1
+        
+        # Update the record with gross amount and repaid_date
         result = await db.holding_cashflows.update_one(
             {"id": cf.get('id')},
-            {"$set": {"repaid_actual_amount": gross_amount}}
+            {"$set": update_fields}
         )
         
         if result.modified_count > 0:
@@ -18667,7 +18678,7 @@ async def fix_repaid_amounts(current_user: dict = Depends(get_current_user)):
                 "date": scheduled_date,
                 "old_amount": current_actual,
                 "new_amount": gross_amount,
-                "difference": gross_amount - current_actual
+                "repaid_date_set": not current_repaid_date
             })
     
     return results
