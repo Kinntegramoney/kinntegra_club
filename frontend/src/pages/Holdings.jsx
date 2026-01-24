@@ -909,16 +909,6 @@ export default function Holdings() {
                     </div>
                   ) : (
                     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                      {/* Header Section - matching Holdings Report style */}
-                      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                        <div className="flex items-center gap-3">
-                          <ClipboardList className="h-5 w-5 text-amber-600" />
-                          <h3 className="text-base font-semibold text-gray-800">Trade History</h3>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {clientTrades.length} trade{clientTrades.length !== 1 ? 's' : ''}
-                        </div>
-                      </div>
                       
                       {/* Table Header */}
                       <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
