@@ -8757,28 +8757,24 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "client_id": client_id
         }, {"_id": 0}).to_list(100)
         
+        # Filter to only include repayments that match this trade's investment date
+        # This allows matching prepayments to specific trades when multiple trades exist for same bond
+        trade_inv_date = trade.get('investment_date', '')[:10] if trade.get('investment_date') else ''
+        trade_matched_repayments = [
+            ar for ar in actual_repayments
+            if ar.get('investment_date', '')[:10] == trade_inv_date if ar.get('investment_date') else True
+        ]
+        
         # Get scheduled dates from THIS TRADE's cashflows to filter out duplicates
         scheduled_dates = set()
         for cf in stored_cashflows:
             if cf.get('date'):
                 scheduled_dates.add(cf['date'].split('T')[0])
         
-        # Also get ALL scheduled dates for this bond across all trades (to avoid cross-trade duplicates)
-        all_trade_ids_for_bond = [t['id'] for t in client_trades if t['bond_id'] == trade['bond_id']]
-        all_cashflows_for_bond = await db.holding_cashflows.find(
-            {"trade_id": {"$in": all_trade_ids_for_bond}},
-            {"_id": 0, "date": 1}
-        ).to_list(1000)
-        
-        all_scheduled_dates_for_bond = set()
-        for cf in all_cashflows_for_bond:
-            if cf.get('date'):
-                all_scheduled_dates_for_bond.add(cf['date'].split('T')[0])
-        
-        # Filter to only include actual repayments on dates NOT in ANY trade's schedule
+        # Filter to only include actual repayments on dates NOT in this trade's schedule
         unscheduled_repayments = [
-            ar for ar in actual_repayments 
-            if ar.get('repayment_date') and ar['repayment_date'].split('T')[0] not in all_scheduled_dates_for_bond
+            ar for ar in trade_matched_repayments 
+            if ar.get('repayment_date') and ar['repayment_date'].split('T')[0] not in scheduled_dates
         ]
         
         # Calculate Actual XIRR (includes both scheduled repayments and unscheduled prepayments)
