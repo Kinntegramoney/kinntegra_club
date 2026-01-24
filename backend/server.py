@@ -9391,6 +9391,10 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             bond_start_date
         )
         
+        # Expected XIRR = Secondary IRR from bond's Financial Details
+        # This is the original expected rate when the deal was added, not calculated from cashflows
+        expected_xirr = bond.get('secondary_irr') or bond.get('interest_rate') or bond.get('coupon_rate')
+        
         holdings.append({
             "trade_id": trade['id'],
             "bond_id": trade['bond_id'],
@@ -9409,7 +9413,7 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "upcoming_expected": round(upcoming_amount, 2),
             "prepaid_count": len(prepaid_cashflows),
             "prepaid_amount": round(prepaid_amount, 2),
-            "xirr": holding_xirr,
+            "xirr": expected_xirr,  # Use bond's Secondary IRR as Expected XIRR
             "actual_xirr": actual_xirr,
             "cashflows": stored_cashflows,
             "status": "active" if upcoming_amount > 0 else "fully_repaid"
