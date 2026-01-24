@@ -11697,6 +11697,12 @@ async def get_bonds(
         # Calculate unique investors count from trades
         unique_investors = await db.trades.distinct("client_id", {"bond_id": bond['id'], "status": "approved"})
         bond['unique_investors'] = len(unique_investors)
+        
+        # Add cashflow repayment counts for funded/closed bonds
+        total_cashflows_count = await db.holding_cashflows.count_documents({"bond_id": bond['id']})
+        repaid_cashflows_count = await db.holding_cashflows.count_documents({"bond_id": bond['id'], "is_repaid": True})
+        bond['total_cashflows_count'] = total_cashflows_count
+        bond['repaid_cashflows_count'] = repaid_cashflows_count
     
     total = await db.bonds.count_documents({})
     
@@ -11761,6 +11767,12 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
         # Calculate unique investors count from trades
         unique_investors = await db.trades.distinct("client_id", {"bond_id": bond['id'], "status": "approved"})
         bond['unique_investors'] = len(unique_investors)
+        
+        # Add cashflow repayment counts for funded/closed bonds
+        total_cashflows_count = await db.holding_cashflows.count_documents({"bond_id": bond['id']})
+        repaid_cashflows_count = await db.holding_cashflows.count_documents({"bond_id": bond['id'], "is_repaid": True})
+        bond['total_cashflows_count'] = total_cashflows_count
+        bond['repaid_cashflows_count'] = repaid_cashflows_count
         
         # Only include bonds that are 'available' (not funded or closed)
         if status == 'available':
