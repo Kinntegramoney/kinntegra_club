@@ -1,5 +1,33 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Jan 24, 2026)
+
+### Book2.xlsx XIRR Calculation Fix
+**Issue**: Actual XIRR for Natureresidences trades was incorrect due to wrong principal/interest calculations
+
+**Root Cause**: The recalculation endpoint was not correctly implementing Book2.xlsx logic
+
+**Fix Applied**:
+1. Updated `/api/admin/recalculate-cashflows-book2/{trade_id}` to:
+   - Use correct day counting: +1 for prepayments, no +1 for maturity
+   - Calculate principal: 7% of original for prepayments, remaining balance for maturity
+   - Calculate interest: Balance × 18.78% × Days / 365
+2. Verified XIRR calculation matches Book2.xlsx exactly (11.3784%)
+
+**Book2.xlsx Key Parameters**:
+- Coupon Rate: 18.78%
+- Face Value: ₹100,000/unit
+- Prepayment: 7% monthly (₹945,000 for 135 units)
+- XIRR Model: Prepayments get principal only, maturity gets principal + ALL accumulated interest
+
+### Sub-broker Reinvestments in Lead Management
+**Feature**: Added "My Reinvestments" tab in LeadManagement.jsx for sub-brokers
+- Shows all their reinvestment submissions
+- Displays status (Pending, Approved, Rejected)
+- Shows broker notes and rejection reasons
+
+---
+
 ## Original Problem Statement
 A wealth management platform for brokers to manage clients, bonds, real estate investments, and sub-brokers. The application allows:
 - Brokers to create and manage investment opportunities (Bonds & Real Estate)
