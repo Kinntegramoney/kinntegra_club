@@ -8691,8 +8691,15 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         prepaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_prepaid')]
         prepaid_amount = sum(cf.get('repaid_actual_amount', 0) or cf.get('net_amount', 0) for cf in prepaid_cashflows)
         
-        # Calculate XIRR for this holding
+        # Calculate Expected XIRR (all cashflows) for this holding
         holding_xirr = calculate_holding_xirr(
+            trade['investment_date'], 
+            investment_amount, 
+            stored_cashflows
+        )
+        
+        # Calculate Actual XIRR (only repaid cashflows)
+        actual_xirr = calculate_actual_xirr(
             trade['investment_date'], 
             investment_amount, 
             stored_cashflows
@@ -8717,6 +8724,7 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "prepaid_count": len(prepaid_cashflows),
             "prepaid_amount": round(prepaid_amount, 2),
             "xirr": holding_xirr,
+            "actual_xirr": actual_xirr,
             "cashflows": stored_cashflows,
             "status": "active" if upcoming_amount > 0 else "fully_repaid"
         })
