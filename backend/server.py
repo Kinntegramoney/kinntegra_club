@@ -8337,6 +8337,7 @@ class RepaymentUpdate(BaseModel):
 def calculate_holding_xirr(investment_date: str, investment_amount: float, cashflows: List[dict]) -> Optional[float]:
     """
     Calculate XIRR for a holding based on investment and cashflow dates.
+    Uses GROSS amounts (principal + interest) for both repaid and expected cashflows.
     For repaid cashflows, uses repaid_date if available, otherwise falls back to scheduled date.
     For pending cashflows, uses scheduled date (projected XIRR).
     Returns annualized return rate or None if calculation fails.
@@ -8354,17 +8355,23 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
         dates.append(inv_date)
         amounts.append(-investment_amount)
         
-        # Add all cashflows (both repaid and pending)
+        # Add all cashflows (both repaid and pending) using GROSS amounts
         for cf in cashflows:
             # Determine the date to use
             if cf.get('is_repaid'):
                 # For repaid: use repaid_date if available, otherwise use scheduled date
                 date_str = cf.get('repaid_date') or cf.get('date')
-                cf_amount = cf.get('repaid_actual_amount') or cf.get('net_amount', 0)
+                # Use actual repaid amount if available, otherwise use gross (principal + interest)
+                if cf.get('repaid_actual_amount'):
+                    cf_amount = cf.get('repaid_actual_amount')
+                else:
+                    # Calculate gross amount (principal + interest, before TDS)
+                    cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
             else:
-                # For pending: use scheduled date with expected net amount
+                # For pending: use scheduled date with GROSS expected amount (principal + interest)
                 date_str = cf.get('date')
-                cf_amount = cf.get('net_amount', 0)
+                # Use gross amount (principal + interest) for expected XIRR
+                cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
             
             if date_str and cf_amount > 0:
                 try:
