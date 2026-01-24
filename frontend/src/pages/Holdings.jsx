@@ -1437,48 +1437,50 @@ export default function Holdings() {
                   
                   {/* Consolidated Cashflows Table */}
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Repayment Date</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Transactions</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">TDS</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {consolidatedCashflows.map((cf, idx) => (
-                          <tr key={idx} className={`border-b border-gray-100 ${cf.all_repaid ? 'bg-green-50' : ''}`}>
-                            <td className="py-3 px-4">
-                              <span className="font-mono text-sm font-medium">{format(new Date(cf.date), "MMM dd, yyyy")}</span>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600">
-                                {cf.transactions.length} txn(s)
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.principal_component)}</td>
-                            <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.interest_component)}</td>
-                            <td className="py-3 px-4 text-right font-mono text-sm text-red-600">{formatINR(cf.tds_amount)}</td>
-                            <td className="py-3 px-4 text-right font-mono text-sm font-medium">{formatINR(cf.net_amount)}</td>
-                            <td className="py-3 px-4 text-center">
-                              {cf.all_repaid ? (
-                                <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
-                                  <Check className="h-3 w-3" /> All Repaid
-                                </span>
-                              ) : (
-                                <span className="text-amber-600 text-xs font-medium">
-                                  {cf.transactions.filter(t => t.is_repaid).length}/{cf.transactions.length} Repaid
-                                </span>
-                              )}
-                            </td>
+                    <div className="max-h-[300px] overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
+                          <tr>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Repayment Date</th>
+                            <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Transactions</th>
+                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Principal</th>
+                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Interest</th>
+                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">TDS</th>
+                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Net Amount</th>
+                            <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-gray-50">Status</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {consolidatedCashflows.map((cf, idx) => (
+                            <tr key={idx} className={`border-b border-gray-100 ${cf.all_repaid ? 'bg-green-50' : ''}`}>
+                              <td className="py-3 px-4">
+                                <span className="font-mono text-sm font-medium">{format(new Date(cf.date), "MMM dd, yyyy")}</span>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600">
+                                  {cf.transactions.length} txn(s)
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.principal_component)}</td>
+                              <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.interest_component)}</td>
+                              <td className="py-3 px-4 text-right font-mono text-sm text-red-600">{formatINR(cf.tds_amount)}</td>
+                              <td className="py-3 px-4 text-right font-mono text-sm font-medium">{formatINR(cf.net_amount)}</td>
+                              <td className="py-3 px-4 text-center">
+                                {cf.all_repaid ? (
+                                  <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
+                                    <Check className="h-3 w-3" /> All Repaid
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 text-xs font-medium">
+                                    {cf.transactions.filter(t => t.is_repaid).length}/{cf.transactions.length} Repaid
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                   
                   {/* Summary Footer */}
