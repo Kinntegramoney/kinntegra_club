@@ -1691,9 +1691,23 @@ export default function Holdings() {
                       <div className="flex items-center justify-between flex-wrap gap-3">
                         <div>
                           <p className="text-sm font-medium text-gray-700">Cashflow Management</p>
-                          <p className="text-xs text-gray-500">Generate prepayment schedule or rebuild from history</p>
+                          <p className="text-xs text-gray-500">Recalculate interest or rebuild cashflows</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => {
+                              modalData.trades.forEach(trade => {
+                                handleRecalculateBook2(trade.trade_id);
+                              });
+                            }}
+                            disabled={rebuildingCashflows}
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors disabled:opacity-50"
+                            data-testid="recalculate-book2-btn"
+                            title="Recalculate interest using Book2.xlsx formula: Interest = Balance × Rate × Days / 365"
+                          >
+                            <Calculator className="h-3.5 w-3.5" />
+                            {rebuildingCashflows ? 'Calculating...' : 'Recalc Interest (Book2)'}
+                          </button>
                           <button
                             onClick={() => {
                               modalData.trades.forEach(trade => {
