@@ -51,10 +51,11 @@ class RepaymentEmailReader:
                 pass
             self.connected = False
     
-    def fetch_repayment_emails(self, days_back: int = 7) -> List[Dict]:
+    def fetch_repayment_emails(self, days_back: int = 7, folder: str = None) -> List[Dict]:
         """
         Fetch repayment notification emails from the last N days
         Subject line pattern: 'altGraaf | Returns Initiated - '
+        Searches in Altgraaf/Repayments folder by default
         """
         if not self.connected:
             if not self.connect():
@@ -63,8 +64,32 @@ class RepaymentEmailReader:
         emails_data = []
         
         try:
-            # Select inbox
-            self.imap.select('INBOX')
+            # Try different folder paths for the Repayments folder
+            target_folder = folder or 'INBOX.Altgraaf.Repayments'
+            folders_to_try = [
+                target_folder,
+                'Altgraaf/Repayments',
+                'Altgraaf.Repayments',
+                'INBOX/Altgraaf/Repayments',
+                'Repayments',
+                'INBOX'  # Fallback to INBOX
+            ]
+            
+            selected_folder = None
+            for folder_path in folders_to_try:
+                try:
+                    status, _ = self.imap.select(folder_path)
+                    if status == 'OK':
+                        selected_folder = folder_path
+                        logger.info(f"Successfully selected folder: {folder_path}")
+                        break
+                except Exception as e:
+                    logger.debug(f"Could not select folder {folder_path}: {e}")
+                    continue
+            
+            if not selected_folder:
+                logger.error("Could not select any mail folder")
+                return []
             
             # Calculate date range
             since_date = (datetime.now() - timedelta(days=days_back)).strftime('%d-%b-%Y')
