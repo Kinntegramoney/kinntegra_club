@@ -9013,9 +9013,9 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
                 scheduled_dates.add(date_str.split('T')[0])
             
             # ACTUAL XIRR calculation:
-            # - For REPAID cashflows: Use actual repaid amounts and dates
-            # - For PENDING cashflows: Use current (possibly modified by prepayments) amounts
-            # This reflects the actual expected return after any prepayment modifications
+            # - For REPAID cashflows: Use GROSS amounts (principal + interest BEFORE TDS)
+            # - For PENDING cashflows: Use GROSS amounts from scheduled cashflows
+            # XIRR should always use GROSS amounts, not NET (after TDS)
             
             if cf.get('is_repaid'):
                 # For repaid: use actual repaid date if available, else scheduled date
@@ -9023,15 +9023,21 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
                 if not use_date:
                     use_date = cf.get('date', '')
                 
-                # Use GROSS amount for actual XIRR - prefer actual amount if available
-                if cf.get('repaid_actual_amount'):
-                    cf_amount = cf.get('repaid_actual_amount')
+                # Use GROSS amount for XIRR calculation (principal + interest BEFORE TDS)
+                # Priority: gross_amount field > calculated from components
+                if cf.get('gross_amount'):
+                    cf_amount = cf.get('gross_amount')
                 else:
-                    cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+                    # Calculate GROSS = principal + interest (before TDS deduction)
+                    cf_amount = (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
             else:
-                # For pending: use scheduled date and CURRENT amounts (after prepayment modifications)
+                # For pending: use scheduled date and GROSS amounts
                 use_date = cf.get('date', '')
-                cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
+                # GROSS = principal + interest (before TDS)
+                if cf.get('gross_amount'):
+                    cf_amount = cf.get('gross_amount')
+                else:
+                    cf_amount = (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
             
             if not use_date:
                 continue
