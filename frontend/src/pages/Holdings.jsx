@@ -1018,23 +1018,23 @@ export default function Holdings() {
                               </div>
                               
                               {/* Portfolio */}
-                              <div className="col-span-1">
-                                <p className="text-sm text-gray-600">{trade.portfolio || 'Wealth'}</p>
+                              <div className="col-span-2">
+                                <p className="text-xs text-gray-600">{trade.portfolio || 'Wealth'}</p>
                               </div>
                               
                               {/* Advisor */}
-                              <div className="col-span-1">
-                                <p className="text-sm text-gray-600">{trade.created_by_name || '-'}</p>
+                              <div className="col-span-2">
+                                <p className="text-xs text-gray-600 truncate">{trade.created_by_name || '-'}</p>
                               </div>
                               
                               {/* Status */}
-                              <div className="col-span-1 text-center">
+                              <div className="col-span-2 text-center">
                                 {trade.status === 'pending' ? (
-                                  <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded font-medium">Pending</span>
+                                  <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded font-medium">Pending</span>
                                 ) : trade.status === 'approved' ? (
-                                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-medium">Approved</span>
+                                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded font-medium">Approved</span>
                                 ) : (
-                                  <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded font-medium">Rejected</span>
+                                  <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded font-medium">Rejected</span>
                                 )}
                               </div>
                               
@@ -1045,7 +1045,7 @@ export default function Holdings() {
                                     e.stopPropagation();
                                     setOpenTradeMenu(openTradeMenu === trade.id ? null : trade.id);
                                   }}
-                                  className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                  className="p-1 hover:bg-gray-100 rounded transition-colors"
                                   data-testid={`trade-menu-${trade.id}`}
                                 >
                                   <MoreVertical className="h-4 w-4 text-gray-500" />
@@ -1077,7 +1077,7 @@ export default function Holdings() {
                                       </a>
                                     )}
                                   </div>
-                                )}
+                                )}}
                               </div>
                             </div>
                           );
