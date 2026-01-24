@@ -63,6 +63,10 @@ export default function LeadManagement() {
   const [pendingReinvestments, setPendingReinvestments] = useState([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   
+  // Sub-broker's own submissions
+  const [mySubmissions, setMySubmissions] = useState([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  
   // Leads data
   const [leads, setLeads] = useState([]);
   const [leadsLoading, setLeadsLoading] = useState(false);
