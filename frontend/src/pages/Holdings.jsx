@@ -1147,66 +1147,66 @@ export default function Holdings() {
                 </div>
                 
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">Scheme Name</th>
-                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Invested</th>
-                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Principal Repaid</th>
-                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Interest Repaid</th>
-                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">O/S Principal</th>
-                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">O/S Interest</th>
-                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">TDS</th>
-                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Net Repaid</th>
-                        <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase">XIRR</th>
-                        <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase w-10"></th>
+                        <th className="text-left py-2 px-2 text-[10px] font-medium text-gray-500 uppercase sticky left-0 bg-gray-50">Scheme</th>
+                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Investment</th>
+                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Net Expected</th>
+                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Principal</th>
+                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S TDS</th>
+                        <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">XIRR</th>
+                        <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Status</th>
+                        <th className="text-center py-2 px-1 w-8"></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredHoldings.map((holding) => (
+                      {filteredHoldings.map((holding) => {
+                        const totalNetExpected = holding.total_principal + holding.total_interest_gross - holding.total_tds;
+                        const osPrincipal = holding.total_principal - holding.repaid_principal;
+                        const osTds = holding.total_tds - holding.repaid_tds;
+                        
+                        return (
                         <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-3">
-                            <p className="font-medium text-gray-800 text-sm">{holding.bond_name}</p>
-                            <p className="text-xs text-gray-500">{holding.total_units} units • {holding.trades.length} txn</p>
+                          <td className="py-2 px-2 sticky left-0 bg-white">
+                            <p className="font-medium text-gray-800 text-xs truncate max-w-[120px]" title={holding.bond_name}>{holding.bond_name}</p>
+                            <p className="text-[10px] text-gray-400">{holding.total_units} units</p>
                           </td>
-                          <td className="py-3 px-3 text-right font-mono text-sm">{formatINR(holding.invested_amount)}</td>
-                          <td className="py-3 px-3 text-right font-mono text-sm text-green-600">{formatINR(holding.repaid_principal)}</td>
-                          <td className="py-3 px-3 text-right font-mono text-sm text-green-600">{formatINR(holding.repaid_interest)}</td>
-                          <td className="py-3 px-3 text-right font-mono text-sm text-blue-600">{formatINR(holding.total_principal - holding.repaid_principal)}</td>
-                          <td className="py-3 px-3 text-right font-mono text-sm text-blue-600">{formatINR(holding.total_interest_gross - holding.repaid_interest)}</td>
-                          <td className="py-3 px-3 text-right font-mono text-sm text-red-500">{formatINR(holding.repaid_tds)}</td>
-                          <td className="py-3 px-3 text-right font-mono text-sm font-medium text-gray-800">{formatINR(holding.net_repaid)}</td>
-                          <td className="py-3 px-3 text-center">
+                          <td className="py-2 px-2 text-right font-mono text-xs">{formatINR(holding.invested_amount)}</td>
+                          <td className="py-2 px-2 text-right font-mono text-xs text-emerald-600">{formatINR(totalNetExpected)}</td>
+                          <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osPrincipal)}</td>
+                          <td className="py-2 px-2 text-right font-mono text-xs text-red-500">{formatINR(osTds)}</td>
+                          <td className="py-2 px-2 text-center">
                             {holding.xirr !== null && holding.xirr !== undefined ? (
-                              <span className={`font-mono text-sm font-medium ${holding.xirr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              <span className={`font-mono text-xs font-semibold ${holding.xirr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {holding.xirr.toFixed(2)}%
                               </span>
                             ) : (
-                              <span className="text-gray-400 text-xs">-</span>
+                              <span className="text-gray-400 text-[10px]">-</span>
                             )}
                           </td>
-                          <td className="py-3 px-3 text-center">
-                            <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${holding.status === 'fully_repaid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                          <td className="py-2 px-2 text-center">
+                            <span className={`inline-block px-1.5 py-0.5 text-[10px] font-medium rounded ${holding.status === 'fully_repaid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                               {holding.status === 'fully_repaid' ? 'Repaid' : 'Active'}
                             </span>
                           </td>
-                          <td className="py-3 px-2 text-center relative" ref={openMenu === holding.bond_id ? menuRef : null}>
-                            <button onClick={() => setOpenMenu(openMenu === holding.bond_id ? null : holding.bond_id)} className="p-1 hover:bg-gray-100 rounded" data-testid={`menu-btn-${holding.bond_id}`}>
-                              <MoreVertical className="h-4 w-4 text-gray-500" />
+                          <td className="py-2 px-1 text-center relative" ref={openMenu === holding.bond_id ? menuRef : null}>
+                            <button onClick={() => setOpenMenu(openMenu === holding.bond_id ? null : holding.bond_id)} className="p-0.5 hover:bg-gray-100 rounded" data-testid={`menu-btn-${holding.bond_id}`}>
+                              <MoreVertical className="h-4 w-4 text-gray-400" />
                             </button>
                             
                             {openMenu === holding.bond_id && (
-                              <div className="absolute right-4 top-10 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-                                <button onClick={() => openCashflowModal(holding)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" data-testid={`view-cashflows-${holding.bond_id}`}>
-                                  <Eye className="h-4 w-4" />
-                                  View Future Cashflows
+                              <div className="absolute right-4 top-8 z-50 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                                <button onClick={() => openCashflowModal(holding)} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50" data-testid={`view-cashflows-${holding.bond_id}`}>
+                                  <Eye className="h-3 w-3" />
+                                  View Cashflows
                                 </button>
                               </div>
                             )}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                   
