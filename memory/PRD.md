@@ -610,8 +610,14 @@ When prepayments occur:
 | 2026-03-07 | Prepayment | ₹9,45,000 | 0 |
 | 2026-04-08 | Maturity | ₹78,30,000 | ₹34,82,460 |
 
-#### XIRR Calculation Changes
-- **Changed from Investment Date to Bond Start Date** as reference
-- This correctly reflects the impact of premium paid when bond is sold at secondary market
-- XIRR now shows 6.33% (matching Excel) instead of 11.03% (from investment date)
+#### XIRR Calculation Changes (Updated: Jan 24, 2026)
+- **Actual XIRR now uses Investment Date** as reference (not Bond Start Date)
+- This correctly reflects the client's actual return from when they invested
+- For bonds WITHOUT prepayments (like CDUC001): Actual XIRR ≈ Expected XIRR (both ~11%)
+- For bonds WITH prepayments (like Natureresidences): Actual XIRR < Expected XIRR (prepayments reduce future interest)
+
+**Bug Fixed (Jan 24, 2026)**: CDUC001 Actual XIRR was showing 9.23% instead of 11%
+- Root cause: Using `bond_start_date` created artificial time gap before cashflows started
+- Fix: Changed to use `investment_date` as XIRR reference point
+- Result: CDUC001 now shows Actual XIRR = 11.0% ✓ (matches Expected)
 
