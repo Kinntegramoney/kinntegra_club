@@ -19927,9 +19927,10 @@ async def recalculate_cashflows_book2(
             continue
         
         # Calculate days from previous date
-        days = (cf_date - prev_date).days
-        if days < 0:
-            days = 0
+        # Add 1 to match Excel's inclusive day counting (counts both start and end dates)
+        days = (cf_date - prev_date).days + 1
+        if days < 1:
+            days = 1
         
         # Interest = Balance × Coupon Rate × Days / 365
         calculated_interest = round((balance * coupon_rate * days) / 365, 2)
