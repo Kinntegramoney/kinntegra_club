@@ -8976,18 +8976,20 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
 
 def calculate_actual_xirr(investment_date: str, investment_amount: float, cashflows: List[dict], actual_repayments: List[dict] = None, bond_start_date: str = None) -> Optional[float]:
     """
-    Calculate Actual XIRR using GROSS amounts (principal + interest before TDS).
+    Calculate Actual XIRR using GROSS amounts (principal + gross interest before TDS).
     
-    IMPORTANT: XIRR is calculated from Bond Start Date (not client's investment date)
-    to properly reflect the impact of premium paid when bond is sold at secondary market.
+    IMPORTANT: XIRR is calculated from the CLIENT'S INVESTMENT DATE to reflect
+    the actual return on the client's money from when they invested.
     
     This function considers:
-    1. Scheduled cashflows that have been repaid (from holding_cashflows)
+    1. Scheduled cashflows (both repaid and pending from holding_cashflows)
     2. Unscheduled prepayments (from actual_repayments) - principal paid outside schedule
        - Only includes actual_repayments that are NOT already in holding_cashflows
-    3. For pending cashflows: Uses scheduled amounts
     
-    Actual XIRR = principal + gross_interest (before TDS)
+    For repaid cashflows: Uses actual repaid amounts (GROSS = principal + gross interest)
+    For pending cashflows: Uses scheduled amounts (GROSS = principal + gross interest)
+    
+    Actual XIRR = principal + gross_interest (before TDS deduction)
     """
     try:
         from scipy.optimize import brentq
@@ -8996,16 +8998,13 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
         dates = []
         amounts = []
         
-        # Use Bond Start Date as reference (if provided), otherwise fall back to investment date
-        # This is critical for bonds sold at premium in secondary market
-        if bond_start_date:
-            ref_date_str = bond_start_date.split('T')[0] if 'T' in bond_start_date else bond_start_date
-        else:
-            ref_date_str = investment_date.split('T')[0] if 'T' in investment_date else investment_date
+        # Use INVESTMENT DATE as reference (when client's money was actually invested)
+        # This reflects the client's actual return on their investment
+        ref_date_str = investment_date.split('T')[0] if 'T' in investment_date else investment_date
         
         ref_date = datetime.strptime(ref_date_str, '%Y-%m-%d')
         dates.append(ref_date)
-        amounts.append(-investment_amount)  # Investment outflow (including premium)
+        amounts.append(-investment_amount)  # Investment outflow
         
         # Track dates of scheduled cashflows to avoid double-counting
         scheduled_dates = set()
