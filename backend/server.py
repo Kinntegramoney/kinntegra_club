@@ -18727,6 +18727,42 @@ async def fix_repaid_amounts(current_user: dict = Depends(get_current_user)):
     return results
 
 
+@api_router.get("/admin/debug-actual-repayments/{client_id}")
+async def debug_actual_repayments(client_id: str, current_user: dict = Depends(get_current_user)):
+    """Debug endpoint to view actual_repayments for a client"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this")
+    
+    # Get all actual repayments for this client
+    actual_repayments = await db.actual_repayments.find(
+        {"client_id": client_id}, 
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Get all holding_cashflows for this client's trades
+    trades = await db.trades.find({"client_id": client_id}, {"_id": 0, "id": 1}).to_list(100)
+    trade_ids = [t['id'] for t in trades]
+    
+    cashflows = await db.holding_cashflows.find(
+        {"trade_id": {"$in": trade_ids}},
+        {"_id": 0}
+    ).to_list(500)
+    
+    # Get unique scheduled dates
+    scheduled_dates = set()
+    for cf in cashflows:
+        if cf.get('date'):
+            scheduled_dates.add(cf['date'].split('T')[0])
+    
+    return {
+        "actual_repayments_count": len(actual_repayments),
+        "actual_repayments": actual_repayments,
+        "holding_cashflows_count": len(cashflows),
+        "scheduled_dates": sorted(list(scheduled_dates)),
+        "trade_count": len(trades)
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
