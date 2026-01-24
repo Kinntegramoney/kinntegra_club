@@ -1195,6 +1195,13 @@ export default function Holdings() {
                   </div>
                   <div className="h-4 w-px bg-gray-200"></div>
                   <div className="flex items-center gap-1.5">
+                    <span className="text-gray-500">Total Gross Profit:</span>
+                    <span className={`font-mono font-semibold ${clientHoldings.summary.total_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatINR(clientHoldings.summary.total_profit)}
+                    </span>
+                  </div>
+                  <div className="h-4 w-px bg-gray-200"></div>
+                  <div className="flex items-center gap-1.5">
                     <span className="text-gray-500">Total O/S Principal:</span>
                     <span className="font-mono font-semibold text-blue-600">{formatINR(
                       filteredHoldings.reduce((sum, h) => sum + (h.total_principal - h.repaid_principal), 0)
