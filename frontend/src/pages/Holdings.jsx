@@ -1763,6 +1763,16 @@ export default function Holdings() {
                                 formatINR(cf.interest_component)
                               )}
                             </td>
+                            <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-amber-700 bg-amber-50">
+                              {cf.is_amended && cf.original_principal_component && cf.original_interest_component ? (
+                                <div>
+                                  <span>{formatINR((cf.principal_component || 0) + (cf.interest_component || 0))}</span>
+                                  <span className="text-xs text-gray-400 line-through block">({formatINR((cf.original_principal_component || 0) + (cf.original_interest_component || 0))})</span>
+                                </div>
+                              ) : (
+                                formatINR((cf.principal_component || 0) + (cf.interest_component || 0))
+                              )}
+                            </td>
                             <td className="py-3 px-4 text-right font-mono text-sm text-red-600">
                               {cf.is_amended && cf.original_tds_amount ? (
                                 <div>
