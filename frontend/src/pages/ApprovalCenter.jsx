@@ -489,14 +489,16 @@ export default function ApprovalCenter() {
               <div className="border-b border-gray-100 px-6 py-3 flex items-center justify-between">
                 <p className="text-sm text-gray-500">Track all approval workflow activities</p>
                 <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="w-[160px]" data-testid="filter-select">
+                  <SelectTrigger className="w-[180px]" data-testid="filter-select">
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="client">Clients</SelectItem>
+                    <SelectItem value="trade">Trades</SelectItem>
                     <SelectItem value="reinvestment">Reinvestments</SelectItem>
+                    <SelectItem value="bond">Bonds</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
