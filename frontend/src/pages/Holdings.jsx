@@ -43,6 +43,7 @@ export default function Holdings() {
   const [prepaymentAmount, setPrepaymentAmount] = useState("");
   const [prepaymentNotes, setPrepaymentNotes] = useState("");
   const [recordingPrepayment, setRecordingPrepayment] = useState(false);
+  const [rebuildingCashflows, setRebuildingCashflows] = useState(false);
 
   // Set page title
   useEffect(() => {
