@@ -5652,7 +5652,7 @@ async def bulk_upload_historical_trades(
         if df_repayments is not None and len(df_repayments) > 0:
             results['validation_summary']['total_repayment_rows'] = len(df_repayments)
             
-            required_rep_cols = ['deal_id', 'repayment_date', 'pan', 'gross_amount', 'net_amount']
+            required_rep_cols = ['deal_id', 'date_of_investment', 'repayment_date', 'pan', 'gross_amount', 'net_amount']
             missing_cols = [col for col in required_rep_cols if col not in df_repayments.columns]
             if missing_cols:
                 results['errors'].append(f"Repayment sheet missing columns: {', '.join(missing_cols)}")
@@ -5665,6 +5665,14 @@ async def bulk_upload_historical_trades(
                         
                         deal_id = str(row['deal_id']).strip().upper()
                         pan = str(row['pan']).strip().upper()
+                        
+                        # Parse date of investment (for matching to specific trade)
+                        inv_date = row.get('date_of_investment')
+                        inv_date_str = None
+                        if pd.notna(inv_date):
+                            if isinstance(inv_date, str):
+                                inv_date = datetime.fromisoformat(inv_date.replace('/', '-'))
+                            inv_date_str = inv_date.strftime('%Y-%m-%d') if hasattr(inv_date, 'strftime') else str(inv_date)[:10]
                         
                         # Parse repayment date
                         rep_date = row['repayment_date']
