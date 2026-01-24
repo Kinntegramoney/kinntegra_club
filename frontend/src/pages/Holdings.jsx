@@ -63,6 +63,9 @@ export default function Holdings() {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setOpenMenu(null);
       }
+      if (tradeMenuRef.current && !tradeMenuRef.current.contains(event.target)) {
+        setOpenTradeMenu(null);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
