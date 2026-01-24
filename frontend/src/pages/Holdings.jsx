@@ -2022,11 +2022,11 @@ export default function Holdings() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase">Client Name</p>
-                    <p className="text-sm font-medium text-gray-800">{selectedClient?.name || '-'}</p>
+                    <p className="text-sm font-medium text-gray-800">{tradeDetailsModal.client_name || selectedClient?.name || '-'}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase">PAN</p>
-                    <p className="text-sm font-mono text-gray-800">{selectedClient?.pan || '-'}</p>
+                    <p className="text-sm font-mono text-gray-800">{tradeDetailsModal.client_pan || clientDetails?.pan_number || '-'}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase">Email</p>
@@ -2034,7 +2034,7 @@ export default function Holdings() {
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase">Phone</p>
-                    <p className="text-sm text-gray-800">{clientDetails?.phone || '-'}</p>
+                    <p className="text-sm text-gray-800">{clientDetails?.mobile || '-'}</p>
                   </div>
                 </div>
               </div>
