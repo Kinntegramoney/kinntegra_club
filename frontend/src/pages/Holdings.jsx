@@ -1729,6 +1729,7 @@ export default function Holdings() {
                           <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Type</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-amber-50">Gross</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">TDS</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
                           <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
