@@ -9329,11 +9329,24 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         # reflect impact of premium when bond is sold at secondary market
         bond_start_date = bond.get('start_date') or bond.get('bond_start_date')
         
-        # Calculate Expected XIRR (all cashflows) for this holding
+        # Build ORIGINAL cashflows (before prepayment modifications) for Expected XIRR
+        # Expected XIRR shows what the return would be without any prepayments
+        original_cashflows = []
+        for cf in stored_cashflows:
+            original_cf = {
+                'date': cf.get('date'),
+                # Use original values if available (from before prepayment amendment)
+                'principal_component': cf.get('original_principal_component') or cf.get('principal_component', 0),
+                'interest_component': cf.get('original_interest_component') or cf.get('interest_component', 0),
+            }
+            original_cashflows.append(original_cf)
+        
+        # Calculate Expected XIRR using ORIGINAL cashflows (before prepayments)
+        # This shows the original expected return as per the bond deal uploaded
         holding_xirr = calculate_holding_xirr(
             trade['investment_date'], 
             investment_amount, 
-            stored_cashflows,
+            original_cashflows,
             bond_start_date
         )
         
@@ -9368,11 +9381,12 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             if ar.get('repayment_date') and ar['repayment_date'].split('T')[0] not in scheduled_dates
         ]
         
-        # Calculate Actual XIRR (includes both scheduled repayments and unscheduled prepayments)
+        # Calculate Actual XIRR using CURRENT cashflows (after prepayments)
+        # This shows the actual return after prepayments have reduced the interest
         actual_xirr = calculate_actual_xirr(
             trade['investment_date'], 
             investment_amount, 
-            stored_cashflows,
+            stored_cashflows,  # Use current values (after prepayment modifications)
             unscheduled_repayments,
             bond_start_date
         )
