@@ -490,10 +490,13 @@ export default function Holdings() {
   );
 
   const formatINR = (amount) => {
+    if (!amount || amount === 0) return '₹ 0';
     if (amount >= 10000000) {
       return `₹ ${(amount / 10000000).toFixed(2)} Cr`;
     } else if (amount >= 100000) {
       return `₹ ${(amount / 100000).toFixed(2)} L`;
+    } else if (amount >= 1000) {
+      return `₹ ${(amount / 1000).toFixed(2)} K`;
     }
     return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
