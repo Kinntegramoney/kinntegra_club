@@ -315,6 +315,15 @@ export default function ApprovalCenter() {
                 )}
               </TabsTrigger>
             )}
+            {(isBroker || user.role === 'sub_broker') && (
+              <TabsTrigger value="leads" className="px-6 data-[state=active]:bg-green-50 data-[state=active]:text-green-700" data-testid="tab-leads">
+                <Users className="h-4 w-4 mr-2" />
+                Lead Management
+                {leads.filter(l => l.status === 'open').length > 0 && (
+                  <Badge className="ml-2 bg-green-500 text-white">{leads.filter(l => l.status === 'open').length}</Badge>
+                )}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="logs" className="px-6 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700" data-testid="tab-logs">
               <History className="h-4 w-4 mr-2" />
               Activity Logs
