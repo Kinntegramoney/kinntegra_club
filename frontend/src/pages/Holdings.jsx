@@ -899,7 +899,7 @@ export default function Holdings() {
                 </div>
               )}
               
-              {/* Trades Tab Content - Matching Activity Logs Format */}
+              {/* Trades Tab Content - Table Format Like Logs */}
               {mainTab === "trades" && (
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                   {clientTrades.length === 0 ? (
@@ -908,76 +908,121 @@ export default function Holdings() {
                       <p className="text-gray-500">No trades found for this client</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-gray-100">
-                      {clientTrades.map((trade) => {
-                        // Determine action config based on status
-                        const getTradeActionConfig = (status) => {
-                          switch(status) {
-                            case 'approved':
-                              return { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50", label: "Approved" };
-                            case 'pending':
-                              return { icon: Clock, color: "text-yellow-600", bg: "bg-yellow-50", label: "Pending" };
-                            case 'rejected':
-                              return { icon: XCircle, color: "text-red-600", bg: "bg-red-50", label: "Rejected" };
-                            default:
-                              return { icon: Send, color: "text-blue-600", bg: "bg-blue-50", label: "Submitted" };
-                          }
-                        };
-                        
-                        const actionConfig = getTradeActionConfig(trade.status);
-                        const ActionIcon = actionConfig.icon;
-                        
-                        return (
+                    <>
+                      {/* Table Header */}
+                      <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="col-span-2">CLIENT NAME</div>
+                        <div className="col-span-1">UCC</div>
+                        <div className="col-span-1">DATE</div>
+                        <div className="col-span-2">TYPE</div>
+                        <div className="col-span-2 text-right">AMOUNT</div>
+                        <div className="col-span-1">PORTFOLIO</div>
+                        <div className="col-span-1">ADVISOR</div>
+                        <div className="col-span-1 text-center">STATUS</div>
+                        <div className="col-span-1"></div>
+                      </div>
+                      
+                      {/* Table Rows */}
+                      <div className="divide-y divide-gray-100">
+                        {clientTrades.map((trade) => (
                           <div 
                             key={trade.id} 
-                            className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                            onClick={() => setTradeDetailsModal(trade)}
+                            className="grid grid-cols-12 gap-2 px-4 py-4 items-center hover:bg-gray-50 transition-colors"
                             data-testid={`trade-row-${trade.id}`}
                           >
-                            <div className="flex items-start gap-4">
-                              {/* Action Icon */}
-                              <div className={`w-10 h-10 rounded-full ${actionConfig.bg} flex items-center justify-center flex-shrink-0`}>
-                                <ActionIcon className={`h-5 w-5 ${actionConfig.color}`} />
-                              </div>
-
-                              {/* Content */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`font-medium ${actionConfig.color}`}>{actionConfig.label}</span>
-                                  <ArrowRight className="h-4 w-4 text-gray-400" />
-                                  <span className="flex items-center gap-1">
-                                    <TrendingUp className="h-4 w-4 text-amber-600" />
-                                    <span className="text-gray-700 font-medium">{trade.bond_name}</span>
-                                  </span>
+                            {/* Client Name */}
+                            <div className="col-span-2">
+                              <p className="font-medium text-gray-800">{trade.client_name || selectedClient?.name}</p>
+                            </div>
+                            
+                            {/* UCC */}
+                            <div className="col-span-1">
+                              <p className="font-mono text-sm text-gray-600">{trade.bond_code || '-'}</p>
+                            </div>
+                            
+                            {/* Date */}
+                            <div className="col-span-1">
+                              <p className="text-sm text-gray-600">{format(new Date(trade.investment_date), "dd MMM yyyy")}</p>
+                            </div>
+                            
+                            {/* Type */}
+                            <div className="col-span-2">
+                              <span className="text-purple-600 font-medium text-sm">
+                                {trade.is_historical ? 'Historical' : trade.trade_type || 'Investment'}
+                              </span>
+                            </div>
+                            
+                            {/* Amount */}
+                            <div className="col-span-2 text-right">
+                              <p className="font-mono text-sm text-gray-800">{formatINR(trade.total_amount)}</p>
+                            </div>
+                            
+                            {/* Portfolio */}
+                            <div className="col-span-1">
+                              <p className="text-sm text-gray-600">{trade.portfolio || 'Wealth'}</p>
+                            </div>
+                            
+                            {/* Advisor */}
+                            <div className="col-span-1">
+                              <p className="text-sm text-gray-600">{trade.created_by_name || '-'}</p>
+                            </div>
+                            
+                            {/* Status */}
+                            <div className="col-span-1 text-center">
+                              {trade.status === 'pending' ? (
+                                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded font-medium">Pending</span>
+                              ) : trade.status === 'approved' ? (
+                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-medium">Approved</span>
+                              ) : (
+                                <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded font-medium">Rejected</span>
+                              )}
+                            </div>
+                            
+                            {/* Actions */}
+                            <div className="col-span-1 text-center relative" ref={openTradeMenu === trade.id ? tradeMenuRef : null}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenTradeMenu(openTradeMenu === trade.id ? null : trade.id);
+                                }}
+                                className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                data-testid={`trade-menu-${trade.id}`}
+                              >
+                                <MoreVertical className="h-4 w-4 text-gray-500" />
+                              </button>
+                              
+                              {/* Dropdown Menu */}
+                              {openTradeMenu === trade.id && (
+                                <div className="absolute right-0 top-8 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[160px] text-left">
+                                  <button
+                                    onClick={() => {
+                                      setTradeDetailsModal(trade);
+                                      setOpenTradeMenu(null);
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                  >
+                                    <Eye className="h-4 w-4 text-gray-500" />
+                                    View Details
+                                  </button>
+                                  {trade.payment_proof_url && (
+                                    <a
+                                      href={trade.payment_proof_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                                      onClick={() => setOpenTradeMenu(null)}
+                                    >
+                                      <FileImage className="h-4 w-4" />
+                                      View UTR Copy
+                                    </a>
+                                  )}
                                 </div>
-                                
-                                <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                                  <span className="flex items-center gap-1">
-                                    <IndianRupee className="h-3.5 w-3.5" />
-                                    <span className="font-mono">{formatINR(trade.total_amount)}</span>
-                                  </span>
-                                  <span>•</span>
-                                  <span>{trade.units} units</span>
-                                  <span>•</span>
-                                  <span>{format(new Date(trade.investment_date), "dd MMM yyyy")}</span>
-                                </div>
-
-                                {trade.broker_notes && (
-                                  <p className="mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                                    {trade.broker_notes}
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* View Details Icon */}
-                              <div className="flex-shrink-0">
-                                <Eye className="h-4 w-4 text-gray-400" />
-                              </div>
+                              )}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
               )}
