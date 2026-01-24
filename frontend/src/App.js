@@ -159,29 +159,18 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          {/* Redirect old approval routes to Lead Management */}
           <Route 
             path="/broker/pending-approvals" 
-            element={
-              <ProtectedRoute allowedRoles={["broker"]}>
-                <ApprovalCenter />
-              </ProtectedRoute>
-            } 
+            element={<Navigate to="/broker/leads" replace />}
           />
           <Route 
             path="/broker/approval-logs" 
-            element={
-              <ProtectedRoute allowedRoles={["broker"]}>
-                <ApprovalCenter />
-              </ProtectedRoute>
-            } 
+            element={<Navigate to="/broker/leads" replace />}
           />
           <Route 
             path="/broker/approvals" 
-            element={
-              <ProtectedRoute allowedRoles={["broker"]}>
-                <ApprovalCenter />
-              </ProtectedRoute>
-            } 
+            element={<Navigate to="/broker/leads" replace />}
           />
           
           {/* Sub-Broker Routes */}
