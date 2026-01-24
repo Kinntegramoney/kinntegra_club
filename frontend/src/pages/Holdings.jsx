@@ -1150,40 +1150,34 @@ export default function Holdings() {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Scheme Name</th>
-                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Invested Amount</th>
-                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal Amount</th>
-                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest Amount</th>
-                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">TDS Amount</th>
-                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Repaid</th>
-                        <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Prepaid</th>
-                        <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">XIRR</th>
-                        <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase w-12"></th>
+                        <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">Scheme Name</th>
+                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Invested</th>
+                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Principal Repaid</th>
+                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Interest Repaid</th>
+                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">O/S Principal</th>
+                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">O/S Interest</th>
+                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">TDS</th>
+                        <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Net Repaid</th>
+                        <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase">XIRR</th>
+                        <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase w-10"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredHoldings.map((holding) => (
                         <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-4">
-                            <p className="font-medium text-gray-800">{holding.bond_name}</p>
-                            <p className="text-xs text-gray-500">{holding.total_units} units • {holding.trades.length} transaction(s)</p>
+                          <td className="py-3 px-3">
+                            <p className="font-medium text-gray-800 text-sm">{holding.bond_name}</p>
+                            <p className="text-xs text-gray-500">{holding.total_units} units • {holding.trades.length} txn</p>
                           </td>
-                          <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.invested_amount)}</td>
-                          <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_principal)}</td>
-                          <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_interest)}</td>
-                          <td className="py-4 px-4 text-right font-mono text-sm">{formatINR(holding.repaid_tds)}</td>
-                          <td className="py-4 px-4 text-right font-mono text-sm text-green-600">{formatINR(holding.net_repaid)}</td>
-                          <td className="py-4 px-4 text-center">
-                            {holding.prepaid_count > 0 ? (
-                              <span className="inline-flex items-center gap-1 text-blue-600 text-xs font-medium bg-blue-100 px-2 py-1 rounded-full">
-                                {holding.prepaid_count} prepaid
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                          <td className="py-4 px-4 text-center">
+                          <td className="py-3 px-3 text-right font-mono text-sm">{formatINR(holding.invested_amount)}</td>
+                          <td className="py-3 px-3 text-right font-mono text-sm text-green-600">{formatINR(holding.repaid_principal)}</td>
+                          <td className="py-3 px-3 text-right font-mono text-sm text-green-600">{formatINR(holding.repaid_interest)}</td>
+                          <td className="py-3 px-3 text-right font-mono text-sm text-blue-600">{formatINR(holding.total_principal - holding.repaid_principal)}</td>
+                          <td className="py-3 px-3 text-right font-mono text-sm text-blue-600">{formatINR(holding.total_interest_gross - holding.repaid_interest)}</td>
+                          <td className="py-3 px-3 text-right font-mono text-sm text-red-500">{formatINR(holding.repaid_tds)}</td>
+                          <td className="py-3 px-3 text-right font-mono text-sm font-medium text-gray-800">{formatINR(holding.net_repaid)}</td>
+                          <td className="py-3 px-3 text-center">
                             {holding.xirr !== null && holding.xirr !== undefined ? (
                               <span className={`font-mono text-sm font-medium ${holding.xirr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {holding.xirr.toFixed(2)}%
@@ -1192,18 +1186,18 @@ export default function Holdings() {
                               <span className="text-gray-400 text-xs">-</span>
                             )}
                           </td>
-                          <td className="py-4 px-4 text-center">
-                            <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${holding.status === 'fully_repaid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                              {holding.status === 'fully_repaid' ? 'Fully Repaid' : 'Active'}
+                          <td className="py-3 px-3 text-center">
+                            <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${holding.status === 'fully_repaid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                              {holding.status === 'fully_repaid' ? 'Repaid' : 'Active'}
                             </span>
                           </td>
-                          <td className="py-4 px-4 text-center relative" ref={openMenu === holding.bond_id ? menuRef : null}>
+                          <td className="py-3 px-2 text-center relative" ref={openMenu === holding.bond_id ? menuRef : null}>
                             <button onClick={() => setOpenMenu(openMenu === holding.bond_id ? null : holding.bond_id)} className="p-1 hover:bg-gray-100 rounded" data-testid={`menu-btn-${holding.bond_id}`}>
-                              <MoreVertical className="h-5 w-5 text-gray-500" />
+                              <MoreVertical className="h-4 w-4 text-gray-500" />
                             </button>
                             
                             {openMenu === holding.bond_id && (
-                              <div className="absolute right-4 top-12 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                              <div className="absolute right-4 top-10 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
                                 <button onClick={() => openCashflowModal(holding)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" data-testid={`view-cashflows-${holding.bond_id}`}>
                                   <Eye className="h-4 w-4" />
                                   View Future Cashflows
