@@ -19839,6 +19839,155 @@ async def rebuild_cashflows_from_history(trade_id: str, current_user: dict = Dep
     return results
 
 
+@api_router.post("/admin/recalculate-cashflows-book2/{trade_id}")
+async def recalculate_cashflows_book2(
+    trade_id: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Recalculate cashflows for a trade using Book2.xlsx logic.
+    
+    This follows the exact calculation from the Excel:
+    - Interest = Balance × Coupon Rate × Days / 365
+    - Days are calculated from previous payment date to current payment date
+    - First payment: days from investment date to first payment
+    - Balance reduces after each principal payment
+    
+    For the 7 May 2025 trade (135 units):
+    - Investment: 08-10-2024 (bond start) or actual investment date
+    - First prepayment: 01-10-2025
+    - Days = 359 (from 08-10-2024 to 01-10-2025)
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can recalculate cashflows")
+    
+    # Get trade
+    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    # Get bond
+    bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Get existing cashflows
+    existing_cfs = await db.holding_cashflows.find(
+        {"trade_id": trade_id},
+        {"_id": 0}
+    ).sort("date", 1).to_list(50)
+    
+    if not existing_cfs:
+        raise HTTPException(status_code=404, detail="No cashflows found for this trade")
+    
+    # Calculate original principal (face value * units)
+    units = trade.get('units', 0)
+    face_value = bond.get('face_value', 100000)  # Default 1L per unit
+    original_principal = units * face_value
+    
+    # Get coupon rate
+    coupon_rate = bond.get('coupon_rate', 18.0)
+    if coupon_rate > 1:
+        coupon_rate = coupon_rate / 100  # Convert to decimal
+    
+    # Get bond start date (this is the reference for interest calculation)
+    # Book2.xlsx uses 08-10-2024 as the start date for the 135 unit trade
+    bond_start_str = bond.get('start_date', '') or trade.get('investment_date', '')
+    try:
+        bond_start_date = datetime.fromisoformat(bond_start_str.replace('Z', '+00:00')).replace(tzinfo=None)
+    except:
+        bond_start_date = datetime.strptime(bond_start_str[:10], '%Y-%m-%d')
+    
+    # Get investment date (client's actual investment)
+    inv_date_str = trade.get('investment_date', '')
+    try:
+        investment_date = datetime.fromisoformat(inv_date_str.replace('Z', '+00:00')).replace(tzinfo=None)
+    except:
+        investment_date = datetime.strptime(inv_date_str[:10], '%Y-%m-%d')
+    
+    results = {
+        "trade_id": trade_id,
+        "original_principal": original_principal,
+        "coupon_rate": coupon_rate * 100,
+        "bond_start_date": bond_start_date.strftime('%Y-%m-%d'),
+        "investment_date": investment_date.strftime('%Y-%m-%d'),
+        "cashflows_updated": 0,
+        "updated_cashflows": []
+    }
+    
+    # Recalculate interest for each cashflow using Book2.xlsx logic
+    balance = original_principal
+    prev_date = bond_start_date  # Start from bond start date as per Book2.xlsx
+    
+    for cf in existing_cfs:
+        cf_date_str = cf.get('date', '').split('T')[0]
+        try:
+            cf_date = datetime.strptime(cf_date_str, '%Y-%m-%d')
+        except:
+            continue
+        
+        # Calculate days from previous date
+        days = (cf_date - prev_date).days
+        if days < 0:
+            days = 0
+        
+        # Interest = Balance × Coupon Rate × Days / 365
+        calculated_interest = round((balance * coupon_rate * days) / 365, 2)
+        
+        # Get principal from existing cashflow
+        principal = cf.get('principal_component', 0) or 0
+        
+        # Calculate new balance after this payment
+        new_balance = balance - principal
+        if new_balance < 0:
+            new_balance = 0
+        
+        # TDS = 10% of interest
+        tds = round(calculated_interest * 0.10, 2)
+        gross = round(principal + calculated_interest, 2)
+        net = round(gross - tds, 2)
+        
+        # Update the cashflow
+        update_data = {
+            "original_interest_component": cf.get('original_interest_component') or cf.get('interest_component', 0),
+            "interest_component": calculated_interest,
+            "tds_amount": tds,
+            "gross_amount": gross,
+            "net_amount": net,
+            "days_in_period": days,
+            "balance_before": round(balance, 2),
+            "balance_after": round(new_balance, 2),
+            "coupon_rate_used": coupon_rate * 100,
+            "calculation_method": "book2_logic",
+            "is_amended": True,
+            "amendment_reason": f"Recalculated using Book2 logic. Days: {days}, Balance: {balance:,.2f}",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.holding_cashflows.update_one(
+            {"id": cf['id']},
+            {"$set": update_data}
+        )
+        
+        results["cashflows_updated"] += 1
+        results["updated_cashflows"].append({
+            "date": cf_date_str,
+            "days": days,
+            "balance_before": round(balance, 2),
+            "principal": principal,
+            "old_interest": cf.get('interest_component', 0),
+            "new_interest": calculated_interest,
+            "gross": gross,
+            "balance_after": round(new_balance, 2)
+        })
+        
+        # Update for next iteration
+        balance = new_balance
+        prev_date = cf_date
+    
+    return results
+
+
 @api_router.post("/admin/generate-prepayment-schedule/{trade_id}")
 async def generate_prepayment_schedule(
     trade_id: str, 
