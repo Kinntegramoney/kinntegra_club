@@ -551,6 +551,30 @@ Complete 3-phase approval workflow for sub-broker actions:
 1. **CRITICAL REFACTORING**: 
    - `server.py` (18,000+ lines) needs to be split into routers
    - `ReinvestmentTagging.jsx`, `Opportunities.jsx` need to be broken down
-2. **Delete obsolete components**: `SubBrokerOpportunities.jsx`, `ClientOpportunities.jsx`, `PendingApprovals.jsx`
+2. **Delete obsolete components**: `SubBrokerOpportunities.jsx`, `ClientOpportunities.jsx`, `PendingApprovals.jsx`, `ApprovalCenter.jsx`, `ApprovalLogs.jsx`
 3. **Build Analysis Dashboard**
 4. **Kinntegra API Integration**: Blocked on credentials
+
+## Recent Changes (Jan 24, 2026)
+
+### Lead Management Consolidation
+- Merged "Approvals & Logs" functionality into unified "Lead Management" page
+- Two main tabs: "Reinvestment Approval" and "Client Interest"
+- Reinvestment Approval has sub-tabs: "Clients" and "Reinvestments"
+- Activity Logs kept as separate page (accessible via "Logs" sidebar link)
+- Old routes (`/broker/approvals`, `/broker/pending-approvals`) redirect to `/broker/leads`
+
+### XIRR Calculation Fix
+- Both Expected XIRR and Actual XIRR now use GROSS amounts (principal + interest before TDS)
+- Expected XIRR = based on scheduled gross cashflows
+- Actual XIRR = based on actual repaid gross amounts (principal + net_interest + tds)
+- Difference comes from timing variations, not TDS
+
+### Trades Table Layout Fix
+- Converted from broken flex/grid layout to standard HTML `<table>`
+- Proper column alignment: CLIENT NAME, UCC, DATE, TYPE, AMOUNT, PORTFOLIO, ADVISOR, STATUS
+
+### "In Demand" Badge Logic Fix
+- Correctly calculates: `interested_amount > (face_value × available_units)`
+- `available_units = max(0, total_units - units_sold)`
+
