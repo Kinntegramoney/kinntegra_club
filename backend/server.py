@@ -11785,7 +11785,35 @@ async def reset_database(secret_key: str = None):
         result = await db.currency_projections.delete_many({})
         deleted_counts['currency_projections'] = result.deleted_count
         
-        # 28. Clean uploaded files from disk (except templates)
+        # 28. Delete leads (Lead Management)
+        result = await db.leads.delete_many({})
+        deleted_counts['leads'] = result.deleted_count
+        
+        # 29. Delete reinvestment submissions
+        result = await db.reinvestment_submissions.delete_many({})
+        deleted_counts['reinvestment_submissions'] = result.deleted_count
+        
+        # 30. Delete reinvestment approvals
+        result = await db.reinvestment_approvals.delete_many({})
+        deleted_counts['reinvestment_approvals'] = result.deleted_count
+        
+        # 31. Delete reinvestment logs
+        result = await db.reinvestment_logs.delete_many({})
+        deleted_counts['reinvestment_logs'] = result.deleted_count
+        
+        # 32. Delete approval logs
+        result = await db.approval_logs.delete_many({})
+        deleted_counts['approval_logs'] = result.deleted_count
+        
+        # 33. Delete approval workflows
+        result = await db.approval_workflows.delete_many({})
+        deleted_counts['approval_workflows'] = result.deleted_count
+        
+        # 34. Delete actual repayments
+        result = await db.actual_repayments.delete_many({})
+        deleted_counts['actual_repayments'] = result.deleted_count
+        
+        # 35. Clean uploaded files from disk (except templates)
         upload_dir = os.path.join(os.path.dirname(__file__), 'uploads')
         files_deleted = 0
         if os.path.exists(upload_dir):
