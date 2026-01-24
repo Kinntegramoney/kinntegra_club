@@ -9449,9 +9449,10 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         },
         "summary": {
             "total_investment": round(total_investment, 2),
-            "total_repaid": round(total_repaid, 2),
-            "total_upcoming": round(total_upcoming, 2),
-            "total_expected": round(total_repaid + total_upcoming, 2)
+            "total_repaid": round(total_repaid, 2),  # GROSS repaid
+            "total_upcoming": round(total_upcoming, 2),  # GROSS upcoming
+            "total_expected": round(total_repaid + total_upcoming, 2),  # Total GROSS expected
+            "total_profit": round((total_repaid + total_upcoming) - total_investment, 2)  # GROSS profit
         },
         "holdings": holdings
     }
