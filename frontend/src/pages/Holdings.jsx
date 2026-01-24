@@ -924,103 +924,126 @@ export default function Holdings() {
                       
                       {/* Table Rows */}
                       <div className="divide-y divide-gray-100">
-                        {clientTrades.map((trade) => (
-                          <div 
-                            key={trade.id} 
-                            className="grid grid-cols-12 gap-2 px-4 py-4 items-center hover:bg-gray-50 transition-colors"
-                            data-testid={`trade-row-${trade.id}`}
-                          >
-                            {/* Client Name */}
-                            <div className="col-span-2">
-                              <p className="font-medium text-gray-800">{trade.client_name || selectedClient?.name}</p>
-                            </div>
-                            
-                            {/* UCC */}
-                            <div className="col-span-1">
-                              <p className="font-mono text-sm text-gray-600">{trade.bond_code || '-'}</p>
-                            </div>
-                            
-                            {/* Date */}
-                            <div className="col-span-1">
-                              <p className="text-sm text-gray-600">{format(new Date(trade.investment_date), "dd MMM yyyy")}</p>
-                            </div>
-                            
-                            {/* Type */}
-                            <div className="col-span-2">
-                              <span className="text-purple-600 font-medium text-sm">
-                                {trade.is_historical ? 'Historical' : trade.trade_type || 'Investment'}
-                              </span>
-                            </div>
-                            
-                            {/* Amount */}
-                            <div className="col-span-2 text-right">
-                              <p className="font-mono text-sm text-gray-800">{formatINR(trade.total_amount)}</p>
-                            </div>
-                            
-                            {/* Portfolio */}
-                            <div className="col-span-1">
-                              <p className="text-sm text-gray-600">{trade.portfolio || 'Wealth'}</p>
-                            </div>
-                            
-                            {/* Advisor */}
-                            <div className="col-span-1">
-                              <p className="text-sm text-gray-600">{trade.created_by_name || '-'}</p>
-                            </div>
-                            
-                            {/* Status */}
-                            <div className="col-span-1 text-center">
-                              {trade.status === 'pending' ? (
-                                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded font-medium">Pending</span>
-                              ) : trade.status === 'approved' ? (
-                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-medium">Approved</span>
-                              ) : (
-                                <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded font-medium">Rejected</span>
-                              )}
-                            </div>
-                            
-                            {/* Actions */}
-                            <div className="col-span-1 text-center relative" ref={openTradeMenu === trade.id ? tradeMenuRef : null}>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenTradeMenu(openTradeMenu === trade.id ? null : trade.id);
-                                }}
-                                className="p-1.5 hover:bg-gray-100 rounded transition-colors"
-                                data-testid={`trade-menu-${trade.id}`}
-                              >
-                                <MoreVertical className="h-4 w-4 text-gray-500" />
-                              </button>
+                        {clientTrades.map((trade) => {
+                          // Determine trade type label
+                          const getTradeTypeLabel = () => {
+                            const tag = trade.reinvestment_tag || '';
+                            if (tag === 'principal') return 'Reinv-Principal';
+                            if (tag === 'interest') return 'Reinv-Interest';
+                            if (tag === 'both') return 'Reinv-Both';
+                            if (tag === 'none' || tag === 'not_invest') return 'Not Invest';
+                            if (tag === 'custom' || tag === 'other') return 'Reinv-Custom';
+                            if (tag && tag !== 'not_tagged') return `Reinv-${tag.charAt(0).toUpperCase() + tag.slice(1)}`;
+                            // Default for regular trades
+                            if (trade.is_historical) return 'Principal';
+                            return 'Investment';
+                          };
+                          
+                          const tradeType = getTradeTypeLabel();
+                          
+                          return (
+                            <div 
+                              key={trade.id} 
+                              className="grid grid-cols-12 gap-2 px-4 py-4 items-center hover:bg-gray-50 transition-colors"
+                              data-testid={`trade-row-${trade.id}`}
+                            >
+                              {/* Client Name */}
+                              <div className="col-span-2">
+                                <p className="font-medium text-gray-800">{trade.client_name || selectedClient?.name}</p>
+                              </div>
                               
-                              {/* Dropdown Menu */}
-                              {openTradeMenu === trade.id && (
-                                <div className="absolute right-0 top-8 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[160px] text-left">
-                                  <button
-                                    onClick={() => {
-                                      setTradeDetailsModal(trade);
-                                      setOpenTradeMenu(null);
-                                    }}
-                                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                  >
-                                    <Eye className="h-4 w-4 text-gray-500" />
-                                    View Details
-                                  </button>
-                                  {trade.payment_proof_url && (
-                                    <a
-                                      href={trade.payment_proof_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
-                                      onClick={() => setOpenTradeMenu(null)}
+                              {/* UCC */}
+                              <div className="col-span-1">
+                                <p className="font-mono text-sm text-gray-600">{trade.bond_code || '-'}</p>
+                              </div>
+                              
+                              {/* Date */}
+                              <div className="col-span-1">
+                                <p className="text-sm text-gray-600">{format(new Date(trade.investment_date), "dd MMM yyyy")}</p>
+                              </div>
+                              
+                              {/* Type */}
+                              <div className="col-span-2">
+                                <span className={`font-medium text-sm ${
+                                  tradeType.startsWith('Reinv') ? 'text-purple-600' : 
+                                  tradeType === 'Principal' ? 'text-blue-600' :
+                                  tradeType === 'Interest' ? 'text-green-600' :
+                                  'text-gray-600'
+                                }`}>
+                                  {tradeType}
+                                </span>
+                              </div>
+                              
+                              {/* Amount */}
+                              <div className="col-span-2 text-right">
+                                <p className="font-mono text-sm text-gray-800">{formatINR(trade.total_amount)}</p>
+                              </div>
+                              
+                              {/* Portfolio */}
+                              <div className="col-span-1">
+                                <p className="text-sm text-gray-600">{trade.portfolio || 'Wealth'}</p>
+                              </div>
+                              
+                              {/* Advisor */}
+                              <div className="col-span-1">
+                                <p className="text-sm text-gray-600">{trade.created_by_name || '-'}</p>
+                              </div>
+                              
+                              {/* Status */}
+                              <div className="col-span-1 text-center">
+                                {trade.status === 'pending' ? (
+                                  <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded font-medium">Pending</span>
+                                ) : trade.status === 'approved' ? (
+                                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded font-medium">Approved</span>
+                                ) : (
+                                  <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded font-medium">Rejected</span>
+                                )}
+                              </div>
+                              
+                              {/* Actions */}
+                              <div className="col-span-1 text-center relative" ref={openTradeMenu === trade.id ? tradeMenuRef : null}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenTradeMenu(openTradeMenu === trade.id ? null : trade.id);
+                                  }}
+                                  className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                  data-testid={`trade-menu-${trade.id}`}
+                                >
+                                  <MoreVertical className="h-4 w-4 text-gray-500" />
+                                </button>
+                                
+                                {/* Dropdown Menu */}
+                                {openTradeMenu === trade.id && (
+                                  <div className="absolute right-0 top-8 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[160px] text-left">
+                                    <button
+                                      onClick={() => {
+                                        setTradeDetailsModal(trade);
+                                        setOpenTradeMenu(null);
+                                      }}
+                                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                                     >
-                                      <FileImage className="h-4 w-4" />
-                                      View UTR Copy
-                                    </a>
-                                  )}
-                                </div>
-                              )}
+                                      <Eye className="h-4 w-4 text-gray-500" />
+                                      View Details
+                                    </button>
+                                    {trade.payment_proof_url && (
+                                      <a
+                                        href={trade.payment_proof_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                                        onClick={() => setOpenTradeMenu(null)}
+                                      >
+                                        <FileImage className="h-4 w-4" />
+                                        View UTR Copy
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </>
                   )}
