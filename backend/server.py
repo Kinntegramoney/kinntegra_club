@@ -293,6 +293,371 @@ def generate_combined_payment_schedule(
     }
 
 
+# ==================== BOND PREPAYMENT PROCESSING ====================
+
+async def process_bond_prepayment(
+    db_instance,
+    trade_id: str,
+    prepayment_amount: float,
+    prepayment_date: datetime,
+    source: str = "manual",  # "manual", "historical_upload", "email_reader"
+    recorded_by: str = None,
+    notes: str = None
+) -> dict:
+    """
+    Core function to process a bond principal prepayment.
+    
+    This function:
+    1. Validates the prepayment against outstanding principal
+    2. Proportionally reduces ALL remaining principal payments
+    3. Recalculates future interest based on reduced principal (same coupon rate)
+    4. Updates trade with remaining principal info
+    5. Auto-closes trade if fully prepaid
+    
+    Args:
+        db_instance: MongoDB database instance
+        trade_id: The trade/holding ID
+        prepayment_amount: Amount of principal being prepaid
+        prepayment_date: Date of the prepayment
+        source: Source of prepayment ("manual", "historical_upload", "email_reader")
+        recorded_by: User ID who recorded this prepayment
+        notes: Optional notes about the prepayment
+    
+    Returns:
+        dict with processing results
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    result = {
+        "success": False,
+        "trade_id": trade_id,
+        "prepayment_amount": prepayment_amount,
+        "prepayment_date": prepayment_date.isoformat() if prepayment_date else None,
+        "source": source,
+        "cashflows_modified": 0,
+        "remaining_principal": 0,
+        "remaining_principal_ratio": 1.0,
+        "trade_closed": False,
+        "errors": []
+    }
+    
+    try:
+        # Get trade details
+        trade = await db_instance.trades.find_one({"id": trade_id}, {"_id": 0})
+        if not trade:
+            result["errors"].append(f"Trade {trade_id} not found")
+            return result
+        
+        # Get bond details
+        bond = await db_instance.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
+        if not bond:
+            result["errors"].append(f"Bond {trade['bond_id']} not found")
+            return result
+        
+        # Get all cashflows for this trade
+        all_cashflows = await db_instance.holding_cashflows.find(
+            {"trade_id": trade_id},
+            {"_id": 0}
+        ).sort("date", 1).to_list(200)
+        
+        if not all_cashflows:
+            result["errors"].append(f"No cashflows found for trade {trade_id}")
+            return result
+        
+        # Calculate original principal for this trade
+        original_principal = bond.get('principal_amount', 0) * trade.get('units', 0)
+        
+        # Get previous prepayments for this trade
+        previous_prepayments = await db_instance.prepayment_records.find(
+            {"trade_id": trade_id},
+            {"_id": 0}
+        ).to_list(50)
+        
+        total_previously_prepaid = sum(p.get('prepaid_amount', 0) for p in previous_prepayments)
+        
+        # Calculate outstanding principal before this prepayment
+        # Outstanding = Original - Already Prepaid - Already Repaid Principal
+        repaid_principal = sum(
+            cf.get('principal_component', 0) 
+            for cf in all_cashflows 
+            if cf.get('is_repaid')
+        )
+        outstanding_principal = original_principal - total_previously_prepaid - repaid_principal
+        
+        if outstanding_principal <= 0:
+            result["errors"].append(f"No outstanding principal remaining. Original: {original_principal}, Prepaid: {total_previously_prepaid}, Repaid: {repaid_principal}")
+            return result
+        
+        # Validate prepayment amount
+        if prepayment_amount > outstanding_principal:
+            result["errors"].append(f"Prepayment amount ({prepayment_amount}) exceeds outstanding principal ({outstanding_principal})")
+            return result
+        
+        if prepayment_amount <= 0:
+            result["errors"].append("Prepayment amount must be positive")
+            return result
+        
+        # Calculate remaining principal after this prepayment
+        remaining_principal = outstanding_principal - prepayment_amount
+        
+        # Calculate reduction ratio (how much principal remains as a fraction)
+        # This is used to proportionally reduce future principal and interest
+        if outstanding_principal > 0:
+            remaining_ratio = remaining_principal / outstanding_principal
+        else:
+            remaining_ratio = 0
+        
+        result["remaining_principal"] = round(remaining_principal, 2)
+        result["remaining_principal_ratio"] = round(remaining_ratio, 4)
+        
+        # Get coupon rate for interest recalculation
+        coupon_rate = bond.get('coupon_rate', 0) / 100  # Convert percentage to decimal
+        
+        # Track modifications
+        modified_count = 0
+        
+        # Process each future cashflow
+        for cf in all_cashflows:
+            # Parse cashflow date
+            cf_date_str = cf.get('date', '')
+            if not cf_date_str:
+                continue
+            
+            try:
+                cf_date = datetime.fromisoformat(cf_date_str.replace('Z', '+00:00').split('T')[0])
+            except:
+                try:
+                    cf_date = datetime.strptime(cf_date_str.split('T')[0], '%Y-%m-%d')
+                except:
+                    continue
+            
+            # Skip already repaid cashflows
+            if cf.get('is_repaid'):
+                continue
+            
+            # Skip cashflows before or on prepayment date
+            if cf_date.date() <= prepayment_date.date():
+                continue
+            
+            # Store original values if not already stored
+            original_principal_component = cf.get('original_principal_component') or cf.get('principal_component', 0)
+            original_interest_component = cf.get('original_interest_component') or cf.get('interest_component', 0)
+            original_tds_amount = cf.get('original_tds_amount') or cf.get('tds_amount', 0)
+            original_gross_amount = cf.get('original_gross_amount') or cf.get('gross_amount', 0)
+            original_net_amount = cf.get('original_net_amount') or cf.get('net_amount', 0)
+            
+            # Calculate new amounts based on remaining ratio
+            # Principal: proportionally reduced
+            new_principal = round(original_principal_component * remaining_ratio, 2)
+            
+            # Interest: recalculated on reduced principal (same coupon rate)
+            new_interest = round(original_interest_component * remaining_ratio, 2)
+            
+            # TDS: 10% of new interest
+            new_tds = round(new_interest * 0.10, 2)
+            
+            # Gross and Net amounts
+            new_gross = round(new_principal + new_interest, 2)
+            new_net = round(new_gross - new_tds, 2)
+            
+            # Update the cashflow
+            update_data = {
+                # Store originals (preserve first original values)
+                "original_principal_component": original_principal_component,
+                "original_interest_component": original_interest_component,
+                "original_tds_amount": original_tds_amount,
+                "original_gross_amount": original_gross_amount,
+                "original_net_amount": original_net_amount,
+                # New calculated values
+                "principal_component": new_principal,
+                "interest_component": new_interest,
+                "tds_amount": new_tds,
+                "gross_amount": new_gross,
+                "net_amount": new_net,
+                # Metadata
+                "is_prepayment_amended": True,
+                "prepayment_amended_at": datetime.now(timezone.utc).isoformat(),
+                "prepayment_amended_by": recorded_by,
+                "prepayment_source": source,
+                "remaining_principal_ratio": round(remaining_ratio, 4),
+                "amendment_reason": f"Principal prepayment of ₹{prepayment_amount:,.2f} on {prepayment_date.strftime('%d-%m-%Y')} ({source})"
+            }
+            
+            await db_instance.holding_cashflows.update_one(
+                {"id": cf['id']},
+                {"$set": update_data}
+            )
+            modified_count += 1
+        
+        result["cashflows_modified"] = modified_count
+        
+        # Record the prepayment
+        prepayment_record = {
+            "id": str(uuid.uuid4()),
+            "trade_id": trade_id,
+            "client_id": trade['client_id'],
+            "bond_id": trade['bond_id'],
+            "bond_name": trade.get('bond_name', bond.get('name', '')),
+            "prepayment_date": prepayment_date.isoformat(),
+            "prepaid_amount": prepayment_amount,
+            "original_principal": original_principal,
+            "outstanding_before_prepayment": outstanding_principal,
+            "remaining_principal": remaining_principal,
+            "remaining_ratio": remaining_ratio,
+            "total_prepaid_to_date": total_previously_prepaid + prepayment_amount,
+            "source": source,
+            "notes": notes,
+            "recorded_by": recorded_by,
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "cashflows_modified": modified_count
+        }
+        
+        await db_instance.prepayment_records.insert_one(prepayment_record)
+        
+        # Update trade with prepayment info
+        trade_update = {
+            "has_prepayment": True,
+            "total_prepaid_principal": total_previously_prepaid + prepayment_amount,
+            "remaining_principal": remaining_principal,
+            "last_prepayment_date": prepayment_date.isoformat(),
+            "last_prepayment_source": source,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Check if fully prepaid (trade should be closed)
+        if remaining_principal <= 0.01:  # Allow for small rounding errors
+            trade_update["status"] = "closed"
+            trade_update["closed_reason"] = "fully_prepaid"
+            trade_update["closed_at"] = datetime.now(timezone.utc).isoformat()
+            result["trade_closed"] = True
+            
+            # Check if all trades for this bond are closed
+            active_trades = await db_instance.trades.count_documents({
+                "bond_id": trade['bond_id'],
+                "status": {"$ne": "closed"}
+            })
+            
+            if active_trades <= 1:  # This trade will be closed, so check if it's the last one
+                # Update bond status to closed
+                await db_instance.bonds.update_one(
+                    {"id": trade['bond_id']},
+                    {"$set": {
+                        "status": "closed",
+                        "closed_reason": "all_trades_prepaid",
+                        "closed_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+        
+        await db_instance.trades.update_one(
+            {"id": trade_id},
+            {"$set": trade_update}
+        )
+        
+        result["success"] = True
+        logger.info(f"Processed prepayment for trade {trade_id}: amount={prepayment_amount}, remaining={remaining_principal}, modified={modified_count} cashflows")
+        
+    except Exception as e:
+        logger.error(f"Error processing prepayment for trade {trade_id}: {str(e)}")
+        result["errors"].append(str(e))
+    
+    return result
+
+
+async def detect_and_process_prepayments_from_repayment(
+    db_instance,
+    repayment_record: dict,
+    trade_id: str,
+    recorded_by: str = None
+) -> dict:
+    """
+    Detect if a repayment record contains a prepayment and process it.
+    
+    A prepayment is detected when:
+    1. Principal amount in repayment > scheduled principal for that date
+    2. Repayment date doesn't match any scheduled cashflow date
+    3. Repayment explicitly marked as prepayment
+    
+    Args:
+        db_instance: MongoDB database instance
+        repayment_record: The repayment data from upload or email
+        trade_id: The trade/holding ID
+        recorded_by: User ID who recorded this
+    
+    Returns:
+        dict with detection and processing results
+    """
+    result = {
+        "is_prepayment": False,
+        "prepayment_amount": 0,
+        "processing_result": None
+    }
+    
+    try:
+        repayment_date_str = repayment_record.get('repayment_date', '')
+        if not repayment_date_str:
+            return result
+        
+        # Parse repayment date
+        try:
+            rep_date = datetime.fromisoformat(repayment_date_str.replace('Z', '+00:00').split('T')[0])
+        except:
+            try:
+                rep_date = datetime.strptime(repayment_date_str.split('T')[0], '%Y-%m-%d')
+            except:
+                return result
+        
+        rep_principal = repayment_record.get('principal', 0) or 0
+        
+        # Get scheduled cashflows for this trade
+        scheduled_cashflows = await db_instance.holding_cashflows.find(
+            {"trade_id": trade_id},
+            {"_id": 0}
+        ).to_list(200)
+        
+        # Find if there's a scheduled cashflow for this date
+        scheduled_cf = None
+        rep_date_str = rep_date.strftime('%Y-%m-%d')
+        
+        for cf in scheduled_cashflows:
+            cf_date_str = cf.get('date', '').split('T')[0]
+            if cf_date_str == rep_date_str:
+                scheduled_cf = cf
+                break
+        
+        # Determine if this is a prepayment
+        if scheduled_cf:
+            # Check if principal exceeds scheduled principal
+            scheduled_principal = scheduled_cf.get('principal_component', 0)
+            if rep_principal > scheduled_principal + 0.01:  # Allow small tolerance
+                # This has excess principal - it's a partial prepayment
+                prepayment_amount = rep_principal - scheduled_principal
+                result["is_prepayment"] = True
+                result["prepayment_amount"] = prepayment_amount
+        else:
+            # No scheduled cashflow on this date - check if it's a pure prepayment
+            if rep_principal > 0:
+                result["is_prepayment"] = True
+                result["prepayment_amount"] = rep_principal
+        
+        # Process the prepayment if detected
+        if result["is_prepayment"] and result["prepayment_amount"] > 0:
+            result["processing_result"] = await process_bond_prepayment(
+                db_instance=db_instance,
+                trade_id=trade_id,
+                prepayment_amount=result["prepayment_amount"],
+                prepayment_date=rep_date,
+                source="historical_upload",
+                recorded_by=recorded_by,
+                notes=f"Auto-detected from repayment record"
+            )
+    
+    except Exception as e:
+        result["error"] = str(e)
+    
+    return result
+
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
