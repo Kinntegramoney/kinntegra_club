@@ -11851,8 +11851,9 @@ async def get_bonds(
             bond['interested_count'] = 0
             bond['interested_amount'] = 0
         
-        # Mark as "In Demand" if there are interested leads
-        bond['in_demand'] = bond['interested_count'] > 0
+        # Mark as "In Demand" only if interested amount exceeds or equals bond face value
+        bond_face_value = (bond.get('total_units', 0) or 0) * (bond.get('unit_price', 0) or 0)
+        bond['in_demand'] = bond['interested_amount'] >= bond_face_value and bond['interested_amount'] > 0 and bond_face_value > 0
         
         # Add cashflow repayment counts for funded/closed bonds (by unique dates, not total entries)
         # Get unique date values for total cashflows
@@ -11951,8 +11952,9 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
             bond['interested_count'] = 0
             bond['interested_amount'] = 0
         
-        # Mark as "In Demand" if there are interested leads
-        bond['in_demand'] = bond['interested_count'] > 0
+        # Mark as "In Demand" only if interested amount exceeds or equals bond face value
+        bond_face_value = (bond.get('total_units', 0) or 0) * (bond.get('unit_price', 0) or 0)
+        bond['in_demand'] = bond['interested_amount'] >= bond_face_value and bond['interested_amount'] > 0 and bond_face_value > 0
         
         # Add cashflow repayment counts for funded/closed bonds (by unique dates, not total entries)
         # Get unique date values for total cashflows
