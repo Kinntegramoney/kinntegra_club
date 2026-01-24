@@ -341,3 +341,53 @@ def test_email_connection() -> Dict:
         result['error'] = str(e)
     
     return result
+
+
+def list_all_emails(days_back: int = 30) -> List[Dict]:
+    """List all emails in inbox for debugging - shows subjects"""
+    reader = RepaymentEmailReader()
+    emails_list = []
+    
+    try:
+        if not reader.connect():
+            return []
+        
+        reader.imap.select('INBOX')
+        since_date = (datetime.now() - timedelta(days=days_back)).strftime('%d-%b-%Y')
+        
+        # Search for ALL emails since date
+        search_criteria = f'(SINCE "{since_date}")'
+        status, messages = reader.imap.search(None, search_criteria)
+        
+        if status != 'OK':
+            return []
+        
+        email_ids = messages[0].split()
+        
+        for email_id in email_ids[:50]:  # Limit to 50 for safety
+            try:
+                status, msg_data = reader.imap.fetch(email_id, '(RFC822)')
+                if status != 'OK':
+                    continue
+                
+                raw_email = msg_data[0][1]
+                msg = email.message_from_bytes(raw_email)
+                
+                subject, encoding = decode_header(msg['Subject'])[0]
+                if isinstance(subject, bytes):
+                    subject = subject.decode(encoding or 'utf-8')
+                
+                emails_list.append({
+                    'id': email_id.decode(),
+                    'subject': subject,
+                    'from': msg['From'],
+                    'date': msg['Date']
+                })
+            except Exception as e:
+                continue
+        
+        reader.disconnect()
+    except Exception as e:
+        pass
+    
+    return emails_list
