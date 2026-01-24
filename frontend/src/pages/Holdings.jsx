@@ -275,6 +275,40 @@ export default function Holdings() {
     }
   };
 
+  const handleRebuildCashflowsFromHistory = async (tradeId) => {
+    if (!tradeId) return;
+    
+    setRebuildingCashflows(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/admin/rebuild-cashflows-from-history/${tradeId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      const result = response.data;
+      toast.success(
+        `Cashflows rebuilt! ${result.cashflows_updated} updated. ` +
+        `Original: ₹${(result.original_principal || 0).toLocaleString('en-IN')} → ` +
+        `Remaining: ₹${(result.remaining_principal || 0).toLocaleString('en-IN')}`
+      );
+      
+      // Refresh holdings data
+      if (selectedClient) {
+        fetchHoldings(selectedClient.id);
+      }
+      
+      // Close modal to refresh
+      setShowCashflowModal(false);
+    } catch (error) {
+      console.error("Error rebuilding cashflows:", error);
+      toast.error(error.response?.data?.detail || "Failed to rebuild cashflows");
+    } finally {
+      setRebuildingCashflows(false);
+    }
+  };
+
   const handleDownloadExcel = async () => {
     if (!selectedClient) return;
     
