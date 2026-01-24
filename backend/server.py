@@ -9016,20 +9016,20 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
             if date_str:
                 scheduled_dates.add(date_str.split('T')[0])
             
-            if cf.get('is_repaid'):
-                # For repaid: use actual repaid date if available, else scheduled date
-                use_date = cf.get('repaid_date') or cf.get('date', '')
-                if not use_date:
-                    use_date = cf.get('date', '')
-                
-                # Use GROSS amount for actual XIRR
-                if cf.get('repaid_actual_amount'):
-                    cf_amount = cf.get('repaid_actual_amount')
-                else:
-                    cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
-            else:
-                # For pending: use scheduled date and expected gross amount
+            # ACTUAL XIRR: Only include cashflows that have actually been repaid
+            # Do NOT include pending/future cashflows as they haven't happened yet
+            if not cf.get('is_repaid'):
+                continue
+            
+            # For repaid: use actual repaid date if available, else scheduled date
+            use_date = cf.get('repaid_date') or cf.get('date', '')
+            if not use_date:
                 use_date = cf.get('date', '')
+            
+            # Use GROSS amount for actual XIRR
+            if cf.get('repaid_actual_amount'):
+                cf_amount = cf.get('repaid_actual_amount')
+            else:
                 cf_amount = cf.get('principal_component', 0) + cf.get('interest_component', 0)
             
             if not use_date:
