@@ -353,12 +353,21 @@ def test_email_connection() -> Dict:
         'server': IMAP_SERVER,
         'port': IMAP_PORT,
         'email': EMAIL_ADDRESS,
-        'error': None
+        'error': None,
+        'folders': []
     }
     
     try:
         if reader.connect():
             result['connected'] = True
+            # List available folders
+            try:
+                status, folders = reader.imap.list()
+                if status == 'OK':
+                    result['folders'] = [f.decode() for f in folders]
+            except:
+                pass
+            
             # Try to get mailbox status
             reader.imap.select('INBOX')
             status, data = reader.imap.status('INBOX', '(MESSAGES UNSEEN)')
