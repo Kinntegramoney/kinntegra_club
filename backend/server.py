@@ -18627,6 +18627,52 @@ async def reset_broker_password():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@api_router.post("/admin/fix-repaid-amounts")
+async def fix_repaid_amounts(current_user: dict = Depends(get_current_user)):
+    """
+    Fix repaid_actual_amount in holding_cashflows to use GROSS amount (principal + interest).
+    This ensures XIRR calculation uses pre-TDS amounts.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can run this fix")
+    
+    # Find all repaid cashflows
+    repaid_cashflows = await db.holding_cashflows.find({"is_repaid": True}).to_list(10000)
+    
+    results = {
+        "total_found": len(repaid_cashflows),
+        "updated": 0,
+        "details": []
+    }
+    
+    for cf in repaid_cashflows:
+        # Calculate gross amount = principal + interest (before TDS)
+        principal = cf.get('principal_component', 0) or 0
+        interest = cf.get('interest_component', 0) or 0
+        gross_amount = principal + interest
+        
+        current_actual = cf.get('repaid_actual_amount', 0) or 0
+        scheduled_date = cf.get('date', '')[:10] if cf.get('date') else 'N/A'
+        
+        # Update the record with gross amount
+        result = await db.holding_cashflows.update_one(
+            {"id": cf.get('id')},
+            {"$set": {"repaid_actual_amount": gross_amount}}
+        )
+        
+        if result.modified_count > 0:
+            results['updated'] += 1
+            results['details'].append({
+                "date": scheduled_date,
+                "old_amount": current_actual,
+                "new_amount": gross_amount,
+                "difference": gross_amount - current_actual
+            })
+    
+    return results
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
