@@ -409,78 +409,137 @@ async def process_bond_prepayment(
         # Calculate remaining principal after this prepayment
         remaining_principal = outstanding_principal - prepayment_amount
         
-        # Calculate CUMULATIVE remaining ratio based on ORIGINAL principal
-        # This is the key fix - we need to calculate ratio from ORIGINAL values, not current values
-        # Total prepaid after this = total_previously_prepaid + prepayment_amount
+        # Total prepaid after this prepayment
         total_prepaid_after = total_previously_prepaid + prepayment_amount
         
-        # Cumulative remaining ratio = (Original - All Prepayments) / Original
-        if original_principal > 0:
-            cumulative_remaining_ratio = (original_principal - total_prepaid_after - repaid_principal) / original_principal
-        else:
-            cumulative_remaining_ratio = 0
-        
-        # For incremental tracking
-        if outstanding_principal > 0:
-            incremental_ratio = remaining_principal / outstanding_principal
-        else:
-            incremental_ratio = 0
-        
-        result["remaining_principal"] = round(remaining_principal, 2)
-        result["remaining_principal_ratio"] = round(cumulative_remaining_ratio, 4)  # Use cumulative ratio
-        
         # Get coupon rate for interest recalculation
-        coupon_rate = bond.get('coupon_rate', 0) / 100  # Convert percentage to decimal
+        # Coupon rate should be the one used for client (e.g., 18.78% from Excel)
+        coupon_rate = bond.get('coupon_rate', 0)
+        if coupon_rate == 0:
+            coupon_rate = bond.get('interest_rate', 0)
+        coupon_rate = coupon_rate / 100 if coupon_rate > 1 else coupon_rate  # Convert to decimal if percentage
         
         # Track modifications
         modified_count = 0
         
-        # Process each future cashflow
-        for cf in all_cashflows:
-            # Parse cashflow date
-            cf_date_str = cf.get('date', '')
-            if not cf_date_str:
-                continue
-            
-            try:
-                cf_date = datetime.fromisoformat(cf_date_str.replace('Z', '+00:00').split('T')[0])
-            except:
+        # =====================================================
+        # NEW LOGIC: Recalculate interest based on balance principal and days
+        # Following CDNRE001 example:
+        # Interest = Balance Principal × Coupon Rate × Days / 365
+        # =====================================================
+        
+        # Get all prepayments including this one, sorted by date
+        all_prepayments_data = []
+        for p in previous_prepayments:
+            p_date_str = p.get('prepayment_date', '')
+            if p_date_str:
                 try:
-                    cf_date = datetime.strptime(cf_date_str.split('T')[0], '%Y-%m-%d')
+                    p_date = datetime.fromisoformat(p_date_str.replace('Z', '+00:00'))
                 except:
-                    continue
-            
-            # Skip already repaid cashflows
-            if cf.get('is_repaid'):
-                continue
-            
-            # Skip cashflows before or on prepayment date
-            if cf_date.date() <= prepayment_date.date():
-                continue
-            
+                    p_date = datetime.strptime(p_date_str[:10], '%Y-%m-%d')
+                all_prepayments_data.append({
+                    'date': p_date,
+                    'amount': p.get('prepaid_amount', 0)
+                })
+        
+        # Add current prepayment
+        all_prepayments_data.append({
+            'date': prepayment_date,
+            'amount': prepayment_amount
+        })
+        
+        # Sort prepayments by date
+        all_prepayments_data.sort(key=lambda x: x['date'])
+        
+        # Find the maturity/final cashflow (the one with the most principal)
+        final_cashflow = None
+        max_principal = 0
+        for cf in all_cashflows:
+            if cf.get('principal_component', 0) > max_principal and not cf.get('is_repaid'):
+                max_principal = cf.get('principal_component', 0)
+                final_cashflow = cf
+        
+        if not final_cashflow:
+            # Use the last unpaid cashflow
+            for cf in reversed(all_cashflows):
+                if not cf.get('is_repaid'):
+                    final_cashflow = cf
+                    break
+        
+        if final_cashflow:
             # Store original values if not already stored
-            # IMPORTANT: Always use the FIRST original values (before any prepayment)
-            original_principal_component = cf.get('original_principal_component') or cf.get('principal_component', 0)
-            original_interest_component = cf.get('original_interest_component') or cf.get('interest_component', 0)
-            original_tds_amount = cf.get('original_tds_amount') or cf.get('tds_amount', 0)
-            original_gross_amount = cf.get('original_gross_amount') or cf.get('gross_amount', 0)
-            original_net_amount = cf.get('original_net_amount') or cf.get('net_amount', 0)
+            original_principal_component = final_cashflow.get('original_principal_component') or final_cashflow.get('principal_component', 0)
+            original_interest_component = final_cashflow.get('original_interest_component') or final_cashflow.get('interest_component', 0)
+            original_tds_amount = final_cashflow.get('original_tds_amount') or final_cashflow.get('tds_amount', 0)
+            original_gross_amount = final_cashflow.get('original_gross_amount') or final_cashflow.get('gross_amount', 0)
+            original_net_amount = final_cashflow.get('original_net_amount') or final_cashflow.get('net_amount', 0)
             
-            # Calculate new amounts based on CUMULATIVE remaining ratio from ORIGINAL values
-            # Principal: proportionally reduced based on cumulative remaining ratio
-            new_principal = round(original_principal_component * cumulative_remaining_ratio, 2)
+            # Parse final cashflow date
+            final_date_str = final_cashflow.get('date', '')
+            try:
+                final_date = datetime.fromisoformat(final_date_str.replace('Z', '+00:00'))
+            except:
+                final_date = datetime.strptime(final_date_str[:10], '%Y-%m-%d')
             
-            # Interest: recalculated on reduced principal (same coupon rate)
-            new_interest = round(original_interest_component * cumulative_remaining_ratio, 2)
+            # Calculate interest based on balance principal for each period
+            # Following the Excel logic exactly
             
-            # TDS: 10% of new interest
-            new_tds = round(new_interest * 0.10, 2)
+            # Get bond start date or investment date
+            inv_date_str = trade.get('investment_date', '') or bond.get('start_date', '')
+            try:
+                inv_date = datetime.fromisoformat(inv_date_str.replace('Z', '+00:00'))
+            except:
+                inv_date = datetime.strptime(inv_date_str[:10], '%Y-%m-%d')
+            
+            # Build the timeline of events
+            events = [{'date': inv_date, 'type': 'start', 'amount': 0}]
+            
+            for p in all_prepayments_data:
+                events.append({'date': p['date'], 'type': 'prepayment', 'amount': p['amount']})
+            
+            events.append({'date': final_date, 'type': 'maturity', 'amount': 0})
+            
+            # Sort events by date
+            events.sort(key=lambda x: x['date'])
+            
+            # Calculate interest period by period
+            balance_principal = original_principal
+            total_accumulated_interest = 0
+            prev_date = inv_date
+            
+            for event in events:
+                if event['type'] == 'start':
+                    continue
+                
+                # Calculate days from previous date
+                days = (event['date'].replace(tzinfo=None) - prev_date.replace(tzinfo=None)).days
+                if days < 0:
+                    days = 0
+                
+                # Interest for this period = Balance × Coupon × Days / 365
+                period_interest = (balance_principal * coupon_rate * days) / 365
+                total_accumulated_interest += period_interest
+                
+                # If prepayment, reduce balance
+                if event['type'] == 'prepayment':
+                    balance_principal -= event['amount']
+                    if balance_principal < 0:
+                        balance_principal = 0
+                
+                prev_date = event['date']
+            
+            # Final principal at maturity = remaining balance after all prepayments
+            final_principal = balance_principal
+            final_interest = round(total_accumulated_interest, 2)
+            
+            # TDS: 10% of interest
+            new_tds = round(final_interest * 0.10, 2)
             
             # Gross and Net amounts
-            new_gross = round(new_principal + new_interest, 2)
+            new_gross = round(final_principal + final_interest, 2)
             new_net = round(new_gross - new_tds, 2)
             
-            # Update the cashflow
+            # Update the final cashflow
             update_data = {
                 # Store originals (preserve first original values)
                 "original_principal_component": original_principal_component,
@@ -488,9 +547,9 @@ async def process_bond_prepayment(
                 "original_tds_amount": original_tds_amount,
                 "original_gross_amount": original_gross_amount,
                 "original_net_amount": original_net_amount,
-                # New calculated values
-                "principal_component": new_principal,
-                "interest_component": new_interest,
+                # New calculated values based on day-by-day interest
+                "principal_component": round(final_principal, 2),
+                "interest_component": final_interest,
                 "tds_amount": new_tds,
                 "gross_amount": new_gross,
                 "net_amount": new_net,
@@ -499,18 +558,63 @@ async def process_bond_prepayment(
                 "prepayment_amended_at": datetime.now(timezone.utc).isoformat(),
                 "prepayment_amended_by": recorded_by,
                 "prepayment_source": source,
-                "remaining_principal_ratio": round(cumulative_remaining_ratio, 4),
-                "cumulative_prepaid_amount": round(total_prepaid_after, 2),
-                "amendment_reason": f"Principal prepayment of ₹{prepayment_amount:,.2f} on {prepayment_date.strftime('%d-%m-%Y')} ({source}). Total prepaid: ₹{total_prepaid_after:,.2f}. Cumulative ratio: {cumulative_remaining_ratio:.4f}"
+                "balance_principal_at_maturity": round(final_principal, 2),
+                "accumulated_interest": final_interest,
+                "total_prepaid_principal": round(total_prepaid_after, 2),
+                "coupon_rate_used": coupon_rate,
+                "amendment_reason": f"Prepayment of ₹{prepayment_amount:,.2f} on {prepayment_date.strftime('%d-%m-%Y')}. Balance: ₹{final_principal:,.2f}. Interest recalculated: ₹{final_interest:,.2f}"
             }
             
             await db_instance.holding_cashflows.update_one(
-                {"id": cf['id']},
+                {"id": final_cashflow['id']},
                 {"$set": update_data}
             )
             modified_count += 1
         
+        # Also update any intermediate cashflows that represent prepayments
+        # These should have principal = prepayment amount, interest = 0
+        for cf in all_cashflows:
+            if cf.get('is_repaid'):
+                continue
+            if cf.get('id') == final_cashflow.get('id') if final_cashflow else None:
+                continue
+            
+            cf_date_str = cf.get('date', '')
+            try:
+                cf_date = datetime.fromisoformat(cf_date_str.replace('Z', '+00:00'))
+            except:
+                try:
+                    cf_date = datetime.strptime(cf_date_str[:10], '%Y-%m-%d')
+                except:
+                    continue
+            
+            # Check if this cashflow date matches any prepayment date
+            for p in all_prepayments_data:
+                if abs((cf_date.replace(tzinfo=None) - p['date'].replace(tzinfo=None)).days) <= 1:
+                    # This is a prepayment cashflow - should show prepayment amount, no interest
+                    orig_principal = cf.get('original_principal_component') or cf.get('principal_component', 0)
+                    orig_interest = cf.get('original_interest_component') or cf.get('interest_component', 0)
+                    
+                    await db_instance.holding_cashflows.update_one(
+                        {"id": cf['id']},
+                        {"$set": {
+                            "original_principal_component": orig_principal,
+                            "original_interest_component": orig_interest,
+                            "principal_component": round(p['amount'], 2),
+                            "interest_component": 0,
+                            "tds_amount": 0,
+                            "gross_amount": round(p['amount'], 2),
+                            "net_amount": round(p['amount'], 2),
+                            "is_prepayment_cashflow": True,
+                            "prepayment_amended_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    modified_count += 1
+                    break
+        
         result["cashflows_modified"] = modified_count
+        result["remaining_principal"] = round(remaining_principal, 2)
+        result["remaining_principal_ratio"] = round(remaining_principal / original_principal, 4) if original_principal > 0 else 0
         
         # Record the prepayment
         prepayment_record = {
@@ -524,8 +628,7 @@ async def process_bond_prepayment(
             "original_principal": original_principal,
             "outstanding_before_prepayment": outstanding_principal,
             "remaining_principal": remaining_principal,
-            "remaining_ratio": cumulative_remaining_ratio,  # Store cumulative ratio
-            "incremental_ratio": incremental_ratio,  # Also store incremental for audit
+            "remaining_ratio": round(remaining_principal / original_principal, 4) if original_principal > 0 else 0,
             "total_prepaid_to_date": total_prepaid_after,
             "source": source,
             "notes": notes,
