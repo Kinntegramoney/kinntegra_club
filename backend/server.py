@@ -16497,6 +16497,88 @@ async def test_email(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to send test email. Check server logs.")
 
 
+# ==================== EMAIL READER ENDPOINTS ====================
+
+@api_router.get("/email-reader/test-connection")
+async def test_email_reader_connection(current_user: dict = Depends(get_current_user)):
+    """Test connection to the repayment email inbox"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this")
+    
+    result = test_email_connection()
+    return result
+
+
+@api_router.post("/email-reader/process")
+async def process_emails_endpoint(
+    days_back: int = 7,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Manually trigger email processing to fetch and process repayment emails
+    Updates cashflows with actual repayment data from emails
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can process emails")
+    
+    result = await process_repayment_emails(db, days_back)
+    return result
+
+
+@api_router.get("/email-reader/preview")
+async def preview_repayment_emails(
+    days_back: int = 7,
+    current_user: dict = Depends(get_current_user)
+):
+    """Preview repayment emails without processing them"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this")
+    
+    reader = RepaymentEmailReader()
+    try:
+        if not reader.connect():
+            raise HTTPException(status_code=500, detail="Failed to connect to email server")
+        
+        emails = reader.fetch_repayment_emails(days_back)
+        return {
+            "total_emails": len(emails),
+            "emails": emails
+        }
+    finally:
+        reader.disconnect()
+
+
+@api_router.get("/email-reader/logs")
+async def get_email_processing_logs(
+    limit: int = 20,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get email processing logs"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this")
+    
+    logs = await db.email_processing_logs.find(
+        {}, {"_id": 0}
+    ).sort("processed_at", -1).limit(limit).to_list(limit)
+    
+    return {"logs": logs}
+
+
+# ==================== SCHEDULED EMAIL PROCESSING ====================
+
+async def scheduled_email_processing():
+    """Background task to process emails daily at 9 PM"""
+    try:
+        logger.info("Running scheduled email processing...")
+        result = await process_repayment_emails(db, days_back=1)
+        logger.info(f"Scheduled email processing completed: {result}")
+    except Exception as e:
+        logger.error(f"Scheduled email processing failed: {e}")
+
+
+# ==================== END EMAIL READER ENDPOINTS ====================
+
+
 # Sell Unit Model
 class SellUnitRequest(BaseModel):
     sale_date: str
