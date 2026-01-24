@@ -91,7 +91,7 @@ export default function Holdings() {
     setLoadingHoldings(true);
     try {
       const token = localStorage.getItem("token");
-      const [holdingsRes, clientRes, tradesRes, realEstateRes] = await Promise.all([
+      const [holdingsRes, clientRes, tradesRes, realEstateRes, reinvLogsRes] = await Promise.all([
         axios.get(`${API}/holdings/client/${clientId}`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
