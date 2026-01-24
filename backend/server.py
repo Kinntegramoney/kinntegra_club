@@ -401,15 +401,25 @@ async def process_bond_prepayment(
         # Calculate remaining principal after this prepayment
         remaining_principal = outstanding_principal - prepayment_amount
         
-        # Calculate reduction ratio (how much principal remains as a fraction)
-        # This is used to proportionally reduce future principal and interest
-        if outstanding_principal > 0:
-            remaining_ratio = remaining_principal / outstanding_principal
+        # Calculate CUMULATIVE remaining ratio based on ORIGINAL principal
+        # This is the key fix - we need to calculate ratio from ORIGINAL values, not current values
+        # Total prepaid after this = total_previously_prepaid + prepayment_amount
+        total_prepaid_after = total_previously_prepaid + prepayment_amount
+        
+        # Cumulative remaining ratio = (Original - All Prepayments) / Original
+        if original_principal > 0:
+            cumulative_remaining_ratio = (original_principal - total_prepaid_after - repaid_principal) / original_principal
         else:
-            remaining_ratio = 0
+            cumulative_remaining_ratio = 0
+        
+        # For incremental tracking
+        if outstanding_principal > 0:
+            incremental_ratio = remaining_principal / outstanding_principal
+        else:
+            incremental_ratio = 0
         
         result["remaining_principal"] = round(remaining_principal, 2)
-        result["remaining_principal_ratio"] = round(remaining_ratio, 4)
+        result["remaining_principal_ratio"] = round(cumulative_remaining_ratio, 4)  # Use cumulative ratio
         
         # Get coupon rate for interest recalculation
         coupon_rate = bond.get('coupon_rate', 0) / 100  # Convert percentage to decimal
@@ -441,13 +451,14 @@ async def process_bond_prepayment(
                 continue
             
             # Store original values if not already stored
+            # IMPORTANT: Always use the FIRST original values (before any prepayment)
             original_principal_component = cf.get('original_principal_component') or cf.get('principal_component', 0)
             original_interest_component = cf.get('original_interest_component') or cf.get('interest_component', 0)
             original_tds_amount = cf.get('original_tds_amount') or cf.get('tds_amount', 0)
             original_gross_amount = cf.get('original_gross_amount') or cf.get('gross_amount', 0)
             original_net_amount = cf.get('original_net_amount') or cf.get('net_amount', 0)
             
-            # Calculate new amounts based on remaining ratio
+            # Calculate new amounts based on CUMULATIVE remaining ratio from ORIGINAL values
             # Principal: proportionally reduced
             new_principal = round(original_principal_component * remaining_ratio, 2)
             
