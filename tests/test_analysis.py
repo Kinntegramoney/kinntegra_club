@@ -7,7 +7,7 @@ import requests
 import os
 import json
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://broker-portal-26.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://xirr-calc-agent.preview.emergentagent.com')
 
 # Test credentials
 BROKER_CREDENTIALS = {
