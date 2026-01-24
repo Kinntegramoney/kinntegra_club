@@ -294,13 +294,13 @@ export default function Holdings() {
         `Remaining: ₹${(result.remaining_principal || 0).toLocaleString('en-IN')}`
       );
       
-      // Refresh holdings data
+      // Refresh client details to reload holdings
       if (selectedClient) {
-        fetchHoldings(selectedClient.id);
+        handleClientClick(selectedClient);
       }
       
       // Close modal to refresh
-      setShowCashflowModal(false);
+      closeModal();
     } catch (error) {
       console.error("Error rebuilding cashflows:", error);
       toast.error(error.response?.data?.detail || "Failed to rebuild cashflows");
