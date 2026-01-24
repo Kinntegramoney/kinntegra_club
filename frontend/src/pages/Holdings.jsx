@@ -948,15 +948,15 @@ export default function Holdings() {
                   ) : (
                     <>
                       {/* Table Header */}
-                      <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
-                        <div className="col-span-2">CLIENT NAME</div>
-                        <div className="col-span-1">UCC</div>
-                        <div className="col-span-1">DATE</div>
-                        <div className="col-span-2">TYPE</div>
-                        <div className="col-span-2 text-right">AMOUNT</div>
-                        <div className="col-span-1">PORTFOLIO</div>
-                        <div className="col-span-1">ADVISOR</div>
-                        <div className="col-span-1 text-center">STATUS</div>
+                      <div className="grid grid-cols-24 gap-1 px-4 py-3 bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="col-span-4">CLIENT NAME</div>
+                        <div className="col-span-3">UCC</div>
+                        <div className="col-span-3">DATE</div>
+                        <div className="col-span-3">TYPE</div>
+                        <div className="col-span-4 text-right">AMOUNT</div>
+                        <div className="col-span-2">PORTFOLIO</div>
+                        <div className="col-span-2">ADVISOR</div>
+                        <div className="col-span-2 text-center">STATUS</div>
                         <div className="col-span-1"></div>
                       </div>
                       
@@ -982,27 +982,27 @@ export default function Holdings() {
                           return (
                             <div 
                               key={trade.id} 
-                              className="grid grid-cols-12 gap-2 px-4 py-4 items-center hover:bg-gray-50 transition-colors"
+                              className="grid grid-cols-24 gap-1 px-4 py-3 items-center hover:bg-gray-50 transition-colors"
                               data-testid={`trade-row-${trade.id}`}
                             >
                               {/* Client Name */}
-                              <div className="col-span-2">
-                                <p className="font-medium text-gray-800">{trade.client_name || selectedClient?.name}</p>
+                              <div className="col-span-4">
+                                <p className="font-medium text-gray-800 text-sm truncate">{trade.client_name || selectedClient?.name}</p>
                               </div>
                               
                               {/* UCC */}
-                              <div className="col-span-1">
-                                <p className="font-mono text-sm text-gray-600">{trade.bond_code || '-'}</p>
+                              <div className="col-span-3">
+                                <p className="font-mono text-xs text-gray-600">{trade.bond_code || '-'}</p>
                               </div>
                               
                               {/* Date */}
-                              <div className="col-span-1">
-                                <p className="text-sm text-gray-600">{format(new Date(trade.investment_date), "dd MMM yyyy")}</p>
+                              <div className="col-span-3">
+                                <p className="text-xs text-gray-600">{format(new Date(trade.investment_date), "dd MMM yyyy")}</p>
                               </div>
                               
                               {/* Type */}
-                              <div className="col-span-2">
-                                <span className={`font-medium text-sm ${
+                              <div className="col-span-3">
+                                <span className={`font-medium text-xs ${
                                   tradeType.startsWith('Reinv') ? 'text-purple-600' : 
                                   tradeType === 'Principal' ? 'text-blue-600' :
                                   tradeType === 'Interest' ? 'text-green-600' :
@@ -1013,8 +1013,8 @@ export default function Holdings() {
                               </div>
                               
                               {/* Amount */}
-                              <div className="col-span-2 text-right">
-                                <p className="font-mono text-sm text-gray-800">{formatINR(trade.total_amount)}</p>
+                              <div className="col-span-4 text-right">
+                                <p className="font-mono text-sm font-semibold text-gray-800">{formatINR(trade.total_amount)}</p>
                               </div>
                               
                               {/* Portfolio */}
