@@ -948,16 +948,16 @@ export default function Holdings() {
                   ) : (
                     <>
                       {/* Table Header */}
-                      <div className="grid grid-cols-24 gap-1 px-4 py-3 bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
-                        <div className="col-span-4">CLIENT NAME</div>
-                        <div className="col-span-3">UCC</div>
-                        <div className="col-span-3">DATE</div>
-                        <div className="col-span-3">TYPE</div>
-                        <div className="col-span-4 text-right">AMOUNT</div>
-                        <div className="col-span-2">PORTFOLIO</div>
-                        <div className="col-span-2">ADVISOR</div>
-                        <div className="col-span-2 text-center">STATUS</div>
-                        <div className="col-span-1"></div>
+                      <div className="flex items-center px-4 py-3 bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="w-[15%]">CLIENT NAME</div>
+                        <div className="w-[10%]">UCC</div>
+                        <div className="w-[10%]">DATE</div>
+                        <div className="w-[12%]">TYPE</div>
+                        <div className="w-[15%] text-right">AMOUNT</div>
+                        <div className="w-[10%]">PORTFOLIO</div>
+                        <div className="w-[12%]">ADVISOR</div>
+                        <div className="w-[10%] text-center">STATUS</div>
+                        <div className="w-[6%] text-center"></div>
                       </div>
                       
                       {/* Table Rows */}
@@ -982,26 +982,26 @@ export default function Holdings() {
                           return (
                             <div 
                               key={trade.id} 
-                              className="grid grid-cols-24 gap-1 px-4 py-3 items-center hover:bg-gray-50 transition-colors"
+                              className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors"
                               data-testid={`trade-row-${trade.id}`}
                             >
                               {/* Client Name */}
-                              <div className="col-span-4">
+                              <div className="w-[15%]">
                                 <p className="font-medium text-gray-800 text-sm truncate">{trade.client_name || selectedClient?.name}</p>
                               </div>
                               
                               {/* UCC */}
-                              <div className="col-span-3">
+                              <div className="w-[10%]">
                                 <p className="font-mono text-xs text-gray-600">{trade.bond_code || '-'}</p>
                               </div>
                               
                               {/* Date */}
-                              <div className="col-span-3">
+                              <div className="w-[10%]">
                                 <p className="text-xs text-gray-600">{format(new Date(trade.investment_date), "dd MMM yyyy")}</p>
                               </div>
                               
                               {/* Type */}
-                              <div className="col-span-3">
+                              <div className="w-[12%]">
                                 <span className={`font-medium text-xs ${
                                   tradeType.startsWith('Reinv') ? 'text-purple-600' : 
                                   tradeType === 'Principal' ? 'text-blue-600' :
@@ -1013,22 +1013,22 @@ export default function Holdings() {
                               </div>
                               
                               {/* Amount */}
-                              <div className="col-span-4 text-right">
+                              <div className="w-[15%] text-right">
                                 <p className="font-mono text-sm font-semibold text-gray-800">{formatINR(trade.total_amount)}</p>
                               </div>
                               
                               {/* Portfolio */}
-                              <div className="col-span-2">
+                              <div className="w-[10%]">
                                 <p className="text-xs text-gray-600">{trade.portfolio || 'Wealth'}</p>
                               </div>
                               
                               {/* Advisor */}
-                              <div className="col-span-2">
+                              <div className="w-[12%]">
                                 <p className="text-xs text-gray-600 truncate">{trade.created_by_name || '-'}</p>
                               </div>
                               
                               {/* Status */}
-                              <div className="col-span-2 text-center">
+                              <div className="w-[10%] text-center">
                                 {trade.status === 'pending' ? (
                                   <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded font-medium">Pending</span>
                                 ) : trade.status === 'approved' ? (
@@ -1039,7 +1039,7 @@ export default function Holdings() {
                               </div>
                               
                               {/* Actions */}
-                              <div className="col-span-1 text-center relative" ref={openTradeMenu === trade.id ? tradeMenuRef : null}>
+                              <div className="w-[6%] text-center relative" ref={openTradeMenu === trade.id ? tradeMenuRef : null}>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1077,7 +1077,7 @@ export default function Holdings() {
                                       </a>
                                     )}
                                   </div>
-                                )}}
+                                )}}}
                               </div>
                             </div>
                           );
