@@ -9039,19 +9039,20 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
         return None
 
 
-def calculate_actual_xirr(investment_date: str, investment_amount: float, cashflows: List[dict], actual_repayments: List[dict] = None, bond_start_date: str = None) -> Optional[float]:
+def calculate_actual_xirr(investment_date: str, investment_amount: float, cashflows: List[dict], actual_repayments: List[dict] = None, bond_start_date: str = None, interest_at_maturity: bool = True) -> Optional[float]:
     """
-    Calculate Actual XIRR using GROSS amounts (principal + gross interest before TDS).
+    Calculate Actual XIRR.
     
-    IMPORTANT: XIRR is always calculated from INVESTMENT_DATE - the date when the
-    client's money was actually invested. This reflects the true return on the
-    client's investment for ALL bonds (with or without prepayments).
+    For bonds with INTEREST AT MATURITY (interest_at_maturity=True):
+    - Prepayments: Principal ONLY (no interest)
+    - Maturity: Remaining Principal + ALL accumulated interest
+    This matches Book2.xlsx calculation logic.
     
-    This function considers:
-    1. Scheduled cashflows (both repaid and pending from holding_cashflows)
-    2. Unscheduled prepayments (from actual_repayments) - principal paid outside schedule
+    For regular bonds (interest_at_maturity=False):
+    - Each payment: Principal + Interest (GROSS)
     
-    Actual XIRR = principal + gross_interest (before TDS deduction)
+    IMPORTANT: XIRR is calculated from INVESTMENT_DATE - the date when the
+    client's money was actually invested.
     """
     try:
         from scipy.optimize import brentq
@@ -9061,73 +9062,74 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
         amounts = []
         
         # Always use INVESTMENT_DATE as reference for all bonds
-        # This reflects the client's actual return from when they invested
         ref_date_str = investment_date.split('T')[0] if 'T' in investment_date else investment_date
-        
         ref_date = datetime.strptime(ref_date_str, '%Y-%m-%d')
         dates.append(ref_date)
         amounts.append(-investment_amount)  # Investment outflow
         
-        # Track dates of scheduled cashflows to avoid double-counting
-        scheduled_dates = set()
+        # Sort cashflows by date
+        sorted_cfs = sorted(cashflows, key=lambda x: x.get('date', ''))
         
-        # Process scheduled cashflows first
-        for cf in cashflows:
-            date_str = cf.get('date', '')
-            if date_str:
-                scheduled_dates.add(date_str.split('T')[0])
+        if interest_at_maturity and len(sorted_cfs) > 0:
+            # Interest-at-maturity calculation (Book2.xlsx style)
+            # Prepayments get principal only, maturity gets principal + all interest
             
-            # ACTUAL XIRR calculation:
-            # - For REPAID cashflows: Use GROSS amounts (principal + interest BEFORE TDS)
-            # - For PENDING cashflows: Use GROSS amounts from scheduled cashflows
-            # XIRR should always use GROSS amounts, not NET (after TDS)
-            
-            if cf.get('is_repaid'):
-                # For repaid: use actual repaid date if available, else scheduled date
-                use_date = cf.get('repaid_date') or cf.get('date', '')
-                if not use_date:
-                    use_date = cf.get('date', '')
+            total_interest = 0
+            for i, cf in enumerate(sorted_cfs):
+                date_str = cf.get('date', '')
+                if not date_str:
+                    continue
+                date_str = date_str.split('T')[0] if 'T' in date_str else date_str
                 
-                # Use GROSS amount for XIRR calculation (principal + interest BEFORE TDS)
-                # Priority: gross_amount field > calculated from components
-                if cf.get('gross_amount'):
-                    cf_amount = cf.get('gross_amount')
+                principal = cf.get('principal_component', 0) or 0
+                interest = cf.get('interest_component', 0) or 0
+                
+                is_last = (i == len(sorted_cfs) - 1)
+                
+                if is_last:
+                    # Maturity: Principal + ALL accumulated interest
+                    cf_amount = principal + total_interest + interest
                 else:
-                    # Calculate GROSS = principal + interest (before TDS deduction)
-                    cf_amount = (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
-            else:
-                # For pending: use scheduled date and GROSS amounts
-                use_date = cf.get('date', '')
-                # GROSS = principal + interest (before TDS)
-                if cf.get('gross_amount'):
-                    cf_amount = cf.get('gross_amount')
+                    # Prepayment: Principal only, accumulate interest for maturity
+                    cf_amount = principal
+                    total_interest += interest
+                
+                if cf_amount > 0:
+                    try:
+                        cf_date = datetime.strptime(date_str, '%Y-%m-%d')
+                        dates.append(cf_date)
+                        amounts.append(cf_amount)
+                    except:
+                        continue
+        else:
+            # Regular calculation: Each payment = Principal + Interest (GROSS)
+            for cf in sorted_cfs:
+                date_str = cf.get('date', '')
+                if not date_str:
+                    continue
+                date_str = date_str.split('T')[0] if 'T' in date_str else date_str
+                
+                if cf.get('is_repaid'):
+                    use_date = cf.get('repaid_date') or date_str
+                    use_date = use_date.split('T')[0] if 'T' in use_date else use_date
+                    if cf.get('gross_amount'):
+                        cf_amount = cf.get('gross_amount')
+                    else:
+                        cf_amount = (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
                 else:
-                    cf_amount = (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
-            
-            if not use_date:
-                continue
+                    use_date = date_str
+                    if cf.get('gross_amount'):
+                        cf_amount = cf.get('gross_amount')
+                    else:
+                        cf_amount = (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
                 
-            use_date = use_date.split('T')[0] if 'T' in use_date else use_date
-            
-            if cf_amount > 0:
-                try:
-                    cf_date = datetime.strptime(use_date, '%Y-%m-%d')
-                    dates.append(cf_date)
-                    amounts.append(cf_amount)
-                except:
-                    continue
-        
-        # Add unscheduled actual repayments (prepayments outside normal schedule)
-        if actual_repayments:
-            for ar in actual_repayments:
-                ar_date_str = ar.get('repayment_date', '')
-                if not ar_date_str:
-                    continue
-                ar_date_str = ar_date_str.split('T')[0] if 'T' in ar_date_str else ar_date_str
-                
-                # Skip if this date is already covered by a scheduled cashflow
-                if ar_date_str in scheduled_dates:
-                    continue
+                if cf_amount > 0:
+                    try:
+                        cf_date = datetime.strptime(use_date, '%Y-%m-%d')
+                        dates.append(cf_date)
+                        amounts.append(cf_amount)
+                    except:
+                        continue
                 
                 # Use gross amount (principal + interest)
                 ar_principal = ar.get('principal', 0) or 0
