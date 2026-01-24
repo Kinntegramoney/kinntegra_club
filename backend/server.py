@@ -19608,6 +19608,18 @@ async def rebuild_cashflows_from_history(trade_id: str, current_user: dict = Dep
         {"_id": 0}
     ).sort("date", 1).to_list(100)
     
+    # If no actual_repayments, use the repaid cashflows as the source of truth
+    if not actual_reps and original_cashflows:
+        # Build actual_reps from repaid cashflows
+        for cf in original_cashflows:
+            if cf.get('is_repaid'):
+                actual_reps.append({
+                    'repayment_date': cf.get('repaid_date') or cf.get('date'),
+                    'principal': cf.get('principal_component', 0),
+                    'interest': cf.get('interest_component', 0),
+                    'gross_amount': cf.get('gross_amount', 0)
+                })
+    
     # Calculate original principal
     original_principal = trade.get('total_amount', 0)
     if not original_principal:
