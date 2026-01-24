@@ -2053,10 +2053,6 @@ export default function Holdings() {
                     <p className="text-sm font-mono text-gray-800">{format(new Date(tradeDetailsModal.investment_date), "dd MMM yyyy")}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-500 uppercase">Trade Date</p>
-                    <p className="text-sm font-mono text-gray-800">{format(new Date(tradeDetailsModal.created_at), "dd MMM yyyy")}</p>
-                  </div>
-                  <div>
                     <p className="text-[10px] text-gray-500 uppercase">Status</p>
                     <span className={`px-2 py-0.5 text-xs rounded font-medium ${
                       tradeDetailsModal.status === 'approved' 
