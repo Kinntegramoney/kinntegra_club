@@ -9302,12 +9302,20 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                     "trade_id": trade['id']
                 }, {"_id": 0}).to_list(100)
         
-        # Calculate totals for this holding
+        # Calculate totals for this holding (use GROSS amounts = principal + interest)
         investment_amount = trade.get('total_amount', 0)
-        repaid_amount = sum(cf.get('repaid_actual_amount', 0) or cf.get('net_amount', 0) 
-                          for cf in stored_cashflows if cf.get('is_repaid'))
-        upcoming_amount = sum(cf.get('net_amount', 0) 
-                            for cf in stored_cashflows if not cf.get('is_repaid'))
+        
+        # GROSS repaid = principal + interest (before TDS)
+        repaid_gross = sum(
+            (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
+            for cf in stored_cashflows if cf.get('is_repaid')
+        )
+        
+        # GROSS upcoming = principal + interest (before TDS)
+        upcoming_gross = sum(
+            (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
+            for cf in stored_cashflows if not cf.get('is_repaid')
+        )
         
         # Calculate principal and interest components
         total_principal = sum(cf.get('principal_component', 0) for cf in stored_cashflows)
@@ -9320,9 +9328,9 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         repaid_interest = sum(cf.get('interest_component', 0) for cf in stored_cashflows if cf.get('is_repaid'))
         repaid_tds = sum(cf.get('tds_amount', 0) for cf in stored_cashflows if cf.get('is_repaid'))
         
-        # Calculate prepaid info
-        prepaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_prepaid')]
-        prepaid_amount = sum(cf.get('repaid_actual_amount', 0) or cf.get('net_amount', 0) for cf in prepaid_cashflows)
+        # Calculate prepaid info (prepaid principal only, no interest)
+        prepaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_prepaid') or cf.get('type') == 'prepayment']
+        prepaid_amount = sum(cf.get('principal_component', 0) for cf in prepaid_cashflows)
         
         # Get bond start date for XIRR calculation
         # IMPORTANT: XIRR uses bond start date (not investment date) to properly
