@@ -9373,7 +9373,8 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             trade['investment_date'], 
             investment_amount, 
             stored_cashflows,
-            unscheduled_repayments
+            unscheduled_repayments,
+            bond_start_date
         )
         
         holdings.append({
