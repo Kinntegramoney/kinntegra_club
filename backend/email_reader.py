@@ -161,13 +161,17 @@ class RepaymentEmailReader:
             opportunity_match = re.search(r'([A-Z]{2,5}\d{3,5})', subject) or re.search(r'([A-Z]{2,5}\d{3,5})', text)
             opportunity_id = opportunity_match.group(1) if opportunity_match else None
             
+            # Extract company name from subject (after "Returns Initiated - ")
+            subject_company_match = re.search(r'Returns Initiated\s*-\s*(.+)$', subject, re.IGNORECASE)
+            company_from_subject = subject_company_match.group(1).strip().replace('\r', '').replace('\n', ' ') if subject_company_match else None
+            
             # Extract client name (Dear <Name>)
             client_match = re.search(r'Dear\s+([A-Za-z\s]+?)(?:\n|,)', text)
             client_name = client_match.group(1).strip() if client_match else None
             
-            # Extract company/bond name
+            # Extract company/bond name from body
             company_match = re.search(r'investment\s+in\s+([A-Za-z\s&]+(?:Pvt|Private|Ltd|Limited)[A-Za-z\s]*)', text, re.IGNORECASE)
-            company_name = company_match.group(1).strip() if company_match else None
+            company_name = company_match.group(1).strip() if company_match else company_from_subject
             
             # Extract repayment date
             date_match = re.search(r'Repayment\s+Date[:\s]*([A-Za-z]+\s+\d{1,2}[,\s]+\d{4})', text, re.IGNORECASE)
