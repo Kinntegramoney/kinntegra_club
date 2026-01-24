@@ -5721,6 +5721,7 @@ async def bulk_upload_historical_trades(
                             "client_id": client['id'],
                             "client_name": client['name'],
                             "client_pan": pan,
+                            "investment_date": inv_date_str,  # For matching to specific trade
                             "repayment_date": rep_date_str,
                             "principal": principal,
                             "interest": interest,
