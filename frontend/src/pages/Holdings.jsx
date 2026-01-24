@@ -1467,7 +1467,7 @@ export default function Holdings() {
                       <p className="text-lg font-semibold text-gray-800">{formatINR(modalData.invested_amount)}</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-4">
-                      <p className="text-xs text-green-600 uppercase">Total Net Expected</p>
+                      <p className="text-xs text-green-600 uppercase">Total Gross Expected</p>
                       <p className="text-lg font-semibold text-green-700">
                         {formatINR(consolidatedCashflows.reduce((sum, cf) => sum + cf.net_amount, 0))}
                       </p>
