@@ -1086,42 +1086,42 @@ export default function Holdings() {
               {mainTab === "holdings" && (
               <>
               {/* Compact Summary Bar */}
-              <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">Investment:</span>
+              <div className="bg-white rounded-lg border border-gray-200 p-3 mb-4">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-500">Total Investment:</span>
                       <span className="font-mono font-semibold text-gray-800">{formatINR(clientHoldings.summary.total_investment)}</span>
                     </div>
-                    <div className="h-4 w-px bg-gray-300"></div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">Repaid:</span>
-                      <span className="font-mono font-semibold text-green-600">{formatINR(clientHoldings.summary.total_repaid)}</span>
+                    <div className="h-4 w-px bg-gray-200"></div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-500">Total Net Expected:</span>
+                      <span className="font-mono font-semibold text-emerald-600">{formatINR(clientHoldings.summary.total_expected)}</span>
                     </div>
-                    <div className="h-4 w-px bg-gray-300"></div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">Upcoming:</span>
+                    <div className="h-4 w-px bg-gray-200"></div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-500">Total O/S Principal:</span>
                       <span className="font-mono font-semibold text-blue-600">{formatINR(clientHoldings.summary.total_upcoming)}</span>
                     </div>
-                    <div className="h-4 w-px bg-gray-300"></div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">Total Expected:</span>
-                      <span className="font-mono font-semibold text-amber-700">{formatINR(clientHoldings.summary.total_expected)}</span>
+                    <div className="h-4 w-px bg-gray-200"></div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-500">Total O/S & Pending TDS:</span>
+                      <span className="font-mono font-semibold text-red-500">{formatINR(clientHoldings.summary.total_tds - clientHoldings.summary.total_repaid_tds || 0)}</span>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="status" checked={statusFilter === 'all'} onChange={() => setStatusFilter('all')} className="text-amber-600" />
-                      <span className="text-sm">All</span>
+                  <div className="flex items-center gap-3 text-xs">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="radio" name="status" checked={statusFilter === 'all'} onChange={() => setStatusFilter('all')} className="text-amber-600 h-3 w-3" />
+                      <span>All</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="status" checked={statusFilter === 'active'} onChange={() => setStatusFilter('active')} />
-                      <span className="text-sm">Active</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="radio" name="status" checked={statusFilter === 'active'} onChange={() => setStatusFilter('active')} className="h-3 w-3" />
+                      <span>Active</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="status" checked={statusFilter === 'fully_repaid'} onChange={() => setStatusFilter('fully_repaid')} />
-                      <span className="text-sm">Fully repaid</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="radio" name="status" checked={statusFilter === 'fully_repaid'} onChange={() => setStatusFilter('fully_repaid')} className="h-3 w-3" />
+                      <span>Repaid</span>
                     </label>
                   </div>
                 </div>
