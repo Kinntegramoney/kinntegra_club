@@ -8978,16 +8978,15 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
     """
     Calculate Actual XIRR using GROSS amounts (principal + gross interest before TDS).
     
-    IMPORTANT: XIRR is calculated from the CLIENT'S INVESTMENT DATE to reflect
-    the actual return on the client's money from when they invested.
+    Reference Date Logic:
+    - For bonds WITH prepayments/amendments: Use BOND_START_DATE
+      (shows impact of prepayments on original deal, e.g., Natureresidences → 6.33%)
+    - For bonds WITHOUT prepayments: Use INVESTMENT_DATE  
+      (shows client's actual return, e.g., CDUC001 → 11%)
     
     This function considers:
     1. Scheduled cashflows (both repaid and pending from holding_cashflows)
     2. Unscheduled prepayments (from actual_repayments) - principal paid outside schedule
-       - Only includes actual_repayments that are NOT already in holding_cashflows
-    
-    For repaid cashflows: Uses actual repaid amounts (GROSS = principal + gross interest)
-    For pending cashflows: Uses scheduled amounts (GROSS = principal + gross interest)
     
     Actual XIRR = principal + gross_interest (before TDS deduction)
     """
@@ -8998,9 +8997,26 @@ def calculate_actual_xirr(investment_date: str, investment_amount: float, cashfl
         dates = []
         amounts = []
         
-        # Use INVESTMENT DATE as reference (when client's money was actually invested)
-        # This reflects the client's actual return on their investment
-        ref_date_str = investment_date.split('T')[0] if 'T' in investment_date else investment_date
+        # Check if there are any prepayments or amendments in cashflows
+        has_prepayments = any(
+            cf.get('is_prepaid') or 
+            cf.get('is_amended') or 
+            cf.get('original_principal_component') is not None or
+            cf.get('original_interest_component') is not None
+            for cf in cashflows
+        )
+        
+        # Also check actual_repayments
+        if actual_repayments and len(actual_repayments) > 0:
+            has_prepayments = True
+        
+        # Determine reference date based on prepayment status
+        if has_prepayments and bond_start_date:
+            # For bonds with prepayments: Use bond_start_date to show prepayment impact
+            ref_date_str = bond_start_date.split('T')[0] if 'T' in bond_start_date else bond_start_date
+        else:
+            # For bonds without prepayments: Use investment_date for accurate return
+            ref_date_str = investment_date.split('T')[0] if 'T' in investment_date else investment_date
         
         ref_date = datetime.strptime(ref_date_str, '%Y-%m-%d')
         dates.append(ref_date)
