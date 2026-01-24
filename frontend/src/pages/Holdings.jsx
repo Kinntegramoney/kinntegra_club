@@ -942,9 +942,6 @@ export default function Holdings() {
                             <p className="font-medium text-gray-800 truncate" title={trade.bond_name}>
                               {trade.bond_name}
                             </p>
-                            <p className="text-[10px] text-gray-400 mt-0.5">
-                              {format(new Date(trade.created_at), "dd-MMM-yy")}
-                            </p>
                           </div>
                           
                           {/* Units */}
