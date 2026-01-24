@@ -1096,46 +1096,29 @@ export default function Holdings() {
               {/* Summary Section with Repayment Status Chart */}
               <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
                 {/* Top Row: Summary Stats */}
-                <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-gray-500">Total Investment:</span>
-                      <span className="font-mono font-semibold text-gray-800">{formatINR(clientHoldings.summary.total_investment)}</span>
-                    </div>
-                    <div className="h-4 w-px bg-gray-200"></div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-gray-500">Total Net Expected:</span>
-                      <span className="font-mono font-semibold text-emerald-600">{formatINR(clientHoldings.summary.total_expected)}</span>
-                    </div>
-                    <div className="h-4 w-px bg-gray-200"></div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-gray-500">Total O/S Principal:</span>
-                      <span className="font-mono font-semibold text-blue-600">{formatINR(
-                        filteredHoldings.reduce((sum, h) => sum + (h.total_principal - h.repaid_principal), 0)
-                      )}</span>
-                    </div>
-                    <div className="h-4 w-px bg-gray-200"></div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-gray-500">Total O/S TDS:</span>
-                      <span className="font-mono font-semibold text-red-500">{formatINR(
-                        filteredHoldings.reduce((sum, h) => sum + (h.total_tds - h.repaid_tds), 0)
-                      )}</span>
-                    </div>
+                <div className="flex items-center gap-4 text-xs mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-500">Total Investment:</span>
+                    <span className="font-mono font-semibold text-gray-800">{formatINR(clientHoldings.summary.total_investment)}</span>
                   </div>
-                  
-                  <div className="flex items-center gap-3 text-xs">
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input type="radio" name="status" checked={statusFilter === 'all'} onChange={() => setStatusFilter('all')} className="text-amber-600 h-3 w-3" />
-                      <span>All</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input type="radio" name="status" checked={statusFilter === 'active'} onChange={() => setStatusFilter('active')} className="h-3 w-3" />
-                      <span>Active</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input type="radio" name="status" checked={statusFilter === 'fully_repaid'} onChange={() => setStatusFilter('fully_repaid')} className="h-3 w-3" />
-                      <span>Repaid</span>
-                    </label>
+                  <div className="h-4 w-px bg-gray-200"></div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-500">Total Net Expected:</span>
+                    <span className="font-mono font-semibold text-emerald-600">{formatINR(clientHoldings.summary.total_expected)}</span>
+                  </div>
+                  <div className="h-4 w-px bg-gray-200"></div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-500">Total O/S Principal:</span>
+                    <span className="font-mono font-semibold text-blue-600">{formatINR(
+                      filteredHoldings.reduce((sum, h) => sum + (h.total_principal - h.repaid_principal), 0)
+                    )}</span>
+                  </div>
+                  <div className="h-4 w-px bg-gray-200"></div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-500">Total O/S TDS:</span>
+                    <span className="font-mono font-semibold text-red-500">{formatINR(
+                      filteredHoldings.reduce((sum, h) => sum + (h.total_tds - h.repaid_tds), 0)
+                    )}</span>
                   </div>
                 </div>
                 
