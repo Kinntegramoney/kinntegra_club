@@ -1723,8 +1723,7 @@ export default function Holdings() {
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">TDS</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Tentative Date</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Actual Paid</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
                           <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
                           <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Action</th>
                         </tr>
