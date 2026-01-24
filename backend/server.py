@@ -9569,20 +9569,20 @@ async def record_principal_prepayment(
 ):
     """
     Record a principal prepayment for a trade/holding.
-    This will:
-    1. Create or update the principal prepayment record
-    2. Calculate prorated interest for the current cycle (before and after prepayment)
-    3. Recalculate all future interest payments based on remaining principal
+    Uses the unified process_bond_prepayment function which:
+    1. Proportionally reduces ALL remaining principal payments
+    2. Recalculates future interest based on reduced principal (same coupon rate)
+    3. Updates trade with remaining principal info
+    4. Auto-closes trade if fully prepaid
     """
     if current_user['role'] not in ['broker', 'sub_broker']:
         raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can record prepayments")
     
-    # Get trade
+    # Get trade and verify access
     trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
     if not trade:
         raise HTTPException(status_code=404, detail="Trade not found")
     
-    # Verify access
     client = await db.clients.find_one({"id": trade['client_id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -9594,11 +9594,6 @@ async def record_principal_prepayment(
         if client.get('linked_subbroker_id') != current_user['id']:
             raise HTTPException(status_code=403, detail="Access denied")
     
-    # Get bond details
-    bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
-    if not bond:
-        raise HTTPException(status_code=404, detail="Bond not found")
-    
     # Parse prepayment date
     try:
         prepayment_date = datetime.strptime(prepayment.prepayment_date, "%Y-%m-%d")
@@ -9608,293 +9603,71 @@ async def record_principal_prepayment(
         except:
             raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD or DD-MM-YYYY")
     
-    # Get all cashflows for this trade
-    all_cashflows = await db.holding_cashflows.find(
-        {"trade_id": trade_id},
-        {"_id": 0}
-    ).sort("date", 1).to_list(200)
-    
-    if not all_cashflows:
-        raise HTTPException(status_code=404, detail="No cashflows found for this trade")
-    
-    # Calculate original and remaining principal
-    original_principal = bond.get('principal_amount', 0) * trade.get('units', 0)
-    
-    # Get previous prepayments
-    previous_prepayments = await db.prepayment_records.find(
-        {"trade_id": trade_id},
-        {"_id": 0}
-    ).to_list(50)
-    
-    total_previously_prepaid = sum(p.get('prepaid_amount', 0) for p in previous_prepayments)
-    principal_before_this_prepayment = original_principal - total_previously_prepaid
-    remaining_principal = principal_before_this_prepayment - prepayment.prepaid_amount
-    
-    if remaining_principal < 0:
-        remaining_principal = 0
-    
-    if prepayment.prepaid_amount > principal_before_this_prepayment:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Prepayment amount (₹{prepayment.prepaid_amount:,.2f}) exceeds outstanding principal (₹{principal_before_this_prepayment:,.2f})"
-        )
-    
-    # Calculate annual interest rate
-    interest_rate = bond.get('interest_rate', 0) / 100  # Convert percentage to decimal
-    
-    # Find the current interest cycle that contains the prepayment date
-    current_cycle_cf = None
-    previous_cycle_end = None
-    
-    for i, cf in enumerate(all_cashflows):
-        cf_date = datetime.fromisoformat(cf['date'].replace('Z', '+00:00')) if 'T' in cf['date'] else datetime.strptime(cf['date'], '%Y-%m-%d')
-        
-        if cf.get('type') == 'interest' and cf_date.date() >= prepayment_date.date():
-            current_cycle_cf = cf
-            # Get the previous interest date as cycle start
-            for j in range(i-1, -1, -1):
-                prev_cf = all_cashflows[j]
-                if prev_cf.get('type') == 'interest':
-                    prev_date = datetime.fromisoformat(prev_cf['date'].replace('Z', '+00:00')) if 'T' in prev_cf['date'] else datetime.strptime(prev_cf['date'], '%Y-%m-%d')
-                    previous_cycle_end = prev_date
-                    break
-            break
-    
-    amended_count = 0
-    prorated_interest_info = None
-    
-    if current_cycle_cf:
-        cf_date = datetime.fromisoformat(current_cycle_cf['date'].replace('Z', '+00:00')) if 'T' in current_cycle_cf['date'] else datetime.strptime(current_cycle_cf['date'], '%Y-%m-%d')
-        
-        # Calculate cycle start (either previous interest date or investment date)
-        if previous_cycle_end:
-            cycle_start = previous_cycle_end
-        else:
-            inv_date = datetime.fromisoformat(trade['investment_date'].replace('Z', '+00:00')) if 'T' in trade['investment_date'] else datetime.strptime(trade['investment_date'], '%Y-%m-%d')
-            cycle_start = inv_date
-        
-        cycle_end = cf_date
-        total_days_in_cycle = (cycle_end.date() - cycle_start.date()).days
-        
-        if total_days_in_cycle > 0:
-            days_before_prepayment = (prepayment_date.date() - cycle_start.date()).days
-            days_after_prepayment = (cycle_end.date() - prepayment_date.date()).days
-            
-            # Prorated interest calculation
-            # Interest before prepayment: on full principal
-            # Interest after prepayment: on reduced principal
-            
-            original_interest = current_cycle_cf.get('original_interest_component') or current_cycle_cf.get('interest_component', 0)
-            daily_rate_full = (principal_before_this_prepayment * interest_rate) / 365
-            daily_rate_reduced = (remaining_principal * interest_rate) / 365
-            
-            interest_before = daily_rate_full * max(days_before_prepayment, 0)
-            interest_after = daily_rate_reduced * max(days_after_prepayment, 0)
-            prorated_interest = round(interest_before + interest_after, 2)
-            
-            prorated_tds = round(prorated_interest * 0.10, 2)
-            prorated_net = round(prorated_interest - prorated_tds + current_cycle_cf.get('principal_component', 0), 2)
-            
-            # Update the current cycle cashflow with prorated interest
-            await db.holding_cashflows.update_one(
-                {"id": current_cycle_cf['id']},
-                {"$set": {
-                    "original_interest_component": original_interest,
-                    "original_tds_amount": current_cycle_cf.get('original_tds_amount') or current_cycle_cf.get('tds_amount', 0),
-                    "original_net_amount": current_cycle_cf.get('original_net_amount') or current_cycle_cf.get('net_amount', 0),
-                    "interest_component": prorated_interest,
-                    "tds_amount": prorated_tds,
-                    "net_amount": prorated_net,
-                    "is_amended": True,
-                    "is_prorated": True,
-                    "amendment_reason": f"Prorated due to principal prepayment of ₹{prepayment.prepaid_amount:,.2f} on {prepayment_date.strftime('%d-%m-%Y')}",
-                    "proration_details": {
-                        "cycle_start": cycle_start.isoformat(),
-                        "cycle_end": cycle_end.isoformat(),
-                        "prepayment_date": prepayment_date.isoformat(),
-                        "days_before": days_before_prepayment,
-                        "days_after": days_after_prepayment,
-                        "interest_before": round(interest_before, 2),
-                        "interest_after": round(interest_after, 2),
-                        "principal_before": principal_before_this_prepayment,
-                        "principal_after": remaining_principal
-                    },
-                    "amendment_date": datetime.now(timezone.utc).isoformat(),
-                    "amended_by": current_user['id']
-                }}
-            )
-            amended_count += 1
-            
-            prorated_interest_info = {
-                "cycle_date": cf_date.strftime("%d-%m-%Y"),
-                "original_interest": original_interest,
-                "prorated_interest": prorated_interest,
-                "days_before_prepayment": days_before_prepayment,
-                "days_after_prepayment": days_after_prepayment,
-                "interest_before": round(interest_before, 2),
-                "interest_after": round(interest_after, 2)
-            }
-    
-    # Update all future interest payments after the prepayment date
-    reduction_ratio = remaining_principal / original_principal if original_principal > 0 else 0
-    
-    for cf in all_cashflows:
-        cf_date = datetime.fromisoformat(cf['date'].replace('Z', '+00:00')) if 'T' in cf['date'] else datetime.strptime(cf['date'], '%Y-%m-%d')
-        
-        # Skip if already processed as prorated, or if it's before prepayment, or if already repaid
-        if cf.get('is_prorated') or cf_date.date() <= prepayment_date.date() or cf.get('is_repaid'):
-            continue
-        
-        # Only amend future interest payments
-        if cf.get('interest_component', 0) > 0:
-            original_interest = cf.get('original_interest_component') or cf.get('interest_component', 0)
-            amended_interest = round(original_interest * reduction_ratio, 2)
-            amended_tds = round(amended_interest * 0.10, 2)
-            amended_net = round(amended_interest - amended_tds + cf.get('principal_component', 0), 2)
-            
-            await db.holding_cashflows.update_one(
-                {"id": cf['id']},
-                {"$set": {
-                    "original_interest_component": original_interest,
-                    "original_tds_amount": cf.get('original_tds_amount') or cf.get('tds_amount', 0),
-                    "original_net_amount": cf.get('original_net_amount') or cf.get('net_amount', 0),
-                    "interest_component": amended_interest,
-                    "tds_amount": amended_tds,
-                    "net_amount": amended_net,
-                    "is_amended": True,
-                    "amendment_reason": f"Reduced due to principal prepayment. Remaining principal: ₹{remaining_principal:,.2f}",
-                    "remaining_principal_ratio": round(reduction_ratio, 4),
-                    "amendment_date": datetime.now(timezone.utc).isoformat(),
-                    "amended_by": current_user['id']
-                }}
-            )
-            amended_count += 1
-    
-    # Record the prepayment with percentage calculation
-    prepayment_percentage = round((prepayment.prepaid_amount / original_principal) * 100, 2) if original_principal > 0 else 0
-    total_prepaid_percentage = round(((total_previously_prepaid + prepayment.prepaid_amount) / original_principal) * 100, 2) if original_principal > 0 else 0
-    remaining_percentage = round((remaining_principal / original_principal) * 100, 2) if original_principal > 0 else 0
-    
-    prepayment_record = {
-        "id": str(uuid.uuid4()),
-        "trade_id": trade_id,
-        "client_id": trade['client_id'],
-        "bond_id": trade['bond_id'],
-        "bond_name": trade['bond_name'],
-        "prepayment_date": prepayment_date.isoformat(),
-        "prepaid_amount": prepayment.prepaid_amount,
-        "prepayment_percentage": prepayment_percentage,  # Percentage of this prepayment
-        "original_principal": original_principal,
-        "principal_before_prepayment": principal_before_this_prepayment,
-        "remaining_principal": remaining_principal,
-        "remaining_percentage": remaining_percentage,  # Remaining principal percentage
-        "total_prepaid_to_date": total_previously_prepaid + prepayment.prepaid_amount,
-        "total_prepaid_percentage": total_prepaid_percentage,  # Total prepaid percentage
-        "notes": prepayment.notes,
-        "recorded_by": current_user['id'],
-        "recorded_at": datetime.now(timezone.utc).isoformat(),
-        "cashflows_amended": amended_count
-    }
-    
-    await db.prepayment_records.insert_one(prepayment_record)
-    
-    # Update trade with prepayment info including percentages
-    await db.trades.update_one(
-        {"id": trade_id},
-        {"$set": {
-            "has_prepayment": True,
-            "total_prepaid_principal": total_previously_prepaid + prepayment.prepaid_amount,
-            "total_prepaid_percentage": total_prepaid_percentage,
-            "remaining_principal": remaining_principal,
-            "remaining_principal_percentage": remaining_percentage,
-            "last_prepayment_date": prepayment_date.isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
+    # Process the prepayment using unified function
+    result = await process_bond_prepayment(
+        db_instance=db,
+        trade_id=trade_id,
+        prepayment_amount=prepayment.prepaid_amount,
+        prepayment_date=prepayment_date,
+        source="manual",
+        recorded_by=current_user['id'],
+        notes=prepayment.notes
     )
     
-    # Update reinvestment tags for affected cashflows (mark them as needing review)
-    # Get all future cashflows that were amended
-    amended_cashflows = await db.holding_cashflows.find({
-        "trade_id": trade_id,
-        "is_amended": True,
-        "is_repaid": {"$ne": True}
-    }, {"_id": 0}).to_list(100)
+    if not result.get('success'):
+        raise HTTPException(
+            status_code=400,
+            detail=result.get('errors', ['Unknown error processing prepayment'])[0]
+        )
     
-    # Update reinvestment tags for amended cashflows that had been previously tagged
-    reinv_tags_updated = 0
-    for cf in amended_cashflows:
-        if cf.get('reinvestment_tag') and cf.get('reinvestment_tag') != 'not_tagged':
-            await db.holding_cashflows.update_one(
-                {"id": cf['id']},
-                {"$set": {
-                    "reinvestment_tag_needs_update": True,
-                    "prepayment_affected": True,
-                    "prepayment_date": prepayment_date.isoformat(),
-                    "previous_net_amount": cf.get('original_net_amount') or cf.get('net_amount', 0)
-                }}
-            )
-            reinv_tags_updated += 1
+    # Get bond details for email
+    bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
     
-    # Send email notification to client
+    # Send email notification
     email_sent = False
     try:
-        # Get client email and broker details
         client_full = await db.clients.find_one({"id": trade['client_id']}, {"_id": 0})
         broker = await db.users.find_one({"id": client_full.get('created_by', '')}, {"_id": 0})
         broker_name = broker.get('name', 'Your Broker') if broker else 'Your Broker'
         
         if client_full and client_full.get('email'):
-            # Get revised cashflows to include in email
             revised_cfs = await db.holding_cashflows.find({
                 "trade_id": trade_id,
                 "is_repaid": {"$ne": True}
             }, {"_id": 0}).sort("date", 1).to_list(15)
             
-            # Send notification email
+            # Get prepayment percentages
+            original_principal = bond.get('principal_amount', 0) * trade.get('units', 0)
+            prepayment_percentage = round((prepayment.prepaid_amount / original_principal) * 100, 2) if original_principal > 0 else 0
+            remaining_percentage = round((result['remaining_principal'] / original_principal) * 100, 2) if original_principal > 0 else 0
+            
             email_sent = send_prepayment_notification_email(
                 client_name=client_full.get('name', 'Valued Investor'),
                 client_email=client_full['email'],
-                bond_name=trade.get('bond_name', bond.get('name', 'N/A')),
-                opportunity_id=bond.get('bond_code', bond.get('id', 'N/A')),
+                bond_name=trade.get('bond_name', bond.get('name', 'N/A') if bond else 'N/A'),
+                opportunity_id=bond.get('bond_code', bond.get('id', 'N/A')) if bond else 'N/A',
                 prepayment_date=prepayment_date.strftime('%d %b %Y'),
                 prepaid_amount=prepayment.prepaid_amount,
                 prepayment_percentage=prepayment_percentage,
                 original_principal=original_principal,
-                remaining_principal=remaining_principal,
+                remaining_principal=result['remaining_principal'],
                 remaining_percentage=remaining_percentage,
-                total_prepaid_to_date=total_previously_prepaid + prepayment.prepaid_amount,
-                total_prepaid_percentage=total_prepaid_percentage,
+                total_prepaid_to_date=prepayment.prepaid_amount,  # First prepayment or cumulative
+                total_prepaid_percentage=prepayment_percentage,
                 revised_cashflows=revised_cfs,
                 broker_name=broker_name
             )
-            
-            if email_sent:
-                # Log the email notification
-                await db.prepayment_records.update_one(
-                    {"id": prepayment_record['id']},
-                    {"$set": {
-                        "email_sent": True,
-                        "email_sent_at": datetime.now(timezone.utc).isoformat(),
-                        "email_recipient": client_full['email']
-                    }}
-                )
     except Exception as e:
         logger.error(f"Failed to send prepayment notification email: {str(e)}")
     
     return {
         "message": "Principal prepayment recorded successfully",
-        "prepayment_id": prepayment_record['id'],
         "prepaid_amount": prepayment.prepaid_amount,
-        "prepayment_percentage": prepayment_percentage,
-        "original_principal": original_principal,
-        "total_prepaid_to_date": total_previously_prepaid + prepayment.prepaid_amount,
-        "total_prepaid_percentage": total_prepaid_percentage,
-        "remaining_principal": remaining_principal,
-        "remaining_percentage": remaining_percentage,
-        "cashflows_amended": amended_count,
-        "reinvestment_tags_updated": reinv_tags_updated,
-        "email_sent": email_sent,
-        "prorated_interest": prorated_interest_info
+        "remaining_principal": result['remaining_principal'],
+        "remaining_principal_ratio": result['remaining_principal_ratio'],
+        "cashflows_modified": result['cashflows_modified'],
+        "trade_closed": result['trade_closed'],
+        "email_sent": email_sent
     }
 
 
