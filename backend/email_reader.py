@@ -278,7 +278,9 @@ async def process_repayment_emails(db, days_back: int = 7) -> Dict:
                             '$set': {
                                 'is_repaid': True,
                                 'repaid_date': repayment_date,
-                                'repaid_actual_amount': email_data.get('net_amount'),
+                                'repaid_actual_amount': email_data.get('gross_amount'),  # Use GROSS amount for XIRR calculation
+                                'repaid_net_amount': email_data.get('net_amount'),  # Store net amount separately for display
+                                'repaid_tds': email_data.get('tds_amount'),  # Store TDS amount
                                 'email_processed': True,
                                 'email_processed_at': datetime.now().isoformat(),
                                 'email_data': email_data
@@ -291,6 +293,7 @@ async def process_repayment_emails(db, days_back: int = 7) -> Dict:
                         results['details'].append({
                             'opportunity_id': opportunity_id,
                             'repayment_date': repayment_date,
+                            'gross_amount': email_data.get('gross_amount'),
                             'net_amount': email_data.get('net_amount'),
                             'cashflows_updated': update_result.modified_count
                         })
