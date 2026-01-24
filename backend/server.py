@@ -8756,11 +8756,18 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             stored_cashflows
         )
         
-        # Calculate Actual XIRR (only repaid cashflows)
+        # Fetch actual repayments (unscheduled prepayments from historical uploads)
+        actual_repayments = await db.actual_repayments.find({
+            "bond_id": trade['bond_id'],
+            "client_id": client_id
+        }, {"_id": 0}).to_list(100)
+        
+        # Calculate Actual XIRR (includes both scheduled repayments and unscheduled prepayments)
         actual_xirr = calculate_actual_xirr(
             trade['investment_date'], 
             investment_amount, 
-            stored_cashflows
+            stored_cashflows,
+            actual_repayments
         )
         
         holdings.append({
