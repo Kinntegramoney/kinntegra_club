@@ -19918,17 +19918,27 @@ async def recalculate_cashflows_book2(
     # Recalculate interest for each cashflow using Book2.xlsx logic
     balance = original_principal
     prev_date = bond_start_date  # Start from bond start date as per Book2.xlsx
+    total_cashflows = len(existing_cfs)
     
-    for cf in existing_cfs:
+    for idx, cf in enumerate(existing_cfs):
         cf_date_str = cf.get('date', '').split('T')[0]
         try:
             cf_date = datetime.strptime(cf_date_str, '%Y-%m-%d')
         except:
             continue
         
+        is_last_payment = (idx == total_cashflows - 1)
+        
         # Calculate days from previous date
-        # Add 1 to match Excel's inclusive day counting (counts both start and end dates)
-        days = (cf_date - prev_date).days + 1
+        # Excel uses inclusive counting (+1) for all payments EXCEPT the last one (maturity)
+        base_days = (cf_date - prev_date).days
+        if is_last_payment:
+            # Last payment (maturity) - don't add 1
+            days = base_days
+        else:
+            # Regular payments - add 1 for inclusive counting
+            days = base_days + 1
+        
         if days < 1:
             days = 1
         
