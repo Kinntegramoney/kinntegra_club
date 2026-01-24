@@ -110,6 +110,12 @@ export default function ApprovalCenter() {
     }
   }, [filterType]);
 
+  useEffect(() => {
+    if (user && (user.role === 'broker' || user.role === 'sub_broker')) {
+      fetchLeads();
+    }
+  }, [leadsFilter, leadsStatusFilter, user]);
+
   const fetchPendingApprovals = async () => {
     setPendingLoading(true);
     try {
