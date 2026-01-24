@@ -539,6 +539,233 @@ export default function ApprovalCenter() {
             </TabsContent>
           )}
 
+          {/* Lead Management Tab */}
+          {(isBroker || user.role === 'sub_broker') && (
+            <TabsContent value="leads">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+                {/* Sub-tabs for Reinvestments vs Client Interest */}
+                <div className="border-b border-gray-100 px-6 py-3">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPendingSubTab("reinvestments")}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                          pendingSubTab === "reinvestments" 
+                            ? "bg-green-100 text-green-700" 
+                            : "text-gray-600 hover:bg-gray-100"
+                        }`}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Reinvestment Approval
+                        {pendingReinvestments.length > 0 && (
+                          <Badge variant="secondary" className="ml-1">{pendingReinvestments.length}</Badge>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setPendingSubTab("client_interest")}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                          pendingSubTab === "client_interest" 
+                            ? "bg-green-100 text-green-700" 
+                            : "text-gray-600 hover:bg-gray-100"
+                        }`}
+                      >
+                        <User className="h-4 w-4" />
+                        Client Interest
+                        {leads.filter(l => l.status === 'open').length > 0 && (
+                          <Badge variant="secondary" className="ml-1">{leads.filter(l => l.status === 'open').length}</Badge>
+                        )}
+                      </button>
+                    </div>
+                    
+                    {/* Filters for Client Interest */}
+                    {pendingSubTab === "client_interest" && (
+                      <div className="flex gap-2">
+                        <Select value={leadsFilter} onValueChange={setLeadsFilter}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            <SelectItem value="bond">Bonds</SelectItem>
+                            <SelectItem value="real_estate">Real Estate</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={leadsStatusFilter} onValueChange={setLeadsStatusFilter}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="open">Open</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                            <SelectItem value="not_interested">Not Interested</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reinvestment Approval Content */}
+                {pendingSubTab === "reinvestments" && (
+                  <div className="p-6">
+                    {pendingReinvestments.length === 0 ? (
+                      <div className="text-center py-12">
+                        <RefreshCw className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <h3 className="text-lg font-medium text-gray-600 mb-1">No Pending Reinvestments</h3>
+                        <p className="text-gray-400 text-sm">Reinvestment requests will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {pendingReinvestments.map((item) => (
+                          <div key={item.id} className="border border-gray-100 rounded-lg p-4 hover:bg-gray-50">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="font-medium text-gray-800">{item.client_name}</p>
+                                <p className="text-sm text-gray-500">{item.bond_name}</p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {item.units} units • ₹{formatCurrency(item.total_amount)}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-green-600 hover:bg-green-50"
+                                  onClick={() => openApprovalModal(item, 'reinvestment', 'approve')}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-600 hover:bg-red-50"
+                                  onClick={() => openApprovalModal(item, 'reinvestment', 'reject')}
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  Reject
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Client Interest Content - Similar to Holdings */}
+                {pendingSubTab === "client_interest" && (
+                  <div className="p-4">
+                    {leadsLoading ? (
+                      <div className="text-center py-12">
+                        <RefreshCw className="h-8 w-8 animate-spin text-green-600 mx-auto mb-3" />
+                        <p className="text-gray-500">Loading leads...</p>
+                      </div>
+                    ) : leads.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <h3 className="text-lg font-medium text-gray-600 mb-1">No Leads Found</h3>
+                        <p className="text-gray-400 text-sm">Client interest will appear here when they express interest</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-hidden rounded-lg border border-gray-200">
+                        {/* Table Header */}
+                        <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                          <div className="col-span-2">CLIENT</div>
+                          <div className="col-span-3">OPPORTUNITY</div>
+                          <div className="col-span-1 text-center">TYPE</div>
+                          <div className="col-span-2 text-right">AMOUNT</div>
+                          <div className="col-span-2 text-center">DATE</div>
+                          <div className="col-span-2 text-center">ACTION</div>
+                        </div>
+                        
+                        {/* Table Rows */}
+                        {leads.map((lead) => (
+                          <div
+                            key={lead.id}
+                            className={`grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm border-b last:border-b-0 hover:bg-gray-50 ${
+                              lead.status === 'closed' ? 'bg-green-50' : 
+                              lead.status === 'not_interested' ? 'bg-gray-100 opacity-60' : ''
+                            }`}
+                          >
+                            {/* Client */}
+                            <div className="col-span-2">
+                              <p className="font-medium text-gray-800 truncate">{lead.client_name}</p>
+                              <p className="text-[10px] text-gray-400">{lead.client_pan}</p>
+                            </div>
+                            
+                            {/* Opportunity */}
+                            <div className="col-span-3">
+                              <p className="font-medium text-gray-700 truncate" title={lead.product_name}>
+                                {lead.product_name}
+                              </p>
+                              <p className="text-[10px] text-gray-400">{lead.product_code}</p>
+                            </div>
+                            
+                            {/* Type */}
+                            <div className="col-span-1 text-center">
+                              {lead.opportunity_type === 'bond' ? (
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded font-medium">Bond</span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] rounded font-medium">Real Estate</span>
+                              )}
+                            </div>
+                            
+                            {/* Amount */}
+                            <div className="col-span-2 text-right font-mono">
+                              {lead.investment_amount ? (
+                                <span className="text-amber-600 font-semibold">₹{formatCurrency(lead.investment_amount)}</span>
+                              ) : lead.interest_percentage ? (
+                                <span className="text-amber-600 font-semibold">{lead.interest_percentage}%</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </div>
+                            
+                            {/* Date */}
+                            <div className="col-span-2 text-center text-xs text-gray-500">
+                              {format(new Date(lead.created_at), "dd MMM yy")}
+                            </div>
+                            
+                            {/* Action */}
+                            <div className="col-span-2 flex justify-center gap-1">
+                              {lead.status === 'open' ? (
+                                <>
+                                  <button
+                                    onClick={() => updateLeadStatus(lead.id, 'closed')}
+                                    className="p-1.5 hover:bg-green-100 rounded text-green-600"
+                                    title="Mark as Closed/Invested"
+                                  >
+                                    <CheckCircle className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => updateLeadStatus(lead.id, 'not_interested')}
+                                    className="p-1.5 hover:bg-red-100 rounded text-red-600"
+                                    title="Mark as Not Interested"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <span className={`px-2 py-0.5 text-[10px] rounded font-medium ${
+                                  lead.status === 'closed' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                                }`}>
+                                  {lead.status === 'closed' ? 'Closed' : 'Not Interested'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
+
           {/* Activity Logs Tab */}
           <TabsContent value="logs">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100">
