@@ -263,8 +263,10 @@ export default function LeadManagement() {
                           ClientSidebar;
   
   const isBroker = user.role === 'broker';
+  const isSubBroker = user.role === 'sub_broker';
   const pendingCount = pendingClients.length + pendingReinvestments.length;
   const openLeadsCount = leads.filter(l => l.status === 'open').length;
+  const pendingSubmissionsCount = mySubmissions.filter(s => s.status === 'pending_broker').length;
 
   return (
     <div className="min-h-screen bg-gray-50 flex" data-testid="lead-management-page">
@@ -282,6 +284,7 @@ export default function LeadManagement() {
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => { 
                   if (isBroker) fetchPendingApprovals(); 
+                  if (isSubBroker) fetchMySubmissions();
                   fetchLeads();
                 }}>
                   <RefreshCw className="h-4 w-4 mr-1" />
@@ -306,6 +309,22 @@ export default function LeadManagement() {
                 Reinvestment Approval
                 {pendingReinvestments.length > 0 && (
                   <Badge className="ml-2 bg-red-500 text-white text-xs">{pendingReinvestments.length}</Badge>
+                )}
+              </button>
+            )}
+            {isSubBroker && (
+              <button
+                onClick={() => setActiveTab("mysubmissions")}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                  activeTab === "mysubmissions"
+                    ? "bg-blue-50 text-blue-700 border-blue-500"
+                    : "text-gray-600 border-transparent hover:bg-gray-100"
+                }`}
+                data-testid="tab-mysubmissions"
+              >
+                My Reinvestments
+                {pendingSubmissionsCount > 0 && (
+                  <Badge className="ml-2 bg-blue-500 text-white text-xs">{pendingSubmissionsCount}</Badge>
                 )}
               </button>
             )}
