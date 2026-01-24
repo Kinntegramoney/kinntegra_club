@@ -1595,6 +1595,7 @@ export default function Holdings() {
                             <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Txns</th>
                             <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Principal</th>
                             <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Interest</th>
+                            <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-amber-100">Gross</th>
                             <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">TDS</th>
                             <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Net Amount</th>
                             <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Status</th>
@@ -1622,6 +1623,7 @@ export default function Holdings() {
                               </td>
                               <td className="py-3 px-3 text-right font-mono text-sm">{formatINR(cf.principal_component)}</td>
                               <td className="py-3 px-3 text-right font-mono text-sm">{formatINR(cf.interest_component)}</td>
+                              <td className="py-3 px-3 text-right font-mono text-sm font-semibold text-amber-700 bg-amber-50">{formatINR((cf.principal_component || 0) + (cf.interest_component || 0))}</td>
                               <td className="py-3 px-3 text-right font-mono text-sm text-red-600">{formatINR(cf.tds_amount)}</td>
                               <td className="py-3 px-3 text-right font-mono text-sm font-medium">{formatINR(cf.net_amount)}</td>
                               <td className="py-3 px-3 text-center">
