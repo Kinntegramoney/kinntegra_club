@@ -6249,16 +6249,27 @@ async def bulk_upload_historical_trades(
                             
                             # Find if there's a scheduled cashflow for this repayment date
                             scheduled_principal_for_date = 0
+                            matching_cf_id = None
                             for scf in scheduled_cfs:
                                 scf_date = scf.get('date', '').split('T')[0]
                                 if scf_date == rep_date_str:
                                     scheduled_principal_for_date = scf.get('principal_component', 0)
+                                    matching_cf_id = scf.get('id')
                                     break
                             
-                            # If principal in repayment exceeds scheduled principal, it's a prepayment
+                            # Calculate excess principal (prepayment)
+                            # If no scheduled payment on this date, entire principal is a prepayment
                             excess_principal = principal - scheduled_principal_for_date
                             
-                            if excess_principal > 0.01:  # Tolerance for rounding
+                            # Process as prepayment if:
+                            # 1. There's excess principal beyond scheduled, OR
+                            # 2. No scheduled cashflow exists for this date (irregular payment)
+                            is_irregular_payment = (scheduled_principal_for_date == 0 and principal > 0)
+                            is_excess_prepayment = (excess_principal > 0.01)
+                            
+                            if is_irregular_payment or is_excess_prepayment:
+                                prepay_amount = principal if is_irregular_payment else excess_principal
+                                
                                 # Parse repayment date for prepayment processing
                                 try:
                                     prepay_date = datetime.strptime(rep_date_str, '%Y-%m-%d')
@@ -6269,17 +6280,23 @@ async def bulk_upload_historical_trades(
                                 prepay_result = await process_bond_prepayment(
                                     db_instance=db,
                                     trade_id=matching_trade['id'],
-                                    prepayment_amount=excess_principal,
+                                    prepayment_amount=prepay_amount,
                                     prepayment_date=prepay_date,
                                     source="historical_upload",
                                     recorded_by=current_user['id'],
-                                    notes=f"Auto-detected from historical upload row {row_num}"
+                                    notes=f"{'Irregular payment' if is_irregular_payment else 'Excess prepayment'} from historical upload row {row_num}"
                                 )
                                 
                                 if prepay_result.get('success'):
                                     if 'prepayments_processed' not in results:
                                         results['prepayments_processed'] = 0
                                     results['prepayments_processed'] += 1
+                                    
+                                    # Track irregular payments separately
+                                    if is_irregular_payment:
+                                        if 'irregular_payments_detected' not in results:
+                                            results['irregular_payments_detected'] = 0
+                                        results['irregular_payments_detected'] += 1
                                     
                                     if prepay_result.get('trade_closed'):
                                         if 'trades_closed_by_prepayment' not in results:
@@ -6291,8 +6308,34 @@ async def bulk_upload_historical_trades(
                                         })
                                 else:
                                     results['errors'].append(
-                                        f"Repayment Row {row_num}: Prepayment detected (₹{excess_principal:,.2f}) but processing failed: {prepay_result.get('errors', [])}"
+                                        f"Repayment Row {row_num}: Prepayment detected (₹{prepay_amount:,.2f}) but processing failed: {prepay_result.get('errors', [])}"
                                     )
+                            
+                            # Also create/update a cashflow record for this repayment if it doesn't exist
+                            if is_irregular_payment:
+                                # Create a new cashflow entry for this irregular payment
+                                tds_calc = round(interest * 0.10, 2) if interest > 0 else 0
+                                new_cf = {
+                                    "id": str(uuid.uuid4()),
+                                    "trade_id": matching_trade['id'],
+                                    "client_id": client['id'],
+                                    "bond_id": bond['id'],
+                                    "date": f"{rep_date_str}T00:00:00",
+                                    "principal_component": principal,
+                                    "interest_component": interest,
+                                    "tds_amount": tds if tds > 0 else tds_calc,
+                                    "gross_amount": gross_amount,
+                                    "net_amount": net_amount,
+                                    "is_repaid": True,
+                                    "repaid_date": rep_date_str,
+                                    "repaid_actual_amount": net_amount,
+                                    "is_prepaid": True,
+                                    "is_irregular": True,
+                                    "created_at": datetime.now(timezone.utc).isoformat(),
+                                    "created_by": current_user['id'],
+                                    "source": "historical_upload"
+                                }
+                                await db.holding_cashflows.insert_one(new_cf)
                         
                     except Exception as e:
                         results['errors'].append(f"Repayment Row {row_num}: {str(e)}")
