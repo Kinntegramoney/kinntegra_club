@@ -36,6 +36,11 @@ from analysis_service import (
     SchemeMapper,
     parse_scheme_master_file
 )
+from email_reader import (
+    RepaymentEmailReader,
+    process_repayment_emails,
+    test_email_connection
+)
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
 
