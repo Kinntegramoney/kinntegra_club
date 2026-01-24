@@ -11854,8 +11854,12 @@ async def get_bonds(
         # Mark as "In Demand" only if interested amount exceeds bond face_value * available_units
         total_units = bond.get('total_units', 0) or 0
         units_sold = bond.get('units_sold', 0) or 0
-        available_units = total_units - units_sold
-        face_value = bond.get('face_value', 0) or 0
+        available_units = max(0, total_units - units_sold)  # Ensure non-negative
+        # Use face_value, fallback to principal_amount/total_units if not set
+        face_value = bond.get('face_value') or bond.get('principal_amount', 0)
+        if not face_value and total_units > 0:
+            face_value = bond.get('principal_amount', 0) / total_units
+        face_value = face_value or 0
         available_value = available_units * face_value
         bond['available_units'] = available_units  # Add for frontend display
         bond['in_demand'] = bond['interested_amount'] > available_value and bond['interested_amount'] > 0 and available_value > 0
@@ -11960,8 +11964,12 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
         # Mark as "In Demand" only if interested amount exceeds bond face_value * available_units
         total_units = bond.get('total_units', 0) or 0
         units_sold = bond.get('units_sold', 0) or 0
-        available_units = total_units - units_sold
-        face_value = bond.get('face_value', 0) or 0
+        available_units = max(0, total_units - units_sold)  # Ensure non-negative
+        # Use face_value, fallback to principal_amount/total_units if not set
+        face_value = bond.get('face_value') or bond.get('principal_amount', 0)
+        if not face_value and total_units > 0:
+            face_value = bond.get('principal_amount', 0) / total_units
+        face_value = face_value or 0
         available_value = available_units * face_value
         bond['available_units'] = available_units  # Add for frontend display
         bond['in_demand'] = bond['interested_amount'] > available_value and bond['interested_amount'] > 0 and available_value > 0
