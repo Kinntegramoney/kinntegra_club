@@ -8905,10 +8905,14 @@ class RepaymentUpdate(BaseModel):
     notes: Optional[str] = None
 
 
-def calculate_holding_xirr(investment_date: str, investment_amount: float, cashflows: List[dict]) -> Optional[float]:
+def calculate_holding_xirr(investment_date: str, investment_amount: float, cashflows: List[dict], bond_start_date: str = None) -> Optional[float]:
     """
-    Calculate XIRR for a holding based on investment and cashflow dates.
+    Calculate XIRR for a holding based on BOND START DATE and cashflow dates.
     Uses GROSS amounts (principal + interest) for both repaid and expected cashflows.
+    
+    IMPORTANT: XIRR is calculated from Bond Start Date (not client's investment date)
+    to properly reflect the impact of premium paid when bond is sold at secondary market.
+    
     Returns annualized return rate or None if calculation fails.
     """
     try:
@@ -8919,11 +8923,16 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
         dates = []
         amounts = []
         
-        # Parse investment date (strip time and timezone info)
-        inv_date_str = investment_date.split('T')[0] if 'T' in investment_date else investment_date
-        inv_date = datetime.strptime(inv_date_str, '%Y-%m-%d')
-        dates.append(inv_date)
-        amounts.append(-investment_amount)
+        # Use Bond Start Date as reference (if provided), otherwise fall back to investment date
+        # This is critical for bonds sold at premium in secondary market
+        if bond_start_date:
+            ref_date_str = bond_start_date.split('T')[0] if 'T' in bond_start_date else bond_start_date
+        else:
+            ref_date_str = investment_date.split('T')[0] if 'T' in investment_date else investment_date
+        
+        ref_date = datetime.strptime(ref_date_str, '%Y-%m-%d')
+        dates.append(ref_date)
+        amounts.append(-investment_amount)  # Investment outflow (including premium)
         
         # Add all cashflows using GROSS amounts (principal + interest)
         for cf in cashflows:
@@ -8948,7 +8957,7 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
         if len(dates) < 2:
             return None
         
-        # Calculate XIRR
+        # Calculate XIRR using bond start date as reference
         min_date = min(dates)
         day_factors = [(d - min_date).days / 365.0 for d in dates]
         
@@ -8965,7 +8974,7 @@ def calculate_holding_xirr(investment_date: str, investment_amount: float, cashf
         return None
 
 
-def calculate_actual_xirr(investment_date: str, investment_amount: float, cashflows: List[dict], actual_repayments: List[dict] = None) -> Optional[float]:
+def calculate_actual_xirr(investment_date: str, investment_amount: float, cashflows: List[dict], actual_repayments: List[dict] = None, bond_start_date: str = None) -> Optional[float]:
     """
     Calculate Actual XIRR using GROSS amounts (principal + interest before TDS).
     
