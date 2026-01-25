@@ -1520,13 +1520,6 @@ export default function Holdings() {
                       filteredHoldings.reduce((sum, h) => sum + (h.total_principal - h.repaid_principal), 0)
                     )}</span>
                   </div>
-                  <div className="h-4 w-px bg-gray-200"></div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-500">Total O/S TDS:</span>
-                    <span className="font-mono font-semibold text-red-500">{formatINR(
-                      filteredHoldings.reduce((sum, h) => sum + (h.total_tds - h.repaid_tds), 0)
-                    )}</span>
-                  </div>
                 </div>
                 
                 {/* Repayment Status Chart */}
