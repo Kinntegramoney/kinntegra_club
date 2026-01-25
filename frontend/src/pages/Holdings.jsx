@@ -1578,7 +1578,7 @@ export default function Holdings() {
                           <Calendar className="h-4 w-4" />
                           Expected Repayments
                         </h3>
-                        <p className="text-xs text-blue-600 mt-1">Auto-generated when units are blocked for client</p>
+                        <p className="text-xs text-blue-600 mt-1">Investment value calculated using Secondary Market Calculator</p>
                       </div>
                       
                       {/* Expected Cashflows Table */}
@@ -1596,16 +1596,37 @@ export default function Holdings() {
                           </thead>
                           <tbody>
                             {expectedCashflows.length > 0 ? expectedCashflows.map((cf, idx) => (
-                              <tr key={idx} className="border-b border-blue-100 hover:bg-blue-50/50">
-                                <td className="py-2 px-3 font-mono text-xs">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-blue-50 text-blue-800">
-                                  {formatINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                </td>
-                                <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
-                              </tr>
+                              cf.type === 'investment' ? (
+                                // Investment row - styled differently (red/outflow)
+                                <tr key={idx} className="border-b border-red-200 bg-red-50/50">
+                                  <td className="py-2 px-3 font-mono text-xs text-red-700">
+                                    {format(new Date(cf.date), "dd MMM yyyy")}
+                                    <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[10px] font-medium">INVESTMENT</span>
+                                  </td>
+                                  <td colSpan="3" className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-700">
+                                    {formatINR(Math.abs(cf.investment_amount || cf.gross_amount || 0))}
+                                  </td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs text-gray-400">-</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-medium text-red-700">
+                                    ({formatINR(Math.abs(cf.net_amount || cf.investment_amount || 0))})
+                                  </td>
+                                </tr>
+                              ) : (
+                                // Inflow row - normal styling
+                                <tr key={idx} className="border-b border-blue-100 hover:bg-blue-50/50">
+                                  <td className="py-2 px-3 font-mono text-xs">
+                                    {format(new Date(cf.date), "dd MMM yyyy")}
+                                    <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-600 rounded text-[10px] font-medium">MATURITY</span>
+                                  </td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-blue-50 text-blue-800">
+                                    {formatINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                  </td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
+                                </tr>
+                              )
                             )) : (
                               <tr>
                                 <td colSpan="6" className="py-6 text-center text-gray-500">
@@ -1623,7 +1644,7 @@ export default function Holdings() {
                           <div>
                             <span className="text-blue-600">Total Gross:</span>
                             <span className="font-mono font-semibold ml-2 text-blue-800">
-                              {formatINR(expectedCashflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
+                              {formatINR(expectedCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
                             </span>
                           </div>
                           <div className="text-right">
