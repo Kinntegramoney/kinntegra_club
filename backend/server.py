@@ -10107,6 +10107,35 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             bond_info=bond
         )
         
+        # RECALCULATE repaid_gross and upcoming_gross from actual_cashflows_data
+        # This ensures the summary uses the ACTUAL cashflows (with prepayment interest adjustments)
+        # instead of the original expected cashflows
+        if actual_cashflows_data:
+            actual_repaid_gross = 0
+            actual_upcoming_gross = 0
+            
+            for cf in actual_cashflows_data:
+                cf_date = (cf.get('date') or '')[:10]
+                cf_type = cf.get('type', '')
+                gross_amount = cf.get('gross_amount', 0) or cf.get('amount', 0)
+                
+                # Skip investment entries (outflows)
+                if cf_type == 'investment' or gross_amount < 0:
+                    continue
+                
+                # Check if is_repaid flag is set, OR if date is in the past
+                is_past = cf.get('is_repaid', False) or (cf_date and cf_date <= today_str)
+                
+                if is_past:
+                    actual_repaid_gross += gross_amount
+                else:
+                    actual_upcoming_gross += gross_amount
+            
+            # Use actual cashflow values for summary if we have actual repayments
+            if matched_actual_repayments:
+                repaid_gross = actual_repaid_gross
+                upcoming_gross = actual_upcoming_gross
+        
         # Calculate ACTUAL XIRR from the complete actual_cashflows (includes calculated maturity)
         actual_xirr = None
         
