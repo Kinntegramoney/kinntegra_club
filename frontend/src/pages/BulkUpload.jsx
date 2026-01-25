@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Upload, Download, FileSpreadsheet, Users, Building2, 
   TrendingUp, CheckCircle2, XCircle, AlertCircle, ArrowLeft, History,
-  Database, ExternalLink, RefreshCw, Calendar, FileText, Loader2
+  Database, ExternalLink, RefreshCw, Calendar, FileText, Loader2, Mail
 } from "lucide-react";
 import { toast } from "sonner";
 
