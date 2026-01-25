@@ -1750,32 +1750,28 @@ export default function Holdings() {
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(holding.invested_amount)}</p>
-                            <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
+                            <p className="text-red-600">{profitDifference < 0 ? '' : '-'}{formatNum(Math.abs(profitDifference))}</p>
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(totalGrossExpected)}</p>
-                            <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
+                            <p className="text-red-600">{profitDifference < 0 ? '' : '-'}{formatNum(Math.abs(profitDifference))}</p>
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(expectedProfit)}</p>
-                            <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
+                            <p className="text-red-600">{profitDifference < 0 ? '' : '-'}{formatNum(Math.abs(profitDifference))}</p>
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osPrincipal)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osInterest)}</td>
                           <td className="py-2 px-2 text-center">
                             {holding.xirr !== null && holding.xirr !== undefined ? (
-                              <span className={`font-mono text-xs font-semibold ${holding.xirr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {holding.xirr.toFixed(2)}%
-                              </span>
+                              <span className="font-mono text-xs">{holding.xirr.toFixed(2)}%</span>
                             ) : (
                               <span className="text-gray-400 text-[10px]">-</span>
                             )}
                           </td>
                           <td className="py-2 px-2 text-center">
                             {holding.actual_xirr !== null && holding.actual_xirr !== undefined ? (
-                              <span className={`font-mono text-xs font-semibold ${holding.actual_xirr >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
-                                {holding.actual_xirr.toFixed(2)}%
-                              </span>
+                              <span className="font-mono text-xs">{holding.actual_xirr.toFixed(2)}%</span>
                             ) : (
                               <span className="text-gray-400 text-[10px]">-</span>
                             )}
