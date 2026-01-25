@@ -518,11 +518,11 @@ export default function BulkUpload() {
                         )}
                         {activeTab === "historical-trades" && (
                           <>
-                            <li>• <strong>Sheet 1 - Investment Details:</strong></li>
-                            <li className="ml-4">Deal ID, Date, PAN, Units, Amount, UTR</li>
-                            <li>• <strong>Sheet 2 - Repayment Details (Actuals):</strong></li>
+                            <li>• <strong>Repayment Details Only:</strong></li>
                             <li className="ml-4">Deal ID, Date, PAN, Principal, Interest, TDS, Net</li>
-                            <li className="text-etihad-gold-700 font-medium mt-2">⚠️ Create bonds & clients FIRST!</li>
+                            <li>• Use this for uploading actual repayment data</li>
+                            <li>• For investment data, use "Investment Details" tab</li>
+                            <li className="text-etihad-gold-700 font-medium mt-2">⚠️ Create investments FIRST via Investment Details tab!</li>
                           </>
                         )}
                       </ul>
