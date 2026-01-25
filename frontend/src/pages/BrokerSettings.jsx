@@ -12,6 +12,7 @@ const API = `${BACKEND_URL}/api`;
 
 // Feature categories for organized display
 const FEATURE_CATEGORIES = {
+  "dashboard": { label: "Dashboard", icon: Eye, color: "bg-slate-50 border-slate-200" },
   "opportunities_bonds": { label: "Bond Opportunities", icon: FileText, color: "bg-blue-50 border-blue-200" },
   "opportunities_real_estate": { label: "Real Estate Opportunities", icon: Building2, color: "bg-green-50 border-green-200" },
   "user_sub_broker": { label: "Sub-Broker Management", icon: Users, color: "bg-purple-50 border-purple-200" },
