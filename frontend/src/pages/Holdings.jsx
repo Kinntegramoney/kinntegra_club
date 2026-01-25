@@ -1935,21 +1935,27 @@ export default function Holdings() {
                   {/* Transaction Footer */}
                   <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end gap-6 text-sm flex-wrap">
                     <div>
+                      <span className="text-gray-500">Investment (Calc):</span>
+                      <span className="font-mono font-medium ml-2 text-red-600">
+                        {formatINR(modalData.trades[activeTab].calculated_investment || modalData.trades[activeTab].invested_amount)}
+                      </span>
+                    </div>
+                    <div>
                       <span className="text-gray-500">Expected Principal:</span>
                       <span className="font-mono font-medium ml-2">
-                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).reduce((sum, cf) => sum + (cf.principal_component || 0), 0))}
+                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.principal_component || 0), 0))}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-500">Expected Interest:</span>
                       <span className="font-mono font-medium ml-2">
-                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).reduce((sum, cf) => sum + (cf.interest_component || 0), 0))}
+                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.interest_component || 0), 0))}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-500">Expected TDS:</span>
                       <span className="font-mono font-medium ml-2 text-red-600">
-                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).reduce((sum, cf) => sum + (cf.tds_amount || 0), 0))}
+                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.tds_amount || 0), 0))}
                       </span>
                     </div>
                     <div>
