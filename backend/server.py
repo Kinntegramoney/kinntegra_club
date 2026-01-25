@@ -6202,44 +6202,22 @@ async def bulk_upload_investment_details(
 
 @api_router.get("/bulk/template/historical-trades")
 async def download_historical_trades_template(current_user: dict = Depends(get_current_user)):
-    """Download Excel template for bulk historical deals upload (investments + repayments)"""
+    """Download Excel template for bulk historical repayments upload (repayments only)"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can download templates")
     
     wb = Workbook()
     
-    # Sheet 1: Investment Details
-    ws_investments = wb.active
-    ws_investments.title = "Investment Details"
+    # Sheet 1: Repayment Details (only sheet now - no investment details)
+    ws_repayments = wb.active
+    ws_repayments.title = "Repayment Details"
     
-    inv_headers = ["Deal ID*", "Date of Investment*", "PAN*", "No of Units*", "Amount*", "UTR"]
-    
-    header_fill = PatternFill(start_color="B45309", end_color="B45309", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
-    
-    for col, header in enumerate(inv_headers, 1):
-        cell = ws_investments.cell(row=1, column=col, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center", wrap_text=True)
-        ws_investments.column_dimensions[get_column_letter(col)].width = 20
-    
-    # Sample investment data
-    inv_sample = [
-        ["CDNRE001", "2025-04-30", "ABCDE1234F", 34, 3916923.08, "UTR123456789"],
-        ["CDNRE001", "2025-05-02", "XYZPQ5678G", 43, 4956833, "UTR987654321"],
-    ]
-    for row_idx, row_data in enumerate(inv_sample, 2):
-        for col, value in enumerate(row_data, 1):
-            ws_investments.cell(row=row_idx, column=col, value=value)
-    
-    # Sheet 2: Repayment Details
-    ws_repayments = wb.create_sheet("Repayment Details")
     
     # Date of Investment is optional - helps match to specific trade when client has multiple investments in same bond
     rep_headers = ["Deal ID*", "Date of Investment (optional)", "Repayment Date*", "PAN*", "Principal", "Interest", "Gross Amount*", "TDS", "Net Amount*"]
     
-    rep_header_fill = PatternFill(start_color="166534", end_color="166534", fill_type="solid")
+    rep_header_fill = PatternFill(start_color="B45309", end_color="B45309", fill_type="solid")  # Etihad gold/amber
     
     for col, header in enumerate(rep_headers, 1):
         cell = ws_repayments.cell(row=1, column=col, value=header)
@@ -6261,48 +6239,34 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
     ws_instructions = wb.create_sheet("Instructions")
     instructions = [
         "═══════════════════════════════════════════════════════════════════",
-        "       HISTORICAL DEALS UPLOAD - IMPORTANT INSTRUCTIONS",
+        "       HISTORICAL REPAYMENTS UPLOAD - INSTRUCTIONS",
         "═══════════════════════════════════════════════════════════════════",
         "",
-        "⚠️  PREREQUISITE: CREATE BONDS FIRST!",
+        "⚠️  PREREQUISITE: UPLOAD INVESTMENT DETAILS FIRST!",
         "────────────────────────────────────────────────────────────────────",
-        "Before uploading historical transactions, you MUST:",
-        "1. Create all bonds/deals in the system first (Go to Opportunities > Create Bond)",
+        "Before uploading repayments, you MUST:",
+        "1. Create all bonds/deals in the system (Go to Opportunities > Create Bond)",
         "2. Create all clients in the system (Go to Client Management > Add Client)",
-        "3. The Deal ID in this file must match the Bond Code in the system",
+        "3. Upload investment details via 'Investment Details' tab in Bulk Upload",
+        "4. The Deal ID in this file must match the Bond Code in the system",
         "",
         "═══════════════════════════════════════════════════════════════════",
-        "SHEET 1: INVESTMENT DETAILS",
-        "═══════════════════════════════════════════════════════════════════",
-        "Records when clients invested in a bond",
-        "",
-        "Required Fields:",
-        "• Deal ID*: Bond code (must match existing bond in system)",
-        "• Date of Investment*: When the investment was made (YYYY-MM-DD)",
-        "• PAN*: Client's PAN number (must match existing client)",
-        "• No of Units*: Number of units purchased",
-        "• Amount*: Total investment amount",
-        "",
-        "Optional Fields:",
-        "• UTR: Unique Transaction Reference for the payment",
-        "",
-        "═══════════════════════════════════════════════════════════════════",
-        "SHEET 2: REPAYMENT DETAILS (ACTUALS)",
+        "REPAYMENT DETAILS SHEET",
         "═══════════════════════════════════════════════════════════════════",
         "Records actual repayments received by clients (interest/principal)",
         "Supports IRREGULAR PAYMENTS outside regular payment cycle!",
         "",
         "Required Fields:",
         "• Deal ID*: Bond code (must match existing bond)",
-        "• Date of Investment*: When the client invested (YYYY-MM-DD)",
-        "  → Used with Deal ID to uniquely identify the trade",
-        "  → IMPORTANT: Same client can have multiple investments in same bond",
         "• Repayment Date*: When the repayment was made (YYYY-MM-DD)",
         "• PAN*: Client's PAN number",
         "• Gross Amount*: Total repayment before TDS",
         "• Net Amount*: Amount received after TDS",
         "",
         "Optional Fields:",
+        "• Date of Investment: When the client invested (YYYY-MM-DD)",
+        "  → Used with Deal ID to uniquely identify the trade",
+        "  → IMPORTANT: Same client can have multiple investments in same bond",
         "• Principal: Principal portion of repayment",
         "  → If principal > 0 on a non-scheduled date = IRREGULAR PREPAYMENT",
         "  → System will auto-detect and process prepayments",
@@ -6318,6 +6282,31 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
         "2. Reduce the outstanding principal balance",
         "3. Recalculate future interest on reduced balance",
         "4. Update the maturity payment accordingly",
+        "",
+        "═══════════════════════════════════════════════════════════════════",
+        "NOTES",
+        "═══════════════════════════════════════════════════════════════════",
+        "• This upload is for REPAYMENT DATA ONLY",
+        "• For investment data, use the 'Investment Details' tab in Bulk Upload",
+        "• Duplicate repayments (same bond, client, date) will be skipped",
+    ]
+    
+    for row_idx, text in enumerate(instructions, 1):
+        cell = ws_instructions.cell(row=row_idx, column=1, value=text)
+        if "═" in text or "PREREQUISITE" in text:
+            cell.font = Font(bold=True)
+    
+    ws_instructions.column_dimensions['A'].width = 75
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=historical_repayments_template.xlsx"}
+    )
         "",
         "Example: Book2.xlsx prepayment structure",
         "- Monthly principal repayments of 7% each",
