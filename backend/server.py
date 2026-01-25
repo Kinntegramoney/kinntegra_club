@@ -18827,6 +18827,83 @@ class UpdateLeadStatusRequest(BaseModel):
     status: str  # 'open', 'closed', 'not_interested'
 
 
+class SignupInterestRequest(BaseModel):
+    """Request model for signup page interest form"""
+    name: str
+    email: str
+    phone: str
+    source: str = "signup_page"
+
+
+@api_router.post("/leads/interest")
+async def create_signup_interest(request: SignupInterestRequest):
+    """Create a lead from signup page interest form (no auth required)"""
+    # Validate required fields
+    if not request.name or not request.email or not request.phone:
+        raise HTTPException(status_code=400, detail="Name, email and phone are required")
+    
+    # Check if lead already exists with same email
+    existing_lead = await db.leads.find_one({
+        "client_email": request.email.lower(),
+        "source": "signup_page"
+    })
+    
+    if existing_lead:
+        # Update existing lead
+        await db.leads.update_one(
+            {"id": existing_lead['id']},
+            {"$set": {
+                "client_name": request.name.strip(),
+                "client_mobile": request.phone.strip(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"message": "Interest updated successfully", "lead_id": existing_lead['id']}
+    
+    # Create new lead record for signup interest
+    lead = {
+        "id": str(uuid.uuid4()),
+        "client_id": None,  # Not yet a client
+        "client_name": request.name.strip(),
+        "client_pan": "",
+        "client_mobile": request.phone.strip(),
+        "client_email": request.email.strip().lower(),
+        "client_city": "",
+        "opportunity_type": "general",  # General interest, not tied to specific opportunity
+        "opportunity_id": None,
+        "product_name": "General Interest",
+        "product_code": "",
+        "investment_amount": None,
+        "interest_percentage": None,
+        "notes": f"Interested via {request.source}",
+        "status": "open",
+        "source": request.source,
+        "shared_by_id": None,
+        "shared_by_name": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.leads.insert_one(lead)
+    
+    # Create notification for broker
+    broker = await db.users.find_one({"role": "broker"}, {"_id": 0, "id": 1})
+    if broker:
+        notification = {
+            "id": str(uuid.uuid4()),
+            "user_id": broker['id'],
+            "type": "new_lead",
+            "title": "New Signup Interest!",
+            "message": f"{request.name} registered interest via website. Email: {request.email}, Phone: {request.phone}",
+            "lead_id": lead['id'],
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.notifications.insert_one(notification)
+    
+    return {"message": "Interest recorded successfully", "lead_id": lead['id']}
+
+
 @api_router.post("/leads")
 async def create_lead(request: CreateLeadRequest, current_user: dict = Depends(get_current_user)):
     """Create a new lead when client expresses interest"""
