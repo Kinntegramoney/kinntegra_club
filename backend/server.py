@@ -6146,6 +6146,20 @@ async def bulk_upload_investment_details(
                     results['failed'] += 1
                     continue
                 
+                # Check if enough units are available
+                total_units = bond.get('total_units', 0)
+                units_sold = bond.get('units_sold', 0)
+                available_units = total_units - units_sold
+                
+                if units > available_units and total_units > 0:
+                    results['errors'].append(
+                        f"Row {row_num}: Not enough units available. "
+                        f"Requested: {units}, Available: {available_units} "
+                        f"(Total: {total_units}, Already Sold: {units_sold})"
+                    )
+                    results['failed'] += 1
+                    continue
+                
                 # Create trade with approved status
                 trade_id = str(uuid.uuid4())
                 price_per_unit = amount / units if units > 0 else 0
@@ -6177,7 +6191,10 @@ async def bulk_upload_investment_details(
                 
                 await db.trades.insert_one(trade)
                 
-                # Update bond units sold
+                # Update bond units sold (in memory for subsequent rows in same upload)
+                bond['units_sold'] = units_sold + units
+                
+                # Update bond units sold in database
                 await db.bonds.update_one(
                     {"id": bond['id']},
                     {"$inc": {"units_sold": units}}
