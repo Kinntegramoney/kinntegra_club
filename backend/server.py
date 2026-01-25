@@ -2366,8 +2366,8 @@ async def approve_client(
                 client_name=client.get('name', ''),
                 client_email=client.get('email'),
                 pan=client.get('pan', ''),
-                password=client.get('temp_password', ''),
-                pin=client.get('temp_pin', ''),
+                password=client.get('default_password', '') or client.get('temp_password', ''),
+                pin=client.get('default_pin', '') or client.get('temp_pin', ''),
                 broker_name=broker.get('name', 'Your Broker') if broker else 'Your Broker'
             )
         
