@@ -1751,49 +1751,6 @@ export default function Holdings() {
                         </div>
                       </div>
                     </div>
-                                  )}
-                                </td>
-                                <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-green-50 text-green-800">
-                                  {formatINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                </td>
-                                <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
-                              </tr>
-                            )) : (
-                              <tr>
-                                <td colSpan="6" className="py-8 text-center text-gray-500">
-                                  <div className="flex flex-col items-center gap-2">
-                                    <FileText className="h-8 w-8 text-gray-300" />
-                                    <p className="text-sm">No actual repayments recorded yet</p>
-                                    <p className="text-xs text-gray-400">Upload historical data or wait for scheduled payments</p>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                      
-                      {/* Actual Summary */}
-                      <div className="bg-green-100 px-4 py-3 border-t border-green-200">
-                        <div className="flex justify-between items-center text-sm">
-                          <div>
-                            <span className="text-green-600">Received:</span>
-                            <span className="font-mono font-semibold ml-2 text-green-800">
-                              {formatINR(actualCashflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-green-600">Actual XIRR:</span>
-                            <span className="font-mono font-bold ml-2 text-green-800 text-lg">
-                              {modalData.actual_xirr !== null && modalData.actual_xirr !== undefined ? `${modalData.actual_xirr.toFixed(2)}%` : '-'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                     
                   </div>
                   
@@ -1803,11 +1760,11 @@ export default function Holdings() {
                       <div className="flex gap-6">
                         <div>
                           <span className="text-gray-500">Investment:</span>
-                          <span className="font-mono font-semibold ml-2">{formatINR(modalData.invested_amount)}</span>
+                          <span className="font-mono font-semibold ml-2">{formatAbsoluteINR(modalData.invested_amount)}</span>
                         </div>
                         <div>
                           <span className="text-gray-500">Total Principal:</span>
-                          <span className="font-mono font-medium ml-2">{formatINR(modalData.total_principal)}</span>
+                          <span className="font-mono font-medium ml-2">{formatAbsoluteINR(modalData.total_principal)}</span>
                         </div>
                         <div>
                           <span className="text-gray-500">Total Interest:</span>
