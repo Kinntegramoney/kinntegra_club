@@ -11263,7 +11263,7 @@ async def get_unread_notification_count(current_user: dict = Depends(get_current
 
 @api_router.get("/holdings/client/{client_id}/download")
 async def download_client_holdings(client_id: str, current_user: dict = Depends(get_current_user)):
-    """Generate Excel file for client holdings download with multiple sheets"""
+    """Generate Excel file for client holdings download with Expected and Actual cashflows"""
     
     # Get client holdings
     holdings_data = await get_client_holdings(client_id, current_user)
@@ -11272,10 +11272,13 @@ async def download_client_holdings(client_id: str, current_user: dict = Depends(
     wb = Workbook()
     
     # Styles
-    header_font = Font(bold=True, size=12, color="FFFFFF")
+    header_font = Font(bold=True, size=11, color="FFFFFF")
     header_fill = PatternFill(start_color="92400E", end_color="92400E", fill_type="solid")
+    expected_fill = PatternFill(start_color="1E40AF", end_color="1E40AF", fill_type="solid")  # Blue
+    actual_fill = PatternFill(start_color="059669", end_color="059669", fill_type="solid")  # Green
+    investment_fill = PatternFill(start_color="DC2626", end_color="DC2626", fill_type="solid")  # Red for investment
     title_font = Font(bold=True, size=14)
-    money_font = Font(name="Consolas", size=11)
+    money_font = Font(name="Consolas", size=10)
     border = Border(
         left=Side(style='thin'),
         right=Side(style='thin'),
@@ -11290,7 +11293,7 @@ async def download_client_holdings(client_id: str, current_user: dict = Depends(
     # Title
     ws_summary['A1'] = f"Holdings Report - {holdings_data['client']['name']}"
     ws_summary['A1'].font = title_font
-    ws_summary.merge_cells('A1:G1')
+    ws_summary.merge_cells('A1:H1')
     
     ws_summary['A2'] = f"PAN: {holdings_data['client']['pan_number']}"
     ws_summary['A3'] = f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
@@ -11301,9 +11304,10 @@ async def download_client_holdings(client_id: str, current_user: dict = Depends(
     
     summary_data = [
         ("Total Investment", holdings_data['summary']['total_investment']),
-        ("Total Repaid (Net)", holdings_data['summary']['total_repaid']),
-        ("Upcoming Expected", holdings_data['summary']['total_upcoming']),
-        ("Total Expected", holdings_data['summary']['total_expected'])
+        ("Total Repaid (Gross)", holdings_data['summary']['total_repaid']),
+        ("Total Upcoming (Gross)", holdings_data['summary']['total_upcoming']),
+        ("Total Expected (Gross)", holdings_data['summary']['total_expected']),
+        ("Total Profit", holdings_data['summary']['total_profit'])
     ]
     
     for i, (label, value) in enumerate(summary_data):
@@ -11312,147 +11316,156 @@ async def download_client_holdings(client_id: str, current_user: dict = Depends(
         ws_summary[f'B{6+i}'].font = money_font
         ws_summary[f'B{6+i}'].number_format = '₹ #,##0.00'
     
-    # Consolidated by date
-    ws_summary['A12'] = "CASHFLOWS BY DATE (ALL TRANSACTIONS)"
-    ws_summary['A12'].font = Font(bold=True, size=12)
+    # Adjust column widths
+    ws_summary.column_dimensions['A'].width = 22
+    ws_summary.column_dimensions['B'].width = 18
     
-    # Headers
-    headers = ["Date", "Transactions", "Principal", "Interest", "TDS", "Net Amount", "Status"]
-    for col, header in enumerate(headers, 1):
-        cell = ws_summary.cell(row=13, column=col, value=header)
+    # ========== EXPECTED CASHFLOWS SHEET ==========
+    ws_expected = wb.create_sheet(title="Expected Cashflows")
+    
+    ws_expected['A1'] = "EXPECTED CASHFLOWS"
+    ws_expected['A1'].font = title_font
+    ws_expected.merge_cells('A1:F1')
+    
+    # Headers for Expected
+    expected_headers = ["Date", "Bond Name", "Type", "Principal", "Interest", "Gross Amount"]
+    for col, header in enumerate(expected_headers, 1):
+        cell = ws_expected.cell(row=3, column=col, value=header)
         cell.font = header_font
-        cell.fill = header_fill
+        cell.fill = expected_fill
         cell.border = border
         cell.alignment = Alignment(horizontal='center')
     
-    # Consolidate cashflows by date
-    cashflows_by_date = {}
+    row = 4
+    total_exp_principal = 0
+    total_exp_interest = 0
+    total_exp_gross = 0
+    
     for holding in holdings_data['holdings']:
-        for cf in holding['cashflows']:
-            date = cf['date']
-            if date not in cashflows_by_date:
-                cashflows_by_date[date] = {
-                    'principal': 0, 'interest': 0, 'tds': 0, 'net': 0, 
-                    'transactions': 0, 'all_repaid': True
-                }
-            cashflows_by_date[date]['principal'] += cf['principal_component']
-            cashflows_by_date[date]['interest'] += cf['interest_component']
-            cashflows_by_date[date]['tds'] += cf['tds_amount']
-            cashflows_by_date[date]['net'] += cf['net_amount']
-            cashflows_by_date[date]['transactions'] += 1
-            if not cf.get('is_repaid'):
-                cashflows_by_date[date]['all_repaid'] = False
-    
-    row = 14
-    for date in sorted(cashflows_by_date.keys()):
-        cf = cashflows_by_date[date]
-        ws_summary.cell(row=row, column=1, value=date).border = border
-        ws_summary.cell(row=row, column=2, value=cf['transactions']).border = border
-        ws_summary.cell(row=row, column=3, value=cf['principal']).border = border
-        ws_summary.cell(row=row, column=3).font = money_font
-        ws_summary.cell(row=row, column=3).number_format = '₹ #,##0.00'
-        ws_summary.cell(row=row, column=4, value=cf['interest']).border = border
-        ws_summary.cell(row=row, column=4).font = money_font
-        ws_summary.cell(row=row, column=4).number_format = '₹ #,##0.00'
-        ws_summary.cell(row=row, column=5, value=cf['tds']).border = border
-        ws_summary.cell(row=row, column=5).font = money_font
-        ws_summary.cell(row=row, column=5).number_format = '₹ #,##0.00'
-        ws_summary.cell(row=row, column=6, value=cf['net']).border = border
-        ws_summary.cell(row=row, column=6).font = money_font
-        ws_summary.cell(row=row, column=6).number_format = '₹ #,##0.00'
-        ws_summary.cell(row=row, column=7, value="All Repaid" if cf['all_repaid'] else "Pending").border = border
-        row += 1
-    
-    # Adjust column widths
-    ws_summary.column_dimensions['A'].width = 20
-    ws_summary.column_dimensions['B'].width = 18
-    ws_summary.column_dimensions['C'].width = 15
-    ws_summary.column_dimensions['D'].width = 15
-    ws_summary.column_dimensions['E'].width = 12
-    ws_summary.column_dimensions['F'].width = 15
-    ws_summary.column_dimensions['G'].width = 12
-    
-    # ========== INDIVIDUAL TRANSACTION SHEETS ==========
-    for holding in holdings_data['holdings']:
-        # Create sheet name from date (max 31 chars)
-        inv_date = holding['investment_date'][:10]
-        sheet_name = f"{inv_date} ({holding['units']}u)"[:31]
-        
-        # Ensure unique sheet name
-        existing_names = [ws.title for ws in wb.worksheets]
-        if sheet_name in existing_names:
-            counter = 1
-            while f"{sheet_name[:28]}_{counter}" in existing_names:
-                counter += 1
-            sheet_name = f"{sheet_name[:28]}_{counter}"
-        
-        ws = wb.create_sheet(title=sheet_name)
-        
-        # Transaction header
-        ws['A1'] = holding['bond_name']
-        ws['A1'].font = title_font
-        ws.merge_cells('A1:H1')
-        
-        ws['A3'] = "Investment Date:"
-        ws['B3'] = holding['investment_date'][:10]
-        ws['C3'] = "Units:"
-        ws['D3'] = holding['units']
-        ws['E3'] = "Invested:"
-        ws['F3'] = holding['invested_amount']
-        ws['F3'].font = money_font
-        ws['F3'].number_format = '₹ #,##0.00'
-        
-        # Cashflow headers
-        cf_headers = ["Date", "Type", "Principal", "Interest", "TDS", "Net Amount", "Status", "Repaid Date"]
-        for col, header in enumerate(cf_headers, 1):
-            cell = ws.cell(row=5, column=col, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.border = border
-            cell.alignment = Alignment(horizontal='center')
-        
-        # Cashflow data
-        row = 6
-        for cf in holding['cashflows']:
-            ws.cell(row=row, column=1, value=cf['date']).border = border
-            ws.cell(row=row, column=2, value=cf.get('type', 'scheduled').capitalize()).border = border
-            ws.cell(row=row, column=3, value=cf['principal_component']).border = border
-            ws.cell(row=row, column=3).font = money_font
-            ws.cell(row=row, column=3).number_format = '₹ #,##0.00'
-            ws.cell(row=row, column=4, value=cf['interest_component']).border = border
-            ws.cell(row=row, column=4).font = money_font
-            ws.cell(row=row, column=4).number_format = '₹ #,##0.00'
-            ws.cell(row=row, column=5, value=cf['tds_amount']).border = border
-            ws.cell(row=row, column=5).font = money_font
-            ws.cell(row=row, column=5).number_format = '₹ #,##0.00'
-            ws.cell(row=row, column=6, value=cf['net_amount']).border = border
-            ws.cell(row=row, column=6).font = money_font
-            ws.cell(row=row, column=6).number_format = '₹ #,##0.00'
-            ws.cell(row=row, column=7, value="Repaid" if cf.get('is_repaid') else "Pending").border = border
-            ws.cell(row=row, column=8, value=cf.get('repaid_date', '-') if cf.get('is_repaid') else '-').border = border
+        expected_cfs = holding.get('expected_cashflows', [])
+        for cf in expected_cfs:
+            is_investment = cf.get('type') == 'investment'
+            ws_expected.cell(row=row, column=1, value=cf.get('date', '')).border = border
+            ws_expected.cell(row=row, column=2, value=holding['bond_name']).border = border
+            ws_expected.cell(row=row, column=3, value='Investment' if is_investment else 'Maturity').border = border
+            
+            if is_investment:
+                ws_expected.cell(row=row, column=4, value='-').border = border
+                ws_expected.cell(row=row, column=5, value='-').border = border
+                gross = abs(cf.get('gross_amount', 0) or cf.get('amount', 0))
+                ws_expected.cell(row=row, column=6, value=-gross).border = border
+                ws_expected.cell(row=row, column=6).font = Font(name="Consolas", size=10, color="DC2626")
+            else:
+                principal = cf.get('principal_component', 0)
+                interest = cf.get('interest_component', 0)
+                gross = cf.get('gross_amount', principal + interest)
+                ws_expected.cell(row=row, column=4, value=principal).border = border
+                ws_expected.cell(row=row, column=5, value=interest).border = border
+                ws_expected.cell(row=row, column=6, value=gross).border = border
+                total_exp_principal += principal
+                total_exp_interest += interest
+                total_exp_gross += gross
+            
+            ws_expected.cell(row=row, column=4).font = money_font
+            ws_expected.cell(row=row, column=4).number_format = '₹ #,##0.00'
+            ws_expected.cell(row=row, column=5).font = money_font
+            ws_expected.cell(row=row, column=5).number_format = '₹ #,##0.00'
+            ws_expected.cell(row=row, column=6).font = money_font
+            ws_expected.cell(row=row, column=6).number_format = '₹ #,##0.00'
             row += 1
-        
-        # Totals
+    
+    # Totals row for Expected
+    row += 1
+    ws_expected.cell(row=row, column=1, value="TOTALS").font = Font(bold=True)
+    ws_expected.cell(row=row, column=4, value=total_exp_principal).font = Font(bold=True, name="Consolas")
+    ws_expected.cell(row=row, column=4).number_format = '₹ #,##0.00'
+    ws_expected.cell(row=row, column=5, value=total_exp_interest).font = Font(bold=True, name="Consolas")
+    ws_expected.cell(row=row, column=5).number_format = '₹ #,##0.00'
+    ws_expected.cell(row=row, column=6, value=total_exp_gross).font = Font(bold=True, name="Consolas")
+    ws_expected.cell(row=row, column=6).number_format = '₹ #,##0.00'
+    
+    ws_expected.column_dimensions['A'].width = 15
+    ws_expected.column_dimensions['B'].width = 25
+    ws_expected.column_dimensions['C'].width = 12
+    ws_expected.column_dimensions['D'].width = 15
+    ws_expected.column_dimensions['E'].width = 15
+    ws_expected.column_dimensions['F'].width = 18
+    
+    # ========== ACTUAL CASHFLOWS SHEET ==========
+    ws_actual = wb.create_sheet(title="Actual Cashflows")
+    
+    ws_actual['A1'] = "ACTUAL CASHFLOWS (REPAID)"
+    ws_actual['A1'].font = title_font
+    ws_actual.merge_cells('A1:G1')
+    
+    # Headers for Actual
+    actual_headers = ["Date", "Bond Name", "Principal", "Interest", "TDS", "Net Amount", "Repaid Date"]
+    for col, header in enumerate(actual_headers, 1):
+        cell = ws_actual.cell(row=3, column=col, value=header)
+        cell.font = header_font
+        cell.fill = actual_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal='center')
+    
+    row = 4
+    total_act_principal = 0
+    total_act_interest = 0
+    total_act_tds = 0
+    total_act_net = 0
+    
+    for holding in holdings_data['holdings']:
+        actual_cfs = holding.get('actual_cashflows', [])
+        for cf in actual_cfs:
+            ws_actual.cell(row=row, column=1, value=cf.get('date', '')).border = border
+            ws_actual.cell(row=row, column=2, value=holding['bond_name']).border = border
+            
+            principal = cf.get('principal_component', 0)
+            interest = cf.get('interest_component', 0)
+            tds = cf.get('tds_amount', 0)
+            net = cf.get('net_amount', principal + interest - tds)
+            
+            ws_actual.cell(row=row, column=3, value=principal).border = border
+            ws_actual.cell(row=row, column=3).font = money_font
+            ws_actual.cell(row=row, column=3).number_format = '₹ #,##0.00'
+            ws_actual.cell(row=row, column=4, value=interest).border = border
+            ws_actual.cell(row=row, column=4).font = money_font
+            ws_actual.cell(row=row, column=4).number_format = '₹ #,##0.00'
+            ws_actual.cell(row=row, column=5, value=tds).border = border
+            ws_actual.cell(row=row, column=5).font = money_font
+            ws_actual.cell(row=row, column=5).number_format = '₹ #,##0.00'
+            ws_actual.cell(row=row, column=6, value=net).border = border
+            ws_actual.cell(row=row, column=6).font = money_font
+            ws_actual.cell(row=row, column=6).number_format = '₹ #,##0.00'
+            ws_actual.cell(row=row, column=7, value=cf.get('repaid_date', '-')).border = border
+            
+            total_act_principal += principal
+            total_act_interest += interest
+            total_act_tds += tds
+            total_act_net += net
+            row += 1
+    
+    # Totals row for Actual
+    if row > 4:
         row += 1
-        ws.cell(row=row, column=1, value="TOTALS").font = Font(bold=True)
-        ws.cell(row=row, column=3, value=holding['total_principal']).font = Font(bold=True, name="Consolas")
-        ws.cell(row=row, column=3).number_format = '₹ #,##0.00'
-        ws.cell(row=row, column=4, value=holding['total_interest_gross']).font = Font(bold=True, name="Consolas")
-        ws.cell(row=row, column=4).number_format = '₹ #,##0.00'
-        ws.cell(row=row, column=5, value=holding['total_tds']).font = Font(bold=True, name="Consolas")
-        ws.cell(row=row, column=5).number_format = '₹ #,##0.00'
-        ws.cell(row=row, column=6, value=holding['total_principal'] + holding['total_interest_gross'] - holding['total_tds']).font = Font(bold=True, name="Consolas")
-        ws.cell(row=row, column=6).number_format = '₹ #,##0.00'
-        
-        # Adjust column widths
-        ws.column_dimensions['A'].width = 15
-        ws.column_dimensions['B'].width = 12
-        ws.column_dimensions['C'].width = 15
-        ws.column_dimensions['D'].width = 15
-        ws.column_dimensions['E'].width = 12
-        ws.column_dimensions['F'].width = 15
-        ws.column_dimensions['G'].width = 10
-        ws.column_dimensions['H'].width = 15
+        ws_actual.cell(row=row, column=1, value="TOTALS").font = Font(bold=True)
+        ws_actual.cell(row=row, column=3, value=total_act_principal).font = Font(bold=True, name="Consolas")
+        ws_actual.cell(row=row, column=3).number_format = '₹ #,##0.00'
+        ws_actual.cell(row=row, column=4, value=total_act_interest).font = Font(bold=True, name="Consolas")
+        ws_actual.cell(row=row, column=4).number_format = '₹ #,##0.00'
+        ws_actual.cell(row=row, column=5, value=total_act_tds).font = Font(bold=True, name="Consolas")
+        ws_actual.cell(row=row, column=5).number_format = '₹ #,##0.00'
+        ws_actual.cell(row=row, column=6, value=total_act_net).font = Font(bold=True, name="Consolas")
+        ws_actual.cell(row=row, column=6).number_format = '₹ #,##0.00'
+    else:
+        ws_actual.cell(row=row, column=1, value="No actual repayments recorded yet")
+    
+    ws_actual.column_dimensions['A'].width = 15
+    ws_actual.column_dimensions['B'].width = 25
+    ws_actual.column_dimensions['C'].width = 15
+    ws_actual.column_dimensions['D'].width = 15
+    ws_actual.column_dimensions['E'].width = 12
+    ws_actual.column_dimensions['F'].width = 15
+    ws_actual.column_dimensions['G'].width = 15
     
     # Save to BytesIO
     output = io.BytesIO()
