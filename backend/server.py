@@ -9543,7 +9543,7 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         expected_xirr = bond.get('secondary_irr') or bond.get('interest_rate') or bond.get('coupon_rate')
         
         # Calculate ACTUAL XIRR from actual repayments
-        # Actual XIRR uses: Investment outflow + all actual repayments received + remaining expected
+        # Actual XIRR uses: Investment outflow + ALL actual repayments (past AND future from uploads)
         actual_xirr = None
         
         # Use actual_repayments from the database (historical uploads) for XIRR calculation
@@ -9557,7 +9557,8 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                 xirr_dates.append(investment_date_dt)
                 xirr_values.append(-calculated_investment)
                 
-                # Add all actual repayments from actual_repayments table (positive)
+                # Add ALL actual repayments from actual_repayments table (positive)
+                # Include BOTH past and future entries from the uploaded data
                 for ar in matched_actual_repayments:
                     ar_date_str = ar.get('repayment_date', '')
                     ar_date_str = ar_date_str.split('T')[0].split(' ')[0] if ar_date_str else ''
