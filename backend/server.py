@@ -9638,19 +9638,27 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
         
         if remaining_principal > 0 and maturity_date_str:
             # Calculate accumulated interest period by period
+            # IMPORTANT: Interest is calculated from BOND START DATE (not investment date)
+            # The client's premium at secondary market includes the accrued interest
             # Following Excel logic: Interest = Balance Principal × Coupon × Days / 365
             
             accumulated_interest = 0
             balance_principal = total_principal
             
             try:
-                # Parse investment date
+                # Parse dates - use BOND START DATE for interest calculation
+                bond_start = None
+                if bond_start_date_str:
+                    bond_start = datetime.fromisoformat(bond_start_date_str.replace('Z', '+00:00').split('T')[0])
                 inv_date = datetime.fromisoformat(inv_date_str.replace('Z', '+00:00').split('T')[0]) if inv_date_str else None
                 maturity_date = datetime.fromisoformat(maturity_date_str.replace('Z', '+00:00').split('T')[0]) if maturity_date_str else None
                 
-                if inv_date and maturity_date:
-                    # Build timeline of events
-                    events = [{'date': inv_date, 'type': 'start', 'amount': 0}]
+                # Use bond start date for interest calculation if available, else investment date
+                interest_start_date = bond_start if bond_start else inv_date
+                
+                if interest_start_date and maturity_date:
+                    # Build timeline of events - start from BOND START DATE
+                    events = [{'date': interest_start_date, 'type': 'start', 'amount': 0}]
                     
                     for p in prepayments:
                         try:
@@ -9662,8 +9670,8 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
                     events.append({'date': maturity_date, 'type': 'maturity', 'amount': 0})
                     events.sort(key=lambda x: x['date'])
                     
-                    # Calculate interest for each period
-                    prev_date = inv_date
+                    # Calculate interest for each period FROM BOND START
+                    prev_date = interest_start_date
                     for event in events:
                         if event['type'] == 'start':
                             continue
@@ -9710,7 +9718,8 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
                                 'total_prepaid': total_prepaid_principal,
                                 'remaining_principal': final_principal,
                                 'accumulated_interest': final_interest,
-                                'coupon_rate_used': coupon_rate
+                                'coupon_rate_used': coupon_rate,
+                                'interest_start_date': interest_start_date.strftime('%Y-%m-%d') if interest_start_date else None
                             }
                         })
             except Exception as e:
