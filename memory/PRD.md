@@ -2,6 +2,28 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### Expected Repayments - Investment Value Calculation (Secondary Calculator)
+**Requirement**: The investment value in Expected Repayments should be calculated using the Secondary Market Calculator, not just taken from the file upload.
+
+**Implementation**:
+1. **Backend** (`server.py`): Updated `/api/holdings/client/{client_id}` to:
+   - Calculate investment value using Secondary Market Calculator (PV of remaining cashflows)
+   - Include investment as the first entry in `expected_cashflows` array with `type: 'investment'`
+   - Add `calculated_investment` field to each holding
+   - Formula: PV = Σ(CF / (1 + IRR)^years) × units
+
+2. **Frontend** (`Holdings.jsx`): Updated modal to:
+   - Display investment entries in red with "INV" badge (outflow)
+   - Display maturity entries in green with "MAT" badge (inflow)
+   - Footer shows "Investment (Calc)" separately from principal/interest
+
+**Verification Data** (Bond CDNRE001, Client Fali):
+| Trade Date | Units | Investment (Calc) | Maturity Gross | Profit | XIRR |
+|------------|-------|-------------------|----------------|--------|------|
+| 30 Apr 2025 | 34 | ₹39,16,923 | ₹43,57,090 | ₹4,40,167 | 12% |
+| 02 May 2025 | 31 | ₹35,73,531 | ₹39,72,641 | ₹3,99,110 | 12% |
+| 07 May 2025 | 135 | ₹1,55,86,328 | ₹1,73,00,210 | ₹17,13,881 | 12% |
+
 ### Expected Repayments Fix (Holdings Modal)
 **Issue**: Expected Repayments section showed "No expected cashflows from bond definition" in the Holdings modal
 
