@@ -10229,6 +10229,128 @@ async def bulk_repayment_upload(
         raise HTTPException(status_code=400, detail=f"Error processing file: {str(e)}")
 
 
+@api_router.post("/holdings/client/{client_id}/send-report-email")
+async def send_holdings_report_email_endpoint(
+    client_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Send holdings report email to client with sub-broker CC.
+    Broker or sub-broker can trigger this for their clients.
+    """
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can send reports")
+    
+    # Verify client access
+    client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    if current_user['role'] == 'broker':
+        if client.get('created_by') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    elif current_user['role'] == 'sub_broker':
+        if client.get('linked_subbroker_id') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get client email
+    client_email = client.get('email')
+    if not client_email:
+        raise HTTPException(status_code=400, detail="Client has no email address")
+    
+    # Get sub-broker email for CC
+    cc_emails = []
+    if client.get('linked_subbroker_id'):
+        sub_broker = await db.sub_brokers.find_one({"id": client.get('linked_subbroker_id')}, {"_id": 0})
+        if sub_broker and sub_broker.get('email'):
+            cc_emails.append(sub_broker.get('email'))
+    
+    # If current user is broker, also try to CC them
+    if current_user['role'] == 'broker' and current_user.get('email'):
+        if current_user.get('email') not in cc_emails:
+            cc_emails.append(current_user.get('email'))
+    
+    # Get client holdings
+    trades = await db.trades.find(
+        {"client_id": client_id, "status": "approved"},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    if not trades:
+        raise HTTPException(status_code=404, detail="No approved trades found for this client")
+    
+    # Get bonds for each trade
+    bond_ids = list(set(t.get('bond_id') for t in trades if t.get('bond_id')))
+    bonds = await db.bonds.find({"id": {"$in": bond_ids}}, {"_id": 0}).to_list(len(bond_ids))
+    bond_lookup = {b['id']: b for b in bonds}
+    
+    # Aggregate holdings by bond
+    holdings_by_bond = {}
+    for trade in trades:
+        bond_id = trade.get('bond_id')
+        if bond_id not in holdings_by_bond:
+            bond = bond_lookup.get(bond_id, {})
+            holdings_by_bond[bond_id] = {
+                'bond_name': trade.get('bond_name') or bond.get('name', 'Unknown'),
+                'units': 0,
+                'invested_amount': 0,
+                'gross_expected': 0,
+                'profit': 0,
+                'expected_xirr': trade.get('xirr'),
+                'actual_xirr': trade.get('actual_xirr')
+            }
+        holdings_by_bond[bond_id]['units'] += trade.get('units', 0)
+        holdings_by_bond[bond_id]['invested_amount'] += trade.get('total_amount', 0)
+    
+    # Get cashflows for calculating expected returns
+    all_cashflows = await db.holding_cashflows.find(
+        {"client_id": client_id, "type": {"$ne": "investment"}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    # Sum cashflows by bond
+    for cf in all_cashflows:
+        bond_id = cf.get('bond_id')
+        if bond_id in holdings_by_bond:
+            holdings_by_bond[bond_id]['gross_expected'] += cf.get('gross_amount', 0)
+    
+    # Calculate profits
+    holdings_data = []
+    total_invested = 0
+    total_expected = 0
+    total_profit = 0
+    
+    for bond_id, h in holdings_by_bond.items():
+        h['profit'] = h['gross_expected'] - h['invested_amount']
+        h['expected_xirr'] = round(h['expected_xirr'], 2) if h['expected_xirr'] else '-'
+        h['actual_xirr'] = round(h['actual_xirr'], 2) if h['actual_xirr'] else '-'
+        holdings_data.append(h)
+        total_invested += h['invested_amount']
+        total_expected += h['gross_expected']
+        total_profit += h['profit']
+    
+    # Send email
+    email_sent = send_holdings_report_email(
+        client_name=client.get('name', 'Valued Investor'),
+        client_email=client_email,
+        holdings_data=holdings_data,
+        total_invested=total_invested,
+        total_expected=total_expected,
+        total_profit=total_profit,
+        cc_emails=cc_emails if cc_emails else None
+    )
+    
+    if email_sent:
+        return {
+            "success": True,
+            "message": f"Holdings report sent to {client_email}" + (f" with CC to {', '.join(cc_emails)}" if cc_emails else ""),
+            "recipient": client_email,
+            "cc": cc_emails
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to send email. Please check email configuration.")
+
+
 @api_router.get("/holdings/export-cashflows/{client_id}")
 async def export_client_cashflows(client_id: str, current_user: dict = Depends(get_current_user)):
     """Export all cashflows for a client to Excel (for updating repayments)"""
