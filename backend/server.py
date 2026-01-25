@@ -11192,7 +11192,19 @@ async def approve_reinvestment_tag(cashflow_id: str, approval: ReinvestmentAppro
     }
     await db.notifications.insert_one(notification)
     
-    return {"message": f"Tag {'approved' if approval.approved else 'rejected'} successfully"}
+    # If approved, call the Kinntegra MF Buy Scheduler API
+    kinntegra_result = None
+    if approval.approved:
+        try:
+            kinntegra_result = await call_kinntegra_mf_buy_scheduler(cashflow, client)
+        except Exception as e:
+            logger.error(f"Error calling Kinntegra API: {e}")
+            kinntegra_result = {"status": "error", "message": str(e)}
+    
+    return {
+        "message": f"Tag {'approved' if approval.approved else 'rejected'} successfully",
+        "kinntegra_api_result": kinntegra_result
+    }
 
 
 @api_router.get("/reinvestment/logs")
