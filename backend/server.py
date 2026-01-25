@@ -4243,6 +4243,7 @@ async def bulk_upload_indian_clients(
                 "name": name,
                 "photo_id": login_id,  # Use login_id (PAN or PAN+1 for role overlap)
                 "pan_number": pan,  # Original PAN stored separately
+                "pan": pan,  # Also store as 'pan' for consistency
                 "original_pan": original_pan,  # Store original for reference
                 "is_role_overlap": is_role_overlap,  # Track if sub-broker is also client
                 "passport_type": "indian",
@@ -4284,7 +4285,10 @@ async def bulk_upload_indian_clients(
                 "bond_allocations": [],
                 "verification_status": "pending",
                 "is_active": True,
-                "user_id": user_id
+                "user_id": user_id,
+                # Store plain credentials for broker display and email resend
+                "default_password": "kinntegra123",
+                "default_pin": "1234"
             }
             
             # Create user account
