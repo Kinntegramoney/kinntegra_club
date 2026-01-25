@@ -671,6 +671,179 @@ export default function Holdings() {
     return isNegative ? `-₹${formatted}` : `₹${formatted}`;
   };
 
+  // Download Expected Cashflow as detailed PDF
+  const downloadExpectedCashflowPDF = (holdingData, cashflows) => {
+    const formatAmount = (amt) => {
+      if (!amt || amt === 0) return '₹0.00';
+      return `₹${Math.abs(amt).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
+    // Calculate totals
+    const investments = cashflows.filter(cf => cf.type === 'investment');
+    const inflows = cashflows.filter(cf => cf.type !== 'investment');
+    
+    const totalInvestment = investments.reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || 0), 0);
+    const totalPrincipal = inflows.reduce((sum, cf) => sum + (cf.principal_component || 0), 0);
+    const totalInterest = inflows.reduce((sum, cf) => sum + (cf.interest_component || 0), 0);
+    const totalGross = inflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+    const totalTDS = inflows.reduce((sum, cf) => sum + (cf.tds_amount || 0), 0);
+    const totalNet = inflows.reduce((sum, cf) => sum + (cf.net_amount || 0), 0);
+    const profit = totalGross - totalInvestment;
+
+    // Build HTML for PDF
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Expected Cashflow - ${holdingData.bond_name}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1f2937; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #2563eb; padding-bottom: 20px; }
+          .header h1 { font-size: 24px; color: #2563eb; margin-bottom: 5px; }
+          .header p { font-size: 14px; color: #6b7280; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+          .info-box { background: #f9fafb; padding: 15px; border-radius: 8px; }
+          .info-box label { font-size: 11px; color: #6b7280; text-transform: uppercase; display: block; margin-bottom: 5px; }
+          .info-box span { font-size: 16px; font-weight: 600; color: #111827; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th { background: #2563eb; color: white; padding: 12px 10px; text-align: left; font-size: 12px; text-transform: uppercase; }
+          th:not(:first-child) { text-align: right; }
+          td { padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
+          td:not(:first-child) { text-align: right; font-family: monospace; }
+          tr.investment { background: #fef2f2; }
+          tr.investment td { color: #dc2626; }
+          tr.inflow:hover { background: #f9fafb; }
+          .totals { background: #f3f4f6; }
+          .totals td { font-weight: 600; border-top: 2px solid #d1d5db; }
+          .summary { margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border-radius: 12px; color: white; }
+          .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+          .summary-item label { font-size: 11px; opacity: 0.8; display: block; margin-bottom: 5px; }
+          .summary-item span { font-size: 20px; font-weight: 700; }
+          .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #9ca3af; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Expected Cashflow Statement</h1>
+          <p>${holdingData.bond_name} • Generated on ${format(new Date(), 'dd MMM yyyy')}</p>
+        </div>
+        
+        <div class="info-grid">
+          <div class="info-box">
+            <label>Total Units</label>
+            <span>${holdingData.total_units || holdingData.units || '-'}</span>
+          </div>
+          <div class="info-box">
+            <label>Total Investment</label>
+            <span>${formatAmount(totalInvestment)}</span>
+          </div>
+          <div class="info-box">
+            <label>Expected XIRR</label>
+            <span>${holdingData.xirr?.toFixed(2) || '-'}%</span>
+          </div>
+          <div class="info-box">
+            <label>Expected Profit</label>
+            <span style="color: #16a34a">${formatAmount(profit)}</span>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Principal</th>
+              <th>Interest</th>
+              <th>Gross</th>
+              <th>TDS</th>
+              <th>Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${investments.map(cf => `
+              <tr class="investment">
+                <td>${format(new Date(cf.date), 'dd MMM yyyy')} <small>(Investment)</small></td>
+                <td>-</td>
+                <td>-</td>
+                <td>-${formatAmount(Math.abs(cf.investment_amount || cf.gross_amount || 0))}</td>
+                <td>-</td>
+                <td>-${formatAmount(Math.abs(cf.net_amount || cf.investment_amount || 0))}</td>
+              </tr>
+            `).join('')}
+            ${inflows.map(cf => `
+              <tr class="inflow">
+                <td>${format(new Date(cf.date), 'dd MMM yyyy')}</td>
+                <td>${formatAmount(cf.principal_component)}</td>
+                <td>${formatAmount(cf.interest_component)}</td>
+                <td>${formatAmount(cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0))}</td>
+                <td>${formatAmount(cf.tds_amount)}</td>
+                <td>${formatAmount(cf.net_amount)}</td>
+              </tr>
+            `).join('')}
+            <tr class="totals">
+              <td><strong>Total Inflows</strong></td>
+              <td>${formatAmount(totalPrincipal)}</td>
+              <td>${formatAmount(totalInterest)}</td>
+              <td>${formatAmount(totalGross)}</td>
+              <td>${formatAmount(totalTDS)}</td>
+              <td>${formatAmount(totalNet)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="summary">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <label>Total Investment</label>
+              <span>${formatAmount(totalInvestment)}</span>
+            </div>
+            <div class="summary-item">
+              <label>Expected Returns</label>
+              <span>${formatAmount(totalGross)}</span>
+            </div>
+            <div class="summary-item">
+              <label>Net Profit</label>
+              <span>${formatAmount(profit)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>This is a system-generated document. For queries, please contact your relationship manager.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Create and download PDF using html2pdf
+    const element = document.createElement('div');
+    element.innerHTML = html;
+    document.body.appendChild(element);
+
+    import('html2pdf.js').then(html2pdf => {
+      html2pdf.default()
+        .set({
+          margin: 10,
+          filename: `Expected_Cashflow_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        })
+        .from(element)
+        .save()
+        .then(() => {
+          document.body.removeChild(element);
+          toast.success('PDF downloaded successfully');
+        })
+        .catch((err) => {
+          document.body.removeChild(element);
+          toast.error('Failed to generate PDF');
+          console.error(err);
+        });
+    });
+  };
+
   if (!user) return null;
 
   const SidebarComponent = user.role === 'broker' ? Sidebar : user.role === 'client' ? ClientSidebar : SubBrokerSidebar;
