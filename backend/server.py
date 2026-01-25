@@ -11520,12 +11520,12 @@ async def download_client_holdings(client_id: str, current_user: dict = Depends(
     # ========== ACTUAL CASHFLOWS SHEET ==========
     ws_actual = wb.create_sheet(title="Actual Cashflows")
     
-    ws_actual['A1'] = "ACTUAL CASHFLOWS (REPAID)"
+    ws_actual['A1'] = "ACTUAL CASHFLOWS"
     ws_actual['A1'].font = title_font
-    ws_actual.merge_cells('A1:G1')
+    ws_actual.merge_cells('A1:F1')
     
-    # Headers for Actual
-    actual_headers = ["Date", "Bond Name", "Principal", "Interest", "TDS", "Net Amount", "Repaid Date"]
+    # Headers for Actual (same as Expected for consistency)
+    actual_headers = ["Date", "Bond Name", "Type", "Principal", "Interest", "Gross Amount"]
     for col, header in enumerate(actual_headers, 1):
         cell = ws_actual.cell(row=3, column=col, value=header)
         cell.font = header_font
@@ -11534,20 +11534,66 @@ async def download_client_holdings(client_id: str, current_user: dict = Depends(
         cell.alignment = Alignment(horizontal='center')
     
     row = 4
+    total_act_investment = 0
     total_act_principal = 0
     total_act_interest = 0
-    total_act_tds = 0
-    total_act_net = 0
+    total_act_gross = 0
     
     for holding in holdings_data['holdings']:
         actual_cfs = holding.get('actual_cashflows', [])
         for cf in actual_cfs:
+            is_investment = cf.get('type') == 'investment'
+            cf_type = cf.get('type', 'repayment').capitalize()
+            
             ws_actual.cell(row=row, column=1, value=cf.get('date', '')).border = border
             ws_actual.cell(row=row, column=2, value=holding['bond_name']).border = border
+            ws_actual.cell(row=row, column=3, value=cf_type).border = border
             
-            principal = cf.get('principal_component', 0)
-            interest = cf.get('interest_component', 0)
-            tds = cf.get('tds_amount', 0)
+            if is_investment:
+                ws_actual.cell(row=row, column=4, value='-').border = border
+                ws_actual.cell(row=row, column=5, value='-').border = border
+                gross = abs(cf.get('gross_amount', 0) or cf.get('amount', 0))
+                ws_actual.cell(row=row, column=6, value=-gross).border = border
+                ws_actual.cell(row=row, column=6).font = Font(name="Consolas", size=10, color="DC2626")
+                total_act_investment += gross
+            else:
+                principal = cf.get('principal_component', 0) or 0
+                interest = cf.get('interest_component', 0) or 0
+                gross = cf.get('gross_amount', principal + interest) or (principal + interest)
+                ws_actual.cell(row=row, column=4, value=principal).border = border
+                ws_actual.cell(row=row, column=5, value=interest).border = border
+                ws_actual.cell(row=row, column=6, value=gross).border = border
+                total_act_principal += principal
+                total_act_interest += interest
+                total_act_gross += gross
+            
+            ws_actual.cell(row=row, column=4).font = money_font
+            ws_actual.cell(row=row, column=4).number_format = '₹ #,##0.00'
+            ws_actual.cell(row=row, column=5).font = money_font
+            ws_actual.cell(row=row, column=5).number_format = '₹ #,##0.00'
+            ws_actual.cell(row=row, column=6).font = money_font
+            ws_actual.cell(row=row, column=6).number_format = '₹ #,##0.00'
+            row += 1
+    
+    # Totals row for Actual
+    if row > 4:
+        row += 1
+        ws_actual.cell(row=row, column=1, value="TOTALS").font = Font(bold=True)
+        ws_actual.cell(row=row, column=4, value=total_act_principal).font = Font(bold=True, name="Consolas")
+        ws_actual.cell(row=row, column=4).number_format = '₹ #,##0.00'
+        ws_actual.cell(row=row, column=5, value=total_act_interest).font = Font(bold=True, name="Consolas")
+        ws_actual.cell(row=row, column=5).number_format = '₹ #,##0.00'
+        ws_actual.cell(row=row, column=6, value=total_act_gross).font = Font(bold=True, name="Consolas")
+        ws_actual.cell(row=row, column=6).number_format = '₹ #,##0.00'
+        
+        # Profit row
+        row += 1
+        ws_actual.cell(row=row, column=1, value="PROFIT").font = Font(bold=True, color="059669")
+        profit = total_act_gross - total_act_investment
+        ws_actual.cell(row=row, column=6, value=profit).font = Font(bold=True, name="Consolas", color="059669")
+        ws_actual.cell(row=row, column=6).number_format = '₹ #,##0.00'
+    else:
+        ws_actual.cell(row=row, column=1, value="No actual cashflows recorded yet")
             net = cf.get('net_amount', principal + interest - tds)
             
             ws_actual.cell(row=row, column=3, value=principal).border = border
