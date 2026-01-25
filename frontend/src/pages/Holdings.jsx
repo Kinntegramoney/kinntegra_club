@@ -1828,16 +1828,37 @@ export default function Holdings() {
                           </thead>
                           <tbody>
                             {(modalData.trades[activeTab].expected_cashflows || []).map((cf, idx) => (
-                              <tr key={idx} className="border-b border-blue-100 hover:bg-blue-50/50">
-                                <td className="py-2 px-3 font-mono text-xs">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-blue-50 text-blue-800">
-                                  {formatINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                </td>
-                                <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
-                                <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
-                              </tr>
+                              cf.type === 'investment' ? (
+                                // Investment row - styled as outflow
+                                <tr key={idx} className="border-b border-red-200 bg-red-50/50">
+                                  <td className="py-2 px-3 font-mono text-xs text-red-700">
+                                    {format(new Date(cf.date), "dd MMM yyyy")}
+                                    <span className="ml-1 px-1 py-0.5 bg-red-100 text-red-600 rounded text-[9px] font-medium">INV</span>
+                                  </td>
+                                  <td colSpan="3" className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-700">
+                                    {formatINR(Math.abs(cf.amount || cf.gross_amount || 0))}
+                                  </td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs text-gray-400">-</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-medium text-red-700">
+                                    ({formatINR(Math.abs(cf.net_amount || cf.amount || 0))})
+                                  </td>
+                                </tr>
+                              ) : (
+                                // Inflow row - normal styling
+                                <tr key={idx} className="border-b border-blue-100 hover:bg-blue-50/50">
+                                  <td className="py-2 px-3 font-mono text-xs">
+                                    {format(new Date(cf.date), "dd MMM yyyy")}
+                                    <span className="ml-1 px-1 py-0.5 bg-green-100 text-green-600 rounded text-[9px] font-medium">MAT</span>
+                                  </td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-blue-50 text-blue-800">
+                                    {formatINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                  </td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
+                                </tr>
+                              )
                             ))}
                           </tbody>
                         </table>
@@ -1845,7 +1866,7 @@ export default function Holdings() {
                       <div className="bg-blue-100 px-4 py-2 border-t border-blue-200 text-sm">
                         <span className="text-blue-600">Total Gross:</span>
                         <span className="font-mono font-semibold ml-2 text-blue-800">
-                          {formatINR((modalData.trades[activeTab].expected_cashflows || []).reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
+                          {formatINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
                         </span>
                       </div>
                     </div>
