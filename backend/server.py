@@ -5833,7 +5833,8 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
     # Sheet 2: Repayment Details
     ws_repayments = wb.create_sheet("Repayment Details")
     
-    rep_headers = ["Deal ID*", "Date of Investment*", "Repayment Date*", "PAN*", "Principal", "Interest", "Gross Amount*", "TDS", "Net Amount*"]
+    # Date of Investment is optional - helps match to specific trade when client has multiple investments in same bond
+    rep_headers = ["Deal ID*", "Date of Investment (optional)", "Repayment Date*", "PAN*", "Principal", "Interest", "Gross Amount*", "TDS", "Net Amount*"]
     
     rep_header_fill = PatternFill(start_color="166534", end_color="166534", fill_type="solid")
     
