@@ -5352,7 +5352,7 @@ async def bulk_upload_bonds(
     for idx, row in df.iterrows():
         try:
             # Validate required fields - using standardized column names after cleaning
-            required_fields = ['bond_code', 'bond_name', 'principal_amount', 'coupon_rate', 
+            required_fields = ['bond_code', 'bond_name', 'coupon_rate', 
                               'primary_irr', 'secondary_irr', 'start_date', 'maturity_date']
             
             missing = [f for f in required_fields if f not in row.index or pd.isna(row.get(f))]
