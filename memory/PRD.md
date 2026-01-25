@@ -2,6 +2,35 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### Holdings Page - Email, Sync & Upload Features (Jan 25, 2026)
+**New Features Implemented**:
+
+1. **Holdings Report Email Button** (`Holdings.jsx`, `server.py`, `email_service.py`):
+   - EMAIL button now sends holdings report to client email
+   - Sub-broker automatically CC'd on the email
+   - API: `POST /api/holdings/client/{client_id}/send-report-email`
+   - Shows loading state "SENDING..." during operation
+
+2. **Sync Email Repayments** (`Holdings.jsx`):
+   - New "Broker Tools" section visible only to brokers
+   - "Sync Email Repayments" button triggers email inbox processing
+   - Reads from `updates@kinntegraa.club` (configured in backend)
+   - API: `POST /api/email-reader/process?days_back=30`
+   - Automatically refreshes holdings after sync
+
+3. **Upload Historical Data** (`Holdings.jsx`):
+   - Upload button accepts Excel files (.xlsx, .xls)
+   - Merges/updates existing actual repayment data
+   - API: `POST /api/bulk/historical-trades`
+   - Shows upload progress state
+
+**Technical Notes**:
+- Email service uses real SMTP (not mocked)
+- Broker Tools toolbar only visible to `role='broker'`
+- Historical upload template: `GET /api/bulk/template/historical-trades`
+
+---
+
 ### Bug Fixes - PDF and Excel Download (Jan 25, 2026)
 **Issues Fixed**:
 1. **PDF Download Blank**: The "Expected Cashflow" PDF download was generating blank files
