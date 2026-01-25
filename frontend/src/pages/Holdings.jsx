@@ -1927,28 +1927,6 @@ export default function Holdings() {
           </div>
         </div>
       )}
-                        {formatAbsoluteINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.interest_component || 0), 0))}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Expected TDS:</span>
-                      <span className="font-mono font-medium ml-2 text-red-600">
-                        {formatAbsoluteINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.tds_amount || 0), 0))}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Actual Received:</span>
-                      <span className="font-mono font-medium ml-2 text-green-600">
-                        {(modalData.trades[activeTab].actual_cashflows || []).length} payments
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
       
       {/* Principal Prepayment Modal */}
       {showPrepaymentModal && prepaymentTrade && (
