@@ -5229,7 +5229,6 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
         "═══════════════════════════════════════════════════════════════",
         "SHEET 2 - Financial Details (Purple) - REQUIRED",
         "═══════════════════════════════════════════════════════════════",
-        "• Principal Amount*: Total principal in INR",
         "• Coupon Rate*: Annual interest rate as percentage",
         "• Primary IRR*: Expected IRR for primary buyer",
         "• Secondary IRR*: Target IRR for secondary market trading",
