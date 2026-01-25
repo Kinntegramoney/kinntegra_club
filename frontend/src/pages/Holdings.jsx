@@ -994,24 +994,22 @@ export default function Holdings() {
       </html>
     `;
 
-    // Create container for PDF generation - positioned on-screen but visually hidden
+    // Create container for PDF generation - must be visible for html2canvas to capture
     const container = document.createElement('div');
     container.id = 'pdf-temp-container';
     container.style.cssText = `
-      position: fixed;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
+      position: absolute;
+      left: -9999px;
+      top: 0;
       width: 1100px;
+      min-height: 800px;
       background: white;
-      z-index: 9999;
-      opacity: 0.01;
-      pointer-events: none;
+      z-index: -1;
     `;
     container.innerHTML = html;
     document.body.appendChild(container);
 
-    // Wait for DOM and fonts to be ready
+    // Give time for DOM to render properly
     setTimeout(() => {
       import('html2pdf.js').then(html2pdf => {
         const element = document.getElementById('pdf-temp-container');
@@ -1020,37 +1018,49 @@ export default function Holdings() {
           return;
         }
         
+        // Force layout recalculation
+        element.offsetHeight;
+        
         html2pdf.default()
           .set({
-            margin: 10,
+            margin: [10, 10, 10, 10],
             filename: `Cashflow_Report_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
+            image: { type: 'jpeg', quality: 0.95 },
             html2canvas: { 
               scale: 2, 
               useCORS: true, 
-              logging: false,
+              logging: true,
               letterRendering: true,
-              allowTaint: true
+              allowTaint: true,
+              backgroundColor: '#ffffff',
+              windowWidth: 1100,
+              windowHeight: 800,
+              scrollX: 0,
+              scrollY: 0,
+              x: 0,
+              y: 0
             },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+            pagebreak: { mode: 'avoid-all' }
           })
           .from(element)
           .save()
           .then(() => {
-            if (document.getElementById('pdf-temp-container')) {
-              document.body.removeChild(document.getElementById('pdf-temp-container'));
-            }
+            const el = document.getElementById('pdf-temp-container');
+            if (el) document.body.removeChild(el);
             toast.success('PDF downloaded');
           })
           .catch((err) => {
             console.error('PDF Error:', err);
-            if (document.getElementById('pdf-temp-container')) {
-              document.body.removeChild(document.getElementById('pdf-temp-container'));
-            }
+            const el = document.getElementById('pdf-temp-container');
+            if (el) document.body.removeChild(el);
             toast.error('Failed to generate PDF');
           });
+      }).catch(err => {
+        console.error('html2pdf import error:', err);
+        toast.error('PDF library failed to load');
       });
-    }, 200);
+    }, 500);
   };
 
   if (!user) return null;
