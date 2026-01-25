@@ -1577,18 +1577,24 @@ export default function Holdings() {
                             </tr>
                           </thead>
                           <tbody>
-                            {consolidatedCashflows.map((cf, idx) => (
+                            {expectedCashflows.length > 0 ? expectedCashflows.map((cf, idx) => (
                               <tr key={idx} className="border-b border-blue-100 hover:bg-blue-50/50">
                                 <td className="py-2 px-3 font-mono text-xs">{format(new Date(cf.date), "dd MMM yyyy")}</td>
                                 <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
                                 <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
                                 <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-blue-50 text-blue-800">
-                                  {formatINR((cf.principal_component || 0) + (cf.interest_component || 0))}
+                                  {formatINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
                                 </td>
                                 <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
                                 <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
                               </tr>
-                            ))}
+                            )) : (
+                              <tr>
+                                <td colSpan="6" className="py-6 text-center text-gray-500">
+                                  <p className="text-xs">No expected cashflows from bond definition</p>
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -1599,7 +1605,7 @@ export default function Holdings() {
                           <div>
                             <span className="text-blue-600">Total Gross:</span>
                             <span className="font-mono font-semibold ml-2 text-blue-800">
-                              {formatINR((modalData.total_principal || 0) + (modalData.total_interest_gross || 0))}
+                              {formatINR(expectedCashflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
                             </span>
                           </div>
                           <div className="text-right">
