@@ -9133,11 +9133,17 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
     """
     Build actual cashflows array with:
     1. Investment entry (outflow)
-    2. Repaid cashflows (prepayments received)
+    2. Actually received cashflows (with repaid_date or repaid_actual_amount confirmed)
     3. Upcoming maturity (remaining principal + adjusted interest)
     
     This mirrors the structure of expected_cashflows for consistency.
     """
+    # Helper to check if cashflow has actual payment confirmation
+    def is_actually_received(cf):
+        has_repaid_date = cf.get('repaid_date') is not None
+        has_actual_amount = cf.get('repaid_actual_amount') is not None and cf.get('repaid_actual_amount', 0) > 0
+        return has_repaid_date or has_actual_amount
+    
     actual_cashflows = []
     
     # 1. Add investment entry (outflow - negative)
@@ -9155,9 +9161,9 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
             'source': 'investment'
         })
     
-    # 2. Add all repaid cashflows (prepayments and scheduled repayments)
-    repaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_repaid')]
-    for cf in repaid_cashflows:
+    # 2. Add only ACTUALLY received cashflows (with payment confirmation)
+    received_cashflows = [cf for cf in stored_cashflows if is_actually_received(cf)]
+    for cf in received_cashflows:
         actual_cashflows.append({
             'date': cf.get('repaid_date') or cf.get('date'),
             'type': 'prepayment' if cf.get('is_prepaid') else 'repayment',
@@ -9172,9 +9178,9 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
             'source': 'actual_repayment'
         })
     
-    # 3. Add upcoming maturity (if not fully repaid)
+    # 3. Add upcoming maturity (all cashflows NOT actually received)
     # This is the remaining principal + interest calculated on reduced balance
-    pending_cashflows = [cf for cf in stored_cashflows if not cf.get('is_repaid')]
+    pending_cashflows = [cf for cf in stored_cashflows if not is_actually_received(cf)]
     if pending_cashflows:
         # Sum up pending amounts
         pending_principal = sum(cf.get('principal_component', 0) or 0 for cf in pending_cashflows)
