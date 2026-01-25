@@ -1882,12 +1882,28 @@ export default function Holdings() {
                           </thead>
                           <tbody className="divide-y divide-gray-100">
                             {actualCashflows.length > 0 ? actualCashflows.map((cf, idx) => (
-                              <tr key={idx} className="bg-white hover:bg-gray-50">
-                                <td className="py-3 px-4 font-mono text-sm text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-gray-900">
-                                  {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                </td>
-                              </tr>
+                              cf.type === 'investment' ? (
+                                <tr key={idx} className="bg-red-50">
+                                  <td className="py-3 px-4 font-mono text-sm text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                  <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-red-600">
+                                    -{formatAbsoluteINR(Math.abs(cf.investment_amount || cf.gross_amount || 0))}
+                                  </td>
+                                </tr>
+                              ) : cf.type === 'maturity' ? (
+                                <tr key={idx} className="bg-blue-50">
+                                  <td className="py-3 px-4 font-mono text-sm text-blue-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                  <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-blue-600">
+                                    {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                  </td>
+                                </tr>
+                              ) : (
+                                <tr key={idx} className="bg-white hover:bg-gray-50">
+                                  <td className="py-3 px-4 font-mono text-sm text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                  <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-gray-900">
+                                    {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                  </td>
+                                </tr>
+                              )
                             )) : (
                               <tr>
                                 <td colSpan="2" className="py-8 text-center text-gray-500">
@@ -1899,13 +1915,16 @@ export default function Holdings() {
                         </table>
                       </div>
                       
-                      {/* Actual Summary Footer - Fixed at bottom */}
+                      {/* Actual Summary Footer - Fixed at bottom with Profits */}
                       <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 mt-auto">
                         <div className="flex justify-between items-center">
                           <div>
-                            <span className="text-sm text-gray-600">Total:</span>
+                            <span className="text-sm text-gray-600">Profits:</span>
                             <span className="font-mono font-bold ml-2 text-green-600">
-                              {formatAbsoluteINR(actualCashflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
+                              {formatAbsoluteINR(
+                                actualCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
+                                actualCashflows.filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || 0), 0)
+                              )}
                             </span>
                           </div>
                           <div className="text-right">
