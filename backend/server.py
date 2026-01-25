@@ -9267,16 +9267,25 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         # Calculate totals for this holding (use GROSS amounts = principal + interest)
         investment_amount = trade.get('total_amount', 0)
         
-        # GROSS repaid = principal + interest (before TDS)
+        # Helper to check if cashflow has actual payment confirmation
+        # A cashflow is only considered "actually received" if it has repaid_date or repaid_actual_amount
+        # Just having is_repaid=True for past dates is NOT enough (date passed != payment received)
+        def is_actually_received(cf):
+            # Must have explicit confirmation: repaid_date set OR repaid_actual_amount set
+            has_repaid_date = cf.get('repaid_date') is not None
+            has_actual_amount = cf.get('repaid_actual_amount') is not None and cf.get('repaid_actual_amount', 0) > 0
+            return has_repaid_date or has_actual_amount
+        
+        # GROSS repaid = only cashflows with actual payment confirmation
         repaid_gross = sum(
             (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
-            for cf in stored_cashflows if cf.get('is_repaid')
+            for cf in stored_cashflows if is_actually_received(cf)
         )
         
-        # GROSS upcoming = principal + interest (before TDS)
+        # GROSS upcoming = everything NOT actually received (includes past-due unpaid)
         upcoming_gross = sum(
             (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
-            for cf in stored_cashflows if not cf.get('is_repaid')
+            for cf in stored_cashflows if not is_actually_received(cf)
         )
         
         # Calculate principal and interest components
