@@ -9319,17 +9319,9 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                         })
                 except Exception as e:
                     logger.error(f"Error calculating expected cashflows: {e}")
-                for cf in maturity_cashflows:
-                    original_cashflows.append({
-                        'date': cf.get('date'),
-                        'principal_component': cf.get('original_principal_component') or cf.get('principal_component', 0),
-                        'interest_component': cf.get('original_interest_component') or cf.get('interest_component', 0),
-                        'gross_amount': (cf.get('original_principal_component') or cf.get('principal_component', 0)) + 
-                                       (cf.get('original_interest_component') or cf.get('interest_component', 0)),
-                        'tds_amount': cf.get('original_tds_amount') or cf.get('tds_amount', 0),
-                        'net_amount': cf.get('original_net_amount') or cf.get('net_amount', 0)
-                    })
-            else:
+        
+        # If no cashflows_per_unit and no original_cashflows calculated, fallback to maturity calculation
+        if not original_cashflows:
                 # If all cashflows are prepaid, create expected from maturity date
                 # This is a fallback when no original data is available
                 maturity_date = bond.get('maturity_date')
