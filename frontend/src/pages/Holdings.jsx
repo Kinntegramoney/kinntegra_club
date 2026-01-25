@@ -401,6 +401,108 @@ export default function Holdings() {
     }
   };
 
+  // Send Holdings Report Email to Client (with sub-broker CC)
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const handleSendReportEmail = async () => {
+    if (!selectedClient) return;
+    
+    setSendingEmail(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/holdings/client/${selectedClient.id}/send-report-email`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success(response.data.message || "Holdings report sent to client");
+    } catch (error) {
+      console.error("Error sending report email:", error);
+      toast.error(error.response?.data?.detail || "Failed to send email");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  // Sync Repayments from Email (reads from updates@kinntegraa.club)
+  const [syncingEmails, setSyncingEmails] = useState(false);
+  const handleSyncEmailRepayments = async () => {
+    setSyncingEmails(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/email-reader/process?days_back=30`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      const result = response.data;
+      if (result.processed > 0 || result.matched > 0) {
+        toast.success(`Synced ${result.matched} repayments from ${result.total_emails} emails`);
+        // Refresh holdings if a client is selected
+        if (selectedClient) {
+          fetchClientHoldings(selectedClient.id);
+        }
+      } else if (result.total_emails === 0) {
+        toast.info("No new repayment emails found");
+      } else {
+        toast.warning(`Found ${result.total_emails} emails but no matches`);
+      }
+      
+      if (result.errors?.length > 0) {
+        console.warn("Email sync errors:", result.errors);
+      }
+    } catch (error) {
+      console.error("Error syncing email repayments:", error);
+      toast.error(error.response?.data?.detail || "Failed to sync repayments from emails");
+    } finally {
+      setSyncingEmails(false);
+    }
+  };
+
+  // Historical transactions upload with supersede option
+  const [historicalUploading, setHistoricalUploading] = useState(false);
+  const handleHistoricalUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setHistoricalUploading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await axios.post(`${API}/bulk-upload/historical-trades`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      const result = response.data;
+      
+      if (result.investments_created > 0 || result.repayments_recorded > 0) {
+        toast.success(`Created ${result.investments_created} investments, recorded ${result.repayments_recorded} repayments`);
+        if (selectedClient) {
+          fetchClientHoldings(selectedClient.id);
+        }
+      }
+      
+      if (result.errors?.length > 0) {
+        toast.warning(`${result.errors.length} entries had issues. Check console.`);
+        console.warn("Historical upload errors:", result.errors);
+      }
+      
+      e.target.value = '';
+    } catch (error) {
+      console.error("Error uploading historical data:", error);
+      toast.error(error.response?.data?.detail || "Failed to upload historical data");
+      e.target.value = '';
+    } finally {
+      setHistoricalUploading(false);
+    }
+  };
+
   const openCashflowModal = (holding) => {
     setModalData(holding);
     setActiveTab("summary");
