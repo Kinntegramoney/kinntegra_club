@@ -9333,10 +9333,26 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         total_tds = sum(cf.get('tds_amount', 0) for cf in stored_cashflows)
         total_net_interest = total_interest_gross - total_tds
         
-        # Repaid components - ONLY count cashflows with actual payment confirmation
-        repaid_principal = sum(cf.get('principal_component', 0) for cf in stored_cashflows if is_actually_received(cf))
-        repaid_interest = sum(cf.get('interest_component', 0) for cf in stored_cashflows if is_actually_received(cf))
-        repaid_tds = sum(cf.get('tds_amount', 0) for cf in stored_cashflows if is_actually_received(cf))
+        # Repaid components - from holding_cashflows with confirmation
+        repaid_principal_cf = sum(cf.get('principal_component', 0) for cf in stored_cashflows if is_actually_received(cf))
+        repaid_interest_cf = sum(cf.get('interest_component', 0) for cf in stored_cashflows if is_actually_received(cf))
+        repaid_tds_cf = sum(cf.get('tds_amount', 0) for cf in stored_cashflows if is_actually_received(cf))
+        
+        # Repaid components - from actual_repayments (not double counted)
+        repaid_principal_ar = 0
+        repaid_interest_ar = 0
+        repaid_tds_ar = 0
+        for ar in matched_actual_repayments:
+            ar_date = (ar.get('repayment_date') or '')[:10]
+            if ar_date and ar_date not in repaid_cf_dates:
+                repaid_principal_ar += ar.get('principal', 0) or 0
+                repaid_interest_ar += ar.get('interest', 0) or 0
+                repaid_tds_ar += ar.get('tds', 0) or 0
+        
+        # Total repaid from both sources
+        repaid_principal = repaid_principal_cf + repaid_principal_ar
+        repaid_interest = repaid_interest_cf + repaid_interest_ar
+        repaid_tds = repaid_tds_cf + repaid_tds_ar
         
         # Calculate prepaid info (prepaid principal only, no interest)
         prepaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_prepaid') or cf.get('type') == 'prepayment']
