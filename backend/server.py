@@ -9341,6 +9341,50 @@ def generate_client_cashflows(trade: dict, bond: dict) -> List[dict]:
     
     # Sort by date
     cashflows.sort(key=lambda x: x['date'])
+    
+    # FALLBACK: If no cashflows generated and bond has basic data, create a simple maturity cashflow
+    if not cashflows:
+        # Check if bond has enough basic data for a simple maturity cashflow
+        end_date_str = bond.get('end_date', bond.get('maturity_date', ''))
+        principal_amount = bond.get('principal_amount', bond.get('face_value', 0))
+        interest_rate = bond.get('annual_interest_rate', bond.get('interest_rate', 0))
+        
+        if end_date_str and principal_amount > 0:
+            try:
+                end_date = datetime.fromisoformat(end_date_str.split('T')[0])
+                
+                # Calculate total expected return for this investment
+                # Simple calculation: principal * units + estimated interest
+                total_principal = (principal_amount / bond.get('total_units', 1)) * units
+                
+                # Estimate interest based on holding period
+                days_to_maturity = (end_date - investment_date).days
+                years_to_maturity = days_to_maturity / 365.0
+                estimated_interest = total_principal * (interest_rate / 100) * years_to_maturity
+                tds_on_interest = estimated_interest * 0.10
+                
+                gross_amount = total_principal + estimated_interest
+                net_amount = gross_amount - tds_on_interest
+                
+                # Create a single maturity cashflow
+                cashflows.append({
+                    "id": str(uuid.uuid4()),
+                    "trade_id": trade['id'],
+                    "type": "maturity",
+                    "date": end_date_str.split('T')[0],
+                    "gross_amount": round(gross_amount, 2),
+                    "tds_amount": round(tds_on_interest, 2),
+                    "net_amount": round(net_amount, 2),
+                    "principal_component": round(total_principal, 2),
+                    "interest_component": round(estimated_interest, 2),
+                    "is_repaid": False,
+                    "repaid_date": None,
+                    "repaid_actual_amount": None,
+                    "notes": "Auto-generated maturity cashflow (bond missing detailed payment schedule)"
+                })
+            except Exception as e:
+                pass  # Skip fallback if date parsing fails
+    
     return cashflows
 
 
