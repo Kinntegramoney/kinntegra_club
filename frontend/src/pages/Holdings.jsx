@@ -1847,7 +1847,7 @@ export default function Holdings() {
                           Expected Cashflow
                         </h3>
                         <button
-                          onClick={() => downloadExpectedCashflowPDF(modalData, expectedCashflows)}
+                          onClick={() => downloadCombinedCashflowPDF(modalData, expectedCashflows, actualCashflows)}
                           className="flex items-center gap-1 px-2 py-1 bg-white/20 hover:bg-white/30 rounded text-white text-xs transition-colors"
                         >
                           <Download className="h-3 w-3" />
