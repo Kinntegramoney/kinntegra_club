@@ -31,6 +31,12 @@
    - Header statistics bar
    - Holdings table column (only shows O/S Principal, O/S Interest)
 
+4. **Actual XIRR Calculation Implemented**:
+   - Previously: Actual XIRR = Expected XIRR (no calculation)
+   - Now: Actual XIRR = XIRR(Investment Outflow + All Actual Repayments)
+   - Based on historical transactions uploaded via repayment schedule
+   - Example: Expected 12.00% vs Actual 11.38% (due to prepayments)
+
 ---
 
 ### Expected Repayments - Investment Value Calculation (Secondary Calculator)
