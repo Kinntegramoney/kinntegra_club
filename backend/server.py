@@ -5373,18 +5373,11 @@ async def bulk_upload_bonds(
             start_date = pd.to_datetime(row['start_date']).strftime('%Y-%m-%d')
             end_date = pd.to_datetime(row['maturity_date']).strftime('%Y-%m-%d')
             
-            # Principal payments are derived from cashflows - default to 100% at maturity if no cashflows
-            principal_payments = [{"date": end_date, "percentage": 100.0}]
-            
-            # Get financial details - frequency derived from cashflow data if available
-            frequency = 'quarterly'  # Default frequency
-            principal = float(row['principal_amount'])
+            # Get financial details
             coupon_rate_val = float(row['coupon_rate'])
+            face_value = float(row.get('face_value_per_unit', 100000)) if pd.notna(row.get('face_value_per_unit')) else 100000
             
             # Check if we have exact cashflows per unit from Sheet 4
-            # If yes, derive principal payments from cashflows
-            # If no, use standard interest schedule based on frequency
-            
             cashflows_per_unit = cashflows_per_unit_map.get(bond_code, [])
             
             if cashflows_per_unit and len(cashflows_per_unit) > 0:
