@@ -1811,28 +1811,26 @@ export default function Holdings() {
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
-                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase w-24">Date</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Principal</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Interest</th>
-                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase bg-blue-50">Gross</th>
-                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">TDS</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Gross</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Net</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
                             {(modalData.trades[activeTab].expected_cashflows || []).map((cf, idx) => (
                               cf.type === 'investment' ? (
-                                <tr key={idx} className="bg-red-50 hover:bg-red-100">
-                                  <td className="py-2 px-3">
-                                    <div className="flex items-center gap-1">
-                                      <span className="font-mono text-xs text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</span>
-                                      <span className="px-1.5 py-0.5 bg-red-500 text-white rounded text-[9px] font-semibold">OUT</span>
-                                    </div>
+                                <tr key={idx} className="bg-red-50">
+                                  <td className="py-2 px-3 font-mono text-xs text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs text-red-600">—</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs text-red-600">—</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-600">
+                                    -{formatAbsoluteINR(Math.abs(cf.amount || cf.gross_amount || 0))}
                                   </td>
-                                  <td colSpan="3" className="py-2 px-3 text-right">
-                                    <span className="font-mono text-xs font-bold text-red-600">{formatAbsoluteINR(Math.abs(cf.amount || cf.gross_amount || 0))}</span>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-600">
+                                    -{formatAbsoluteINR(Math.abs(cf.net_amount || cf.amount || 0))}
                                   </td>
-                                  <td className="py-2 px-3 text-right text-gray-400">—</td>
                                   <td className="py-2 px-3 text-right">
                                     <span className="font-mono text-xs font-semibold text-red-600">({formatAbsoluteINR(Math.abs(cf.net_amount || cf.amount || 0))})</span>
                                   </td>
