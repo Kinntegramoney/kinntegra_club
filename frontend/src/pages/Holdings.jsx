@@ -1031,18 +1031,17 @@ export default function Holdings() {
       import('html2pdf.js').then(html2pdf => {
         html2pdf.default()
           .set({
-            margin: [5, 5, 5, 5],
+            margin: [3, 3, 3, 3],
             filename: `Cashflow_Report_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
+            image: { type: 'jpeg', quality: 0.95 },
             html2canvas: { 
-              scale: 2, 
+              scale: 1.5, 
               useCORS: true, 
               logging: false,
               letterRendering: true,
               allowTaint: true,
               backgroundColor: '#ffffff',
-              width: 1100,
-              height: element.scrollHeight || 800,
+              width: 1050,
               onclone: (clonedDoc) => {
                 const clonedEl = clonedDoc.getElementById('pdf-temp-container');
                 if (clonedEl) {
@@ -1050,11 +1049,12 @@ export default function Holdings() {
                   clonedEl.style.position = 'relative';
                   clonedEl.style.left = '0';
                   clonedEl.style.top = '0';
+                  clonedEl.style.width = '1050px';
                 }
               }
             },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-            pagebreak: { mode: 'avoid-all' }
+            pagebreak: { mode: 'avoid-all', before: '.page-break' }
           })
           .from(element)
           .save()
