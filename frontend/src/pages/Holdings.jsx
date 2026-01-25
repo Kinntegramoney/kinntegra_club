@@ -1415,254 +1415,167 @@ export default function Holdings() {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={closeModal} />
           
-          <div className="relative bg-white rounded-xl shadow-2xl w-[90%] max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+          <div className="relative bg-white rounded-xl shadow-2xl w-[95%] max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">Future Cashflows</h2>
-                <p className="text-sm text-gray-600">{modalData.bond_name} • {modalData.total_units} units total</p>
+                <h2 className="text-lg font-semibold text-gray-800">Cashflow Details</h2>
+                <p className="text-sm text-gray-600">{modalData.bond_name} • {modalData.total_units} units • Invested: {formatINR(modalData.invested_amount)}</p>
               </div>
               <button onClick={closeModal} className="p-2 hover:bg-white/50 rounded-full transition-colors" data-testid="close-modal-btn">
                 <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
             
-            {/* Tabs: Summary + Individual Transactions */}
-            <div className="flex border-b border-gray-200 bg-gray-50 px-4 overflow-x-auto min-h-[72px]">
-              {/* Summary Tab */}
-              <button
-                onClick={() => setActiveTab("summary")}
-                className={`px-5 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
-                  activeTab === "summary" 
-                    ? 'border-amber-600 text-amber-700 bg-white' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-                data-testid="tab-summary"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>Summary by Date</span>
-                </div>
-                <span className="text-xs text-gray-400 block">All transactions clubbed</span>
-              </button>
-              
-              {/* Individual Transaction Tabs */}
-              {modalData.trades.map((trade, index) => (
-                <button
-                  key={trade.trade_id}
-                  onClick={() => setActiveTab(index)}
-                  className={`px-5 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
-                    activeTab === index 
-                      ? 'border-amber-600 text-amber-700 bg-white' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                  data-testid={`trade-tab-${index}`}
-                >
-                  <span className="block mb-1">{format(new Date(trade.investment_date), "MMM dd, yyyy")}</span>
-                  <span className="text-xs text-gray-400 block">{trade.units} units</span>
-                </button>
-              ))}
-            </div>
-            
-            {/* Tab Content */}
-            <div className="flex-1 overflow-auto">
-              {/* Summary Tab Content */}
-              {activeTab === "summary" && (
-                <div className="p-5">
-                  {/* Summary Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-5">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-xs text-gray-500 uppercase">Total Investment</p>
-                      <p className="text-lg font-semibold text-gray-800">{formatINR(modalData.invested_amount)}</p>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <p className="text-xs text-green-600 uppercase">Total Gross Expected</p>
-                      <p className="text-lg font-semibold text-green-700">
-                        {formatINR(consolidatedCashflows.reduce((sum, cf) => sum + (cf.principal_component || 0) + (cf.interest_component || 0), 0))}
-                      </p>
-                    </div>
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <p className="text-xs text-blue-600 uppercase">Transactions</p>
-                      <p className="text-lg font-semibold text-blue-700">{modalData.trades.length}</p>
-                    </div>
-                    <div className="bg-amber-50 rounded-lg p-4">
-                      <p className="text-xs text-amber-600 uppercase">Payment Dates</p>
-                      <p className="text-lg font-semibold text-amber-700">{consolidatedCashflows.length}</p>
-                    </div>
-                    <div className="bg-purple-50 rounded-lg p-4">
-                      <p className="text-xs text-purple-600 uppercase">XIRR</p>
-                      <p className="text-lg font-semibold text-purple-700">
-                        {modalData.xirr !== null && modalData.xirr !== undefined ? `${modalData.xirr.toFixed(2)}%` : '-'}
-                      </p>
-                    </div>
+            {/* Two Column Layout */}
+            <div className="flex-1 overflow-auto p-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                
+                {/* LEFT COLUMN - Expected Repayments */}
+                <div className="border border-blue-200 rounded-xl bg-blue-50/30 overflow-hidden">
+                  <div className="bg-blue-100 px-4 py-3 border-b border-blue-200">
+                    <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Expected Repayments
+                    </h3>
+                    <p className="text-xs text-blue-600 mt-1">Auto-generated when units are blocked for client</p>
                   </div>
                   
-                  {/* Outstanding Principal & Interest Section */}
-                  <div className="mb-5 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                    <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" />
-                      Principal & Interest Breakdown
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-white rounded-lg p-3 border border-slate-100">
-                        <p className="text-xs text-slate-500 uppercase mb-1">Outstanding Principal</p>
-                        <p className="text-lg font-semibold text-slate-800">
-                          {formatINR((modalData.total_principal || 0) - (modalData.repaid_principal || 0))}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Repaid: {formatINR(modalData.repaid_principal || 0)}
-                        </p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3 border border-slate-100">
-                        <p className="text-xs text-slate-500 uppercase mb-1">Outstanding Interest</p>
-                        <p className="text-lg font-semibold text-emerald-600">
-                          {formatINR((modalData.total_interest_gross || 0) - (modalData.repaid_interest || 0))}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Repaid: {formatINR(modalData.repaid_interest || 0)}
-                        </p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3 border border-slate-100">
-                        <p className="text-xs text-slate-500 uppercase mb-1">Pending TDS</p>
-                        <p className="text-lg font-semibold text-red-600">
-                          {formatINR((modalData.total_tds || 0) - (modalData.repaid_tds || 0))}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Deducted: {formatINR(modalData.repaid_tds || 0)}
-                        </p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3 border border-slate-100">
-                        <p className="text-xs text-slate-500 uppercase mb-1">Total Outstanding</p>
-                        <p className="text-lg font-semibold text-blue-600">
-                          {formatINR(modalData.upcoming_expected || 0)}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Received: {formatINR(modalData.net_repaid || 0)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* XIRR Comparison - Shows deviations */}
-                  <div className="mb-5 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-6">
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase">Expected XIRR</p>
-                          <p className={`text-xl font-bold ${modalData.xirr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {modalData.xirr !== null && modalData.xirr !== undefined ? `${modalData.xirr.toFixed(2)}%` : '-'}
-                          </p>
-                          <p className="text-[10px] text-gray-400">Based on scheduled cashflows</p>
-                        </div>
-                        <div className="text-2xl text-gray-300">→</div>
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase">Actual XIRR</p>
-                          <p className={`text-xl font-bold ${modalData.actual_xirr >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
-                            {modalData.actual_xirr !== null && modalData.actual_xirr !== undefined ? `${modalData.actual_xirr.toFixed(2)}%` : '-'}
-                          </p>
-                          <p className="text-[10px] text-gray-400">Considers prepayments & adjustments</p>
-                        </div>
-                      </div>
-                      {modalData.xirr && modalData.actual_xirr && Math.abs(modalData.xirr - modalData.actual_xirr) > 0.1 && (
-                        <div className="px-3 py-2 bg-orange-100 border border-orange-200 rounded-lg">
-                          <p className="text-xs font-medium text-orange-700">
-                            {modalData.actual_xirr > modalData.xirr ? '↑' : '↓'} {Math.abs(modalData.xirr - modalData.actual_xirr).toFixed(2)}% deviation
-                          </p>
-                          <p className="text-[10px] text-orange-600">Due to prepayments or adjustments</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Prepaid Summary (if any) */}
-                  {modalData.prepaid_count > 0 && (
-                    <div className="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Check className="h-5 w-5 text-blue-600" />
-                        <span className="font-semibold text-blue-800">Prepaid Bonds Detected</span>
-                      </div>
-                      <p className="text-sm text-blue-700">
-                        {modalData.prepaid_count} payment(s) received early • Total Prepaid: {formatINR(modalData.prepaid_amount)}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Rebuild Cashflows Button - for broker to recalculate based on historical data */}
-                  {user?.role === 'broker' && modalData.trades?.length > 0 && (
-                  {/* Cashflow Management section removed - logic simplified */}
-                  )}
-                  
-                  {/* Consolidated Cashflows Table */}
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="max-h-[300px] overflow-y-auto">
-                      <table className="w-full">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                          <tr>
-                            <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Repayment Date</th>
-                            <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Txns</th>
-                            <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Principal</th>
-                            <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Interest</th>
-                            <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-amber-100">Gross</th>
-                            <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">TDS</th>
-                            <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Net Amount</th>
-                            <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Status</th>
-                            <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase bg-gray-50">Deviation</th>
+                  {/* Expected Cashflows Table */}
+                  <div className="max-h-[400px] overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-blue-50 sticky top-0">
+                        <tr>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-blue-700 uppercase">Date</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">Principal</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">Interest</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase bg-blue-100">Gross</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">TDS</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">Net</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {consolidatedCashflows.map((cf, idx) => (
+                          <tr key={idx} className="border-b border-blue-100 hover:bg-blue-50/50">
+                            <td className="py-2 px-3 font-mono text-xs">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                            <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-blue-50 text-blue-800">
+                              {formatINR((cf.principal_component || 0) + (cf.interest_component || 0))}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {consolidatedCashflows.map((cf, idx) => {
-                            // Check for deviations in any transaction
-                            const hasDeviation = cf.transactions.some(t => 
-                              t.is_prepaid || 
-                              (t.repaid_actual_amount && t.repaid_actual_amount !== t.net_amount)
-                            );
-                            const isPrepaid = cf.transactions.some(t => t.is_prepaid);
-                            
-                            return (
-                            <tr key={idx} className={`border-b border-gray-100 ${cf.all_repaid ? 'bg-green-50' : ''} ${hasDeviation ? 'bg-orange-50' : ''}`}>
-                              <td className="py-3 px-3">
-                                <span className="font-mono text-sm font-medium">{format(new Date(cf.date), "MMM dd, yyyy")}</span>
-                              </td>
-                              <td className="py-3 px-3 text-center">
-                                <span className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600">
-                                  {cf.transactions.length}
-                                </span>
-                              </td>
-                              <td className="py-3 px-3 text-right font-mono text-sm">{formatINR(cf.principal_component)}</td>
-                              <td className="py-3 px-3 text-right font-mono text-sm">{formatINR(cf.interest_component)}</td>
-                              <td className="py-3 px-3 text-right font-mono text-sm font-semibold text-amber-700 bg-amber-50">{formatINR((cf.principal_component || 0) + (cf.interest_component || 0))}</td>
-                              <td className="py-3 px-3 text-right font-mono text-sm text-red-600">{formatINR(cf.tds_amount)}</td>
-                              <td className="py-3 px-3 text-right font-mono text-sm font-medium">{formatINR(cf.net_amount)}</td>
-                              <td className="py-3 px-3 text-center">
-                                {cf.all_repaid ? (
-                                  <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
-                                    <Check className="h-3 w-3" /> Repaid
-                                  </span>
-                                ) : (
-                                  <span className="text-amber-600 text-xs font-medium">
-                                    {cf.transactions.filter(t => t.is_repaid).length}/{cf.transactions.length}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-3 px-3 text-center">
-                                {hasDeviation ? (
-                                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded ${isPrepaid ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                                    {isPrepaid ? 'Prepaid' : 'Adjusted'}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400 text-xs">-</span>
-                                )}
-                              </td>
-                            </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                   
-                  {/* Summary Footer */}
-                  <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end gap-6 text-sm flex-wrap">
+                  {/* Expected Summary */}
+                  <div className="bg-blue-100 px-4 py-3 border-t border-blue-200">
+                    <div className="flex justify-between items-center text-sm">
+                      <div>
+                        <span className="text-blue-600">Total Gross:</span>
+                        <span className="font-mono font-semibold ml-2 text-blue-800">
+                          {formatINR((modalData.total_principal || 0) + (modalData.total_interest_gross || 0))}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-blue-600">Expected XIRR:</span>
+                        <span className="font-mono font-bold ml-2 text-blue-800 text-lg">
+                          {modalData.xirr !== null && modalData.xirr !== undefined ? `${modalData.xirr.toFixed(2)}%` : '-'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* RIGHT COLUMN - Actual Repayments */}
+                <div className="border border-green-200 rounded-xl bg-green-50/30 overflow-hidden">
+                  <div className="bg-green-100 px-4 py-3 border-b border-green-200">
+                    <h3 className="font-semibold text-green-800 flex items-center gap-2">
+                      <Check className="h-4 w-4" />
+                      Actual Repayments
+                    </h3>
+                    <p className="text-xs text-green-600 mt-1">Based on historical uploads or email readings</p>
+                  </div>
+                  
+                  {/* Actual Cashflows Table */}
+                  <div className="max-h-[400px] overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-green-50 sticky top-0">
+                        <tr>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-green-700 uppercase">Date</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-green-700 uppercase">Principal</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-green-700 uppercase">Interest</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-green-700 uppercase bg-green-100">Gross</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-green-700 uppercase">TDS</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-green-700 uppercase">Net</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {consolidatedCashflows.filter(cf => cf.is_repaid || cf.all_repaid).length > 0 ? (
+                          consolidatedCashflows.filter(cf => cf.is_repaid || cf.all_repaid).map((cf, idx) => (
+                            <tr key={idx} className="border-b border-green-100 hover:bg-green-50/50">
+                              <td className="py-2 px-3 font-mono text-xs">
+                                {format(new Date(cf.repaid_date || cf.date), "dd MMM yyyy")}
+                                {cf.is_prepaid && (
+                                  <span className="ml-1 px-1 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded">Prepaid</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.repaid_principal || cf.principal_component)}</td>
+                              <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.repaid_interest || cf.interest_component)}</td>
+                              <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-green-50 text-green-800">
+                                {formatINR((cf.repaid_principal || cf.principal_component || 0) + (cf.repaid_interest || cf.interest_component || 0))}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.repaid_tds || cf.tds_amount)}</td>
+                              <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.repaid_actual_amount || cf.net_amount)}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="py-8 text-center text-gray-500">
+                              <div className="flex flex-col items-center gap-2">
+                                <FileText className="h-8 w-8 text-gray-300" />
+                                <p className="text-sm">No actual repayments recorded yet</p>
+                                <p className="text-xs text-gray-400">Upload historical data or wait for scheduled payments</p>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Actual Summary */}
+                  <div className="bg-green-100 px-4 py-3 border-t border-green-200">
+                    <div className="flex justify-between items-center text-sm">
+                      <div>
+                        <span className="text-green-600">Received:</span>
+                        <span className="font-mono font-semibold ml-2 text-green-800">
+                          {formatINR(modalData.gross_repaid || 0)}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-green-600">Actual XIRR:</span>
+                        <span className="font-mono font-bold ml-2 text-green-800 text-lg">
+                          {modalData.actual_xirr !== null && modalData.actual_xirr !== undefined ? `${modalData.actual_xirr.toFixed(2)}%` : '-'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+              </div>
+              
+              {/* Bottom Summary Bar */}
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex flex-wrap gap-6 justify-between items-center text-sm">
+                  <div className="flex gap-6">
+                    <div>
+                      <span className="text-gray-500">Investment:</span>
+                      <span className="font-mono font-semibold ml-2">{formatINR(modalData.invested_amount)}</span>
+                    </div>
                     <div>
                       <span className="text-gray-500">Total Principal:</span>
                       <span className="font-mono font-medium ml-2">{formatINR(modalData.total_principal)}</span>
@@ -1672,245 +1585,25 @@ export default function Holdings() {
                       <span className="font-mono font-medium ml-2">{formatINR(modalData.total_interest_gross)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Total Gross:</span>
-                      <span className="font-mono font-semibold ml-2 text-amber-700">{formatINR((modalData.total_principal || 0) + (modalData.total_interest_gross || 0))}</span>
-                    </div>
-                    <div>
                       <span className="text-gray-500">Total TDS:</span>
                       <span className="font-mono font-medium ml-2 text-red-600">{formatINR(modalData.total_tds)}</span>
                     </div>
-                    <div>
+                  </div>
+                  <div className="flex gap-4 items-center">
+                    <div className="text-right">
                       <span className="text-gray-500">Upcoming:</span>
-                      <span className="font-mono font-medium ml-2 text-blue-600">{formatINR(modalData.upcoming_expected)}</span>
+                      <span className="font-mono font-semibold ml-2 text-amber-600">{formatINR(modalData.upcoming_expected)}</span>
                     </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Individual Transaction Tab Content */}
-              {typeof activeTab === 'number' && modalData.trades[activeTab] && (
-                <div className="p-5">
-                  {/* Transaction Summary */}
-                  <div className="px-4 py-3 bg-amber-50/50 border border-amber-100 rounded-lg mb-5 flex items-center justify-between flex-wrap gap-4 text-sm">
-                    <div className="flex items-center gap-6">
-                      <div>
-                        <span className="text-gray-500">Purchase Date:</span>
-                        <span className="font-medium ml-2">{format(new Date(modalData.trades[activeTab].investment_date), "MMMM dd, yyyy")}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Units:</span>
-                        <span className="font-medium ml-2">{modalData.trades[activeTab].units}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Invested:</span>
-                        <span className="font-medium ml-2">{formatINR(modalData.trades[activeTab].invested_amount)}</span>
-                      </div>
-                      {modalData.trades[activeTab].xirr !== null && modalData.trades[activeTab].xirr !== undefined && (
-                        <div>
-                          <span className="text-gray-500">XIRR:</span>
-                          <span className={`font-medium ml-2 ${modalData.trades[activeTab].xirr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {modalData.trades[activeTab].xirr.toFixed(2)}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    {modalData.trades[activeTab].prepaid_count > 0 && (
-                      <span className="inline-flex items-center gap-1 text-blue-700 text-xs font-medium bg-blue-100 px-2 py-1 rounded">
-                        {modalData.trades[activeTab].prepaid_count} Prepaid
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Amended Interest Notice */}
-                  {modalData.trades[activeTab].cashflows.some(cf => cf.is_amended) && (
-                    <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                      <div className="flex items-center gap-2 text-orange-800 text-sm font-medium">
-                        <AlertCircle className="h-4 w-4" />
-                        Interest Amended Due to Principal Prepayment
-                      </div>
-                      <p className="text-xs text-orange-600 mt-1">
-                        Some interest payments have been recalculated based on reduced outstanding principal. Original amounts shown in brackets.
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Cashflow Table for this transaction */}
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Type</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase bg-amber-50">Gross</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">TDS</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {modalData.trades[activeTab].cashflows.map((cf) => (
-                          <tr key={cf.id} className={`border-b border-gray-100 ${cf.is_amended ? 'bg-orange-50' : cf.is_prepaid ? 'bg-blue-50' : cf.is_repaid ? 'bg-green-50' : ''}`}>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${cf.type === 'interest' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                                  {cf.type === 'interest' ? 'Interest' : 'Principal'}
-                                </span>
-                                {cf.is_amended && (
-                                  <span className="inline-block px-1.5 py-0.5 text-xs font-medium rounded bg-orange-200 text-orange-700" title={cf.amendment_reason}>
-                                    Amended
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(cf.principal_component)}</td>
-                            <td className="py-3 px-4 text-right font-mono text-sm">
-                              {cf.is_amended && cf.original_interest_component ? (
-                                <div>
-                                  <span className="font-medium">{formatINR(cf.interest_component)}</span>
-                                  <span className="text-xs text-gray-400 line-through block">({formatINR(cf.original_interest_component)})</span>
-                                </div>
-                              ) : (
-                                formatINR(cf.interest_component)
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-amber-700 bg-amber-50">
-                              {cf.is_amended && cf.original_principal_component && cf.original_interest_component ? (
-                                <div>
-                                  <span>{formatINR((cf.principal_component || 0) + (cf.interest_component || 0))}</span>
-                                  <span className="text-xs text-gray-400 line-through block">({formatINR((cf.original_principal_component || 0) + (cf.original_interest_component || 0))})</span>
-                                </div>
-                              ) : (
-                                formatINR((cf.principal_component || 0) + (cf.interest_component || 0))
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-right font-mono text-sm text-red-600">
-                              {cf.is_amended && cf.original_tds_amount ? (
-                                <div>
-                                  <span>{formatINR(cf.tds_amount)}</span>
-                                  <span className="text-xs text-gray-400 line-through block">({formatINR(cf.original_tds_amount)})</span>
-                                </div>
-                              ) : (
-                                formatINR(cf.tds_amount)
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-right font-mono text-sm font-medium">
-                              {cf.is_amended && cf.original_net_amount ? (
-                                <div>
-                                  <span>{formatINR(cf.net_amount)}</span>
-                                  <span className="text-xs text-gray-400 line-through block">({formatINR(cf.original_net_amount)})</span>
-                                </div>
-                              ) : (
-                                formatINR(cf.net_amount)
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center font-mono text-sm">
-                              {cf.is_repaid && cf.repaid_date ? (
-                                <span className={cf.is_prepaid ? 'text-blue-600 font-medium' : 'text-green-600 font-medium'}>
-                                  {format(new Date(cf.repaid_date), "MMM dd, yyyy")}
-                                </span>
-                              ) : (
-                                <span className="text-gray-600">
-                                  {format(new Date(cf.date), "MMM dd, yyyy")}
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {cf.is_prepaid ? (
-                                <span className="inline-flex items-center gap-1 text-blue-600 text-xs font-medium bg-blue-100 px-2 py-0.5 rounded">
-                                  <Check className="h-3 w-3" /> Prepaid
-                                  {cf.days_early > 0 && <span className="text-blue-500">({cf.days_early}d early)</span>}
-                                </span>
-                              ) : cf.is_repaid ? (
-                                <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
-                                  <Check className="h-3 w-3" /> Repaid
-                                </span>
-                              ) : cf.is_amended ? (
-                                <span className="text-orange-600 text-xs font-medium">Amended</span>
-                              ) : (
-                                <span className="text-amber-600 text-xs font-medium">Pending</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleMarkRepaid(cf.id, !cf.is_repaid)}
-                                  className={`text-xs ${cf.is_repaid ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}`}
-                                  data-testid={`mark-repaid-${cf.id}`}
-                                >
-                                  {cf.is_repaid ? <><X className="h-3 w-3 mr-1" /> Undo</> : <><Check className="h-3 w-3 mr-1" /> Repaid</>}
-                                </Button>
-                                {cf.is_amended && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleRevertAmendment(cf.id)}
-                                    className="text-xs text-orange-600 hover:text-orange-700"
-                                    title="Revert to original amount"
-                                  >
-                                    Revert
-                                  </Button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  {/* Record Prepayment Button */}
-                  <div className="mt-4 flex justify-between items-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openPrepaymentModal(modalData.trades[activeTab])}
-                      className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
-                    >
-                      <DollarSign className="h-4 w-4" />
-                      Record Principal Prepayment
-                    </Button>
-                  </div>
-                  
-                  {/* Transaction Summary Footer */}
-                  <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end gap-8 text-sm">
-                    <div>
-                      <span className="text-gray-500">Total Principal:</span>
-                      <span className="font-mono font-medium ml-2">
-                        {formatINR(modalData.trades[activeTab].cashflows.reduce((sum, cf) => sum + cf.principal_component, 0))}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Total Interest:</span>
-                      <span className="font-mono font-medium ml-2">
-                        {formatINR(modalData.trades[activeTab].cashflows.reduce((sum, cf) => sum + cf.interest_component, 0))}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Total Gross:</span>
-                      <span className="font-mono font-semibold ml-2 text-amber-700">
-                        {formatINR(modalData.trades[activeTab].cashflows.reduce((sum, cf) => sum + (cf.principal_component || 0) + (cf.interest_component || 0), 0))}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Total TDS:</span>
-                      <span className="font-mono font-medium ml-2 text-red-600">
-                        {formatINR(modalData.trades[activeTab].cashflows.reduce((sum, cf) => sum + cf.tds_amount, 0))}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Total Net:</span>
-                      <span className="font-mono font-medium ml-2 text-green-600">
-                        {formatINR(modalData.trades[activeTab].cashflows.reduce((sum, cf) => sum + cf.net_amount, 0))}
+                    <div className="h-8 w-px bg-gray-300"></div>
+                    <div className="text-right">
+                      <span className="text-gray-500">Net Profit:</span>
+                      <span className={`font-mono font-bold ml-2 ${(modalData.gross_profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatINR(modalData.gross_profit || 0)}
                       </span>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
