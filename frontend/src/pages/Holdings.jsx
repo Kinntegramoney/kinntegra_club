@@ -422,27 +422,43 @@ export default function Holdings() {
       // Use expected_cashflows (from bond definition) instead of cashflows
       const expectedCfs = trade.expected_cashflows || [];
       expectedCfs.forEach(cf => {
+        // Handle investment entries (outflows) separately
+        const isInvestment = cf.type === 'investment';
+        
         if (!byDate[cf.date]) {
           byDate[cf.date] = {
             date: cf.date,
+            type: isInvestment ? 'investment' : 'inflow',
             principal_component: 0,
             interest_component: 0,
             gross_amount: 0,
             tds_amount: 0,
             net_amount: 0,
+            investment_amount: 0,  // Track investment separately
             transactions: []
           };
         }
         
-        byDate[cf.date].principal_component += cf.principal_component || 0;
-        byDate[cf.date].interest_component += cf.interest_component || 0;
-        byDate[cf.date].gross_amount += cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0));
-        byDate[cf.date].tds_amount += cf.tds_amount || 0;
-        byDate[cf.date].net_amount += cf.net_amount || 0;
+        if (isInvestment) {
+          // Investment entry - track as negative (outflow)
+          byDate[cf.date].type = 'investment';
+          byDate[cf.date].investment_amount += Math.abs(cf.amount || cf.gross_amount || 0);
+          byDate[cf.date].gross_amount += cf.gross_amount || cf.amount || 0;
+          byDate[cf.date].net_amount += cf.net_amount || cf.amount || 0;
+        } else {
+          // Inflow entry - normal cashflow
+          byDate[cf.date].principal_component += cf.principal_component || 0;
+          byDate[cf.date].interest_component += cf.interest_component || 0;
+          byDate[cf.date].gross_amount += cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0));
+          byDate[cf.date].tds_amount += cf.tds_amount || 0;
+          byDate[cf.date].net_amount += cf.net_amount || 0;
+        }
+        
         byDate[cf.date].transactions.push({
           trade_id: trade.trade_id,
           units: trade.units,
-          investment_date: trade.investment_date
+          investment_date: trade.investment_date,
+          type: isInvestment ? 'investment' : 'inflow'
         });
       });
     });
