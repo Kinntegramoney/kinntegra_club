@@ -10206,24 +10206,10 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "prepaid_count": len(prepaid_cashflows),
             "prepaid_amount": round(prepaid_amount, 2),
             "xirr": expected_xirr,  # Bond's Secondary IRR
-            "actual_xirr": actual_xirr,  # Calculated from actual repayments
+            "actual_xirr": actual_xirr,  # Calculated from actual_cashflows (includes maturity)
             "cashflows": stored_cashflows,  # Current state of cashflows
             "expected_cashflows": expected_cashflows_with_investment,  # With investment as first entry
-            "actual_cashflows": build_actual_cashflows_with_investment(
-                [{
-                    'investment_date': investment_date_str, 
-                    'calculated_investment': calculated_investment, 
-                    'units': trade['units'],
-                    # Use face_value * units for original principal (not total from cashflows)
-                    'total_principal': round(bond.get('face_value', 100000) * trade['units'], 2),
-                    'coupon_rate': bond.get('coupon_rate', 0) or bond.get('annual_interest_rate', 0) or bond.get('interest_rate', 0),
-                    'maturity_date': bond.get('end_date', '') or bond.get('maturity_date', ''),
-                    'bond_start_date': bond.get('start_date', '') or bond.get('bond_start_date', '')
-                }],
-                stored_cashflows,
-                matched_actual_repayments,
-                bond_info=bond
-            ),
+            "actual_cashflows": actual_cashflows_data,  # Already built above, reuse
             "status": "active" if upcoming_gross > 0 else "fully_repaid"
         })
         
