@@ -690,7 +690,7 @@ export default function Holdings() {
     const totalNet = inflows.reduce((sum, cf) => sum + (cf.net_amount || 0), 0);
     const profit = totalGross - totalInvestment;
 
-    // Build HTML for PDF - Landscape mode with color coding
+    // Build HTML for PDF - Subtle, professional design
     const html = `
       <!DOCTYPE html>
       <html>
@@ -699,57 +699,55 @@ export default function Holdings() {
         <title>Expected Cashflow - ${holdingData.bond_name}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 30px 40px; color: #1f2937; }
-          .header { text-align: center; margin-bottom: 25px; border-bottom: 3px solid #2563eb; padding-bottom: 15px; }
-          .header h1 { font-size: 22px; color: #2563eb; margin-bottom: 5px; }
-          .header p { font-size: 13px; color: #6b7280; }
-          .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
-          .info-box { background: #f9fafb; padding: 12px 15px; border-radius: 8px; border-left: 4px solid #2563eb; }
-          .info-box.profit { border-left-color: #16a34a; }
-          .info-box label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
-          .info-box span { font-size: 15px; font-weight: 600; color: #111827; }
-          .info-box.profit span { color: #16a34a; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th { background: #1e40af; color: white; padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 25px 35px; color: #374151; background: #fff; }
+          .header { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e5e7eb; }
+          .header h1 { font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 4px; }
+          .header p { font-size: 12px; color: #6b7280; }
+          .info-row { display: flex; gap: 30px; margin-bottom: 20px; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
+          .info-item { }
+          .info-item label { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
+          .info-item span { font-size: 13px; font-weight: 500; color: #111827; }
+          .info-item.profit span { color: #059669; }
+          table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          th { background: #f9fafb; color: #6b7280; padding: 8px 10px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
           th:not(:first-child) { text-align: right; }
-          td { padding: 9px 12px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
-          td:not(:first-child) { text-align: right; font-family: 'Consolas', monospace; }
-          tr.outflow { background: #fef2f2; }
-          tr.outflow td { color: #dc2626; font-weight: 500; }
-          tr.inflow { background: #eff6ff; }
-          tr.inflow td { color: #1d4ed8; }
-          tr.inflow:nth-child(even) { background: #dbeafe; }
-          .totals { background: #f0fdf4 !important; }
-          .totals td { font-weight: 700; border-top: 2px solid #16a34a; color: #16a34a !important; }
-          .summary { margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%); border-radius: 10px; color: white; }
-          .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; }
-          .summary-item label { font-size: 10px; opacity: 0.85; display: block; margin-bottom: 5px; text-transform: uppercase; }
-          .summary-item span { font-size: 18px; font-weight: 700; }
-          .summary-item.profit span { color: #86efac; }
-          .footer { margin-top: 25px; text-align: center; font-size: 10px; color: #9ca3af; padding-top: 15px; border-top: 1px solid #e5e7eb; }
+          td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+          td:not(:first-child) { text-align: right; font-family: 'SF Mono', 'Consolas', monospace; font-size: 10px; }
+          tr.outflow td { color: #dc2626; }
+          tr.inflow td { color: #374151; }
+          tr.inflow:nth-child(even) { background: #fafafa; }
+          tr.totals { background: #f9fafb; }
+          tr.totals td { font-weight: 600; border-top: 1px solid #e5e7eb; color: #059669; }
+          .summary { margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 6px; }
+          .summary-row { display: flex; justify-content: space-between; }
+          .summary-item { text-align: center; flex: 1; }
+          .summary-item label { font-size: 9px; color: #9ca3af; text-transform: uppercase; display: block; margin-bottom: 4px; }
+          .summary-item span { font-size: 14px; font-weight: 600; color: #111827; }
+          .summary-item.profit span { color: #059669; }
+          .footer { margin-top: 20px; text-align: center; font-size: 9px; color: #9ca3af; }
         </style>
       </head>
       <body>
         <div class="header">
           <h1>Expected Cashflow Statement</h1>
-          <p>${holdingData.bond_name} • ${holdingData.total_units || holdingData.units || '-'} Units • Generated: ${format(new Date(), 'dd MMM yyyy')}</p>
+          <p>${holdingData.bond_name} · ${holdingData.total_units || holdingData.units || '-'} Units · ${format(new Date(), 'dd MMM yyyy')}</p>
         </div>
         
-        <div class="info-grid">
-          <div class="info-box">
-            <label>Total Investment</label>
+        <div class="info-row">
+          <div class="info-item">
+            <label>Investment</label>
             <span>${formatAmount(totalInvestment)}</span>
           </div>
-          <div class="info-box">
+          <div class="info-item">
             <label>Expected Returns</label>
             <span>${formatAmount(totalGross)}</span>
           </div>
-          <div class="info-box">
-            <label>Expected XIRR</label>
+          <div class="info-item">
+            <label>XIRR</label>
             <span>${holdingData.xirr?.toFixed(2) || '-'}%</span>
           </div>
-          <div class="info-box profit">
-            <label>Expected Profit</label>
+          <div class="info-item profit">
+            <label>Profit</label>
             <span>${formatAmount(profit)}</span>
           </div>
         </div>
@@ -787,7 +785,7 @@ export default function Holdings() {
               </tr>
             `).join('')}
             <tr class="totals">
-              <td><strong>Net Profit</strong></td>
+              <td>Net Profit</td>
               <td>${formatAmount(totalPrincipal)}</td>
               <td>${formatAmount(totalInterest)}</td>
               <td>${formatAmount(profit)}</td>
@@ -798,17 +796,17 @@ export default function Holdings() {
         </table>
 
         <div class="summary">
-          <div class="summary-grid">
+          <div class="summary-row">
             <div class="summary-item">
-              <label>Investment</label>
+              <label>Total Investment</label>
               <span>${formatAmount(totalInvestment)}</span>
             </div>
             <div class="summary-item">
-              <label>Returns</label>
+              <label>Total Returns</label>
               <span>${formatAmount(totalGross)}</span>
             </div>
             <div class="summary-item">
-              <label>TDS Deducted</label>
+              <label>TDS</label>
               <span>${formatAmount(totalTDS)}</span>
             </div>
             <div class="summary-item profit">
@@ -819,34 +817,37 @@ export default function Holdings() {
         </div>
 
         <div class="footer">
-          <p>This is a system-generated document • For queries, please contact your relationship manager</p>
+          <p>System generated · For queries, contact your relationship manager</p>
         </div>
       </body>
       </html>
     `;
 
-    // Create and download PDF using html2pdf - LANDSCAPE MODE
-    const element = document.createElement('div');
-    element.innerHTML = html;
-    document.body.appendChild(element);
+    // Create hidden container for PDF generation
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '-9999px';
+    container.innerHTML = html;
+    document.body.appendChild(container);
 
     import('html2pdf.js').then(html2pdf => {
       html2pdf.default()
         .set({
-          margin: 10,
+          margin: [10, 10, 10, 10],
           filename: `Expected_Cashflow_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2 },
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
         })
-        .from(element)
+        .from(container.firstChild)
         .save()
         .then(() => {
-          document.body.removeChild(element);
-          toast.success('PDF downloaded successfully');
+          document.body.removeChild(container);
+          toast.success('PDF downloaded');
         })
         .catch((err) => {
-          document.body.removeChild(element);
+          document.body.removeChild(container);
           toast.error('Failed to generate PDF');
           console.error(err);
         });
