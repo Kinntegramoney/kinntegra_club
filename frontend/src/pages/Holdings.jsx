@@ -1725,18 +1725,27 @@ export default function Holdings() {
                     </thead>
                     <tbody>
                       {filteredHoldings.map((holding) => {
-                        // Calculate Gross Expected from ACTUAL cashflows (sum of repayments made + due)
-                        // This changes due to prepayments
+                        // ORIGINAL Expected (from bond definition - without considering prepayments)
+                        const originalGrossExpected = holding.total_principal + holding.total_interest_gross;
+                        const originalProfit = originalGrossExpected - holding.invested_amount;
+                        
+                        // ACTUAL Expected (from actual cashflows - sum of repayments made + due)
+                        // This changes due to prepayments affecting interest calculations
                         const allActualCashflows = (holding.trades || []).flatMap(trade => trade.actual_cashflows || []);
-                        const grossExpected = allActualCashflows
+                        const actualGrossExpected = allActualCashflows
                           .filter(cf => cf.type !== 'investment')
                           .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                        const actualProfit = actualGrossExpected - holding.invested_amount;
                         
-                        // Profit = Gross Expected - Investment
-                        const profit = grossExpected - holding.invested_amount;
+                        // Difference due to prepayments (Actual - Original)
+                        const grossDifference = actualGrossExpected - originalGrossExpected;
+                        const profitDifference = actualProfit - originalProfit;
                         
                         // Format number with commas (Indian format)
                         const formatNum = (num) => num.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        
+                        // Show difference row if there's a significant change (> ₹1)
+                        const showDifference = Math.abs(grossDifference) > 1;
                         
                         return (
                         <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
@@ -1744,12 +1753,17 @@ export default function Holdings() {
                             <p className="font-medium text-gray-800 text-xs truncate max-w-[120px]" title={holding.bond_name}>{holding.bond_name}</p>
                             <p className="text-[10px] text-gray-400">{holding.total_units} units</p>
                           </td>
-                          <td className="py-2 px-2 text-right font-mono text-xs">{formatNum(holding.invested_amount)}</td>
-                          <td className="py-2 px-2 text-right font-mono text-xs">{formatNum(grossExpected)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
-                            <span className={profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {formatNum(profit)}
-                            </span>
+                            <p>{formatNum(holding.invested_amount)}</p>
+                            {showDifference && <p className="text-red-600">{grossDifference < 0 ? '-' : ''}{formatNum(Math.abs(grossDifference))}</p>}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-xs">
+                            <p>{formatNum(actualGrossExpected)}</p>
+                            {showDifference && <p className="text-red-600">{grossDifference < 0 ? '-' : ''}{formatNum(Math.abs(grossDifference))}</p>}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-xs">
+                            <p className={actualProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{formatNum(actualProfit)}</p>
+                            {showDifference && <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>}
                           </td>
                           <td className="py-2 px-2 text-center">
                             {holding.xirr !== null && holding.xirr !== undefined ? (
