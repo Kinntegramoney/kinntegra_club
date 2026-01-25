@@ -1729,10 +1729,18 @@ export default function Holdings() {
                       {filteredHoldings.map((holding) => {
                         // GROSS Expected = Principal + Interest (before TDS)
                         const totalGrossExpected = holding.total_principal + holding.total_interest_gross;
-                        const profit = totalGrossExpected - holding.invested_amount;
+                        const expectedProfit = totalGrossExpected - holding.invested_amount;
                         const osPrincipal = holding.total_principal - holding.repaid_principal;
                         const osInterest = holding.total_interest_gross - holding.repaid_interest;
-                        const osTds = holding.total_tds - holding.repaid_tds;
+                        
+                        // Calculate actual profit from actual cashflows
+                        const actualInflows = (holding.actual_cashflows || []).filter(cf => cf.type !== 'investment')
+                          .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                        const actualProfit = actualInflows - holding.invested_amount;
+                        const profitDifference = actualProfit - expectedProfit;
+                        
+                        // Format number with commas (Indian format)
+                        const formatNum = (num) => num.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                         
                         return (
                         <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
@@ -1740,12 +1748,17 @@ export default function Holdings() {
                             <p className="font-medium text-gray-800 text-xs truncate max-w-[120px]" title={holding.bond_name}>{holding.bond_name}</p>
                             <p className="text-[10px] text-gray-400">{holding.total_units} units</p>
                           </td>
-                          <td className="py-2 px-2 text-right font-mono text-xs">{formatINR(holding.invested_amount)}</td>
-                          <td className="py-2 px-2 text-right font-mono text-xs text-emerald-600">{formatINR(totalGrossExpected)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
-                            <span className={profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {formatINR(profit)}
-                            </span>
+                            <p>{formatNum(holding.invested_amount)}</p>
+                            <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-xs">
+                            <p>{formatNum(totalGrossExpected)}</p>
+                            <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-xs">
+                            <p>{formatNum(expectedProfit)}</p>
+                            <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osPrincipal)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osInterest)}</td>
