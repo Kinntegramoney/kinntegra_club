@@ -9137,7 +9137,7 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
     Build actual cashflows array with:
     1. Investment entry (outflow)
     2. Actual repayments from actual_repayments collection where date <= today
-    3. Upcoming cashflows from holding_cashflows where date > today
+    3. Remaining maturity (adjusted for what's already been paid)
     
     This mirrors the structure of expected_cashflows for consistency.
     """
@@ -9159,44 +9159,86 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
             'gross_amount': -calculated_investment,
             'tds_amount': 0,
             'net_amount': -calculated_investment,
-            'is_repaid': True,  # Investment is always "done"
+            'is_repaid': True,
             'source': 'investment'
         })
+    
+    # Calculate total scheduled principal and interest
+    total_scheduled_principal = sum(cf.get('principal_component', 0) or 0 for cf in stored_cashflows)
+    total_scheduled_interest = sum(cf.get('interest_component', 0) or 0 for cf in stored_cashflows)
+    
+    # Track what's been paid from actual_repayments
+    total_paid_principal = 0
+    total_paid_interest = 0
+    total_paid_tds = 0
     
     # 2. Add actual repayments where date <= today (RECEIVED)
     for ar in actual_repayments:
         ar_date = (ar.get('repayment_date') or '')[:10]
         if ar_date and ar_date <= today_str:
-            gross = ar.get('gross_amount', 0) or (ar.get('principal', 0) + ar.get('interest', 0))
+            principal = ar.get('principal', 0) or 0
+            interest = ar.get('interest', 0) or 0
+            tds = ar.get('tds', 0) or 0
+            gross = ar.get('gross_amount', 0) or (principal + interest)
+            net = ar.get('net_amount', 0) or (gross - tds)
+            
+            total_paid_principal += principal
+            total_paid_interest += interest
+            total_paid_tds += tds
+            
             actual_cashflows.append({
                 'date': ar.get('repayment_date'),
                 'type': 'repayment',
                 'amount': gross,
-                'principal_component': ar.get('principal', 0) or 0,
-                'interest_component': ar.get('interest', 0) or 0,
+                'principal_component': principal,
+                'interest_component': interest,
                 'gross_amount': gross,
-                'tds_amount': ar.get('tds', 0) or 0,
-                'net_amount': ar.get('net_amount', 0) or 0,
+                'tds_amount': tds,
+                'net_amount': net,
                 'is_repaid': True,
                 'source': 'actual_repayment'
             })
     
-    # 3. Add upcoming cashflows where date > today (OUTSTANDING)
-    for cf in stored_cashflows:
-        cf_date = (cf.get('date') or '')[:10]
-        if cf_date and cf_date > today_str:
-            actual_cashflows.append({
-                'date': cf.get('date'),
-                'type': 'scheduled',
-                'amount': (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0),
-                'principal_component': cf.get('principal_component', 0) or 0,
-                'interest_component': cf.get('interest_component', 0) or 0,
-                'gross_amount': (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0),
-                'tds_amount': cf.get('tds_amount', 0) or 0,
-                'net_amount': cf.get('net_amount', 0) or 0,
-                'is_repaid': False,
-                'source': 'scheduled_upcoming'
-            })
+    # 3. Calculate REMAINING maturity (what's left to be paid)
+    # Remaining principal = total scheduled - already paid
+    remaining_principal = max(0, total_scheduled_principal - total_paid_principal)
+    
+    # Remaining interest = proportionally adjusted based on remaining principal
+    # If prepayments have reduced principal, future interest is reduced too
+    if total_scheduled_principal > 0:
+        principal_ratio = remaining_principal / total_scheduled_principal
+        # Remaining interest should be proportional to remaining principal
+        # But we need to subtract already paid interest
+        remaining_interest = max(0, total_scheduled_interest - total_paid_interest)
+    else:
+        remaining_interest = max(0, total_scheduled_interest - total_paid_interest)
+    
+    # Get the maturity date (last scheduled cashflow date)
+    maturity_date = None
+    if stored_cashflows:
+        future_cashflows = [cf for cf in stored_cashflows if (cf.get('date') or '')[:10] > today_str]
+        if future_cashflows:
+            maturity_date = max(cf.get('date', '') for cf in future_cashflows)
+    
+    # Add remaining maturity if there's anything left to pay
+    if maturity_date and (remaining_principal > 0 or remaining_interest > 0):
+        remaining_gross = remaining_principal + remaining_interest
+        # Estimate TDS on remaining interest (10% typical)
+        remaining_tds = remaining_interest * 0.1 if remaining_interest > 0 else 0
+        remaining_net = remaining_gross - remaining_tds
+        
+        actual_cashflows.append({
+            'date': maturity_date,
+            'type': 'maturity',
+            'amount': remaining_gross,
+            'principal_component': remaining_principal,
+            'interest_component': remaining_interest,
+            'gross_amount': remaining_gross,
+            'tds_amount': remaining_tds,
+            'net_amount': remaining_net,
+            'is_repaid': False,
+            'source': 'remaining_maturity'
+        })
     
     # Sort by date
     actual_cashflows.sort(key=lambda x: x.get('date', ''))
