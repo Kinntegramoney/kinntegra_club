@@ -1863,9 +1863,18 @@ export default function Holdings() {
                 <h2 className="text-lg font-semibold text-gray-800">Cashflow Details</h2>
                 <p className="text-sm text-gray-600">{modalData.bond_name} • {modalData.total_units} units • Invested: {formatINR(modalData.invested_amount)}</p>
               </div>
-              <button onClick={closeModal} className="p-2 hover:bg-white/50 rounded-full transition-colors" data-testid="close-modal-btn">
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => downloadCombinedCashflowPDF(modalData, expectedCashflows, actualCashflows)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 rounded-lg text-white text-sm font-medium transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  Download PDF
+                </button>
+                <button onClick={closeModal} className="p-2 hover:bg-white/50 rounded-full transition-colors" data-testid="close-modal-btn">
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
             </div>
             
             {/* Tabs: Summary + Individual Transactions */}
