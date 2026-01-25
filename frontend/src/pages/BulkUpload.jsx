@@ -732,6 +732,99 @@ export default function BulkUpload() {
                 </div>
               </div>
 
+              {/* Email Sync Section - Only for historical-trades tab */}
+              {activeTab === "historical-trades" && (
+                <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-6">
+                  <h3 className="font-semibold text-blue-800 mb-4 flex items-center gap-2">
+                    <Mail className="h-5 w-5" />
+                    Sync Repayments from Email
+                  </h3>
+                  <p className="text-sm text-blue-700 mb-4">
+                    Automatically sync repayment data from <strong>updates@kinntegraa.club</strong> inbox. 
+                    This reads repayment notification emails and updates client holdings across all customers.
+                  </p>
+                  
+                  <div className="flex items-center gap-4">
+                    <Button 
+                      onClick={() => handleSyncEmailRepayments(7)}
+                      disabled={syncingEmails}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      data-testid="sync-email-7-days-btn"
+                    >
+                      {syncingEmails ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Syncing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Sync Last 7 Days
+                        </>
+                      )}
+                    </Button>
+                    
+                    <Button 
+                      onClick={() => handleSyncEmailRepayments(30)}
+                      disabled={syncingEmails}
+                      variant="outline"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                      data-testid="sync-email-30-days-btn"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Sync Last 30 Days
+                    </Button>
+                    
+                    <Button 
+                      onClick={() => handleSyncEmailRepayments(90)}
+                      disabled={syncingEmails}
+                      variant="outline"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                      data-testid="sync-email-90-days-btn"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Sync Last 90 Days
+                    </Button>
+                  </div>
+                  
+                  {/* Email Sync Results */}
+                  {emailSyncResults && (
+                    <div className="mt-4 p-4 bg-white rounded-lg border border-blue-200">
+                      <h4 className="font-medium text-gray-800 mb-2">Sync Results</h4>
+                      <div className="grid grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Emails Found:</span>
+                          <span className="ml-2 font-medium">{emailSyncResults.total_emails}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Processed:</span>
+                          <span className="ml-2 font-medium text-blue-600">{emailSyncResults.processed}</span>
+                        </div>
+                        <div>
+                          <span className="text-green-600">Matched:</span>
+                          <span className="ml-2 font-medium text-green-700">{emailSyncResults.matched}</span>
+                        </div>
+                        <div>
+                          <span className="text-red-600">Errors:</span>
+                          <span className="ml-2 font-medium text-red-700">{emailSyncResults.errors?.length || 0}</span>
+                        </div>
+                      </div>
+                      
+                      {emailSyncResults.errors?.length > 0 && (
+                        <div className="mt-2 text-xs text-red-600">
+                          {emailSyncResults.errors.slice(0, 3).map((err, idx) => (
+                            <p key={idx}>• {err}</p>
+                          ))}
+                          {emailSyncResults.errors.length > 3 && (
+                            <p>...and {emailSyncResults.errors.length - 3} more errors</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Tips */}
               <div className="mt-8 bg-blue-50 rounded-xl border border-blue-200 p-6">
                 <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
