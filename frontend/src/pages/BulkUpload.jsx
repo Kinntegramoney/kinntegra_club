@@ -160,7 +160,6 @@ export default function BulkUpload() {
     { id: "clients", label: "Clients", icon: Users, color: "purple" },
     { id: "bonds", label: "Bonds", icon: TrendingUp, color: "green" },
     { id: "real-estate", label: "Real Estate", icon: Building2, color: "orange" },
-    { id: "investment-details", label: "Investment Details", icon: FileText, color: "teal" },
     { id: "historical-trades", label: "Historical Repayments", icon: History, color: "amber" },
     { id: "scheme-master", label: "Scheme Master", icon: Database, color: "blue" }
   ];
