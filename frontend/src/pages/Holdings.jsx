@@ -659,6 +659,18 @@ export default function Holdings() {
     return isNegative ? `-${formatted}` : formatted;
   };
 
+  // Format absolute amounts in Indian numbering (e.g., ₹12,34,567.00)
+  const formatAbsoluteINR = (amount) => {
+    if (!amount || amount === 0) return '₹0.00';
+    const isNegative = amount < 0;
+    const absAmount = Math.abs(amount);
+    const formatted = absAmount.toLocaleString('en-IN', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+    return isNegative ? `-₹${formatted}` : `₹${formatted}`;
+  };
+
   if (!user) return null;
 
   const SidebarComponent = user.role === 'broker' ? Sidebar : user.role === 'client' ? ClientSidebar : SubBrokerSidebar;
