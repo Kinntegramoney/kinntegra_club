@@ -6278,6 +6278,7 @@ async def bulk_upload_investment_details(
                     "bond_code": deal_id,
                     "client_pan": pan,
                     "client_name": client.get('name', ''),
+                    "units": units,
                     "amount": amount,
                     "investment_date": inv_date_str,
                     "cashflows_generated": len(cashflows) if cashflows else 0
@@ -6287,15 +6288,41 @@ async def bulk_upload_investment_details(
                 results['errors'].append(f"Row {row_num}: {str(e)}")
                 results['failed'] += 1
         
-        # Update bond status to 'funded' for bonds with new investments
+        # Check bond status - move to 'funded' ONLY when all units are utilized
+        results['bonds_status_updated'] = []
         for bond_id in bonds_with_new_investments:
-            bond = bond_by_id.get(bond_id)
-            if bond and bond.get('status') == 'active':
-                await db.bonds.update_one(
-                    {"id": bond_id},
-                    {"$set": {"status": "funded"}}
-                )
-                results['bonds_updated_to_funded'].append(bond.get('bond_code', bond_id))
+            # Re-fetch bond to get updated units_sold count
+            updated_bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
+            if updated_bond:
+                total_units = updated_bond.get('total_units', 0)
+                units_sold = updated_bond.get('units_sold', 0)
+                available_units = total_units - units_sold
+                
+                # Update status based on utilization
+                current_status = updated_bond.get('status', 'active')
+                new_status = current_status
+                
+                if units_sold >= total_units and total_units > 0:
+                    # All units utilized - move to funded
+                    new_status = 'funded'
+                elif units_sold > 0 and current_status == 'active':
+                    # Partial investment - keep as active but track
+                    new_status = 'active'
+                
+                if new_status != current_status:
+                    await db.bonds.update_one(
+                        {"id": bond_id},
+                        {"$set": {"status": new_status}}
+                    )
+                
+                results['bonds_status_updated'].append({
+                    "bond_code": updated_bond.get('bond_code', bond_id),
+                    "total_units": total_units,
+                    "units_sold": units_sold,
+                    "available_units": available_units,
+                    "status": new_status,
+                    "fully_funded": units_sold >= total_units
+                })
         
     except HTTPException:
         raise
