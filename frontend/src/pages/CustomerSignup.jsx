@@ -110,7 +110,6 @@ export default function CustomerSignup() {
               />
               <span className="text-white text-2xl font-bold hidden items-center justify-center" style={{ fontFamily: 'serif' }}>K</span>
             </div>
-            </div>
           </div>
 
           {submitted ? (
