@@ -9488,18 +9488,23 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
 
 
 
-def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual_repayments=None):
+def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual_repayments=None, bond_info=None):
     """
     Build actual cashflows array with:
     1. ALL investment entries from trades (outflows)
-    2. ALL actual repayments from actual_repayments collection (both past and future)
+    2. ALL actual repayments from actual_repayments collection (prepayments)
+    3. CALCULATED maturity amount based on prepayments affecting principal and interest
     
-    This shows the UPLOADED data as-is, not calculated estimates.
+    Following Excel calculation logic:
+    - Each prepayment reduces balance principal
+    - Interest = Balance Principal × Coupon Rate × Days / 365
+    - Accumulated interest paid at maturity with remaining principal
     
     Args:
-        trades_data: List of dicts with {investment_date, calculated_investment, units}
+        trades_data: List of dicts with {investment_date, calculated_investment, units, total_principal, coupon_rate, maturity_date}
         stored_cashflows: All scheduled cashflows for this bond (for fallback)
         actual_repayments: All actual repayments from uploads (THESE ARE THE SOURCE OF TRUTH)
+        bond_info: Bond details including coupon_rate, end_date for maturity calculations
     """
     from datetime import datetime, timezone
     
@@ -9508,28 +9513,53 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
     
     actual_cashflows = []
     
+    # Extract trade info (use first trade's data for calculations)
+    trade_info = trades_data[0] if trades_data else {}
+    inv_date_str = trade_info.get('investment_date', '')
+    inv_amount = trade_info.get('calculated_investment', 0) or trade_info.get('invested_amount', 0)
+    total_principal = trade_info.get('total_principal', 0)
+    coupon_rate = trade_info.get('coupon_rate', 0)
+    maturity_date_str = trade_info.get('maturity_date', '')
+    
+    # Get bond info for fallback values
+    if bond_info:
+        if not coupon_rate:
+            coupon_rate = bond_info.get('coupon_rate', 0) or bond_info.get('annual_interest_rate', 0) or bond_info.get('interest_rate', 0)
+        if not maturity_date_str:
+            maturity_date_str = bond_info.get('end_date', '') or bond_info.get('maturity_date', '')
+    
+    # Convert coupon rate to decimal if percentage
+    if coupon_rate > 1:
+        coupon_rate = coupon_rate / 100
+    
     # 1. Add ALL investment entries (outflows - negative)
-    for trade_info in trades_data:
-        inv_date = trade_info.get('investment_date', '')
-        inv_amount = trade_info.get('calculated_investment', 0) or trade_info.get('invested_amount', 0)
-        if inv_amount > 0:
+    for ti in trades_data:
+        t_inv_date = ti.get('investment_date', '')
+        t_inv_amount = ti.get('calculated_investment', 0) or ti.get('invested_amount', 0)
+        if t_inv_amount > 0:
             actual_cashflows.append({
-                'date': inv_date,
+                'date': t_inv_date,
                 'type': 'investment',
-                'amount': -inv_amount,
+                'amount': -t_inv_amount,
                 'principal_component': 0,
                 'interest_component': 0,
-                'gross_amount': -inv_amount,
+                'gross_amount': -t_inv_amount,
                 'tds_amount': 0,
-                'net_amount': -inv_amount,
+                'net_amount': -t_inv_amount,
                 'is_repaid': True,
                 'source': 'investment',
-                'units': trade_info.get('units', 0)
+                'units': ti.get('units', 0)
             })
     
-    # 2. Add ALL actual repayments from uploads (both past and future)
-    # The uploaded data IS the source of truth - show it as-is
-    for ar in actual_repayments:
+    # 2. Process actual repayments and track prepayments
+    # Sort repayments by date to calculate balance principal correctly
+    sorted_repayments = sorted(actual_repayments, key=lambda x: x.get('repayment_date', ''))
+    
+    prepayments = []  # Track prepayments for interest calculation
+    total_prepaid_principal = 0
+    has_maturity_entry = False  # Check if maturity is already in actual_repayments
+    
+    for ar in sorted_repayments:
         ar_date = ar.get('repayment_date', '')
         ar_date_short = ar_date[:10] if ar_date else ''
         
@@ -9542,12 +9572,25 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
         # Determine if this is past (received) or future (expected)
         is_past = ar_date_short <= today_str if ar_date_short else False
         
+        # Check if this is the maturity entry (final payment with both principal and interest)
+        is_maturity = (principal > 0 and interest > 0 and ar_date_short == maturity_date_str[:10] if maturity_date_str else False)
+        
         # Determine type based on principal/interest composition
-        cf_type = 'repayment'
-        if principal > 0 and interest > 0:
-            cf_type = 'maturity'  # Both principal and interest = likely maturity
+        if is_maturity:
+            cf_type = 'maturity'
+            has_maturity_entry = True
         elif principal > 0 and interest == 0:
-            cf_type = 'prepayment'  # Principal only = prepayment
+            cf_type = 'prepayment'
+            # Track this prepayment for interest calculation
+            prepayments.append({
+                'date': ar_date_short,
+                'principal': principal
+            })
+            total_prepaid_principal += principal
+        elif interest > 0 and principal == 0:
+            cf_type = 'interest'
+        else:
+            cf_type = 'repayment'
         
         actual_cashflows.append({
             'date': ar_date,
@@ -9559,10 +9602,97 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
             'tds_amount': tds,
             'net_amount': net,
             'is_repaid': is_past,
-            'source': 'actual_upload'
+            'source': 'actual_upload',
+            'balance_principal_after': total_principal - total_prepaid_principal if total_principal else None
         })
     
-    # 3. FALLBACK: If no actual_repayments uploaded, calculate remaining from scheduled cashflows
+    # 3. Calculate and add maturity entry if not already present and we have prepayments
+    if actual_repayments and not has_maturity_entry and prepayments and total_principal > 0 and coupon_rate > 0:
+        # Calculate remaining principal at maturity
+        remaining_principal = total_principal - total_prepaid_principal
+        
+        if remaining_principal > 0 and maturity_date_str:
+            # Calculate accumulated interest period by period
+            # Following Excel logic: Interest = Balance Principal × Coupon × Days / 365
+            
+            accumulated_interest = 0
+            balance_principal = total_principal
+            
+            try:
+                # Parse investment date
+                inv_date = datetime.fromisoformat(inv_date_str.replace('Z', '+00:00').split('T')[0]) if inv_date_str else None
+                maturity_date = datetime.fromisoformat(maturity_date_str.replace('Z', '+00:00').split('T')[0]) if maturity_date_str else None
+                
+                if inv_date and maturity_date:
+                    # Build timeline of events
+                    events = [{'date': inv_date, 'type': 'start', 'amount': 0}]
+                    
+                    for p in prepayments:
+                        try:
+                            p_date = datetime.fromisoformat(p['date'].replace('Z', '+00:00').split('T')[0])
+                            events.append({'date': p_date, 'type': 'prepayment', 'amount': p['principal']})
+                        except:
+                            pass
+                    
+                    events.append({'date': maturity_date, 'type': 'maturity', 'amount': 0})
+                    events.sort(key=lambda x: x['date'])
+                    
+                    # Calculate interest for each period
+                    prev_date = inv_date
+                    for event in events:
+                        if event['type'] == 'start':
+                            continue
+                        
+                        # Days from previous event
+                        days = (event['date'] - prev_date).days
+                        if days < 0:
+                            days = 0
+                        
+                        # Interest for this period
+                        period_interest = (balance_principal * coupon_rate * days) / 365
+                        accumulated_interest += period_interest
+                        
+                        # Reduce balance on prepayment
+                        if event['type'] == 'prepayment':
+                            balance_principal -= event['amount']
+                            if balance_principal < 0:
+                                balance_principal = 0
+                        
+                        prev_date = event['date']
+                    
+                    # Final maturity amount
+                    final_principal = balance_principal
+                    final_interest = round(accumulated_interest, 2)
+                    final_tds = round(final_interest * 0.10, 2)
+                    final_gross = round(final_principal + final_interest, 2)
+                    final_net = round(final_gross - final_tds, 2)
+                    
+                    # Only add if there's something to pay at maturity
+                    if final_gross > 0:
+                        actual_cashflows.append({
+                            'date': maturity_date_str[:10] if maturity_date_str else '',
+                            'type': 'maturity',
+                            'amount': final_gross,
+                            'principal_component': round(final_principal, 2),
+                            'interest_component': final_interest,
+                            'gross_amount': final_gross,
+                            'tds_amount': final_tds,
+                            'net_amount': final_net,
+                            'is_repaid': False,
+                            'source': 'calculated_with_prepayments',
+                            'calculation_details': {
+                                'original_principal': total_principal,
+                                'total_prepaid': total_prepaid_principal,
+                                'remaining_principal': final_principal,
+                                'accumulated_interest': final_interest,
+                                'coupon_rate_used': coupon_rate
+                            }
+                        })
+            except Exception as e:
+                # Fallback if date parsing fails
+                pass
+    
+    # 4. FALLBACK: If no actual_repayments uploaded, calculate remaining from scheduled cashflows
     if not actual_repayments and stored_cashflows:
         # Calculate total scheduled
         total_scheduled_principal = sum(cf.get('principal_component', 0) or 0 for cf in stored_cashflows)
@@ -9571,14 +9701,14 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
         # Get the maturity date
         future_cashflows = [cf for cf in stored_cashflows if (cf.get('date') or '')[:10] > today_str]
         if future_cashflows:
-            maturity_date = max(cf.get('date', '') for cf in future_cashflows)
+            mat_date = max(cf.get('date', '') for cf in future_cashflows)
             
             if total_scheduled_principal > 0 or total_scheduled_interest > 0:
                 remaining_gross = total_scheduled_principal + total_scheduled_interest
                 remaining_tds = total_scheduled_interest * 0.1 if total_scheduled_interest > 0 else 0
                 
                 actual_cashflows.append({
-                    'date': maturity_date,
+                    'date': mat_date,
                     'type': 'maturity',
                     'amount': remaining_gross,
                     'principal_component': total_scheduled_principal,
