@@ -1922,18 +1922,11 @@ export default function Holdings() {
                     
                     {/* LEFT COLUMN - Expected Repayments */}
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
-                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 flex justify-between items-center">
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
                         <h3 className="font-semibold text-white flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
                           Expected Cashflow
                         </h3>
-                        <button
-                          onClick={() => downloadCombinedCashflowPDF(modalData, expectedCashflows, actualCashflows)}
-                          className="flex items-center gap-1 px-2 py-1 bg-white/20 hover:bg-white/30 rounded text-white text-xs transition-colors"
-                        >
-                          <Download className="h-3 w-3" />
-                          PDF
-                        </button>
                       </div>
                       
                       {/* Expected Cashflows Table */}
