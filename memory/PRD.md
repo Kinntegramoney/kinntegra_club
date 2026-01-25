@@ -37,6 +37,17 @@
    - Based on historical transactions uploaded via repayment schedule
    - Example: Expected 12.00% vs Actual 11.38% (due to prepayments)
 
+5. **Combined PDF Download**:
+   - Single PDF now contains BOTH Expected and Actual Cashflows side-by-side
+   - Shows summary header with Investment, Expected Returns, Expected Profit, Expected XIRR, Actual XIRR
+   - Works for both Summary tab and Individual Transaction tabs
+
+6. **Individual Transaction Tabs Enhanced**:
+   - Now show both Expected and Actual Cashflows with same structure
+   - Investment entries shown in red (outflow)
+   - Maturity entries shown in blue
+   - Profits calculated and displayed in footer for both tables
+
 ---
 
 ### Expected Repayments - Investment Value Calculation (Secondary Calculator)
