@@ -6401,103 +6401,103 @@ async def bulk_upload_historical_trades(
                 net_amount = float(row['net_amount'])
                 
                 # Find bond
-                        bond = bond_lookup.get(deal_id)
-                        if not bond:
-                            results['errors'].append(f"Repayment Row {row_num}: Bond '{deal_id}' not found")
-                            results['failed'] += 1
-                            continue
+                bond = bond_lookup.get(deal_id)
+                if not bond:
+                    results['errors'].append(f"Repayment Row {row_num}: Bond '{deal_id}' not found")
+                    results['failed'] += 1
+                    continue
+                
+                # Find client
+                client = client_by_pan.get(pan)
+                if not client:
+                    results['errors'].append(f"Repayment Row {row_num}: Client with PAN '{pan}' not found")
+                    results['failed'] += 1
+                    continue
+                
+                # Check for duplicate actual repayment
+                existing = await db.actual_repayments.find_one({
+                    "bond_id": bond['id'],
+                    "client_id": client['id'],
+                    "repayment_date": rep_date_str,
+                    "net_amount": net_amount
+                })
+                if existing:
+                    results['errors'].append(f"Repayment Row {row_num}: Duplicate repayment already recorded")
+                    results['failed'] += 1
+                    continue
+                
+                # Find matching trade for this repayment
+                trade_query = {
+                    "bond_id": bond['id'],
+                    "client_id": client['id'],
+                    "status": "approved"
+                }
+                if inv_date_str:
+                    trade_query["investment_date"] = inv_date_str
+                
+                matching_trade = await db.trades.find_one(trade_query, {"_id": 0})
+                
+                # Store actual repayment
+                actual_repayment = {
+                    "id": str(uuid.uuid4()),
+                    "bond_id": bond['id'],
+                    "bond_name": bond['name'],
+                    "bond_code": deal_id,
+                    "client_id": client['id'],
+                    "client_name": client['name'],
+                    "client_pan": pan,
+                    "investment_date": inv_date_str,  # For matching to specific trade
+                    "repayment_date": rep_date_str,
+                    "principal": principal,
+                    "interest": interest,
+                    "gross_amount": gross_amount,
+                    "tds": tds,
+                    "net_amount": net_amount,
+                    "type": "actual",  # Mark as actual
+                    "created_by": current_user['id'],
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "is_historical": True,
+                    "trade_id": matching_trade['id'] if matching_trade else None
+                }
+                
+                await db.actual_repayments.insert_one(actual_repayment)
+                results['repayments_recorded'] += 1
+                results['success'] += 1
+                
+                # PREPAYMENT DETECTION AND PROCESSING
+                # Check if this repayment contains a prepayment (unscheduled principal)
+                if matching_trade and principal > 0:
+                    # Get scheduled cashflows for this trade
+                    scheduled_cfs = await db.holding_cashflows.find({
+                        "trade_id": matching_trade['id']
+                    }, {"_id": 0}).to_list(200)
+                    
+                    # Find if there's a scheduled cashflow for this repayment date
+                    scheduled_principal_for_date = 0
+                    matching_cf_id = None
+                    for scf in scheduled_cfs:
+                        scf_date = scf.get('date', '').split('T')[0]
+                        if scf_date == rep_date_str:
+                            scheduled_principal_for_date = scf.get('principal_component', 0)
+                            matching_cf_id = scf.get('id')
+                            break
+                    
+                    # Calculate excess principal (prepayment)
+                    # If no scheduled payment on this date, entire principal is a prepayment
+                    excess_principal = principal - scheduled_principal_for_date
+                    
+                    # Process as prepayment if:
+                    # 1. There's excess principal beyond scheduled, OR
+                    # 2. No scheduled cashflow exists for this date (irregular payment)
+                    is_irregular_payment = (scheduled_principal_for_date == 0 and principal > 0)
+                    is_excess_prepayment = (excess_principal > 0.01)
+                    
+                    if is_irregular_payment or is_excess_prepayment:
+                        prepay_amount = principal if is_irregular_payment else excess_principal
                         
-                        # Find client
-                        client = client_by_pan.get(pan)
-                        if not client:
-                            results['errors'].append(f"Repayment Row {row_num}: Client with PAN '{pan}' not found")
-                            results['failed'] += 1
-                            continue
-                        
-                        # Check for duplicate actual repayment
-                        existing = await db.actual_repayments.find_one({
-                            "bond_id": bond['id'],
-                            "client_id": client['id'],
-                            "repayment_date": rep_date_str,
-                            "net_amount": net_amount
-                        })
-                        if existing:
-                            results['errors'].append(f"Repayment Row {row_num}: Duplicate repayment already recorded")
-                            results['failed'] += 1
-                            continue
-                        
-                        # Find matching trade for this repayment
-                        trade_query = {
-                            "bond_id": bond['id'],
-                            "client_id": client['id'],
-                            "status": "approved"
-                        }
-                        if inv_date_str:
-                            trade_query["investment_date"] = inv_date_str
-                        
-                        matching_trade = await db.trades.find_one(trade_query, {"_id": 0})
-                        
-                        # Store actual repayment
-                        actual_repayment = {
-                            "id": str(uuid.uuid4()),
-                            "bond_id": bond['id'],
-                            "bond_name": bond['name'],
-                            "bond_code": deal_id,
-                            "client_id": client['id'],
-                            "client_name": client['name'],
-                            "client_pan": pan,
-                            "investment_date": inv_date_str,  # For matching to specific trade
-                            "repayment_date": rep_date_str,
-                            "principal": principal,
-                            "interest": interest,
-                            "gross_amount": gross_amount,
-                            "tds": tds,
-                            "net_amount": net_amount,
-                            "type": "actual",  # Mark as actual
-                            "created_by": current_user['id'],
-                            "created_at": datetime.now(timezone.utc).isoformat(),
-                            "is_historical": True,
-                            "trade_id": matching_trade['id'] if matching_trade else None
-                        }
-                        
-                        await db.actual_repayments.insert_one(actual_repayment)
-                        results['repayments_recorded'] += 1
-                        results['success'] += 1
-                        
-                        # PREPAYMENT DETECTION AND PROCESSING
-                        # Check if this repayment contains a prepayment (unscheduled principal)
-                        if matching_trade and principal > 0:
-                            # Get scheduled cashflows for this trade
-                            scheduled_cfs = await db.holding_cashflows.find({
-                                "trade_id": matching_trade['id']
-                            }, {"_id": 0}).to_list(200)
-                            
-                            # Find if there's a scheduled cashflow for this repayment date
-                            scheduled_principal_for_date = 0
-                            matching_cf_id = None
-                            for scf in scheduled_cfs:
-                                scf_date = scf.get('date', '').split('T')[0]
-                                if scf_date == rep_date_str:
-                                    scheduled_principal_for_date = scf.get('principal_component', 0)
-                                    matching_cf_id = scf.get('id')
-                                    break
-                            
-                            # Calculate excess principal (prepayment)
-                            # If no scheduled payment on this date, entire principal is a prepayment
-                            excess_principal = principal - scheduled_principal_for_date
-                            
-                            # Process as prepayment if:
-                            # 1. There's excess principal beyond scheduled, OR
-                            # 2. No scheduled cashflow exists for this date (irregular payment)
-                            is_irregular_payment = (scheduled_principal_for_date == 0 and principal > 0)
-                            is_excess_prepayment = (excess_principal > 0.01)
-                            
-                            if is_irregular_payment or is_excess_prepayment:
-                                prepay_amount = principal if is_irregular_payment else excess_principal
-                                
-                                # Parse repayment date for prepayment processing
-                                try:
-                                    prepay_date = datetime.strptime(rep_date_str, '%Y-%m-%d')
+                        # Parse repayment date for prepayment processing
+                        try:
+                            prepay_date = datetime.strptime(rep_date_str, '%Y-%m-%d')
                                 except:
                                     prepay_date = datetime.now()
                                 
