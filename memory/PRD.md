@@ -2,6 +2,39 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### Historical Repayments - Actual Cashflow Calculation (Jan 25, 2026 - Session 7) ✅
+
+**Request:** After historical repayments are uploaded, the actual cashflow chart should reflect prepayments and calculate maturity payout exactly like the provided Excel.
+
+**Excel Calculation Logic:**
+1. Each prepayment reduces the balance principal
+2. Interest = Balance Principal × Coupon Rate × Days / 365
+3. Interest is calculated from **BOND START DATE** (not investment date)
+4. Accumulated interest is paid at maturity with remaining principal
+
+**Implementation:**
+- **Enhanced `build_actual_cashflows_with_investment()` function** in server.py
+  - Now accepts `bond_start_date` for proper interest calculation
+  - Tracks prepayments and calculates accumulated interest period-by-period
+  - Automatically generates maturity entry with remaining principal + accumulated interest
+  - Includes calculation details (original principal, total prepaid, remaining principal, coupon rate used)
+
+**Actual Cashflow Chart Now Shows:**
+1. **Investment** (outflow - negative amount on investment date)
+2. **Prepayments** (principal-only repayments as uploaded)
+3. **Maturity** (calculated: remaining principal + accumulated interest from bond start)
+
+**Example (135 units, Face Value ₹100,000, Coupon 18.73%):**
+- Original Principal: ₹13,500,000
+- 4 Prepayments of ₹945,000 each
+- Remaining Principal: ₹9,720,000
+- Accumulated Interest: ₹3,517,801.89 (from bond start 2024-10-08 to maturity 2026-04-08)
+- Maturity Payout: ₹13,237,801.89
+
+**Files Modified:** server.py (build_actual_cashflows_with_investment, get_client_holdings)
+
+---
+
 ### Kinntegra MF Buy Scheduler API Integration (Jan 25, 2026 - Session 6)
 
 **1. Linked Kinntegra API to Reinvestment Approval ✅**
