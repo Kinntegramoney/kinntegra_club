@@ -176,7 +176,7 @@ export default function ClientHoldings() {
                   onClick={() => setMainTab("bonds")}
                   className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
                     mainTab === "bonds" 
-                      ? "border-amber-600 text-amber-700" 
+                      ? "border-etihad-gold-600 text-etihad-gold-700" 
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                   data-testid="tab-bonds"
@@ -184,14 +184,14 @@ export default function ClientHoldings() {
                   <Wallet className="h-4 w-4" />
                   Bonds
                   {holdings?.holdings?.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-700">{holdings.holdings.length}</Badge>
+                    <Badge variant="secondary" className="ml-1 bg-etihad-gold-100 text-etihad-gold-700">{holdings.holdings.length}</Badge>
                   )}
                 </button>
                 <button 
                   onClick={() => setMainTab("trades")}
                   className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
                     mainTab === "trades" 
-                      ? "border-amber-600 text-amber-700" 
+                      ? "border-etihad-gold-600 text-etihad-gold-700" 
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                   data-testid="tab-trades"
@@ -206,7 +206,7 @@ export default function ClientHoldings() {
                   onClick={() => setMainTab("real-estate")}
                   className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
                     mainTab === "real-estate" 
-                      ? "border-amber-600 text-amber-700" 
+                      ? "border-etihad-gold-600 text-etihad-gold-700" 
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                   data-testid="tab-real-estate"
@@ -363,7 +363,7 @@ export default function ClientHoldings() {
                               <td className="py-3 px-4 text-center">
                                 <Badge className={
                                   trade.status === 'verified' ? 'bg-green-100 text-green-700' :
-                                  trade.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                                  trade.status === 'pending' ? 'bg-etihad-gold-100 text-etihad-gold-700' :
                                   'bg-gray-100 text-gray-700'
                                 }>
                                   {trade.status === 'verified' ? (

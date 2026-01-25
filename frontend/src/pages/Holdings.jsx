@@ -1173,10 +1173,10 @@ export default function Holdings() {
                   data-testid={`client-item-${client.id}`}
                   onClick={() => handleClientSelect(client)}
                   className={`px-3 py-2.5 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                    selectedClient?.id === client.id ? 'bg-amber-50 border-l-4 border-l-amber-600' : ''
+                    selectedClient?.id === client.id ? 'bg-etihad-gold-50 border-l-4 border-l-amber-600' : ''
                   }`}
                 >
-                  <p className={`font-medium text-sm truncate ${selectedClient?.id === client.id ? 'text-amber-700' : 'text-gray-800'}`}>
+                  <p className={`font-medium text-sm truncate ${selectedClient?.id === client.id ? 'text-etihad-gold-700' : 'text-gray-800'}`}>
                     {client.name}
                   </p>
                   <p className="text-xs text-gray-500 font-mono">({client.pan_number})</p>
@@ -1212,7 +1212,7 @@ export default function Holdings() {
                   onClick={() => setMainTab("holdings")}
                   className={`pb-3 border-b-2 font-medium transition-colors ${
                     mainTab === "holdings" 
-                      ? "border-amber-600 text-amber-700" 
+                      ? "border-etihad-gold-600 text-etihad-gold-700" 
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                   data-testid="tab-holdings"
@@ -1223,7 +1223,7 @@ export default function Holdings() {
                   onClick={() => setMainTab("trades")}
                   className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
                     mainTab === "trades" 
-                      ? "border-amber-600 text-amber-700" 
+                      ? "border-etihad-gold-600 text-etihad-gold-700" 
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                   data-testid="tab-trades"
@@ -1235,7 +1235,7 @@ export default function Holdings() {
                   onClick={() => setMainTab("real-estate")}
                   className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
                     mainTab === "real-estate" 
-                      ? "border-amber-600 text-amber-700" 
+                      ? "border-etihad-gold-600 text-etihad-gold-700" 
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                   data-testid="tab-real-estate"
@@ -1247,7 +1247,7 @@ export default function Holdings() {
                   onClick={() => setMainTab("profile")}
                   className={`pb-3 border-b-2 font-medium transition-colors ${
                     mainTab === "profile" 
-                      ? "border-amber-600 text-amber-700" 
+                      ? "border-etihad-gold-600 text-etihad-gold-700" 
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                   data-testid="tab-profile"
@@ -1296,7 +1296,7 @@ export default function Holdings() {
                     variant="ghost"
                     size="sm"
                     onClick={() => navigate('/broker/bulk-upload?tab=historical-trades')}
-                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 ml-auto"
+                    className="text-etihad-gold-600 hover:text-etihad-gold-700 hover:bg-etihad-gold-50 ml-auto"
                   >
                     <ExternalLink className="h-4 w-4 mr-1" />
                     Bulk Upload Module
@@ -1310,7 +1310,7 @@ export default function Holdings() {
                   {/* Personal Details */}
                   <div className="bg-white rounded-lg border border-gray-200 p-5">
                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                      <User className="h-5 w-5 text-amber-600" />
+                      <User className="h-5 w-5 text-etihad-gold-600" />
                       <h3 className="font-semibold text-gray-800">Personal Details</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1362,7 +1362,7 @@ export default function Holdings() {
                   {/* Address Details */}
                   <div className="bg-white rounded-lg border border-gray-200 p-5">
                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                      <MapPin className="h-5 w-5 text-amber-600" />
+                      <MapPin className="h-5 w-5 text-etihad-gold-600" />
                       <h3 className="font-semibold text-gray-800">Address Details</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1396,7 +1396,7 @@ export default function Holdings() {
                   {/* Bank Details */}
                   <div className="bg-white rounded-lg border border-gray-200 p-5">
                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                      <Building2 className="h-5 w-5 text-amber-600" />
+                      <Building2 className="h-5 w-5 text-etihad-gold-600" />
                       <h3 className="font-semibold text-gray-800">Bank Details</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1536,7 +1536,7 @@ export default function Holdings() {
                   {/* Nominee Details */}
                   <div className="bg-white rounded-lg border border-gray-200 p-5">
                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                      <UserCheck className="h-5 w-5 text-amber-600" />
+                      <UserCheck className="h-5 w-5 text-etihad-gold-600" />
                       <h3 className="font-semibold text-gray-800">Nominee Details</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1710,7 +1710,7 @@ export default function Holdings() {
                           <p className="text-2xl font-bold">{clientRealEstate.length}</p>
                         </div>
                         <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-5 text-white">
-                          <p className="text-amber-100 text-sm">Total Investment</p>
+                          <p className="text-etihad-gold-100 text-sm">Total Investment</p>
                           <p className="text-2xl font-bold">
                             AED {new Intl.NumberFormat('en-AE').format(
                               clientRealEstate.reduce((sum, re) => sum + (re.investment_amount || 0), 0)
@@ -1891,7 +1891,7 @@ export default function Holdings() {
                 <div className="flex items-center justify-between p-4 border-b border-gray-200">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <ClipboardList className="h-5 w-5 text-amber-600" />
+                      <ClipboardList className="h-5 w-5 text-etihad-gold-600" />
                       <h3 className="font-semibold text-gray-800">Holding Report</h3>
                     </div>
                     
@@ -1903,7 +1903,7 @@ export default function Holdings() {
                           name="holdingStatus" 
                           checked={statusFilter === 'all'} 
                           onChange={() => setStatusFilter('all')} 
-                          className="h-3.5 w-3.5 text-amber-600 focus:ring-amber-500" 
+                          className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-amber-500" 
                         />
                         <span className="text-sm text-gray-600">All</span>
                       </label>
@@ -1913,7 +1913,7 @@ export default function Holdings() {
                           name="holdingStatus" 
                           checked={statusFilter === 'active'} 
                           onChange={() => setStatusFilter('active')} 
-                          className="h-3.5 w-3.5 text-amber-600 focus:ring-amber-500" 
+                          className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-amber-500" 
                         />
                         <span className="text-sm text-gray-600">Active</span>
                       </label>
@@ -1923,14 +1923,14 @@ export default function Holdings() {
                           name="holdingStatus" 
                           checked={statusFilter === 'fully_repaid'} 
                           onChange={() => setStatusFilter('fully_repaid')} 
-                          className="h-3.5 w-3.5 text-amber-600 focus:ring-amber-500" 
+                          className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-amber-500" 
                         />
                         <span className="text-sm text-gray-600">Completed</span>
                       </label>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="sm" onClick={handleDownloadExcel} className="text-amber-700 hover:text-amber-800" data-testid="download-holdings-btn">
+                    <Button variant="ghost" size="sm" onClick={handleDownloadExcel} className="text-etihad-gold-700 hover:text-etihad-gold-800" data-testid="download-holdings-btn">
                       <Download className="h-4 w-4 mr-2" />
                       DOWNLOAD
                     </Button>
@@ -1939,7 +1939,7 @@ export default function Holdings() {
                       size="sm" 
                       onClick={handleSendReportEmail}
                       disabled={sendingEmail}
-                      className="text-amber-700 hover:text-amber-800"
+                      className="text-etihad-gold-700 hover:text-etihad-gold-800"
                       data-testid="email-holdings-btn"
                     >
                       <Mail className="h-4 w-4 mr-2" />
@@ -2031,7 +2031,7 @@ export default function Holdings() {
                           <td className="py-2 px-2 text-center">
                             <button 
                               onClick={() => openCashflowModal(holding)} 
-                              className="px-2 py-1 text-[10px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 transition-colors"
+                              className="px-2 py-1 text-[10px] font-medium text-etihad-gold-700 bg-etihad-gold-50 hover:bg-etihad-gold-100 rounded border border-etihad-gold-200 transition-colors"
                               data-testid={`view-details-${holding.bond_id}`}
                             >
                               View Details
@@ -2070,7 +2070,7 @@ export default function Holdings() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => downloadCombinedCashflowPDF(modalData, expectedCashflows, actualCashflows)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 rounded-lg text-white text-sm font-medium transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-etihad-gold-600 hover:bg-etihad-gold-700 rounded-lg text-white text-sm font-medium transition-colors"
                 >
                   <Download className="h-4 w-4" />
                   Download PDF
@@ -2088,7 +2088,7 @@ export default function Holdings() {
                 onClick={() => setActiveTab("summary")}
                 className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
                   activeTab === "summary" 
-                    ? 'border-amber-600 text-amber-700 bg-white' 
+                    ? 'border-etihad-gold-600 text-etihad-gold-700 bg-white' 
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
                 data-testid="tab-summary"
@@ -2106,7 +2106,7 @@ export default function Holdings() {
                   onClick={() => setActiveTab(index)}
                   className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
                     activeTab === index 
-                      ? 'border-amber-600 text-amber-700 bg-white' 
+                      ? 'border-etihad-gold-600 text-etihad-gold-700 bg-white' 
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                   data-testid={`trade-tab-${index}`}
@@ -2275,7 +2275,7 @@ export default function Holdings() {
               {typeof activeTab === 'number' && modalData.trades[activeTab] && (
                 <div className="p-4">
                   {/* Transaction Header */}
-                  <div className="px-4 py-3 bg-amber-50/50 border border-amber-100 rounded-lg mb-4 flex items-center justify-between flex-wrap gap-4 text-sm">
+                  <div className="px-4 py-3 bg-etihad-gold-50/50 border border-etihad-gold-100 rounded-lg mb-4 flex items-center justify-between flex-wrap gap-4 text-sm">
                     <div className="flex items-center gap-6">
                       <div>
                         <span className="text-gray-500">Purchase Date:</span>
@@ -2638,8 +2638,8 @@ export default function Holdings() {
               </div>
 
               {/* Trade Information */}
-              <div className="bg-amber-50 rounded-lg p-4">
-                <h3 className="text-xs font-semibold text-amber-700 uppercase mb-3 flex items-center gap-2">
+              <div className="bg-etihad-gold-50 rounded-lg p-4">
+                <h3 className="text-xs font-semibold text-etihad-gold-700 uppercase mb-3 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
                   Trade Information
                 </h3>
@@ -2654,7 +2654,7 @@ export default function Holdings() {
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase">Total Amount</p>
-                    <p className="text-sm font-bold text-amber-600">{formatINR(tradeDetailsModal.total_amount)}</p>
+                    <p className="text-sm font-bold text-etihad-gold-600">{formatINR(tradeDetailsModal.total_amount)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase">Investment Date</p>

@@ -455,19 +455,19 @@ export default function Opportunities() {
     const startDate = new Date(bond.start_date);
 
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-amber-500 transition-colors">
+      <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-etihad-gold-500 transition-colors">
         {/* Header - Bond Name */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-amber-600" />
+            <div className="w-10 h-10 bg-etihad-gold-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-etihad-gold-600" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-800">{bond.name}</h3>
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Bond</Badge>
+            <Badge className="bg-etihad-gold-100 text-etihad-gold-700 hover:bg-etihad-gold-100">Bond</Badge>
             {status === 'available' && (
               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Available</span>
             )}
@@ -509,11 +509,11 @@ export default function Opportunities() {
             </div>
           </div>
         ) : (
-          <div className="bg-amber-50 rounded-lg p-3 mb-4">
+          <div className="bg-etihad-gold-50 rounded-lg p-3 mb-4">
             <p className="text-xs text-gray-500 mb-1">
               Price/Unit ({new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})
             </p>
-            <p className="font-semibold text-amber-700">{formatCurrency(Math.round(todayPrice))}</p>
+            <p className="font-semibold text-etihad-gold-700">{formatCurrency(Math.round(todayPrice))}</p>
           </div>
         )}
 
@@ -847,9 +847,9 @@ export default function Opportunities() {
         {/* Sale & Returns Info - Third Row */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {/* Expected Sale Date */}
-          <div className="bg-amber-50 rounded-lg p-3">
+          <div className="bg-etihad-gold-50 rounded-lg p-3">
             <p className="text-xs text-gray-500 mb-1">Expected Sale Date</p>
-            <p className="font-semibold text-amber-700">
+            <p className="font-semibold text-etihad-gold-700">
               {opp.estimated_sell_date 
                 ? new Date(opp.estimated_sell_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) 
                 : (opp.handover_date 
@@ -908,7 +908,7 @@ export default function Opportunities() {
             <>
               <div className="text-center flex-1">
                 <p className="text-xs text-gray-500">Interested</p>
-                <p className="font-bold text-amber-600">{opp.interested_count || 0}</p>
+                <p className="font-bold text-etihad-gold-600">{opp.interested_count || 0}</p>
               </div>
               <div className="w-px h-8 bg-gray-200"></div>
               <div className="text-center flex-1">
@@ -1029,7 +1029,7 @@ export default function Opportunities() {
                 {canCreateBond && (
                   <Button 
                     onClick={() => navigate("/bonds/create")} 
-                    className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
+                    className="bg-etihad-gold-500 hover:bg-etihad-gold-600 text-white gap-2"
                   >
                     <Plus className="h-4 w-4" />
                     Add Bonds

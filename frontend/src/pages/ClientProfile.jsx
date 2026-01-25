@@ -91,7 +91,7 @@ export default function ClientProfile() {
               {/* Personal Details */}
               <div className="bg-white rounded-lg border border-gray-200 p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                  <User className="h-5 w-5 text-amber-600" />
+                  <User className="h-5 w-5 text-etihad-gold-600" />
                   <h3 className="font-semibold text-gray-800">Personal Details</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -143,7 +143,7 @@ export default function ClientProfile() {
               {/* Address Details */}
               <div className="bg-white rounded-lg border border-gray-200 p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                  <MapPin className="h-5 w-5 text-amber-600" />
+                  <MapPin className="h-5 w-5 text-etihad-gold-600" />
                   <h3 className="font-semibold text-gray-800">Address Details</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -177,7 +177,7 @@ export default function ClientProfile() {
               {/* Bank Details */}
               <div className="bg-white rounded-lg border border-gray-200 p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                  <Building2 className="h-5 w-5 text-amber-600" />
+                  <Building2 className="h-5 w-5 text-etihad-gold-600" />
                   <h3 className="font-semibold text-gray-800">Bank Details</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -317,7 +317,7 @@ export default function ClientProfile() {
               {/* Nominee Details */}
               <div className="bg-white rounded-lg border border-gray-200 p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                  <UserCheck className="h-5 w-5 text-amber-600" />
+                  <UserCheck className="h-5 w-5 text-etihad-gold-600" />
                   <h3 className="font-semibold text-gray-800">Nominee Details</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

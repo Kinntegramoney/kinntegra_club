@@ -113,8 +113,8 @@ export default function BulkUploadModal({ onClose, onSuccess }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <FileSpreadsheet className="h-5 w-5 text-amber-700" />
+            <div className="w-10 h-10 bg-etihad-gold-100 rounded-lg flex items-center justify-center">
+              <FileSpreadsheet className="h-5 w-5 text-etihad-gold-700" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-800">Bulk Upload Clients</h2>
@@ -164,7 +164,7 @@ export default function BulkUploadModal({ onClose, onSuccess }) {
                 className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
                   file 
                     ? 'border-green-300 bg-green-50' 
-                    : 'border-gray-300 hover:border-amber-400 hover:bg-amber-50'
+                    : 'border-gray-300 hover:border-etihad-gold-400 hover:bg-etihad-gold-50'
                 }`}
               >
                 <input
@@ -330,7 +330,7 @@ export default function BulkUploadModal({ onClose, onSuccess }) {
             <Button
               onClick={handleUpload}
               disabled={!file || uploading}
-              className="bg-amber-700 hover:bg-amber-800"
+              className="bg-etihad-gold-700 hover:bg-etihad-gold-800"
               data-testid="upload-btn"
             >
               {uploading ? (

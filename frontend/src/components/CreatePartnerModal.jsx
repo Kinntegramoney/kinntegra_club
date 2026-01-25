@@ -123,9 +123,9 @@ export default function CreatePartnerModal({ onClose, onSuccess }) {
 
           {/* Content */}
           <div className="p-6 space-y-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800">
+            <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4 flex gap-3">
+              <AlertTriangle className="h-5 w-5 text-etihad-gold-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-etihad-gold-800">
                 <p className="font-semibold">Important: Save these credentials!</p>
                 <p>Please share these login details with the partner. They will need these to access the portal.</p>
               </div>
@@ -361,7 +361,7 @@ export default function CreatePartnerModal({ onClose, onSuccess }) {
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="bg-amber-700 hover:bg-amber-800 text-white"
+            className="bg-etihad-gold-700 hover:bg-etihad-gold-800 text-white"
           >
             {loading ? "CREATING..." : "SAVE CHANGES"}
           </Button>

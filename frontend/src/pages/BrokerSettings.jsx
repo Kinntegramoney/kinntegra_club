@@ -15,7 +15,7 @@ const FEATURE_CATEGORIES = {
   "opportunities_bonds": { label: "Bond Opportunities", icon: FileText, color: "bg-blue-50 border-blue-200" },
   "opportunities_real_estate": { label: "Real Estate Opportunities", icon: Building2, color: "bg-green-50 border-green-200" },
   "user_sub_broker": { label: "Sub-Broker Management", icon: Users, color: "bg-purple-50 border-purple-200" },
-  "user_client": { label: "Client Management", icon: Users, color: "bg-amber-50 border-amber-200" },
+  "user_client": { label: "Client Management", icon: Users, color: "bg-etihad-gold-50 border-etihad-gold-200" },
   "holdings": { label: "Holdings", icon: FileText, color: "bg-indigo-50 border-indigo-200" },
   "logs": { label: "Logs", icon: FileText, color: "bg-gray-50 border-gray-200" },
   "reinvestment": { label: "Reinvestment", icon: RefreshCw, color: "bg-teal-50 border-teal-200" },
@@ -168,7 +168,7 @@ export default function BrokerSettings() {
       <div className="flex h-screen bg-gray-100">
         <Sidebar user={user} />
         <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-etihad-gold-600"></div>
         </div>
       </div>
     );
@@ -184,8 +184,8 @@ export default function BrokerSettings() {
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <Settings className="h-6 w-6 text-amber-600" />
+                <div className="p-2 bg-etihad-gold-100 rounded-lg">
+                  <Settings className="h-6 w-6 text-etihad-gold-600" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-800">Role Permissions</h1>
@@ -206,7 +206,7 @@ export default function BrokerSettings() {
                 <Button
                   onClick={savePermissions}
                   disabled={saving || !hasChanges}
-                  className="bg-amber-600 hover:bg-amber-700"
+                  className="bg-etihad-gold-600 hover:bg-etihad-gold-700"
                 >
                   <Save className="h-4 w-4 mr-2" />
                   {saving ? "Saving..." : "Save Changes"}
@@ -219,7 +219,7 @@ export default function BrokerSettings() {
           <div className="px-6 py-3 bg-gray-50 border-t flex items-center gap-6">
             <span className="text-sm text-gray-500">Roles:</span>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+              <div className="w-3 h-3 rounded-full bg-etihad-gold-500"></div>
               <span className="text-sm font-medium">Broker</span>
             </div>
             <div className="flex items-center gap-2">
@@ -231,8 +231,8 @@ export default function BrokerSettings() {
               <span className="text-sm font-medium">Client</span>
             </div>
             {hasChanges && (
-              <span className="ml-auto text-sm text-amber-600 font-medium flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              <span className="ml-auto text-sm text-etihad-gold-600 font-medium flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-etihad-gold-500 animate-pulse"></span>
                 Unsaved changes
               </span>
             )}
@@ -275,7 +275,7 @@ export default function BrokerSettings() {
                         <tr>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Action</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Description</th>
-                          <th className="px-4 py-2 text-center text-xs font-semibold text-amber-600 uppercase">Broker</th>
+                          <th className="px-4 py-2 text-center text-xs font-semibold text-etihad-gold-600 uppercase">Broker</th>
                           <th className="px-4 py-2 text-center text-xs font-semibold text-blue-600 uppercase">Sub-Broker</th>
                           <th className="px-4 py-2 text-center text-xs font-semibold text-green-600 uppercase">Client</th>
                         </tr>
@@ -300,7 +300,7 @@ export default function BrokerSettings() {
                                 <Switch
                                   checked={perm.broker}
                                   onCheckedChange={(checked) => updatePermission(feature, perm.action, 'broker', checked)}
-                                  className="data-[state=checked]:bg-amber-500"
+                                  className="data-[state=checked]:bg-etihad-gold-500"
                                 />
                               </td>
                               <td className="px-4 py-3 text-center">
@@ -337,8 +337,8 @@ export default function BrokerSettings() {
               Quick Reference
             </h3>
             <div className="grid grid-cols-3 gap-4 text-sm">
-              <div className="bg-amber-50 rounded-lg p-3">
-                <p className="font-semibold text-amber-700 mb-1">Broker</p>
+              <div className="bg-etihad-gold-50 rounded-lg p-3">
+                <p className="font-semibold text-etihad-gold-700 mb-1">Broker</p>
                 <p className="text-gray-600">Full access to all features. Can manage permissions, users, and all data.</p>
               </div>
               <div className="bg-blue-50 rounded-lg p-3">

@@ -34,7 +34,7 @@ const ACTION_CONFIG = {
 };
 
 const ENTITY_CONFIG = {
-  client: { icon: User, color: "text-amber-600", label: "Client" },
+  client: { icon: User, color: "text-etihad-gold-600", label: "Client" },
   reinvestment: { icon: FileText, color: "text-blue-600", label: "Reinvestment" },
 };
 
@@ -112,7 +112,7 @@ export default function ApprovalLogs() {
 
   const getRoleIcon = (role) => {
     switch (role) {
-      case "broker": return <Users className="h-4 w-4 text-amber-600" />;
+      case "broker": return <Users className="h-4 w-4 text-etihad-gold-600" />;
       case "sub_broker": return <User className="h-4 w-4 text-blue-600" />;
       case "client": return <User className="h-4 w-4 text-green-600" />;
       case "system": return <Building2 className="h-4 w-4 text-purple-600" />;
@@ -169,7 +169,7 @@ export default function ApprovalLogs() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           {loading ? (
             <div className="p-12 text-center">
-              <RefreshCw className="h-8 w-8 animate-spin text-amber-600 mx-auto mb-3" />
+              <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600 mx-auto mb-3" />
               <p className="text-gray-500">Loading logs...</p>
             </div>
           ) : logs.length === 0 ? (

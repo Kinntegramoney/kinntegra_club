@@ -247,7 +247,7 @@ export default function SubBrokerProfile() {
                 </div>
                 <div className="text-white">
                   <h2 className="text-2xl font-bold">{profile?.name}</h2>
-                  <p className="text-amber-100">Partner Code: {profile?.partner_code}</p>
+                  <p className="text-etihad-gold-100">Partner Code: {profile?.partner_code}</p>
                 </div>
               </div>
             </div>

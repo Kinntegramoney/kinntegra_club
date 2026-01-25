@@ -289,7 +289,7 @@ export default function AdminClients() {
               <Button
                 onClick={() => navigate('/broker/bulk-upload?tab=clients')}
                 variant="outline"
-                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                className="border-etihad-gold-300 text-etihad-gold-700 hover:bg-etihad-gold-50"
                 data-testid="bulk-upload-btn"
               >
                 <Upload className="h-4 w-4 mr-2" />
@@ -297,7 +297,7 @@ export default function AdminClients() {
               </Button>
               <Button
                 onClick={() => setShowCreateModal(true)}
-                className="bg-amber-700 hover:bg-amber-800"
+                className="bg-etihad-gold-700 hover:bg-etihad-gold-800"
                 data-testid="create-client-btn"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -347,7 +347,7 @@ export default function AdminClients() {
                       <tr key={client.id} className={`border-t border-gray-100 hover:bg-gray-50 ${isInactive ? 'opacity-60 bg-gray-50' : ''}`} data-testid={`client-row-${client.id}`}>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium text-sm ${isInactive ? 'bg-gray-200 text-gray-500' : 'bg-amber-100 text-amber-700'}`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium text-sm ${isInactive ? 'bg-gray-200 text-gray-500' : 'bg-etihad-gold-100 text-etihad-gold-700'}`}>
                               {isInactive ? <UserX className="h-5 w-5" /> : initials}
                             </div>
                             <div>
@@ -479,7 +479,7 @@ export default function AdminClients() {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
                                       onClick={() => handleDeactivate(client)}
-                                      className="cursor-pointer text-amber-600"
+                                      className="cursor-pointer text-etihad-gold-600"
                                       data-testid={`deactivate-client-${client.id}`}
                                     >
                                       <UserMinus className="h-4 w-4 mr-2" />

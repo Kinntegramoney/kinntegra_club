@@ -273,7 +273,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-amber-50">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-etihad-gold-50">
           <h2 className="text-xl font-bold text-gray-800">Edit Client - {client?.name}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
@@ -288,18 +288,18 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
                 <div 
                   className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium cursor-pointer ${
                     currentStep >= step.num 
-                      ? "bg-amber-600 text-white" 
+                      ? "bg-etihad-gold-600 text-white" 
                       : "bg-gray-200 text-gray-500"
                   }`}
                   onClick={() => setCurrentStep(step.num)}
                 >
                   {step.num}
                 </div>
-                <span className={`ml-2 text-sm hidden sm:inline ${currentStep >= step.num ? "text-amber-700 font-medium" : "text-gray-500"}`}>
+                <span className={`ml-2 text-sm hidden sm:inline ${currentStep >= step.num ? "text-etihad-gold-700 font-medium" : "text-gray-500"}`}>
                   {step.label}
                 </span>
                 {idx < steps.length - 1 && (
-                  <div className={`w-8 sm:w-16 h-0.5 mx-2 ${currentStep > step.num ? "bg-amber-600" : "bg-gray-200"}`} />
+                  <div className={`w-8 sm:w-16 h-0.5 mx-2 ${currentStep > step.num ? "bg-etihad-gold-600" : "bg-gray-200"}`} />
                 )}
               </div>
             ))}
@@ -312,7 +312,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
           {currentStep === 1 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <User className="h-5 w-5 text-amber-600" />
+                <User className="h-5 w-5 text-etihad-gold-600" />
                 <h3 className="text-lg font-semibold text-gray-800">Basic Information</h3>
               </div>
               
@@ -366,13 +366,13 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
                     onClick={() => updateField('passport_type', 'indian')}
                     className={`p-4 rounded-lg border-2 text-left transition-all ${
                       formData.passport_type === 'indian'
-                        ? 'border-amber-500 bg-amber-50'
+                        ? 'border-etihad-gold-500 bg-etihad-gold-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        formData.passport_type === 'indian' ? 'bg-amber-500 text-white' : 'bg-gray-100'
+                        formData.passport_type === 'indian' ? 'bg-etihad-gold-500 text-white' : 'bg-gray-100'
                       }`}>
                         🇮🇳
                       </div>
@@ -412,7 +412,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
           {currentStep === 2 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <CreditCard className="h-5 w-5 text-amber-600" />
+                <CreditCard className="h-5 w-5 text-etihad-gold-600" />
                 <h3 className="text-lg font-semibold text-gray-800">Identity Details</h3>
               </div>
 
@@ -482,7 +482,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
           {currentStep === 3 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <Briefcase className="h-5 w-5 text-amber-600" />
+                <Briefcase className="h-5 w-5 text-etihad-gold-600" />
                 <h3 className="text-lg font-semibold text-gray-800">Investment Opportunities</h3>
               </div>
 
@@ -496,7 +496,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
                     key={opp.id}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       formData.opportunities.includes(opp.id)
-                        ? 'border-amber-500 bg-amber-50'
+                        ? 'border-etihad-gold-500 bg-etihad-gold-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     onClick={() => toggleOpportunity(opp.id)}
@@ -521,7 +521,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
           {currentStep === 4 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <FileText className="h-5 w-5 text-amber-600" />
+                <FileText className="h-5 w-5 text-etihad-gold-600" />
                 <h3 className="text-lg font-semibold text-gray-800">Additional Details</h3>
               </div>
 
@@ -886,7 +886,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
           {currentStep === 5 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <Check className="h-5 w-5 text-amber-600" />
+                <Check className="h-5 w-5 text-etihad-gold-600" />
                 <h3 className="text-lg font-semibold text-gray-800">Review & Save</h3>
               </div>
 
@@ -954,7 +954,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {formData.opportunities.map(opp => (
-                      <span key={opp} className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium capitalize">
+                      <span key={opp} className="px-3 py-1 bg-etihad-gold-100 text-etihad-gold-700 rounded-full text-sm font-medium capitalize">
                         {opp.replace('_', ' ')}
                       </span>
                     ))}
@@ -1011,7 +1011,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
             <Button
               type="button"
               onClick={nextStep}
-              className="bg-amber-600 hover:bg-amber-700"
+              className="bg-etihad-gold-600 hover:bg-etihad-gold-700"
             >
               Next Step
             </Button>

@@ -365,9 +365,9 @@ const Analysis = () => {
         <div className="p-6 max-w-5xl mx-auto">
           {/* Progress Bar - Show when processing */}
           {processingStatus && (
-            <div className="mb-6 bg-white border border-amber-200 rounded-xl p-4 shadow-sm">
+            <div className="mb-6 bg-white border border-etihad-gold-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-center gap-3 mb-2">
-                <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+                <Loader2 className="h-5 w-5 animate-spin text-etihad-gold-500" />
                 <span className="text-gray-700 font-medium">{processingStatus}</span>
               </div>
               <Progress value={processingProgress} className="h-2" />
@@ -380,7 +380,7 @@ const Analysis = () => {
               {/* Progress Line */}
               <div className="absolute top-5 left-0 right-0 h-1 bg-gray-200 -z-10">
                 <div 
-                  className="h-full bg-amber-500 transition-all duration-500"
+                  className="h-full bg-etihad-gold-500 transition-all duration-500"
                   style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' }}
                 />
               </div>
@@ -388,7 +388,7 @@ const Analysis = () => {
               {/* Step 1 */}
               <div className="flex flex-col items-center">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                  currentStep >= 1 ? 'bg-amber-500' : 'bg-gray-300'
+                  currentStep >= 1 ? 'bg-etihad-gold-500' : 'bg-gray-300'
                 }`}>
                   {currentStep > 1 ? <CheckCircle2 className="h-6 w-6" /> : '1'}
                 </div>
@@ -398,7 +398,7 @@ const Analysis = () => {
               {/* Step 2 */}
               <div className="flex flex-col items-center">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                  currentStep >= 2 ? 'bg-amber-500' : 'bg-gray-300'
+                  currentStep >= 2 ? 'bg-etihad-gold-500' : 'bg-gray-300'
                 }`}>
                   {currentStep > 2 ? <CheckCircle2 className="h-6 w-6" /> : '2'}
                 </div>
@@ -408,7 +408,7 @@ const Analysis = () => {
               {/* Step 3 */}
               <div className="flex flex-col items-center">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                  currentStep >= 3 ? 'bg-amber-500' : 'bg-gray-300'
+                  currentStep >= 3 ? 'bg-etihad-gold-500' : 'bg-gray-300'
                 }`}>
                   {currentStep > 3 ? <CheckCircle2 className="h-6 w-6" /> : '3'}
                 </div>
@@ -418,11 +418,11 @@ const Analysis = () => {
           </div>
 
           {/* Step 1: Select Client */}
-          <Card className={`mb-6 border-2 transition-all ${currentStep === 1 ? 'border-amber-400 shadow-lg' : 'border-gray-200'}`}>
+          <Card className={`mb-6 border-2 transition-all ${currentStep === 1 ? 'border-etihad-gold-400 shadow-lg' : 'border-gray-200'}`}>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  currentStep === 1 ? 'bg-amber-500 text-white' : selectedClient ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                  currentStep === 1 ? 'bg-etihad-gold-500 text-white' : selectedClient ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
                 }`}>
                   {selectedClient ? <CheckCircle2 className="h-5 w-5" /> : '1'}
                 </div>
@@ -504,7 +504,7 @@ const Analysis = () => {
                           onClick={() => { setSelectedClient(client); setCurrentStep(2); }}
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-semibold text-sm">
+                            <div className="w-9 h-9 rounded-full bg-etihad-gold-100 text-etihad-gold-700 flex items-center justify-center font-semibold text-sm">
                               {client.name?.charAt(0).toUpperCase()}
                             </div>
                             <div>
@@ -526,7 +526,7 @@ const Analysis = () => {
                   {clients.length > 0 && (
                     <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
                       <span>Can't find the client?</span>
-                      <Link to="/broker/admin/clients" className="text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1">
+                      <Link to="/broker/admin/clients" className="text-etihad-gold-600 hover:text-etihad-gold-700 font-medium flex items-center gap-1">
                         <UserPlus className="h-4 w-4" />
                         Create New Client
                       </Link>
@@ -558,7 +558,7 @@ const Analysis = () => {
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold shrink-0">3</div>
-                    <p className="text-gray-700 text-sm">Folio: <span className="font-semibold">With Zero Balance</span> | Password: <span className="font-mono bg-amber-100 px-1 rounded">kinntegra123</span></p>
+                    <p className="text-gray-700 text-sm">Folio: <span className="font-semibold">With Zero Balance</span> | Password: <span className="font-mono bg-etihad-gold-100 px-1 rounded">kinntegra123</span></p>
                   </div>
                 </div>
               )}
@@ -566,11 +566,11 @@ const Analysis = () => {
           </Card>
 
           {/* Step 2: Upload CAS PDF */}
-          <Card className={`mb-6 border-2 transition-all ${currentStep === 2 && selectedClient ? 'border-amber-400 shadow-lg' : 'border-gray-200'}`}>
+          <Card className={`mb-6 border-2 transition-all ${currentStep === 2 && selectedClient ? 'border-etihad-gold-400 shadow-lg' : 'border-gray-200'}`}>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  currentStep === 2 && selectedClient ? 'bg-amber-500 text-white' : currentStep > 2 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                  currentStep === 2 && selectedClient ? 'bg-etihad-gold-500 text-white' : currentStep > 2 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
                 }`}>
                   {currentStep > 2 ? <CheckCircle2 className="h-5 w-5" /> : '2'}
                 </div>
@@ -620,7 +620,7 @@ const Analysis = () => {
                   </div>
                   <Button 
                     type="submit" 
-                    className="bg-amber-500 hover:bg-amber-600 text-white"
+                    className="bg-etihad-gold-500 hover:bg-etihad-gold-600 text-white"
                     disabled={uploadingCAS || !casFile || !casPassword}
                   >
                     {uploadingCAS ? (
@@ -645,10 +645,10 @@ const Analysis = () => {
                   <span className="text-green-700 text-sm">Scheme Master loaded: {schemeMasterStatus.total_schemes?.toLocaleString()} schemes</span>
                 </div>
               ) : selectedClient && user?.role === 'broker' && (
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="mt-4 p-3 bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-600" />
-                    <span className="text-amber-700 text-sm">Scheme Master not uploaded (optional for better NAV mapping)</span>
+                    <AlertCircle className="h-4 w-4 text-etihad-gold-600" />
+                    <span className="text-etihad-gold-700 text-sm">Scheme Master not uploaded (optional for better NAV mapping)</span>
                   </div>
                 </div>
               )}
@@ -701,7 +701,7 @@ const Analysis = () => {
                   {/* Dashboard Section */}
                   {loadingDashboard ? (
                     <div className="text-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber-500 mb-2" />
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-etihad-gold-500 mb-2" />
                       <p className="text-gray-500">Loading dashboard...</p>
                     </div>
                   ) : dashboardData ? (
@@ -765,7 +765,7 @@ const Analysis = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-white rounded-xl border border-gray-200 p-5">
                           <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <PieChart className="h-5 w-5 text-amber-500" />
+                            <PieChart className="h-5 w-5 text-etihad-gold-500" />
                             Holdings by Asset Type
                           </h4>
                           <div className="space-y-3">
@@ -800,7 +800,7 @@ const Analysis = () => {
                         {/* Top Advisors */}
                         <div className="bg-white rounded-xl border border-gray-200 p-5">
                           <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <Users className="h-5 w-5 text-amber-500" />
+                            <Users className="h-5 w-5 text-etihad-gold-500" />
                             Advisor Breakdown
                           </h4>
                           {dashboardData.advisor_breakdown?.length > 0 ? (
@@ -808,8 +808,8 @@ const Analysis = () => {
                               {dashboardData.advisor_breakdown.slice(0, 5).map((advisor, idx) => (
                                 <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                                      <span className="text-amber-700 text-xs font-bold">{idx + 1}</span>
+                                    <div className="w-8 h-8 rounded-full bg-etihad-gold-100 flex items-center justify-center">
+                                      <span className="text-etihad-gold-700 text-xs font-bold">{idx + 1}</span>
                                     </div>
                                     <div>
                                       <p className="text-sm font-medium text-gray-800">{advisor.name || 'Direct'}</p>
@@ -832,7 +832,7 @@ const Analysis = () => {
                       <div className="bg-white rounded-xl border border-gray-200 p-5">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                            <BarChart3 className="h-5 w-5 text-amber-500" />
+                            <BarChart3 className="h-5 w-5 text-etihad-gold-500" />
                             {showAllHoldings ? 'All Holdings' : 'Top 10 Holdings'}
                           </h4>
                           {dashboardData.all_holdings?.length > 10 && (
@@ -941,7 +941,7 @@ const Analysis = () => {
                           key={analysis.id} 
                           className={`border-b hover:bg-gray-50 cursor-pointer transition-colors ${
                             (selectedAnalysis?.id === analysis.id || selectedAnalysis?.analysis_id === analysis.id)
-                              ? 'bg-amber-50'
+                              ? 'bg-etihad-gold-50'
                               : ''
                           }`}
                           onClick={() => { setSelectedAnalysis(analysis); setCurrentStep(3); }}
@@ -949,8 +949,8 @@ const Analysis = () => {
                           <td className="py-3 px-3">
                             <div className="group relative">
                               <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                                  <span className="text-amber-700 text-sm font-semibold">
+                                <div className="w-8 h-8 rounded-full bg-etihad-gold-100 flex items-center justify-center">
+                                  <span className="text-etihad-gold-700 text-sm font-semibold">
                                     {analysis.client_name?.charAt(0).toUpperCase() || 'C'}
                                   </span>
                                 </div>

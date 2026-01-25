@@ -87,7 +87,7 @@ const AnalysisDashboard = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-amber-500 mx-auto mb-4" />
+          <Loader2 className="h-12 w-12 animate-spin text-etihad-gold-500 mx-auto mb-4" />
           <p className="text-gray-600">Loading dashboard...</p>
         </div>
       </div>
@@ -183,7 +183,7 @@ const AnalysisDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <PieChart className="h-5 w-5 text-amber-500" />
+                  <PieChart className="h-5 w-5 text-etihad-gold-500" />
                   Holdings by Asset Type
                 </h4>
                 <div className="space-y-3">
@@ -217,7 +217,7 @@ const AnalysisDashboard = () => {
               
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-amber-500" />
+                  <Users className="h-5 w-5 text-etihad-gold-500" />
                   Advisor Breakdown
                 </h4>
                 {dashboardData.advisor_breakdown?.length > 0 ? (
@@ -225,8 +225,8 @@ const AnalysisDashboard = () => {
                     {dashboardData.advisor_breakdown.slice(0, 5).map((advisor, idx) => (
                       <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                            <span className="text-amber-700 text-xs font-bold">{idx + 1}</span>
+                          <div className="w-8 h-8 rounded-full bg-etihad-gold-100 flex items-center justify-center">
+                            <span className="text-etihad-gold-700 text-xs font-bold">{idx + 1}</span>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-800">{advisor.name || 'Direct'}</p>
@@ -249,7 +249,7 @@ const AnalysisDashboard = () => {
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-amber-500" />
+                  <BarChart3 className="h-5 w-5 text-etihad-gold-500" />
                   {showAllHoldings ? 'All Holdings' : 'Top 10 Holdings'}
                 </h4>
                 {dashboardData.all_holdings?.length > 10 && (

@@ -219,9 +219,9 @@ export default function SubBrokerReinvestment() {
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
             <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-lg p-4 text-white">
-              <p className="text-amber-100 text-sm">Total Upcoming</p>
+              <p className="text-etihad-gold-100 text-sm">Total Upcoming</p>
               <p className="text-2xl font-bold">{formatCurrency(data.summary?.total_amount)}</p>
-              <p className="text-amber-100 text-xs">{data.summary?.total_entries || 0} entries</p>
+              <p className="text-etihad-gold-100 text-xs">{data.summary?.total_entries || 0} entries</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <p className="text-gray-500 text-sm">Clients with Cashflows</p>
@@ -235,7 +235,7 @@ export default function SubBrokerReinvestment() {
               onClick={() => setActiveTab("untagged")}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === "untagged" 
-                  ? "bg-amber-100 text-amber-700" 
+                  ? "bg-etihad-gold-100 text-etihad-gold-700" 
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -245,7 +245,7 @@ export default function SubBrokerReinvestment() {
               onClick={() => setActiveTab("tagged")}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === "tagged" 
-                  ? "bg-amber-100 text-amber-700" 
+                  ? "bg-etihad-gold-100 text-etihad-gold-700" 
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -258,7 +258,7 @@ export default function SubBrokerReinvestment() {
         <div className="p-4 md:p-8">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-amber-600" />
+              <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600" />
             </div>
           ) : filteredClients.length === 0 ? (
             <div className="text-center py-12">

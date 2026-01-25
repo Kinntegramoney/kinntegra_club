@@ -193,7 +193,7 @@ export default function SubBrokerDashboard() {
                 {/* Bonds Only */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-etihad-gold-500"></div>
                     <span className="text-sm text-gray-600">Bonds Only</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export default function SubBrokerDashboard() {
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div 
-                    className="bg-amber-500 h-2 rounded-full transition-all" 
+                    className="bg-etihad-gold-500 h-2 rounded-full transition-all" 
                     style={{ width: `${summary?.clients?.total > 0 ? (bondOnlyClients / summary.clients.total) * 100 : 0}%` }}
                   />
                 </div>
@@ -255,11 +255,11 @@ export default function SubBrokerDashboard() {
             {/* Bond AUM Details */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="bond-aum-card">
               <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-lg bg-amber-500/10">
-                  <Landmark className="h-5 w-5 text-amber-500" />
+                <div className="p-2 rounded-lg bg-etihad-gold-500/10">
+                  <Landmark className="h-5 w-5 text-etihad-gold-500" />
                 </div>
                 <h3 className="font-semibold text-gray-800">Bond AUM</h3>
-                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded ml-auto">INR</span>
+                <span className="text-xs bg-etihad-gold-100 text-etihad-gold-700 px-2 py-0.5 rounded ml-auto">INR</span>
               </div>
               
               <div className="space-y-3">

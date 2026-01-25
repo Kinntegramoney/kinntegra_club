@@ -93,7 +93,7 @@ export default function InstallPWA() {
           <div className="flex gap-2 mt-3">
             <Button 
               onClick={handleInstall}
-              className="bg-white text-amber-700 hover:bg-white/90 font-medium"
+              className="bg-white text-etihad-gold-700 hover:bg-white/90 font-medium"
               size="sm"
             >
               <Download className="h-4 w-4 mr-1" />

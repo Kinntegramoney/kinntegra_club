@@ -513,14 +513,14 @@ export default function BondDetails() {
       <div className="container mx-auto px-6 py-8">
         {/* Bond Description - At Top with View Cashflows Icon (broker only) */}
         {bondData.description && (
-          <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-5 border border-amber-200 shadow-sm">
+          <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-5 border border-etihad-gold-200 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 flex-1">
-                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <FileText className="h-5 w-5 text-amber-600" />
+                <div className="w-10 h-10 bg-etihad-gold-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-5 w-5 text-etihad-gold-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-amber-700 font-semibold uppercase tracking-wide mb-1">Description</p>
+                  <p className="text-xs text-etihad-gold-700 font-semibold uppercase tracking-wide mb-1">Description</p>
                   <p className="text-sm text-gray-700 leading-relaxed">{bondData.description}</p>
                 </div>
               </div>
@@ -566,21 +566,21 @@ export default function BondDetails() {
 
           {/* Secondary Market Calculator - Only show if bond is not fully funded or closed */}
           {isCalculatorDisabled ? (
-            <div className="lg:col-span-3 metric-card rounded-md bg-amber-50 border-amber-200">
-              <div className="flex items-center gap-3 text-amber-700">
-                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+            <div className="lg:col-span-3 metric-card rounded-md bg-etihad-gold-50 border-etihad-gold-200">
+              <div className="flex items-center gap-3 text-etihad-gold-700">
+                <div className="w-12 h-12 rounded-full bg-etihad-gold-100 flex items-center justify-center">
                   <TrendingUp className="h-6 w-6" />
                 </div>
                 <div>
                   {isClosed ? (
                     <>
                       <h2 className="text-xl font-semibold">Bond Closed</h2>
-                      <p className="text-sm text-amber-600">This bond has matured (end date: {format(new Date(bondData.end_date), "MMM dd, yyyy")}). No more investments can be made.</p>
+                      <p className="text-sm text-etihad-gold-600">This bond has matured (end date: {format(new Date(bondData.end_date), "MMM dd, yyyy")}). No more investments can be made.</p>
                     </>
                   ) : (
                     <>
                       <h2 className="text-xl font-semibold">Bond Fully Funded</h2>
-                      <p className="text-sm text-amber-600">All {totalUnits} units have been sold. No more investments can be made.</p>
+                      <p className="text-sm text-etihad-gold-600">All {totalUnits} units have been sold. No more investments can be made.</p>
                     </>
                   )}
                 </div>
@@ -812,9 +812,9 @@ export default function BondDetails() {
             {user?.role !== 'client' && (
               <div className="mt-6 pt-6 border-t border-border">
                 {/* Book Units Section */}
-                <div className="p-4 md:p-6 bg-amber-50 border border-amber-200 rounded-md">
+                <div className="p-4 md:p-6 bg-etihad-gold-50 border border-etihad-gold-200 rounded-md">
                   <h3 className="font-semibold mb-4 flex items-center gap-2 text-base md:text-lg">
-                    <ShoppingCart className="h-5 w-5 text-amber-600" />
+                    <ShoppingCart className="h-5 w-5 text-etihad-gold-600" />
                     Block Units for Client
                   </h3>
                   
@@ -915,7 +915,7 @@ export default function BondDetails() {
                         />
                         <label 
                           htmlFor="payment-proof-upload" 
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-amber-300 rounded-lg cursor-pointer hover:border-amber-500 hover:bg-amber-100/50 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-etihad-gold-300 rounded-lg cursor-pointer hover:border-etihad-gold-500 hover:bg-etihad-gold-100/50 transition-colors"
                         >
                           {paymentProof ? (
                             <>
@@ -924,8 +924,8 @@ export default function BondDetails() {
                             </>
                           ) : (
                             <>
-                              <Upload className="h-5 w-5 text-amber-500" />
-                              <span className="text-sm text-amber-700">Upload UTR screenshot</span>
+                              <Upload className="h-5 w-5 text-etihad-gold-500" />
+                              <span className="text-sm text-etihad-gold-700">Upload UTR screenshot</span>
                             </>
                           )}
                         </label>
@@ -944,7 +944,7 @@ export default function BondDetails() {
 
                     {/* Order Summary - Only show when fields are filled */}
                     {bookingUnitsCount && bookingAmountTransferred && (
-                    <div className="bg-white p-3 md:p-4 rounded-md border border-amber-200">
+                    <div className="bg-white p-3 md:p-4 rounded-md border border-etihad-gold-200">
                       <p className="text-xs text-gray-500 uppercase mb-2 font-medium">Order Summary</p>
                       <div className="space-y-2 text-sm">
                         <div className="grid grid-cols-2 gap-3">
@@ -954,7 +954,7 @@ export default function BondDetails() {
                           </div>
                           <div>
                             <p className="text-gray-500 text-xs">Amount Transferred</p>
-                            <p className="font-mono font-bold text-lg text-amber-600">₹{bookingAmountTransferred}</p>
+                            <p className="font-mono font-bold text-lg text-etihad-gold-600">₹{bookingAmountTransferred}</p>
                           </div>
                         </div>
                         <div className="pt-2 border-t border-gray-200 space-y-1">
@@ -969,7 +969,7 @@ export default function BondDetails() {
                         </div>
                         <div className="pt-2">
                           <p className="text-gray-500 text-xs">Status</p>
-                          <p className={`font-medium text-sm ${user?.role === 'broker' ? 'text-green-600' : 'text-amber-600'}`}>
+                          <p className={`font-medium text-sm ${user?.role === 'broker' ? 'text-green-600' : 'text-etihad-gold-600'}`}>
                             {user?.role === 'broker' ? 'Auto-Approved (Future Cashflows Recorded)' : 'Pending Broker Verification'}
                           </p>
                         </div>
@@ -981,7 +981,7 @@ export default function BondDetails() {
                     <Button
                       onClick={bookUnits}
                       disabled={bookingUnits || !bookingInvestmentDate || !bookingUnitsCount || !bookingAmountTransferred || !paymentReference || !paymentProof || (user?.role !== 'client' && (!selectedClient || clients.length === 0))}
-                      className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3"
+                      className="w-full bg-etihad-gold-600 hover:bg-etihad-gold-700 text-white py-3"
                       data-testid="book-units-btn"
                     >
                       <ShoppingCart className="h-4 w-4 mr-2" />
@@ -1204,9 +1204,9 @@ export default function BondDetails() {
                         <p className="text-xs text-emerald-600 font-medium mb-1">Net Received</p>
                         <p className="text-lg font-bold text-emerald-800">₹{cashflowReportData.total_net_received.toLocaleString('en-IN')}</p>
                       </div>
-                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg p-3 border border-amber-100 text-center">
-                        <p className="text-xs text-amber-700 font-medium mb-1">XIRR</p>
-                        <p className="text-2xl font-bold text-amber-800">{bondData.secondary_irr}%</p>
+                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg p-3 border border-etihad-gold-100 text-center">
+                        <p className="text-xs text-etihad-gold-700 font-medium mb-1">XIRR</p>
+                        <p className="text-2xl font-bold text-etihad-gold-800">{bondData.secondary_irr}%</p>
                       </div>
                     </div>
                   </div>

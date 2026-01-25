@@ -196,8 +196,8 @@ export default function AdminSubBrokers() {
   const SortIcon = ({ field }) => {
     if (sortField !== field) return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
     return sortDirection === "asc" 
-      ? <ArrowUp className="h-4 w-4 text-amber-600" /> 
-      : <ArrowDown className="h-4 w-4 text-amber-600" />;
+      ? <ArrowUp className="h-4 w-4 text-etihad-gold-600" /> 
+      : <ArrowDown className="h-4 w-4 text-etihad-gold-600" />;
   };
 
   if (!user) return null;
@@ -237,7 +237,7 @@ export default function AdminSubBrokers() {
               </Button>
               <Button
                 onClick={() => setShowCreateModal(true)}
-                className="bg-amber-700 hover:bg-amber-800"
+                className="bg-etihad-gold-700 hover:bg-etihad-gold-800"
                 data-testid="create-subbroker-btn"
               >
                 <Plus className="h-4 w-4 mr-2" />

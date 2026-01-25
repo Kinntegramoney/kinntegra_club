@@ -103,7 +103,7 @@ export default function SubBrokerClientDetails() {
     switch (status) {
       case 'pending_approval':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+          <span className="inline-flex items-center gap-1 px-3 py-1 bg-etihad-gold-100 text-etihad-gold-700 rounded-full text-sm font-medium">
             <Clock className="h-4 w-4" />
             Pending Approval
           </span>
@@ -181,7 +181,7 @@ export default function SubBrokerClientDetails() {
                   </Button>
                   <Button
                     onClick={() => setEditing(true)}
-                    className="bg-amber-600 hover:bg-amber-700"
+                    className="bg-etihad-gold-600 hover:bg-etihad-gold-700"
                     data-testid="edit-btn"
                   >
                     <Edit2 className="h-4 w-4 mr-2" />
@@ -221,7 +221,7 @@ export default function SubBrokerClientDetails() {
         <div className="p-4 md:p-8">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-amber-600" />
+              <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600" />
             </div>
           ) : client ? (
             <div className="space-y-6">
@@ -242,7 +242,7 @@ export default function SubBrokerClientDetails() {
               {/* Personal Details */}
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                  <User className="h-5 w-5 text-amber-600" />
+                  <User className="h-5 w-5 text-etihad-gold-600" />
                   <h3 className="font-semibold text-gray-800">Personal Details</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -346,7 +346,7 @@ export default function SubBrokerClientDetails() {
               {/* Address Details */}
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                  <MapPin className="h-5 w-5 text-amber-600" />
+                  <MapPin className="h-5 w-5 text-etihad-gold-600" />
                   <h3 className="font-semibold text-gray-800">Address Details</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -428,7 +428,7 @@ export default function SubBrokerClientDetails() {
               {/* Bank Details */}
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                  <Building2 className="h-5 w-5 text-amber-600" />
+                  <Building2 className="h-5 w-5 text-etihad-gold-600" />
                   <h3 className="font-semibold text-gray-800">Bank Details</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -486,7 +486,7 @@ export default function SubBrokerClientDetails() {
               {/* Nominee Details */}
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                  <UserCheck className="h-5 w-5 text-amber-600" />
+                  <UserCheck className="h-5 w-5 text-etihad-gold-600" />
                   <h3 className="font-semibold text-gray-800">Nominee Details</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

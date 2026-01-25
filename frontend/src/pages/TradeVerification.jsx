@@ -246,7 +246,7 @@ export default function TradeVerification() {
                 onClick={() => setActiveTab("pending")}
                 className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
                   activeTab === "pending" 
-                    ? "border-amber-600 text-amber-600" 
+                    ? "border-etihad-gold-600 text-etihad-gold-600" 
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
                 data-testid="tab-pending"
@@ -257,7 +257,7 @@ export default function TradeVerification() {
                 onClick={() => setActiveTab("all")}
                 className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
                   activeTab === "all" 
-                    ? "border-amber-600 text-amber-600" 
+                    ? "border-etihad-gold-600 text-etihad-gold-600" 
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
                 data-testid="tab-all"
@@ -268,7 +268,7 @@ export default function TradeVerification() {
                 onClick={() => setActiveTab("reinvestment")}
                 className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors flex items-center gap-1 ${
                   activeTab === "reinvestment" 
-                    ? "border-amber-600 text-amber-600" 
+                    ? "border-etihad-gold-600 text-etihad-gold-600" 
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
                 data-testid="tab-reinvestment"
@@ -413,7 +413,7 @@ export default function TradeVerification() {
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 uppercase">Total</p>
-                          <p className="font-mono font-bold text-amber-600 text-sm md:text-base">₹{item.total_amount?.toLocaleString('en-IN')}</p>
+                          <p className="font-mono font-bold text-etihad-gold-600 text-sm md:text-base">₹{item.total_amount?.toLocaleString('en-IN')}</p>
                         </div>
                         <div className="col-span-2 md:col-span-1">
                           <p className="text-xs text-gray-500 uppercase">Investment Date</p>

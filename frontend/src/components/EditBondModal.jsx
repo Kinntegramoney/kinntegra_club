@@ -374,7 +374,7 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
             <Button
               type="submit"
               disabled={loading}
-              className="bg-amber-700 hover:bg-amber-800"
+              className="bg-etihad-gold-700 hover:bg-etihad-gold-800"
               data-testid="save-bond-btn"
             >
               {loading ? "Saving..." : "Save Changes"}

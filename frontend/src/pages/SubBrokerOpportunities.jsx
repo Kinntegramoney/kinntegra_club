@@ -113,10 +113,10 @@ export default function SubBrokerOpportunities() {
     const daysToMaturity = Math.ceil((new Date(bond.end_date) - new Date()) / (1000 * 60 * 60 * 24));
 
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-amber-500 transition-colors" data-testid={`bond-card-${bond.id}`}>
+      <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-etihad-gold-500 transition-colors" data-testid={`bond-card-${bond.id}`}>
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-amber-600" />
+            <TrendingUp className="h-5 w-5 text-etihad-gold-600" />
             <h3 className="text-lg font-semibold text-gray-800">{bond.name}</h3>
           </div>
           {status === 'available' && (
@@ -125,7 +125,7 @@ export default function SubBrokerOpportunities() {
             </span>
           )}
           {status === 'funded' && (
-            <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+            <span className="px-3 py-1 bg-etihad-gold-100 text-etihad-gold-700 text-xs font-medium rounded-full">
               Funded
             </span>
           )}
@@ -136,7 +136,7 @@ export default function SubBrokerOpportunities() {
           )}
         </div>
 
-        <div className="text-xs text-amber-600 font-medium mb-2">BOND / NCD</div>
+        <div className="text-xs text-etihad-gold-600 font-medium mb-2">BOND / NCD</div>
 
         <div className="space-y-2 text-sm mb-4">
           <div className="flex justify-between">
@@ -145,7 +145,7 @@ export default function SubBrokerOpportunities() {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">IRR (Gross):</span>
-            <span className="font-mono font-medium text-amber-600">{bond.secondary_irr}%</span>
+            <span className="font-mono font-medium text-etihad-gold-600">{bond.secondary_irr}%</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Units:</span>
@@ -174,7 +174,7 @@ export default function SubBrokerOpportunities() {
             <Button
               size="sm"
               onClick={() => handleShareBond(bond)}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              className="bg-etihad-gold-600 hover:bg-etihad-gold-700 text-white"
               data-testid={`share-btn-${bond.id}`}
             >
               <Share2 className="h-4 w-4 mr-1" />
@@ -196,7 +196,7 @@ export default function SubBrokerOpportunities() {
                           'Available';
     
     const isAvailable = status === 'available';
-    const statusColor = isAvailable ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
+    const statusColor = isAvailable ? 'bg-green-100 text-green-700' : 'bg-etihad-gold-100 text-etihad-gold-700';
     const isOffPlan = property.property_type === 'off_plan';
     
     // Calculate payment progress

@@ -464,7 +464,7 @@ export default function TradeLogs() {
                           variant={currentPage === page ? "default" : "outline"}
                           size="sm"
                           onClick={() => goToPage(page)}
-                          className={`h-8 w-8 p-0 ${currentPage === page ? 'bg-amber-600 hover:bg-amber-700' : ''}`}
+                          className={`h-8 w-8 p-0 ${currentPage === page ? 'bg-etihad-gold-600 hover:bg-etihad-gold-700' : ''}`}
                         >
                           {page}
                         </Button>

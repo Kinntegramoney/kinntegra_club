@@ -169,7 +169,7 @@ export default function SubBrokerClients() {
   const getStatusBadge = (client) => {
     if (client.approval_status === "pending_approval") {
       return (
-        <span className="flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full">
+        <span className="flex items-center gap-1 px-2 py-1 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded-full">
           <Clock className="h-3 w-3" /> Pending Approval
         </span>
       );
@@ -244,7 +244,7 @@ export default function SubBrokerClients() {
               {canCreateClient && (
                 <Button
                   onClick={() => setShowCreateModal(true)}
-                  className="bg-amber-700 hover:bg-amber-800"
+                  className="bg-etihad-gold-700 hover:bg-etihad-gold-800"
                   data-testid="create-client-btn"
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -259,7 +259,7 @@ export default function SubBrokerClients() {
         <div className="p-4 md:p-8">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-amber-600" />
+              <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600" />
             </div>
           ) : clients.length === 0 ? (
             <div className="text-center py-12">
@@ -337,7 +337,7 @@ export default function SubBrokerClients() {
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
                             {client.opportunities?.includes('bonds') && (
-                              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded">Bonds</span>
+                              <span className="px-2 py-0.5 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded">Bonds</span>
                             )}
                             {client.opportunities?.includes('real_estate') && (
                               <span className="px-2 py-0.5 bg-pink-100 text-pink-700 text-xs rounded">Real Estate</span>
@@ -393,7 +393,7 @@ export default function SubBrokerClients() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-amber-600" />
+              <Upload className="h-5 w-5 text-etihad-gold-600" />
               Bulk Upload Clients
             </DialogTitle>
             <DialogDescription>
@@ -433,7 +433,7 @@ export default function SubBrokerClients() {
                   onClick={() => setUploadType("indian")}
                   className={`flex-1 p-3 rounded-lg border-2 transition-all ${
                     uploadType === "indian" 
-                      ? "border-amber-500 bg-amber-50" 
+                      ? "border-etihad-gold-500 bg-etihad-gold-50" 
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
@@ -444,7 +444,7 @@ export default function SubBrokerClients() {
                   onClick={() => setUploadType("foreign")}
                   className={`flex-1 p-3 rounded-lg border-2 transition-all ${
                     uploadType === "foreign" 
-                      ? "border-amber-500 bg-amber-50" 
+                      ? "border-etihad-gold-500 bg-etihad-gold-50" 
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
@@ -477,9 +477,9 @@ export default function SubBrokerClients() {
             </div>
 
             {/* Warning */}
-            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800">
+            <div className="flex items-start gap-2 p-3 bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-etihad-gold-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-etihad-gold-800">
                 <p className="font-medium">Note:</p>
                 <p>All uploaded clients will require broker approval before they become active.</p>
               </div>
@@ -493,7 +493,7 @@ export default function SubBrokerClients() {
             <Button 
               onClick={handleBulkUpload} 
               disabled={!uploadFile || uploading}
-              className="bg-amber-700 hover:bg-amber-800"
+              className="bg-etihad-gold-700 hover:bg-etihad-gold-800"
             >
               {uploading ? (
                 <>

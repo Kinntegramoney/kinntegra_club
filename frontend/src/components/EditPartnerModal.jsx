@@ -244,7 +244,7 @@ export default function EditPartnerModal({ partner, onClose, onSuccess }) {
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="bg-amber-700 hover:bg-amber-800"
+            className="bg-etihad-gold-700 hover:bg-etihad-gold-800"
             data-testid="save-partner-btn"
           >
             {loading ? "Saving..." : "Save Changes"}

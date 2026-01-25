@@ -48,7 +48,7 @@ const ACTION_CONFIG = {
 };
 
 const ENTITY_CONFIG = {
-  client: { icon: User, color: "text-amber-600", label: "Client" },
+  client: { icon: User, color: "text-etihad-gold-600", label: "Client" },
   reinvestment: { icon: FileText, color: "text-blue-600", label: "Reinvestment" },
 };
 
@@ -259,7 +259,7 @@ export default function ApprovalCenter() {
 
   const getRoleIcon = (role) => {
     switch (role) {
-      case "broker": return <Users className="h-4 w-4 text-amber-600" />;
+      case "broker": return <Users className="h-4 w-4 text-etihad-gold-600" />;
       case "sub_broker": return <User className="h-4 w-4 text-blue-600" />;
       case "client": return <User className="h-4 w-4 text-green-600" />;
       case "system": return <Building2 className="h-4 w-4 text-purple-600" />;
@@ -307,7 +307,7 @@ export default function ApprovalCenter() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-6 bg-white border">
             {isBroker && (
-              <TabsTrigger value="pending" className="px-6 data-[state=active]:bg-amber-50 data-[state=active]:text-amber-700" data-testid="tab-pending">
+              <TabsTrigger value="pending" className="px-6 data-[state=active]:bg-etihad-gold-50 data-[state=active]:text-etihad-gold-700" data-testid="tab-pending">
                 <ClipboardList className="h-4 w-4 mr-2" />
                 Pending Approvals
                 {pendingCount > 0 && (
@@ -341,7 +341,7 @@ export default function ApprovalCenter() {
                       onClick={() => setPendingSubTab("clients")}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                         pendingSubTab === "clients" 
-                          ? "bg-amber-100 text-amber-700" 
+                          ? "bg-etihad-gold-100 text-etihad-gold-700" 
                           : "text-gray-600 hover:bg-gray-100"
                       }`}
                     >
@@ -372,7 +372,7 @@ export default function ApprovalCenter() {
                 <div className="p-6">
                   {pendingLoading ? (
                     <div className="text-center py-12">
-                      <RefreshCw className="h-8 w-8 animate-spin text-amber-600 mx-auto mb-3" />
+                      <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600 mx-auto mb-3" />
                       <p className="text-gray-500">Loading pending approvals...</p>
                     </div>
                   ) : pendingSubTab === "clients" ? (
@@ -391,8 +391,8 @@ export default function ApprovalCenter() {
                               onClick={() => toggleExpand(client.id)}
                             >
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                                  <User className="h-5 w-5 text-amber-600" />
+                                <div className="w-10 h-10 rounded-full bg-etihad-gold-100 flex items-center justify-center">
+                                  <User className="h-5 w-5 text-etihad-gold-600" />
                                 </div>
                                 <div>
                                   <p className="font-medium text-gray-800">{client.name}</p>
@@ -400,7 +400,7 @@ export default function ApprovalCenter() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
-                                <Badge className="bg-amber-100 text-amber-700">
+                                <Badge className="bg-etihad-gold-100 text-etihad-gold-700">
                                   <Clock className="h-3 w-3 mr-1" />
                                   Pending
                                 </Badge>
@@ -716,9 +716,9 @@ export default function ApprovalCenter() {
                             {/* Amount */}
                             <div className="col-span-2 text-right font-mono">
                               {lead.investment_amount ? (
-                                <span className="text-amber-600 font-semibold">₹{formatCurrency(lead.investment_amount)}</span>
+                                <span className="text-etihad-gold-600 font-semibold">₹{formatCurrency(lead.investment_amount)}</span>
                               ) : lead.interest_percentage ? (
-                                <span className="text-amber-600 font-semibold">{lead.interest_percentage}%</span>
+                                <span className="text-etihad-gold-600 font-semibold">{lead.interest_percentage}%</span>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}

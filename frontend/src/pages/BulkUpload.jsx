@@ -243,7 +243,7 @@ export default function BulkUpload() {
       "clients": { bg: "bg-purple-600", light: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
       "bonds": { bg: "bg-green-600", light: "bg-green-50", text: "text-green-600", border: "border-green-200" },
       "real-estate": { bg: "bg-orange-600", light: "bg-orange-50", text: "text-orange-600", border: "border-orange-200" },
-      "historical-trades": { bg: "bg-amber-700", light: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+      "historical-trades": { bg: "bg-etihad-gold-700", light: "bg-etihad-gold-50", text: "text-etihad-gold-700", border: "border-etihad-gold-200" },
       "scheme-master": { bg: "bg-blue-600", light: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" }
     };
     return colors[tabId] || colors["sub-brokers"];
@@ -510,7 +510,7 @@ export default function BulkUpload() {
                             <li className="ml-4">Deal ID, Date, PAN, Units, Amount, UTR</li>
                             <li>• <strong>Sheet 2 - Repayment Details (Actuals):</strong></li>
                             <li className="ml-4">Deal ID, Date, PAN, Principal, Interest, TDS, Net</li>
-                            <li className="text-amber-700 font-medium mt-2">⚠️ Create bonds & clients FIRST!</li>
+                            <li className="text-etihad-gold-700 font-medium mt-2">⚠️ Create bonds & clients FIRST!</li>
                           </>
                         )}
                       </ul>
@@ -520,7 +520,7 @@ export default function BulkUpload() {
                       <div className="space-y-2">
                         <Button 
                           onClick={() => downloadTemplate('clients-indian')}
-                          className="w-full bg-amber-600 hover:bg-amber-700"
+                          className="w-full bg-etihad-gold-600 hover:bg-etihad-gold-700"
                         >
                           <Download className="h-4 w-4 mr-2" />
                           🇮🇳 Download Indian Passport Template
@@ -562,7 +562,7 @@ export default function BulkUpload() {
                       <div className="flex gap-4">
                         <label className={`flex-1 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                           clientUploadType === 'indian' 
-                            ? 'border-amber-500 bg-amber-50' 
+                            ? 'border-etihad-gold-500 bg-etihad-gold-50' 
                             : 'border-gray-200 hover:border-gray-300'
                         }`}>
                           <input 
@@ -650,12 +650,12 @@ export default function BulkUpload() {
                       </div>
 
                       {results.errors && results.errors.length > 0 && (
-                        <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                        <div className="bg-etihad-gold-50 rounded-lg p-4 border border-etihad-gold-200">
                           <div className="flex items-center gap-2 mb-2">
-                            <AlertCircle className="h-5 w-5 text-amber-600" />
-                            <span className="font-medium text-amber-800">Errors</span>
+                            <AlertCircle className="h-5 w-5 text-etihad-gold-600" />
+                            <span className="font-medium text-etihad-gold-800">Errors</span>
                           </div>
-                          <ul className="text-sm text-amber-700 space-y-1 max-h-40 overflow-y-auto">
+                          <ul className="text-sm text-etihad-gold-700 space-y-1 max-h-40 overflow-y-auto">
                             {results.errors.map((error, idx) => (
                               <li key={idx}>• {error}</li>
                             ))}
@@ -690,18 +690,18 @@ export default function BulkUpload() {
                       )}
 
                       {results.created_trades && results.created_trades.length > 0 && (
-                        <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                          <p className="font-medium text-amber-800 mb-2">Created Trades:</p>
+                        <div className="bg-etihad-gold-50 rounded-lg p-4 border border-etihad-gold-200">
+                          <p className="font-medium text-etihad-gold-800 mb-2">Created Trades:</p>
                           <div className="space-y-2 max-h-48 overflow-y-auto">
                             {results.created_trades.map((trade, idx) => (
-                              <div key={idx} className="bg-white rounded p-2 border border-amber-100 text-sm">
+                              <div key={idx} className="bg-white rounded p-2 border border-etihad-gold-100 text-sm">
                                 <div className="flex justify-between items-start">
                                   <div>
                                     <span className="font-medium text-gray-800">{trade.client}</span>
                                     <span className="text-gray-500 mx-2">→</span>
-                                    <span className="text-amber-700">{trade.bond}</span>
+                                    <span className="text-etihad-gold-700">{trade.bond}</span>
                                   </div>
-                                  <Badge className="bg-amber-100 text-amber-700">{trade.units} units</Badge>
+                                  <Badge className="bg-etihad-gold-100 text-etihad-gold-700">{trade.units} units</Badge>
                                 </div>
                                 <div className="text-gray-500 mt-1">
                                   ₹{trade.amount?.toLocaleString()} on {trade.investment_date}

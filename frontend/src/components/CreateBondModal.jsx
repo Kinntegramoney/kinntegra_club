@@ -196,7 +196,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-amber-500 text-white px-6 py-4 flex items-center justify-between">
+        <div className="bg-etihad-gold-500 text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <TrendingUp className="h-6 w-6" />
             <h2 className="text-xl font-bold">Create New Bond</h2>
@@ -211,7 +211,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
           <button
             onClick={() => setActiveTab("basic")}
             className={`px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === "basic" ? "border-b-2 border-amber-500 text-amber-600" : "text-gray-500 hover:text-gray-700"
+              activeTab === "basic" ? "border-b-2 border-etihad-gold-500 text-etihad-gold-600" : "text-gray-500 hover:text-gray-700"
             }`}
           >
             Basic Details
@@ -219,7 +219,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
           <button
             onClick={() => setActiveTab("payments")}
             className={`px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === "payments" ? "border-b-2 border-amber-500 text-amber-600" : "text-gray-500 hover:text-gray-700"
+              activeTab === "payments" ? "border-b-2 border-etihad-gold-500 text-etihad-gold-600" : "text-gray-500 hover:text-gray-700"
             }`}
           >
             Payment Schedule
@@ -503,7 +503,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
           <Button 
             type="submit" 
             form="bond-form"
-            className="bg-amber-500 hover:bg-amber-600"
+            className="bg-etihad-gold-500 hover:bg-etihad-gold-600"
             disabled={submitting}
           >
             {submitting ? (

@@ -211,7 +211,7 @@ export default function SubBrokerAnalysis() {
           {/* Upload Section */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Upload className="h-5 w-5 text-amber-600" />
+              <Upload className="h-5 w-5 text-etihad-gold-600" />
               Upload CAS
             </h2>
             
@@ -222,9 +222,9 @@ export default function SubBrokerAnalysis() {
               </Label>
               
               {selectedClient ? (
-                <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold">
+                    <div className="w-10 h-10 rounded-full bg-etihad-gold-500 flex items-center justify-center text-white font-bold">
                       {selectedClient.name?.split(" ").map(n => n[0]).join("").slice(0, 2) || "CL"}
                     </div>
                     <div>
@@ -326,7 +326,7 @@ export default function SubBrokerAnalysis() {
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-gray-600">{processingStatus}</span>
-                  <span className="text-sm font-medium text-amber-600">{processingProgress}%</span>
+                  <span className="text-sm font-medium text-etihad-gold-600">{processingProgress}%</span>
                 </div>
                 <Progress value={processingProgress} className="h-2" />
               </div>
@@ -336,7 +336,7 @@ export default function SubBrokerAnalysis() {
             <Button
               onClick={handleCASUpload}
               disabled={!casFile || !selectedClient || uploadingCAS}
-              className="bg-amber-700 hover:bg-amber-800"
+              className="bg-etihad-gold-700 hover:bg-etihad-gold-800"
             >
               {uploadingCAS ? (
                 <>
@@ -356,7 +356,7 @@ export default function SubBrokerAnalysis() {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <FileSpreadsheet className="h-5 w-5 text-amber-600" />
+                <FileSpreadsheet className="h-5 w-5 text-etihad-gold-600" />
                 Previous Analyses
               </h2>
               <Button variant="outline" size="sm" onClick={fetchAnalyses}>
@@ -367,7 +367,7 @@ export default function SubBrokerAnalysis() {
             
             {loading ? (
               <div className="text-center py-8">
-                <RefreshCw className="h-8 w-8 animate-spin text-amber-600 mx-auto mb-2" />
+                <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600 mx-auto mb-2" />
                 <p className="text-gray-500">Loading analyses...</p>
               </div>
             ) : analyses.length === 0 ? (

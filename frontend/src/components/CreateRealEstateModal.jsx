@@ -510,8 +510,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
 
               {/* Other Fees */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                  <Label htmlFor="broker_fee" className="text-amber-800 font-medium">Brokerage Fee (AED)</Label>
+                <div className="bg-etihad-gold-50 rounded-lg p-4 border border-etihad-gold-200">
+                  <Label htmlFor="broker_fee" className="text-etihad-gold-800 font-medium">Brokerage Fee (AED)</Label>
                   <Input
                     id="broker_fee"
                     type="number"
@@ -607,7 +607,7 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                     <span>Admin Fee</span>
                     <span className="font-medium">AED {formatCurrency(adminFee)}</span>
                   </div>
-                  <div className="flex justify-between text-amber-600">
+                  <div className="flex justify-between text-etihad-gold-600">
                     <span>Brokerage</span>
                     <span className="font-medium">AED {formatCurrency(brokerFee)}</span>
                   </div>

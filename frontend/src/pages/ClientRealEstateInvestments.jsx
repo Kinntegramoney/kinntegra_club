@@ -215,7 +215,7 @@ export default function ClientRealEstateInvestments() {
                             {inv.is_eligible_to_sell ? (
                               <p className="font-medium text-green-600">Ready to Sell</p>
                             ) : (
-                              <p className="font-medium text-amber-600">Not yet eligible</p>
+                              <p className="font-medium text-etihad-gold-600">Not yet eligible</p>
                             )}
                           </div>
                         </div>

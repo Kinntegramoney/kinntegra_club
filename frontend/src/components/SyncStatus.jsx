@@ -64,7 +64,7 @@ export default function SyncStatus() {
         className={`flex items-center gap-2 px-3 py-2 rounded-full shadow-lg cursor-pointer transition-all ${
           isOnline 
             ? pendingSync > 0 
-              ? 'bg-amber-100 text-amber-800 border border-amber-300' 
+              ? 'bg-etihad-gold-100 text-etihad-gold-800 border border-etihad-gold-300' 
               : 'bg-green-100 text-green-800 border border-green-300'
             : 'bg-red-100 text-red-800 border border-red-300'
         }`}
@@ -115,11 +115,11 @@ export default function SyncStatus() {
 
             {/* Pending Sync */}
             {pendingSync > 0 && (
-              <div className="bg-amber-50 p-2 rounded text-sm">
-                <div className="font-medium text-amber-800">
+              <div className="bg-etihad-gold-50 p-2 rounded text-sm">
+                <div className="font-medium text-etihad-gold-800">
                   {pendingSync} item{pendingSync !== 1 ? 's' : ''} waiting to sync
                 </div>
-                <p className="text-amber-600 text-xs mt-1">
+                <p className="text-etihad-gold-600 text-xs mt-1">
                   Data will sync automatically when online
                 </p>
               </div>
@@ -141,7 +141,7 @@ export default function SyncStatus() {
                 onClick={handleSync} 
                 disabled={syncing}
                 size="sm"
-                className="w-full bg-amber-600 hover:bg-amber-700"
+                className="w-full bg-etihad-gold-600 hover:bg-etihad-gold-700"
               >
                 {syncing ? (
                   <>

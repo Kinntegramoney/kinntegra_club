@@ -164,8 +164,8 @@ export default function ClientOpportunities() {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-amber-600" />
-                      <span className="text-xs text-amber-600 font-medium">BOND / NCD</span>
+                      <TrendingUp className="h-5 w-5 text-etihad-gold-600" />
+                      <span className="text-xs text-etihad-gold-600 font-medium">BOND / NCD</span>
                     </div>
                     <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
                   </div>

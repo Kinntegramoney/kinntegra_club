@@ -58,7 +58,7 @@ export default function SubBrokerSidebar({ user }) {
               onClick={() => navigate(item.path)}
               className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors ${
                 isActive(item.path)
-                  ? 'bg-amber-50 text-amber-700'
+                  ? 'bg-etihad-gold-50 text-etihad-gold-700'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
               data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}

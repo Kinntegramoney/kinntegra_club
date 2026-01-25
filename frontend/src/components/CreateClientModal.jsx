@@ -349,9 +349,9 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
           </div>
 
           <div className="p-6 space-y-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800">
+            <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4 flex gap-3">
+              <AlertTriangle className="h-5 w-5 text-etihad-gold-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-etihad-gold-800">
                 <p className="font-semibold">Important: Save these credentials!</p>
                 <p>Please share these login details with the client.</p>
               </div>
@@ -433,7 +433,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-amber-50">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-etihad-gold-50">
           <h2 className="text-xl font-bold text-gray-800">Create New Client</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600" data-testid="close-create-client-modal">
             <X className="h-5 w-5" />
@@ -447,16 +447,16 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
               <div key={step.num} className="flex items-center">
                 <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
                   currentStep >= step.num 
-                    ? "bg-amber-600 text-white" 
+                    ? "bg-etihad-gold-600 text-white" 
                     : "bg-gray-200 text-gray-500"
                 }`}>
                   {step.num}
                 </div>
-                <span className={`ml-2 text-sm hidden sm:inline ${currentStep >= step.num ? "text-amber-700 font-medium" : "text-gray-500"}`}>
+                <span className={`ml-2 text-sm hidden sm:inline ${currentStep >= step.num ? "text-etihad-gold-700 font-medium" : "text-gray-500"}`}>
                   {step.label}
                 </span>
                 {idx < steps.length - 1 && (
-                  <div className={`w-8 sm:w-16 h-0.5 mx-2 ${currentStep > step.num ? "bg-amber-600" : "bg-gray-200"}`} />
+                  <div className={`w-8 sm:w-16 h-0.5 mx-2 ${currentStep > step.num ? "bg-etihad-gold-600" : "bg-gray-200"}`} />
                 )}
               </div>
             ))}
@@ -469,7 +469,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
           {currentStep === 1 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <User className="h-5 w-5 text-amber-600" />
+                <User className="h-5 w-5 text-etihad-gold-600" />
                 <h3 className="text-lg font-semibold text-gray-800">Basic Information</h3>
               </div>
               
@@ -529,14 +529,14 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
                     }}
                     className={`p-4 rounded-lg border-2 text-left transition-all ${
                       formData.passport_type === 'indian'
-                        ? 'border-amber-500 bg-amber-50'
+                        ? 'border-etihad-gold-500 bg-etihad-gold-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     data-testid="passport-type-indian"
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        formData.passport_type === 'indian' ? 'bg-amber-500 text-white' : 'bg-gray-100'
+                        formData.passport_type === 'indian' ? 'bg-etihad-gold-500 text-white' : 'bg-gray-100'
                       }`}>
                         🇮🇳
                       </div>
@@ -580,7 +580,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
           {currentStep === 2 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <CreditCard className="h-5 w-5 text-amber-600" />
+                <CreditCard className="h-5 w-5 text-etihad-gold-600" />
                 <h3 className="text-lg font-semibold text-gray-800">Identity Details</h3>
               </div>
 
@@ -653,7 +653,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
           {currentStep === 3 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <Briefcase className="h-5 w-5 text-amber-600" />
+                <Briefcase className="h-5 w-5 text-etihad-gold-600" />
                 <h3 className="text-lg font-semibold text-gray-800">Investment Opportunities</h3>
               </div>
 
@@ -667,7 +667,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
                     key={opp.id}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       formData.opportunities.includes(opp.id)
-                        ? 'border-amber-500 bg-amber-50'
+                        ? 'border-etihad-gold-500 bg-etihad-gold-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     onClick={() => toggleOpportunity(opp.id)}
@@ -688,8 +688,8 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
               </div>
 
               {formData.passport_type === "indian" && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <p className="text-sm text-amber-800">
+                <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4">
+                  <p className="text-sm text-etihad-gold-800">
                     <strong>Indian Passport Holders:</strong> Can invest in Bonds/NCD and Real Estate.
                   </p>
                 </div>
@@ -712,9 +712,9 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
               {formData.opportunities.includes("bonds") && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-4">
-                    <Building2 className="h-5 w-5 text-amber-600" />
+                    <Building2 className="h-5 w-5 text-etihad-gold-600" />
                     <h3 className="text-lg font-semibold text-gray-800">Bank & Investment Details</h3>
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">Required for Bonds</span>
+                    <span className="text-xs bg-etihad-gold-100 text-etihad-gold-700 px-2 py-1 rounded">Required for Bonds</span>
                   </div>
 
                   {/* Indian Bank Details - For Indian Passport holders (both residents and NRIs) */}
@@ -903,7 +903,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
                     <div className="flex items-center justify-between">
                       <Label className="text-xs text-gray-500 uppercase">UCC (Unique Client Codes) - Max 5</Label>
                       {uccList.length < 5 && (
-                        <Button type="button" variant="ghost" size="sm" onClick={addUccField} className="h-6 px-2 text-amber-600">
+                        <Button type="button" variant="ghost" size="sm" onClick={addUccField} className="h-6 px-2 text-etihad-gold-600">
                           <Plus className="h-3 w-3 mr-1" /> Add UCC
                         </Button>
                       )}
@@ -1010,7 +1010,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
           {currentStep === 5 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <FileText className="h-5 w-5 text-amber-600" />
+                <FileText className="h-5 w-5 text-etihad-gold-600" />
                 <h3 className="text-lg font-semibold text-gray-800">Review & Additional Information</h3>
               </div>
 
@@ -1125,7 +1125,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
           </Button>
           
           {currentStep < 5 ? (
-            <Button onClick={nextStep} className="bg-amber-700 hover:bg-amber-800" data-testid="next-step">
+            <Button onClick={nextStep} className="bg-etihad-gold-700 hover:bg-etihad-gold-800" data-testid="next-step">
               Next Step
             </Button>
           ) : (

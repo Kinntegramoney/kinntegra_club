@@ -172,7 +172,7 @@ export default function AdminBonds() {
               </Button>
               <Button
                 onClick={() => navigate("/bonds/create")}
-                className="bg-amber-700 hover:bg-amber-800"
+                className="bg-etihad-gold-700 hover:bg-etihad-gold-800"
                 data-testid="add-bond-btn"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -224,7 +224,7 @@ export default function AdminBonds() {
                           </div>
                         </td>
                         <td className="py-4 px-6 font-mono">₹{bond.principal_amount?.toLocaleString()}</td>
-                        <td className="py-4 px-6 font-mono text-amber-600">{bond.secondary_irr}%</td>
+                        <td className="py-4 px-6 font-mono text-etihad-gold-600">{bond.secondary_irr}%</td>
                         <td className="py-4 px-6 font-mono">{unitsAvailable}/{bond.total_units || 1}</td>
                         <td className="py-4 px-6">
                           {isActive ? (
@@ -241,7 +241,7 @@ export default function AdminBonds() {
                         </td>
                         <td className="py-4 px-6">
                           {isFullyFunded ? (
-                            <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full">Funded</span>
+                            <span className="px-2 py-1 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded-full">Funded</span>
                           ) : (
                             <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Available</span>
                           )}
@@ -362,7 +362,7 @@ export default function AdminBonds() {
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={(e) => setVerificationFile(e.target.files[0])}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-etihad-gold-50 file:text-etihad-gold-700 hover:file:bg-etihad-gold-100"
                   data-testid="verification-file-input"
                 />
                 {verificationFile && (
@@ -383,7 +383,7 @@ export default function AdminBonds() {
                 <Button
                   variant="outline"
                   onClick={() => handleActivateBond(verifyingBond.id)}
-                  className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                  className="text-etihad-gold-600 border-etihad-gold-300 hover:bg-etihad-gold-50"
                   data-testid="manual-activate-btn"
                 >
                   Activate Without Verification

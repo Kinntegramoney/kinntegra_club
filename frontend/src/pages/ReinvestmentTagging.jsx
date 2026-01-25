@@ -538,7 +538,7 @@ export default function ReinvestmentTagging() {
             )}
             {pendingCount > 0 && (
               <>
-                <Badge className="bg-amber-100 text-amber-700">
+                <Badge className="bg-etihad-gold-100 text-etihad-gold-700">
                   <Clock className="h-3 w-3 mr-1" />
                   {pendingCount} Pending
                 </Badge>
@@ -618,7 +618,7 @@ export default function ReinvestmentTagging() {
                           Rejected
                         </Badge>
                       ) : (
-                        <Badge className="bg-amber-100 text-amber-700 text-xs">
+                        <Badge className="bg-etihad-gold-100 text-etihad-gold-700 text-xs">
                           <Clock className="h-3 w-3 mr-1" />
                           Pending
                         </Badge>
@@ -649,7 +649,7 @@ export default function ReinvestmentTagging() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  <Tag className="h-5 w-5 text-amber-600" />
+                  <Tag className="h-5 w-5 text-etihad-gold-600" />
                   Reinvestment Tagging
                 </h1>
                 <p className="text-sm text-gray-500">Tag client cashflows for reinvestment</p>
@@ -668,7 +668,7 @@ export default function ReinvestmentTagging() {
                 onClick={() => setActiveTab("untagged")}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "untagged"
-                    ? "border-amber-600 text-amber-600"
+                    ? "border-etihad-gold-600 text-etihad-gold-600"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
@@ -678,7 +678,7 @@ export default function ReinvestmentTagging() {
                 onClick={() => setActiveTab("tagged")}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "tagged"
-                    ? "border-amber-600 text-amber-600"
+                    ? "border-etihad-gold-600 text-etihad-gold-600"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
@@ -692,17 +692,17 @@ export default function ReinvestmentTagging() {
         <div className="p-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <RefreshCw className="h-8 w-8 animate-spin text-amber-600" />
+              <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600" />
             </div>
           ) : activeTab === "untagged" ? (
             <>
               {/* Mass Tag Controls */}
               {getSelectedCount() > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4 mb-4">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-2">
-                      <Badge className="bg-amber-600 text-white">{getSelectedCount()} selected</Badge>
-                      <span className="text-sm text-amber-800">Apply to selected:</span>
+                      <Badge className="bg-etihad-gold-600 text-white">{getSelectedCount()} selected</Badge>
+                      <span className="text-sm text-etihad-gold-800">Apply to selected:</span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Select value={massUcc} onValueChange={setMassUcc}>
@@ -735,7 +735,7 @@ export default function ReinvestmentTagging() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button size="sm" onClick={applyMassTag} className="bg-amber-600 hover:bg-amber-700 h-8">
+                      <Button size="sm" onClick={applyMassTag} className="bg-etihad-gold-600 hover:bg-etihad-gold-700 h-8">
                         Apply
                       </Button>
                       <Button size="sm" variant="outline" onClick={clearSelection} className="h-8">
@@ -760,7 +760,7 @@ export default function ReinvestmentTagging() {
                 <Button
                   variant={untaggedSection === "upcoming" ? "default" : "outline"}
                   onClick={() => setUntaggedSection("upcoming")}
-                  className={untaggedSection === "upcoming" ? "bg-amber-600 hover:bg-amber-700" : ""}
+                  className={untaggedSection === "upcoming" ? "bg-etihad-gold-600 hover:bg-etihad-gold-700" : ""}
                   size="sm"
                 >
                   <ArrowRight className="h-4 w-4 mr-1" />
@@ -801,7 +801,7 @@ export default function ReinvestmentTagging() {
                 <Button
                   variant={taggedSection === "upcoming" ? "default" : "outline"}
                   onClick={() => setTaggedSection("upcoming")}
-                  className={taggedSection === "upcoming" ? "bg-amber-600 hover:bg-amber-700" : ""}
+                  className={taggedSection === "upcoming" ? "bg-etihad-gold-600 hover:bg-etihad-gold-700" : ""}
                   size="sm"
                 >
                   <ArrowRight className="h-4 w-4 mr-1" />

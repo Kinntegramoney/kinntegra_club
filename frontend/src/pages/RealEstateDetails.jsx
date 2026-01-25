@@ -556,7 +556,7 @@ export default function RealEstateDetails() {
                     <Badge className="bg-teal-100 text-teal-700">Fractional</Badge>
                   )}
                   {opp.status === 'available' && <Badge className="bg-green-100 text-green-700">Available</Badge>}
-                  {opp.status === 'partially_invested' && <Badge className="bg-amber-100 text-amber-700">Partially Invested</Badge>}
+                  {opp.status === 'partially_invested' && <Badge className="bg-etihad-gold-100 text-etihad-gold-700">Partially Invested</Badge>}
                   {opp.status === 'fully_invested' && <Badge className="bg-blue-100 text-blue-700">Fully Invested</Badge>}
                   {(opp.status === 'closed' || opp.status === 'sold') && <Badge className="bg-emerald-100 text-emerald-700">Closed - Sold</Badge>}
                 </div>
@@ -785,9 +785,9 @@ export default function RealEstateDetails() {
                 <p className="text-xs text-blue-600 mb-1">Balcony</p>
                 <p className="font-semibold text-blue-800">{opp.balcony_area || 0} sqft</p>
               </div>
-              <div className="bg-amber-50 rounded-lg p-4">
-                <p className="text-xs text-amber-600 mb-1">Parking</p>
-                <p className="font-semibold text-amber-800 flex items-center gap-1">
+              <div className="bg-etihad-gold-50 rounded-lg p-4">
+                <p className="text-xs text-etihad-gold-600 mb-1">Parking</p>
+                <p className="font-semibold text-etihad-gold-800 flex items-center gap-1">
                   <Car className="h-4 w-4" /> {opp.parking_spaces || 0} spaces
                 </p>
               </div>
@@ -844,9 +844,9 @@ export default function RealEstateDetails() {
                 <p className="text-green-600 font-medium">Admin Fee</p>
                 <p className="text-lg font-bold text-green-800">AED {formatCurrency(opp.admin_fee)}</p>
               </div>
-              <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
-                <p className="text-amber-600 font-medium">Brokerage</p>
-                <p className="text-lg font-bold text-amber-800">AED {formatCurrency(opp.broker_fee)}</p>
+              <div className="bg-etihad-gold-50 rounded-lg p-3 border border-etihad-gold-100">
+                <p className="text-etihad-gold-600 font-medium">Brokerage</p>
+                <p className="text-lg font-bold text-etihad-gold-800">AED {formatCurrency(opp.broker_fee)}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                 <p className="text-gray-600 font-medium">Other Fees</p>
@@ -971,7 +971,7 @@ export default function RealEstateDetails() {
                             <div className="flex items-center gap-3">
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                                 allVerified ? 'bg-green-500 text-white' : 
-                                pendingCount > 0 ? 'bg-amber-500 text-white' : 
+                                pendingCount > 0 ? 'bg-etihad-gold-500 text-white' : 
                                 'bg-gray-200 text-gray-600'
                               }`}>
                                 {allVerified ? <Check className="h-4 w-4" /> : idx + 1}
@@ -1025,7 +1025,7 @@ export default function RealEstateDetails() {
                             ) : verifiedCount > 0 ? (
                               <Badge className="bg-blue-100 text-blue-700">Partial</Badge>
                             ) : pendingCount > 0 ? (
-                              <Badge className="bg-amber-100 text-amber-700">Pending</Badge>
+                              <Badge className="bg-etihad-gold-100 text-etihad-gold-700">Pending</Badge>
                             ) : (
                               <Badge className="bg-gray-100 text-gray-600">Awaiting</Badge>
                             )}
@@ -1078,7 +1078,7 @@ export default function RealEstateDetails() {
                                     <div className="flex flex-col items-center w-8">
                                       {hasSwift ? (
                                         <>
-                                          <span className={`w-6 h-6 rounded flex items-center justify-center ${isVerified ? 'bg-teal-100 text-teal-600' : 'bg-amber-100 text-amber-600'}`}>
+                                          <span className={`w-6 h-6 rounded flex items-center justify-center ${isVerified ? 'bg-teal-100 text-teal-600' : 'bg-etihad-gold-100 text-etihad-gold-600'}`}>
                                             {isVerified ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                           </span>
                                           <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${payment.swift_copy_url}`, '_blank')}>View</button>
@@ -1100,7 +1100,7 @@ export default function RealEstateDetails() {
                                             </button>
                                           )}
                                           {isPending && user?.role !== 'broker' && (
-                                            <span className="text-[8px] text-amber-500">Pending</span>
+                                            <span className="text-[8px] text-etihad-gold-500">Pending</span>
                                           )}
                                         </>
                                       ) : canUploadSwift && canManageInvestorPayment(investor.client_id) ? (
@@ -1120,7 +1120,7 @@ export default function RealEstateDetails() {
                                     <div className="flex flex-col items-center w-8">
                                       {hasReceipt ? (
                                         <>
-                                          <span className={`w-6 h-6 rounded flex items-center justify-center ${receiptApproved ? 'bg-purple-100 text-purple-600' : 'bg-amber-100 text-amber-600'}`}>
+                                          <span className={`w-6 h-6 rounded flex items-center justify-center ${receiptApproved ? 'bg-purple-100 text-purple-600' : 'bg-etihad-gold-100 text-etihad-gold-600'}`}>
                                             {receiptApproved ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                           </span>
                                           <button className="text-[8px] text-purple-600 hover:text-purple-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`, '_blank')}>View</button>
@@ -1142,7 +1142,7 @@ export default function RealEstateDetails() {
                                             </button>
                                           )}
                                           {!receiptApproved && user?.role !== 'broker' && (
-                                            <span className="text-[8px] text-amber-500">Pending</span>
+                                            <span className="text-[8px] text-etihad-gold-500">Pending</span>
                                           )}
                                         </>
                                       ) : canUploadReceipt && canManageInvestorPayment(investor.client_id) ? (
@@ -1161,7 +1161,7 @@ export default function RealEstateDetails() {
                                   
                                   {/* Status & Amount */}
                                   <div className="text-[10px]">
-                                    <span className={`font-medium ${isVerified ? 'text-green-600' : isPending ? 'text-amber-600' : 'text-gray-400'}`}>
+                                    <span className={`font-medium ${isVerified ? 'text-green-600' : isPending ? 'text-etihad-gold-600' : 'text-gray-400'}`}>
                                       {isVerified ? '✓' : isPending ? '⏳' : '○'}
                                     </span>
                                     <span className="text-gray-500 ml-1">{formatCurrency(investorAmount)}</span>
@@ -1210,14 +1210,14 @@ export default function RealEstateDetails() {
                         const receiptsUploadedDld = dldAdminDocs.filter(d => d.receipt_url).length;
                         
                         rows.push(
-                          <tr key="dld-admin-combined" className={`border-b border-gray-100 hover:bg-amber-50/30 ${allVerifiedDld ? 'bg-green-50/50' : 'bg-amber-50/20'}`}>
+                          <tr key="dld-admin-combined" className={`border-b border-gray-100 hover:bg-etihad-gold-50/30 ${allVerifiedDld ? 'bg-green-50/50' : 'bg-etihad-gold-50/20'}`}>
                             {/* Combined DLD + Admin Info */}
-                            <td className="py-4 px-4 sticky left-0 bg-amber-50/20 z-10">
+                            <td className="py-4 px-4 sticky left-0 bg-etihad-gold-50/20 z-10">
                               <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                                   allVerifiedDld ? 'bg-green-500 text-white' : 
-                                  pendingCountDld > 0 ? 'bg-amber-500 text-white' : 
-                                  'bg-amber-200 text-amber-700'
+                                  pendingCountDld > 0 ? 'bg-etihad-gold-500 text-white' : 
+                                  'bg-etihad-gold-200 text-etihad-gold-700'
                                 }`}>
                                   {allVerifiedDld ? <Check className="h-4 w-4" /> : '$'}
                                 </div>
@@ -1235,7 +1235,7 @@ export default function RealEstateDetails() {
                             
                             {/* Combined Amount */}
                             <td className="py-4 px-3 text-right">
-                              <p className="font-bold text-amber-700">AED {formatCurrency(combinedAmount)}</p>
+                              <p className="font-bold text-etihad-gold-700">AED {formatCurrency(combinedAmount)}</p>
                             </td>
                             
                             {/* Progress Bars */}
@@ -1275,7 +1275,7 @@ export default function RealEstateDetails() {
                               ) : verifiedCountDld > 0 ? (
                                 <Badge className="bg-blue-100 text-blue-700">Partial</Badge>
                               ) : pendingCountDld > 0 ? (
-                                <Badge className="bg-amber-100 text-amber-700"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
+                                <Badge className="bg-etihad-gold-100 text-etihad-gold-700"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
                               ) : (
                                 <Badge className="bg-gray-100 text-gray-600">Awaiting</Badge>
                               )}
@@ -1344,7 +1344,7 @@ export default function RealEstateDetails() {
                                       <div className="flex flex-col items-center w-8">
                                         {hasSwift ? (
                                           <>
-                                            <span className={`w-6 h-6 rounded flex items-center justify-center ${isVerified ? 'bg-teal-100 text-teal-600' : 'bg-amber-100 text-amber-600'}`}>
+                                            <span className={`w-6 h-6 rounded flex items-center justify-center ${isVerified ? 'bg-teal-100 text-teal-600' : 'bg-etihad-gold-100 text-etihad-gold-600'}`}>
                                               {isVerified ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </span>
                                             <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.swift_url}`, '_blank')}>View</button>
@@ -1366,7 +1366,7 @@ export default function RealEstateDetails() {
                                               </button>
                                             )}
                                             {isPending && user?.role !== 'broker' && (
-                                              <span className="text-[8px] text-amber-500">Pending</span>
+                                              <span className="text-[8px] text-etihad-gold-500">Pending</span>
                                             )}
                                           </>
                                         ) : canUploadSwiftDld && canManageThisInvestor ? (
@@ -1396,7 +1396,7 @@ export default function RealEstateDetails() {
                                       <div className="flex flex-col items-center w-8">
                                         {hasReceipt ? (
                                           <>
-                                            <span className={`w-6 h-6 rounded flex items-center justify-center ${receiptApproved ? 'bg-purple-100 text-purple-600' : 'bg-amber-100 text-amber-600'}`}>
+                                            <span className={`w-6 h-6 rounded flex items-center justify-center ${receiptApproved ? 'bg-purple-100 text-purple-600' : 'bg-etihad-gold-100 text-etihad-gold-600'}`}>
                                               {receiptApproved ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </span>
                                             <button className="text-[8px] text-purple-600 hover:text-purple-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.receipt_url}`, '_blank')}>View</button>
@@ -1418,7 +1418,7 @@ export default function RealEstateDetails() {
                                               </button>
                                             )}
                                             {!receiptApproved && user?.role !== 'broker' && (
-                                              <span className="text-[8px] text-amber-500">Pending</span>
+                                              <span className="text-[8px] text-etihad-gold-500">Pending</span>
                                             )}
                                           </>
                                         ) : canUploadReceiptDld && canManageThisInvestor ? (
@@ -1447,10 +1447,10 @@ export default function RealEstateDetails() {
                                     
                                     {/* Status & Amount */}
                                     <div className="text-[10px]">
-                                      <span className={`font-medium ${isVerified ? 'text-green-600' : isPending ? 'text-amber-600' : 'text-gray-400'}`}>
+                                      <span className={`font-medium ${isVerified ? 'text-green-600' : isPending ? 'text-etihad-gold-600' : 'text-gray-400'}`}>
                                         {isVerified ? '✓' : isPending ? '⏳' : '○'}
                                       </span>
-                                      <span className="text-amber-600 ml-1">AED {formatCurrency(investorTotalAmount)}</span>
+                                      <span className="text-etihad-gold-600 ml-1">AED {formatCurrency(investorTotalAmount)}</span>
                                     </div>
                                   </div>
                                 </td>
@@ -1471,9 +1471,9 @@ export default function RealEstateDetails() {
                 <span className="font-medium text-gray-600">Legend:</span>
                 <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-green-100 text-green-600 flex items-center justify-center"><Check className="h-2 w-2" /></span>Uploaded/Verified</span>
                 <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-blue-500 text-white flex items-center justify-center"><Upload className="h-2 w-2" /></span>Upload</span>
-                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-amber-100 text-amber-600 flex items-center justify-center"><Clock className="h-2 w-2" /></span>Pending Approval</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-etihad-gold-100 text-etihad-gold-600 flex items-center justify-center"><Clock className="h-2 w-2" /></span>Pending Approval</span>
                 <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-gray-200 text-gray-400 flex items-center justify-center"><Clock className="h-2 w-2" /></span>Pending</span>
-                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-amber-200 text-amber-700 flex items-center justify-center text-[10px] font-bold">$</span>DLD + Admin Fee</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-etihad-gold-200 text-etihad-gold-700 flex items-center justify-center text-[10px] font-bold">$</span>DLD + Admin Fee</span>
               </div>
             </div>
           )}
@@ -1493,7 +1493,7 @@ export default function RealEstateDetails() {
                       variant="outline" 
                       size="sm" 
                       onClick={handleRecalculateStatus}
-                      className="flex items-center gap-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      className="flex items-center gap-2 text-etihad-gold-600 hover:text-etihad-gold-700 hover:bg-etihad-gold-50"
                       data-testid="recalculate-status-btn"
                     >
                       <RefreshCw className="h-4 w-4" />
@@ -1505,14 +1505,14 @@ export default function RealEstateDetails() {
                       variant="outline" 
                       size="sm" 
                       onClick={() => setShowCurrencySettingsModal(true)}
-                      className={`flex items-center gap-2 ${currencyProjectionsMissing ? 'border-amber-400 bg-amber-50' : ''}`}
+                      className={`flex items-center gap-2 ${currencyProjectionsMissing ? 'border-etihad-gold-400 bg-etihad-gold-50' : ''}`}
                     >
                       <Settings className="h-4 w-4" />
                       Currency Settings
                       {currencyProjectionsMissing && (
                         <span className="relative flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-etihad-gold-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-etihad-gold-500"></span>
                         </span>
                       )}
                     </Button>
@@ -1541,7 +1541,7 @@ export default function RealEstateDetails() {
                           <span>Passport: {investor.passport_details.passport_number}</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                        <div className="flex items-center gap-1 text-xs text-etihad-gold-600 bg-etihad-gold-50 px-2 py-1 rounded">
                           <Clock className="h-3 w-3" />
                           <span>Passport details pending</span>
                         </div>
@@ -1845,7 +1845,7 @@ export default function RealEstateDetails() {
               {opp.interests && opp.interests.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-teal-200">
                   <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Bell className="h-4 w-4 text-amber-500" />
+                    <Bell className="h-4 w-4 text-etihad-gold-500" />
                     Recent Client Interests ({opp.interests.length})
                   </h3>
                   <div className="space-y-2">
@@ -2004,8 +2004,8 @@ export default function RealEstateDetails() {
             </p>
             
             {opp?.investors?.length > 0 && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
-                <p className="text-amber-800 text-sm">
+              <div className="p-3 bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg mb-4">
+                <p className="text-etihad-gold-800 text-sm">
                   <strong>Warning:</strong> This property has {opp.investors.length} investor(s). 
                   Deleting this will remove all investor records associated with it.
                 </p>
@@ -3198,7 +3198,7 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
                     />
                   </div>
                   {selectedClients.length > 0 && clientsWithEmail < selectedClients.length && (
-                    <p className="text-xs text-amber-600 pl-6">
+                    <p className="text-xs text-etihad-gold-600 pl-6">
                       ⚠️ {selectedClients.length - clientsWithEmail} client(s) don't have email addresses
                     </p>
                   )}
@@ -3484,7 +3484,7 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-gray-500">Remaining</p>
-                      <p className={`font-bold ${stillRemaining <= 0.01 ? 'text-green-600' : 'text-amber-600'}`}>
+                      <p className={`font-bold ${stillRemaining <= 0.01 ? 'text-green-600' : 'text-etihad-gold-600'}`}>
                         AED {formatCurrency(Math.max(0, stillRemaining))}
                       </p>
                     </div>
@@ -3678,7 +3678,7 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
                           </div>
                           <div className="flex justify-between text-sm mt-1">
                             <span className="text-gray-600">After submission:</span>
-                            <span className={`font-bold ${stillRemaining <= 0.01 ? 'text-green-600' : 'text-amber-600'}`}>
+                            <span className={`font-bold ${stillRemaining <= 0.01 ? 'text-green-600' : 'text-etihad-gold-600'}`}>
                               {stillRemaining <= 0.01 ? '✓ Fully Paid' : `AED ${formatCurrency(stillRemaining)} remaining`}
                             </span>
                           </div>
@@ -4680,7 +4680,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                                 ) : cf.type === 'inflow' ? (
                                   <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-blue-100 text-blue-700">Expected</span>
                                 ) : (
-                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-100 text-amber-700">Pending</span>
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-etihad-gold-100 text-etihad-gold-700">Pending</span>
                                 )}
                               </td>
                             </tr>

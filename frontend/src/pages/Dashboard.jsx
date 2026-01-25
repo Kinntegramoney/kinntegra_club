@@ -371,10 +371,10 @@ export default function Dashboard() {
               
               <div className="grid grid-cols-2 gap-4 my-4">
                 {/* Bonds */}
-                <div className="bg-amber-50 rounded-lg p-4 text-center border border-amber-200">
-                  <Landmark className="h-8 w-8 text-amber-500 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-amber-700">{summary?.opportunities?.bonds?.total || 0}</p>
-                  <p className="text-xs text-amber-600 mt-1">Bonds</p>
+                <div className="bg-etihad-gold-50 rounded-lg p-4 text-center border border-etihad-gold-200">
+                  <Landmark className="h-8 w-8 text-etihad-gold-500 mx-auto mb-2" />
+                  <p className="text-3xl font-bold text-etihad-gold-700">{summary?.opportunities?.bonds?.total || 0}</p>
+                  <p className="text-xs text-etihad-gold-600 mt-1">Bonds</p>
                   <p className="text-xs text-gray-500">{summary?.opportunities?.bonds?.available || 0} available</p>
                 </div>
                 
@@ -395,11 +395,11 @@ export default function Dashboard() {
             {/* Bond AUM Details */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="bond-aum-card">
               <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-lg bg-amber-500/10">
-                  <Landmark className="h-5 w-5 text-amber-500" />
+                <div className="p-2 rounded-lg bg-etihad-gold-500/10">
+                  <Landmark className="h-5 w-5 text-etihad-gold-500" />
                 </div>
                 <h3 className="font-semibold text-gray-800">Bond AUM</h3>
-                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded ml-auto">INR</span>
+                <span className="text-xs bg-etihad-gold-100 text-etihad-gold-700 px-2 py-0.5 rounded ml-auto">INR</span>
               </div>
               
               <div className="grid grid-cols-2 gap-3">

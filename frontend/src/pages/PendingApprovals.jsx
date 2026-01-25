@@ -152,7 +152,7 @@ export default function PendingApprovals() {
           
           <div className="flex items-center gap-3">
             {totalPending > 0 && (
-              <div className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+              <div className="px-3 py-1.5 bg-etihad-gold-100 text-etihad-gold-700 rounded-full text-sm font-medium">
                 {totalPending} pending
               </div>
             )}
@@ -174,7 +174,7 @@ export default function PendingApprovals() {
             onClick={() => setActiveTab("clients")}
             className={`px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${
               activeTab === "clients"
-                ? "bg-amber-100 text-amber-700"
+                ? "bg-etihad-gold-100 text-etihad-gold-700"
                 : "bg-white text-gray-600 hover:bg-gray-100"
             }`}
             data-testid="tab-clients"
@@ -182,7 +182,7 @@ export default function PendingApprovals() {
             <User className="h-4 w-4" />
             Clients
             {pendingClients.length > 0 && (
-              <span className="px-2 py-0.5 bg-amber-600 text-white text-xs rounded-full">
+              <span className="px-2 py-0.5 bg-etihad-gold-600 text-white text-xs rounded-full">
                 {pendingClients.length}
               </span>
             )}
@@ -191,7 +191,7 @@ export default function PendingApprovals() {
             onClick={() => setActiveTab("reinvestments")}
             className={`px-4 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${
               activeTab === "reinvestments"
-                ? "bg-amber-100 text-amber-700"
+                ? "bg-etihad-gold-100 text-etihad-gold-700"
                 : "bg-white text-gray-600 hover:bg-gray-100"
             }`}
             data-testid="tab-reinvestments"
@@ -199,7 +199,7 @@ export default function PendingApprovals() {
             <FileText className="h-4 w-4" />
             Reinvestments
             {pendingReinvestments.length > 0 && (
-              <span className="px-2 py-0.5 bg-amber-600 text-white text-xs rounded-full">
+              <span className="px-2 py-0.5 bg-etihad-gold-600 text-white text-xs rounded-full">
                 {pendingReinvestments.length}
               </span>
             )}
@@ -210,7 +210,7 @@ export default function PendingApprovals() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           {loading ? (
             <div className="p-12 text-center">
-              <RefreshCw className="h-8 w-8 animate-spin text-amber-600 mx-auto mb-3" />
+              <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600 mx-auto mb-3" />
               <p className="text-gray-500">Loading pending approvals...</p>
             </div>
           ) : activeTab === "clients" ? (
@@ -230,8 +230,8 @@ export default function PendingApprovals() {
                   >
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                          <User className="h-6 w-6 text-amber-600" />
+                        <div className="w-12 h-12 rounded-full bg-etihad-gold-100 flex items-center justify-center flex-shrink-0">
+                          <User className="h-6 w-6 text-etihad-gold-600" />
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-900">{client.name}</h3>

@@ -301,7 +301,7 @@ export default function LeadManagement() {
                 onClick={() => setActiveTab("approvals")}
                 className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                   activeTab === "approvals"
-                    ? "bg-amber-50 text-amber-700 border-amber-500"
+                    ? "bg-etihad-gold-50 text-etihad-gold-700 border-etihad-gold-500"
                     : "text-gray-600 border-transparent hover:bg-gray-100"
                 }`}
                 data-testid="tab-approvals"
@@ -357,7 +357,7 @@ export default function LeadManagement() {
                     onClick={() => setPendingSubTab("clients")}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
                       pendingSubTab === "clients" 
-                        ? "bg-white text-amber-700 shadow-sm" 
+                        ? "bg-white text-etihad-gold-700 shadow-sm" 
                         : "text-gray-600 hover:bg-white"
                     }`}
                     data-testid="subtab-clients"
@@ -365,7 +365,7 @@ export default function LeadManagement() {
                     <User className="h-4 w-4" />
                     Clients
                     {pendingClients.length > 0 && (
-                      <span className="bg-amber-100 text-amber-700 text-xs px-1.5 py-0.5 rounded">{pendingClients.length}</span>
+                      <span className="bg-etihad-gold-100 text-etihad-gold-700 text-xs px-1.5 py-0.5 rounded">{pendingClients.length}</span>
                     )}
                   </button>
                   <button
@@ -390,7 +390,7 @@ export default function LeadManagement() {
               <div className="p-4">
                 {pendingLoading ? (
                   <div className="text-center py-12">
-                    <RefreshCw className="h-8 w-8 animate-spin text-amber-600 mx-auto mb-3" />
+                    <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600 mx-auto mb-3" />
                     <p className="text-gray-500">Loading...</p>
                   </div>
                 ) : pendingSubTab === "clients" ? (
@@ -409,8 +409,8 @@ export default function LeadManagement() {
                             onClick={() => toggleExpand(client.id)}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
-                                <User className="h-4 w-4 text-amber-600" />
+                              <div className="w-9 h-9 rounded-full bg-etihad-gold-100 flex items-center justify-center">
+                                <User className="h-4 w-4 text-etihad-gold-600" />
                               </div>
                               <div>
                                 <p className="font-medium text-gray-800 text-sm">{client.name}</p>
@@ -710,10 +710,10 @@ export default function LeadManagement() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                lead.opportunity_type === 'bond' ? 'bg-amber-100' : 'bg-teal-100'
+                                lead.opportunity_type === 'bond' ? 'bg-etihad-gold-100' : 'bg-teal-100'
                               }`}>
                                 {lead.opportunity_type === 'bond' ? (
-                                  <TrendingUp className="h-4 w-4 text-amber-600" />
+                                  <TrendingUp className="h-4 w-4 text-etihad-gold-600" />
                                 ) : (
                                   <Building2 className="h-4 w-4 text-teal-600" />
                                 )}
@@ -794,10 +794,10 @@ export default function LeadManagement() {
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  itemType === 'client' ? 'bg-amber-100' : 'bg-blue-100'
+                  itemType === 'client' ? 'bg-etihad-gold-100' : 'bg-blue-100'
                 }`}>
                   {itemType === 'client' ? (
-                    <User className="h-5 w-5 text-amber-600" />
+                    <User className="h-5 w-5 text-etihad-gold-600" />
                   ) : (
                     <RefreshCw className="h-5 w-5 text-blue-600" />
                   )}

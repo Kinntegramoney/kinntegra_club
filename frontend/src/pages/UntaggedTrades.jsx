@@ -218,7 +218,7 @@ export default function UntaggedTrades() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2" data-testid="untagged-trades-title">
-                  <Tag className="h-5 w-5 text-amber-600" />
+                  <Tag className="h-5 w-5 text-etihad-gold-600" />
                   {isClient ? "Pending Approvals" : "Trade Tagging"}
                 </h1>
                 <p className="text-sm text-gray-500">
@@ -244,9 +244,9 @@ export default function UntaggedTrades() {
                 <span className="font-semibold text-blue-600">{pastTrades.length}</span>
               </div>
               <div className="flex items-center gap-2">
-                <ArrowRight className="h-4 w-4 text-amber-500" />
+                <ArrowRight className="h-4 w-4 text-etihad-gold-500" />
                 <span className="text-sm text-gray-500">Future-dated:</span>
-                <span className="font-semibold text-amber-600">{futureTrades.length}</span>
+                <span className="font-semibold text-etihad-gold-600">{futureTrades.length}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-purple-500" />
@@ -261,19 +261,19 @@ export default function UntaggedTrades() {
           {isClient ? (
             // Client view - only pending approvals
             <div className="bg-white rounded-lg border overflow-hidden">
-              <div className="p-4 border-b bg-amber-50">
-                <h3 className="font-semibold text-amber-800 flex items-center gap-2">
+              <div className="p-4 border-b bg-etihad-gold-50">
+                <h3 className="font-semibold text-etihad-gold-800 flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5" />
                   Trades Awaiting Your Approval
                 </h3>
-                <p className="text-sm text-amber-700 mt-1">
+                <p className="text-sm text-etihad-gold-700 mt-1">
                   Review tagged trades from your advisor. Once approved, they cannot be edited.
                 </p>
               </div>
               
               {loading ? (
                 <div className="flex items-center justify-center h-32">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-etihad-gold-600"></div>
                 </div>
               ) : pendingApproval.length === 0 ? (
                 <div className="p-8 text-center text-gray-500">
@@ -287,9 +287,9 @@ export default function UntaggedTrades() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <TrendingUp className="h-5 w-5 text-amber-600" />
+                            <TrendingUp className="h-5 w-5 text-etihad-gold-600" />
                             <span className="font-semibold text-gray-800">{trade.bond_name}</span>
-                            <Badge variant="outline" className="text-amber-600 border-amber-200">
+                            <Badge variant="outline" className="text-etihad-gold-600 border-etihad-gold-200">
                               {trade.bond_code}
                             </Badge>
                           </div>
@@ -384,7 +384,7 @@ export default function UntaggedTrades() {
                 <TabsContent value="untagged">
                   {loading ? (
                     <div className="flex items-center justify-center h-64">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-etihad-gold-600"></div>
                     </div>
                   ) : filteredTrades.length === 0 ? (
                     <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
@@ -426,13 +426,13 @@ export default function UntaggedTrades() {
                                 {trade.is_past_dated ? (
                                   <Badge className="bg-blue-100 text-blue-700">Past</Badge>
                                 ) : (
-                                  <Badge className="bg-amber-100 text-amber-700">Future</Badge>
+                                  <Badge className="bg-etihad-gold-100 text-etihad-gold-700">Future</Badge>
                                 )}
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <Button 
                                   size="sm" 
-                                  className="bg-amber-600 hover:bg-amber-700"
+                                  className="bg-etihad-gold-600 hover:bg-etihad-gold-700"
                                   onClick={() => openTagModal(trade)}
                                   data-testid={`tag-trade-${trade.id}`}
                                 >
@@ -521,7 +521,7 @@ export default function UntaggedTrades() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Tag className="h-5 w-5 text-amber-600" />
+              <Tag className="h-5 w-5 text-etihad-gold-600" />
               Tag Trade
             </DialogTitle>
             <DialogDescription>
@@ -611,7 +611,7 @@ export default function UntaggedTrades() {
               </div>
 
               {!taggingTrade.is_past_dated && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-3 text-sm text-etihad-gold-800">
                   <AlertTriangle className="h-4 w-4 inline mr-1" />
                   This trade will require client approval before it becomes active.
                 </div>
@@ -628,7 +628,7 @@ export default function UntaggedTrades() {
                 </Button>
                 <Button 
                   type="submit"
-                  className="flex-1 bg-amber-600 hover:bg-amber-700"
+                  className="flex-1 bg-etihad-gold-600 hover:bg-etihad-gold-700"
                   disabled={submitting}
                   data-testid="submit-tag-btn"
                 >
