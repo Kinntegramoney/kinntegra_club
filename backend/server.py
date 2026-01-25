@@ -5411,7 +5411,7 @@ async def bulk_upload_bonds(
                 "description": str(row.get('description', '')) if not pd.isna(row.get('description')) else '',
                 "created_by": current_user['id'],
                 "created_at": datetime.now(timezone.utc).isoformat(),
-                "status": "active"
+                "listing_status": "active"  # Make bond visible in opportunities immediately
             }
             
             await db.bonds.insert_one(bond)
