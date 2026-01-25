@@ -602,7 +602,9 @@ export default function Holdings() {
         prepaid_amount: holding.prepaid_amount || 0,
         xirr: holding.xirr,
         actual_xirr: holding.actual_xirr,
-        cashflows: holding.cashflows.sort((a, b) => new Date(a.date) - new Date(b.date))
+        cashflows: holding.cashflows.sort((a, b) => new Date(a.date) - new Date(b.date)),
+        expected_cashflows: holding.expected_cashflows || [],
+        actual_cashflows: holding.actual_cashflows || []
       });
     });
     
