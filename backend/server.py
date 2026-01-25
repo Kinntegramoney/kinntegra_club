@@ -5380,44 +5380,12 @@ async def bulk_upload_bonds(
             # Check if we have exact cashflows per unit from Sheet 4
             cashflows_per_unit = cashflows_per_unit_map.get(bond_code, [])
             
-            if cashflows_per_unit and len(cashflows_per_unit) > 0:
-                # Derive principal payments from cashflows (dates where principal_per_unit > 0)
-                principal_payments = []
+            # Calculate total principal and interest from cashflows_per_unit if available
+            total_principal_per_unit = 0
+            total_interest_per_unit = 0
+            if cashflows_per_unit:
                 total_principal_per_unit = sum(cf.get('principal_per_unit', 0) for cf in cashflows_per_unit)
-                
-                for cf in cashflows_per_unit:
-                    if cf.get('principal_per_unit', 0) > 0:
-                        percentage = (cf['principal_per_unit'] / total_principal_per_unit * 100) if total_principal_per_unit > 0 else 0
-                        principal_payments.append({
-                            "date": cf['date'],
-                            "percentage": round(percentage, 2)
-                        })
-                
-                # If no principal payments found in cashflows, default to 100% at maturity
-                if not principal_payments:
-                    principal_payments = [{"date": end_date, "percentage": 100.0}]
-                
-                # Use combined payment schedule - derive from cashflows
-                schedule_result = generate_combined_payment_schedule(
-                    start_date=start_date,
-                    end_date=end_date,
-                    principal=principal,
-                    coupon_rate=coupon_rate_val,
-                    principal_payments=principal_payments
-                )
-                interest_payments = schedule_result['interest_payments']
-                combined_schedule = schedule_result['combined_schedule']
-            else:
-                # No cashflows provided - use standard interest payment schedule based on frequency
-                principal_payments = [{"date": end_date, "percentage": 100.0}]
-                interest_payments = generate_interest_payment_schedule(
-                    start_date=start_date,
-                    end_date=end_date,
-                    principal=principal,
-                    coupon_rate=coupon_rate_val,
-                    frequency=frequency
-                )
-                combined_schedule = None
+                total_interest_per_unit = sum(cf.get('interest_per_unit', 0) for cf in cashflows_per_unit)
             
             bond_id = str(uuid.uuid4())
             
@@ -5425,7 +5393,6 @@ async def bulk_upload_bonds(
                 "id": bond_id,
                 "bond_code": bond_code,
                 "name": str(row['bond_name']).strip(),
-                "principal_amount": principal,
                 "coupon_rate": coupon_rate_val,
                 "primary_irr": float(row['primary_irr']),
                 "secondary_irr": float(row['secondary_irr']),
@@ -5433,23 +5400,27 @@ async def bulk_upload_bonds(
                 "end_date": end_date,
                 "total_units": int(row.get('total_units', 1)) if not pd.isna(row.get('total_units')) else 1,
                 "units_sold": 0,
-                "interest_payment_frequency": frequency,
-                "principal_payments": principal_payments,
-                "interest_payments": interest_payments,
-                "combined_schedule": combined_schedule,  # Auto-generated combined schedule
+                "min_units": int(row.get('minimum_units_per_order', 1)) if not pd.isna(row.get('minimum_units_per_order')) else 1,
+                "face_value": face_value,
                 "cashflows_per_unit": cashflows_per_unit,  # Exact cashflows per unit from Excel
-                "cutoff_days": 15,  # Default 15 days (no longer in template)
+                "total_principal_per_unit": total_principal_per_unit,
+                "total_interest_per_unit": total_interest_per_unit,
                 "issuer": str(row.get('issuer_company_name', '')) if not pd.isna(row.get('issuer_company_name')) else '',
                 "description": str(row.get('description', '')) if not pd.isna(row.get('description')) else '',
-                "face_value": float(row.get('face_value_per_unit', 0)) if not pd.isna(row.get('face_value_per_unit')) else 0,
                 "created_by": current_user['id'],
                 "created_at": datetime.now(timezone.utc).isoformat(),
-                "listing_status": "pending"  # Bonds start as pending until price verification
+                "status": "active"
             }
             
             await db.bonds.insert_one(bond)
             results['success'] += 1
-            results['created_bonds'].append({"id": bond_id, "name": bond['name'], "code": bond_code})
+            results['created_bonds'].append({
+                "id": bond_id, 
+                "name": bond['name'], 
+                "code": bond_code,
+                "total_units": bond['total_units'],
+                "cashflows_count": len(cashflows_per_unit)
+            })
             
         except Exception as e:
             results['errors'].append(f"Row {idx+2}: {str(e)}")
