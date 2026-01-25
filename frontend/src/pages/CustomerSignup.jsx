@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import axios from "axios";
-import { UserPlus, CheckCircle } from "lucide-react";
+import { UserPlus, CheckCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,6 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 export default function CustomerSignup() {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -132,212 +131,114 @@ export default function CustomerSignup() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Full Name */}
                 <div className="space-y-1">
-              <Label htmlFor="name" className="text-xs font-medium tracking-wider"
-                     style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Full Name
-              </Label>
-              <Input
-                data-testid="signup-name-input"
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                placeholder="John Doe"
-                className="h-11 text-sm"
-                style={{ borderColor: '#E5E7EB', borderRadius: '0.5rem' }}
-                required
-              />
-            </div>
-
-            {/* Email */}
-            <div className="space-y-1">
-              <Label htmlFor="email" className="text-xs font-medium tracking-wider"
-                     style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Email
-              </Label>
-              <Input
-                data-testid="signup-email-input"
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                placeholder="john@example.com"
-                className="h-11 text-sm"
-                style={{ borderColor: '#E5E7EB', borderRadius: '0.5rem' }}
-                required
-              />
-            </div>
-
-            {/* Phone */}
-            <div className="space-y-1">
-              <Label htmlFor="phone" className="text-xs font-medium tracking-wider"
-                     style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Phone Number
-              </Label>
-              <Input
-                data-testid="signup-phone-input"
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                placeholder="+91-9876543210"
-                className="h-11 text-sm"
-                style={{ borderColor: '#E5E7EB', borderRadius: '0.5rem' }}
-                required
-              />
-            </div>
-
-            {/* Password */}
-            <div className="space-y-1">
-              <Label htmlFor="password" className="text-xs font-medium tracking-wider"
-                     style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Password
-              </Label>
-              <div className="relative">
-                <Input
-                  data-testid="signup-password-input"
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  placeholder="Min 6 characters"
-                  className="h-11 pr-10 text-sm"
-                  style={{ borderColor: '#E5E7EB', borderRadius: '0.5rem' }}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                  style={{ color: '#9CA3AF' }}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div className="space-y-1">
-              <Label htmlFor="confirmPassword" className="text-xs font-medium tracking-wider"
-                     style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Confirm Password
-              </Label>
-              <Input
-                data-testid="signup-confirm-password-input"
-                id="confirmPassword"
-                type={showPassword ? "text" : "password"}
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                placeholder="Re-enter password"
-                className="h-11 text-sm"
-                style={{ borderColor: '#E5E7EB', borderRadius: '0.5rem' }}
-                required
-              />
-            </div>
-
-            {/* PIN */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="pin" className="text-xs font-medium tracking-wider"
-                       style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  4-Digit PIN
-                </Label>
-                <div className="relative">
+                  <Label htmlFor="name" className="text-xs font-medium tracking-wider"
+                         style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Full Name
+                  </Label>
                   <Input
-                    data-testid="signup-pin-input"
-                    id="pin"
-                    type={showPin ? "text" : "password"}
-                    value={formData.pin}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                      setFormData({...formData, pin: value});
-                    }}
-                    maxLength={4}
-                    placeholder="****"
-                    className="h-11 text-center font-mono text-sm"
+                    data-testid="signup-name-input"
+                    id="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    placeholder="Enter your full name"
+                    className="h-11 text-sm"
                     style={{ borderColor: '#E5E7EB', borderRadius: '0.5rem' }}
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPin(!showPin)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2"
-                    style={{ color: '#9CA3AF' }}
-                  >
-                    {showPin ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                  </button>
                 </div>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="confirmPin" className="text-xs font-medium tracking-wider"
-                       style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Confirm PIN
-                </Label>
-                <Input
-                  data-testid="signup-confirm-pin-input"
-                  id="confirmPin"
-                  type={showPin ? "text" : "password"}
-                  value={formData.confirmPin}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                    setFormData({...formData, confirmPin: value});
+
+                {/* Email */}
+                <div className="space-y-1">
+                  <Label htmlFor="email" className="text-xs font-medium tracking-wider"
+                         style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Email Address
+                  </Label>
+                  <Input
+                    data-testid="signup-email-input"
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    placeholder="you@example.com"
+                    className="h-11 text-sm"
+                    style={{ borderColor: '#E5E7EB', borderRadius: '0.5rem' }}
+                    required
+                  />
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-1">
+                  <Label htmlFor="phone" className="text-xs font-medium tracking-wider"
+                         style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Phone Number
+                  </Label>
+                  <Input
+                    data-testid="signup-phone-input"
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    placeholder="+91 9876543210"
+                    className="h-11 text-sm"
+                    style={{ borderColor: '#E5E7EB', borderRadius: '0.5rem' }}
+                    required
+                  />
+                </div>
+
+                <Button
+                  data-testid="signup-submit-button"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-11 font-medium text-sm mt-4"
+                  style={{
+                    background: 'linear-gradient(135deg, #C9A227 0%, #A68521 100%)',
+                    color: 'white',
+                    borderRadius: '0.5rem',
+                    fontWeight: 500,
+                    letterSpacing: '0.05em'
                   }}
-                  maxLength={4}
-                  placeholder="****"
-                  className="h-11 text-center font-mono text-sm"
-                  style={{ borderColor: '#E5E7EB', borderRadius: '0.5rem' }}
-                  required
-                />
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      SUBMITTING...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <UserPlus className="h-4 w-4" />
+                      REGISTER INTEREST
+                    </span>
+                  )}
+                </Button>
+              </form>
+
+              {/* Back to Login */}
+              <div className="mt-6 text-center">
+                <Link 
+                  to="/login"
+                  className="text-sm flex items-center justify-center gap-1 hover:underline"
+                  style={{ color: '#C9A227' }}
+                  data-testid="back-to-login-link"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Login
+                </Link>
               </div>
-            </div>
-
-            <Button
-              data-testid="signup-submit-button"
-              type="submit"
-              disabled={loading}
-              className="w-full h-11 font-medium text-sm mt-4"
-              style={{
-                background: '#D4A853',
-                color: 'white',
-                borderRadius: '0.5rem',
-                fontWeight: 500,
-                letterSpacing: '0.05em'
-              }}
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  CREATING ACCOUNT...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  SIGN UP
-                </span>
-              )}
-            </Button>
-          </form>
-
-          {/* Back to Login */}
-          <div className="mt-6 text-center">
-            <Link 
-              to="/login"
-              className="text-sm flex items-center justify-center gap-1 hover:underline"
-              style={{ color: '#D4A853' }}
-              data-testid="back-to-login-link"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Login
-            </Link>
-          </div>
+            </>
+          )}
 
           {/* Footer */}
           <div className="mt-6 pt-4 border-t text-center" style={{ borderColor: '#E5E7EB' }}>
             <p className="text-xs font-medium" style={{ color: '#6B7280' }}>Kinntegraa LLC-FZ</p>
-            <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>License No: 1922240.01</p>
+            <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>License No: 2418465.01</p>
+            <p className="text-xs mt-1" style={{ color: '#9CA3AF' }}>
+              Meydan Grandstand, 6th floor, Meydan Road,<br />
+              Nad Al Sheba, Dubai, U.A.E.
+            </p>
           </div>
         </div>
       </div>
