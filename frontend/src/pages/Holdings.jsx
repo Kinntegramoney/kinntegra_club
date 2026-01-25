@@ -466,41 +466,56 @@ export default function Holdings() {
     return Object.values(byDate).sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
-  // Get consolidated ACTUAL cashflows by date (repaid cashflows)
+  // Get consolidated ACTUAL cashflows by date (repaid cashflows + investment + pending maturity)
   const getActualCashflowsByDate = (trades) => {
     if (!trades) return [];
     
     const byDate = {};
     
     trades.forEach(trade => {
-      // Use actual_cashflows (repaid ones) or filter cashflows for is_repaid
-      const actualCfs = trade.actual_cashflows || trade.cashflows?.filter(cf => cf.is_repaid) || [];
+      // Use actual_cashflows which now includes investment, repayments, and maturity
+      const actualCfs = trade.actual_cashflows || [];
       actualCfs.forEach(cf => {
-        const cfDate = cf.repaid_date || cf.date;
+        const cfDate = cf.date;
+        const isInvestment = cf.type === 'investment';
+        
         if (!byDate[cfDate]) {
           byDate[cfDate] = {
             date: cfDate,
+            type: isInvestment ? 'investment' : (cf.type || 'repayment'),
             principal_component: 0,
             interest_component: 0,
             gross_amount: 0,
             tds_amount: 0,
             net_amount: 0,
+            investment_amount: 0,
             transactions: [],
-            is_prepaid: false
+            is_prepaid: false,
+            is_repaid: cf.is_repaid
           };
         }
         
-        byDate[cfDate].principal_component += cf.principal_component || 0;
-        byDate[cfDate].interest_component += cf.interest_component || 0;
-        byDate[cfDate].gross_amount += cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0));
-        byDate[cfDate].tds_amount += cf.tds_amount || 0;
-        byDate[cfDate].net_amount += cf.net_amount || 0;
-        if (cf.is_prepaid) byDate[cfDate].is_prepaid = true;
+        if (isInvestment) {
+          byDate[cfDate].type = 'investment';
+          byDate[cfDate].investment_amount += Math.abs(cf.amount || cf.gross_amount || 0);
+          byDate[cfDate].gross_amount += cf.gross_amount || cf.amount || 0;
+          byDate[cfDate].net_amount += cf.net_amount || cf.amount || 0;
+        } else {
+          byDate[cfDate].principal_component += cf.principal_component || 0;
+          byDate[cfDate].interest_component += cf.interest_component || 0;
+          byDate[cfDate].gross_amount += cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0));
+          byDate[cfDate].tds_amount += cf.tds_amount || 0;
+          byDate[cfDate].net_amount += cf.net_amount || 0;
+          if (cf.is_prepaid) byDate[cfDate].is_prepaid = true;
+          if (cf.type === 'maturity') byDate[cfDate].type = 'maturity';
+        }
+        
         byDate[cfDate].transactions.push({
           trade_id: trade.trade_id,
           units: trade.units,
           investment_date: trade.investment_date,
-          is_prepaid: cf.is_prepaid
+          is_prepaid: cf.is_prepaid,
+          type: cf.type
         });
       });
     });
