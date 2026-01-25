@@ -92,16 +92,16 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
          style={{ 
-           background: '#2B1B3D',
+           background: 'linear-gradient(135deg, #5B373C 0%, #3D252A 50%, #1F1F1F 100%)',
            position: 'relative'
          }}>
       
-      {/* Abstract background shapes */}
-      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.08 }}>
+      {/* Abstract background shapes - Etihad theme */}
+      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.1 }}>
         <defs>
           <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{ stopColor: '#f59e0b', stopOpacity: 0.3 }} />
-            <stop offset="100%" style={{ stopColor: '#8b5cf6', stopOpacity: 0.3 }} />
+            <stop offset="0%" style={{ stopColor: '#C9A227', stopOpacity: 0.4 }} />
+            <stop offset="100%" style={{ stopColor: '#A68521', stopOpacity: 0.3 }} />
           </linearGradient>
         </defs>
         <path d="M 0,400 Q 400,200 800,400 T 1600,400 L 1600,0 L 0,0 Z" fill="url(#grad1)" />

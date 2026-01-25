@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
-import { Eye, EyeOff, UserPlus, ArrowLeft } from "lucide-react";
+import { UserPlus, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,69 +13,50 @@ const API = `${BACKEND_URL}/api`;
 export default function CustomerSignup() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    pan: "",
     name: "",
     email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-    pin: "",
-    confirmPin: ""
+    phone: ""
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validation
-    if (!formData.pan || !formData.name || !formData.email || !formData.phone || !formData.password || !formData.pin) {
+    if (!formData.name || !formData.email || !formData.phone) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    if (formData.pan.length !== 10) {
-      toast.error("PAN must be exactly 10 characters");
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error("Please enter a valid email address");
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    if (formData.pin.length !== 4 || !/^\d+$/.test(formData.pin)) {
-      toast.error("PIN must be exactly 4 digits");
-      return;
-    }
-
-    if (formData.pin !== formData.confirmPin) {
-      toast.error("PINs do not match");
+    // Phone validation (at least 10 digits)
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      toast.error("Please enter a valid phone number");
       return;
     }
 
     setLoading(true);
     try {
-      await axios.post(`${API}/auth/customer-signup`, {
-        pan: formData.pan.toUpperCase(),
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password,
-        pin: formData.pin
+      await axios.post(`${API}/leads/interest`, {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim(),
+        source: "signup_page"
       });
       
-      toast.success("Account created successfully! Please login.");
-      navigate("/login");
+      setSubmitted(true);
+      toast.success("Thank you for your interest! We'll contact you soon.");
     } catch (error) {
       console.error("Signup error:", error);
-      toast.error(error.response?.data?.detail || "Failed to create account");
+      toast.error(error.response?.data?.detail || "Failed to submit. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -84,16 +65,16 @@ export default function CustomerSignup() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
          style={{ 
-           background: '#2B1B3D',
+           background: 'linear-gradient(135deg, #5B373C 0%, #3D252A 50%, #1F1F1F 100%)',
            position: 'relative'
          }}>
       
-      {/* Abstract background shapes */}
-      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.08 }}>
+      {/* Abstract background shapes - Etihad theme */}
+      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.1 }}>
         <defs>
           <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{ stopColor: '#f59e0b', stopOpacity: 0.3 }} />
-            <stop offset="100%" style={{ stopColor: '#8b5cf6', stopOpacity: 0.3 }} />
+            <stop offset="0%" style={{ stopColor: '#C9A227', stopOpacity: 0.4 }} />
+            <stop offset="100%" style={{ stopColor: '#A68521', stopOpacity: 0.3 }} />
           </linearGradient>
         </defs>
         <ellipse cx="20%" cy="30%" rx="300" ry="300" fill="url(#grad1)" />
@@ -114,40 +95,43 @@ export default function CustomerSignup() {
           <div className="flex justify-center mb-6">
             <div 
               className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold"
-              style={{ background: '#D4A853' }}
+              style={{ background: 'linear-gradient(135deg, #C9A227 0%, #A68521 100%)' }}
             >
               K
             </div>
           </div>
 
-          {/* Title */}
-          <h1 className="text-xl font-semibold text-center mb-6" style={{ color: '#1F2937' }}>
-            Create Your Account
-          </h1>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* PAN */}
-            <div className="space-y-1">
-              <Label htmlFor="pan" className="text-xs font-medium tracking-wider"
-                     style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                PAN Number
-              </Label>
-              <Input
-                data-testid="signup-pan-input"
-                id="pan"
-                type="text"
-                value={formData.pan}
-                onChange={(e) => setFormData({...formData, pan: e.target.value.toUpperCase()})}
-                maxLength={10}
-                placeholder="ABCDE1234F"
-                className="h-11 font-mono text-sm"
-                style={{ borderColor: '#E5E7EB', borderRadius: '0.5rem' }}
-                required
-              />
+          {submitted ? (
+            /* Success State */
+            <div className="text-center py-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Thank You!</h2>
+              <p className="text-gray-600 mb-6">
+                Your interest has been registered. Our team will contact you shortly.
+              </p>
+              <Link
+                to="/login"
+                className="inline-block px-6 py-2 rounded-lg font-medium text-white"
+                style={{ background: 'linear-gradient(135deg, #C9A227 0%, #A68521 100%)' }}
+              >
+                Back to Login
+              </Link>
             </div>
+          ) : (
+            <>
+              {/* Title */}
+              <h1 className="text-xl font-semibold text-center mb-2" style={{ color: '#1F2937' }}>
+                Get Started
+              </h1>
+              <p className="text-sm text-gray-500 text-center mb-6">
+                Register your interest and our team will reach out to you
+              </p>
 
-            {/* Name */}
-            <div className="space-y-1">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Full Name */}
+                <div className="space-y-1">
               <Label htmlFor="name" className="text-xs font-medium tracking-wider"
                      style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Full Name
