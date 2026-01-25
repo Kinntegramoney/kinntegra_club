@@ -1831,71 +1831,73 @@ export default function Holdings() {
                   {/* Two Column Layout for Individual Transaction */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Expected Cashflows for this trade */}
-                    <div className="border border-blue-200 rounded-xl bg-blue-50/30 overflow-hidden">
-                      <div className="bg-blue-100 px-4 py-2 border-b border-blue-200">
-                        <h3 className="font-semibold text-blue-800 text-sm">Expected Repayments</h3>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2">
+                        <h3 className="font-semibold text-white text-sm">Expected Cashflow</h3>
                       </div>
                       <div className="max-h-[300px] overflow-y-auto">
                         <table className="w-full text-sm">
-                          <thead className="bg-blue-50 sticky top-0">
+                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
-                              <th className="text-left py-2 px-3 text-xs font-medium text-blue-700 uppercase">Date</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">Principal</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">Interest</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase bg-blue-100">Gross</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">TDS</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">Net</th>
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Principal</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Interest</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase bg-blue-50">Gross</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">TDS</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Net</th>
                             </tr>
                           </thead>
-                          <tbody>
+                          <tbody className="divide-y divide-gray-100">
                             {(modalData.trades[activeTab].expected_cashflows || []).map((cf, idx) => (
                               cf.type === 'investment' ? (
-                                // Investment row - styled as outflow
-                                <tr key={idx} className="border-b border-red-200 bg-red-50/50">
-                                  <td className="py-2 px-3 font-mono text-xs text-red-700">
-                                    {format(new Date(cf.date), "dd MMM yyyy")}
-                                    <span className="ml-1 px-1 py-0.5 bg-red-100 text-red-600 rounded text-[9px] font-medium">INV</span>
+                                <tr key={idx} className="bg-red-50 hover:bg-red-100">
+                                  <td className="py-2 px-3">
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono text-xs text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</span>
+                                      <span className="px-1.5 py-0.5 bg-red-500 text-white rounded text-[9px] font-semibold">OUT</span>
+                                    </div>
                                   </td>
-                                  <td colSpan="3" className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-700">
-                                    {formatINR(Math.abs(cf.amount || cf.gross_amount || 0))}
+                                  <td colSpan="3" className="py-2 px-3 text-right">
+                                    <span className="font-mono text-xs font-bold text-red-600">{formatAbsoluteINR(Math.abs(cf.amount || cf.gross_amount || 0))}</span>
                                   </td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs text-gray-400">-</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs font-medium text-red-700">
-                                    ({formatINR(Math.abs(cf.net_amount || cf.amount || 0))})
+                                  <td className="py-2 px-3 text-right text-gray-400">—</td>
+                                  <td className="py-2 px-3 text-right">
+                                    <span className="font-mono text-xs font-semibold text-red-600">({formatAbsoluteINR(Math.abs(cf.net_amount || cf.amount || 0))})</span>
                                   </td>
                                 </tr>
                               ) : (
-                                // Inflow row - normal styling
-                                <tr key={idx} className="border-b border-blue-100 hover:bg-blue-50/50">
-                                  <td className="py-2 px-3 font-mono text-xs">
-                                    {format(new Date(cf.date), "dd MMM yyyy")}
-                                    <span className="ml-1 px-1 py-0.5 bg-green-100 text-green-600 rounded text-[9px] font-medium">MAT</span>
+                                <tr key={idx} className="bg-white hover:bg-gray-50">
+                                  <td className="py-2 px-3">
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono text-xs text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</span>
+                                      <span className="px-1.5 py-0.5 bg-green-500 text-white rounded text-[9px] font-semibold">IN</span>
+                                    </div>
                                   </td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-blue-50 text-blue-800">
-                                    {formatINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                  <td className="py-2 px-3 text-right font-mono text-xs text-gray-700">{formatAbsoluteINR(cf.principal_component)}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs text-gray-700">{formatAbsoluteINR(cf.interest_component)}</td>
+                                  <td className="py-2 px-3 text-right bg-blue-50">
+                                    <span className="font-mono text-xs font-bold text-blue-700">{formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}</span>
                                   </td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs text-red-500">{formatAbsoluteINR(cf.tds_amount)}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-gray-900">{formatAbsoluteINR(cf.net_amount)}</td>
                                 </tr>
                               )
                             ))}
                           </tbody>
                         </table>
                       </div>
-                      <div className="bg-blue-100 px-4 py-2 border-t border-blue-200 text-sm">
-                        <span className="text-blue-600">Total Gross:</span>
-                        <span className="font-mono font-semibold ml-2 text-blue-800">
-                          {formatINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
+                      <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-sm">
+                        <span className="text-gray-600">Total Inflow:</span>
+                        <span className="font-mono font-bold ml-2 text-gray-900">
+                          {formatAbsoluteINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
                         </span>
                       </div>
                     </div>
                     
-                    {/* Actual Repayments for this trade */}
-                    <div className="border border-green-200 rounded-xl bg-green-50/30 overflow-hidden">
-                      <div className="bg-green-100 px-4 py-2 border-b border-green-200">
-                        <h3 className="font-semibold text-green-800 text-sm">Actual Repayments</h3>
+                    {/* Actual Cashflow for this trade */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                      <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-2">
+                        <h3 className="font-semibold text-white text-sm">Actual Cashflow</h3>
                       </div>
                       <div className="max-h-[300px] overflow-y-auto">
                         <table className="w-full text-sm">
