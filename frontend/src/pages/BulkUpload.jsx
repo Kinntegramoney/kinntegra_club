@@ -24,6 +24,10 @@ export default function BulkUpload() {
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState(null);
   
+  // Email Sync state (for historical trades)
+  const [syncingEmails, setSyncingEmails] = useState(false);
+  const [emailSyncResults, setEmailSyncResults] = useState(null);
+  
   // Scheme Master state
   const [schemeMasterStatus, setSchemeMasterStatus] = useState(null);
   const [schemeMasterFile, setSchemeMasterFile] = useState(null);
@@ -45,6 +49,36 @@ export default function BulkUpload() {
       fetchSchemeMasterStatus();
     }
   }, [activeTab]);
+  
+  // Sync repayments from email (reads from updates@kinntegraa.club)
+  const handleSyncEmailRepayments = async (daysBack = 30) => {
+    setSyncingEmails(true);
+    setEmailSyncResults(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/email-reader/process?days_back=${daysBack}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      const result = response.data;
+      setEmailSyncResults(result);
+      
+      if (result.processed > 0 || result.matched > 0) {
+        toast.success(`Synced ${result.matched} repayments from ${result.total_emails} emails`);
+      } else if (result.total_emails === 0) {
+        toast.info("No new repayment emails found");
+      } else {
+        toast.warning(`Found ${result.total_emails} emails but no matches`);
+      }
+    } catch (error) {
+      console.error("Error syncing email repayments:", error);
+      toast.error(error.response?.data?.detail || "Failed to sync repayments from emails");
+    } finally {
+      setSyncingEmails(false);
+    }
+  };
 
   const fetchSchemeMasterStatus = async () => {
     try {
