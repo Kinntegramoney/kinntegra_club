@@ -111,9 +111,9 @@ export default function Login() {
       </svg>
 
       {/* Login Card */}
-      <div className="relative z-10 bg-white rounded-xl shadow-2xl w-full max-w-md mx-4"
+      <div className="relative z-10 bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4"
            style={{ 
-             padding: '3rem 2.5rem',
+             padding: '2rem 2rem',
              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
            }}
            data-testid="login-card">
