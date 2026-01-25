@@ -9307,7 +9307,6 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                     
                     if investment_date_dt <= record_date:
                         # Calculate days from INVESTMENT DATE to maturity
-                        # (This affects the interest earned by the secondary buyer)
                         days_to_maturity = (maturity_dt - investment_date_dt).days
                         total_days = (maturity_dt - bond_start_dt).days
                         
@@ -9322,6 +9321,11 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                         tds = round(gross_interest * 0.10, 2)
                         total_gross = principal_amount + gross_interest
                         net_amount = total_gross - tds
+                        
+                        # Calculate investment value using secondary calculator (PV of maturity payment)
+                        years_to_maturity = days_to_maturity / 365
+                        discount_factor = 1 / ((1 + irr_decimal) ** years_to_maturity)
+                        calculated_investment = round(total_gross * discount_factor, 2)
                         
                         original_cashflows.append({
                             'date': maturity_date.split('T')[0].split(' ')[0],
