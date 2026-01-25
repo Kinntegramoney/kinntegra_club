@@ -1993,8 +1993,11 @@ export default function Holdings() {
                         // Show difference row if there's a significant change (> ₹1)
                         const showDifference = Math.abs(grossDifference) > 1;
                         
-                        // Tooltip text showing the calculation (previous expected - actual expected now)
-                        const diffTooltip = `Previous expected: ₹${formatNum(expectedGross)} - Actual expected now: ₹${formatNum(actualGross)}`;
+                        // Tooltip text for Gross Expected column
+                        const grossDiffTooltip = `Previous expected: ₹${formatNum(expectedGross)} - Actual expected now: ₹${formatNum(actualGross)}`;
+                        
+                        // Tooltip text for Profit column - shows profit difference explanation
+                        const profitDiffTooltip = `Previous profit: ₹${formatNum(expectedProfit)} - Actual profit now: ₹${formatNum(actualProfit)}`;
                         
                         return (
                         <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
@@ -2008,11 +2011,11 @@ export default function Holdings() {
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(actualGross)}</p>
-                            {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={diffTooltip}>{formatDiff(grossDifference)}</p>}
+                            {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={grossDiffTooltip}>{formatDiff(grossDifference)}</p>}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p className={actualProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{formatNum(actualProfit)}</p>
-                            {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={diffTooltip}>{formatDiff(profitDifference)}</p>}
+                            {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={profitDiffTooltip}>{formatDiff(profitDifference)}</p>}
                           </td>
                           <td className="py-2 px-2 text-center">
                             {holding.xirr !== null && holding.xirr !== undefined ? (
