@@ -9689,7 +9689,8 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "cashflows": stored_cashflows,  # Current state of cashflows
             "expected_cashflows": expected_cashflows_with_investment,  # With investment as first entry
             "actual_cashflows": build_actual_cashflows_with_investment(
-                calculated_investment, investment_date_str, stored_cashflows, trade['units'], secondary_irr
+                calculated_investment, investment_date_str, stored_cashflows, trade['units'], secondary_irr,
+                matched_actual_repayments  # Include actual_repayments for this trade
             ),
             "status": "active" if upcoming_gross > 0 else "fully_repaid"
         })
