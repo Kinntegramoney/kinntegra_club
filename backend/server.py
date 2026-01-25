@@ -9220,17 +9220,59 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         # reflect impact of premium when bond is sold at secondary market
         bond_start_date = bond.get('start_date') or bond.get('bond_start_date')
         
-        # Build ORIGINAL cashflows (before prepayment modifications) for Expected XIRR
-        # Expected XIRR shows what the return would be without any prepayments
+        # Build ORIGINAL cashflows from BOND DEFINITION (not from stored cashflows)
+        # This represents what was promised in the bond - the Expected Repayments
         original_cashflows = []
-        for cf in stored_cashflows:
-            original_cf = {
-                'date': cf.get('date'),
-                # Use original values if available (from before prepayment amendment)
-                'principal_component': cf.get('original_principal_component') or cf.get('principal_component', 0),
-                'interest_component': cf.get('original_interest_component') or cf.get('interest_component', 0),
-            }
-            original_cashflows.append(original_cf)
+        
+        # Get cutoff date for this investment
+        from datetime import timedelta
+        investment_date_dt = datetime.fromisoformat(trade['investment_date'].split('T')[0].split(' ')[0])
+        cutoff_days = trade.get('cutoff_days', bond.get('cutoff_days', 15))
+        cutoff_date = investment_date_dt + timedelta(days=cutoff_days)
+        
+        # Use cashflows_per_unit from bond definition
+        cashflows_per_unit = bond.get('cashflows_per_unit', [])
+        if cashflows_per_unit:
+            for cf in cashflows_per_unit:
+                cf_date_str = cf.get('date', '').split('T')[0].split(' ')[0]
+                try:
+                    cf_date = datetime.fromisoformat(cf_date_str)
+                except:
+                    continue
+                
+                # Only include cashflows AFTER cutoff date
+                if cf_date > cutoff_date:
+                    interest_per_unit = cf.get('interest_per_unit', 0) or 0
+                    principal_per_unit = cf.get('principal_per_unit', 0) or 0
+                    
+                    # Calculate amounts for this client's units
+                    gross_interest = interest_per_unit * trade['units']
+                    principal_amount = principal_per_unit * trade['units']
+                    total_gross = gross_interest + principal_amount
+                    tds = gross_interest * 0.10  # 10% TDS
+                    net_amount = total_gross - tds
+                    
+                    original_cashflows.append({
+                        'date': cf_date_str,
+                        'principal_component': round(principal_amount, 2),
+                        'interest_component': round(gross_interest, 2),
+                        'gross_amount': round(total_gross, 2),
+                        'tds_amount': round(tds, 2),
+                        'net_amount': round(net_amount, 2)
+                    })
+        
+        # If no cashflows_per_unit, fall back to stored original values
+        if not original_cashflows:
+            for cf in stored_cashflows:
+                original_cashflows.append({
+                    'date': cf.get('date'),
+                    'principal_component': cf.get('original_principal_component') or cf.get('principal_component', 0),
+                    'interest_component': cf.get('original_interest_component') or cf.get('interest_component', 0),
+                    'gross_amount': (cf.get('original_principal_component') or cf.get('principal_component', 0)) + 
+                                   (cf.get('original_interest_component') or cf.get('interest_component', 0)),
+                    'tds_amount': cf.get('original_tds_amount') or cf.get('tds_amount', 0),
+                    'net_amount': cf.get('original_net_amount') or cf.get('net_amount', 0)
+                })
         
         # Fetch actual repayments (unscheduled prepayments from historical uploads)
         # Note: We only include actual_repayments that are NOT on scheduled dates
