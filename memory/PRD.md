@@ -3,24 +3,25 @@
 ## Recent Changes (Jan 25, 2026)
 
 ### Repayment Status Bar Fix (Jan 25, 2026)
-**Bug:** The "Repayment Status" bar was showing 100% received even for future-dated repayments. Past-dated cashflows were incorrectly counted as "received" just because the date passed.
+**Bug:** The "Repayment Status" bar was showing 100% received even for future-dated repayments.
 
-**Root Cause:** 
-1. Logic was using `is_repaid` flag which was auto-set to `True` for past dates
-2. Logic was only checking `holding_cashflows` but actual payment data was in `actual_repayments` collection
+**Root Cause:** Logic was incorrectly summing all cashflows as received.
 
 **Fix Applied** (`server.py` - get_client_holdings):
-- Changed logic to only count cashflows as "received" if they have **actual payment confirmation**:
-  - `repaid_date` is set, OR  
-  - `repaid_actual_amount` > 0
-- Now also reads from `actual_repayments` collection (historical uploads)
-- Avoids double-counting by tracking processed dates
-- Updated `build_actual_cashflows_with_investment()` function with same logic
+- **RECEIVED** = Sum from `actual_repayments` table where `repayment_date` ≤ today
+- **OUTSTANDING** = Sum from `holding_cashflows` table where scheduled `date` > today
+- **TOTAL** = RECEIVED + OUTSTANDING
+
+Updated functions:
+- `get_client_holdings()`: Fixed repaid_gross and upcoming_gross calculation
+- `build_actual_cashflows_with_investment()`: Simplified to only include:
+  1. Investment entry (outflow)
+  2. Actual repayments where date ≤ today
+  3. Scheduled cashflows where date > today
 
 **Impact:**
-- "Received" now only shows cashflows with confirmed payments from both tables
-- "Outstanding" now includes both future cashflows AND past-due unpaid cashflows
-- Bar accurately reflects actual vs expected repayments
+- Bar now correctly shows actual payments received vs future scheduled payments
+- Data comes from correct tables (`actual_repayments` for received, `holding_cashflows` for outstanding)
 
 ---
 
