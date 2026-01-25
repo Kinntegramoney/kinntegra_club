@@ -9136,15 +9136,14 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
     """
     Build actual cashflows array with:
     1. ALL investment entries from trades (outflows)
-    2. Actual repayments from actual_repayments collection where date <= today
-    3. Remaining maturity (adjusted for what's already been paid)
+    2. ALL actual repayments from actual_repayments collection (both past and future)
     
-    This is called at the BOND level, not trade level, to consolidate all trades.
+    This shows the UPLOADED data as-is, not calculated estimates.
     
     Args:
         trades_data: List of dicts with {investment_date, calculated_investment, units}
-        stored_cashflows: All scheduled cashflows for this bond
-        actual_repayments: All actual repayments from uploads
+        stored_cashflows: All scheduled cashflows for this bond (for fallback)
+        actual_repayments: All actual repayments from uploads (THESE ARE THE SOURCE OF TRUTH)
     """
     from datetime import datetime, timezone
     
@@ -9172,70 +9171,39 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
                 'units': trade_info.get('units', 0)
             })
     
-    # Calculate total scheduled principal and interest
-    total_scheduled_principal = sum(cf.get('principal_component', 0) or 0 for cf in stored_cashflows)
-    total_scheduled_interest = sum(cf.get('interest_component', 0) or 0 for cf in stored_cashflows)
-    
-    # Track what's been paid from actual_repayments
-    total_paid_principal = 0
-    total_paid_interest = 0
-    total_paid_tds = 0
-    
-    # 2. Add actual repayments where date <= today (RECEIVED)
+    # 2. Add ALL actual repayments from uploads (both past and future)
+    # The uploaded data IS the source of truth - show it as-is
     for ar in actual_repayments:
-        ar_date = (ar.get('repayment_date') or '')[:10]
-        if ar_date and ar_date <= today_str:
-            principal = ar.get('principal', 0) or 0
-            interest = ar.get('interest', 0) or 0
-            tds = ar.get('tds', 0) or 0
-            gross = ar.get('gross_amount', 0) or (principal + interest)
-            net = ar.get('net_amount', 0) or (gross - tds)
-            
-            total_paid_principal += principal
-            total_paid_interest += interest
-            total_paid_tds += tds
-            
-            actual_cashflows.append({
-                'date': ar.get('repayment_date'),
-                'type': 'repayment',
-                'amount': gross,
-                'principal_component': principal,
-                'interest_component': interest,
-                'gross_amount': gross,
-                'tds_amount': tds,
-                'net_amount': net,
-                'is_repaid': True,
-                'source': 'actual_repayment'
-            })
-    
-    # 3. Calculate REMAINING maturity (what's left to be paid)
-    remaining_principal = max(0, total_scheduled_principal - total_paid_principal)
-    remaining_interest = max(0, total_scheduled_interest - total_paid_interest)
-    
-    # Get the maturity date (last scheduled cashflow date)
-    maturity_date = None
-    if stored_cashflows:
-        future_cashflows = [cf for cf in stored_cashflows if (cf.get('date') or '')[:10] > today_str]
-        if future_cashflows:
-            maturity_date = max(cf.get('date', '') for cf in future_cashflows)
-    
-    # Add remaining maturity if there's anything left to pay
-    if maturity_date and (remaining_principal > 0 or remaining_interest > 0):
-        remaining_gross = remaining_principal + remaining_interest
-        remaining_tds = remaining_interest * 0.1 if remaining_interest > 0 else 0
-        remaining_net = remaining_gross - remaining_tds
+        ar_date = ar.get('repayment_date', '')
+        ar_date_short = ar_date[:10] if ar_date else ''
+        
+        principal = ar.get('principal', 0) or 0
+        interest = ar.get('interest', 0) or 0
+        tds = ar.get('tds', 0) or 0
+        gross = ar.get('gross_amount', 0) or (principal + interest)
+        net = ar.get('net_amount', 0) or (gross - tds)
+        
+        # Determine if this is past (received) or future (expected)
+        is_past = ar_date_short <= today_str if ar_date_short else False
+        
+        # Determine type based on principal/interest composition
+        cf_type = 'repayment'
+        if principal > 0 and interest > 0:
+            cf_type = 'maturity'  # Both principal and interest = likely maturity
+        elif principal > 0 and interest == 0:
+            cf_type = 'prepayment'  # Principal only = prepayment
         
         actual_cashflows.append({
-            'date': maturity_date,
-            'type': 'maturity',
-            'amount': remaining_gross,
-            'principal_component': remaining_principal,
-            'interest_component': remaining_interest,
-            'gross_amount': remaining_gross,
-            'tds_amount': remaining_tds,
-            'net_amount': remaining_net,
-            'is_repaid': False,
-            'source': 'remaining_maturity'
+            'date': ar_date,
+            'type': cf_type,
+            'amount': gross,
+            'principal_component': principal,
+            'interest_component': interest,
+            'gross_amount': gross,
+            'tds_amount': tds,
+            'net_amount': net,
+            'is_repaid': is_past,
+            'source': 'actual_upload'
         })
     
     # Sort by date
