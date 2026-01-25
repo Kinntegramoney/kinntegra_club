@@ -471,9 +471,6 @@ export default function Opportunities() {
             {status === 'available' && (
               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Available</span>
             )}
-            {status === 'funded' && (
-              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Fully Subscribed</span>
-            )}
             {status === 'closed' && (
               <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">Matured</span>
             )}
