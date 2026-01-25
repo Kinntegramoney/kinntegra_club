@@ -239,7 +239,7 @@ export default function BulkUpload() {
 
   const getTabColor = (tabId) => {
     const colors = {
-      "sub-brokers": { bg: "bg-indigo-600", light: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-200" },
+      "sub-brokers": { bg: "bg-etihad-maroon-600", light: "bg-indigo-50", text: "text-etihad-maroon-600", border: "border-indigo-200" },
       "clients": { bg: "bg-purple-600", light: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
       "bonds": { bg: "bg-green-600", light: "bg-green-50", text: "text-green-600", border: "border-green-200" },
       "real-estate": { bg: "bg-orange-600", light: "bg-orange-50", text: "text-orange-600", border: "border-orange-200" },
@@ -734,7 +734,7 @@ export default function BulkUpload() {
 
               {/* Email Sync Section - Only for historical-trades tab */}
               {activeTab === "historical-trades" && (
-                <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-6">
+                <div className="mt-8 bg-gradient-to-r from-blue-50 to-etihad-maroon-50 rounded-xl border border-blue-200 p-6">
                   <h3 className="font-semibold text-blue-800 mb-4 flex items-center gap-2">
                     <Mail className="h-5 w-5" />
                     Sync Repayments from Email

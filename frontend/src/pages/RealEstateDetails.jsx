@@ -1483,7 +1483,7 @@ export default function RealEstateDetails() {
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-indigo-600" />
+                  <BarChart3 className="h-5 w-5 text-etihad-maroon-600" />
                   XIRR Comparison Report
                   <span className="text-xs font-normal text-gray-500 ml-2">Projected vs Actual Currency Rates</span>
                 </h2>
@@ -2385,9 +2385,9 @@ function AllocateInvestorModal({ opportunity, clients, remainingPercentage, onCl
           {/* Available Info */}
           {isFractional ? (
             <div className="bg-indigo-50 p-4 rounded-lg">
-              <p className="text-sm text-indigo-600">Available Units</p>
-              <p className="text-2xl font-bold text-indigo-800">{formatCurrency(unitsAvailable)} units</p>
-              <p className="text-sm text-indigo-600">AED {formatCurrency(unitsAvailable * unitValue)} @ {formatCurrency(unitValue)} AED/unit</p>
+              <p className="text-sm text-etihad-maroon-600">Available Units</p>
+              <p className="text-2xl font-bold text-etihad-maroon-800">{formatCurrency(unitsAvailable)} units</p>
+              <p className="text-sm text-etihad-maroon-600">AED {formatCurrency(unitsAvailable * unitValue)} @ {formatCurrency(unitValue)} AED/unit</p>
             </div>
           ) : (
             <div className="bg-orange-50 p-4 rounded-lg">
@@ -3494,8 +3494,8 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
                   {investorPayments[investor.client_id]?.home_currency_amount && investorPayments[investor.client_id]?.aed_amount && parseFloat(investorPayments[investor.client_id]?.aed_amount) > 0 && (
                     <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-indigo-700 font-medium">Effective Rate</span>
-                        <span className="text-lg font-bold text-indigo-600">
+                        <span className="text-sm text-etihad-maroon-700 font-medium">Effective Rate</span>
+                        <span className="text-lg font-bold text-etihad-maroon-600">
                           1 AED = {(parseFloat(investorPayments[investor.client_id]?.home_currency_amount) / parseFloat(investorPayments[investor.client_id]?.aed_amount)).toFixed(4)} {investorPayments[investor.client_id]?.home_currency || 'INR'}
                         </span>
                       </div>
@@ -3592,8 +3592,8 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
                         {investorPayments[investor.client_id]?.home_currency_amount && investorPayments[investor.client_id]?.aed_amount && parseFloat(investorPayments[investor.client_id]?.aed_amount) > 0 && (
                           <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-indigo-700 font-medium">Effective Rate</span>
-                              <span className="text-lg font-bold text-indigo-600">
+                              <span className="text-sm text-etihad-maroon-700 font-medium">Effective Rate</span>
+                              <span className="text-lg font-bold text-etihad-maroon-600">
                                 1 AED = {(parseFloat(investorPayments[investor.client_id]?.home_currency_amount) / parseFloat(investorPayments[investor.client_id]?.aed_amount)).toFixed(4)} {investorPayments[investor.client_id]?.home_currency || 'INR'}
                               </span>
                             </div>
@@ -4227,7 +4227,7 @@ function CurrencySettingsModal({ onClose, onSuccess }) {
         <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between z-10">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Settings className="h-5 w-5 text-indigo-600" />
+              <Settings className="h-5 w-5 text-etihad-maroon-600" />
               Currency Rate Projections
             </h2>
             <p className="text-sm text-gray-500">Set projected exchange rates for XIRR calculations</p>
@@ -4247,7 +4247,7 @@ function CurrencySettingsModal({ onClose, onSuccess }) {
             <button
               type="button"
               onClick={addCurrencyPair}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100"
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-50 text-etihad-maroon-600 rounded-lg hover:bg-indigo-100"
             >
               <Plus className="h-4 w-4" /> Add Currency
             </button>
@@ -4277,7 +4277,7 @@ function CurrencySettingsModal({ onClose, onSuccess }) {
           {groupedProjections.map((group, gIdx) => (
             <div key={gIdx} className="border rounded-lg p-3 space-y-3">
               <h4 className="font-medium text-gray-700 flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs">{group.currency}</span>
+                <span className="px-2 py-0.5 bg-indigo-100 text-etihad-maroon-700 rounded text-xs">{group.currency}</span>
                 to AED Rates
               </h4>
               
@@ -4334,7 +4334,7 @@ function CurrencySettingsModal({ onClose, onSuccess }) {
           
           <div className="flex gap-3 pt-4 border-t">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={loading} className="flex-1 bg-indigo-600 hover:bg-indigo-700">
+            <Button type="submit" disabled={loading} className="flex-1 bg-etihad-maroon-600 hover:bg-etihad-maroon-700">
               {loading ? "Saving..." : "Save Projections"}
             </Button>
           </div>
@@ -4476,7 +4476,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
         <div className="sticky top-0 bg-white border-b p-3 flex items-center justify-between z-10">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-indigo-600" />
+              <BarChart3 className="h-5 w-5 text-etihad-maroon-600" />
               XIRR Comparison Report
             </h2>
             <p className="text-sm text-gray-500">{investor?.client_name || 'Investor'} - {investor?.share_percentage || 25}% Share</p>
@@ -4509,9 +4509,9 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                 {/* LEFT COLUMN - Property Info & Summary */}
                 <div className="w-[320px] flex-shrink-0 space-y-3">
                   {/* Property Details Card */}
-                  <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-3 border border-indigo-100">
+                  <div className="bg-gradient-to-br from-etihad-maroon-50 to-purple-50 rounded-lg p-3 border border-indigo-100">
                     <h3 className="font-semibold text-gray-800 text-sm mb-2 flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-indigo-600" />
+                      <Building2 className="h-4 w-4 text-etihad-maroon-600" />
                       Property Details
                     </h3>
                     <div className="space-y-1 text-xs">
@@ -4559,8 +4559,8 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                   {/* XIRR Summary Cards */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-indigo-50 rounded-lg p-2 text-center">
-                      <p className="text-[10px] text-indigo-600 font-medium">Expected XIRR</p>
-                      <p className="text-lg font-bold text-indigo-800">
+                      <p className="text-[10px] text-etihad-maroon-600 font-medium">Expected XIRR</p>
+                      <p className="text-lg font-bold text-etihad-maroon-800">
                         {report.summary.xirr_projected !== null ? `${report.summary.xirr_projected.toFixed(1)}%` : 'N/A'}
                       </p>
                     </div>
@@ -4606,7 +4606,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                         <span className="text-gray-500">Total AED:</span>
                         <span className="font-mono font-medium">AED {formatCurrency(report.summary.total_investment_aed)}</span>
                       </div>
-                      <div className="flex justify-between text-indigo-700">
+                      <div className="flex justify-between text-etihad-maroon-700">
                         <span>Projected {report.investor.currency}:</span>
                         <span className="font-mono font-medium">{formatCurrency(report.summary.total_projected_home_currency)}</span>
                       </div>
@@ -4640,7 +4640,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                       <thead>
                         <tr className="bg-gray-800 text-white">
                           <th colSpan="3" className="p-1.5 text-center font-semibold border-r border-gray-600">Details</th>
-                          <th colSpan="2" className="p-1.5 text-center font-semibold border-r border-gray-600 bg-indigo-700">Projected</th>
+                          <th colSpan="2" className="p-1.5 text-center font-semibold border-r border-gray-600 bg-etihad-maroon-700">Projected</th>
                           <th colSpan="2" className="p-1.5 text-center font-semibold border-r border-gray-600 bg-emerald-700">Actuals</th>
                           <th colSpan="2" className="p-1.5 text-center font-semibold border-r border-gray-600 bg-purple-700">Today</th>
                           <th className="p-1.5 text-center font-semibold">Status</th>
@@ -4650,8 +4650,8 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                           <th className="p-1.5 text-left font-medium">Date</th>
                           <th className="p-1.5 text-left font-medium">Description</th>
                           <th className="p-1.5 text-right font-medium border-r border-gray-300">AED</th>
-                          <th className="p-1.5 text-right font-medium text-indigo-700">Rate</th>
-                          <th className="p-1.5 text-right font-medium text-indigo-700 border-r border-gray-300">{report.investor.currency}</th>
+                          <th className="p-1.5 text-right font-medium text-etihad-maroon-700">Rate</th>
+                          <th className="p-1.5 text-right font-medium text-etihad-maroon-700 border-r border-gray-300">{report.investor.currency}</th>
                           <th className="p-1.5 text-right font-medium text-emerald-700">Rate</th>
                           <th className="p-1.5 text-right font-medium text-emerald-700 border-r border-gray-300">{report.investor.currency}</th>
                           <th className="p-1.5 text-right font-medium text-purple-700">Rate</th>
@@ -4668,8 +4668,8 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                               <td className="p-1.5 text-gray-600 whitespace-nowrap">{cf.date || '-'}</td>
                               <td className="p-1.5 font-medium text-gray-800 whitespace-nowrap">{cf.description}</td>
                               <td className="p-1.5 text-right font-mono border-r border-gray-200 whitespace-nowrap">{cf.type === 'outflow' ? '-' : '+'}{formatCurrency(cf.aed_amount)}</td>
-                              <td className="p-1.5 text-right text-indigo-600 font-mono whitespace-nowrap">{cf.projected_rate.toFixed(2)}</td>
-                              <td className="p-1.5 text-right text-indigo-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{formatCurrency(cf.home_currency_amount)}</td>
+                              <td className="p-1.5 text-right text-etihad-maroon-600 font-mono whitespace-nowrap">{cf.projected_rate.toFixed(2)}</td>
+                              <td className="p-1.5 text-right text-etihad-maroon-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{formatCurrency(cf.home_currency_amount)}</td>
                               <td className="p-1.5 text-right text-emerald-600 font-mono whitespace-nowrap">{actualCf?.actual_rate?.toFixed(2) || '-'}</td>
                               <td className="p-1.5 text-right text-emerald-700 font-mono font-medium border-r border-gray-200 whitespace-nowrap">{actualCf ? formatCurrency(actualCf.home_currency_amount) : '-'}</td>
                               <td className="p-1.5 text-right text-purple-600 font-mono whitespace-nowrap">{currentRate?.toFixed(2) || '-'}</td>
@@ -4693,7 +4693,7 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                           <td colSpan="2" className="p-1.5 text-right text-gray-700 text-[10px]">TOTAL</td>
                           <td className="p-1.5 text-right font-mono border-r border-gray-300">AED {formatCurrency(report.summary.total_investment_aed)}</td>
                           <td className="p-1.5"></td>
-                          <td className="p-1.5 text-right text-indigo-700 font-mono border-r border-gray-300">{formatCurrency(report.summary.total_projected_home_currency)}</td>
+                          <td className="p-1.5 text-right text-etihad-maroon-700 font-mono border-r border-gray-300">{formatCurrency(report.summary.total_projected_home_currency)}</td>
                           <td className="p-1.5"></td>
                           <td className="p-1.5 text-right text-emerald-700 font-mono border-r border-gray-300">{formatCurrency(report.summary.total_actual_home_currency)}</td>
                           <td className="p-1.5"></td>
@@ -4803,10 +4803,10 @@ function PassportDetailsModal({ opportunity, investor, onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
+        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-etihad-maroon-50 to-purple-50">
           <div>
-            <h2 className="text-lg font-semibold text-indigo-900">Passport Details</h2>
-            <p className="text-sm text-indigo-600">{investor?.client_name}</p>
+            <h2 className="text-lg font-semibold text-etihad-maroon-900">Passport Details</h2>
+            <p className="text-sm text-etihad-maroon-600">{investor?.client_name}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/50 rounded-lg"><X className="h-5 w-5" /></button>
         </div>
@@ -4925,7 +4925,7 @@ function PassportDetailsModal({ opportunity, investor, onClose, onSuccess }) {
             <Button 
               type="submit" 
               disabled={loading || uploading} 
-              className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+              className="flex-1 bg-etihad-maroon-600 hover:bg-etihad-maroon-700"
               data-testid="save-passport-btn"
             >
               {loading ? "Saving..." : uploading ? "Uploading..." : "Save Details"}

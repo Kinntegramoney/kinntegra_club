@@ -237,9 +237,9 @@ export default function ClientProfile() {
               {(clientDetails.passport_number || clientDetails.passport_type === 'foreign') && (
                 <div className="bg-white rounded-lg border border-gray-200 p-5">
                   <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                    <CreditCard className="h-5 w-5 text-indigo-600" />
+                    <CreditCard className="h-5 w-5 text-etihad-maroon-600" />
                     <h3 className="font-semibold text-gray-800">Passport Details</h3>
-                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded ml-auto capitalize">{clientDetails.passport_type || 'Indian'}</span>
+                    <span className="text-xs bg-indigo-100 text-etihad-maroon-700 px-2 py-0.5 rounded ml-auto capitalize">{clientDetails.passport_type || 'Indian'}</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>

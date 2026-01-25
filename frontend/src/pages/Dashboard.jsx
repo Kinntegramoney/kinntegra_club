@@ -251,7 +251,7 @@ export default function Dashboard() {
         <Sidebar user={user} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin text-indigo-500 mx-auto mb-4" />
+            <RefreshCw className="h-8 w-8 animate-spin text-etihad-maroon-500 mx-auto mb-4" />
             <p className="text-slate-400">Loading dashboard...</p>
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-indigo-500/10">
-                    <Users className="h-5 w-5 text-indigo-500" />
+                    <Users className="h-5 w-5 text-etihad-maroon-500" />
                   </div>
                   <h3 className="font-semibold text-gray-800">Clients</h3>
                 </div>
@@ -455,7 +455,7 @@ export default function Dashboard() {
               data-testid="quick-action-opportunities"
             >
               <div className="p-3 rounded-full bg-indigo-50 group-hover:bg-indigo-100 transition-colors">
-                <TrendingUp className="h-5 w-5 text-indigo-600" />
+                <TrendingUp className="h-5 w-5 text-etihad-maroon-600" />
               </div>
               <span className="text-sm font-medium text-gray-700">Opportunities</span>
             </button>

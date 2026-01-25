@@ -282,7 +282,7 @@ export default function SubBrokerReinvestment() {
                     className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-etihad-maroon-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
                         {client.client_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'CL'}
                       </div>
                       <div className="text-left">

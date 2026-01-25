@@ -306,7 +306,7 @@ export default function SubBrokerClients() {
                       <tr key={client.id} className="hover:bg-gray-50" data-testid={`client-row-${client.id}`}>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-etihad-maroon-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
                               {client.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'CL'}
                             </div>
                             <div>

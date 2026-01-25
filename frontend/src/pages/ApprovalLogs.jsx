@@ -30,7 +30,7 @@ const ACTION_CONFIG = {
   client_approved: { icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50", label: "Client Approved" },
   client_rejected: { icon: XCircle, color: "text-orange-600", bg: "bg-orange-50", label: "Client Rejected" },
   kinntegra_prepared: { icon: Building2, color: "text-purple-600", bg: "bg-purple-50", label: "API Prepared" },
-  kinntegra_submitted: { icon: CheckCircle, color: "text-indigo-600", bg: "bg-indigo-50", label: "API Submitted" },
+  kinntegra_submitted: { icon: CheckCircle, color: "text-etihad-maroon-600", bg: "bg-indigo-50", label: "API Submitted" },
 };
 
 const ENTITY_CONFIG = {

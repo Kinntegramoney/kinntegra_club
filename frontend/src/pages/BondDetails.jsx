@@ -599,7 +599,7 @@ export default function BondDetails() {
             </div>
             
             {/* Unified Calculator */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-4 border border-blue-200">
+            <div className="bg-gradient-to-r from-blue-50 to-etihad-maroon-50 rounded-lg p-4 mb-4 border border-blue-200">
               <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
                 <Calculator className="h-4 w-4" />
                 Bond Price Calculator (Proposed IRR: {bondData.secondary_irr}%)
@@ -1159,9 +1159,9 @@ export default function BondDetails() {
                   {/* TOP ROW - Bond Details & Summary Cards */}
                   <div className="flex gap-6">
                     {/* Bond Details Card */}
-                    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-4 border border-indigo-100 flex-shrink-0 w-[280px]">
+                    <div className="bg-gradient-to-br from-etihad-maroon-50 to-purple-50 rounded-lg p-4 border border-indigo-100 flex-shrink-0 w-[280px]">
                       <h3 className="font-semibold text-gray-800 text-sm mb-3 flex items-center gap-2">
-                        <svg className="h-4 w-4 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg className="h-4 w-4 text-etihad-maroon-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                         </svg>
                         Bond Details
@@ -1181,7 +1181,7 @@ export default function BondDetails() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Price Paid:</span>
-                          <span className="font-medium text-indigo-700">₹{cashflowReportData.price_paid.toLocaleString('en-IN')}</span>
+                          <span className="font-medium text-etihad-maroon-700">₹{cashflowReportData.price_paid.toLocaleString('en-IN')}</span>
                         </div>
                       </div>
                     </div>

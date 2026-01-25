@@ -100,7 +100,7 @@ export default function SubBrokerDashboard() {
         <Sidebar user={user} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin text-indigo-500 mx-auto mb-4" />
+            <RefreshCw className="h-8 w-8 animate-spin text-etihad-maroon-500 mx-auto mb-4" />
             <p className="text-slate-400">Loading dashboard...</p>
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function SubBrokerDashboard() {
 
         <div className="p-6 space-y-6">
           {/* Total AUM Summary */}
-          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl p-6 text-white" data-testid="total-aum-card">
+          <div className="bg-gradient-to-r from-violet-600 to-etihad-maroon-600 rounded-xl p-6 text-white" data-testid="total-aum-card">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-white/20 rounded-lg">
                 <TrendingUp className="h-6 w-6" />
@@ -181,11 +181,11 @@ export default function SubBrokerDashboard() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-indigo-500/10">
-                    <Users className="h-5 w-5 text-indigo-500" />
+                    <Users className="h-5 w-5 text-etihad-maroon-500" />
                   </div>
                   <h3 className="font-semibold text-gray-800">My Clients</h3>
                 </div>
-                <p className="text-3xl font-bold text-indigo-600">{summary?.clients?.total || 0}</p>
+                <p className="text-3xl font-bold text-etihad-maroon-600">{summary?.clients?.total || 0}</p>
               </div>
               
               {/* Client Index Breakdown */}
@@ -320,7 +320,7 @@ export default function SubBrokerDashboard() {
                 className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-indigo-400 transition-all group"
                 data-testid="quick-action-opportunities"
               >
-                <TrendingUp className="h-8 w-8 text-indigo-500 group-hover:scale-110 transition-transform" />
+                <TrendingUp className="h-8 w-8 text-etihad-maroon-500 group-hover:scale-110 transition-transform" />
                 <span className="mt-2 text-sm font-medium text-gray-700">Opportunities</span>
               </button>
               <button

@@ -554,7 +554,7 @@ export default function Opportunities() {
           </div>
           <div className="bg-indigo-50 rounded-lg p-3 text-center">
             <p className="text-xs text-gray-500 mb-1">Investors</p>
-            <p className="text-2xl font-bold text-indigo-600">
+            <p className="text-2xl font-bold text-etihad-maroon-600">
               {bond.unique_investors || bond.investor_count || 0}
             </p>
           </div>
@@ -573,7 +573,7 @@ export default function Opportunities() {
 
         {/* Quick Calculator - Units OR Amount Input */}
         {status === 'available' && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 mb-4">
+          <div className="bg-gradient-to-r from-blue-50 to-etihad-maroon-50 rounded-lg p-3 mb-4">
             <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
               <Calculator className="h-3 w-3" />
               Quick Calculator (Price/Unit: {formatCurrency(Math.round(todayPrice))})
@@ -1171,7 +1171,7 @@ export default function Opportunities() {
       {xirrModalData && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setXirrModalData(null)}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+            <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-purple-600 to-etihad-maroon-600 text-white">
               <div className="flex items-center gap-3">
                 <Calculator className="h-6 w-6" />
                 <div>
