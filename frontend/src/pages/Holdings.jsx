@@ -30,6 +30,7 @@ export default function Holdings() {
   const [openTradeMenu, setOpenTradeMenu] = useState(null); // For trades tab three-dot menu
   const [tradeDetailsModal, setTradeDetailsModal] = useState(null); // For trade details modal
   const [modalData, setModalData] = useState(null);
+  const [activeTab, setActiveTab] = useState("summary"); // "summary" or trade index
   const [mainTab, setMainTab] = useState("holdings"); // "holdings", "trades", or "profile"
   const menuRef = useRef(null);
   const tradeMenuRef = useRef(null);
