@@ -82,21 +82,34 @@ export default function CustomerSignup() {
       </svg>
 
       {/* Signup Card */}
-      <div className="w-full max-w-md mx-4 relative z-10">
+      <div className="w-full max-w-sm mx-4 relative z-10">
         <div 
-          className="bg-white rounded-2xl shadow-2xl p-8"
+          className="bg-white rounded-2xl shadow-2xl p-6"
           style={{ 
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)'
           }}
           data-testid="signup-card"
         >
           {/* Logo */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-5">
             <div 
-              className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold"
-              style={{ background: 'linear-gradient(135deg, #C9A227 0%, #A68521 100%)' }}
+              className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
+              style={{ 
+                background: 'linear-gradient(135deg, #C9A227 0%, #A68521 100%)',
+                boxShadow: '0 6px 16px rgba(201, 162, 39, 0.3)'
+              }}
             >
-              K
+              <img 
+                src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/fdrtuxyr_WhatsApp%20Image%202026-01-25%20at%2016.32.16.jpeg" 
+                alt="Kinntegraa Logo" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <span className="text-white text-2xl font-bold hidden items-center justify-center" style={{ fontFamily: 'serif' }}>K</span>
+            </div>
             </div>
           </div>
 
