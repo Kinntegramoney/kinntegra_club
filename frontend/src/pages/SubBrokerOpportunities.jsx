@@ -124,11 +124,6 @@ export default function SubBrokerOpportunities() {
               Available
             </span>
           )}
-          {status === 'funded' && (
-            <span className="px-3 py-1 bg-etihad-gold-100 text-etihad-gold-700 text-xs font-medium rounded-full">
-              Funded
-            </span>
-          )}
           {status === 'closed' && (
             <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
               Closed
