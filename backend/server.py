@@ -9535,13 +9535,11 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         expected_xirr = bond.get('secondary_irr') or bond.get('interest_rate') or bond.get('coupon_rate')
         
         # Calculate ACTUAL XIRR from actual repayments
-        # Actual XIRR uses: Investment outflow + all actual repayments received
+        # Actual XIRR uses: Investment outflow + all actual repayments received + remaining expected
         actual_xirr = None
         
-        # Get all repaid cashflows for actual XIRR calculation
-        repaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_repaid')]
-        
-        if repaid_cashflows and calculated_investment > 0:
+        # Use actual_repayments from the database (historical uploads) for XIRR calculation
+        if matched_actual_repayments and calculated_investment > 0:
             try:
                 # Build cashflow series for XIRR
                 xirr_dates = []
@@ -9551,16 +9549,16 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                 xirr_dates.append(investment_date_dt)
                 xirr_values.append(-calculated_investment)
                 
-                # Add all actual repayments (positive)
-                for cf in repaid_cashflows:
-                    cf_date_str = cf.get('repaid_date') or cf.get('date', '')
-                    cf_date_str = cf_date_str.split('T')[0].split(' ')[0]
+                # Add all actual repayments from actual_repayments table (positive)
+                for ar in matched_actual_repayments:
+                    ar_date_str = ar.get('repayment_date', '')
+                    ar_date_str = ar_date_str.split('T')[0].split(' ')[0] if ar_date_str else ''
                     try:
-                        cf_date = datetime.fromisoformat(cf_date_str)
-                        # Use gross amount (principal + interest before TDS)
-                        gross_amount = (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
+                        ar_date = datetime.fromisoformat(ar_date_str)
+                        # Use gross amount
+                        gross_amount = ar.get('gross_amount', 0) or (ar.get('principal', 0) + ar.get('interest', 0))
                         if gross_amount > 0:
-                            xirr_dates.append(cf_date)
+                            xirr_dates.append(ar_date)
                             xirr_values.append(gross_amount)
                     except:
                         continue
