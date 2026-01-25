@@ -6204,24 +6204,44 @@ async def bulk_upload_investment_details(
                 # Check if bond has the required data to generate cashflows
                 if not cashflows:
                     # Check why no cashflows were generated
-                    has_cashflows_per_unit = bool(bond.get('cashflows_per_unit'))
-                    has_interest_payments = bool(bond.get('interest_payments'))
-                    has_principal_payments = bool(bond.get('principal_payments'))
+                    has_cashflows_per_unit = bond.get('cashflows_per_unit', [])
+                    has_interest_payments = bond.get('interest_payments', [])
+                    has_principal_payments = bond.get('principal_payments', [])
+                    
+                    # Detailed debug info
+                    debug_info = {
+                        "bond_code": deal_id,
+                        "investment_date": inv_date_str,
+                        "units": units,
+                        "cashflows_per_unit_count": len(has_cashflows_per_unit) if has_cashflows_per_unit else 0,
+                        "interest_payments_count": len(has_interest_payments) if has_interest_payments else 0,
+                        "principal_payments_count": len(has_principal_payments) if has_principal_payments else 0,
+                        "bond_end_date": bond.get('end_date', 'N/A'),
+                        "cutoff_days": bond.get('cutoff_days', 15)
+                    }
+                    
+                    # Log for debugging
+                    logger.warning(f"No cashflows generated for trade. Debug info: {debug_info}")
                     
                     if not has_cashflows_per_unit and not has_interest_payments:
                         results['errors'].append(
                             f"Row {row_num}: Trade created but NO CASHFLOWS generated. "
-                            f"Bond '{deal_id}' is missing payment schedule data. "
-                            f"Please upload Scheme Master for this bond first, or ensure the bond has cashflows_per_unit defined."
+                            f"Bond '{deal_id}' has {len(has_cashflows_per_unit)} cashflows_per_unit entries. "
+                            f"Investment date: {inv_date_str}, Bond end date: {bond.get('end_date', 'N/A')}. "
+                            f"Ensure the bond template Sheet 4 (Cashflows Per Unit) has payment dates AFTER investment date + {bond.get('cutoff_days', 15)} days."
                         )
-                        # Mark in warnings instead of failing
-                        if 'warnings' not in results:
-                            results['warnings'] = []
-                        results['warnings'].append({
-                            "bond_code": deal_id,
-                            "issue": "Missing cashflows_per_unit or interest_payments",
-                            "suggestion": "Upload Scheme Master with payment schedule for this bond"
-                        })
+                    else:
+                        # Has data but still no cashflows - likely all dates are before investment
+                        results['errors'].append(
+                            f"Row {row_num}: Trade created but cashflows filtered out. "
+                            f"Investment date {inv_date_str} + cutoff {bond.get('cutoff_days', 15)} days = cutoff date. "
+                            f"All {len(has_cashflows_per_unit)} payment dates in bond may be before this cutoff."
+                        )
+                    
+                    # Mark in warnings
+                    if 'warnings' not in results:
+                        results['warnings'] = []
+                    results['warnings'].append(debug_info)
                 
                 if cashflows:
                     today = datetime.now(timezone.utc).date()
