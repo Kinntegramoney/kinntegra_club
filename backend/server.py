@@ -9133,19 +9133,15 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
     """
     Build actual cashflows array with:
     1. Investment entry (outflow)
-    2. Actually received cashflows (with repaid_date or repaid_actual_amount confirmed)
-    3. Actual repayments from actual_repayments collection (historical uploads)
-    4. Upcoming maturity (remaining principal + adjusted interest)
+    2. Actual repayments from actual_repayments collection where date <= today
+    3. Upcoming cashflows from holding_cashflows where date > today
     
     This mirrors the structure of expected_cashflows for consistency.
     """
-    actual_repayments = actual_repayments or []
+    from datetime import datetime, timezone
     
-    # Helper to check if cashflow has actual payment confirmation
-    def is_actually_received(cf):
-        has_repaid_date = cf.get('repaid_date') is not None
-        has_actual_amount = cf.get('repaid_actual_amount') is not None and cf.get('repaid_actual_amount', 0) > 0
-        return has_repaid_date or has_actual_amount
+    actual_repayments = actual_repayments or []
+    today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     
     actual_cashflows = []
     
@@ -9164,20 +9160,40 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
             'source': 'investment'
         })
     
-    # Track dates already processed to avoid double counting
-    processed_dates = set()
+    # 2. Add actual repayments where date <= today (RECEIVED)
+    for ar in actual_repayments:
+        ar_date = (ar.get('repayment_date') or '')[:10]
+        if ar_date and ar_date <= today_str:
+            gross = ar.get('gross_amount', 0) or (ar.get('principal', 0) + ar.get('interest', 0))
+            actual_cashflows.append({
+                'date': ar.get('repayment_date'),
+                'type': 'repayment',
+                'amount': gross,
+                'principal_component': ar.get('principal', 0) or 0,
+                'interest_component': ar.get('interest', 0) or 0,
+                'gross_amount': gross,
+                'tds_amount': ar.get('tds', 0) or 0,
+                'net_amount': ar.get('net_amount', 0) or 0,
+                'is_repaid': True,
+                'source': 'actual_repayment'
+            })
     
-    # 2. Add only ACTUALLY received cashflows (from holding_cashflows with confirmation)
-    received_cashflows = [cf for cf in stored_cashflows if is_actually_received(cf)]
-    for cf in received_cashflows:
-        cf_date = (cf.get('repaid_date') or cf.get('date', ''))[:10]
-        processed_dates.add(cf_date)
-        actual_cashflows.append({
-            'date': cf.get('repaid_date') or cf.get('date'),
-            'type': 'prepayment' if cf.get('is_prepaid') else 'repayment',
-            'amount': (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0),
-            'principal_component': cf.get('principal_component', 0) or 0,
-            'interest_component': cf.get('interest_component', 0) or 0,
+    # 3. Add upcoming cashflows where date > today (OUTSTANDING)
+    for cf in stored_cashflows:
+        cf_date = (cf.get('date') or '')[:10]
+        if cf_date and cf_date > today_str:
+            actual_cashflows.append({
+                'date': cf.get('date'),
+                'type': 'scheduled',
+                'amount': (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0),
+                'principal_component': cf.get('principal_component', 0) or 0,
+                'interest_component': cf.get('interest_component', 0) or 0,
+                'gross_amount': (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0),
+                'tds_amount': cf.get('tds_amount', 0) or 0,
+                'net_amount': cf.get('net_amount', 0) or 0,
+                'is_repaid': False,
+                'source': 'scheduled_upcoming'
+            })
             'gross_amount': (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0),
             'tds_amount': cf.get('tds_amount', 0) or 0,
             'net_amount': cf.get('net_amount', 0) or 0,
