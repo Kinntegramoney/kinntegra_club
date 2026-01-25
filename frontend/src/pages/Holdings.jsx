@@ -1718,8 +1718,6 @@ export default function Holdings() {
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Investment</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Gross Expected</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Profit</th>
-                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Principal</th>
-                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Interest</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Expected XIRR</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Actual XIRR</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Action</th>
@@ -1727,29 +1725,18 @@ export default function Holdings() {
                     </thead>
                     <tbody>
                       {filteredHoldings.map((holding) => {
-                        // GROSS Expected = Principal + Interest (before TDS)
-                        const totalGrossExpected = holding.total_principal + holding.total_interest_gross;
-                        const expectedProfit = totalGrossExpected - holding.invested_amount;
-                        const osPrincipal = holding.total_principal - holding.repaid_principal;
-                        const osInterest = holding.total_interest_gross - holding.repaid_interest;
-                        
-                        // Calculate actual profit from actual cashflows across ALL trades
-                        // Aggregate actual_cashflows from all trades in this holding
+                        // Calculate Gross Expected from ACTUAL cashflows (sum of repayments made + due)
+                        // This changes due to prepayments
                         const allActualCashflows = (holding.trades || []).flatMap(trade => trade.actual_cashflows || []);
-                        const investmentOutflow = allActualCashflows
-                          .filter(cf => cf.type === 'investment')
-                          .reduce((sum, cf) => sum + Math.abs(cf.gross_amount || cf.amount || 0), 0);
-                        const actualInflows = allActualCashflows
+                        const grossExpected = allActualCashflows
                           .filter(cf => cf.type !== 'investment')
                           .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
-                        const actualProfit = actualInflows - investmentOutflow;
-                        const profitDifference = actualProfit - expectedProfit;
+                        
+                        // Profit = Gross Expected - Investment
+                        const profit = grossExpected - holding.invested_amount;
                         
                         // Format number with commas (Indian format)
                         const formatNum = (num) => num.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                        
-                        // Only show difference if it's significant (more than ₹1)
-                        const showDifference = Math.abs(profitDifference) > 1;
                         
                         return (
                         <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
@@ -1757,26 +1744,13 @@ export default function Holdings() {
                             <p className="font-medium text-gray-800 text-xs truncate max-w-[120px]" title={holding.bond_name}>{holding.bond_name}</p>
                             <p className="text-[10px] text-gray-400">{holding.total_units} units</p>
                           </td>
+                          <td className="py-2 px-2 text-right font-mono text-xs">{formatNum(holding.invested_amount)}</td>
+                          <td className="py-2 px-2 text-right font-mono text-xs">{formatNum(grossExpected)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
-                            <p>{formatNum(holding.invested_amount)}</p>
-                            {showDifference && (
-                              <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
-                            )}
+                            <span className={profit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                              {formatNum(profit)}
+                            </span>
                           </td>
-                          <td className="py-2 px-2 text-right font-mono text-xs">
-                            <p>{formatNum(totalGrossExpected)}</p>
-                            {showDifference && (
-                              <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
-                            )}
-                          </td>
-                          <td className="py-2 px-2 text-right font-mono text-xs">
-                            <p>{formatNum(expectedProfit)}</p>
-                            {showDifference && (
-                              <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
-                            )}
-                          </td>
-                          <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osPrincipal)}</td>
-                          <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osInterest)}</td>
                           <td className="py-2 px-2 text-center">
                             {holding.xirr !== null && holding.xirr !== undefined ? (
                               <span className="font-mono text-xs">{holding.xirr.toFixed(2)}%</span>
