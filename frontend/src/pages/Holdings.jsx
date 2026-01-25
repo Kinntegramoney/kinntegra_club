@@ -1661,13 +1661,6 @@ export default function Holdings() {
                         </div>
                       </div>
                     </div>
-                            <span className="font-mono font-bold ml-2 text-blue-800 text-lg">
-                              {modalData.xirr !== null && modalData.xirr !== undefined ? `${modalData.xirr.toFixed(2)}%` : '-'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                     
                     {/* RIGHT COLUMN - Actual Cashflow */}
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
@@ -1683,40 +1676,28 @@ export default function Holdings() {
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
-                              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider w-28">Date</th>
                               <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Principal</th>
                               <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Interest</th>
-                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider bg-green-50">Gross</th>
-                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">TDS</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Gross</th>
                               <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Net</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
                             {actualCashflows.length > 0 ? actualCashflows.map((cf, idx) => (
-                              <tr key={idx} className="bg-white hover:bg-gray-50 transition-colors">
-                                <td className="py-3 px-4">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono text-sm text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</span>
-                                    {cf.is_prepaid && (
-                                      <span className="px-2 py-0.5 bg-amber-500 text-white rounded text-[10px] font-semibold">PREPAID</span>
-                                    )}
-                                  </div>
-                                </td>
+                              <tr key={idx} className="bg-white hover:bg-gray-50">
+                                <td className="py-3 px-4 font-mono text-sm text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</td>
                                 <td className="py-3 px-4 text-right font-mono text-sm text-gray-700">{formatAbsoluteINR(cf.principal_component)}</td>
                                 <td className="py-3 px-4 text-right font-mono text-sm text-gray-700">{formatAbsoluteINR(cf.interest_component)}</td>
-                                <td className="py-3 px-4 text-right bg-green-50">
-                                  <span className="font-mono text-sm font-bold text-green-700">
-                                    {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                  </span>
+                                <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-gray-900">
+                                  {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
                                 </td>
-                                <td className="py-3 px-4 text-right font-mono text-sm text-red-500">{formatAbsoluteINR(cf.tds_amount)}</td>
-                                <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-gray-900">{formatAbsoluteINR(cf.net_amount)}</td>
+                                <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-green-600">{formatAbsoluteINR(cf.net_amount)}</td>
                               </tr>
                             )) : (
                               <tr>
-                                <td colSpan="6" className="py-8 text-center text-gray-500">
-                                  <FileText className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                                  <p className="text-sm">No actual repayments received yet</p>
+                                <td colSpan="5" className="py-8 text-center text-gray-500">
+                                  <p className="text-sm">No actual cashflow yet</p>
                                 </td>
                               </tr>
                             )}
@@ -1728,6 +1709,20 @@ export default function Holdings() {
                       <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
                         <div className="flex justify-between items-center">
                           <div>
+                            <span className="text-sm text-gray-600">Total Received:</span>
+                            <span className="font-mono font-bold ml-2 text-green-600">
+                              {formatAbsoluteINR(actualCashflows.reduce((sum, cf) => sum + (cf.net_amount || 0), 0))}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm text-gray-600">XIRR:</span>
+                            <span className="font-mono font-bold ml-2 text-green-700">
+                              {modalData.actual_xirr !== null && modalData.actual_xirr !== undefined ? `${modalData.actual_xirr.toFixed(2)}%` : '-'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                             <span className="text-sm text-gray-600">Total Received:</span>
                             <span className="font-mono font-bold ml-2 text-gray-900">
                               {formatAbsoluteINR(actualCashflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
