@@ -6063,8 +6063,8 @@ async def bulk_upload_investment_details(
         "failed": 0,
         "errors": [],
         "investments_created": 0,
-        "bonds_updated_to_funded": [],
         "created_trades": [],
+        "bonds_status_updated": [],  # Will show available units and funded status
         "validation_summary": {
             "total_investment_rows": 0
         }
