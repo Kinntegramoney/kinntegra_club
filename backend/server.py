@@ -10183,7 +10183,8 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                     'investment_date': investment_date_str, 
                     'calculated_investment': calculated_investment, 
                     'units': trade['units'],
-                    'total_principal': round(total_principal, 2),
+                    # Use face_value * units for original principal (not total from cashflows)
+                    'total_principal': round(bond.get('face_value', 100000) * trade['units'], 2),
                     'coupon_rate': bond.get('coupon_rate', 0) or bond.get('annual_interest_rate', 0) or bond.get('interest_rate', 0),
                     'maturity_date': bond.get('end_date', '') or bond.get('maturity_date', '')
                 }],
