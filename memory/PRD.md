@@ -2,6 +2,35 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### UI & Feature Fixes (Jan 25, 2026 - Session 3)
+
+**1. Login Page Etihad Theme Fix ✅**
+- **Issue:** Login page had purple background (#2B1B3D) instead of Etihad brand colors
+- **Fix Applied:** Changed to maroon/gold gradient: `linear-gradient(135deg, #5B373C 0%, #3D252A 50%, #1F1F1F 100%)`
+- **Files Modified:** Login.jsx (line 96), CustomerSignup.jsx
+
+**2. Dashboard Disabled by Default ✅**
+- **Issue:** Dashboard was showing on frontend despite being disabled in settings
+- **Fix Applied:** 
+  - Added `dashboard` feature to permissions system (BrokerSettings.jsx)
+  - Sidebar.jsx checks `hasPermission('dashboard', 'view')` before showing Dashboard menu
+  - Login redirects to `/opportunities` instead of `/dashboard`
+  - ProtectedRoute redirects to `/opportunities` instead of `/dashboard`
+- **Files Modified:** Sidebar.jsx, Login.jsx, App.js, BrokerSettings.jsx
+
+**3. Simplified Sign Up Form (Lead Capture) ✅**
+- **Issue:** Sign up form asked for too many fields (PAN, password, PIN, etc.)
+- **User Request:** Only collect Full Name, Email, Phone Number and add to leads
+- **Fix Applied:**
+  - Simplified form to 3 fields only
+  - Button changed from "SIGN UP" to "REGISTER INTEREST"
+  - Success state shows "Thank You!" with green checkmark
+  - New backend endpoint: `POST /api/leads/interest` (no auth required)
+  - Leads created with `source: "signup_page"`
+- **Files Modified:** CustomerSignup.jsx, server.py (line 18830-18890)
+
+---
+
 ### Bug Fixes Completed (Jan 25, 2026 - Session 2)
 
 **1. Bulk Upload Client Welcome Email Fix (P0) ✅**
