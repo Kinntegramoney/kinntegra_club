@@ -1733,13 +1733,13 @@ export default function Holdings() {
                         const osPrincipal = holding.total_principal - holding.repaid_principal;
                         const osInterest = holding.total_interest_gross - holding.repaid_interest;
                         
-                        // Calculate actual profit from actual cashflows
-                        // Investment is negative, repayments are positive
-                        const actualCashflows = holding.actual_cashflows || [];
-                        const investmentOutflow = actualCashflows
+                        // Calculate actual profit from actual cashflows across ALL trades
+                        // Aggregate actual_cashflows from all trades in this holding
+                        const allActualCashflows = (holding.trades || []).flatMap(trade => trade.actual_cashflows || []);
+                        const investmentOutflow = allActualCashflows
                           .filter(cf => cf.type === 'investment')
                           .reduce((sum, cf) => sum + Math.abs(cf.gross_amount || cf.amount || 0), 0);
-                        const actualInflows = actualCashflows
+                        const actualInflows = allActualCashflows
                           .filter(cf => cf.type !== 'investment')
                           .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
                         const actualProfit = actualInflows - investmentOutflow;
@@ -1747,6 +1747,9 @@ export default function Holdings() {
                         
                         // Format number with commas (Indian format)
                         const formatNum = (num) => num.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        
+                        // Only show difference if it's significant (more than ₹1)
+                        const showDifference = Math.abs(profitDifference) > 1;
                         
                         return (
                         <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
@@ -1756,19 +1759,19 @@ export default function Holdings() {
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(holding.invested_amount)}</p>
-                            {profitDifference !== 0 && (
+                            {showDifference && (
                               <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
                             )}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(totalGrossExpected)}</p>
-                            {profitDifference !== 0 && (
+                            {showDifference && (
                               <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
                             )}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(expectedProfit)}</p>
-                            {profitDifference !== 0 && (
+                            {showDifference && (
                               <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
                             )}
                           </td>
