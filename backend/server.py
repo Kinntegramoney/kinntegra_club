@@ -9186,6 +9186,25 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
             'source': 'actual_repayment'
         })
     
+    # 2b. Add actual_repayments from historical uploads (not already in holding_cashflows)
+    for ar in actual_repayments:
+        ar_date = (ar.get('repayment_date') or '')[:10]
+        if ar_date and ar_date not in processed_dates:
+            processed_dates.add(ar_date)
+            gross = ar.get('gross_amount', 0) or (ar.get('principal', 0) + ar.get('interest', 0))
+            actual_cashflows.append({
+                'date': ar.get('repayment_date'),
+                'type': 'repayment',
+                'amount': gross,
+                'principal_component': ar.get('principal', 0) or 0,
+                'interest_component': ar.get('interest', 0) or 0,
+                'gross_amount': gross,
+                'tds_amount': ar.get('tds', 0) or 0,
+                'net_amount': ar.get('net_amount', 0) or 0,
+                'is_repaid': True,
+                'source': 'actual_repayment_upload'
+            })
+    
     # 3. Add upcoming maturity (all cashflows NOT actually received)
     # This is the remaining principal + interest calculated on reduced balance
     pending_cashflows = [cf for cf in stored_cashflows if not is_actually_received(cf)]
