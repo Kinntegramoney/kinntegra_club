@@ -1725,21 +1725,26 @@ export default function Holdings() {
                     </thead>
                     <tbody>
                       {filteredHoldings.map((holding) => {
-                        // ORIGINAL Expected (from bond definition - without considering prepayments)
-                        const originalGrossExpected = holding.total_principal + holding.total_interest_gross;
-                        const originalProfit = originalGrossExpected - holding.invested_amount;
-                        
-                        // ACTUAL Expected (from actual cashflows - sum of repayments made + due)
-                        // This changes due to prepayments affecting interest calculations
-                        const allActualCashflows = (holding.trades || []).flatMap(trade => trade.actual_cashflows || []);
-                        const actualGrossExpected = allActualCashflows
+                        // Get all expected cashflows (from secondary market calculator)
+                        const allExpectedCashflows = (holding.trades || []).flatMap(trade => trade.expected_cashflows || []);
+                        // EXPECTED Gross (sum of expected inflows - this is the target without prepayments affecting it)
+                        const expectedGross = allExpectedCashflows
                           .filter(cf => cf.type !== 'investment')
                           .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
-                        const actualProfit = actualGrossExpected - holding.invested_amount;
+                        const expectedProfit = expectedGross - holding.invested_amount;
                         
-                        // Difference due to prepayments (Actual - Original)
-                        const grossDifference = actualGrossExpected - originalGrossExpected;
-                        const profitDifference = actualProfit - originalProfit;
+                        // ACTUAL Gross (from actual cashflows - sum of repayments made + due)
+                        // This changes due to prepayments affecting interest calculations
+                        const allActualCashflows = (holding.trades || []).flatMap(trade => trade.actual_cashflows || []);
+                        const actualGross = allActualCashflows
+                          .filter(cf => cf.type !== 'investment')
+                          .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                        const actualProfit = actualGross - holding.invested_amount;
+                        
+                        // Difference due to prepayments (Actual - Expected)
+                        // Negative means less profit due to prepayments reducing interest
+                        const grossDifference = actualGross - expectedGross;
+                        const profitDifference = actualProfit - expectedProfit;
                         
                         // Format number with commas (Indian format)
                         const formatNum = (num) => num.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -1758,7 +1763,7 @@ export default function Holdings() {
                             {showDifference && <p className="text-red-600">{grossDifference < 0 ? '-' : ''}{formatNum(Math.abs(grossDifference))}</p>}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
-                            <p>{formatNum(actualGrossExpected)}</p>
+                            <p>{formatNum(actualGross)}</p>
                             {showDifference && <p className="text-red-600">{grossDifference < 0 ? '-' : ''}{formatNum(Math.abs(grossDifference))}</p>}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
