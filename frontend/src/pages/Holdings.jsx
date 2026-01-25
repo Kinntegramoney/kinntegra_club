@@ -1749,8 +1749,14 @@ export default function Holdings() {
                         // Format number with commas (Indian format)
                         const formatNum = (num) => num.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                         
+                        // Format difference in brackets (no minus sign)
+                        const formatDiff = (num) => `(${Math.abs(num).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})})`;
+                        
                         // Show difference row if there's a significant change (> ₹1)
                         const showDifference = Math.abs(grossDifference) > 1;
+                        
+                        // Tooltip text showing the calculation
+                        const diffTooltip = `Expected: ₹${formatNum(expectedGross)} - Actual: ₹${formatNum(actualGross)} = ₹${formatNum(grossDifference)}`;
                         
                         return (
                         <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
@@ -1760,15 +1766,15 @@ export default function Holdings() {
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(holding.invested_amount)}</p>
-                            {showDifference && <p className="text-[10px] text-red-600">{grossDifference < 0 ? '-' : ''}{formatNum(Math.abs(grossDifference))}</p>}
+                            {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={diffTooltip}>{formatDiff(grossDifference)}</p>}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(actualGross)}</p>
-                            {showDifference && <p className="text-[10px] text-red-600">{grossDifference < 0 ? '-' : ''}{formatNum(Math.abs(grossDifference))}</p>}
+                            {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={diffTooltip}>{formatDiff(grossDifference)}</p>}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p className={actualProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{formatNum(actualProfit)}</p>
-                            {showDifference && <p className="text-[10px] text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>}
+                            {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={diffTooltip}>{formatDiff(profitDifference)}</p>}
                           </td>
                           <td className="py-2 px-2 text-center">
                             {holding.xirr !== null && holding.xirr !== undefined ? (
