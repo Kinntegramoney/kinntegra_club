@@ -3090,6 +3090,138 @@ async def reinvestment_approve_via_link(token: str, action: str = "approve"):
         return {"success": False, "message": "Invalid or expired approval link"}
 
 
+# Kinntegra MF Buy Scheduler API Configuration
+KINNTEGRA_API_BASE_URL = "https://api.kinntegra.co.in/api/transaction"
+KINNTEGRA_API_KEY = "397071386F563639685674495956545432704E4F6E673D3D"
+
+
+async def call_kinntegra_mf_buy_scheduler(cashflow: dict, client: dict, is_revision: bool = False) -> dict:
+    """
+    Call Kinntegra MF Buy Scheduler API when client approves reinvestment tag.
+    
+    Args:
+        cashflow: The holding_cashflows document with reinvestment tag
+        client: The client document
+        is_revision: If True, calls revisebuyschedule endpoint instead of addbuyschedule
+    
+    Returns:
+        dict with API response or error details
+    """
+    import httpx
+    
+    try:
+        # Determine the investment amount based on reinvestment tag
+        tag = cashflow.get('reinvestment_tag', 'not_tagged')
+        if tag == 'other':
+            amount = cashflow.get('custom_amount', 0)
+        elif tag == 'principal':
+            amount = cashflow.get('principal_component', 0)
+        elif tag == 'interest':
+            amount = cashflow.get('interest_component', 0) - cashflow.get('tds_amount', 0)
+        elif tag == 'net_amount':
+            amount = cashflow.get('net_amount', 0)
+        else:
+            return {"status": "skipped", "message": f"Invalid reinvestment tag: {tag}"}
+        
+        if amount <= 0:
+            return {"status": "skipped", "message": "Investment amount is zero or negative"}
+        
+        # Get bond details for DealId
+        bond = await db.bonds.find_one({"id": cashflow.get('bond_id')}, {"_id": 0})
+        deal_id = bond.get('bond_code', '') if bond else cashflow.get('bond_id', '')
+        
+        # Get UCC from client (Unique Client Code for MF)
+        ucc = client.get('ucc', client.get('pan_number', ''))
+        
+        # Prepare investment data
+        investment_item = {
+            "UCC": ucc,
+            "DealId": deal_id,
+            "BondInvestmentDate": cashflow.get('date', datetime.now(timezone.utc).strftime('%Y-%m-%d')),
+            "InvestmentAmount": amount,
+            "PortfolioName": cashflow.get('portfolio_category', 'wealth'),
+            "MFInvestmentDate": datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        }
+        
+        # Add revision fields if this is a revision
+        if is_revision:
+            investment_item["RevisedAmount"] = amount
+            investment_item["RevisedDate"] = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        
+        api_payload = {"InvestmentData": [investment_item]}
+        
+        # Determine endpoint
+        endpoint = f"{KINNTEGRA_API_BASE_URL}/{'revisebuyschedule' if is_revision else 'addbuyschedule'}"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": KINNTEGRA_API_KEY
+        }
+        
+        # Log the API request
+        api_log = {
+            "id": str(uuid.uuid4()),
+            "cashflow_id": cashflow.get('id'),
+            "client_id": client.get('id'),
+            "client_name": client.get('name'),
+            "endpoint": endpoint,
+            "payload": api_payload,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.kinntegra_api_logs.insert_one(api_log)
+        
+        # Make the API call
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            response = await http_client.post(endpoint, json=api_payload, headers=headers)
+            
+            response_data = response.json() if response.headers.get('content-type', '').startswith('application/json') else {"raw": response.text}
+            
+            # Update log with response
+            await db.kinntegra_api_logs.update_one(
+                {"id": api_log['id']},
+                {"$set": {
+                    "status": "success" if response.status_code == 200 else "error",
+                    "response_status_code": response.status_code,
+                    "response_body": response_data,
+                    "completed_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            # Update cashflow with API submission status
+            await db.holding_cashflows.update_one(
+                {"id": cashflow.get('id')},
+                {"$set": {
+                    "kinntegra_api_submitted": True,
+                    "kinntegra_api_status": "success" if response.status_code == 200 else "error",
+                    "kinntegra_api_response": response_data,
+                    "kinntegra_submitted_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"Successfully submitted to Kinntegra API for cashflow {cashflow.get('id')}")
+                return {
+                    "status": "success",
+                    "message": "Successfully submitted to Kinntegra MF Buy Scheduler",
+                    "api_response": response_data
+                }
+            else:
+                logger.error(f"Kinntegra API error: {response.status_code} - {response_data}")
+                return {
+                    "status": "error",
+                    "message": f"API returned status {response.status_code}",
+                    "api_response": response_data
+                }
+                
+    except httpx.TimeoutException:
+        logger.error("Kinntegra API timeout")
+        return {"status": "error", "message": "API request timed out"}
+    except Exception as e:
+        logger.error(f"Error calling Kinntegra API: {e}")
+        return {"status": "error", "message": str(e)}
+
+
 async def submit_to_kinntegra_internal(submission_id: str) -> dict:
     """Internal function to submit approved reinvestment to Kinntegra API"""
     try:
