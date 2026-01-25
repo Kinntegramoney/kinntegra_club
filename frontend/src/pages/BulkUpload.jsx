@@ -38,7 +38,7 @@ export default function BulkUpload() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ["sub-brokers", "clients", "bonds", "real-estate", "historical-trades", "scheme-master"].includes(tab)) {
+    if (tab && ["sub-brokers", "clients", "bonds", "real-estate", "investment-details", "historical-trades", "scheme-master"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
