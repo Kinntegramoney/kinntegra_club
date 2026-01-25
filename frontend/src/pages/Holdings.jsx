@@ -1904,43 +1904,6 @@ export default function Holdings() {
                     </div>
                     
                   </div>
-                  
-                  {/* Bottom Summary Bar */}
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex flex-wrap gap-6 justify-between items-center text-sm">
-                      <div className="flex gap-6">
-                        <div>
-                          <span className="text-gray-500">Investment:</span>
-                          <span className="font-mono font-semibold ml-2">{formatAbsoluteINR(modalData.invested_amount)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Total Principal:</span>
-                          <span className="font-mono font-medium ml-2">{formatAbsoluteINR(modalData.total_principal)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Total Interest:</span>
-                          <span className="font-mono font-medium ml-2">{formatAbsoluteINR(modalData.total_interest_gross)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Total TDS:</span>
-                          <span className="font-mono font-medium ml-2 text-red-600">{formatINR(modalData.total_tds)}</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-4 items-center">
-                        <div className="text-right">
-                          <span className="text-gray-500">Upcoming:</span>
-                          <span className="font-mono font-semibold ml-2 text-amber-600">{formatINR(modalData.upcoming_expected)}</span>
-                        </div>
-                        <div className="h-8 w-px bg-gray-300"></div>
-                        <div className="text-right">
-                          <span className="text-gray-500">Net Profit:</span>
-                          <span className={`font-mono font-bold ml-2 ${(modalData.gross_profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatINR(modalData.gross_profit || 0)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               )}
               
