@@ -1866,7 +1866,7 @@ export default function Holdings() {
                       <div className="bg-green-100 px-4 py-2 border-t border-green-200 text-sm">
                         <span className="text-green-600">Received:</span>
                         <span className="font-mono font-semibold ml-2 text-green-800">
-                          {formatINR(modalData.trades[activeTab].cashflows.filter(cf => cf.is_repaid).reduce((sum, cf) => sum + (cf.principal_component || 0) + (cf.interest_component || 0), 0))}
+                          {formatINR((modalData.trades[activeTab].actual_cashflows || modalData.trades[activeTab].cashflows?.filter(cf => cf.is_repaid) || []).reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
                         </span>
                       </div>
                     </div>
@@ -1875,27 +1875,27 @@ export default function Holdings() {
                   {/* Transaction Footer */}
                   <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end gap-6 text-sm flex-wrap">
                     <div>
-                      <span className="text-gray-500">Total Principal:</span>
+                      <span className="text-gray-500">Expected Principal:</span>
                       <span className="font-mono font-medium ml-2">
-                        {formatINR(modalData.trades[activeTab].cashflows.reduce((sum, cf) => sum + cf.principal_component, 0))}
+                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).reduce((sum, cf) => sum + (cf.principal_component || 0), 0))}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Total Interest:</span>
+                      <span className="text-gray-500">Expected Interest:</span>
                       <span className="font-mono font-medium ml-2">
-                        {formatINR(modalData.trades[activeTab].cashflows.reduce((sum, cf) => sum + cf.interest_component, 0))}
+                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).reduce((sum, cf) => sum + (cf.interest_component || 0), 0))}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Total TDS:</span>
+                      <span className="text-gray-500">Expected TDS:</span>
                       <span className="font-mono font-medium ml-2 text-red-600">
-                        {formatINR(modalData.trades[activeTab].cashflows.reduce((sum, cf) => sum + cf.tds_amount, 0))}
+                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).reduce((sum, cf) => sum + (cf.tds_amount || 0), 0))}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Repaid:</span>
+                      <span className="text-gray-500">Actual Received:</span>
                       <span className="font-mono font-medium ml-2 text-green-600">
-                        {modalData.trades[activeTab].cashflows.filter(cf => cf.is_repaid).length}/{modalData.trades[activeTab].cashflows.length}
+                        {(modalData.trades[activeTab].actual_cashflows || []).length} payments
                       </span>
                     </div>
                   </div>
