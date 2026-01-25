@@ -9420,6 +9420,31 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         gross_expected = total_principal + total_interest_gross
         gross_profit = gross_expected - investment_amount
         
+        # Build expected_cashflows with investment as the first entry (outflow)
+        expected_cashflows_with_investment = []
+        
+        # Add investment entry (outflow - negative)
+        if calculated_investment > 0:
+            expected_cashflows_with_investment.append({
+                'date': investment_date_str,
+                'type': 'investment',
+                'amount': -calculated_investment,  # Negative = outflow
+                'principal_component': 0,
+                'interest_component': 0,
+                'gross_amount': -calculated_investment,
+                'tds_amount': 0,
+                'net_amount': -calculated_investment,
+                'source': 'secondary_calculator',
+                'description': f'Investment ({trade["units"]} units @ Secondary IRR {secondary_irr}%)'
+            })
+        
+        # Add inflows (maturity payments)
+        for cf in original_cashflows:
+            cf_entry = cf.copy()
+            cf_entry['type'] = 'inflow'
+            cf_entry['amount'] = cf.get('gross_amount', 0)  # Positive = inflow
+            expected_cashflows_with_investment.append(cf_entry)
+        
         holdings.append({
             "trade_id": trade['id'],
             "bond_id": trade['bond_id'],
@@ -9427,6 +9452,7 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "units": trade['units'],
             "investment_date": trade['investment_date'],
             "invested_amount": round(investment_amount, 2),
+            "calculated_investment": round(calculated_investment, 2),  # From secondary calculator
             "total_principal": round(total_principal, 2),
             "total_interest_gross": round(total_interest_gross, 2),
             "total_tds": round(total_tds, 2),
@@ -9445,7 +9471,7 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "xirr": expected_xirr,  # Bond's Secondary IRR
             "actual_xirr": actual_xirr,  # Same as expected
             "cashflows": stored_cashflows,  # Current state of cashflows
-            "expected_cashflows": original_cashflows,  # Original expected cashflows from bond
+            "expected_cashflows": expected_cashflows_with_investment,  # With investment as first entry
             "actual_cashflows": [cf for cf in stored_cashflows if cf.get('is_repaid')],  # Actual repayments
             "status": "active" if upcoming_gross > 0 else "fully_repaid"
         })
