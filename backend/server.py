@@ -5158,8 +5158,8 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
     # Sheet 2: Financial Details
     ws_financial = wb.create_sheet("Financial Details")
     
-    financial_headers = ["Bond Code*", "Principal Amount (INR)*", "Coupon Rate (%)*", 
-                        "Primary IRR (%)*", "Secondary IRR (%)*", "Face Value per Unit"]
+    financial_headers = ["Bond Code*", "Coupon Rate (%)*", "Primary IRR (%)*", 
+                        "Secondary IRR (%)*", "Face Value per Unit"]
     for col, header in enumerate(financial_headers, 1):
         cell = ws_financial.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
@@ -5167,7 +5167,7 @@ async def download_bond_template(current_user: dict = Depends(get_current_user))
         cell.alignment = Alignment(horizontal="center", wrap_text=True)
         ws_financial.column_dimensions[get_column_letter(col)].width = 22
     
-    financial_sample = ["ABC-NCD-2025", 1000000, 12.5, 14.0, 12.0, 100000]
+    financial_sample = ["ABC-NCD-2025", 12.5, 14.0, 12.0, 100000]
     for col, value in enumerate(financial_sample, 1):
         ws_financial.cell(row=2, column=col, value=value)
     
