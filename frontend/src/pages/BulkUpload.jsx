@@ -506,6 +506,14 @@ export default function BulkUpload() {
                             <li>• Default schedule if none provided</li>
                           </>
                         )}
+                        {activeTab === "investment-details" && (
+                          <>
+                            <li>• Deal ID, Date, PAN, Units, Amount, UTR</li>
+                            <li>• Investment details only (no repayments)</li>
+                            <li>• Simpler upload for investment data</li>
+                            <li className="text-teal-700 font-medium mt-2">⚠️ Create bonds & clients FIRST!</li>
+                          </>
+                        )}
                         {activeTab === "historical-trades" && (
                           <>
                             <li>• <strong>Sheet 1 - Investment Details:</strong></li>
