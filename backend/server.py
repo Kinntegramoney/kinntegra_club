@@ -4313,8 +4313,22 @@ async def bulk_upload_indian_clients(
             await db.users.insert_one(user_data)
             await db.clients.insert_one(client_dict)
             
+            # Send welcome email with credentials (if email is provided)
+            if email:
+                try:
+                    send_welcome_email_client(
+                        client_name=name,
+                        client_email=email,
+                        pan=login_id,  # Use login_id (PAN or PAN+1 for role overlap)
+                        password="kinntegra123",
+                        pin="1234",
+                        broker_name=current_user.get('name', 'Your Broker')
+                    )
+                except Exception as email_error:
+                    logger.warning(f"Failed to send welcome email to {email}: {email_error}")
+            
             # Include login_id in success message if role overlap
-            success_info = {"name": name, "pan": pan}
+            success_info = {"name": name, "pan": pan, "email_sent": bool(email)}
             if is_role_overlap:
                 success_info["client_login_id"] = login_id
                 success_info["note"] = "Sub-broker is also a client - uses PAN+1 for client login"

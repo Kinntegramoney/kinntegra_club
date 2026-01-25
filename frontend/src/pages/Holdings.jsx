@@ -1993,8 +1993,8 @@ export default function Holdings() {
                         // Show difference row if there's a significant change (> ₹1)
                         const showDifference = Math.abs(grossDifference) > 1;
                         
-                        // Tooltip text showing the calculation
-                        const diffTooltip = `Expected: ₹${formatNum(expectedGross)} - Actual: ₹${formatNum(actualGross)} = ₹${formatNum(grossDifference)}`;
+                        // Tooltip text showing the calculation (previous expected - actual expected now)
+                        const diffTooltip = `Previous expected: ₹${formatNum(expectedGross)} - Actual expected now: ₹${formatNum(actualGross)}`;
                         
                         return (
                         <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
