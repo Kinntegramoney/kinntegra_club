@@ -1723,20 +1723,6 @@ export default function Holdings() {
                         </div>
                       </div>
                     </div>
-                            <span className="text-sm text-gray-600">Total Received:</span>
-                            <span className="font-mono font-bold ml-2 text-gray-900">
-                              {formatAbsoluteINR(actualCashflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-sm text-gray-600">Actual XIRR:</span>
-                            <span className="font-mono font-bold ml-2 text-green-700 text-lg">
-                              {modalData.actual_xirr !== null && modalData.actual_xirr !== undefined ? `${modalData.actual_xirr.toFixed(2)}%` : '-'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                     
                   </div>
                   
@@ -1754,7 +1740,7 @@ export default function Holdings() {
                         </div>
                         <div>
                           <span className="text-gray-500">Total Interest:</span>
-                          <span className="font-mono font-medium ml-2">{formatINR(modalData.total_interest_gross)}</span>
+                          <span className="font-mono font-medium ml-2">{formatAbsoluteINR(modalData.total_interest_gross)}</span>
                         </div>
                         <div>
                           <span className="text-gray-500">Total TDS:</span>
