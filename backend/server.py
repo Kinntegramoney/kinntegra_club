@@ -5394,6 +5394,7 @@ async def bulk_upload_bonds(
                 "id": bond_id,
                 "bond_code": bond_code,
                 "name": str(row['bond_name']).strip(),
+                "isin": str(row.get('isin', '')) if not pd.isna(row.get('isin')) else '',
                 "coupon_rate": coupon_rate_val,
                 "primary_irr": float(row['primary_irr']),
                 "secondary_irr": float(row['secondary_irr']),
