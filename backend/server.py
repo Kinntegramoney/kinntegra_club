@@ -9411,10 +9411,56 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             if ar.get('repayment_date') and ar['repayment_date'].split('T')[0] not in scheduled_dates
         ]
         
-        # Use bond's Secondary IRR for both Expected and Actual XIRR
-        # Complex XIRR calculation logic has been removed
+        # Use bond's Secondary IRR for Expected XIRR
         expected_xirr = bond.get('secondary_irr') or bond.get('interest_rate') or bond.get('coupon_rate')
-        actual_xirr = expected_xirr  # Same as expected - no complex calculation
+        
+        # Calculate ACTUAL XIRR from actual repayments
+        # Actual XIRR uses: Investment outflow + all actual repayments received
+        actual_xirr = None
+        
+        # Get all repaid cashflows for actual XIRR calculation
+        repaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_repaid')]
+        
+        if repaid_cashflows and calculated_investment > 0:
+            try:
+                # Build cashflow series for XIRR
+                xirr_dates = []
+                xirr_values = []
+                
+                # Investment outflow (negative)
+                xirr_dates.append(investment_date_dt)
+                xirr_values.append(-calculated_investment)
+                
+                # Add all actual repayments (positive)
+                for cf in repaid_cashflows:
+                    cf_date_str = cf.get('repaid_date') or cf.get('date', '')
+                    cf_date_str = cf_date_str.split('T')[0].split(' ')[0]
+                    try:
+                        cf_date = datetime.fromisoformat(cf_date_str)
+                        # Use gross amount (principal + interest before TDS)
+                        gross_amount = (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
+                        if gross_amount > 0:
+                            xirr_dates.append(cf_date)
+                            xirr_values.append(gross_amount)
+                    except:
+                        continue
+                
+                # Only calculate if we have at least 2 cashflows
+                if len(xirr_dates) >= 2 and len(xirr_values) >= 2:
+                    # Sort by date
+                    sorted_cashflows = sorted(zip(xirr_dates, xirr_values), key=lambda x: x[0])
+                    xirr_dates = [x[0] for x in sorted_cashflows]
+                    xirr_values = [x[1] for x in sorted_cashflows]
+                    
+                    calculated_actual_xirr = calculate_xirr(xirr_dates, xirr_values)
+                    if calculated_actual_xirr is not None:
+                        actual_xirr = round(calculated_actual_xirr * 100, 2)  # Convert to percentage
+            except Exception as e:
+                logger.error(f"Error calculating actual XIRR: {e}")
+        
+        # Fallback to expected XIRR if actual couldn't be calculated
+        if actual_xirr is None:
+            actual_xirr = expected_xirr
         
         # GROSS Profit = Gross Expected - Investment
         gross_expected = total_principal + total_interest_gross
