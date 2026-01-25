@@ -403,11 +403,13 @@ export default function Holdings() {
 
   const openCashflowModal = (holding) => {
     setModalData(holding);
+    setActiveTab("summary");
     setOpenMenu(null);
   };
 
   const closeModal = () => {
     setModalData(null);
+    setActiveTab("summary");
   };
 
   // Get consolidated cashflows by date
