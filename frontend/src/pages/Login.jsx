@@ -128,7 +128,8 @@ export default function Login() {
               <img 
                 src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/pl00s3mu_image.png" 
                 alt="Kinntegraa Logo" 
-                className="w-full h-full object-cover scale-150"
+                className="w-full h-full object-cover"
+                style={{ transform: 'scale(1.8)' }}
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextSibling.style.display = 'flex';
