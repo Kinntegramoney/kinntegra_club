@@ -1974,13 +1974,13 @@ export default function Holdings() {
                     <div>
                       <span className="text-gray-500">Expected Interest:</span>
                       <span className="font-mono font-medium ml-2">
-                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.interest_component || 0), 0))}
+                        {formatAbsoluteINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.interest_component || 0), 0))}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-500">Expected TDS:</span>
                       <span className="font-mono font-medium ml-2 text-red-600">
-                        {formatINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.tds_amount || 0), 0))}
+                        {formatAbsoluteINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.tds_amount || 0), 0))}
                       </span>
                     </div>
                     <div>
