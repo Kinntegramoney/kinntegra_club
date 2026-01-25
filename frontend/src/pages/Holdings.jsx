@@ -472,7 +472,7 @@ export default function Holdings() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await axios.post(`${API}/bulk-upload/historical-trades`, formData, {
+      const response = await axios.post(`${API}/bulk/historical-trades`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
