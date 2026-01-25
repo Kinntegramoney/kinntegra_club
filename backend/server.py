@@ -9132,14 +9132,19 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
 
 
 
-def build_actual_cashflows_with_investment(calculated_investment, investment_date_str, stored_cashflows, units, secondary_irr, actual_repayments=None):
+def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual_repayments=None):
     """
     Build actual cashflows array with:
-    1. Investment entry (outflow)
+    1. ALL investment entries from trades (outflows)
     2. Actual repayments from actual_repayments collection where date <= today
     3. Remaining maturity (adjusted for what's already been paid)
     
-    This mirrors the structure of expected_cashflows for consistency.
+    This is called at the BOND level, not trade level, to consolidate all trades.
+    
+    Args:
+        trades_data: List of dicts with {investment_date, calculated_investment, units}
+        stored_cashflows: All scheduled cashflows for this bond
+        actual_repayments: All actual repayments from uploads
     """
     from datetime import datetime, timezone
     
@@ -9148,20 +9153,24 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
     
     actual_cashflows = []
     
-    # 1. Add investment entry (outflow - negative)
-    if calculated_investment > 0:
-        actual_cashflows.append({
-            'date': investment_date_str,
-            'type': 'investment',
-            'amount': -calculated_investment,
-            'principal_component': 0,
-            'interest_component': 0,
-            'gross_amount': -calculated_investment,
-            'tds_amount': 0,
-            'net_amount': -calculated_investment,
-            'is_repaid': True,
-            'source': 'investment'
-        })
+    # 1. Add ALL investment entries (outflows - negative)
+    for trade_info in trades_data:
+        inv_date = trade_info.get('investment_date', '')
+        inv_amount = trade_info.get('calculated_investment', 0) or trade_info.get('invested_amount', 0)
+        if inv_amount > 0:
+            actual_cashflows.append({
+                'date': inv_date,
+                'type': 'investment',
+                'amount': -inv_amount,
+                'principal_component': 0,
+                'interest_component': 0,
+                'gross_amount': -inv_amount,
+                'tds_amount': 0,
+                'net_amount': -inv_amount,
+                'is_repaid': True,
+                'source': 'investment',
+                'units': trade_info.get('units', 0)
+            })
     
     # Calculate total scheduled principal and interest
     total_scheduled_principal = sum(cf.get('principal_component', 0) or 0 for cf in stored_cashflows)
@@ -9200,18 +9209,8 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
             })
     
     # 3. Calculate REMAINING maturity (what's left to be paid)
-    # Remaining principal = total scheduled - already paid
     remaining_principal = max(0, total_scheduled_principal - total_paid_principal)
-    
-    # Remaining interest = proportionally adjusted based on remaining principal
-    # If prepayments have reduced principal, future interest is reduced too
-    if total_scheduled_principal > 0:
-        principal_ratio = remaining_principal / total_scheduled_principal
-        # Remaining interest should be proportional to remaining principal
-        # But we need to subtract already paid interest
-        remaining_interest = max(0, total_scheduled_interest - total_paid_interest)
-    else:
-        remaining_interest = max(0, total_scheduled_interest - total_paid_interest)
+    remaining_interest = max(0, total_scheduled_interest - total_paid_interest)
     
     # Get the maturity date (last scheduled cashflow date)
     maturity_date = None
@@ -9223,7 +9222,6 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
     # Add remaining maturity if there's anything left to pay
     if maturity_date and (remaining_principal > 0 or remaining_interest > 0):
         remaining_gross = remaining_principal + remaining_interest
-        # Estimate TDS on remaining interest (10% typical)
         remaining_tds = remaining_interest * 0.1 if remaining_interest > 0 else 0
         remaining_net = remaining_gross - remaining_tds
         
