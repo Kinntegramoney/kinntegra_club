@@ -2,6 +2,23 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### Bug Fixes Completed (Jan 25, 2026 - Session 2)
+
+**1. Bulk Upload Client Welcome Email Fix (P0) ✅**
+- **Issue:** Clients created via bulk upload (`/api/bulk/clients`) were not receiving welcome emails with their login credentials
+- **Root Cause:** The `bulk_upload_clients` function was not calling `send_welcome_email_client` after creating the client
+- **Fix Applied:** Added email sending logic after client insertion (line 4316-4328 in server.py)
+- **Verification:** Testing agent confirmed `send_welcome_email_client()` is called with correct parameters (client_name, client_email, pan, password, pin, broker_name)
+
+**2. Holdings Page Negative Number Tooltip Fix (P0) ✅**
+- **Issue:** The tooltip for negative difference values showed "Expected: X - Actual: Y = Z" format
+- **User Request:** Change tooltip to show "Previous expected - Actual expected now"
+- **Fix Applied:** Updated `diffTooltip` variable at line 1997 in Holdings.jsx
+- **New Format:** `Previous expected: ₹{expectedGross} - Actual expected now: ₹{actualGross}`
+- **Verification:** Testing agent confirmed tooltip displays correctly in UI
+
+---
+
 ### Repayment Status Bar Fix (Jan 25, 2026)
 **Bug:** The "Repayment Status" bar was showing 100% received even for future-dated repayments.
 
