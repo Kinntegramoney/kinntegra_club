@@ -119,14 +119,23 @@ export default function Login() {
            data-testid="login-card">
         
         {/* Logo */}
-        <div className="flex justify-center mb-10">
+        <div className="flex justify-center mb-8">
           <div className="relative">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center"
+            <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden"
                  style={{
-                   background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                   boxShadow: '0 10px 25px rgba(245, 158, 11, 0.3)'
+                   background: 'linear-gradient(135deg, #C9A227 0%, #A68521 100%)',
+                   boxShadow: '0 8px 20px rgba(201, 162, 39, 0.3)'
                  }}>
-              <span className="text-white text-4xl font-bold" style={{ fontFamily: 'serif' }}>K</span>
+              <img 
+                src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/fdrtuxyr_WhatsApp%20Image%202026-01-25%20at%2016.32.16.jpeg" 
+                alt="Kinntegraa Logo" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <span className="text-white text-3xl font-bold hidden items-center justify-center" style={{ fontFamily: 'serif' }}>K</span>
             </div>
           </div>
         </div>
