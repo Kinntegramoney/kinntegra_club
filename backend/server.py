@@ -6498,106 +6498,81 @@ async def bulk_upload_historical_trades(
                         # Parse repayment date for prepayment processing
                         try:
                             prepay_date = datetime.strptime(rep_date_str, '%Y-%m-%d')
-                                except:
-                                    prepay_date = datetime.now()
-                                
-                                # Process the prepayment
-                                prepay_result = await process_bond_prepayment(
-                                    db_instance=db,
-                                    trade_id=matching_trade['id'],
-                                    prepayment_amount=prepay_amount,
-                                    prepayment_date=prepay_date,
-                                    source="historical_upload",
-                                    recorded_by=current_user['id'],
-                                    notes=f"{'Irregular payment' if is_irregular_payment else 'Excess prepayment'} from historical upload row {row_num}"
-                                )
-                                
-                                if prepay_result.get('success'):
-                                    if 'prepayments_processed' not in results:
-                                        results['prepayments_processed'] = 0
-                                    results['prepayments_processed'] += 1
-                                    
-                                    # Track irregular payments separately
-                                    if is_irregular_payment:
-                                        if 'irregular_payments_detected' not in results:
-                                            results['irregular_payments_detected'] = 0
-                                        results['irregular_payments_detected'] += 1
-                                    
-                                    if prepay_result.get('trade_closed'):
-                                        if 'trades_closed_by_prepayment' not in results:
-                                            results['trades_closed_by_prepayment'] = []
-                                        results['trades_closed_by_prepayment'].append({
-                                            "trade_id": matching_trade['id'],
-                                            "client": client['name'],
-                                            "bond": bond['name']
-                                        })
-                                else:
-                                    results['errors'].append(
-                                        f"Repayment Row {row_num}: Prepayment detected (₹{prepay_amount:,.2f}) but processing failed: {prepay_result.get('errors', [])}"
-                                    )
-                            
-                            # Also create/update a cashflow record for this repayment if it doesn't exist
-                            if is_irregular_payment:
-                                # Create a new cashflow entry for this irregular payment
-                                tds_calc = round(interest * 0.10, 2) if interest > 0 else 0
-                                new_cf = {
-                                    "id": str(uuid.uuid4()),
-                                    "trade_id": matching_trade['id'],
-                                    "client_id": client['id'],
-                                    "bond_id": bond['id'],
-                                    "date": f"{rep_date_str}T00:00:00",
-                                    "principal_component": principal,
-                                    "interest_component": interest,
-                                    "tds_amount": tds if tds > 0 else tds_calc,
-                                    "gross_amount": gross_amount,
-                                    "net_amount": net_amount,
-                                    "is_repaid": True,
-                                    "repaid_date": rep_date_str,
-                                    "repaid_actual_amount": net_amount,
-                                    "is_prepaid": True,
-                                    "is_irregular": True,
-                                    "created_at": datetime.now(timezone.utc).isoformat(),
-                                    "created_by": current_user['id'],
-                                    "source": "historical_upload"
-                                }
-                                await db.holding_cashflows.insert_one(new_cf)
+                        except:
+                            prepay_date = datetime.now()
                         
-                    except Exception as e:
-                        results['errors'].append(f"Repayment Row {row_num}: {str(e)}")
-                        results['failed'] += 1
-        
-        # Update bond statuses based on investments and dates
-        updated_bonds = set()
-        for trade in results.get('created_trades', []):
-            # Get bond_id from the trade we just created
-            trade_doc = await db.trades.find_one({"id": trade['trade_id']}, {"_id": 0, "bond_id": 1})
-            if trade_doc:
-                updated_bonds.add(trade_doc['bond_id'])
-        
-        for bond_id in updated_bonds:
-            # Get fresh bond data from database (includes updated units_sold)
-            bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
-            if bond:
-                total_units = bond.get('total_units', 0)
-                units_sold = bond.get('units_sold', 0)
+                        # Process the prepayment
+                        prepay_result = await process_bond_prepayment(
+                            db_instance=db,
+                            trade_id=matching_trade['id'],
+                            prepayment_amount=prepay_amount,
+                            prepayment_date=prepay_date,
+                            source="historical_upload",
+                            recorded_by=current_user['id'],
+                            notes=f"{'Irregular payment' if is_irregular_payment else 'Excess prepayment'} from historical upload row {row_num}"
+                        )
+                        
+                        if prepay_result.get('success'):
+                            if 'prepayments_processed' not in results:
+                                results['prepayments_processed'] = 0
+                            results['prepayments_processed'] += 1
+                            
+                            # Track irregular payments separately
+                            if is_irregular_payment:
+                                if 'irregular_payments_detected' not in results:
+                                    results['irregular_payments_detected'] = 0
+                                results['irregular_payments_detected'] += 1
+                            
+                            if prepay_result.get('trade_closed'):
+                                if 'trades_closed_by_prepayment' not in results:
+                                    results['trades_closed_by_prepayment'] = []
+                                results['trades_closed_by_prepayment'].append({
+                                    "trade_id": matching_trade['id'],
+                                    "client": client['name'],
+                                    "bond": bond['name']
+                                })
+                        else:
+                            results['errors'].append(
+                                f"Repayment Row {row_num}: Prepayment detected (₹{prepay_amount:,.2f}) but processing failed: {prepay_result.get('errors', [])}"
+                            )
+                    
+                    # Also create/update a cashflow record for this repayment if it doesn't exist
+                    if is_irregular_payment:
+                        # Create a new cashflow entry for this irregular payment
+                        tds_calc = round(interest * 0.10, 2) if interest > 0 else 0
+                        new_cf = {
+                            "id": str(uuid.uuid4()),
+                            "trade_id": matching_trade['id'],
+                            "client_id": client['id'],
+                            "bond_id": bond['id'],
+                            "date": f"{rep_date_str}T00:00:00",
+                            "principal_component": principal,
+                            "interest_component": interest,
+                            "tds_amount": tds if tds > 0 else tds_calc,
+                            "gross_amount": gross_amount,
+                            "net_amount": net_amount,
+                            "is_repaid": True,
+                            "repaid_date": rep_date_str,
+                            "repaid_actual_amount": net_amount,
+                            "is_prepaid": True,
+                            "is_irregular": True,
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "created_by": current_user['id'],
+                            "source": "historical_upload"
+                        }
+                        await db.holding_cashflows.insert_one(new_cf)
                 
-                # Check if bond end date has passed
-                end_date_str = bond.get('end_date', '')
-                is_closed = False
-                if end_date_str:
-                    try:
-                        end_date = datetime.fromisoformat(end_date_str.split('T')[0])
-                        is_closed = end_date < datetime.now()
-                    except:
-                        pass
-                
-                new_status = bond.get('status', 'available')
-                if is_closed:
-                    new_status = 'closed'
-                    results['bonds_updated_to_closed'].append(bond.get('name', bond_id))
-                elif units_sold >= total_units and total_units > 0:
-                    new_status = 'funded'
-                    results['bonds_updated_to_funded'].append(bond.get('name', bond_id))
+            except Exception as e:
+                results['errors'].append(f"Repayment Row {row_num}: {str(e)}")
+                results['failed'] += 1
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing historical repayments upload: {str(e)}")
+        results['errors'].append(f"Processing error: {str(e)}")
+    
+    return results
                 
                 if new_status != bond.get('status'):
                     await db.bonds.update_one(
