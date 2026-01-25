@@ -412,7 +412,87 @@ export default function Holdings() {
     setActiveTab("summary");
   };
 
-  // Get consolidated cashflows by date
+  // Get consolidated EXPECTED cashflows by date (from bond definition)
+  const getExpectedCashflowsByDate = (trades) => {
+    if (!trades) return [];
+    
+    const byDate = {};
+    
+    trades.forEach(trade => {
+      // Use expected_cashflows (from bond definition) instead of cashflows
+      const expectedCfs = trade.expected_cashflows || [];
+      expectedCfs.forEach(cf => {
+        if (!byDate[cf.date]) {
+          byDate[cf.date] = {
+            date: cf.date,
+            principal_component: 0,
+            interest_component: 0,
+            gross_amount: 0,
+            tds_amount: 0,
+            net_amount: 0,
+            transactions: []
+          };
+        }
+        
+        byDate[cf.date].principal_component += cf.principal_component || 0;
+        byDate[cf.date].interest_component += cf.interest_component || 0;
+        byDate[cf.date].gross_amount += cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0));
+        byDate[cf.date].tds_amount += cf.tds_amount || 0;
+        byDate[cf.date].net_amount += cf.net_amount || 0;
+        byDate[cf.date].transactions.push({
+          trade_id: trade.trade_id,
+          units: trade.units,
+          investment_date: trade.investment_date
+        });
+      });
+    });
+    
+    return Object.values(byDate).sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+
+  // Get consolidated ACTUAL cashflows by date (repaid cashflows)
+  const getActualCashflowsByDate = (trades) => {
+    if (!trades) return [];
+    
+    const byDate = {};
+    
+    trades.forEach(trade => {
+      // Use actual_cashflows (repaid ones) or filter cashflows for is_repaid
+      const actualCfs = trade.actual_cashflows || trade.cashflows?.filter(cf => cf.is_repaid) || [];
+      actualCfs.forEach(cf => {
+        const cfDate = cf.repaid_date || cf.date;
+        if (!byDate[cfDate]) {
+          byDate[cfDate] = {
+            date: cfDate,
+            principal_component: 0,
+            interest_component: 0,
+            gross_amount: 0,
+            tds_amount: 0,
+            net_amount: 0,
+            transactions: [],
+            is_prepaid: false
+          };
+        }
+        
+        byDate[cfDate].principal_component += cf.principal_component || 0;
+        byDate[cfDate].interest_component += cf.interest_component || 0;
+        byDate[cfDate].gross_amount += cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0));
+        byDate[cfDate].tds_amount += cf.tds_amount || 0;
+        byDate[cfDate].net_amount += cf.net_amount || 0;
+        if (cf.is_prepaid) byDate[cfDate].is_prepaid = true;
+        byDate[cfDate].transactions.push({
+          trade_id: trade.trade_id,
+          units: trade.units,
+          investment_date: trade.investment_date,
+          is_prepaid: cf.is_prepaid
+        });
+      });
+    });
+    
+    return Object.values(byDate).sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+
+  // Get consolidated cashflows by date (legacy - for current state)
   const getConsolidatedCashflowsByDate = (trades) => {
     if (!trades) return [];
     
