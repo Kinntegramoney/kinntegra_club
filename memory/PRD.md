@@ -2,6 +2,25 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### Repayment Status Bar Fix (Jan 25, 2026)
+**Bug:** The "Repayment Status" bar was showing 100% received even for future-dated repayments. Past-dated cashflows were incorrectly being counted as "received" just because the date passed.
+
+**Root Cause:** The logic was using `is_repaid` flag which was auto-set to `True` for past dates, without verifying actual payment was received.
+
+**Fix Applied** (`server.py` - get_client_holdings):
+- Changed logic to only count cashflows as "received" if they have **actual payment confirmation**:
+  - `repaid_date` is set, OR  
+  - `repaid_actual_amount` > 0
+- Just having `is_repaid=True` for past dates is no longer sufficient
+- Updated `build_actual_cashflows_with_investment()` function with same logic
+
+**Impact:**
+- "Received" now only shows cashflows with confirmed payments
+- "Outstanding" now includes both future cashflows AND past-due unpaid cashflows
+- Bar accurately reflects actual vs expected repayments
+
+---
+
 ### Holdings Page - Email, Sync & Upload Features (Jan 25, 2026)
 **New Features Implemented**:
 
