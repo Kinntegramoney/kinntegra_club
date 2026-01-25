@@ -1678,36 +1678,79 @@ export default function Holdings() {
                       </div>
                     </div>
                     
-                    {/* RIGHT COLUMN - Actual Repayments */}
-                    <div className="border border-green-200 rounded-xl bg-green-50/30 overflow-hidden">
-                      <div className="bg-green-100 px-4 py-3 border-b border-green-200">
-                        <h3 className="font-semibold text-green-800 flex items-center gap-2">
+                    {/* RIGHT COLUMN - Actual Cashflow */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                      <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3">
+                        <h3 className="font-semibold text-white flex items-center gap-2">
                           <Check className="h-4 w-4" />
-                          Actual Repayments
+                          Actual Cashflow
                         </h3>
-                        <p className="text-xs text-green-600 mt-1">Based on historical uploads or email readings</p>
                       </div>
                       
                       {/* Actual Cashflows Table */}
                       <div className="max-h-[350px] overflow-y-auto">
                         <table className="w-full text-sm">
-                          <thead className="bg-green-50 sticky top-0">
+                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
-                              <th className="text-left py-2 px-3 text-xs font-medium text-green-700 uppercase">Date</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-green-700 uppercase">Principal</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-green-700 uppercase">Interest</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-green-700 uppercase bg-green-100">Gross</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-green-700 uppercase">TDS</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-green-700 uppercase">Net</th>
+                              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Principal</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Interest</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider bg-green-50">Gross</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">TDS</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Net</th>
                             </tr>
                           </thead>
-                          <tbody>
+                          <tbody className="divide-y divide-gray-100">
                             {actualCashflows.length > 0 ? actualCashflows.map((cf, idx) => (
-                              <tr key={idx} className="border-b border-green-100 hover:bg-green-50/50">
-                                <td className="py-2 px-3 font-mono text-xs">
-                                  {format(new Date(cf.date), "dd MMM yyyy")}
-                                  {cf.is_prepaid && (
-                                    <span className="ml-1 px-1 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded">Prepaid</span>
+                              <tr key={idx} className="bg-white hover:bg-gray-50 transition-colors">
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-sm text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</span>
+                                    {cf.is_prepaid && (
+                                      <span className="px-2 py-0.5 bg-amber-500 text-white rounded text-[10px] font-semibold">PREPAID</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono text-sm text-gray-700">{formatAbsoluteINR(cf.principal_component)}</td>
+                                <td className="py-3 px-4 text-right font-mono text-sm text-gray-700">{formatAbsoluteINR(cf.interest_component)}</td>
+                                <td className="py-3 px-4 text-right bg-green-50">
+                                  <span className="font-mono text-sm font-bold text-green-700">
+                                    {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono text-sm text-red-500">{formatAbsoluteINR(cf.tds_amount)}</td>
+                                <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-gray-900">{formatAbsoluteINR(cf.net_amount)}</td>
+                              </tr>
+                            )) : (
+                              <tr>
+                                <td colSpan="6" className="py-8 text-center text-gray-500">
+                                  <FileText className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                                  <p className="text-sm">No actual repayments received yet</p>
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {/* Actual Summary Footer */}
+                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="text-sm text-gray-600">Total Received:</span>
+                            <span className="font-mono font-bold ml-2 text-gray-900">
+                              {formatAbsoluteINR(actualCashflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm text-gray-600">Actual XIRR:</span>
+                            <span className="font-mono font-bold ml-2 text-green-700 text-lg">
+                              {modalData.actual_xirr !== null && modalData.actual_xirr !== undefined ? `${modalData.actual_xirr.toFixed(2)}%` : '-'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                                   )}
                                 </td>
                                 <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
