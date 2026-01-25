@@ -6291,8 +6291,12 @@ async def bulk_upload_investment_details(
                     "client_name": client.get('name', ''),
                     "units": units,
                     "amount": amount,
+                    "expected_amount": expected_total_amount,
+                    "amount_difference": amount_difference,
+                    "price_per_unit": price_per_unit,
                     "investment_date": inv_date_str,
-                    "cashflows_generated": len(cashflows) if cashflows else 0
+                    "cashflows_generated": len(cashflows) if cashflows else 0,
+                    "validation": "PASSED" if amount_difference <= AMOUNT_TOLERANCE else "WITHIN_TOLERANCE"
                 })
                 
             except Exception as e:
