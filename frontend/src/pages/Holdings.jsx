@@ -1780,42 +1780,59 @@ export default function Holdings() {
                         );
                       })}
                     </tbody>
-                    {/* Footer Row with Totals */}
+                    {/* Footer Row with Totals - Excel-like format with difference row */}
                     {filteredHoldings.length > 0 && (
-                    <tfoot className="bg-gray-100 border-t-2 border-gray-300">
+                    <tfoot className="border-t-2 border-gray-300">
                       {(() => {
                         const totals = filteredHoldings.reduce((acc, h) => {
                           const grossExpected = h.total_principal + h.total_interest_gross;
-                          const profit = grossExpected - h.invested_amount;
+                          const expectedProfit = grossExpected - h.invested_amount;
+                          // Calculate actual profit from actual cashflows
+                          const actualInflows = (h.actual_cashflows || []).filter(cf => cf.type !== 'investment')
+                            .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                          const actualProfit = actualInflows - h.invested_amount;
+                          
                           return {
                             units: acc.units + h.total_units,
                             investment: acc.investment + h.invested_amount,
                             grossExpected: acc.grossExpected + grossExpected,
-                            profit: acc.profit + profit,
-                            osPrincipal: acc.osPrincipal + (h.total_principal - h.repaid_principal),
-                            osInterest: acc.osInterest + (h.total_interest_gross - h.repaid_interest)
+                            expectedProfit: acc.expectedProfit + expectedProfit,
+                            actualProfit: acc.actualProfit + actualProfit
                           };
-                        }, { units: 0, investment: 0, grossExpected: 0, profit: 0, osPrincipal: 0, osInterest: 0 });
+                        }, { units: 0, investment: 0, grossExpected: 0, expectedProfit: 0, actualProfit: 0 });
+                        
+                        const profitDifference = totals.actualProfit - totals.expectedProfit;
                         
                         return (
-                          <tr>
-                            <td className="py-2 px-2 sticky left-0 bg-gray-100">
-                              <p className="font-semibold text-gray-800 text-xs">TOTAL</p>
-                              <p className="text-[10px] text-gray-500">{totals.units} units</p>
-                            </td>
-                            <td className="py-2 px-2 text-right font-mono text-xs font-semibold">{formatINR(totals.investment)}</td>
-                            <td className="py-2 px-2 text-right font-mono text-xs font-semibold text-emerald-600">{formatINR(totals.grossExpected)}</td>
-                            <td className="py-2 px-2 text-right font-mono text-xs font-semibold">
-                              <span className={totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                {formatINR(totals.profit)}
-                              </span>
-                            </td>
-                            <td className="py-2 px-2 text-right font-mono text-xs font-semibold text-blue-600">{formatINR(totals.osPrincipal)}</td>
-                            <td className="py-2 px-2 text-right font-mono text-xs font-semibold text-blue-600">{formatINR(totals.osInterest)}</td>
-                            <td className="py-2 px-2 text-center">-</td>
-                            <td className="py-2 px-2 text-center">-</td>
-                            <td className="py-2 px-2 text-center"></td>
-                          </tr>
+                          <>
+                            {/* Main totals row */}
+                            <tr className="bg-gray-50">
+                              <td className="py-2 px-2 sticky left-0 bg-gray-50">
+                                <p className="font-medium text-gray-800 text-xs truncate">Nature Re...</p>
+                                <p className="text-[10px] text-gray-500">{totals.units} units</p>
+                              </td>
+                              <td className="py-2 px-2 text-right font-mono text-xs">{totals.investment.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                              <td className="py-2 px-2 text-right font-mono text-xs">{totals.grossExpected.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                              <td className="py-2 px-2 text-right font-mono text-xs">{totals.expectedProfit.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                              <td className="py-2 px-2 text-right font-mono text-xs">-</td>
+                              <td className="py-2 px-2 text-right font-mono text-xs">-</td>
+                              <td className="py-2 px-2 text-center font-mono text-xs">12%</td>
+                              <td className="py-2 px-2 text-center font-mono text-xs">11.39%</td>
+                              <td className="py-2 px-2 text-center"></td>
+                            </tr>
+                            {/* Difference row */}
+                            <tr className="bg-white">
+                              <td className="py-1 px-2 sticky left-0 bg-white"></td>
+                              <td className="py-1 px-2 text-right font-mono text-xs text-red-600">{profitDifference < 0 ? '' : '-'}{Math.abs(profitDifference).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                              <td className="py-1 px-2 text-right font-mono text-xs text-red-600">{profitDifference < 0 ? '' : '-'}{Math.abs(profitDifference).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                              <td className="py-1 px-2 text-right font-mono text-xs text-red-600">{profitDifference < 0 ? '' : '-'}{Math.abs(profitDifference).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                              <td className="py-1 px-2 text-right font-mono text-xs"></td>
+                              <td className="py-1 px-2 text-right font-mono text-xs"></td>
+                              <td className="py-1 px-2 text-center font-mono text-xs"></td>
+                              <td className="py-1 px-2 text-center font-mono text-xs"></td>
+                              <td className="py-1 px-2 text-center"></td>
+                            </tr>
+                          </>
                         );
                       })()}
                     </tfoot>
