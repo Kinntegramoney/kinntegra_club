@@ -1560,10 +1560,10 @@ export default function Holdings() {
               {/* Holdings Tab Content */}
               {mainTab === "holdings" && (
               <>
-              {/* Summary Section with Repayment Status Chart */}
+              {/* Summary Section */}
               <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-                {/* Top Row: Summary Stats */}
-                <div className="flex items-center gap-4 text-xs mb-3">
+                {/* Summary Stats */}
+                <div className="flex items-center gap-4 text-xs">
                   <div className="flex items-center gap-1.5">
                     <span className="text-gray-500">Total Investment:</span>
                     <span className="font-mono font-semibold text-gray-800">{formatINR(clientHoldings.summary.total_investment)}</span>
@@ -1588,56 +1588,6 @@ export default function Holdings() {
                     )}</span>
                   </div>
                 </div>
-                
-                {/* Repayment Status Chart */}
-                {filteredHoldings.length > 0 && (
-                <div className="pt-3 border-t border-gray-100">
-                  {(() => {
-                    const totalReceived = filteredHoldings.reduce((sum, h) => sum + (h.net_repaid || 0), 0);
-                    const totalOutstanding = filteredHoldings.reduce((sum, h) => sum + (h.upcoming_expected || 0), 0);
-                    const grandTotal = totalReceived + totalOutstanding;
-                    const receivedPercent = grandTotal > 0 ? (totalReceived / grandTotal) * 100 : 0;
-                    
-                    return (
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Repayment Status:</span>
-                        
-                        {/* Compact Progress Bar */}
-                        <div className="flex-1 relative h-5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-500"
-                            style={{ width: `${receivedPercent}%` }}
-                          />
-                          <div 
-                            className="absolute top-0 h-full bg-blue-500 transition-all duration-500"
-                            style={{ left: `${receivedPercent}%`, width: `${100 - receivedPercent}%` }}
-                          />
-                        </div>
-                        
-                        {/* Inline Legend */}
-                        <div className="flex items-center gap-4 text-xs whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
-                            <span className="text-gray-600">Received:</span>
-                            <span className="font-mono font-semibold text-green-700">{formatINR(totalReceived)}</span>
-                            <span className="text-gray-400">({receivedPercent.toFixed(0)}%)</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-                            <span className="text-gray-600">Outstanding:</span>
-                            <span className="font-mono font-semibold text-blue-700">{formatINR(totalOutstanding)}</span>
-                            <span className="text-gray-400">({(100 - receivedPercent).toFixed(0)}%)</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 pl-2 border-l border-gray-300">
-                            <span className="text-gray-600">Total:</span>
-                            <span className="font-mono font-semibold text-gray-800">{formatINR(grandTotal)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-                )}
               </div>
               
               {/* Holding Report Table */}
