@@ -1760,15 +1760,15 @@ export default function Holdings() {
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(holding.invested_amount)}</p>
-                            {showDifference && <p className="text-red-600">{grossDifference < 0 ? '-' : ''}{formatNum(Math.abs(grossDifference))}</p>}
+                            {showDifference && <p className="text-[10px] text-red-600">{grossDifference < 0 ? '-' : ''}{formatNum(Math.abs(grossDifference))}</p>}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(actualGross)}</p>
-                            {showDifference && <p className="text-red-600">{grossDifference < 0 ? '-' : ''}{formatNum(Math.abs(grossDifference))}</p>}
+                            {showDifference && <p className="text-[10px] text-red-600">{grossDifference < 0 ? '-' : ''}{formatNum(Math.abs(grossDifference))}</p>}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p className={actualProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{formatNum(actualProfit)}</p>
-                            {showDifference && <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>}
+                            {showDifference && <p className="text-[10px] text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>}
                           </td>
                           <td className="py-2 px-2 text-center">
                             {holding.xirr !== null && holding.xirr !== undefined ? (
