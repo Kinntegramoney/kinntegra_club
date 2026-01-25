@@ -9515,10 +9515,12 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "prepaid_count": len(prepaid_cashflows),
             "prepaid_amount": round(prepaid_amount, 2),
             "xirr": expected_xirr,  # Bond's Secondary IRR
-            "actual_xirr": actual_xirr,  # Same as expected
+            "actual_xirr": actual_xirr,  # Calculated from actual repayments
             "cashflows": stored_cashflows,  # Current state of cashflows
             "expected_cashflows": expected_cashflows_with_investment,  # With investment as first entry
-            "actual_cashflows": [cf for cf in stored_cashflows if cf.get('is_repaid')],  # Actual repayments
+            "actual_cashflows": build_actual_cashflows_with_investment(
+                calculated_investment, investment_date_str, stored_cashflows, trade['units'], secondary_irr
+            ),
             "status": "active" if upcoming_gross > 0 else "fully_repaid"
         })
         
