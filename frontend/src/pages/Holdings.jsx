@@ -2004,7 +2004,7 @@ export default function Holdings() {
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(holding.invested_amount)}</p>
-                            {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={diffTooltip}>{formatDiff(grossDifference)}</p>}
+                            {/* No difference shown for Investment - it doesn't change */}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(actualGross)}</p>
