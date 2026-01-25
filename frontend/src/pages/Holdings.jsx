@@ -892,48 +892,63 @@ export default function Holdings() {
       </html>
     `;
 
-    // Create container for PDF generation
+    // Create container for PDF generation - positioned on-screen but visually hidden
     const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '0';
-    container.style.top = '0';
-    container.style.width = '297mm';
-    container.style.backgroundColor = '#fff';
-    container.style.zIndex = '-1000';
-    container.style.opacity = '0';
-    container.style.pointerEvents = 'none';
+    container.id = 'pdf-temp-container';
+    container.style.cssText = `
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 1100px;
+      background: white;
+      z-index: 9999;
+      opacity: 0.01;
+      pointer-events: none;
+    `;
     container.innerHTML = html;
     document.body.appendChild(container);
 
+    // Wait for DOM and fonts to be ready
     setTimeout(() => {
       import('html2pdf.js').then(html2pdf => {
+        const element = document.getElementById('pdf-temp-container');
+        if (!element) {
+          toast.error('PDF generation failed');
+          return;
+        }
+        
         html2pdf.default()
           .set({
-            margin: [10, 10, 10, 10],
+            margin: 10,
             filename: `Cashflow_Report_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
-            image: { type: 'jpeg', quality: 0.95 },
+            image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { 
               scale: 2, 
               useCORS: true, 
               logging: false,
-              windowWidth: 1122,
-              windowHeight: 794
+              letterRendering: true,
+              allowTaint: true
             },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
           })
-          .from(container)
+          .from(element)
           .save()
           .then(() => {
-            document.body.removeChild(container);
+            if (document.getElementById('pdf-temp-container')) {
+              document.body.removeChild(document.getElementById('pdf-temp-container'));
+            }
             toast.success('PDF downloaded');
           })
           .catch((err) => {
-            document.body.removeChild(container);
+            console.error('PDF Error:', err);
+            if (document.getElementById('pdf-temp-container')) {
+              document.body.removeChild(document.getElementById('pdf-temp-container'));
+            }
             toast.error('Failed to generate PDF');
-            console.error(err);
           });
       });
-    }, 100);
+    }, 200);
   };
 
   if (!user) return null;
