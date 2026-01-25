@@ -1965,10 +1965,10 @@ async def create_client_by_subbroker(
         if existing:
             raise HTTPException(status_code=400, detail="Client with this PAN already exists")
         
-        # ROLE OVERLAP HANDLING: Check if PAN exists as sub-broker
+        # ROLE OVERLAP HANDLING: Check if PAN exists as sub-broker OR broker
         existing_user = await db.users.find_one({"pan": pan})
         if existing_user:
-            if existing_user.get('role') == 'sub_broker':
+            if existing_user.get('role') in ['sub_broker', 'broker']:
                 # Create client login with PAN + "1" suffix for role overlap
                 login_id = f"{pan}1"
                 is_role_overlap = True
@@ -1978,7 +1978,7 @@ async def create_client_by_subbroker(
                 if existing_modified:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Client login for sub-broker PAN {pan} already exists (Login: {login_id})"
+                        detail=f"Client login for {existing_user.get('role')} PAN {pan} already exists (Login: {login_id})"
                     )
             else:
                 raise HTTPException(status_code=400, detail="User with this PAN already exists")
