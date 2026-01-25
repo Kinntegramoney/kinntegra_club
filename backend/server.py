@@ -9270,29 +9270,62 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                     "trade_id": trade['id']
                 }, {"_id": 0}).to_list(100)
         
+        # Fetch actual_repayments for this trade (historical uploads, email synced)
+        trade_actual_repayments = await db.actual_repayments.find({
+            "bond_id": trade['bond_id'],
+            "client_id": client_id
+        }, {"_id": 0}).to_list(500)
+        
+        # Filter actual_repayments to match this trade's investment date
+        trade_inv_date = trade.get('investment_date', '')[:10] if trade.get('investment_date') else ''
+        matched_actual_repayments = []
+        for ar in trade_actual_repayments:
+            ar_inv_date = ar.get('investment_date', '')[:10] if ar.get('investment_date') else ''
+            # Include if investment dates match, or if no investment date specified (legacy)
+            if ar_inv_date == trade_inv_date or (not ar_inv_date and not trade_inv_date):
+                matched_actual_repayments.append(ar)
+        
         # Calculate totals for this holding (use GROSS amounts = principal + interest)
         investment_amount = trade.get('total_amount', 0)
         
         # Helper to check if cashflow has actual payment confirmation
         # A cashflow is only considered "actually received" if it has repaid_date or repaid_actual_amount
-        # Just having is_repaid=True for past dates is NOT enough (date passed != payment received)
         def is_actually_received(cf):
-            # Must have explicit confirmation: repaid_date set OR repaid_actual_amount set
             has_repaid_date = cf.get('repaid_date') is not None
             has_actual_amount = cf.get('repaid_actual_amount') is not None and cf.get('repaid_actual_amount', 0) > 0
             return has_repaid_date or has_actual_amount
         
-        # GROSS repaid = only cashflows with actual payment confirmation
-        repaid_gross = sum(
+        # Calculate repaid from holding_cashflows (marked as repaid with confirmation)
+        repaid_from_cashflows = sum(
             (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
             for cf in stored_cashflows if is_actually_received(cf)
         )
         
-        # GROSS upcoming = everything NOT actually received (includes past-due unpaid)
-        upcoming_gross = sum(
+        # Calculate repaid from actual_repayments (historical uploads)
+        # Get dates from repaid cashflows to avoid double counting
+        repaid_cf_dates = set()
+        for cf in stored_cashflows:
+            if is_actually_received(cf):
+                repaid_cf_dates.add((cf.get('repaid_date') or cf.get('date', ''))[:10])
+        
+        repaid_from_actual_repayments = 0
+        for ar in matched_actual_repayments:
+            ar_date = (ar.get('repayment_date') or '')[:10]
+            # Only add if not already counted in cashflows
+            if ar_date and ar_date not in repaid_cf_dates:
+                repaid_from_actual_repayments += ar.get('gross_amount', 0) or (ar.get('principal', 0) + ar.get('interest', 0))
+        
+        # GROSS repaid = from both sources
+        repaid_gross = repaid_from_cashflows + repaid_from_actual_repayments
+        
+        # Total scheduled cashflows
+        total_scheduled_gross = sum(
             (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0)
-            for cf in stored_cashflows if not is_actually_received(cf)
+            for cf in stored_cashflows
         )
+        
+        # GROSS upcoming = total scheduled minus what's been received
+        upcoming_gross = max(0, total_scheduled_gross - repaid_gross)
         
         # Calculate principal and interest components
         total_principal = sum(cf.get('principal_component', 0) for cf in stored_cashflows)
