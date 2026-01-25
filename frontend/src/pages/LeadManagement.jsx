@@ -699,7 +699,18 @@ export default function LeadManagement() {
                         <tr key={lead.id} className="hover:bg-gray-50" data-testid={`lead-row-${lead.id}`}>
                           <td className="px-4 py-3">
                             <div className="font-medium text-gray-800">{lead.client_name}</div>
-                            <div className="text-xs text-gray-500">{lead.client_pan}</div>
+                            {lead.client_pan ? (
+                              <div className="text-xs text-gray-500">PAN: {lead.client_pan}</div>
+                            ) : (
+                              <>
+                                {lead.client_email && (
+                                  <div className="text-xs text-gray-500">{lead.client_email}</div>
+                                )}
+                                {lead.client_mobile && (
+                                  <div className="text-xs text-gray-500">{lead.client_mobile}</div>
+                                )}
+                              </>
+                            )}
                             {lead.client_city && (
                               <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
                                 <MapPin className="h-3 w-3" />
@@ -710,17 +721,22 @@ export default function LeadManagement() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                lead.opportunity_type === 'bond' ? 'bg-etihad-gold-100' : 'bg-teal-100'
+                                lead.opportunity_type === 'bond' ? 'bg-etihad-gold-100' : 
+                                lead.opportunity_type === 'general' ? 'bg-blue-100' : 'bg-teal-100'
                               }`}>
                                 {lead.opportunity_type === 'bond' ? (
                                   <TrendingUp className="h-4 w-4 text-etihad-gold-600" />
+                                ) : lead.opportunity_type === 'general' ? (
+                                  <Users className="h-4 w-4 text-blue-600" />
                                 ) : (
                                   <Building2 className="h-4 w-4 text-teal-600" />
                                 )}
                               </div>
                               <div>
                                 <div className="font-medium text-gray-800 text-sm">{lead.product_name}</div>
-                                <div className="text-xs text-gray-500 capitalize">{lead.opportunity_type?.replace('_', ' ')}</div>
+                                <div className="text-xs text-gray-500 capitalize">
+                                  {lead.opportunity_type === 'general' ? 'Website Signup' : lead.opportunity_type?.replace('_', ' ')}
+                                </div>
                               </div>
                             </div>
                           </td>
