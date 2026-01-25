@@ -840,7 +840,7 @@ export default function Holdings() {
           html2canvas: { scale: 2, useCORS: true, logging: false },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
         })
-        .from(container.firstChild)
+        .from(container)
         .save()
         .then(() => {
           document.body.removeChild(container);
