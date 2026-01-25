@@ -11594,50 +11594,13 @@ async def download_client_holdings(client_id: str, current_user: dict = Depends(
         ws_actual.cell(row=row, column=6).number_format = '₹ #,##0.00'
     else:
         ws_actual.cell(row=row, column=1, value="No actual cashflows recorded yet")
-            net = cf.get('net_amount', principal + interest - tds)
-            
-            ws_actual.cell(row=row, column=3, value=principal).border = border
-            ws_actual.cell(row=row, column=3).font = money_font
-            ws_actual.cell(row=row, column=3).number_format = '₹ #,##0.00'
-            ws_actual.cell(row=row, column=4, value=interest).border = border
-            ws_actual.cell(row=row, column=4).font = money_font
-            ws_actual.cell(row=row, column=4).number_format = '₹ #,##0.00'
-            ws_actual.cell(row=row, column=5, value=tds).border = border
-            ws_actual.cell(row=row, column=5).font = money_font
-            ws_actual.cell(row=row, column=5).number_format = '₹ #,##0.00'
-            ws_actual.cell(row=row, column=6, value=net).border = border
-            ws_actual.cell(row=row, column=6).font = money_font
-            ws_actual.cell(row=row, column=6).number_format = '₹ #,##0.00'
-            ws_actual.cell(row=row, column=7, value=cf.get('repaid_date', '-')).border = border
-            
-            total_act_principal += principal
-            total_act_interest += interest
-            total_act_tds += tds
-            total_act_net += net
-            row += 1
-    
-    # Totals row for Actual
-    if row > 4:
-        row += 1
-        ws_actual.cell(row=row, column=1, value="TOTALS").font = Font(bold=True)
-        ws_actual.cell(row=row, column=3, value=total_act_principal).font = Font(bold=True, name="Consolas")
-        ws_actual.cell(row=row, column=3).number_format = '₹ #,##0.00'
-        ws_actual.cell(row=row, column=4, value=total_act_interest).font = Font(bold=True, name="Consolas")
-        ws_actual.cell(row=row, column=4).number_format = '₹ #,##0.00'
-        ws_actual.cell(row=row, column=5, value=total_act_tds).font = Font(bold=True, name="Consolas")
-        ws_actual.cell(row=row, column=5).number_format = '₹ #,##0.00'
-        ws_actual.cell(row=row, column=6, value=total_act_net).font = Font(bold=True, name="Consolas")
-        ws_actual.cell(row=row, column=6).number_format = '₹ #,##0.00'
-    else:
-        ws_actual.cell(row=row, column=1, value="No actual repayments recorded yet")
     
     ws_actual.column_dimensions['A'].width = 15
     ws_actual.column_dimensions['B'].width = 25
-    ws_actual.column_dimensions['C'].width = 15
+    ws_actual.column_dimensions['C'].width = 12
     ws_actual.column_dimensions['D'].width = 15
-    ws_actual.column_dimensions['E'].width = 12
-    ws_actual.column_dimensions['F'].width = 15
-    ws_actual.column_dimensions['G'].width = 15
+    ws_actual.column_dimensions['E'].width = 15
+    ws_actual.column_dimensions['F'].width = 18
     
     # Save to BytesIO
     output = io.BytesIO()
