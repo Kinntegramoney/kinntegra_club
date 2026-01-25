@@ -3,21 +3,33 @@
 ## Recent Changes (Jan 25, 2026)
 
 ### Repayment Status Bar Fix (Jan 25, 2026)
-**Bug:** The "Repayment Status" bar was showing 100% received even for future-dated repayments. Past-dated cashflows were incorrectly being counted as "received" just because the date passed.
+**Bug:** The "Repayment Status" bar was showing 100% received even for future-dated repayments. Past-dated cashflows were incorrectly counted as "received" just because the date passed.
 
-**Root Cause:** The logic was using `is_repaid` flag which was auto-set to `True` for past dates, without verifying actual payment was received.
+**Root Cause:** 
+1. Logic was using `is_repaid` flag which was auto-set to `True` for past dates
+2. Logic was only checking `holding_cashflows` but actual payment data was in `actual_repayments` collection
 
 **Fix Applied** (`server.py` - get_client_holdings):
 - Changed logic to only count cashflows as "received" if they have **actual payment confirmation**:
   - `repaid_date` is set, OR  
   - `repaid_actual_amount` > 0
-- Just having `is_repaid=True` for past dates is no longer sufficient
+- Now also reads from `actual_repayments` collection (historical uploads)
+- Avoids double-counting by tracking processed dates
 - Updated `build_actual_cashflows_with_investment()` function with same logic
 
 **Impact:**
-- "Received" now only shows cashflows with confirmed payments
+- "Received" now only shows cashflows with confirmed payments from both tables
 - "Outstanding" now includes both future cashflows AND past-due unpaid cashflows
 - Bar accurately reflects actual vs expected repayments
+
+---
+
+### Email Sync moved to Bulk Upload Module (Jan 25, 2026)
+**Change:** The "Sync Email Repayments" feature is now available in:
+1. **Holdings page** - Quick "Sync Emails" button for convenience
+2. **Bulk Upload page** (`/broker/bulk-upload?tab=historical-trades`) - Full module with 7/30/90 day options
+
+This allows syncing repayments from `updates@kinntegraa.club` for ALL customers at once.
 
 ---
 
