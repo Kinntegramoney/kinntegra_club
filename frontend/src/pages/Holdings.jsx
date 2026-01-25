@@ -1667,7 +1667,6 @@ export default function Holdings() {
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osPrincipal)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osInterest)}</td>
-                          <td className="py-2 px-2 text-right font-mono text-xs text-red-500">{formatINR(osTds)}</td>
                           <td className="py-2 px-2 text-center">
                             {holding.xirr !== null && holding.xirr !== undefined ? (
                               <span className={`font-mono text-xs font-semibold ${holding.xirr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
