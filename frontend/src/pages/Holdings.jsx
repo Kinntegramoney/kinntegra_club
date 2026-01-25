@@ -823,35 +823,50 @@ export default function Holdings() {
       </html>
     `;
 
-    // Create hidden container for PDF generation
+    // Create container for PDF generation
+    // Must be visible for html2canvas to capture - use opacity/visibility tricks
     const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.top = '-9999px';
+    container.style.position = 'fixed';
+    container.style.left = '0';
+    container.style.top = '0';
+    container.style.width = '297mm'; // A4 landscape width
+    container.style.backgroundColor = '#fff';
+    container.style.zIndex = '-1000';
+    container.style.opacity = '0';
+    container.style.pointerEvents = 'none';
     container.innerHTML = html;
     document.body.appendChild(container);
 
-    import('html2pdf.js').then(html2pdf => {
-      html2pdf.default()
-        .set({
-          margin: [10, 10, 10, 10],
-          filename: `Expected_Cashflow_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
-          image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        })
-        .from(container)
-        .save()
-        .then(() => {
-          document.body.removeChild(container);
-          toast.success('PDF downloaded');
-        })
-        .catch((err) => {
-          document.body.removeChild(container);
-          toast.error('Failed to generate PDF');
-          console.error(err);
-        });
-    });
+    // Small delay to ensure DOM is ready
+    setTimeout(() => {
+      import('html2pdf.js').then(html2pdf => {
+        html2pdf.default()
+          .set({
+            margin: [10, 10, 10, 10],
+            filename: `Expected_Cashflow_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { 
+              scale: 2, 
+              useCORS: true, 
+              logging: false,
+              windowWidth: 1122, // A4 landscape in pixels at 96dpi
+              windowHeight: 794
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+          })
+          .from(container)
+          .save()
+          .then(() => {
+            document.body.removeChild(container);
+            toast.success('PDF downloaded');
+          })
+          .catch((err) => {
+            document.body.removeChild(container);
+            toast.error('Failed to generate PDF');
+            console.error(err);
+          });
+      });
+    }, 100);
   };
 
   if (!user) return null;
