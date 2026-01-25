@@ -212,6 +212,8 @@ export default function BulkUpload() {
       let uploadEndpoint = `${API}/bulk/${activeTab}`;
       if (activeTab === 'clients') {
         uploadEndpoint = `${API}/bulk/clients-${clientUploadType}`;
+      } else if (activeTab === 'investment-details') {
+        uploadEndpoint = `${API}/bulk/investment-details`;
       }
 
       const response = await axios.post(uploadEndpoint, formData, {
