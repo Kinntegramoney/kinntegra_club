@@ -9262,17 +9262,59 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                     })
         
         # If no cashflows_per_unit, fall back to stored original values
+        # Filter to show only the ORIGINAL expected cashflows (exclude prepaid ones)
         if not original_cashflows:
-            for cf in stored_cashflows:
-                original_cashflows.append({
-                    'date': cf.get('date'),
-                    'principal_component': cf.get('original_principal_component') or cf.get('principal_component', 0),
-                    'interest_component': cf.get('original_interest_component') or cf.get('interest_component', 0),
-                    'gross_amount': (cf.get('original_principal_component') or cf.get('principal_component', 0)) + 
-                                   (cf.get('original_interest_component') or cf.get('interest_component', 0)),
-                    'tds_amount': cf.get('original_tds_amount') or cf.get('tds_amount', 0),
-                    'net_amount': cf.get('original_net_amount') or cf.get('net_amount', 0)
-                })
+            # Find the maturity cashflow (typically the last one without is_prepaid flag)
+            maturity_cashflows = [cf for cf in stored_cashflows if not cf.get('is_prepaid') and not cf.get('type') == 'prepayment']
+            
+            if maturity_cashflows:
+                for cf in maturity_cashflows:
+                    original_cashflows.append({
+                        'date': cf.get('date'),
+                        'principal_component': cf.get('original_principal_component') or cf.get('principal_component', 0),
+                        'interest_component': cf.get('original_interest_component') or cf.get('interest_component', 0),
+                        'gross_amount': (cf.get('original_principal_component') or cf.get('principal_component', 0)) + 
+                                       (cf.get('original_interest_component') or cf.get('interest_component', 0)),
+                        'tds_amount': cf.get('original_tds_amount') or cf.get('tds_amount', 0),
+                        'net_amount': cf.get('original_net_amount') or cf.get('net_amount', 0)
+                    })
+            else:
+                # If all cashflows are prepaid, create expected from maturity date
+                # This is a fallback when no original data is available
+                maturity_date = bond.get('maturity_date')
+                if maturity_date:
+                    # Calculate expected interest based on bond terms
+                    # Interest = Principal × Rate × Days / 365
+                    bond_start = bond.get('start_date', '')
+                    maturity_str = maturity_date.split('T')[0] if 'T' in maturity_date else maturity_date
+                    
+                    face_value = bond.get('face_value', 100000)
+                    coupon_rate = bond.get('coupon_rate', 0) / 100 if bond.get('coupon_rate', 0) > 1 else bond.get('coupon_rate', 0)
+                    
+                    principal_amount = face_value * trade['units']
+                    
+                    # Calculate interest for full term (from bond start to maturity)
+                    try:
+                        bond_start_dt = datetime.fromisoformat(bond_start.split('T')[0])
+                        maturity_dt = datetime.fromisoformat(maturity_str)
+                        days = (maturity_dt - bond_start_dt).days
+                        gross_interest = round(principal_amount * coupon_rate * days / 365, 2)
+                    except:
+                        # Fallback: use simple annual calculation
+                        gross_interest = round(principal_amount * coupon_rate * 1.5, 2)  # ~18 months
+                    
+                    tds = round(gross_interest * 0.10, 2)
+                    total_gross = principal_amount + gross_interest
+                    net_amount = total_gross - tds
+                    
+                    original_cashflows.append({
+                        'date': maturity_str,
+                        'principal_component': round(principal_amount, 2),
+                        'interest_component': round(gross_interest, 2),
+                        'gross_amount': round(total_gross, 2),
+                        'tds_amount': round(tds, 2),
+                        'net_amount': round(net_amount, 2)
+                    })
         
         # Fetch actual repayments (unscheduled prepayments from historical uploads)
         # Note: We only include actual_repayments that are NOT on scheduled dates
