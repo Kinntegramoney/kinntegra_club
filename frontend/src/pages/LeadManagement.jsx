@@ -664,6 +664,7 @@ export default function LeadManagement() {
                       <SelectItem value="all">All Types</SelectItem>
                       <SelectItem value="bond">Bonds</SelectItem>
                       <SelectItem value="real_estate">Real Estate</SelectItem>
+                      <SelectItem value="general">Website Signup</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
