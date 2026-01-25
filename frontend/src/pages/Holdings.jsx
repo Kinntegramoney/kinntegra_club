@@ -1563,7 +1563,12 @@ export default function Holdings() {
                       <div>
                         <span className="text-green-600">Received:</span>
                         <span className="font-mono font-semibold ml-2 text-green-800">
-                          {formatINR(modalData.gross_repaid || 0)}
+                          {formatINR(
+                            modalData.gross_repaid || 
+                            consolidatedCashflows
+                              .filter(cf => cf.transactions && cf.transactions.some(t => t.is_repaid))
+                              .reduce((sum, cf) => sum + (cf.principal_component || 0) + (cf.interest_component || 0), 0)
+                          )}
                         </span>
                       </div>
                       <div className="text-right">
