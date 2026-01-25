@@ -1185,10 +1185,10 @@ export default function Holdings() {
                 </button>
               </div>
               
-              {/* Broker Tools - Sync & Upload (Broker only) */}
+              {/* Broker Tools - Quick Actions (Broker only) */}
               {user?.role === 'broker' && (
                 <div className="flex items-center gap-3 mb-4 p-3 bg-gradient-to-r from-slate-50 to-gray-50 border border-gray-200 rounded-lg">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Broker Tools:</span>
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Quick Tools:</span>
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -1198,7 +1198,7 @@ export default function Holdings() {
                     data-testid="sync-email-btn"
                   >
                     <RefreshCw className={`h-4 w-4 mr-2 ${syncingEmails ? 'animate-spin' : ''}`} />
-                    {syncingEmails ? 'Syncing...' : 'Sync Email Repayments'}
+                    {syncingEmails ? 'Syncing...' : 'Sync Emails'}
                   </Button>
                   
                   <label className="cursor-pointer">
@@ -1217,13 +1217,19 @@ export default function Holdings() {
                       className="text-green-700 border-green-200 hover:bg-green-50 pointer-events-none"
                     >
                       <Upload className="h-4 w-4 mr-2" />
-                      {historicalUploading ? 'Uploading...' : 'Upload Historical Data'}
+                      {historicalUploading ? 'Uploading...' : 'Upload Data'}
                     </Button>
                   </label>
                   
-                  <span className="text-[10px] text-gray-400 ml-auto">
-                    Reads from updates@kinntegraa.club | Merges/updates existing data
-                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/broker/bulk-upload?tab=historical-trades')}
+                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 ml-auto"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    Bulk Upload Module
+                  </Button>
                 </div>
               )}
               
