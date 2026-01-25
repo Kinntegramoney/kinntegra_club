@@ -2,6 +2,42 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### UI Enhancements (Jan 25, 2026 - Session 4)
+
+**1. Smaller Prelogin Cards with Kinntegraa Logo ✅**
+- **Request:** Reduce size of login/signup boxes, use company logo
+- **Changes:**
+  - Card width reduced from `max-w-md` (448px) to `max-w-sm` (384px)
+  - Padding reduced from `3rem 2.5rem` to `2rem 2rem`
+  - Logo circle reduced from `w-20 h-20` to `w-16 h-16`
+  - Added Kinntegraa logo image with fallback to "K" letter
+- **Files Modified:** Login.jsx (lines 114-140), CustomerSignup.jsx (lines 85-112)
+
+**2. Chart Colors Aligned to Etihad Palette ✅**
+- **Request:** Use green and red colors that align with Etihad theme
+- **Changes:**
+  - Interest bars: Changed from `#2563EB` (blue) to `#059669` (green)
+  - Principal bars: Changed from `#10B981` (teal) to `#DC2626` (red)
+- **File Modified:** BondDetails.jsx (lines 1070-1071)
+
+**3. Lead Management - Contact Info for General Interest ✅**
+- **Request:** Show phone and email for "General Interest" leads from website signup
+- **Changes:**
+  - When lead has no PAN (general interest), shows email and phone under client name
+  - Product column shows "General Interest" with "Website Signup" label
+  - Added "Website Signup" option to type filter dropdown
+- **File Modified:** LeadManagement.jsx (lines 698-740, 667)
+
+**4. Dashboard Permission Control ✅**
+- **Request:** Dashboard disabled in settings should not show
+- **Changes:**
+  - Added `dashboard` feature to permissions system
+  - Sidebar checks `hasPermission('dashboard', 'view')` before showing Dashboard menu
+  - Login redirects to `/opportunities` instead of `/dashboard`
+- **Files Modified:** Sidebar.jsx, BrokerSettings.jsx, Login.jsx, App.js
+
+---
+
 ### UI & Feature Fixes (Jan 25, 2026 - Session 3)
 
 **1. Login Page Etihad Theme Fix ✅**
