@@ -1302,7 +1302,7 @@ def send_holdings_report_email(
         total_profit: Total profit
         cc_emails: List of CC email addresses (e.g., sub-broker email)
     """
-    subject = f"Your Investment Holdings Report - Kinntegraa"
+    subject = "Your Investment Holdings Report - Kinntegraa"
     
     # Format currency
     def fmt_inr(amount):
