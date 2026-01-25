@@ -439,7 +439,8 @@ export default function Holdings() {
           units: trade.units,
           investment_date: trade.investment_date,
           cf_id: cf.id,
-          is_repaid: cf.is_repaid
+          is_repaid: cf.is_repaid,
+          is_prepaid: cf.is_prepaid
         });
         byDate[cf.date].cashflow_ids.push(cf.id);
         if (!cf.is_repaid) {
