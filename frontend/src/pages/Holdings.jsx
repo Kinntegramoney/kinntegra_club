@@ -1832,21 +1832,6 @@ export default function Holdings() {
                     </div>
                   )}
                   
-                  {/* Rebuild Cashflows Button - for broker to recalculate based on historical data */}
-                  {user?.role === 'broker' && (
-                    <div className="mb-4 flex justify-end">
-                      <button
-                        onClick={() => handleRebuildCashflowsFromHistory(modalData.trades[activeTab].trade_id)}
-                        disabled={rebuildingCashflows}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
-                        data-testid="rebuild-cashflows-btn"
-                      >
-                        <RefreshCw className={`h-3.5 w-3.5 ${rebuildingCashflows ? 'animate-spin' : ''}`} />
-                        {rebuildingCashflows ? 'Rebuilding...' : 'Rebuild from History'}
-                      </button>
-                    </div>
-                  )}
-                  
                   {/* Cashflow Table for this transaction */}
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <table className="w-full">
