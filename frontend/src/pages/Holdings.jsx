@@ -1805,9 +1805,16 @@ export default function Holdings() {
                       <Download className="h-4 w-4 mr-2" />
                       DOWNLOAD
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-gray-500">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleSendReportEmail}
+                      disabled={sendingEmail}
+                      className="text-amber-700 hover:text-amber-800"
+                      data-testid="email-holdings-btn"
+                    >
                       <Mail className="h-4 w-4 mr-2" />
-                      EMAIL
+                      {sendingEmail ? 'SENDING...' : 'EMAIL'}
                     </Button>
                   </div>
                 </div>
