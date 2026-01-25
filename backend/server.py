@@ -9519,8 +9519,11 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
     - Interest = Balance Principal × Coupon Rate × Days / 365
     - Accumulated interest paid at maturity with remaining principal
     
+    IMPORTANT: Interest is calculated from BOND START DATE (not investment date)
+    because the premium paid at secondary market includes accrued interest.
+    
     Args:
-        trades_data: List of dicts with {investment_date, calculated_investment, units, total_principal, coupon_rate, maturity_date}
+        trades_data: List of dicts with {investment_date, calculated_investment, units, total_principal, coupon_rate, maturity_date, bond_start_date}
         stored_cashflows: All scheduled cashflows for this bond (for fallback)
         actual_repayments: All actual repayments from uploads (THESE ARE THE SOURCE OF TRUTH)
         bond_info: Bond details including coupon_rate, end_date for maturity calculations
@@ -9539,6 +9542,7 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
     total_principal = trade_info.get('total_principal', 0)
     coupon_rate = trade_info.get('coupon_rate', 0)
     maturity_date_str = trade_info.get('maturity_date', '')
+    bond_start_date_str = trade_info.get('bond_start_date', '')
     
     # Get bond info for fallback values
     if bond_info:
@@ -9546,6 +9550,8 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
             coupon_rate = bond_info.get('coupon_rate', 0) or bond_info.get('annual_interest_rate', 0) or bond_info.get('interest_rate', 0)
         if not maturity_date_str:
             maturity_date_str = bond_info.get('end_date', '') or bond_info.get('maturity_date', '')
+        if not bond_start_date_str:
+            bond_start_date_str = bond_info.get('start_date', '') or bond_info.get('bond_start_date', '')
     
     # Convert coupon rate to decimal if percentage
     if coupon_rate > 1:
