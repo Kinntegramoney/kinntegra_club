@@ -13,9 +13,17 @@ import pandas as pd
 import requests
 from io import BytesIO
 
-# MongoDB connection
+# MongoDB connection - read from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-DB_NAME = os.environ.get('DB_NAME', 'bond_platform')
+# Remove quotes if present
+if MONGO_URL.startswith('"') and MONGO_URL.endswith('"'):
+    MONGO_URL = MONGO_URL[1:-1]
+DB_NAME = os.environ.get('DB_NAME', 'test_database')
+if DB_NAME.startswith('"') and DB_NAME.endswith('"'):
+    DB_NAME = DB_NAME[1:-1]
 
 # Excel file URLs
 FALI_URL = "https://customer-assets.emergentagent.com/job_repay-compare/artifacts/d5yjxohs_2026_01_25_CDNRE001_Fali.xlsx"
