@@ -2111,16 +2111,6 @@ export default function Holdings() {
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Transaction Footer - simplified */}
-                  <div className="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center text-sm">
-                    <div className="text-gray-500">
-                      XIRR: <span className="font-mono font-semibold text-blue-600">{modalData.trades[activeTab].xirr?.toFixed(2) || '-'}%</span>
-                    </div>
-                    <div className="text-gray-500">
-                      Payments: <span className="font-mono font-semibold text-green-600">{(modalData.trades[activeTab].actual_cashflows || []).length}</span>
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
