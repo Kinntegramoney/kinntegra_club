@@ -9127,6 +9127,84 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
     return client_summaries
 
 
+
+def build_actual_cashflows_with_investment(calculated_investment, investment_date_str, stored_cashflows, units, secondary_irr):
+    """
+    Build actual cashflows array with:
+    1. Investment entry (outflow)
+    2. Repaid cashflows (prepayments received)
+    3. Upcoming maturity (remaining principal + adjusted interest)
+    
+    This mirrors the structure of expected_cashflows for consistency.
+    """
+    actual_cashflows = []
+    
+    # 1. Add investment entry (outflow - negative)
+    if calculated_investment > 0:
+        actual_cashflows.append({
+            'date': investment_date_str,
+            'type': 'investment',
+            'amount': -calculated_investment,
+            'principal_component': 0,
+            'interest_component': 0,
+            'gross_amount': -calculated_investment,
+            'tds_amount': 0,
+            'net_amount': -calculated_investment,
+            'is_repaid': True,  # Investment is always "done"
+            'source': 'investment'
+        })
+    
+    # 2. Add all repaid cashflows (prepayments and scheduled repayments)
+    repaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_repaid')]
+    for cf in repaid_cashflows:
+        actual_cashflows.append({
+            'date': cf.get('repaid_date') or cf.get('date'),
+            'type': 'prepayment' if cf.get('is_prepaid') else 'repayment',
+            'amount': (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0),
+            'principal_component': cf.get('principal_component', 0) or 0,
+            'interest_component': cf.get('interest_component', 0) or 0,
+            'gross_amount': (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0),
+            'tds_amount': cf.get('tds_amount', 0) or 0,
+            'net_amount': cf.get('net_amount', 0) or 0,
+            'is_repaid': True,
+            'is_prepaid': cf.get('is_prepaid', False),
+            'source': 'actual_repayment'
+        })
+    
+    # 3. Add upcoming maturity (if not fully repaid)
+    # This is the remaining principal + interest calculated on reduced balance
+    pending_cashflows = [cf for cf in stored_cashflows if not cf.get('is_repaid')]
+    if pending_cashflows:
+        # Sum up pending amounts
+        pending_principal = sum(cf.get('principal_component', 0) or 0 for cf in pending_cashflows)
+        pending_interest = sum(cf.get('interest_component', 0) or 0 for cf in pending_cashflows)
+        pending_tds = sum(cf.get('tds_amount', 0) or 0 for cf in pending_cashflows)
+        pending_net = sum(cf.get('net_amount', 0) or 0 for cf in pending_cashflows)
+        
+        # Get the last pending date (maturity)
+        maturity_date = max(cf.get('date', '') for cf in pending_cashflows)
+        
+        if pending_principal > 0 or pending_interest > 0:
+            actual_cashflows.append({
+                'date': maturity_date,
+                'type': 'maturity',
+                'amount': pending_principal + pending_interest,
+                'principal_component': pending_principal,
+                'interest_component': pending_interest,
+                'gross_amount': pending_principal + pending_interest,
+                'tds_amount': pending_tds,
+                'net_amount': pending_net,
+                'is_repaid': False,
+                'source': 'pending_maturity'
+            })
+    
+    # Sort by date
+    actual_cashflows.sort(key=lambda x: x.get('date', ''))
+    
+    return actual_cashflows
+
+
+
 @api_router.get("/holdings/client/{client_id}")
 async def get_client_holdings(client_id: str, current_user: dict = Depends(get_current_user)):
     """Get detailed holdings for a specific client"""
