@@ -9232,15 +9232,6 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             }
             original_cashflows.append(original_cf)
         
-        # Calculate Expected XIRR using ORIGINAL cashflows (before prepayments)
-        # This shows the original expected return as per the bond deal uploaded
-        holding_xirr = calculate_holding_xirr(
-            trade['investment_date'], 
-            investment_amount, 
-            original_cashflows,
-            bond_start_date
-        )
-        
         # Fetch actual repayments (unscheduled prepayments from historical uploads)
         # Note: We only include actual_repayments that are NOT on scheduled dates
         # to avoid double-counting
