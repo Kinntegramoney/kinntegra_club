@@ -1638,7 +1638,6 @@ export default function Holdings() {
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Profit</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Principal</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S Interest</th>
-                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">O/S TDS</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Expected XIRR</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Actual XIRR</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Action</th>
