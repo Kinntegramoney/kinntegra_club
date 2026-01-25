@@ -9294,10 +9294,10 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         total_tds = sum(cf.get('tds_amount', 0) for cf in stored_cashflows)
         total_net_interest = total_interest_gross - total_tds
         
-        # Repaid components
-        repaid_principal = sum(cf.get('principal_component', 0) for cf in stored_cashflows if cf.get('is_repaid'))
-        repaid_interest = sum(cf.get('interest_component', 0) for cf in stored_cashflows if cf.get('is_repaid'))
-        repaid_tds = sum(cf.get('tds_amount', 0) for cf in stored_cashflows if cf.get('is_repaid'))
+        # Repaid components - ONLY count cashflows with actual payment confirmation
+        repaid_principal = sum(cf.get('principal_component', 0) for cf in stored_cashflows if is_actually_received(cf))
+        repaid_interest = sum(cf.get('interest_component', 0) for cf in stored_cashflows if is_actually_received(cf))
+        repaid_tds = sum(cf.get('tds_amount', 0) for cf in stored_cashflows if is_actually_received(cf))
         
         # Calculate prepaid info (prepaid principal only, no interest)
         prepaid_cashflows = [cf for cf in stored_cashflows if cf.get('is_prepaid') or cf.get('type') == 'prepayment']
