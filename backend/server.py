@@ -6376,10 +6376,15 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
         cell.alignment = Alignment(horizontal="center", wrap_text=True)
         ws_repayments.column_dimensions[get_column_letter(col)].width = 18
     
-    # Sample repayment data
+    # Sample repayment data - showing prepayment flow with principal reduction
     rep_sample = [
-        ["CDNRE001", "2025-04-08", "2025-06-15", "ABCDE1234F", 0, 32640.77, 32640.77, 3264.08, 29376.69],
-        ["CDNRE001", "2025-04-08", "2025-06-15", "XYZPQ5678G", 0, 41306.92, 41306.92, 4130.69, 37176.23],
+        # Prepayment entries (principal only, no interest) - reduces balance
+        ["CDNRE001", "2025-05-07", "2025-10-01", "ABCDE1234F", 945000, 0, 945000, 0, 945000],
+        ["CDNRE001", "2025-05-07", "2025-11-05", "ABCDE1234F", 945000, 0, 945000, 0, 945000],
+        ["CDNRE001", "2025-05-07", "2025-12-03", "ABCDE1234F", 945000, 0, 945000, 0, 945000],
+        ["CDNRE001", "2025-05-07", "2026-01-07", "ABCDE1234F", 945000, 0, 945000, 0, 945000],
+        # Maturity entry (remaining principal + accumulated interest)
+        # System will auto-calculate this if not provided, based on prepayments
     ]
     for row_idx, row_data in enumerate(rep_sample, 2):
         for col, value in enumerate(row_data, 1):
