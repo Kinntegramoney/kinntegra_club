@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, User, CheckSquare, History, Settings, UserPlus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 export default function Sidebar({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { hasPermission } = usePermissions();
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -28,9 +30,12 @@ export default function Sidebar({ user }) {
   const isBroker = user?.role === "broker";
   const isSubBroker = user?.role === "sub_broker";
 
-  // Menu items for Broker
+  // Check if dashboard is enabled (from permissions)
+  const dashboardEnabled = hasPermission('dashboard', 'view');
+
+  // Menu items for Broker (dashboard conditionally included)
   const brokerMenuItems = [
-    { path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid },
+    ...(dashboardEnabled ? [{ path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid }] : []),
     { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/broker/leads", label: "Lead Mgmt", icon: UserPlus },
@@ -43,9 +48,9 @@ export default function Sidebar({ user }) {
     { path: "/broker/settings", label: "Settings", icon: Settings },
   ];
 
-  // Menu items for Sub-Broker (limited access)
+  // Menu items for Sub-Broker (dashboard conditionally included)
   const subBrokerMenuItems = [
-    { path: "/sub-broker/dashboard", label: "Dashboard", icon: LayoutGrid },
+    ...(dashboardEnabled ? [{ path: "/sub-broker/dashboard", label: "Dashboard", icon: LayoutGrid }] : []),
     { path: "/sub-broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
     { path: "/sub-broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/sub-broker/clients", label: "Clients", icon: UserCheck },
