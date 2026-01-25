@@ -35,6 +35,7 @@ async def seed_database():
     client = AsyncIOMotorClient(MONGO_URL)
     db = client[DB_NAME]
     
+    print(f"Using database: {DB_NAME} at {MONGO_URL}")
     print("Downloading Excel files...")
     
     # Download and parse Excel files
@@ -59,23 +60,14 @@ async def seed_database():
     print(f"Bonds: {len(bond_details_df)} rows")
     print(f"Cashflows: {len(cashflows_df)} rows")
     
-    # 1. Create broker user first (if not exists)
-    broker_id = "broker-admin-001"
-    broker_user = await db.users.find_one({"id": broker_id})
+    # 1. Get existing broker user (seeded by system)
+    broker_user = await db.users.find_one({"pan": "ANVPB5297J"})
     if not broker_user:
-        broker_user = {
-            "id": broker_id,
-            "email": "admin@broker.com",
-            "name": "Admin Broker",
-            "role": "broker",
-            "pan_number": "ANVPB5297J",
-            "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKxcQw0o6GKZOmK",  # Laksh@0208
-            "pin_hash": "$2b$12$YfCmv7Y5oKD/JNBKSD8xjOvDRSCeZT0Z9mQ0oaEPXOQR/iDMnrVHy",  # 0516
-            "status": "active",
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        await db.users.insert_one(broker_user)
-        print("Created broker user")
+        print("ERROR: Broker user not found. The system should have created it on startup.")
+        return
+    
+    broker_id = broker_user['id']
+    print(f"Using existing broker: {broker_id}")
     
     # 2. Create client (AAAPU0926D - Fali)
     pan_number = "AAAPU0926D"
