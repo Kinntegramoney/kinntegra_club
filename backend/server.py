@@ -9296,7 +9296,9 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "prepaid_amount": round(prepaid_amount, 2),
             "xirr": expected_xirr,  # Bond's Secondary IRR
             "actual_xirr": actual_xirr,  # Same as expected
-            "cashflows": stored_cashflows,
+            "cashflows": stored_cashflows,  # Current state of cashflows
+            "expected_cashflows": original_cashflows,  # Original expected cashflows from bond
+            "actual_cashflows": [cf for cf in stored_cashflows if cf.get('is_repaid')],  # Actual repayments
             "status": "active" if upcoming_gross > 0 else "fully_repaid"
         })
         
