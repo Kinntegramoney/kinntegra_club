@@ -1734,9 +1734,15 @@ export default function Holdings() {
                         const osInterest = holding.total_interest_gross - holding.repaid_interest;
                         
                         // Calculate actual profit from actual cashflows
-                        const actualInflows = (holding.actual_cashflows || []).filter(cf => cf.type !== 'investment')
+                        // Investment is negative, repayments are positive
+                        const actualCashflows = holding.actual_cashflows || [];
+                        const investmentOutflow = actualCashflows
+                          .filter(cf => cf.type === 'investment')
+                          .reduce((sum, cf) => sum + Math.abs(cf.gross_amount || cf.amount || 0), 0);
+                        const actualInflows = actualCashflows
+                          .filter(cf => cf.type !== 'investment')
                           .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
-                        const actualProfit = actualInflows - holding.invested_amount;
+                        const actualProfit = actualInflows - investmentOutflow;
                         const profitDifference = actualProfit - expectedProfit;
                         
                         // Format number with commas (Indian format)
@@ -1750,15 +1756,21 @@ export default function Holdings() {
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(holding.invested_amount)}</p>
-                            <p className="text-red-600">{profitDifference < 0 ? '' : '-'}{formatNum(Math.abs(profitDifference))}</p>
+                            {profitDifference !== 0 && (
+                              <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
+                            )}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(totalGrossExpected)}</p>
-                            <p className="text-red-600">{profitDifference < 0 ? '' : '-'}{formatNum(Math.abs(profitDifference))}</p>
+                            {profitDifference !== 0 && (
+                              <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
+                            )}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(expectedProfit)}</p>
-                            <p className="text-red-600">{profitDifference < 0 ? '' : '-'}{formatNum(Math.abs(profitDifference))}</p>
+                            {profitDifference !== 0 && (
+                              <p className="text-red-600">{profitDifference < 0 ? '-' : ''}{formatNum(Math.abs(profitDifference))}</p>
+                            )}
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osPrincipal)}</td>
                           <td className="py-2 px-2 text-right font-mono text-xs text-blue-600">{formatINR(osInterest)}</td>
