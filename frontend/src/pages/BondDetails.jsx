@@ -513,7 +513,7 @@ export default function BondDetails() {
       <div className="container mx-auto px-6 py-8">
         {/* Bond Description - At Top with View Cashflows Icon (broker only) */}
         {bondData.description && (
-          <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-5 border border-etihad-gold-200 shadow-sm">
+          <div className="mb-6 bg-gradient-to-r from-etihad-gold-50 to-orange-50 rounded-xl p-5 border border-etihad-gold-200 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 flex-1">
                 <div className="w-10 h-10 bg-etihad-gold-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1204,7 +1204,7 @@ export default function BondDetails() {
                         <p className="text-xs text-emerald-600 font-medium mb-1">Net Received</p>
                         <p className="text-lg font-bold text-emerald-800">₹{cashflowReportData.total_net_received.toLocaleString('en-IN')}</p>
                       </div>
-                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg p-3 border border-etihad-gold-100 text-center">
+                      <div className="bg-gradient-to-br from-etihad-gold-50 to-orange-50 rounded-lg p-3 border border-etihad-gold-100 text-center">
                         <p className="text-xs text-etihad-gold-700 font-medium mb-1">XIRR</p>
                         <p className="text-2xl font-bold text-etihad-gold-800">{bondData.secondary_irr}%</p>
                       </div>

@@ -218,7 +218,7 @@ export default function SubBrokerReinvestment() {
           
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-lg p-4 text-white">
+            <div className="bg-gradient-to-r from-etihad-gold-500 to-orange-500 rounded-lg p-4 text-white">
               <p className="text-etihad-gold-100 text-sm">Total Upcoming</p>
               <p className="text-2xl font-bold">{formatCurrency(data.summary?.total_amount)}</p>
               <p className="text-etihad-gold-100 text-xs">{data.summary?.total_entries || 0} entries</p>

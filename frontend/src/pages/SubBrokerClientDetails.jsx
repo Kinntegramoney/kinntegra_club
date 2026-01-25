@@ -228,7 +228,7 @@ export default function SubBrokerClientDetails() {
               {/* Status Banner */}
               <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-xl">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-etihad-gold-500 to-orange-600 flex items-center justify-center text-white font-bold text-xl">
                     {client.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'CL'}
                   </div>
                   <div>

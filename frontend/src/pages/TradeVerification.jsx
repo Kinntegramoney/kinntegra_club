@@ -111,7 +111,7 @@ export default function TradeVerification() {
     if (type === 'reinvestment') {
       switch (status) {
         case 'pending':
-          return <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full flex items-center gap-1"><Mail className="h-3 w-3" /> Awaiting</span>;
+          return <span className="px-2 py-1 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded-full flex items-center gap-1"><Mail className="h-3 w-3" /> Awaiting</span>;
         case 'approved':
           return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full flex items-center gap-1"><Check className="h-3 w-3" /> Approved</span>;
         case 'rejected':
@@ -122,7 +122,7 @@ export default function TradeVerification() {
     }
     switch (status) {
       case 'pending':
-        return <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full flex items-center gap-1"><Clock className="h-3 w-3" /> Pending</span>;
+        return <span className="px-2 py-1 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded-full flex items-center gap-1"><Clock className="h-3 w-3" /> Pending</span>;
       case 'approved':
         return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full flex items-center gap-1"><Check className="h-3 w-3" /> Approved</span>;
       case 'rejected':
@@ -222,7 +222,7 @@ export default function TradeVerification() {
               <p className="text-sm text-gray-500 mt-1">Review trade requests and reinvestment approvals</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded-full font-medium">
+              <span className="px-3 py-1 bg-etihad-gold-100 text-etihad-gold-700 text-sm rounded-full font-medium">
                 {pendingTrades.length} Pending Trades
               </span>
               {reinvestmentApprovals.filter(r => r.approval_status === 'pending').length > 0 && (

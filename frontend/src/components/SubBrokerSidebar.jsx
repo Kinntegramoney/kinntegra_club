@@ -38,7 +38,7 @@ export default function SubBrokerSidebar({ user }) {
       {/* Logo */}
       <div className="p-4 md:p-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-etihad-gold-600 flex items-center justify-center">
             <span className="text-white text-xl font-bold">K</span>
           </div>
           <div className="min-w-0">

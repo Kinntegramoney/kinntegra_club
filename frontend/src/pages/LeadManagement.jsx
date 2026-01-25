@@ -45,7 +45,7 @@ const STATUS_CONFIG = {
   open: { label: "Open", color: "bg-blue-100 text-blue-800", icon: Clock },
   closed: { label: "Closed", color: "bg-green-100 text-green-800", icon: CheckCircle },
   not_interested: { label: "Not Interested", color: "bg-gray-100 text-gray-800", icon: XCircle },
-  pending: { label: "Pending", color: "bg-yellow-100 text-yellow-800", icon: Clock },
+  pending: { label: "Pending", color: "bg-etihad-gold-100 text-etihad-gold-800", icon: Clock },
   approved: { label: "Approved", color: "bg-green-100 text-green-800", icon: CheckCircle },
   rejected: { label: "Rejected", color: "bg-red-100 text-red-800", icon: XCircle },
 };
@@ -418,7 +418,7 @@ export default function LeadManagement() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded">Pending</span>
+                              <span className="px-2 py-0.5 text-xs bg-etihad-gold-100 text-etihad-gold-700 rounded">Pending</span>
                               {expandedItems[client.id] ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                             </div>
                           </div>
@@ -512,9 +512,9 @@ export default function LeadManagement() {
                   <span className="font-semibold text-gray-800">{mySubmissions.length}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                  <span className="w-2 h-2 rounded-full bg-etihad-gold-500"></span>
                   <span className="text-sm text-gray-500">Pending:</span>
-                  <span className="font-semibold text-yellow-600">{mySubmissions.filter(s => s.status === 'pending_broker').length}</span>
+                  <span className="font-semibold text-etihad-gold-600">{mySubmissions.filter(s => s.status === 'pending_broker').length}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-green-500"></span>
@@ -545,7 +545,7 @@ export default function LeadManagement() {
                   <div className="space-y-3">
                     {mySubmissions.map((submission) => {
                       const statusConfig = {
-                        pending_broker: { label: "Pending Approval", color: "bg-yellow-100 text-yellow-800", icon: Clock },
+                        pending_broker: { label: "Pending Approval", color: "bg-etihad-gold-100 text-etihad-gold-800", icon: Clock },
                         pending_client: { label: "Awaiting Client", color: "bg-blue-100 text-blue-800", icon: Clock },
                         approved: { label: "Approved", color: "bg-green-100 text-green-800", icon: CheckCircle },
                         completed: { label: "Completed", color: "bg-green-100 text-green-800", icon: CheckCircle },

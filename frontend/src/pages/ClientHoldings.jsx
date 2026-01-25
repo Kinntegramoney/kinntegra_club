@@ -604,7 +604,7 @@ export default function ClientHoldings() {
                               <Check className="h-3 w-3" /> Repaid
                             </span>
                           ) : new Date(cf.date) < new Date() ? (
-                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full flex items-center justify-center gap-1">
+                            <span className="px-2 py-0.5 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded-full flex items-center justify-center gap-1">
                               <Clock className="h-3 w-3" /> Due
                             </span>
                           ) : (

@@ -107,7 +107,7 @@ export default function ClientTradeVerification() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'pending':
-        return <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full flex items-center gap-1"><Clock className="h-3 w-3" /> Pending</span>;
+        return <span className="px-2 py-1 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded-full flex items-center gap-1"><Clock className="h-3 w-3" /> Pending</span>;
       case 'approved':
         return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full flex items-center gap-1"><Check className="h-3 w-3" /> Approved</span>;
       case 'rejected':
@@ -246,7 +246,7 @@ export default function ClientTradeVerification() {
                   {/* Pending Approvals */}
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-yellow-500" />
+                      <Clock className="h-5 w-5 text-etihad-gold-500" />
                       Pending Approval ({reinvestment.pending.length})
                     </h3>
                     

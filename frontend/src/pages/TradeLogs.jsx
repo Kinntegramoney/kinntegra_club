@@ -31,7 +31,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const STATUS_CONFIG = {
-  pending: { label: "Pending", color: "bg-yellow-100 text-yellow-800" },
+  pending: { label: "Pending", color: "bg-etihad-gold-100 text-etihad-gold-800" },
   approved: { label: "Approved", color: "bg-green-100 text-green-800" },
   rejected: { label: "Rejected", color: "bg-red-100 text-red-800" },
   submitted: { label: "Submitted", color: "bg-blue-100 text-blue-800" },

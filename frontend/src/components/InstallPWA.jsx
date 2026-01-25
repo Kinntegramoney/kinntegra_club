@@ -71,7 +71,7 @@ export default function InstallPWA() {
   if (localStorage.getItem('pwa-banner-dismissed') === 'true') return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg shadow-lg p-4 z-50 animate-slide-up">
+    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-gradient-to-r from-etihad-gold-600 to-orange-600 text-white rounded-lg shadow-lg p-4 z-50 animate-slide-up">
       <button 
         onClick={dismissBanner}
         className="absolute top-2 right-2 text-white/80 hover:text-white"

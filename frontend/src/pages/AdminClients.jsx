@@ -545,7 +545,7 @@ export default function AdminClients() {
       {showCredentialsModal && credentials && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-md">
-            <div className="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4 text-white rounded-t-lg">
+            <div className="bg-gradient-to-r from-etihad-gold-500 to-etihad-gold-600 px-6 py-4 text-white rounded-t-lg">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <KeyRound className="h-6 w-6" />
                 Client Credentials

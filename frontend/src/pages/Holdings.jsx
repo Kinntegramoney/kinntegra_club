@@ -1638,7 +1638,7 @@ export default function Holdings() {
                                 </td>
                                 <td className="px-3 py-3 text-center whitespace-nowrap">
                                   {trade.status === 'pending' ? (
-                                    <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded font-medium">Pending</span>
+                                    <span className="px-2 py-0.5 bg-etihad-gold-100 text-etihad-gold-700 text-[10px] rounded font-medium">Pending</span>
                                   ) : trade.status === 'approved' ? (
                                     <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded font-medium">Approved</span>
                                   ) : (
@@ -1709,7 +1709,7 @@ export default function Holdings() {
                           <p className="text-teal-100 text-sm">Total Properties</p>
                           <p className="text-2xl font-bold">{clientRealEstate.length}</p>
                         </div>
-                        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-5 text-white">
+                        <div className="bg-gradient-to-br from-etihad-gold-500 to-etihad-gold-600 rounded-lg p-5 text-white">
                           <p className="text-etihad-gold-100 text-sm">Total Investment</p>
                           <p className="text-2xl font-bold">
                             AED {new Intl.NumberFormat('en-AE').format(
@@ -1903,7 +1903,7 @@ export default function Holdings() {
                           name="holdingStatus" 
                           checked={statusFilter === 'all'} 
                           onChange={() => setStatusFilter('all')} 
-                          className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-amber-500" 
+                          className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-etihad-gold-500" 
                         />
                         <span className="text-sm text-gray-600">All</span>
                       </label>
@@ -1913,7 +1913,7 @@ export default function Holdings() {
                           name="holdingStatus" 
                           checked={statusFilter === 'active'} 
                           onChange={() => setStatusFilter('active')} 
-                          className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-amber-500" 
+                          className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-etihad-gold-500" 
                         />
                         <span className="text-sm text-gray-600">Active</span>
                       </label>
@@ -1923,7 +1923,7 @@ export default function Holdings() {
                           name="holdingStatus" 
                           checked={statusFilter === 'fully_repaid'} 
                           onChange={() => setStatusFilter('fully_repaid')} 
-                          className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-amber-500" 
+                          className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-etihad-gold-500" 
                         />
                         <span className="text-sm text-gray-600">Completed</span>
                       </label>
@@ -2062,7 +2062,7 @@ export default function Holdings() {
           
           <div className="relative bg-white rounded-xl shadow-2xl w-[95%] max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-etihad-gold-50 to-orange-50">
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">Cashflow Details</h2>
                 <p className="text-sm text-gray-600">{modalData.bond_name} • {modalData.total_units} units • Invested: {formatINR(modalData.invested_amount)}</p>
@@ -2666,7 +2666,7 @@ export default function Holdings() {
                       tradeDetailsModal.status === 'approved' 
                         ? 'bg-green-100 text-green-700' 
                         : tradeDetailsModal.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-700'
+                        ? 'bg-etihad-gold-100 text-etihad-gold-700'
                         : 'bg-red-100 text-red-700'
                     }`}>
                       {tradeDetailsModal.status?.charAt(0).toUpperCase() + tradeDetailsModal.status?.slice(1)}

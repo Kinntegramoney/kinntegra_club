@@ -1754,8 +1754,8 @@ export default function RealEstateDetails() {
                                 </Button>
                               </>
                             ) : (
-                              <div className="mt-3 p-3 rounded-lg bg-yellow-50">
-                                <p className="text-sm text-yellow-700">Unable to calculate XIRR. Check dates.</p>
+                              <div className="mt-3 p-3 rounded-lg bg-etihad-gold-50">
+                                <p className="text-sm text-etihad-gold-700">Unable to calculate XIRR. Check dates.</p>
                               </div>
                             )}
                           </>

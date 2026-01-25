@@ -216,7 +216,7 @@ export default function AdminBonds() {
                     const isActive = listingStatus === 'active';
 
                     return (
-                      <tr key={bond.id} className={`border-t border-gray-100 hover:bg-gray-50 ${!isActive ? 'bg-yellow-50/30' : ''}`} data-testid={`bond-row-${bond.id}`}>
+                      <tr key={bond.id} className={`border-t border-gray-100 hover:bg-gray-50 ${!isActive ? 'bg-etihad-gold-50/30' : ''}`} data-testid={`bond-row-${bond.id}`}>
                         <td className="py-4 px-6">
                           <div>
                             <span className="font-medium">{bond.name}</span>
@@ -233,7 +233,7 @@ export default function AdminBonds() {
                               Active
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded-full">
                               <Clock className="h-3 w-3" />
                               Pending
                             </span>
@@ -269,7 +269,7 @@ export default function AdminBonds() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleDeactivateBond(bond.id)}
-                                className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+                                className="text-etihad-gold-600 hover:text-etihad-gold-700 hover:bg-etihad-gold-50"
                                 data-testid={`deactivate-bond-${bond.id}`}
                                 title="Deactivate bond"
                               >

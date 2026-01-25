@@ -240,7 +240,7 @@ export default function SubBrokerProfile() {
           {/* Profile Card */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {/* Profile Header */}
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6">
+            <div className="bg-gradient-to-r from-etihad-gold-500 to-orange-500 p-6">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-white text-2xl font-bold">
                   {profile?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'SB'}
