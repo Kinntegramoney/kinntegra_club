@@ -2106,19 +2106,8 @@ export default function Holdings() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Expected Cashflows for this trade */}
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
-                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2 flex justify-between items-center">
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2">
                         <h3 className="font-semibold text-white text-sm">Expected Cashflow</h3>
-                        <button
-                          onClick={() => downloadCombinedCashflowPDF(
-                            { ...modalData.trades[activeTab], bond_name: modalData.bond_name, xirr: modalData.trades[activeTab].xirr, actual_xirr: modalData.trades[activeTab].actual_xirr },
-                            modalData.trades[activeTab].expected_cashflows || [],
-                            modalData.trades[activeTab].actual_cashflows || []
-                          )}
-                          className="flex items-center gap-1 px-2 py-1 bg-white/20 hover:bg-white/30 rounded text-white text-xs transition-colors"
-                        >
-                          <Download className="h-3 w-3" />
-                          PDF
-                        </button>
                       </div>
                       <div className="flex-1 max-h-[250px] overflow-y-auto">
                         <table className="w-full text-sm">
