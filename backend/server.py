@@ -6333,13 +6333,8 @@ async def bulk_upload_historical_trades(
         "success": 0,
         "failed": 0,
         "errors": [],
-        "investments_created": 0,
         "repayments_recorded": 0,
-        "bonds_updated_to_funded": [],
-        "bonds_updated_to_closed": [],
-        "created_trades": [],
         "validation_summary": {
-            "total_investment_rows": 0,
             "total_repayment_rows": 0
         }
     }
@@ -6354,200 +6349,58 @@ async def bulk_upload_historical_trades(
     client_by_pan = {c.get('pan_number', '').strip().upper(): c for c in all_clients if c.get('pan_number')}
     
     try:
-        # Read Sheet 1: Investment Details
-        try:
-            df_investments = pd.read_excel(io.BytesIO(content), sheet_name="Investment Details")
-            df_investments.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_investments.columns]
-        except Exception as e:
-            df_investments = None
-            results['errors'].append(f"Could not read 'Investment Details' sheet: {str(e)}")
-        
-        # Read Sheet 2: Repayment Details
+        # Read Repayment Details sheet (first sheet or named sheet)
         try:
             df_repayments = pd.read_excel(io.BytesIO(content), sheet_name="Repayment Details")
-            df_repayments.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_repayments.columns]
-        except Exception as e:
-            df_repayments = None
-            results['errors'].append(f"Could not read 'Repayment Details' sheet: {str(e)}")
+        except Exception:
+            # Fall back to first sheet
+            df_repayments = pd.read_excel(io.BytesIO(content), sheet_name=0)
         
-        # Process Investment Details
-        if df_investments is not None and len(df_investments) > 0:
-            results['validation_summary']['total_investment_rows'] = len(df_investments)
-            
-            required_inv_cols = ['deal_id', 'date_of_investment', 'pan', 'no_of_units', 'amount']
-            missing_cols = [col for col in required_inv_cols if col not in df_investments.columns]
-            if missing_cols:
-                results['errors'].append(f"Investment sheet missing columns: {', '.join(missing_cols)}")
-            else:
-                for idx, row in df_investments.iterrows():
-                    row_num = idx + 2
-                    try:
-                        if pd.isna(row.get('deal_id')) or pd.isna(row.get('pan')):
-                            continue
-                        
-                        deal_id = str(row['deal_id']).strip().upper()
-                        pan = str(row['pan']).strip().upper()
-                        units = int(row['no_of_units'])
-                        amount = float(row['amount'])
-                        utr = str(row.get('utr', '')) if pd.notna(row.get('utr')) else None
-                        
-                        # Parse investment date
-                        inv_date = row['date_of_investment']
-                        if isinstance(inv_date, str):
-                            inv_date = datetime.fromisoformat(inv_date.replace('/', '-'))
-                        inv_date_str = inv_date.strftime('%Y-%m-%d') if hasattr(inv_date, 'strftime') else str(inv_date)
-                        
-                        # Find bond
-                        bond = bond_lookup.get(deal_id)
-                        if not bond:
-                            results['errors'].append(f"Investment Row {row_num}: Bond '{deal_id}' not found. Create the bond first.")
-                            results['failed'] += 1
-                            continue
-                        
-                        # Find client by PAN
-                        client = client_by_pan.get(pan)
-                        if not client:
-                            results['errors'].append(f"Investment Row {row_num}: Client with PAN '{pan}' not found. Create the client first.")
-                            results['failed'] += 1
-                            continue
-                        
-                        # Check for duplicate
-                        existing = await db.trades.find_one({
-                            "bond_id": bond['id'],
-                            "client_id": client['id'],
-                            "investment_date": inv_date_str,
-                            "units": units
-                        })
-                        if existing:
-                            results['errors'].append(f"Investment Row {row_num}: Duplicate trade already exists")
-                            results['failed'] += 1
-                            continue
-                        
-                        # Create trade - APPROVED status, will create cashflows
-                        trade_id = str(uuid.uuid4())
-                        price_per_unit = amount / units if units > 0 else 0
-                        
-                        trade_dict = {
-                            "id": trade_id,
-                            "bond_id": bond['id'],
-                            "bond_name": bond['name'],
-                            "bond_code": bond.get('bond_code', deal_id),
-                            "client_id": client['id'],
-                            "client_name": client['name'],
-                            "client_pan": pan,
-                            "units": units,
-                            "investment_date": inv_date_str,
-                            "calculated_price": price_per_unit,
-                            "total_amount": amount,
-                            "payment_reference": utr,
-                            "status": "approved",
-                            "created_by": current_user['id'],
-                            "created_by_name": current_user.get('name', 'System'),
-                            "created_by_role": "broker",
-                            "broker_notes": "Historical import via bulk upload",
-                            "approved_by": current_user['id'],
-                            "approved_at": datetime.now(timezone.utc).isoformat(),
-                            "created_at": datetime.now(timezone.utc).isoformat(),
-                            "is_historical": True
-                        }
-                        
-                        await db.trades.insert_one(trade_dict)
-                        
-                        # Update bond units sold
-                        await db.bonds.update_one(
-                            {"id": bond['id']},
-                            {"$inc": {"units_sold": units}}
-                        )
-                        
-                        # Add to client's bond allocations
-                        allocation = {
-                            "bond_id": bond['id'],
-                            "bond_name": bond['name'],
-                            "units_blocked": units,
-                            "units_paid": units,
-                            "status": "fully_paid",
-                            "trade_id": trade_id,
-                            "allocated_at": datetime.now(timezone.utc).isoformat()
-                        }
-                        await db.clients.update_one(
-                            {"id": client['id']},
-                            {"$push": {"bond_allocations": allocation}}
-                        )
-                        
-                        # Generate projected cashflows - these will appear in Reinv Tag > Untagged
-                        cashflows = generate_client_cashflows(trade_dict, bond)
-                        if cashflows:
-                            today = datetime.now(timezone.utc).date()
-                            for cf in cashflows:
-                                cf['client_id'] = client['id']
-                                cf['bond_id'] = bond['id']
-                                cf['trade_id'] = trade_id
-                                cf['reinvestment_tag'] = 'not_tagged'  # Will appear in untagged section
-                                
-                                # For historical imports: Mark past-dated cashflows as repaid
-                                cf_date = datetime.fromisoformat(cf['date'].split('T')[0]).date() if isinstance(cf['date'], str) else cf['date']
-                                if cf_date < today:
-                                    cf['is_repaid'] = True
-                                    cf['repaid_at'] = datetime.now(timezone.utc).isoformat()
-                                    cf['repaid_actual_amount'] = cf.get('net_amount', 0)
-                                    
-                            await db.holding_cashflows.insert_many(cashflows)
-                        
-                        results['investments_created'] += 1
-                        results['success'] += 1
-                        results['created_trades'].append({
-                            "trade_id": trade_id,
-                            "client": client['name'],
-                            "bond": bond['name'],
-                            "units": units,
-                            "amount": amount
-                        })
-                        
-                    except Exception as e:
-                        results['errors'].append(f"Investment Row {row_num}: {str(e)}")
-                        results['failed'] += 1
+        df_repayments.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_repayments.columns]
+        
+        if df_repayments is None or len(df_repayments) == 0:
+            raise HTTPException(status_code=400, detail="No data found in the uploaded file. Please use 'Repayment Details' sheet.")
         
         # Process Repayment Details (Actuals)
-        if df_repayments is not None and len(df_repayments) > 0:
-            results['validation_summary']['total_repayment_rows'] = len(df_repayments)
-            
-            # Required columns (date_of_investment is OPTIONAL - used for matching to specific trade)
-            required_rep_cols = ['deal_id', 'repayment_date', 'pan', 'gross_amount', 'net_amount']
-            missing_cols = [col for col in required_rep_cols if col not in df_repayments.columns]
-            if missing_cols:
-                results['errors'].append(f"Repayment sheet missing columns: {', '.join(missing_cols)}")
-            else:
-                for idx, row in df_repayments.iterrows():
-                    row_num = idx + 2
-                    try:
-                        if pd.isna(row.get('deal_id')) or pd.isna(row.get('pan')):
-                            continue
-                        
-                        deal_id = str(row['deal_id']).strip().upper()
-                        pan = str(row['pan']).strip().upper()
-                        
-                        # Parse date of investment (OPTIONAL - for matching to specific trade)
-                        # Check both column names for backwards compatibility
-                        inv_date = row.get('date_of_investment') or row.get('date_of_investment_(optional)')
-                        inv_date_str = None
-                        if pd.notna(inv_date):
-                            if isinstance(inv_date, str):
-                                inv_date = datetime.fromisoformat(inv_date.replace('/', '-'))
-                            inv_date_str = inv_date.strftime('%Y-%m-%d') if hasattr(inv_date, 'strftime') else str(inv_date)[:10]
-                        
-                        # Parse repayment date
-                        rep_date = row['repayment_date']
-                        if isinstance(rep_date, str):
-                            rep_date = datetime.fromisoformat(rep_date.replace('/', '-'))
-                        rep_date_str = rep_date.strftime('%Y-%m-%d') if hasattr(rep_date, 'strftime') else str(rep_date)
-                        
-                        principal = float(row.get('principal', 0)) if pd.notna(row.get('principal')) else 0
-                        interest = float(row.get('interest', 0)) if pd.notna(row.get('interest')) else 0
-                        gross_amount = float(row['gross_amount'])
-                        tds = float(row.get('tds', 0)) if pd.notna(row.get('tds')) else 0
-                        net_amount = float(row['net_amount'])
-                        
-                        # Find bond
+        results['validation_summary']['total_repayment_rows'] = len(df_repayments)
+        
+        # Required columns (date_of_investment is OPTIONAL - used for matching to specific trade)
+        required_rep_cols = ['deal_id', 'repayment_date', 'pan', 'gross_amount', 'net_amount']
+        missing_cols = [col for col in required_rep_cols if col not in df_repayments.columns]
+        if missing_cols:
+            raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing_cols)}")
+        
+        for idx, row in df_repayments.iterrows():
+            row_num = idx + 2
+            try:
+                if pd.isna(row.get('deal_id')) or pd.isna(row.get('pan')):
+                    continue
+                
+                deal_id = str(row['deal_id']).strip().upper()
+                pan = str(row['pan']).strip().upper()
+                
+                # Parse date of investment (OPTIONAL - for matching to specific trade)
+                # Check both column names for backwards compatibility
+                inv_date = row.get('date_of_investment') or row.get('date_of_investment_(optional)')
+                inv_date_str = None
+                if pd.notna(inv_date):
+                    if isinstance(inv_date, str):
+                        inv_date = datetime.fromisoformat(inv_date.replace('/', '-'))
+                    inv_date_str = inv_date.strftime('%Y-%m-%d') if hasattr(inv_date, 'strftime') else str(inv_date)[:10]
+                
+                # Parse repayment date
+                rep_date = row['repayment_date']
+                if isinstance(rep_date, str):
+                    rep_date = datetime.fromisoformat(rep_date.replace('/', '-'))
+                rep_date_str = rep_date.strftime('%Y-%m-%d') if hasattr(rep_date, 'strftime') else str(rep_date)
+                
+                principal = float(row.get('principal', 0)) if pd.notna(row.get('principal')) else 0
+                interest = float(row.get('interest', 0)) if pd.notna(row.get('interest')) else 0
+                gross_amount = float(row['gross_amount'])
+                tds = float(row.get('tds', 0)) if pd.notna(row.get('tds')) else 0
+                net_amount = float(row['net_amount'])
+                
+                # Find bond
                         bond = bond_lookup.get(deal_id)
                         if not bond:
                             results['errors'].append(f"Repayment Row {row_num}: Bond '{deal_id}' not found")
