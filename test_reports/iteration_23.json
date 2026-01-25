@@ -1,0 +1,61 @@
+{
+  "summary": "Tested the fix for Expected Repayments calculation in Holdings modal. All features working correctly - Expected Repayments now shows data from bond template instead of 'No expected cashflows from bond definition' message.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Backend: Login as broker (PAN: ANVPB5297J) - 2-step authentication working",
+    "Backend: Holdings clients list returns Fali Investor with 3 trades",
+    "Backend: Holdings API returns expected_cashflows for each trade",
+    "Backend: Holdings API returns actual_cashflows (5 repaid cashflows per trade)",
+    "Backend: Expected cashflow values correct for trade 1 (34 units) - Principal ₹34L, Interest ₹9.57L",
+    "Backend: Expected cashflow values correct for trade 2 (31 units) - Principal ₹31L, Interest ₹8.73L",
+    "Backend: Expected cashflow values correct for trade 3 (135 units) - Principal ₹1.35Cr, Interest ₹38L",
+    "Backend: XIRR values are 12.00% for all trades",
+    "Backend: Summary totals correct - Investment ₹2.31Cr, Repaid ₹2.53Cr",
+    "Frontend: Holdings page loads correctly",
+    "Frontend: Client 'Fali Investor' selectable from left panel",
+    "Frontend: View Details button opens Cashflow modal",
+    "Frontend: Summary tab shows Expected Repayments with data (not 'No expected cashflows')",
+    "Frontend: Expected Repayments shows 08 Apr 2026 with Principal ~₹2.00 Cr, Interest ~₹56L",
+    "Frontend: Actual Repayments shows 5 payments from Oct 2025 to Apr 2026",
+    "Frontend: Trade tab 30 Apr 2025 (34 units) shows Expected Repayments data",
+    "Frontend: Trade tab 02 May 2025 (31 units) shows Expected Repayments data",
+    "Frontend: Trade tab 07 May 2025 (135 units) shows Expected Repayments data",
+    "Frontend: Expected XIRR shows 12.00%",
+    "Frontend: Actual XIRR shows 12.00%"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_holdings_expected_cashflows.py",
+    "/app/test_reports/pytest/holdings_expected_cashflows_tests.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fix correctly implemented: expected_cashflows and actual_cashflows now included in trades array within getConsolidatedHoldings function (Holdings.jsx lines 606-607)",
+    "Backend correctly returns expected_cashflows from bond template and actual_cashflows from repaid cashflows (server.py lines 9427-9428)",
+    "Dead code referencing undefined 'maturity_cashflows' variable removed from line 9322",
+    "Bond CDNRE001 seeded with interest_per_unit=28149.7 and principal_per_unit=100000",
+    "3 trades seeded for Fali Investor (34, 31, 135 units) with 15 actual repayments total"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_holdings_expected_cashflows.py"
+  ],
+  "success_rate": {
+    "backend": "100% (8/8 tests passed)",
+    "frontend": "100% (All UI tests passed)"
+  },
+  "test_credentials": {
+    "broker": {"PAN": "ANVPB5297J", "Password": "Laksh@0208", "PIN": "0516"},
+    "test_client": {"name": "Fali Investor", "PAN": "AAAPU0926D", "client_id": "client-AAAPU0926D"}
+  },
+  "seed_data_creation": "Bond CDNRE001 with 3 trades (34, 31, 135 units) and 15 actual repayments seeded by main agent",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Expected Repayments fix verified. Holdings modal now shows side-by-side comparison: Expected Repayments (from bond template with maturity date 08 Apr 2026) vs Actual Repayments (5 prepayments from Oct 2025 to Apr 2026). All 3 trade tabs (30 Apr 2025, 02 May 2025, 07 May 2025) show their own expected_cashflows data. XIRR is 12.00% for both expected and actual. Test file: /app/backend/tests/test_holdings_expected_cashflows.py"
+}
