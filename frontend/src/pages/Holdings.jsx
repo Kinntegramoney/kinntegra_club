@@ -2048,15 +2048,31 @@ export default function Holdings() {
                           </thead>
                           <tbody className="divide-y divide-gray-100">
                             {(() => {
-                              const repaidCfs = modalData.trades[activeTab].actual_cashflows || modalData.trades[activeTab].cashflows?.filter(cf => cf.is_repaid) || [];
-                              if (repaidCfs.length > 0) {
-                                return repaidCfs.map((cf, idx) => (
-                                  <tr key={idx} className="bg-white hover:bg-gray-50">
-                                    <td className="py-2 px-3 font-mono text-xs text-gray-900">{format(new Date(cf.repaid_date || cf.date), "dd MMM yyyy")}</td>
-                                    <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-gray-900">
-                                      {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                    </td>
-                                  </tr>
+                              const actualCfs = modalData.trades[activeTab].actual_cashflows || [];
+                              if (actualCfs.length > 0) {
+                                return actualCfs.map((cf, idx) => (
+                                  cf.type === 'investment' ? (
+                                    <tr key={idx} className="bg-red-50">
+                                      <td className="py-2 px-3 font-mono text-xs text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                      <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-600">
+                                        -{formatAbsoluteINR(Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0))}
+                                      </td>
+                                    </tr>
+                                  ) : cf.type === 'maturity' ? (
+                                    <tr key={idx} className="bg-blue-50">
+                                      <td className="py-2 px-3 font-mono text-xs text-blue-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                      <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-blue-600">
+                                        {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                      </td>
+                                    </tr>
+                                  ) : (
+                                    <tr key={idx} className="bg-white hover:bg-gray-50">
+                                      <td className="py-2 px-3 font-mono text-xs text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                      <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-gray-900">
+                                        {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                      </td>
+                                    </tr>
+                                  )
                                 ));
                               } else {
                                 return (
@@ -2072,10 +2088,23 @@ export default function Holdings() {
                         </table>
                       </div>
                       <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-sm mt-auto">
-                        <span className="text-gray-600">Total:</span>
-                        <span className="font-mono font-bold ml-2 text-green-600">
-                          {formatAbsoluteINR((modalData.trades[activeTab].actual_cashflows || modalData.trades[activeTab].cashflows?.filter(cf => cf.is_repaid) || []).reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
-                        </span>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="text-gray-600">Profits:</span>
+                            <span className="font-mono font-bold ml-2 text-green-600">
+                              {formatAbsoluteINR(
+                                (modalData.trades[activeTab].actual_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
+                                (modalData.trades[activeTab].actual_cashflows || []).filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0), 0)
+                              )}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">XIRR:</span>
+                            <span className="font-mono font-bold ml-2 text-green-700">
+                              {modalData.trades[activeTab].actual_xirr !== null && modalData.trades[activeTab].actual_xirr !== undefined ? `${modalData.trades[activeTab].actual_xirr.toFixed(2)}%` : '-'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
