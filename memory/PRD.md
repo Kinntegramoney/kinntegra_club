@@ -2,6 +2,31 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### Kinntegra MF Buy Scheduler API Integration (Jan 25, 2026 - Session 6)
+
+**1. Linked Kinntegra API to Reinvestment Approval ✅**
+- **Request:** Call Kinntegra MF Buy Scheduler API when client approves reinvestment tag
+- **API Details:**
+  - Endpoint: `https://api.kinntegra.co.in/api/transaction/addbuyschedule`
+  - Method: POST
+  - Authentication: `x-api-key` header
+- **Implementation:**
+  - Added `call_kinntegra_mf_buy_scheduler()` function in server.py
+  - Called automatically when client approves reinvestment via `/reinvestment/approve/{cashflow_id}`
+  - Logs all API requests in `kinntegra_api_logs` collection
+  - Updates cashflow with `kinntegra_api_submitted`, `kinntegra_api_status`, `kinntegra_api_response`
+- **Files Modified:** server.py (new function ~130 lines, updated approve endpoint)
+
+**2. Updated Logo ✅**
+- **Request:** Use new geometric K logo
+- **Changes:**
+  - Updated logo image URL to new ChatGPT-generated design
+  - Logo shows stylized "K" with intersecting white lines on orange background
+  - Applied `scale(1.4)` for proper fit in circle
+- **Files Modified:** Login.jsx, CustomerSignup.jsx
+
+---
+
 ### Upload Module Enhancement (Jan 25, 2026 - Session 5)
 
 **Separated Historical Trades into Two Tabs ✅**
