@@ -9206,6 +9206,34 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
             'source': 'actual_upload'
         })
     
+    # 3. FALLBACK: If no actual_repayments uploaded, calculate remaining from scheduled cashflows
+    if not actual_repayments and stored_cashflows:
+        # Calculate total scheduled
+        total_scheduled_principal = sum(cf.get('principal_component', 0) or 0 for cf in stored_cashflows)
+        total_scheduled_interest = sum(cf.get('interest_component', 0) or 0 for cf in stored_cashflows)
+        
+        # Get the maturity date
+        future_cashflows = [cf for cf in stored_cashflows if (cf.get('date') or '')[:10] > today_str]
+        if future_cashflows:
+            maturity_date = max(cf.get('date', '') for cf in future_cashflows)
+            
+            if total_scheduled_principal > 0 or total_scheduled_interest > 0:
+                remaining_gross = total_scheduled_principal + total_scheduled_interest
+                remaining_tds = total_scheduled_interest * 0.1 if total_scheduled_interest > 0 else 0
+                
+                actual_cashflows.append({
+                    'date': maturity_date,
+                    'type': 'maturity',
+                    'amount': remaining_gross,
+                    'principal_component': total_scheduled_principal,
+                    'interest_component': total_scheduled_interest,
+                    'gross_amount': remaining_gross,
+                    'tds_amount': remaining_tds,
+                    'net_amount': remaining_gross - remaining_tds,
+                    'is_repaid': False,
+                    'source': 'calculated_fallback'
+                })
+    
     # Sort by date
     actual_cashflows.sort(key=lambda x: x.get('date', ''))
     
