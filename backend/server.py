@@ -9129,15 +9129,18 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
 
 
 
-def build_actual_cashflows_with_investment(calculated_investment, investment_date_str, stored_cashflows, units, secondary_irr):
+def build_actual_cashflows_with_investment(calculated_investment, investment_date_str, stored_cashflows, units, secondary_irr, actual_repayments=None):
     """
     Build actual cashflows array with:
     1. Investment entry (outflow)
     2. Actually received cashflows (with repaid_date or repaid_actual_amount confirmed)
-    3. Upcoming maturity (remaining principal + adjusted interest)
+    3. Actual repayments from actual_repayments collection (historical uploads)
+    4. Upcoming maturity (remaining principal + adjusted interest)
     
     This mirrors the structure of expected_cashflows for consistency.
     """
+    actual_repayments = actual_repayments or []
+    
     # Helper to check if cashflow has actual payment confirmation
     def is_actually_received(cf):
         has_repaid_date = cf.get('repaid_date') is not None
@@ -9161,9 +9164,14 @@ def build_actual_cashflows_with_investment(calculated_investment, investment_dat
             'source': 'investment'
         })
     
-    # 2. Add only ACTUALLY received cashflows (with payment confirmation)
+    # Track dates already processed to avoid double counting
+    processed_dates = set()
+    
+    # 2. Add only ACTUALLY received cashflows (from holding_cashflows with confirmation)
     received_cashflows = [cf for cf in stored_cashflows if is_actually_received(cf)]
     for cf in received_cashflows:
+        cf_date = (cf.get('repaid_date') or cf.get('date', ''))[:10]
+        processed_dates.add(cf_date)
         actual_cashflows.append({
             'date': cf.get('repaid_date') or cf.get('date'),
             'type': 'prepayment' if cf.get('is_prepaid') else 'repayment',
