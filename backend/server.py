@@ -6307,52 +6307,6 @@ async def download_historical_trades_template(current_user: dict = Depends(get_c
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=historical_repayments_template.xlsx"}
     )
-        "",
-        "Example: Book2.xlsx prepayment structure",
-        "- Monthly principal repayments of 7% each",
-        "- Interest calculated on reducing balance",
-        "- Final maturity = Remaining principal + prorated interest",
-        "",
-        "═══════════════════════════════════════════════════════════════════",
-        "WHAT HAPPENS AFTER UPLOAD",
-        "═══════════════════════════════════════════════════════════════════",
-        "1. Investments are tagged to active deals",
-        "2. Deals are moved to:",
-        "   - FUNDED section if fully invested",
-        "   - CLOSED section if end date has passed",
-        "3. Repayments are stored as ACTUALS",
-        "4. PREPAYMENTS are auto-detected and processed",
-        "5. System compares ACTUALS vs PROJECTED cashflows",
-        "6. Clients can see gaps in their Holdings > XIRR Report",
-        "",
-        "═══════════════════════════════════════════════════════════════════",
-        "PROJECTED vs ACTUALS TRACKING",
-        "═══════════════════════════════════════════════════════════════════",
-        "• PROJECTED: System-calculated expected cashflows from bond schedule",
-        "• ACTUALS: Real repayments uploaded via this sheet",
-        "• Clients can compare both in their Holdings section",
-        "• Gaps highlight delayed or missed payments",
-        "",
-    ]
-    
-    for row, text in enumerate(instructions, 1):
-        cell = ws_instructions.cell(row=row, column=1, value=text)
-        if text.startswith("═") or text.startswith("SHEET") or text.startswith("⚠️") or \
-           text.startswith("WHAT HAPPENS") or text.startswith("PROJECTED"):
-            cell.font = Font(bold=True)
-        if "⚠️" in text or "PREREQUISITE" in text:
-            cell.fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
-        ws_instructions.column_dimensions['A'].width = 75
-    
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-    
-    return StreamingResponse(
-        output,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=historical_deals_template.xlsx"}
-    )
 
 
 @api_router.post("/bulk/historical-trades")
@@ -6361,9 +6315,9 @@ async def bulk_upload_historical_trades(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Bulk upload historical deals - investments and repayments.
-    Sheet 1: Investment Details - creates trades
-    Sheet 2: Repayment Details - records actual payments for projected vs actuals comparison
+    Bulk upload historical repayments only.
+    Repayment Details - records actual payments for projected vs actuals comparison.
+    For investment uploads, use /bulk/investment-details endpoint.
     """
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can bulk upload historical trades")
