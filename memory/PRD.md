@@ -2,6 +2,23 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### Expected Repayments Fix (Holdings Modal)
+**Issue**: Expected Repayments section showed "No expected cashflows from bond definition" in the Holdings modal
+
+**Root Cause**: 
+1. Frontend `getConsolidatedHoldings` function wasn't passing `expected_cashflows` and `actual_cashflows` arrays to the modal
+2. Dead code referencing undefined `maturity_cashflows` variable in server.py (line 9322)
+
+**Fix Applied**:
+1. Updated `Holdings.jsx` line 596-607 to include `expected_cashflows` and `actual_cashflows` in the trades array
+2. Removed dead code in `server.py` at line 9322
+
+**Verification**:
+- Expected Repayments now shows data from bond template (08 Apr 2026: Principal + Interest)
+- Actual Repayments shows 5 prepayments from Oct 2025 to Apr 2026
+- Both Summary tab and individual trade tabs display expected_cashflows correctly
+- Expected XIRR and Actual XIRR both show 12.00%
+
 ### Backend XIRR/Cashflow Logic Removed
 **Reason**: Complex XIRR calculations were producing incorrect results (18.74% instead of expected 11.38%)
 
