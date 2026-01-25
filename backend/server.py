@@ -5816,6 +5816,256 @@ async def bulk_upload_real_estate(
     return results
 
 
+# ==================== BULK INVESTMENT DETAILS UPLOAD ====================
+
+@api_router.get("/bulk/template/investment-details")
+async def download_investment_details_template(current_user: dict = Depends(get_current_user)):
+    """Download Excel template for bulk investment details upload (investments only, no repayments)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can download templates")
+    
+    wb = Workbook()
+    
+    # Sheet 1: Investment Details
+    ws_investments = wb.active
+    ws_investments.title = "Investment Details"
+    
+    inv_headers = ["Deal ID*", "Date of Investment*", "PAN*", "No of Units*", "Amount*", "UTR"]
+    
+    header_fill = PatternFill(start_color="0D9488", end_color="0D9488", fill_type="solid")  # Teal color
+    header_font = Font(bold=True, color="FFFFFF")
+    
+    for col, header in enumerate(inv_headers, 1):
+        cell = ws_investments.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        ws_investments.column_dimensions[get_column_letter(col)].width = 20
+    
+    # Sample investment data
+    inv_sample = [
+        ["CDNRE001", "2025-04-30", "ABCDE1234F", 34, 3916923.08, "UTR123456789"],
+        ["CDNRE001", "2025-05-02", "XYZPQ5678G", 43, 4956833, "UTR987654321"],
+    ]
+    for row_idx, row_data in enumerate(inv_sample, 2):
+        for col, value in enumerate(row_data, 1):
+            ws_investments.cell(row=row_idx, column=col, value=value)
+    
+    # Instructions sheet
+    ws_instructions = wb.create_sheet("Instructions")
+    instructions = [
+        "═══════════════════════════════════════════════════════════════════",
+        "       INVESTMENT DETAILS UPLOAD - INSTRUCTIONS",
+        "═══════════════════════════════════════════════════════════════════",
+        "",
+        "⚠️  PREREQUISITE: CREATE BONDS & CLIENTS FIRST!",
+        "────────────────────────────────────────────────────────────────────",
+        "Before uploading investment details, you MUST:",
+        "1. Create all bonds/deals in the system first (Go to Opportunities > Create Bond)",
+        "2. Create all clients in the system (Go to Client Management > Add Client)",
+        "3. The Deal ID in this file must match the Bond Code in the system",
+        "",
+        "═══════════════════════════════════════════════════════════════════",
+        "INVESTMENT DETAILS SHEET",
+        "═══════════════════════════════════════════════════════════════════",
+        "Records when clients invested in a bond",
+        "",
+        "Required Fields:",
+        "• Deal ID*: Bond code (must match existing bond in system)",
+        "• Date of Investment*: When the investment was made (YYYY-MM-DD)",
+        "• PAN*: Client's PAN number (must match existing client)",
+        "• No of Units*: Number of units purchased",
+        "• Amount*: Total investment amount",
+        "",
+        "Optional Fields:",
+        "• UTR: Payment reference number",
+        "",
+        "═══════════════════════════════════════════════════════════════════",
+        "NOTES",
+        "═══════════════════════════════════════════════════════════════════",
+        "• This upload creates investment/trade records only",
+        "• For repayment data, use the 'Historical Repayments' tab",
+        "• Duplicate investments (same bond, client, date, units) will be skipped",
+        "• Bond status will be updated to 'funded' if it has investments",
+    ]
+    
+    for row_idx, text in enumerate(instructions, 1):
+        cell = ws_instructions.cell(row=row_idx, column=1, value=text)
+        if "═" in text or "PREREQUISITE" in text:
+            cell.font = Font(bold=True)
+    
+    ws_instructions.column_dimensions['A'].width = 75
+    
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=investment_details_template.xlsx"}
+    )
+
+
+@api_router.post("/bulk/investment-details")
+async def bulk_upload_investment_details(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bulk upload investment details only (no repayments).
+    Creates trades for historical investments.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can bulk upload investment details")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    import pandas as pd
+    
+    content = await file.read()
+    
+    results = {
+        "success": 0,
+        "failed": 0,
+        "errors": [],
+        "investments_created": 0,
+        "bonds_updated_to_funded": [],
+        "created_trades": [],
+        "validation_summary": {
+            "total_investment_rows": 0
+        }
+    }
+    
+    # Get all bonds and clients for lookup
+    all_bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
+    all_clients = await db.clients.find({}, {"_id": 0}).to_list(10000)
+    
+    # Create lookup dictionaries
+    bond_lookup = {b.get('bond_code', '').strip().upper(): b for b in all_bonds if b.get('bond_code')}
+    bond_by_id = {b['id']: b for b in all_bonds}
+    client_by_pan = {c.get('pan_number', '').strip().upper(): c for c in all_clients if c.get('pan_number')}
+    
+    try:
+        # Read Investment Details sheet (first sheet or named sheet)
+        try:
+            # Try named sheet first
+            df_investments = pd.read_excel(io.BytesIO(content), sheet_name="Investment Details")
+        except Exception:
+            # Fall back to first sheet
+            df_investments = pd.read_excel(io.BytesIO(content), sheet_name=0)
+        
+        df_investments.columns = [col.replace('*', '').strip().lower().replace(' ', '_') for col in df_investments.columns]
+        
+        if len(df_investments) == 0:
+            raise HTTPException(status_code=400, detail="No data found in the uploaded file")
+        
+        results['validation_summary']['total_investment_rows'] = len(df_investments)
+        
+        required_inv_cols = ['deal_id', 'date_of_investment', 'pan', 'no_of_units', 'amount']
+        missing_cols = [col for col in required_inv_cols if col not in df_investments.columns]
+        if missing_cols:
+            raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing_cols)}")
+        
+        bonds_with_new_investments = set()
+        
+        for idx, row in df_investments.iterrows():
+            row_num = idx + 2
+            try:
+                if pd.isna(row.get('deal_id')) or pd.isna(row.get('pan')):
+                    continue
+                
+                deal_id = str(row['deal_id']).strip().upper()
+                pan = str(row['pan']).strip().upper()
+                units = int(row['no_of_units'])
+                amount = float(row['amount'])
+                utr = str(row.get('utr', '')) if pd.notna(row.get('utr')) else None
+                
+                # Parse investment date
+                inv_date = row['date_of_investment']
+                if isinstance(inv_date, str):
+                    inv_date = datetime.fromisoformat(inv_date.replace('/', '-'))
+                inv_date_str = inv_date.strftime('%Y-%m-%d') if hasattr(inv_date, 'strftime') else str(inv_date)
+                
+                # Find bond
+                bond = bond_lookup.get(deal_id)
+                if not bond:
+                    results['errors'].append(f"Row {row_num}: Bond '{deal_id}' not found. Create the bond first.")
+                    results['failed'] += 1
+                    continue
+                
+                # Find client by PAN
+                client = client_by_pan.get(pan)
+                if not client:
+                    results['errors'].append(f"Row {row_num}: Client with PAN '{pan}' not found. Create the client first.")
+                    results['failed'] += 1
+                    continue
+                
+                # Check for duplicate
+                existing = await db.trades.find_one({
+                    "bond_id": bond['id'],
+                    "client_id": client['id'],
+                    "investment_date": inv_date_str,
+                    "units": units
+                })
+                if existing:
+                    results['errors'].append(f"Row {row_num}: Duplicate trade already exists")
+                    results['failed'] += 1
+                    continue
+                
+                # Create trade
+                trade_id = str(uuid.uuid4())
+                trade = {
+                    "id": trade_id,
+                    "bond_id": bond['id'],
+                    "client_id": client['id'],
+                    "units": units,
+                    "amount": amount,
+                    "investment_date": inv_date_str,
+                    "status": "active",
+                    "utr_number": utr,
+                    "is_historical": True,
+                    "created_by": current_user['id'],
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                
+                await db.trades.insert_one(trade)
+                results['success'] += 1
+                results['investments_created'] += 1
+                bonds_with_new_investments.add(bond['id'])
+                
+                results['created_trades'].append({
+                    "trade_id": trade_id,
+                    "bond_code": deal_id,
+                    "client_pan": pan,
+                    "amount": amount,
+                    "investment_date": inv_date_str
+                })
+                
+            except Exception as e:
+                results['errors'].append(f"Row {row_num}: {str(e)}")
+                results['failed'] += 1
+        
+        # Update bond status to 'funded' for bonds with new investments
+        for bond_id in bonds_with_new_investments:
+            bond = bond_by_id.get(bond_id)
+            if bond and bond.get('status') == 'active':
+                await db.bonds.update_one(
+                    {"id": bond_id},
+                    {"$set": {"status": "funded"}}
+                )
+                results['bonds_updated_to_funded'].append(bond.get('bond_code', bond_id))
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing investment details upload: {str(e)}")
+        results['errors'].append(f"Processing error: {str(e)}")
+    
+    return results
+
+
 # ==================== BULK HISTORICAL TRADES UPLOAD ====================
 
 @api_router.get("/bulk/template/historical-trades")
