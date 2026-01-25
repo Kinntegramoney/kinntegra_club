@@ -1,5 +1,27 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Jan 25, 2026)
+
+### Backend XIRR/Cashflow Logic Removed
+**Reason**: Complex XIRR calculations were producing incorrect results (18.74% instead of expected 11.38%)
+
+**What was removed**:
+- XIRR calculation functions: `calculate_actual_xirr`, `calculate_holding_xirr`
+- Admin cashflow endpoints (6 endpoints, ~990 lines):
+  - `/api/admin/sync-prepayments/{client_id}`
+  - `/api/admin/reprocess-prepayments/{trade_id}`
+  - `/api/admin/detect-prepayments/{client_id}`
+  - `/api/admin/rebuild-cashflows-from-history/{trade_id}`
+  - `/api/admin/recalculate-cashflows-book2/{trade_id}`
+  - `/api/admin/generate-prepayment-schedule/{trade_id}`
+- Frontend admin buttons in Holdings page
+
+**What was kept**:
+- Bond calculator logic (secondary market price calculations)
+- Holdings API now uses bond's `secondary_irr` for both Expected and Actual XIRR
+
+---
+
 ## Recent Changes (Jan 24, 2026)
 
 ### Book2.xlsx XIRR Calculation Fix
