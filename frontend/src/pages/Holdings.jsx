@@ -1780,49 +1780,6 @@ export default function Holdings() {
                         );
                       })}
                     </tbody>
-                    {/* Simple Footer Row with Totals */}
-                    {filteredHoldings.length > 0 && (
-                    <tfoot className="border-t-2 border-gray-300 bg-gray-50">
-                      {(() => {
-                        const totals = filteredHoldings.reduce((acc, h) => {
-                          const grossExpected = h.total_principal + h.total_interest_gross;
-                          const profit = grossExpected - h.invested_amount;
-                          const osPrincipal = h.total_principal - h.repaid_principal;
-                          const osInterest = h.total_interest_gross - h.repaid_interest;
-                          
-                          return {
-                            units: acc.units + h.total_units,
-                            investment: acc.investment + h.invested_amount,
-                            grossExpected: acc.grossExpected + grossExpected,
-                            profit: acc.profit + profit,
-                            osPrincipal: acc.osPrincipal + osPrincipal,
-                            osInterest: acc.osInterest + osInterest
-                          };
-                        }, { units: 0, investment: 0, grossExpected: 0, profit: 0, osPrincipal: 0, osInterest: 0 });
-                        
-                        return (
-                          <tr>
-                            <td className="py-2 px-2 sticky left-0 bg-gray-50">
-                              <p className="font-semibold text-gray-800 text-xs">TOTAL</p>
-                              <p className="text-[10px] text-gray-500">{totals.units} units</p>
-                            </td>
-                            <td className="py-2 px-2 text-right font-mono text-xs font-semibold">{formatINR(totals.investment)}</td>
-                            <td className="py-2 px-2 text-right font-mono text-xs font-semibold text-emerald-600">{formatINR(totals.grossExpected)}</td>
-                            <td className="py-2 px-2 text-right font-mono text-xs font-semibold">
-                              <span className={totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                {formatINR(totals.profit)}
-                              </span>
-                            </td>
-                            <td className="py-2 px-2 text-right font-mono text-xs font-semibold text-blue-600">{formatINR(totals.osPrincipal)}</td>
-                            <td className="py-2 px-2 text-right font-mono text-xs font-semibold text-blue-600">{formatINR(totals.osInterest)}</td>
-                            <td className="py-2 px-2 text-center">-</td>
-                            <td className="py-2 px-2 text-center">-</td>
-                            <td className="py-2 px-2 text-center"></td>
-                          </tr>
-                        );
-                      })()}
-                    </tfoot>
-                    )}
                   </table>
                   
                   {filteredHoldings.length === 0 && (
