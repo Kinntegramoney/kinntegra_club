@@ -10090,46 +10090,62 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         # Use bond's Secondary IRR for Expected XIRR
         expected_xirr = bond.get('secondary_irr') or bond.get('interest_rate') or bond.get('coupon_rate')
         
-        # Calculate ACTUAL XIRR from actual repayments
-        # Actual XIRR uses: Investment outflow + ALL actual repayments (past AND future from uploads)
+        # Build actual_cashflows FIRST (which includes calculated maturity)
+        # Then use this for XIRR calculation
+        actual_cashflows_data = build_actual_cashflows_with_investment(
+            [{
+                'investment_date': investment_date_str, 
+                'calculated_investment': calculated_investment, 
+                'units': trade['units'],
+                'total_principal': round(bond.get('face_value', 100000) * trade['units'], 2),
+                'coupon_rate': bond.get('coupon_rate', 0) or bond.get('annual_interest_rate', 0) or bond.get('interest_rate', 0),
+                'maturity_date': bond.get('end_date', '') or bond.get('maturity_date', ''),
+                'bond_start_date': bond.get('start_date', '') or bond.get('bond_start_date', '')
+            }],
+            stored_cashflows,
+            matched_actual_repayments,
+            bond_info=bond
+        )
+        
+        # Calculate ACTUAL XIRR from the complete actual_cashflows (includes calculated maturity)
         actual_xirr = None
         
-        # Use actual_repayments from the database (historical uploads) for XIRR calculation
-        if matched_actual_repayments and calculated_investment > 0:
+        if actual_cashflows_data and len(actual_cashflows_data) >= 2:
             try:
-                # Build cashflow series for XIRR
+                # Build cashflow series for XIRR from actual_cashflows
                 xirr_dates = []
                 xirr_values = []
                 
-                # Investment outflow (negative)
-                xirr_dates.append(investment_date_dt)
-                xirr_values.append(-calculated_investment)
-                
-                # Add ALL actual repayments from actual_repayments table (positive)
-                # Include BOTH past and future entries from the uploaded data
-                for ar in matched_actual_repayments:
-                    ar_date_str = ar.get('repayment_date', '')
-                    ar_date_str = ar_date_str.split('T')[0].split(' ')[0] if ar_date_str else ''
+                for cf in actual_cashflows_data:
+                    cf_date_str = cf.get('date', '')
+                    cf_date_str = cf_date_str.split('T')[0].split(' ')[0] if cf_date_str else ''
+                    if not cf_date_str:
+                        continue
                     try:
-                        ar_date = datetime.fromisoformat(ar_date_str)
-                        # Use gross amount
-                        gross_amount = ar.get('gross_amount', 0) or (ar.get('principal', 0) + ar.get('interest', 0))
-                        if gross_amount > 0:
-                            xirr_dates.append(ar_date)
+                        cf_date = datetime.fromisoformat(cf_date_str)
+                        # Use gross_amount (negative for investment, positive for inflows)
+                        gross_amount = cf.get('gross_amount', 0) or cf.get('amount', 0)
+                        if gross_amount != 0:
+                            xirr_dates.append(cf_date)
                             xirr_values.append(gross_amount)
                     except:
                         continue
                 
-                # Only calculate if we have at least 2 cashflows
+                # Only calculate if we have at least 2 cashflows with sign change
                 if len(xirr_dates) >= 2 and len(xirr_values) >= 2:
                     # Sort by date
                     sorted_cashflows = sorted(zip(xirr_dates, xirr_values), key=lambda x: x[0])
                     xirr_dates = [x[0] for x in sorted_cashflows]
                     xirr_values = [x[1] for x in sorted_cashflows]
                     
-                    calculated_actual_xirr = calculate_xirr(xirr_dates, xirr_values)
-                    if calculated_actual_xirr is not None:
-                        actual_xirr = round(calculated_actual_xirr * 100, 2)  # Convert to percentage
+                    # Verify we have both negative and positive cashflows
+                    has_negative = any(v < 0 for v in xirr_values)
+                    has_positive = any(v > 0 for v in xirr_values)
+                    
+                    if has_negative and has_positive:
+                        calculated_actual_xirr = calculate_xirr(xirr_dates, xirr_values)
+                        if calculated_actual_xirr is not None and -1 < calculated_actual_xirr < 10:  # Sanity check
+                            actual_xirr = round(calculated_actual_xirr * 100, 2)  # Convert to percentage
             except Exception as e:
                 logger.error(f"Error calculating actual XIRR: {e}")
         
