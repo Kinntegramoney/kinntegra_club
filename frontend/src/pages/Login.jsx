@@ -74,8 +74,9 @@ export default function Login() {
       
       toast.success(`Welcome, ${response.data.user.name}!`);
       
+      // Redirect based on role - always go to opportunities as dashboard may be disabled
       if (response.data.user.role === "broker") {
-        navigate("/broker/dashboard");
+        navigate("/broker/opportunities");
       } else if (response.data.user.role === "client") {
         navigate("/client/opportunities");
       } else {
