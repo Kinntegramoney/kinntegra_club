@@ -18,10 +18,18 @@
    - Changed `cf['type'].capitalize()` to `cf.get('type', 'scheduled').capitalize()`
    - The `holding_cashflows` collection doesn't have a `type` field, while `expected_cashflows` does
 
-**Verification**:
-- PDF downloads with all data and proper styling
-- Excel downloads all holdings data with multiple sheets (Summary + per-transaction)
-- Both show success toast notifications
+### Holdings Page UI Enhancements (Jan 25, 2026)
+**Changes Made**:
+1. **Excel Download Restructured** - Now has 3 sheets:
+   - `Summary` - Client info & investment totals
+   - `Expected Cashflows` - Investment (outflow) & Maturity (inflow) rows with Principal, Interest, Gross
+   - `Actual Cashflows` - Repaid entries with Principal, Interest, TDS, Net, Repaid Date
+
+2. **Removed Bottom Summary Bar** in cashflow modal (Investment, Total Principal, Total Interest, Total TDS, Upcoming, Net Profit)
+
+3. **Removed O/S TDS** from:
+   - Header statistics bar
+   - Holdings table column (only shows O/S Principal, O/S Interest)
 
 ---
 
