@@ -54,13 +54,13 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   
   const parsedUser = JSON.parse(user);
   if (allowedRoles && !allowedRoles.includes(parsedUser.role)) {
-    // Redirect to appropriate dashboard based on role
+    // Redirect to appropriate page based on role (opportunities as default since dashboard may be disabled)
     if (parsedUser.role === "broker") {
-      return <Navigate to="/broker/dashboard" replace />;
+      return <Navigate to="/broker/opportunities" replace />;
     } else if (parsedUser.role === "client") {
       return <Navigate to="/client/opportunities" replace />;
     } else {
-      return <Navigate to="/sub-broker/dashboard" replace />;
+      return <Navigate to="/sub-broker/opportunities" replace />;
     }
   }
   
