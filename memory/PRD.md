@@ -2,6 +2,29 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### Bug Fixes - PDF and Excel Download (Jan 25, 2026)
+**Issues Fixed**:
+1. **PDF Download Blank**: The "Expected Cashflow" PDF download was generating blank files
+2. **Excel Download Error**: The main "DOWNLOAD" button was failing with `KeyError: 'type'`
+
+**Root Causes & Fixes**:
+1. **PDF Fix** (`Holdings.jsx`):
+   - `html2pdf.js` uses `html2canvas` which cannot capture off-screen elements
+   - Changed container positioning from `position: absolute; left: -9999px` to `position: fixed; opacity: 0; z-index: -1000`
+   - Added proper dimensions for A4 landscape (297mm width)
+   - Added 100ms delay to ensure DOM is ready
+
+2. **Excel Fix** (`server.py` line 11418):
+   - Changed `cf['type'].capitalize()` to `cf.get('type', 'scheduled').capitalize()`
+   - The `holding_cashflows` collection doesn't have a `type` field, while `expected_cashflows` does
+
+**Verification**:
+- PDF downloads with all data and proper styling
+- Excel downloads all holdings data with multiple sheets (Summary + per-transaction)
+- Both show success toast notifications
+
+---
+
 ### Expected Repayments - Investment Value Calculation (Secondary Calculator)
 **Requirement**: The investment value in Expected Repayments should be calculated using the Secondary Market Calculator, not just taken from the file upload.
 
