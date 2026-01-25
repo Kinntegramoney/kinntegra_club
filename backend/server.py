@@ -9268,12 +9268,16 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         }, {"_id": 0}).to_list(500)
         
         # Filter actual_repayments to match this trade's investment date
+        # If actual_repayment has investment_date, it must match the trade's investment_date
+        # If actual_repayment has NO investment_date, include it (it applies to any trade for this bond/client)
         trade_inv_date = trade.get('investment_date', '')[:10] if trade.get('investment_date') else ''
         matched_actual_repayments = []
         for ar in trade_actual_repayments:
             ar_inv_date = ar.get('investment_date', '')[:10] if ar.get('investment_date') else ''
-            # Include if investment dates match, or if no investment date specified (legacy)
-            if ar_inv_date == trade_inv_date or (not ar_inv_date and not trade_inv_date):
+            # Include if:
+            # 1. Investment dates match exactly, OR
+            # 2. actual_repayment has no investment_date (applies to all trades for this bond/client)
+            if ar_inv_date == trade_inv_date or not ar_inv_date:
                 matched_actual_repayments.append(ar)
         
         # Calculate totals for this holding (use GROSS amounts = principal + interest)
