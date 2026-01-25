@@ -221,7 +221,7 @@ export default function Login() {
               {/* Signup Link */}
               <div className="text-center mt-4 pt-4 border-t" style={{ borderColor: '#E5E7EB' }}>
                 <p className="text-sm" style={{ color: '#6B7280' }}>
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <Link
                     to="/signup"
                     className="font-medium hover:underline"
