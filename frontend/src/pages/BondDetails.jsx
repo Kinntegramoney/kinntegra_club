@@ -1067,8 +1067,8 @@ export default function BondDetails() {
                       formatter={(value) => `₹${value.toLocaleString()}`}
                     />
                     <Legend />
-                    <Bar dataKey="Interest" fill="#2563EB" />
-                    <Bar dataKey="Principal" fill="#10B981" />
+                    <Bar dataKey="Interest" fill="#059669" name="Interest" />
+                    <Bar dataKey="Principal" fill="#DC2626" name="Principal" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
