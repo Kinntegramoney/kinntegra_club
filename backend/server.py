@@ -6146,23 +6146,86 @@ async def bulk_upload_investment_details(
                     results['failed'] += 1
                     continue
                 
-                # Create trade
+                # Create trade with approved status
                 trade_id = str(uuid.uuid4())
+                price_per_unit = amount / units if units > 0 else 0
+                
                 trade = {
                     "id": trade_id,
                     "bond_id": bond['id'],
+                    "bond_name": bond.get('name', ''),
+                    "bond_code": bond.get('bond_code', deal_id),
                     "client_id": client['id'],
+                    "client_name": client.get('name', ''),
+                    "client_pan": pan,
                     "units": units,
-                    "amount": amount,
                     "investment_date": inv_date_str,
-                    "status": "active",
+                    "calculated_price": price_per_unit,
+                    "total_amount": amount,
+                    "payment_reference": utr,
+                    "status": "approved",  # Set to approved so cashflows are generated
                     "utr_number": utr,
                     "is_historical": True,
                     "created_by": current_user['id'],
+                    "created_by_name": current_user.get('name', 'System'),
+                    "created_by_role": "broker",
+                    "broker_notes": "Historical import via bulk upload",
+                    "approved_by": current_user['id'],
+                    "approved_at": datetime.now(timezone.utc).isoformat(),
                     "created_at": datetime.now(timezone.utc).isoformat()
                 }
                 
                 await db.trades.insert_one(trade)
+                
+                # Update bond units sold
+                await db.bonds.update_one(
+                    {"id": bond['id']},
+                    {"$inc": {"units_sold": units}}
+                )
+                
+                # Add to client's bond allocations
+                allocation = {
+                    "bond_id": bond['id'],
+                    "bond_name": bond.get('name', ''),
+                    "units_blocked": units,
+                    "units_paid": units,
+                    "status": "fully_paid",
+                    "trade_id": trade_id,
+                    "allocated_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.clients.update_one(
+                    {"id": client['id']},
+                    {"$push": {"bond_allocations": allocation}}
+                )
+                
+                # Generate projected cashflows - these will appear in Holdings
+                cashflows = generate_client_cashflows(trade, bond)
+                if cashflows:
+                    today = datetime.now(timezone.utc).date()
+                    for cf in cashflows:
+                        cf['client_id'] = client['id']
+                        cf['client_name'] = client.get('name', '')
+                        cf['bond_id'] = bond['id']
+                        cf['bond_name'] = bond.get('name', '')
+                        cf['trade_id'] = trade_id
+                        cf['reinvestment_tag'] = 'not_tagged'  # Will appear in untagged section
+                        
+                        # For historical imports: Mark past-dated cashflows as repaid
+                        cf_date_str = cf.get('date', '')
+                        if cf_date_str:
+                            cf_date = datetime.fromisoformat(cf_date_str.split('T')[0]).date()
+                            if cf_date < today:
+                                cf['is_repaid'] = True
+                                cf['repaid_at'] = datetime.now(timezone.utc).isoformat()
+                                cf['repaid_actual_amount'] = cf.get('net_amount', 0)
+                    
+                    await db.holding_cashflows.insert_many(cashflows)
+                    
+                    # Track cashflows created
+                    if 'cashflows_created' not in results:
+                        results['cashflows_created'] = 0
+                    results['cashflows_created'] += len(cashflows)
+                
                 results['success'] += 1
                 results['investments_created'] += 1
                 bonds_with_new_investments.add(bond['id'])
@@ -6171,8 +6234,10 @@ async def bulk_upload_investment_details(
                     "trade_id": trade_id,
                     "bond_code": deal_id,
                     "client_pan": pan,
+                    "client_name": client.get('name', ''),
                     "amount": amount,
-                    "investment_date": inv_date_str
+                    "investment_date": inv_date_str,
+                    "cashflows_generated": len(cashflows) if cashflows else 0
                 })
                 
             except Exception as e:
