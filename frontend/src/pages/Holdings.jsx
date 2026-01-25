@@ -1642,43 +1642,33 @@ export default function Holdings() {
                             </tr>
                           </thead>
                           <tbody>
-                            {(() => {
-                              const repaidCashflows = consolidatedCashflows.filter(cf => 
-                                cf.transactions && cf.transactions.some(t => t.is_repaid)
-                              );
-                              
-                              if (repaidCashflows.length > 0) {
-                                return repaidCashflows.map((cf, idx) => (
-                                  <tr key={idx} className="border-b border-green-100 hover:bg-green-50/50">
-                                    <td className="py-2 px-3 font-mono text-xs">
-                                      {format(new Date(cf.date), "dd MMM yyyy")}
-                                      {cf.transactions.some(t => t.is_prepaid) && (
-                                        <span className="ml-1 px-1 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded">Prepaid</span>
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
-                                    <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
-                                    <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-green-50 text-green-800">
-                                      {formatINR((cf.principal_component || 0) + (cf.interest_component || 0))}
-                                    </td>
-                                    <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
-                                    <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
-                                  </tr>
-                                ));
-                              } else {
-                                return (
-                                  <tr>
-                                    <td colSpan="6" className="py-8 text-center text-gray-500">
-                                      <div className="flex flex-col items-center gap-2">
-                                        <FileText className="h-8 w-8 text-gray-300" />
-                                        <p className="text-sm">No actual repayments recorded yet</p>
-                                        <p className="text-xs text-gray-400">Upload historical data or wait for scheduled payments</p>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              }
-                            })()}
+                            {actualCashflows.length > 0 ? actualCashflows.map((cf, idx) => (
+                              <tr key={idx} className="border-b border-green-100 hover:bg-green-50/50">
+                                <td className="py-2 px-3 font-mono text-xs">
+                                  {format(new Date(cf.date), "dd MMM yyyy")}
+                                  {cf.is_prepaid && (
+                                    <span className="ml-1 px-1 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded">Prepaid</span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
+                                <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
+                                <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-green-50 text-green-800">
+                                  {formatINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                </td>
+                                <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
+                                <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
+                              </tr>
+                            )) : (
+                              <tr>
+                                <td colSpan="6" className="py-8 text-center text-gray-500">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <FileText className="h-8 w-8 text-gray-300" />
+                                    <p className="text-sm">No actual repayments recorded yet</p>
+                                    <p className="text-xs text-gray-400">Upload historical data or wait for scheduled payments</p>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -1689,12 +1679,7 @@ export default function Holdings() {
                           <div>
                             <span className="text-green-600">Received:</span>
                             <span className="font-mono font-semibold ml-2 text-green-800">
-                              {formatINR(
-                                modalData.gross_repaid || 
-                                consolidatedCashflows
-                                  .filter(cf => cf.transactions && cf.transactions.some(t => t.is_repaid))
-                                  .reduce((sum, cf) => sum + (cf.principal_component || 0) + (cf.interest_component || 0), 0)
-                              )}
+                              {formatINR(actualCashflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
                             </span>
                           </div>
                           <div className="text-right">
