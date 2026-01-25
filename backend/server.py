@@ -6573,18 +6573,6 @@ async def bulk_upload_historical_trades(
         results['errors'].append(f"Processing error: {str(e)}")
     
     return results
-                
-                if new_status != bond.get('status'):
-                    await db.bonds.update_one(
-                        {"id": bond_id},
-                        {"$set": {"status": new_status}}
-                    )
-        
-    except Exception as e:
-        results['errors'].append(f"Error processing file: {str(e)}")
-        results['failed'] += 1
-    
-    return results
 
 
 @api_router.post("/holdings/fix-historical-repayments")
