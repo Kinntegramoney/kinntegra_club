@@ -123,19 +123,18 @@ export default function Login() {
           <div className="relative">
             <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden"
                  style={{
-                   background: 'linear-gradient(135deg, #C9A227 0%, #A68521 100%)',
                    boxShadow: '0 8px 20px rgba(201, 162, 39, 0.3)'
                  }}>
               <img 
-                src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/fdrtuxyr_WhatsApp%20Image%202026-01-25%20at%2016.32.16.jpeg" 
+                src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/pl00s3mu_image.png" 
                 alt="Kinntegraa Logo" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover scale-150"
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextSibling.style.display = 'flex';
                 }}
               />
-              <span className="text-white text-3xl font-bold hidden items-center justify-center" style={{ fontFamily: 'serif' }}>K</span>
+              <span className="text-white text-3xl font-bold hidden items-center justify-center w-full h-full rounded-full" style={{ fontFamily: 'serif', background: 'linear-gradient(135deg, #C9A227 0%, #A68521 100%)' }}>K</span>
             </div>
           </div>
         </div>
