@@ -1966,11 +1966,21 @@ export default function Holdings() {
                   {/* Two Column Layout for Individual Transaction */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Expected Cashflows for this trade */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2">
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2 flex justify-between items-center">
                         <h3 className="font-semibold text-white text-sm">Expected Cashflow</h3>
+                        <button
+                          onClick={() => downloadExpectedCashflowPDF(
+                            { ...modalData.trades[activeTab], bond_name: modalData.bond_name, xirr: modalData.trades[activeTab].xirr },
+                            modalData.trades[activeTab].expected_cashflows || []
+                          )}
+                          className="flex items-center gap-1 px-2 py-1 bg-white/20 hover:bg-white/30 rounded text-white text-xs transition-colors"
+                        >
+                          <Download className="h-3 w-3" />
+                          PDF
+                        </button>
                       </div>
-                      <div className="max-h-[300px] overflow-y-auto">
+                      <div className="flex-1 max-h-[250px] overflow-y-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
@@ -1999,25 +2009,23 @@ export default function Holdings() {
                           </tbody>
                         </table>
                       </div>
-                      <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-sm flex justify-between">
-                        <span>
-                          <span className="text-gray-600">Net:</span>
-                          <span className="font-mono font-bold ml-2 text-gray-900">
-                            {formatAbsoluteINR(
-                              (modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
-                              (modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.amount || cf.gross_amount || 0), 0)
-                            )}
-                          </span>
+                      <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-sm mt-auto">
+                        <span className="text-gray-600">Profits:</span>
+                        <span className="font-mono font-bold ml-2 text-green-600">
+                          {formatAbsoluteINR(
+                            (modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
+                            (modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.amount || cf.gross_amount || 0), 0)
+                          )}
                         </span>
                       </div>
                     </div>
                     
                     {/* Actual Cashflow for this trade */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
                       <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-2">
                         <h3 className="font-semibold text-white text-sm">Actual Cashflow</h3>
                       </div>
-                      <div className="max-h-[300px] overflow-y-auto">
+                      <div className="flex-1 max-h-[250px] overflow-y-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
@@ -2050,12 +2058,10 @@ export default function Holdings() {
                           </tbody>
                         </table>
                       </div>
-                      <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-sm flex justify-between">
-                        <span>
-                          <span className="text-gray-600">Total:</span>
-                          <span className="font-mono font-bold ml-2 text-green-600">
-                            {formatAbsoluteINR((modalData.trades[activeTab].actual_cashflows || modalData.trades[activeTab].cashflows?.filter(cf => cf.is_repaid) || []).reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
-                          </span>
+                      <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-sm mt-auto">
+                        <span className="text-gray-600">Total:</span>
+                        <span className="font-mono font-bold ml-2 text-green-600">
+                          {formatAbsoluteINR((modalData.trades[activeTab].actual_cashflows || modalData.trades[activeTab].cashflows?.filter(cf => cf.is_repaid) || []).reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
                         </span>
                       </div>
                     </div>
