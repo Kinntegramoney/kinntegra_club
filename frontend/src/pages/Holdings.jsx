@@ -1584,65 +1584,74 @@ export default function Holdings() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     
                     {/* LEFT COLUMN - Expected Repayments */}
-                    <div className="border border-blue-200 rounded-xl bg-blue-50/30 overflow-hidden">
-                      <div className="bg-blue-100 px-4 py-3 border-b border-blue-200">
-                        <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
+                        <h3 className="font-semibold text-white flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
-                          Expected Repayments
+                          Expected Cashflow
                         </h3>
-                        <p className="text-xs text-blue-600 mt-1">Investment value calculated using Secondary Market Calculator</p>
                       </div>
                       
                       {/* Expected Cashflows Table */}
                       <div className="max-h-[350px] overflow-y-auto">
                         <table className="w-full text-sm">
-                          <thead className="bg-blue-50 sticky top-0">
+                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
-                              <th className="text-left py-2 px-3 text-xs font-medium text-blue-700 uppercase">Date</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">Principal</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">Interest</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase bg-blue-100">Gross</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">TDS</th>
-                              <th className="text-right py-2 px-3 text-xs font-medium text-blue-700 uppercase">Net</th>
+                              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Principal</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Interest</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider bg-blue-50">Gross</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">TDS</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Net</th>
                             </tr>
                           </thead>
-                          <tbody>
+                          <tbody className="divide-y divide-gray-100">
                             {expectedCashflows.length > 0 ? expectedCashflows.map((cf, idx) => (
                               cf.type === 'investment' ? (
-                                // Investment row - styled differently (red/outflow)
-                                <tr key={idx} className="border-b border-red-200 bg-red-50/50">
-                                  <td className="py-2 px-3 font-mono text-xs text-red-700">
-                                    {format(new Date(cf.date), "dd MMM yyyy")}
-                                    <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[10px] font-medium">INVESTMENT</span>
+                                // Investment row - outflow styling
+                                <tr key={idx} className="bg-red-50 hover:bg-red-100 transition-colors">
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-sm text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</span>
+                                      <span className="px-2 py-0.5 bg-red-500 text-white rounded text-[10px] font-semibold">OUTFLOW</span>
+                                    </div>
                                   </td>
-                                  <td colSpan="3" className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-700">
-                                    {formatINR(Math.abs(cf.investment_amount || cf.gross_amount || 0))}
+                                  <td colSpan="3" className="py-3 px-4 text-right">
+                                    <span className="font-mono text-sm font-bold text-red-600">
+                                      {formatAbsoluteINR(Math.abs(cf.investment_amount || cf.gross_amount || 0))}
+                                    </span>
                                   </td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs text-gray-400">-</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs font-medium text-red-700">
-                                    ({formatINR(Math.abs(cf.net_amount || cf.investment_amount || 0))})
+                                  <td className="py-3 px-4 text-right text-gray-400">—</td>
+                                  <td className="py-3 px-4 text-right">
+                                    <span className="font-mono text-sm font-semibold text-red-600">
+                                      ({formatAbsoluteINR(Math.abs(cf.net_amount || cf.investment_amount || 0))})
+                                    </span>
                                   </td>
                                 </tr>
                               ) : (
-                                // Inflow row - normal styling
-                                <tr key={idx} className="border-b border-blue-100 hover:bg-blue-50/50">
-                                  <td className="py-2 px-3 font-mono text-xs">
-                                    {format(new Date(cf.date), "dd MMM yyyy")}
-                                    <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-600 rounded text-[10px] font-medium">MATURITY</span>
+                                // Inflow row - maturity styling
+                                <tr key={idx} className="bg-white hover:bg-gray-50 transition-colors">
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-sm text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</span>
+                                      <span className="px-2 py-0.5 bg-green-500 text-white rounded text-[10px] font-semibold">INFLOW</span>
+                                    </div>
                                   </td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.principal_component)}</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs">{formatINR(cf.interest_component)}</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold bg-blue-50 text-blue-800">
-                                    {formatINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                  <td className="py-3 px-4 text-right font-mono text-sm text-gray-700">{formatAbsoluteINR(cf.principal_component)}</td>
+                                  <td className="py-3 px-4 text-right font-mono text-sm text-gray-700">{formatAbsoluteINR(cf.interest_component)}</td>
+                                  <td className="py-3 px-4 text-right bg-blue-50">
+                                    <span className="font-mono text-sm font-bold text-blue-700">
+                                      {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                    </span>
                                   </td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs text-red-600">{formatINR(cf.tds_amount)}</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs font-medium">{formatINR(cf.net_amount)}</td>
+                                  <td className="py-3 px-4 text-right font-mono text-sm text-red-500">{formatAbsoluteINR(cf.tds_amount)}</td>
+                                  <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-gray-900">{formatAbsoluteINR(cf.net_amount)}</td>
                                 </tr>
                               )
                             )) : (
                               <tr>
-                                <td colSpan="6" className="py-6 text-center text-gray-500">
-                                  <p className="text-xs">No expected cashflows from bond definition</p>
+                                <td colSpan="6" className="py-8 text-center text-gray-500">
+                                  <p className="text-sm">No expected cashflows from bond definition</p>
                                 </td>
                               </tr>
                             )}
@@ -1650,17 +1659,17 @@ export default function Holdings() {
                         </table>
                       </div>
                       
-                      {/* Expected Summary */}
-                      <div className="bg-blue-100 px-4 py-3 border-t border-blue-200">
-                        <div className="flex justify-between items-center text-sm">
+                      {/* Expected Summary Footer */}
+                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
+                        <div className="flex justify-between items-center">
                           <div>
-                            <span className="text-blue-600">Total Gross:</span>
-                            <span className="font-mono font-semibold ml-2 text-blue-800">
-                              {formatINR(expectedCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
+                            <span className="text-sm text-gray-600">Total Inflow:</span>
+                            <span className="font-mono font-bold ml-2 text-gray-900">
+                              {formatAbsoluteINR(expectedCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
                             </span>
                           </div>
                           <div className="text-right">
-                            <span className="text-blue-600">Expected XIRR:</span>
+                            <span className="text-sm text-gray-600">Expected XIRR:</span>
                             <span className="font-mono font-bold ml-2 text-blue-800 text-lg">
                               {modalData.xirr !== null && modalData.xirr !== undefined ? `${modalData.xirr.toFixed(2)}%` : '-'}
                             </span>
