@@ -244,6 +244,7 @@ export default function BulkUpload() {
       "clients": { bg: "bg-purple-600", light: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
       "bonds": { bg: "bg-green-600", light: "bg-green-50", text: "text-green-600", border: "border-green-200" },
       "real-estate": { bg: "bg-orange-600", light: "bg-orange-50", text: "text-orange-600", border: "border-orange-200" },
+      "investment-details": { bg: "bg-teal-600", light: "bg-teal-50", text: "text-teal-600", border: "border-teal-200" },
       "historical-trades": { bg: "bg-etihad-gold-700", light: "bg-etihad-gold-50", text: "text-etihad-gold-700", border: "border-etihad-gold-200" },
       "scheme-master": { bg: "bg-blue-600", light: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" }
     };
