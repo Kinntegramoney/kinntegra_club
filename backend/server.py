@@ -9272,38 +9272,10 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             if ar.get('repayment_date') and ar['repayment_date'].split('T')[0] not in scheduled_dates
         ]
         
-        # Determine if this bond uses interest-at-maturity model (Book2.xlsx style)
-        # A bond with prepayments has multiple cashflows before maturity
-        # If there's only 1 cashflow (maturity only), use regular XIRR
-        # If there are multiple cashflows, use interest-at-maturity (principal only for prepayments)
-        has_prepayment_cashflows = len(stored_cashflows) > 1
-        
-        # Also check if this bond is marked as having prepayments
-        bond_has_prepayment = bond.get('has_prepayment', False) or bond.get('has_prepayment_schedule', False)
-        
-        # Use interest-at-maturity model only if:
-        # 1. There are multiple cashflows (prepayments + maturity), AND
-        # 2. This looks like a prepayment bond (bond flag or name contains 'nature')
-        use_interest_at_maturity = has_prepayment_cashflows and (
-            bond_has_prepayment or 
-            'nature' in (bond.get('name', '') or '').lower() or
-            'prepay' in (bond.get('name', '') or '').lower()
-        )
-        
-        # Calculate Actual XIRR using CURRENT cashflows (after prepayments)
-        # This shows the actual return after prepayments have reduced the interest
-        actual_xirr = calculate_actual_xirr(
-            trade['investment_date'], 
-            investment_amount, 
-            stored_cashflows,  # Use current values (after prepayment modifications)
-            unscheduled_repayments,
-            bond_start_date,
-            interest_at_maturity=use_interest_at_maturity
-        )
-        
-        # Expected XIRR = Secondary IRR from bond's Financial Details
-        # This is the original expected rate when the deal was added, not calculated from cashflows
+        # Use bond's Secondary IRR for both Expected and Actual XIRR
+        # Complex XIRR calculation logic has been removed
         expected_xirr = bond.get('secondary_irr') or bond.get('interest_rate') or bond.get('coupon_rate')
+        actual_xirr = expected_xirr  # Same as expected - no complex calculation
         
         # GROSS Profit = Gross Expected - Investment
         gross_expected = total_principal + total_interest_gross
@@ -9331,8 +9303,8 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "upcoming_expected": round(upcoming_gross, 2),  # For backward compatibility
             "prepaid_count": len(prepaid_cashflows),
             "prepaid_amount": round(prepaid_amount, 2),
-            "xirr": expected_xirr,  # Use bond's Secondary IRR as Expected XIRR
-            "actual_xirr": actual_xirr,
+            "xirr": expected_xirr,  # Bond's Secondary IRR
+            "actual_xirr": actual_xirr,  # Same as expected
             "cashflows": stored_cashflows,
             "status": "active" if upcoming_gross > 0 else "fully_repaid"
         })
