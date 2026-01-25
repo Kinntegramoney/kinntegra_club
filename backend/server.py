@@ -6180,8 +6180,9 @@ async def bulk_upload_historical_trades(
                         deal_id = str(row['deal_id']).strip().upper()
                         pan = str(row['pan']).strip().upper()
                         
-                        # Parse date of investment (for matching to specific trade)
-                        inv_date = row.get('date_of_investment')
+                        # Parse date of investment (OPTIONAL - for matching to specific trade)
+                        # Check both column names for backwards compatibility
+                        inv_date = row.get('date_of_investment') or row.get('date_of_investment_(optional)')
                         inv_date_str = None
                         if pd.notna(inv_date):
                             if isinstance(inv_date, str):
