@@ -3422,7 +3422,7 @@ async def bulk_upload_subbrokers(
                 "partner_code": partner_code,
                 "email": email,
                 "mobile": str(row.get('mobile', '')).strip() if not pd.isna(row.get('mobile')) else '',
-                "color": "#4F46E5",
+                "color": "#C9A227",  # Etihad gold
                 "address_line1": str(row.get('address_line_1', '')).strip() if not pd.isna(row.get('address_line_1')) else "",
                 "address_line2": str(row.get('address_line_2', '')).strip() if not pd.isna(row.get('address_line_2')) else "",
                 "city": str(row.get('city', '')).strip() if not pd.isna(row.get('city')) else "",
@@ -3431,7 +3431,10 @@ async def bulk_upload_subbrokers(
                 "pincode": str(row.get('pincode', '')).strip() if not pd.isna(row.get('pincode')) else "",
                 "created_by": current_user['id'],
                 "is_active": True,
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                # Store plain credentials for display to broker and resend capability
+                "initial_password": password,
+                "initial_pin": pin
             }
             await db.partners.insert_one(partner)
             
