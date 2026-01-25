@@ -6125,9 +6125,36 @@ async def bulk_upload_investment_details(
                     results['failed'] += 1
                     continue
                 
-                # Create trade with approved status
+                # Validate investment amount against secondary calculator
+                calc_result = calculate_secondary_market_price_and_units(
+                    bond=bond,
+                    investment_date_str=inv_date_str,
+                    investment_amount=amount,
+                    cutoff_days=bond.get('cutoff_days', 15)
+                )
+                
+                expected_price_per_unit = calc_result.get('price_per_unit', 0)
+                expected_total_amount = expected_price_per_unit * units
+                amount_difference = abs(amount - expected_total_amount)
+                
+                # Allow tolerance of 5 Rs
+                AMOUNT_TOLERANCE = 5.0
+                
+                if expected_price_per_unit > 0 and amount_difference > AMOUNT_TOLERANCE:
+                    results['errors'].append(
+                        f"Row {row_num}: Investment amount mismatch. "
+                        f"File amount: ₹{amount:,.2f}, Expected (from calculator): ₹{expected_total_amount:,.2f}, "
+                        f"Difference: ₹{amount_difference:,.2f} (tolerance: ₹{AMOUNT_TOLERANCE}). "
+                        f"Price per unit: ₹{expected_price_per_unit:,.2f}"
+                    )
+                    results['failed'] += 1
+                    continue
+                
+                # Use calculated price if available, otherwise derive from amount/units
+                price_per_unit = expected_price_per_unit if expected_price_per_unit > 0 else (amount / units if units > 0 else 0)
+                
+                # Create trade with approved status (auto-approved)
                 trade_id = str(uuid.uuid4())
-                price_per_unit = amount / units if units > 0 else 0
                 
                 trade = {
                     "id": trade_id,
@@ -6141,14 +6168,16 @@ async def bulk_upload_investment_details(
                     "investment_date": inv_date_str,
                     "calculated_price": price_per_unit,
                     "total_amount": amount,
+                    "expected_amount_from_calculator": expected_total_amount,
+                    "amount_difference": amount_difference,
                     "payment_reference": utr,
-                    "status": "approved",  # Set to approved so cashflows are generated
+                    "status": "approved",  # Auto-approved
                     "utr_number": utr,
                     "is_historical": True,
                     "created_by": current_user['id'],
                     "created_by_name": current_user.get('name', 'System'),
                     "created_by_role": "broker",
-                    "broker_notes": "Historical import via bulk upload",
+                    "broker_notes": f"Historical import via bulk upload. Amount validated against secondary calculator (diff: ₹{amount_difference:.2f})",
                     "approved_by": current_user['id'],
                     "approved_at": datetime.now(timezone.utc).isoformat(),
                     "created_at": datetime.now(timezone.utc).isoformat()
