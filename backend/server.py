@@ -9224,18 +9224,24 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         # This represents what was promised in the bond - the Expected Repayments
         # Uses secondary market calculator logic for units sold at premium
         original_cashflows = []
+        calculated_investment = 0  # Investment value from secondary calculator
         
         # Get cutoff date for this investment
         from datetime import timedelta
         investment_date_str = trade['investment_date'].split('T')[0].split(' ')[0]
         investment_date_dt = datetime.fromisoformat(investment_date_str)
         cutoff_days = trade.get('cutoff_days', bond.get('cutoff_days', 15))
+        secondary_irr = bond.get('secondary_irr', bond.get('primary_irr', 12))
+        irr_decimal = secondary_irr / 100
         
         # Use cashflows_per_unit from bond definition
         cashflows_per_unit = bond.get('cashflows_per_unit', [])
         
         if cashflows_per_unit:
             # Calculate expected cashflows using secondary market logic
+            # Also calculate PV for investment value
+            pv_total_per_unit = 0
+            
             for cf in cashflows_per_unit:
                 cf_date_str = cf.get('date', '').split('T')[0].split(' ')[0]
                 try:
@@ -9251,6 +9257,13 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                 if investment_date_dt <= record_date:
                     interest_per_unit = cf.get('interest_per_unit', 0) or 0
                     principal_per_unit = cf.get('principal_per_unit', 0) or 0
+                    total_cf_per_unit = interest_per_unit + principal_per_unit
+                    
+                    # Calculate PV for secondary market price
+                    days_to_cf = (cf_date - investment_date_dt).days
+                    years = days_to_cf / 365
+                    discount_factor = 1 / ((1 + irr_decimal) ** years)
+                    pv_total_per_unit += total_cf_per_unit * discount_factor
                     
                     # Calculate amounts for this client's units
                     gross_interest = interest_per_unit * trade['units']
@@ -9266,8 +9279,12 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                         'gross_amount': round(total_gross, 2),
                         'tds_amount': round(tds, 2),
                         'net_amount': round(net_amount, 2),
-                        'source': 'bond_template'
+                        'source': 'bond_template',
+                        'days_from_investment': days_to_cf
                     })
+            
+            # Calculate investment value using secondary calculator
+            calculated_investment = round(pv_total_per_unit * trade['units'], 2)
         
         # If no cashflows_per_unit, calculate expected from bond terms
         if not original_cashflows:
