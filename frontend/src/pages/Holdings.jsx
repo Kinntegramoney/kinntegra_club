@@ -987,6 +987,62 @@ export default function Holdings() {
           </div>
         </div>
 
+        <!-- Individual Transaction Details -->
+        ${holdingData.trades && holdingData.trades.length > 0 ? `
+        <div class="page-break" style="margin-top: 15px; padding-top: 10px; border-top: 2px solid #C9A227;">
+          <h2 style="font-size: 11px; font-weight: 600; color: #5B373C; margin-bottom: 8px;">Individual Transaction Details</h2>
+          ${holdingData.trades.map((trade, idx) => `
+            <div style="margin-bottom: 10px; padding: 8px; background: ${idx % 2 === 0 ? '#F5F3EF' : '#fff'}; border: 1px solid #e5e7eb; border-radius: 4px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span style="font-size: 9px; font-weight: 600; color: #5B373C;">Trade #${idx + 1} - ${trade.units || '-'} Units</span>
+                <span style="font-size: 8px; color: #6b7280;">Inv. Date: ${trade.investment_date ? format(new Date(trade.investment_date), 'dd MMM yyyy') : '-'}</span>
+              </div>
+              <div style="display: flex; gap: 10px; font-size: 8px;">
+                <div style="flex: 1;">
+                  <span style="color: #9ca3af;">Investment:</span>
+                  <span style="font-weight: 500; color: #dc2626;"> ${formatAmount(trade.total_amount || trade.calculated_investment || 0)}</span>
+                </div>
+                <div style="flex: 1;">
+                  <span style="color: #9ca3af;">Expected XIRR:</span>
+                  <span style="font-weight: 500; color: #1e40af;"> ${trade.xirr?.toFixed(2) || '-'}%</span>
+                </div>
+                <div style="flex: 1;">
+                  <span style="color: #9ca3af;">Actual XIRR:</span>
+                  <span style="font-weight: 500; color: #059669;"> ${trade.actual_xirr?.toFixed(2) || '-'}%</span>
+                </div>
+              </div>
+              ${trade.expected_cashflows && trade.expected_cashflows.length > 0 ? `
+              <table style="margin-top: 5px;">
+                <thead>
+                  <tr>
+                    <th style="width: 25%;">Date</th>
+                    <th style="width: 20%;">Type</th>
+                    <th style="width: 20%;">Principal</th>
+                    <th style="width: 15%;">Interest</th>
+                    <th style="width: 20%;">Gross</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${trade.expected_cashflows.slice(0, 8).map(cf => `
+                    <tr class="${cf.type === 'investment' ? 'outflow' : cf.type === 'maturity' ? 'maturity' : ''}">
+                      <td>${cf.date ? format(new Date(cf.date), 'dd MMM yy') : '-'}</td>
+                      <td style="text-transform: capitalize;">${cf.type || '-'}</td>
+                      <td>${formatAmount(cf.principal_component || 0)}</td>
+                      <td>${formatAmount(cf.interest_component || 0)}</td>
+                      <td>${formatAmount(cf.gross_amount || cf.amount || 0)}</td>
+                    </tr>
+                  `).join('')}
+                  ${trade.expected_cashflows.length > 8 ? `
+                    <tr><td colspan="5" style="text-align:center;color:#9ca3af;font-size:7px;">...and ${trade.expected_cashflows.length - 8} more entries</td></tr>
+                  ` : ''}
+                </tbody>
+              </table>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+
         <div class="page-footer">
           <p>System generated report · For queries, contact your relationship manager</p>
         </div>
