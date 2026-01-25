@@ -819,37 +819,37 @@ export default function Holdings() {
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 15px 20px; color: #374151; background: #fff; font-size: 10px; }
-          .header { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #92400E; }
-          .header h1 { font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 3px; }
+          .header { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #C9A227; }
+          .header h1 { font-size: 14px; font-weight: 600; color: #5B373C; margin-bottom: 3px; }
           .header p { font-size: 10px; color: #6b7280; }
-          .summary-box { display: flex; gap: 15px; margin-bottom: 12px; padding: 10px; background: #fef3c7; border-radius: 6px; }
+          .summary-box { display: flex; gap: 15px; margin-bottom: 12px; padding: 10px; background: linear-gradient(135deg, #F5F3EF 0%, #FBF7E9 100%); border-radius: 6px; border: 1px solid #E8D89F; }
           .summary-item { flex: 1; text-align: center; }
-          .summary-item label { font-size: 7px; color: #92400E; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
+          .summary-item label { font-size: 7px; color: #5B373C; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
           .summary-item span { font-size: 11px; font-weight: 600; color: #111827; }
           .summary-item.green span { color: #059669; }
           .summary-item.purple span { color: #7c3aed; }
           .two-col { display: flex; gap: 12px; }
           .col { flex: 1; min-width: 0; }
           .section-title { font-size: 10px; font-weight: 600; color: #fff; padding: 5px 8px; margin-bottom: 0; }
-          .section-title.expected { background: #1e40af; }
-          .section-title.actual { background: #059669; }
+          .section-title.expected { background: #5B373C; }
+          .section-title.actual { background: #C9A227; }
           table { width: 100%; border-collapse: collapse; font-size: 8px; margin-bottom: 6px; table-layout: fixed; }
-          th { background: #f9fafb; color: #6b7280; padding: 4px 5px; text-align: left; font-size: 7px; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
+          th { background: #F5F3EF; color: #5B373C; padding: 4px 5px; text-align: left; font-size: 7px; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; border-bottom: 1px solid #C9A227; }
           th:last-child { text-align: right; }
           td { padding: 4px 5px; border-bottom: 1px solid #f3f4f6; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           td:last-child { text-align: right; font-family: 'SF Mono', 'Consolas', monospace; font-size: 8px; }
           tr.outflow { background: #fef2f2; }
           tr.outflow td { color: #dc2626; }
-          tr.maturity { background: #eff6ff; }
-          tr.maturity td { color: #1e40af; }
+          tr.maturity { background: #FBF7E9; }
+          tr.maturity td { color: #5B373C; }
           tr.totals { background: #f0fdf4; }
           tr.totals td { font-weight: 600; color: #059669; border-top: 1px solid #d1fae5; }
-          .footer-stats { display: flex; justify-content: space-between; padding: 6px 8px; background: #f9fafb; border-radius: 4px; margin-top: 4px; }
+          .footer-stats { display: flex; justify-content: space-between; padding: 6px 8px; background: #F5F3EF; border-radius: 4px; margin-top: 4px; }
           .footer-stat { text-align: center; }
-          .footer-stat label { font-size: 6px; color: #9ca3af; text-transform: uppercase; display: block; }
+          .footer-stat label { font-size: 6px; color: #5B373C; text-transform: uppercase; display: block; }
           .footer-stat span { font-size: 9px; font-weight: 600; }
           .footer-stat span.green { color: #059669; }
-          .page-footer { margin-top: 10px; text-align: center; font-size: 7px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 6px; }
+          .page-footer { margin-top: 10px; text-align: center; font-size: 7px; color: #9ca3af; border-top: 1px solid #C9A227; padding-top: 6px; }
         </style>
       </head>
       <body>
