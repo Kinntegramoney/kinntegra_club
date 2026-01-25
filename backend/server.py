@@ -11415,7 +11415,7 @@ async def download_client_holdings(client_id: str, current_user: dict = Depends(
         row = 6
         for cf in holding['cashflows']:
             ws.cell(row=row, column=1, value=cf['date']).border = border
-            ws.cell(row=row, column=2, value=cf['type'].capitalize()).border = border
+            ws.cell(row=row, column=2, value=cf.get('type', 'scheduled').capitalize()).border = border
             ws.cell(row=row, column=3, value=cf['principal_component']).border = border
             ws.cell(row=row, column=3).font = money_font
             ws.cell(row=row, column=3).number_format = '₹ #,##0.00'
