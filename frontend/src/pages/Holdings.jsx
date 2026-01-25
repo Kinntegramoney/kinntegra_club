@@ -1831,25 +1831,16 @@ export default function Holdings() {
                                   <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-600">
                                     -{formatAbsoluteINR(Math.abs(cf.net_amount || cf.amount || 0))}
                                   </td>
-                                  <td className="py-2 px-3 text-right">
-                                    <span className="font-mono text-xs font-semibold text-red-600">({formatAbsoluteINR(Math.abs(cf.net_amount || cf.amount || 0))})</span>
-                                  </td>
                                 </tr>
                               ) : (
                                 <tr key={idx} className="bg-white hover:bg-gray-50">
-                                  <td className="py-2 px-3">
-                                    <div className="flex items-center gap-1">
-                                      <span className="font-mono text-xs text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</span>
-                                      <span className="px-1.5 py-0.5 bg-green-500 text-white rounded text-[9px] font-semibold">IN</span>
-                                    </div>
-                                  </td>
+                                  <td className="py-2 px-3 font-mono text-xs text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</td>
                                   <td className="py-2 px-3 text-right font-mono text-xs text-gray-700">{formatAbsoluteINR(cf.principal_component)}</td>
                                   <td className="py-2 px-3 text-right font-mono text-xs text-gray-700">{formatAbsoluteINR(cf.interest_component)}</td>
-                                  <td className="py-2 px-3 text-right bg-blue-50">
-                                    <span className="font-mono text-xs font-bold text-blue-700">{formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}</span>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-gray-900">
+                                    {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
                                   </td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs text-red-500">{formatAbsoluteINR(cf.tds_amount)}</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-gray-900">{formatAbsoluteINR(cf.net_amount)}</td>
+                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-green-600">{formatAbsoluteINR(cf.net_amount)}</td>
                                 </tr>
                               )
                             ))}
@@ -1857,9 +1848,12 @@ export default function Holdings() {
                         </table>
                       </div>
                       <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-sm">
-                        <span className="text-gray-600">Total Inflow:</span>
+                        <span className="text-gray-600">Net Cashflow:</span>
                         <span className="font-mono font-bold ml-2 text-gray-900">
-                          {formatAbsoluteINR((modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0))}
+                          {formatAbsoluteINR(
+                            (modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.net_amount || 0), 0) -
+                            (modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.amount || cf.gross_amount || 0), 0)
+                          )}
                         </span>
                       </div>
                     </div>
@@ -1873,11 +1867,11 @@ export default function Holdings() {
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
-                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase w-24">Date</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Principal</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Interest</th>
-                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase bg-green-50">Gross</th>
-                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">TDS</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Gross</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Net</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Net</th>
                             </tr>
                           </thead>
