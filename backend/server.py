@@ -9222,17 +9222,20 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         
         # Build ORIGINAL cashflows from BOND DEFINITION (not from stored cashflows)
         # This represents what was promised in the bond - the Expected Repayments
+        # Uses secondary market calculator logic for units sold at premium
         original_cashflows = []
         
         # Get cutoff date for this investment
         from datetime import timedelta
-        investment_date_dt = datetime.fromisoformat(trade['investment_date'].split('T')[0].split(' ')[0])
+        investment_date_str = trade['investment_date'].split('T')[0].split(' ')[0]
+        investment_date_dt = datetime.fromisoformat(investment_date_str)
         cutoff_days = trade.get('cutoff_days', bond.get('cutoff_days', 15))
-        cutoff_date = investment_date_dt + timedelta(days=cutoff_days)
         
         # Use cashflows_per_unit from bond definition
         cashflows_per_unit = bond.get('cashflows_per_unit', [])
+        
         if cashflows_per_unit:
+            # Calculate expected cashflows using secondary market logic
             for cf in cashflows_per_unit:
                 cf_date_str = cf.get('date', '').split('T')[0].split(' ')[0]
                 try:
@@ -9240,8 +9243,12 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                 except:
                     continue
                 
-                # Only include cashflows AFTER cutoff date
-                if cf_date > cutoff_date:
+                # Record date convention: payment date - cutoff_days
+                record_date = cf_date - timedelta(days=cutoff_days)
+                
+                # Only include cashflows where investment_date <= record_date
+                # This means the investor is entitled to this payment
+                if investment_date_dt <= record_date:
                     interest_per_unit = cf.get('interest_per_unit', 0) or 0
                     principal_per_unit = cf.get('principal_per_unit', 0) or 0
                     
@@ -9258,16 +9265,60 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                         'interest_component': round(gross_interest, 2),
                         'gross_amount': round(total_gross, 2),
                         'tds_amount': round(tds, 2),
-                        'net_amount': round(net_amount, 2)
+                        'net_amount': round(net_amount, 2),
+                        'source': 'bond_template'
                     })
         
-        # If no cashflows_per_unit, fall back to stored original values
-        # Filter to show only the ORIGINAL expected cashflows (exclude prepaid ones)
+        # If no cashflows_per_unit, calculate expected from bond terms
         if not original_cashflows:
-            # Find the maturity cashflow (typically the last one without is_prepaid flag)
-            maturity_cashflows = [cf for cf in stored_cashflows if not cf.get('is_prepaid') and not cf.get('type') == 'prepayment']
+            # Calculate expected maturity payment from bond parameters
+            face_value = bond.get('face_value', 100000)
+            coupon_rate = bond.get('coupon_rate', 0)
+            if coupon_rate > 1:
+                coupon_rate = coupon_rate / 100  # Convert percentage to decimal
             
-            if maturity_cashflows:
+            maturity_date = bond.get('maturity_date', '')
+            bond_start = bond.get('start_date', '')
+            
+            if maturity_date and bond_start:
+                try:
+                    maturity_dt = datetime.fromisoformat(maturity_date.split('T')[0].split(' ')[0])
+                    bond_start_dt = datetime.fromisoformat(bond_start.split('T')[0].split(' ')[0])
+                    
+                    # Check if investor is entitled to maturity (investment <= record date)
+                    record_date = maturity_dt - timedelta(days=cutoff_days)
+                    
+                    if investment_date_dt <= record_date:
+                        # Calculate days from INVESTMENT DATE to maturity
+                        # (This affects the interest earned by the secondary buyer)
+                        days_to_maturity = (maturity_dt - investment_date_dt).days
+                        total_days = (maturity_dt - bond_start_dt).days
+                        
+                        # Principal at maturity
+                        principal_amount = face_value * trade['units']
+                        
+                        # Interest calculation:
+                        # For bonds sold at premium, interest is calculated from bond start to maturity
+                        # The premium accounts for the "missed" interest from bond start to investment date
+                        gross_interest = round(principal_amount * coupon_rate * total_days / 365, 2)
+                        
+                        tds = round(gross_interest * 0.10, 2)
+                        total_gross = principal_amount + gross_interest
+                        net_amount = total_gross - tds
+                        
+                        original_cashflows.append({
+                            'date': maturity_date.split('T')[0].split(' ')[0],
+                            'principal_component': round(principal_amount, 2),
+                            'interest_component': round(gross_interest, 2),
+                            'gross_amount': round(total_gross, 2),
+                            'tds_amount': round(tds, 2),
+                            'net_amount': round(net_amount, 2),
+                            'source': 'calculated_from_bond_terms',
+                            'days_to_maturity': days_to_maturity,
+                            'total_bond_days': total_days
+                        })
+                except Exception as e:
+                    logger.error(f"Error calculating expected cashflows: {e}")
                 for cf in maturity_cashflows:
                     original_cashflows.append({
                         'date': cf.get('date'),
