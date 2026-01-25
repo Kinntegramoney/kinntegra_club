@@ -10160,9 +10160,17 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "cashflows": stored_cashflows,  # Current state of cashflows
             "expected_cashflows": expected_cashflows_with_investment,  # With investment as first entry
             "actual_cashflows": build_actual_cashflows_with_investment(
-                [{'investment_date': investment_date_str, 'calculated_investment': calculated_investment, 'units': trade['units']}],
+                [{
+                    'investment_date': investment_date_str, 
+                    'calculated_investment': calculated_investment, 
+                    'units': trade['units'],
+                    'total_principal': round(total_principal, 2),
+                    'coupon_rate': bond.get('coupon_rate', 0) or bond.get('annual_interest_rate', 0) or bond.get('interest_rate', 0),
+                    'maturity_date': bond.get('end_date', '') or bond.get('maturity_date', '')
+                }],
                 stored_cashflows,
-                matched_actual_repayments
+                matched_actual_repayments,
+                bond_info=bond
             ),
             "status": "active" if upcoming_gross > 0 else "fully_repaid"
         })
