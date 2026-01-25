@@ -2,6 +2,26 @@
 
 ## Recent Changes (Jan 25, 2026)
 
+### Upload Module Enhancement (Jan 25, 2026 - Session 5)
+
+**Separated Historical Trades into Two Tabs ✅**
+- **Request:** Separate sheets for uploading - first sheet for investment details only
+- **Changes:**
+  - Added new **"Investment Details"** tab (teal color) for uploading investment data only
+  - Renamed "Historical Trades" to **"Historical Repayments"** for clarity
+  - Created new backend endpoints:
+    - `GET /api/bulk/template/investment-details` - Download template
+    - `POST /api/bulk/investment-details` - Upload investment data
+  - Historical Repayments tab now clearly states it's for repayment data only
+  - Each tab has clear instructions directing users to the appropriate workflow
+- **Files Modified:** BulkUpload.jsx, server.py (new endpoints ~200 lines)
+- **Workflow:**
+  1. Create bonds & clients first
+  2. Upload investment data via "Investment Details" tab
+  3. Upload repayment data via "Historical Repayments" tab
+
+---
+
 ### UI Enhancements (Jan 25, 2026 - Session 4)
 
 **1. Smaller Prelogin Cards with Kinntegraa Logo ✅**
