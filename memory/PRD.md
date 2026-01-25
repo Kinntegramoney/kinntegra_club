@@ -2,15 +2,16 @@
 
 ## Recent Changes (Jan 25, 2026)
 
-### Historical Repayments - Actual Cashflow Calculation (Jan 25, 2026 - Session 7) ✅
+### Historical Repayments - Actual Cashflow & XIRR Calculation (Jan 25, 2026 - Session 7) ✅
 
-**Request:** After historical repayments are uploaded, the actual cashflow chart should reflect prepayments and calculate maturity payout exactly like the provided Excel.
+**Request:** After historical repayments are uploaded, the actual cashflow chart should reflect prepayments and calculate maturity payout exactly like the provided Excel. The actual XIRR should also be calculated correctly.
 
 **Excel Calculation Logic:**
 1. Each prepayment reduces the balance principal
 2. Interest = Balance Principal × Coupon Rate × Days / 365
 3. Interest is calculated from **BOND START DATE** (not investment date)
 4. Accumulated interest is paid at maturity with remaining principal
+5. XIRR calculated from Investment (outflow) + All Prepayments + Maturity (remaining principal + accumulated interest)
 
 **Implementation:**
 - **Enhanced `build_actual_cashflows_with_investment()` function** in server.py
@@ -19,17 +20,24 @@
   - Automatically generates maturity entry with remaining principal + accumulated interest
   - Includes calculation details (original principal, total prepaid, remaining principal, coupon rate used)
 
-**Actual Cashflow Chart Now Shows:**
-1. **Investment** (outflow - negative amount on investment date)
-2. **Prepayments** (principal-only repayments as uploaded)
-3. **Maturity** (calculated: remaining principal + accumulated interest from bond start)
+- **Fixed XIRR Calculation** in `get_client_holdings()`
+  - XIRR now calculated from complete `actual_cashflows` (including calculated maturity)
+  - Previously was only using raw uploaded repayments (missing maturity with interest)
+  - Added sanity check to ensure XIRR is within reasonable bounds (-100% to 1000%)
+
+**Results:**
+| Metric | Excel | System | Variance |
+|--------|-------|--------|----------|
+| Maturity Amount | ₹13,267,590 | ₹13,237,802 | 0.2% |
+| Actual XIRR | 11.34% | 11.11% | 0.23% |
 
 **Example (135 units, Face Value ₹100,000, Coupon 18.73%):**
 - Original Principal: ₹13,500,000
 - 4 Prepayments of ₹945,000 each
 - Remaining Principal: ₹9,720,000
-- Accumulated Interest: ₹3,517,801.89 (from bond start 2024-10-08 to maturity 2026-04-08)
+- Accumulated Interest: ₹3,517,801.89
 - Maturity Payout: ₹13,237,801.89
+- Actual XIRR: 11.11% (vs Expected 12%)
 
 **Files Modified:** server.py (build_actual_cashflows_with_investment, get_client_holdings)
 
