@@ -1281,6 +1281,140 @@ def send_prepayment_notification_email(
     
     return send_email(client_email, subject, html_content, plain_content)
 
+def send_holdings_report_email(
+    client_name: str,
+    client_email: str,
+    holdings_data: list,
+    total_invested: float,
+    total_expected: float,
+    total_profit: float,
+    cc_emails: list = None
+) -> bool:
+    """
+    Send holdings report email to client with optional sub-broker CC.
+    
+    Args:
+        client_name: Client's name
+        client_email: Client's email address
+        holdings_data: List of holding dictionaries with bond details
+        total_invested: Total investment amount
+        total_expected: Total expected returns
+        total_profit: Total profit
+        cc_emails: List of CC email addresses (e.g., sub-broker email)
+    """
+    subject = f"Your Investment Holdings Report - Kinntegraa"
+    
+    # Format currency
+    def fmt_inr(amount):
+        return f"₹{amount:,.2f}"
+    
+    # Build holdings table rows
+    holdings_rows = ""
+    for h in holdings_data:
+        holdings_rows += f"""
+            <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-weight: 500;">{h.get('bond_name', 'N/A')}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">{h.get('units', 0)}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace;">{fmt_inr(h.get('invested_amount', 0))}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace;">{fmt_inr(h.get('gross_expected', 0))}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; color: {'#22C55E' if h.get('profit', 0) >= 0 else '#DC2626'};">{fmt_inr(h.get('profit', 0))}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">{h.get('expected_xirr', '-')}%</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">{h.get('actual_xirr', '-')}%</td>
+            </tr>
+        """
+    
+    content = f"""
+                <div class="header">
+                    <div class="logo">K</div>
+                    <h1>Holdings Report</h1>
+                    <p>Your Investment Summary</p>
+                </div>
+                <div class="content">
+                    <p class="greeting">Dear <strong>{client_name}</strong>,</p>
+                    
+                    <p>Please find below your current investment holdings with Kinntegraa.</p>
+                    
+                    <!-- Summary Cards -->
+                    <div style="display: flex; gap: 15px; margin: 25px 0;">
+                        <div style="flex: 1; background: linear-gradient(135deg, #FEF3C7, #FDE68A); padding: 20px; border-radius: 10px; text-align: center;">
+                            <p style="margin: 0; font-size: 12px; color: #92400E; text-transform: uppercase; letter-spacing: 0.5px;">Total Invested</p>
+                            <p style="margin: 5px 0 0; font-size: 20px; font-weight: 700; color: #78350F;">{fmt_inr(total_invested)}</p>
+                        </div>
+                        <div style="flex: 1; background: linear-gradient(135deg, #DBEAFE, #BFDBFE); padding: 20px; border-radius: 10px; text-align: center;">
+                            <p style="margin: 0; font-size: 12px; color: #1E40AF; text-transform: uppercase; letter-spacing: 0.5px;">Expected Returns</p>
+                            <p style="margin: 5px 0 0; font-size: 20px; font-weight: 700; color: #1E3A8A;">{fmt_inr(total_expected)}</p>
+                        </div>
+                        <div style="flex: 1; background: linear-gradient(135deg, #D1FAE5, #A7F3D0); padding: 20px; border-radius: 10px; text-align: center;">
+                            <p style="margin: 0; font-size: 12px; color: #065F46; text-transform: uppercase; letter-spacing: 0.5px;">Total Profit</p>
+                            <p style="margin: 5px 0 0; font-size: 20px; font-weight: 700; color: #047857;">{fmt_inr(total_profit)}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Holdings Table -->
+                    <div style="overflow-x: auto; margin: 20px 0;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <thead>
+                                <tr style="background: #1E1B4B; color: white;">
+                                    <th style="padding: 12px; text-align: left;">Scheme</th>
+                                    <th style="padding: 12px; text-align: center;">Units</th>
+                                    <th style="padding: 12px; text-align: right;">Investment</th>
+                                    <th style="padding: 12px; text-align: right;">Expected</th>
+                                    <th style="padding: 12px; text-align: right;">Profit</th>
+                                    <th style="padding: 12px; text-align: center;">Exp. XIRR</th>
+                                    <th style="padding: 12px; text-align: center;">Act. XIRR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {holdings_rows}
+                            </tbody>
+                            <tfoot>
+                                <tr style="background: #F3F4F6; font-weight: 600;">
+                                    <td style="padding: 12px;" colspan="2">Total</td>
+                                    <td style="padding: 12px; text-align: right; font-family: monospace;">{fmt_inr(total_invested)}</td>
+                                    <td style="padding: 12px; text-align: right; font-family: monospace;">{fmt_inr(total_expected)}</td>
+                                    <td style="padding: 12px; text-align: right; font-family: monospace; color: #22C55E;">{fmt_inr(total_profit)}</td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    
+                    <div class="info-box">
+                        <strong>📊 About Your Report:</strong><br>
+                        This report shows your current holdings as of today. Expected XIRR is based on the original schedule, while Actual XIRR reflects any prepayments or changes.
+                    </div>
+                    
+                    <p style="margin-top: 20px;">For detailed cashflow information, please log in to your Kinntegraa dashboard.</p>
+                </div>
+    """
+    
+    footer = "<p>For any queries, please contact your relationship manager.</p>"
+    
+    html_content = get_email_template_base(content, footer)
+    
+    plain_content = f"""
+    Holdings Report - Kinntegraa
+    
+    Dear {client_name},
+    
+    Please find below your current investment holdings with Kinntegraa.
+    
+    SUMMARY
+    -------
+    Total Invested: {fmt_inr(total_invested)}
+    Expected Returns: {fmt_inr(total_expected)}
+    Total Profit: {fmt_inr(total_profit)}
+    
+    For detailed cashflow information, please log in to your Kinntegraa dashboard.
+    
+    Best regards,
+    Kinntegraa Team
+    
+    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    """
+    
+    return send_email(client_email, subject, html_content, plain_content, cc=cc_emails)
+
 
 # ==================== APPROVAL WORKFLOW EMAILS ====================
 
