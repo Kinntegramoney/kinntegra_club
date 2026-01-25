@@ -1584,16 +1584,23 @@ export default function Holdings() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     
                     {/* LEFT COLUMN - Expected Repayments */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 flex justify-between items-center">
                         <h3 className="font-semibold text-white flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
                           Expected Cashflow
                         </h3>
+                        <button
+                          onClick={() => downloadExpectedCashflowPDF(modalData, expectedCashflows)}
+                          className="flex items-center gap-1 px-2 py-1 bg-white/20 hover:bg-white/30 rounded text-white text-xs transition-colors"
+                        >
+                          <Download className="h-3 w-3" />
+                          PDF
+                        </button>
                       </div>
                       
                       {/* Expected Cashflows Table */}
-                      <div className="max-h-[350px] overflow-y-auto">
+                      <div className="flex-1 max-h-[300px] overflow-y-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
@@ -1629,12 +1636,12 @@ export default function Holdings() {
                         </table>
                       </div>
                       
-                      {/* Expected Summary Footer */}
-                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
+                      {/* Expected Summary Footer - Fixed at bottom */}
+                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 mt-auto">
                         <div className="flex justify-between items-center">
                           <div>
-                            <span className="text-sm text-gray-600">Net:</span>
-                            <span className="font-mono font-bold ml-2 text-gray-900">
+                            <span className="text-sm text-gray-600">Profits:</span>
+                            <span className="font-mono font-bold ml-2 text-green-600">
                               {formatAbsoluteINR(
                                 expectedCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
                                 expectedCashflows.filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || 0), 0)
@@ -1652,7 +1659,7 @@ export default function Holdings() {
                     </div>
                     
                     {/* RIGHT COLUMN - Actual Cashflow */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
                       <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3">
                         <h3 className="font-semibold text-white flex items-center gap-2">
                           <Check className="h-4 w-4" />
@@ -1661,7 +1668,7 @@ export default function Holdings() {
                       </div>
                       
                       {/* Actual Cashflows Table */}
-                      <div className="max-h-[350px] overflow-y-auto">
+                      <div className="flex-1 max-h-[300px] overflow-y-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
@@ -1688,8 +1695,8 @@ export default function Holdings() {
                         </table>
                       </div>
                       
-                      {/* Actual Summary Footer */}
-                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
+                      {/* Actual Summary Footer - Fixed at bottom */}
+                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 mt-auto">
                         <div className="flex justify-between items-center">
                           <div>
                             <span className="text-sm text-gray-600">Total:</span>
