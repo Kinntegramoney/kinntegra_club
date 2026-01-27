@@ -1,17 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import Sidebar from "@/components/Sidebar";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { format } from "date-fns";
-import { 
-  RefreshCw, Save, Tag, ChevronUp, ChevronDown, Clock, CheckCircle,
-  AlertCircle, IndianRupee, Mail, History, ArrowRight, Check, X
-} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -19,10 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { 
+  Tag, RefreshCw, ChevronDown, ChevronUp, Mail, Save, 
+  Clock, CheckCircle, History, ArrowRight, Check, X
+} from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Original options
 const PORTFOLIO_OPTIONS = [
   { value: 'wealth', label: 'Wealth' },
   { value: 'tax', label: 'Tax' },
@@ -35,12 +37,12 @@ const PORTFOLIO_OPTIONS = [
 const TAG_OPTIONS = [
   { value: 'principal', label: 'Principal' },
   { value: 'interest', label: 'Interest' },
-  { value: 'both', label: 'Both (P+I)' },
+  { value: 'both', label: 'Both' },
   { value: 'none', label: 'None' },
   { value: 'custom', label: 'Custom' }
 ];
 
-export default function SubBrokerReinvestment() {
+export default function ReinvestmentTagging() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -82,13 +84,7 @@ export default function SubBrokerReinvestment() {
       navigate("/login");
       return;
     }
-    
     const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== "sub_broker") {
-      navigate("/broker/dashboard");
-      return;
-    }
-    
     setUser(parsedUser);
     fetchData();
   }, [navigate]);
@@ -97,7 +93,6 @@ export default function SubBrokerReinvestment() {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      // Use the same endpoint as broker - it filters by sub-broker's linked clients
       const response = await axios.get(`${API}/reinvestment/upcoming`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -253,57 +248,54 @@ export default function SubBrokerReinvestment() {
     setMassTag("");
   };
 
-  const saveClientTags = async (clientId, entries) => {
-    setSavingClient(clientId);
+  const saveClientTags = async (clientGroup, isPast) => {
+    // Validate: all 3 fields must be filled for entries with changes
+    const entriesToSave = clientGroup.entries.filter(entry => localChanges[entry.id]);
+    
+    if (entriesToSave.length === 0) {
+      toast.error("No changes to save");
+      return;
+    }
+    
+    for (const entry of entriesToSave) {
+      const changes = localChanges[entry.id];
+      const ucc = changes.target_ucc || entry.target_ucc;
+      const portfolio = changes.portfolio_category || entry.portfolio_category;
+      const tag = changes.reinvestment_tag || entry.reinvestment_tag;
+      
+      if (!ucc || !portfolio || !tag || tag === 'not_tagged') {
+        toast.error("Please fill UCC, Portfolio, and Tag for all modified entries");
+        return;
+      }
+    }
+    
+    setSavingClient(clientGroup.client_id);
     try {
       const token = localStorage.getItem("token");
       
-      // Get entries that have local changes
-      const entriesToSave = entries.filter(entry => localChanges[entry.id]);
-      
-      if (entriesToSave.length === 0) {
-        toast.error("No changes to save");
-        setSavingClient(null);
-        return;
-      }
-      
-      // Save each entry
       for (const entry of entriesToSave) {
         const changes = localChanges[entry.id];
-        const tag = changes.reinvestment_tag || entry.reinvestment_tag;
-        
-        // Validate required fields for non-none tags
-        if (tag && tag !== 'none' && tag !== 'not_tagged') {
-          if (!changes.portfolio_category && !entry.portfolio_category) {
-            toast.error(`Please select portfolio for ${entry.bond_name}`);
-            setSavingClient(null);
-            return;
-          }
-          if (!changes.target_ucc && !entry.target_ucc) {
-            toast.error(`Please select UCC for ${entry.bond_name}`);
-            setSavingClient(null);
-            return;
-          }
-        }
-        
-        await axios.put(`${API}/reinvestment/tag/${entry.id}`, {
-          reinvestment_tag: tag,
-          portfolio_category: changes.portfolio_category || entry.portfolio_category,
-          target_ucc: changes.target_ucc || entry.target_ucc,
-          custom_amount: changes.custom_amount || entry.custom_amount
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.put(
+          `${API}/reinvestment/tag/${entry.id}`,
+          {
+            reinvestment_tag: changes.reinvestment_tag || entry.reinvestment_tag,
+            portfolio_category: changes.portfolio_category || entry.portfolio_category,
+            target_ucc: changes.target_ucc || entry.target_ucc,
+            custom_amount: changes.custom_amount
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
       }
       
-      toast.success(`Saved ${entriesToSave.length} entries`);
+      toast.success(isPast ? "Tags saved and auto-approved (historical)" : "Tags saved successfully");
       
-      // Clear local changes for saved entries
-      const clearedChanges = { ...localChanges };
-      entriesToSave.forEach(entry => delete clearedChanges[entry.id]);
-      setLocalChanges(clearedChanges);
+      // Clear local changes for this client
+      const newLocalChanges = { ...localChanges };
+      clientGroup.entries.forEach(entry => {
+        delete newLocalChanges[entry.id];
+      });
+      setLocalChanges(newLocalChanges);
       
-      // Refresh data
       fetchData();
     } catch (error) {
       console.error("Error saving tags:", error);
@@ -313,35 +305,29 @@ export default function SubBrokerReinvestment() {
     }
   };
 
-  const sendApprovalEmail = async (clientId, entries) => {
-    setSendingEmail(clientId);
+  const sendEmailToClient = async (clientGroup) => {
+    const taggedEntryIds = clientGroup.entries
+      .filter(e => e.reinvestment_tag && e.reinvestment_tag !== 'not_tagged' && !e.client_approved)
+      .map(e => e.id);
+    
+    if (taggedEntryIds.length === 0) {
+      toast.error("No entries pending approval");
+      return;
+    }
+    
+    setSendingEmail(clientGroup.client_id);
     try {
       const token = localStorage.getItem("token");
-      
-      // Only send for tagged future entries that haven't been sent yet
-      const entriesToSend = entries.filter(entry => 
-        entry.reinvestment_tag && 
-        entry.reinvestment_tag !== 'not_tagged' && 
-        entry.reinvestment_tag !== 'none' &&
-        !entry.is_past_date &&
-        entry.approval_status !== 'pending' &&
-        entry.approval_status !== 'approved'
+      await axios.post(
+        `${API}/reinvestment/send-approval-email`,
+        {
+          client_id: clientGroup.client_id,
+          cashflow_ids: taggedEntryIds
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      if (entriesToSend.length === 0) {
-        toast.error("No entries eligible for approval email");
-        setSendingEmail(null);
-        return;
-      }
-      
-      await axios.post(`${API}/reinvestment/send-approval-email`, {
-        client_id: clientId,
-        cashflow_ids: entriesToSend.map(e => e.id)
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      toast.success("Approval email sent successfully");
+      toast.success("Approval email sent to client");
       fetchData();
     } catch (error) {
       console.error("Error sending email:", error);
@@ -351,443 +337,526 @@ export default function SubBrokerReinvestment() {
     }
   };
 
+  const resendApprovalEmail = async (clientId, cashflowId) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `${API}/reinvestment/send-approval-email`,
+        {
+          client_id: clientId,
+          cashflow_ids: [cashflowId],
+          resend: true
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success("Approval email resent to client");
+    } catch (error) {
+      console.error("Error resending email:", error);
+      toast.error(error.response?.data?.detail || "Failed to resend email");
+    }
+  };
+
   const formatCurrency = (amount) => {
     if (!amount) return "₹0";
-    return `₹${Math.abs(amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+    return `₹${parseFloat(amount).toLocaleString('en-IN')}`;
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "-";
-    try {
-      return format(new Date(dateStr), "dd MMM yyyy");
-    } catch {
-      return dateStr;
-    }
+  const getSidebar = () => {
+    if (user?.role === "broker") return <Sidebar user={user} />;
+    return <SubBrokerSidebar user={user} />;
   };
 
-  const getTagLabel = (tag) => {
-    const option = TAG_OPTIONS.find(o => o.value === tag);
-    return option ? option.label : tag || 'Not Tagged';
+  // Get all unique UCCs from all client groups for mass selection
+  const getAllUccs = () => {
+    const uccs = new Set();
+    [...untaggedPast, ...untaggedUpcoming].forEach(group => {
+      (group.ucc_list || []).forEach(ucc => uccs.add(ucc));
+    });
+    return Array.from(uccs);
   };
 
-  const getTagColor = (tag) => {
-    switch (tag) {
-      case 'principal': return 'bg-blue-100 text-blue-700';
-      case 'interest': return 'bg-green-100 text-green-700';
-      case 'both': return 'bg-purple-100 text-purple-700';
-      case 'none': return 'bg-gray-100 text-gray-700';
-      case 'custom': return 'bg-orange-100 text-orange-700';
-      default: return 'bg-gray-100 text-gray-500';
-    }
+  const renderUntaggedClientGroup = (clientGroup, isPast, section) => {
+    const key = `${section}_${clientGroup.client_id}`;
+    const isExpanded = expandedClients[key];
+    const hasChanges = clientGroup.entries.some(e => localChanges[e.id]);
+    const allSelected = clientGroup.entries.every(e => selectedEntries[e.id]);
+    const totalAmount = clientGroup.entries.reduce((sum, e) => sum + (e.net_amount || 0), 0);
+    
+    return (
+      <div key={key} className="bg-white rounded-lg border mb-3 overflow-hidden">
+        {/* Client Header */}
+        <div 
+          className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b"
+          onClick={() => toggleClientExpand(clientGroup.client_id, section)}
+        >
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={(checked) => handleSelectAllForClient(clientGroup.entries, checked)}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div>
+              <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>{clientGroup.client_pan}</span>
+                <span>•</span>
+                <span>{clientGroup.entries.length} entries</span>
+                <span>•</span>
+                <span className="font-medium text-gray-700">{formatCurrency(totalAmount)}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {hasChanges && (
+              <Button
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); saveClientTags(clientGroup, isPast); }}
+                disabled={savingClient === clientGroup.client_id}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {savingClient === clientGroup.client_id ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-1" />
+                    Save
+                  </>
+                )}
+              </Button>
+            )}
+            {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
+          </div>
+        </div>
+        
+        {/* Expanded Entries */}
+        {isExpanded && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="w-10 px-3 py-2"></th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Amount</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">UCC *</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio *</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Tag *</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {clientGroup.entries.map(entry => {
+                  const changes = localChanges[entry.id] || {};
+                  const currentUcc = changes.target_ucc || entry.target_ucc || '';
+                  const currentPortfolio = changes.portfolio_category || entry.portfolio_category || '';
+                  const currentTag = changes.reinvestment_tag || entry.reinvestment_tag || '';
+                  
+                  return (
+                    <tr key={entry.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2">
+                        <Checkbox
+                          checked={selectedEntries[entry.id] || false}
+                          onCheckedChange={(checked) => handleEntrySelect(entry.id, checked)}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="font-medium">{entry.bond_name}</div>
+                        <div className="text-xs text-gray-500">{entry.bond_code}</div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {format(new Date(entry.expected_date), "dd MMM yyyy")}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono">
+                        {formatCurrency(entry.net_amount)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Select
+                          value={currentUcc}
+                          onValueChange={(v) => handleLocalChange(entry.id, 'target_ucc', v)}
+                        >
+                          <SelectTrigger className="w-28 h-8 text-xs">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(clientGroup.ucc_list || []).map(ucc => (
+                              <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Select
+                          value={currentPortfolio}
+                          onValueChange={(v) => handleLocalChange(entry.id, 'portfolio_category', v)}
+                        >
+                          <SelectTrigger className="w-28 h-8 text-xs">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PORTFOLIO_OPTIONS.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Select
+                          value={currentTag}
+                          onValueChange={(v) => handleLocalChange(entry.id, 'reinvestment_tag', v)}
+                        >
+                          <SelectTrigger className="w-28 h-8 text-xs">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TAG_OPTIONS.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
   };
 
-  const getApprovalBadge = (entry) => {
-    if (entry.is_past_date) {
-      return <Badge variant="outline" className="text-xs bg-gray-50">Past Date</Badge>;
-    }
-    if (entry.client_approved) {
-      return <Badge className="text-xs bg-green-100 text-green-700">Approved</Badge>;
-    }
-    if (entry.approval_status === 'pending') {
-      return <Badge className="text-xs bg-yellow-100 text-yellow-700">Pending</Badge>;
-    }
-    if (entry.approval_status === 'rejected') {
-      return <Badge className="text-xs bg-red-100 text-red-700">Rejected</Badge>;
-    }
-    return null;
+  const renderTaggedClientGroup = (clientGroup, isPast, section) => {
+    const key = `tagged_${section}_${clientGroup.client_id}`;
+    const isExpanded = expandedClients[key];
+    const pendingCount = clientGroup.entries.filter(e => !e.client_approved && e.approval_status !== 'approved').length;
+    const approvedCount = clientGroup.entries.filter(e => e.client_approved || e.approval_status === 'approved').length;
+    const totalAmount = clientGroup.entries.reduce((sum, e) => sum + (e.net_amount || 0), 0);
+    
+    return (
+      <div key={key} className="bg-white rounded-lg border mb-3 overflow-hidden">
+        {/* Client Header */}
+        <div 
+          className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b"
+          onClick={() => setExpandedClients(prev => ({ ...prev, [key]: !prev[key] }))}
+        >
+          <div>
+            <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span>{clientGroup.client_pan}</span>
+              <span>•</span>
+              <span>{clientGroup.entries.length} entries</span>
+              <span>•</span>
+              <span className="font-medium text-gray-700">{formatCurrency(totalAmount)}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {approvedCount > 0 && (
+              <Badge className="bg-green-100 text-green-700">
+                <Check className="h-3 w-3 mr-1" />
+                {approvedCount} Approved
+              </Badge>
+            )}
+            {pendingCount > 0 && (
+              <>
+                <Badge className="bg-etihad-gold-100 text-etihad-gold-700">
+                  <Clock className="h-3 w-3 mr-1" />
+                  {pendingCount} Pending
+                </Badge>
+                {!isPast && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => { e.stopPropagation(); sendEmailToClient(clientGroup); }}
+                    disabled={sendingEmail === clientGroup.client_id}
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  >
+                    {sendingEmail === clientGroup.client_id ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Mail className="h-4 w-4 mr-1" />
+                        Send Email
+                      </>
+                    )}
+                  </Button>
+                )}
+              </>
+            )}
+            {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
+          </div>
+        </div>
+        
+        {/* Expanded Entries */}
+        {isExpanded && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Amount</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Tag</th>
+                  <th className="text-center px-3 py-2 font-medium text-gray-600">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {clientGroup.entries.map(entry => (
+                  <tr key={entry.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2">
+                      <div className="font-medium">{entry.bond_name}</div>
+                      <div className="text-xs text-gray-500">{entry.bond_code}</div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {format(new Date(entry.expected_date), "dd MMM yyyy")}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono">
+                      {formatCurrency(entry.net_amount)}
+                    </td>
+                    <td className="px-3 py-2">{entry.target_ucc || '-'}</td>
+                    <td className="px-3 py-2 capitalize">{entry.portfolio_category?.replace('_', ' ') || '-'}</td>
+                    <td className="px-3 py-2">
+                      <Badge variant="outline" className="text-xs">
+                        {entry.reinvestment_tag === 'principal' ? 'Principal' :
+                         entry.reinvestment_tag === 'interest' ? 'Interest' :
+                         entry.reinvestment_tag === 'both' ? 'Both' :
+                         entry.reinvestment_tag === 'none' ? 'None' :
+                         entry.reinvestment_tag === 'custom' ? 'Custom' :
+                         entry.reinvestment_tag}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {entry.client_approved || entry.approval_status === 'approved' ? (
+                        <Badge className="bg-green-100 text-green-700 text-xs">
+                          <Check className="h-3 w-3 mr-1" />
+                          Approved
+                        </Badge>
+                      ) : entry.approval_status === 'rejected' ? (
+                        <Badge className="bg-red-100 text-red-700 text-xs">
+                          <X className="h-3 w-3 mr-1" />
+                          Rejected
+                        </Badge>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Badge className="bg-etihad-gold-100 text-etihad-gold-700 text-xs">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pending
+                          </Badge>
+                          {entry.approval_email_sent && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-1 text-xs text-blue-600 hover:text-blue-700"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                resendApprovalEmail(clientGroup.client_id, entry.id);
+                              }}
+                              title="Resend approval email"
+                            >
+                              <Mail className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
   };
 
-  // Get current data based on active tab and section
-  const getCurrentData = () => {
-    if (activeTab === 'untagged') {
-      return untaggedSection === 'past' ? untaggedPast : untaggedUpcoming;
-    } else {
-      return taggedSection === 'past' ? taggedPast : taggedUpcoming;
-    }
-  };
-
-  const currentData = getCurrentData();
-  const currentSection = activeTab === 'untagged' ? untaggedSection : taggedSection;
-  const setCurrentSection = activeTab === 'untagged' ? setUntaggedSection : setTaggedSection;
-
-  // Calculate summary stats
-  const totalUntagged = untaggedPast.reduce((sum, c) => sum + c.entries.length, 0) + 
-                        untaggedUpcoming.reduce((sum, c) => sum + c.entries.length, 0);
-  const totalTagged = taggedPast.reduce((sum, c) => sum + c.entries.length, 0) + 
-                      taggedUpcoming.reduce((sum, c) => sum + c.entries.length, 0);
-
-  if (!user) return null;
+  const currentUntaggedGroups = untaggedSection === "past" ? untaggedPast : untaggedUpcoming;
+  const currentTaggedGroups = taggedSection === "past" ? taggedPast : taggedUpcoming;
+  const allUccs = getAllUccs();
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <SubBrokerSidebar user={user} />
+    <div className="min-h-screen bg-gray-50 flex">
+      {getSidebar()}
       
       <div className="flex-1 overflow-auto">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-4 md:py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-800" data-testid="reinvestment-title">
-                Reinvestment Tagging
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Tag upcoming cashflows for your linked clients
-              </p>
-            </div>
-            <Button variant="outline" onClick={fetchData} data-testid="refresh-btn">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-          </div>
-          
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-            <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg p-4 text-white">
-              <p className="text-orange-100 text-sm">Untagged</p>
-              <p className="text-2xl font-bold">{totalUntagged}</p>
-              <p className="text-orange-100 text-xs">entries</p>
-            </div>
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-4 text-white">
-              <p className="text-green-100 text-sm">Tagged</p>
-              <p className="text-2xl font-bold">{totalTagged}</p>
-              <p className="text-green-100 text-xs">entries</p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <p className="text-gray-500 text-sm">Past Due</p>
-              <p className="text-2xl font-bold text-gray-800">
-                {untaggedPast.reduce((sum, c) => sum + c.entries.length, 0)}
-              </p>
-              <p className="text-xs text-gray-400">untagged</p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <p className="text-gray-500 text-sm">Upcoming</p>
-              <p className="text-2xl font-bold text-gray-800">
-                {untaggedUpcoming.reduce((sum, c) => sum + c.entries.length, 0)}
-              </p>
-              <p className="text-xs text-gray-400">untagged</p>
+        <div className="bg-white border-b sticky top-0 z-10">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <Tag className="h-5 w-5 text-etihad-gold-600" />
+                  Reinvestment Tagging
+                </h1>
+                <p className="text-sm text-gray-500">Tag client cashflows for reinvestment</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchData}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh
+              </Button>
             </div>
           </div>
           
-          {/* Tabs */}
-          <div className="flex gap-2 mt-4 border-b border-gray-200">
-            <button
-              onClick={() => setActiveTab("untagged")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "untagged" 
-                  ? "border-etihad-gold-600 text-etihad-gold-700" 
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-              data-testid="untagged-tab"
-            >
-              Untagged ({totalUntagged})
-            </button>
-            <button
-              onClick={() => setActiveTab("tagged")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "tagged" 
-                  ? "border-etihad-gold-600 text-etihad-gold-700" 
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-              data-testid="tagged-tab"
-            >
-              Tagged ({totalTagged})
-            </button>
-          </div>
-          
-          {/* Sub-section tabs (Past/Upcoming) */}
-          <div className="flex gap-2 mt-3">
-            <button
-              onClick={() => setCurrentSection("past")}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                currentSection === "past"
-                  ? "bg-red-100 text-red-700"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              <Clock className="h-3 w-3 inline mr-1" />
-              Past Due
-            </button>
-            <button
-              onClick={() => setCurrentSection("upcoming")}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                currentSection === "upcoming"
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              <ArrowRight className="h-3 w-3 inline mr-1" />
-              Upcoming
-            </button>
+          {/* Main Tabs */}
+          <div className="px-6 border-t">
+            <div className="flex">
+              <button
+                onClick={() => setActiveTab("untagged")}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "untagged"
+                    ? "border-etihad-gold-600 text-etihad-gold-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Untagged ({untaggedPast.length + untaggedUpcoming.length} clients)
+              </button>
+              <button
+                onClick={() => setActiveTab("tagged")}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "tagged"
+                    ? "border-etihad-gold-600 text-etihad-gold-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Tagged ({taggedPast.length + taggedUpcoming.length} clients)
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Mass Action Bar */}
-        {getSelectedCount() > 0 && (
-          <div className="bg-etihad-gold-50 border-b border-etihad-gold-200 px-4 md:px-8 py-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-sm font-medium text-etihad-gold-700">
-                {getSelectedCount()} selected
-              </span>
-              <Select value={massUcc} onValueChange={setMassUcc}>
-                <SelectTrigger className="w-[140px] h-8 text-xs">
-                  <SelectValue placeholder="Set UCC" />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Get all unique UCCs from current data */}
-                  {[...new Set(currentData.flatMap(c => c.ucc_list || []))].map(ucc => (
-                    <SelectItem key={ucc} value={ucc} className="text-xs">{ucc}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={massPortfolio} onValueChange={setMassPortfolio}>
-                <SelectTrigger className="w-[130px] h-8 text-xs">
-                  <SelectValue placeholder="Set Portfolio" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PORTFOLIO_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={massTag} onValueChange={setMassTag}>
-                <SelectTrigger className="w-[120px] h-8 text-xs">
-                  <SelectValue placeholder="Set Tag" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TAG_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button size="sm" onClick={applyMassTag} className="bg-etihad-gold-600 hover:bg-etihad-gold-700">
-                Apply
-              </Button>
-              <Button size="sm" variant="outline" onClick={clearSelection}>
-                Clear
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Content */}
-        <div className="p-4 md:p-8">
+        <div className="p-6">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center h-64">
               <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600" />
             </div>
-          ) : currentData.length === 0 ? (
-            <div className="text-center py-12">
-              <Tag className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">
-                No {currentSection} {activeTab} cashflows found
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {currentData.map((client) => {
-                const sectionKey = `${activeTab}_${currentSection}_${client.client_id}`;
-                const isExpanded = expandedClients[sectionKey];
-                const hasChanges = client.entries.some(e => localChanges[e.id]);
-                const allSelected = client.entries.every(e => selectedEntries[e.id]);
-                const someSelected = client.entries.some(e => selectedEntries[e.id]);
-                
-                return (
-                  <div 
-                    key={client.client_id}
-                    className="bg-white rounded-xl border border-gray-200 overflow-hidden"
-                  >
-                    {/* Client Header */}
-                    <div className="flex items-center justify-between p-4 hover:bg-gray-50">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={allSelected}
-                          onCheckedChange={(checked) => handleSelectAllForClient(client.entries, checked)}
-                          className="data-[state=checked]:bg-etihad-gold-600"
-                        />
-                        <button
-                          onClick={() => toggleClientExpand(client.client_id, `${activeTab}_${currentSection}`)}
-                          className="flex items-center gap-3"
-                        >
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-etihad-maroon-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                            {client.client_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'CL'}
-                          </div>
-                          <div className="text-left">
-                            <p className="font-semibold text-gray-800">{client.client_name}</p>
-                            <p className="text-xs text-gray-500 font-mono">{client.client_pan}</p>
-                          </div>
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-gray-800">{client.entries.length} entries</p>
-                          <p className="text-xs text-gray-500">
-                            {formatCurrency(client.entries.reduce((sum, e) => sum + (e.net_amount || 0), 0))}
-                          </p>
-                        </div>
-                        {hasChanges && (
-                          <Button 
-                            size="sm" 
-                            onClick={() => saveClientTags(client.client_id, client.entries)}
-                            disabled={savingClient === client.client_id}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            {savingClient === client.client_id ? (
-                              <RefreshCw className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Save className="h-4 w-4 mr-1" />
-                                Save
-                              </>
-                            )}
-                          </Button>
-                        )}
-                        {activeTab === 'tagged' && currentSection === 'upcoming' && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => sendApprovalEmail(client.client_id, client.entries)}
-                            disabled={sendingEmail === client.client_id}
-                          >
-                            {sendingEmail === client.client_id ? (
-                              <RefreshCw className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Mail className="h-4 w-4 mr-1" />
-                                Send Email
-                              </>
-                            )}
-                          </Button>
-                        )}
-                        <button onClick={() => toggleClientExpand(client.client_id, `${activeTab}_${currentSection}`)}>
-                          {isExpanded 
-                            ? <ChevronUp className="h-5 w-5 text-gray-400" />
-                            : <ChevronDown className="h-5 w-5 text-gray-400" />
-                          }
-                        </button>
-                      </div>
+          ) : activeTab === "untagged" ? (
+            <>
+              {/* Mass Tag Controls */}
+              {getSelectedCount() > 0 && (
+                <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-etihad-gold-600 text-white">{getSelectedCount()} selected</Badge>
+                      <span className="text-sm text-etihad-gold-800">Apply to selected:</span>
                     </div>
-                    
-                    {/* Expanded Content */}
-                    {isExpanded && (
-                      <div className="border-t border-gray-100">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="w-8 py-3 px-2"></th>
-                                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">Bond</th>
-                                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">Date</th>
-                                <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Principal</th>
-                                <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Interest</th>
-                                <th className="text-right py-3 px-3 text-xs font-medium text-gray-500 uppercase">Net</th>
-                                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">UCC</th>
-                                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">Portfolio</th>
-                                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">Tag</th>
-                                <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {client.entries.map((entry) => {
-                                const changes = localChanges[entry.id] || {};
-                                const currentTag = changes.reinvestment_tag || entry.reinvestment_tag || 'not_tagged';
-                                const currentUcc = changes.target_ucc || entry.target_ucc || '';
-                                const currentPortfolio = changes.portfolio_category || entry.portfolio_category || '';
-                                
-                                return (
-                                  <tr key={entry.id} className="hover:bg-gray-50">
-                                    <td className="py-3 px-2">
-                                      <Checkbox
-                                        checked={selectedEntries[entry.id] || false}
-                                        onCheckedChange={(checked) => handleEntrySelect(entry.id, checked)}
-                                        className="data-[state=checked]:bg-etihad-gold-600"
-                                      />
-                                    </td>
-                                    <td className="py-3 px-3">
-                                      <p className="font-medium text-gray-800 truncate max-w-[120px]">
-                                        {entry.bond_name}
-                                      </p>
-                                      <p className="text-xs text-gray-500">{entry.bond_code}</p>
-                                    </td>
-                                    <td className="py-3 px-3">
-                                      <p className={entry.is_past_date ? "text-red-600 font-medium" : "text-gray-600"}>
-                                        {formatDate(entry.expected_date)}
-                                      </p>
-                                    </td>
-                                    <td className="py-3 px-3 text-right font-mono text-gray-800">
-                                      {formatCurrency(entry.principal_net)}
-                                    </td>
-                                    <td className="py-3 px-3 text-right font-mono text-green-600">
-                                      {formatCurrency(entry.interest_net)}
-                                    </td>
-                                    <td className="py-3 px-3 text-right font-mono font-medium text-gray-800">
-                                      {formatCurrency(entry.net_amount)}
-                                    </td>
-                                    <td className="py-3 px-3">
-                                      <Select
-                                        value={currentUcc}
-                                        onValueChange={(value) => handleLocalChange(entry.id, 'target_ucc', value)}
-                                      >
-                                        <SelectTrigger className="w-[120px] h-8 text-xs">
-                                          <SelectValue placeholder="Select UCC" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {(client.ucc_list || []).map((ucc) => (
-                                            <SelectItem key={ucc} value={ucc} className="text-xs">
-                                              {ucc}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </td>
-                                    <td className="py-3 px-3">
-                                      <Select
-                                        value={currentPortfolio}
-                                        onValueChange={(value) => handleLocalChange(entry.id, 'portfolio_category', value)}
-                                      >
-                                        <SelectTrigger className="w-[110px] h-8 text-xs">
-                                          <SelectValue placeholder="Portfolio" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {PORTFOLIO_OPTIONS.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                                              {opt.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </td>
-                                    <td className="py-3 px-3">
-                                      <Select
-                                        value={currentTag}
-                                        onValueChange={(value) => handleLocalChange(entry.id, 'reinvestment_tag', value)}
-                                      >
-                                        <SelectTrigger className={`w-[100px] h-8 text-xs ${getTagColor(currentTag)}`}>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {TAG_OPTIONS.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                                              {opt.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </td>
-                                    <td className="py-3 px-3 text-center">
-                                      {getApprovalBadge(entry)}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Select value={massUcc} onValueChange={setMassUcc}>
+                        <SelectTrigger className="w-32 h-8 text-xs bg-white">
+                          <SelectValue placeholder="UCC" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allUccs.map(ucc => (
+                            <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={massPortfolio} onValueChange={setMassPortfolio}>
+                        <SelectTrigger className="w-28 h-8 text-xs bg-white">
+                          <SelectValue placeholder="Portfolio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PORTFOLIO_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={massTag} onValueChange={setMassTag}>
+                        <SelectTrigger className="w-28 h-8 text-xs bg-white">
+                          <SelectValue placeholder="Tag" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TAG_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" onClick={applyMassTag} className="bg-etihad-gold-600 hover:bg-etihad-gold-700 h-8">
+                        Apply
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={clearSelection} className="h-8">
+                        Clear
+                      </Button>
+                    </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              )}
+
+              {/* Section Toggle */}
+              <div className="flex gap-2 mb-4">
+                <Button
+                  variant={untaggedSection === "past" ? "default" : "outline"}
+                  onClick={() => setUntaggedSection("past")}
+                  className={untaggedSection === "past" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  size="sm"
+                >
+                  <History className="h-4 w-4 mr-1" />
+                  Historical ({untaggedPast.length})
+                </Button>
+                <Button
+                  variant={untaggedSection === "upcoming" ? "default" : "outline"}
+                  onClick={() => setUntaggedSection("upcoming")}
+                  className={untaggedSection === "upcoming" ? "bg-etihad-gold-600 hover:bg-etihad-gold-700" : ""}
+                  size="sm"
+                >
+                  <ArrowRight className="h-4 w-4 mr-1" />
+                  Upcoming ({untaggedUpcoming.length})
+                </Button>
+              </div>
+
+              {/* Client Groups */}
+              {currentUntaggedGroups.length === 0 ? (
+                <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+                  {untaggedSection === "past" ? (
+                    <History className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                  ) : (
+                    <ArrowRight className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                  )}
+                  <p>No {untaggedSection === "past" ? "historical" : "upcoming"} entries to tag</p>
+                </div>
+              ) : (
+                currentUntaggedGroups.map(group => 
+                  renderUntaggedClientGroup(group, untaggedSection === "past", untaggedSection)
+                )
+              )}
+            </>
+          ) : (
+            /* Tagged Tab */
+            <>
+              {/* Section Toggle */}
+              <div className="flex gap-2 mb-4">
+                <Button
+                  variant={taggedSection === "past" ? "default" : "outline"}
+                  onClick={() => setTaggedSection("past")}
+                  className={taggedSection === "past" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  size="sm"
+                >
+                  <History className="h-4 w-4 mr-1" />
+                  Historical ({taggedPast.length})
+                </Button>
+                <Button
+                  variant={taggedSection === "upcoming" ? "default" : "outline"}
+                  onClick={() => setTaggedSection("upcoming")}
+                  className={taggedSection === "upcoming" ? "bg-etihad-gold-600 hover:bg-etihad-gold-700" : ""}
+                  size="sm"
+                >
+                  <ArrowRight className="h-4 w-4 mr-1" />
+                  Upcoming ({taggedUpcoming.length})
+                </Button>
+              </div>
+
+              {/* Client Groups */}
+              {currentTaggedGroups.length === 0 ? (
+                <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+                  <Tag className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                  <p>No {taggedSection === "past" ? "historical" : "upcoming"} tagged entries</p>
+                </div>
+              ) : (
+                currentTaggedGroups.map(group => 
+                  renderTaggedClientGroup(group, taggedSection === "past", taggedSection)
+                )
+              )}
+            </>
           )}
         </div>
       </div>
