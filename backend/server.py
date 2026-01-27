@@ -19701,6 +19701,135 @@ async def get_lead(lead_id: str, current_user: dict = Depends(get_current_user))
     return lead
 
 
+# ==================== USER ACTIVITY LOGS ====================
+
+class LogUserActivityRequest(BaseModel):
+    page_section: str  # e.g., "holdings", "opportunities", "real-estate-details"
+    bond_id: Optional[str] = None
+    property_id: Optional[str] = None
+    client_id: Optional[str] = None
+    metadata: Optional[dict] = None  # Additional context
+
+
+@api_router.post("/activity-logs")
+async def log_user_activity(request: LogUserActivityRequest, current_user: dict = Depends(get_current_user)):
+    """
+    Log user activity when they visit specific sections of the app.
+    This tracks which sub-brokers and clients visit different URLs/sections.
+    """
+    activity_log = {
+        "id": str(uuid.uuid4()),
+        "user_id": current_user['id'],
+        "user_name": current_user.get('name', ''),
+        "user_role": current_user['role'],
+        "page_section": request.page_section,
+        "bond_id": request.bond_id,
+        "property_id": request.property_id,
+        "client_id": request.client_id,
+        "metadata": request.metadata or {},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "ip_address": None,  # Could be populated from request headers if needed
+    }
+    
+    # For sub-brokers, also get their broker_id
+    if current_user['role'] == 'sub_broker':
+        sub_broker = await db.sub_brokers.find_one({"id": current_user['id']}, {"_id": 0})
+        if sub_broker:
+            activity_log['broker_id'] = sub_broker.get('created_by')
+    elif current_user['role'] == 'client':
+        client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
+        if client:
+            activity_log['broker_id'] = client.get('created_by')
+            activity_log['linked_subbroker_id'] = client.get('linked_subbroker_id')
+            activity_log['client_id'] = client.get('id')
+    elif current_user['role'] == 'broker':
+        activity_log['broker_id'] = current_user['id']
+    
+    await db.user_activity_logs.insert_one(activity_log)
+    
+    return {"status": "logged", "id": activity_log['id']}
+
+
+@api_router.get("/activity-logs")
+async def get_user_activity_logs(
+    page: int = 1,
+    limit: int = 50,
+    user_role: Optional[str] = None,
+    page_section: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get user activity logs. Only brokers can view all logs.
+    Sub-brokers can only see activity from their linked clients.
+    """
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can view activity logs")
+    
+    # Build query filter
+    query = {}
+    
+    if current_user['role'] == 'broker':
+        query['broker_id'] = current_user['id']
+    elif current_user['role'] == 'sub_broker':
+        # Sub-brokers can see their own activity and their linked clients' activity
+        query['$or'] = [
+            {'user_id': current_user['id']},
+            {'linked_subbroker_id': current_user['id']}
+        ]
+    
+    if user_role and user_role != 'all':
+        query['user_role'] = user_role
+    
+    if page_section and page_section != 'all':
+        query['page_section'] = page_section
+    
+    if date_from:
+        query['timestamp'] = query.get('timestamp', {})
+        query['timestamp']['$gte'] = date_from
+    
+    if date_to:
+        if 'timestamp' not in query:
+            query['timestamp'] = {}
+        query['timestamp']['$lte'] = date_to + "T23:59:59"
+    
+    # Get total count
+    total_count = await db.user_activity_logs.count_documents(query)
+    
+    # Get paginated logs
+    skip = (page - 1) * limit
+    logs = await db.user_activity_logs.find(
+        query,
+        {"_id": 0}
+    ).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Enrich logs with additional context
+    for log in logs:
+        # Get bond name if bond_id present
+        if log.get('bond_id'):
+            bond = await db.bonds.find_one({"id": log['bond_id']}, {"_id": 0, "issuer": 1})
+            log['bond_name'] = bond.get('issuer') if bond else None
+        
+        # Get property name if property_id present
+        if log.get('property_id'):
+            prop = await db.real_estate_opportunities.find_one({"id": log['property_id']}, {"_id": 0, "building_name": 1})
+            log['property_name'] = prop.get('building_name') if prop else None
+        
+        # Get client name if client_id present and different from user
+        if log.get('client_id') and log.get('user_role') != 'client':
+            client = await db.clients.find_one({"id": log['client_id']}, {"_id": 0, "name": 1})
+            log['viewed_client_name'] = client.get('name') if client else None
+    
+    return {
+        "logs": logs,
+        "total": total_count,
+        "page": page,
+        "limit": limit,
+        "total_pages": (total_count + limit - 1) // limit
+    }
+
+
 # ==================== PROJECTED VS ACTUALS COMPARISON ====================
 
 @api_router.get("/holdings/cashflow-comparison/{client_id}")
