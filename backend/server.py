@@ -9750,32 +9750,36 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
                 # Fallback if date parsing fails
                 pass
     
-    # 4. FALLBACK: If no actual_repayments uploaded, calculate remaining from scheduled cashflows
+    # 4. FALLBACK: If no actual_repayments uploaded, use ALL scheduled cashflows as actual
+    # This ensures XIRR is calculated using multiple cashflow dates (not just single maturity)
     if not actual_repayments and stored_cashflows:
-        # Calculate total scheduled
-        total_scheduled_principal = sum(cf.get('principal_component', 0) or 0 for cf in stored_cashflows)
-        total_scheduled_interest = sum(cf.get('interest_component', 0) or 0 for cf in stored_cashflows)
-        
-        # Get the maturity date
-        future_cashflows = [cf for cf in stored_cashflows if (cf.get('date') or '')[:10] > today_str]
-        if future_cashflows:
-            mat_date = max(cf.get('date', '') for cf in future_cashflows)
+        # Add each scheduled cashflow as an actual cashflow entry
+        # This preserves the multiple payment schedule (principal + interest at different dates)
+        for cf in stored_cashflows:
+            cf_date = cf.get('date', '')
+            cf_date_short = cf_date[:10] if cf_date else ''
             
-            if total_scheduled_principal > 0 or total_scheduled_interest > 0:
-                remaining_gross = total_scheduled_principal + total_scheduled_interest
-                remaining_tds = total_scheduled_interest * 0.1 if total_scheduled_interest > 0 else 0
+            principal = cf.get('principal_component', 0) or 0
+            interest = cf.get('interest_component', 0) or 0
+            tds = cf.get('tds_amount', 0) or (interest * 0.1 if interest > 0 else 0)
+            gross = principal + interest
+            net = gross - tds
+            
+            if gross > 0:  # Only add non-zero cashflows
+                # Determine if this cashflow is in the past
+                is_past = cf_date_short <= today_str if cf_date_short else False
                 
                 actual_cashflows.append({
-                    'date': mat_date,
-                    'type': 'maturity',
-                    'amount': remaining_gross,
-                    'principal_component': total_scheduled_principal,
-                    'interest_component': total_scheduled_interest,
-                    'gross_amount': remaining_gross,
-                    'tds_amount': remaining_tds,
-                    'net_amount': remaining_gross - remaining_tds,
-                    'is_repaid': False,
-                    'source': 'calculated_fallback'
+                    'date': cf_date,
+                    'type': 'scheduled_payment',
+                    'amount': gross,
+                    'principal_component': principal,
+                    'interest_component': interest,
+                    'gross_amount': gross,
+                    'tds_amount': round(tds, 2),
+                    'net_amount': round(net, 2),
+                    'is_repaid': is_past,
+                    'source': 'scheduled_cashflow'
                 })
     
     # Sort by date
