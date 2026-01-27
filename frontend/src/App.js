@@ -315,6 +315,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/client/reinvestment-approvals" 
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ClientReinvestmentApprovals />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Analysis Route - All Users */}
           <Route 
