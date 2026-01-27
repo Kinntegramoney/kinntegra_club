@@ -1,5 +1,63 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Jan 27, 2026)
+
+### Actual XIRR Calculation Fix - Prepayment Maturity Duplication (Jan 27, 2026) ✅
+
+**Issue:** For bonds with prepayments (like Natureresidences), the actual cashflow was incorrectly showing TWO maturity entries:
+1. A calculated maturity entry with reduced principal (correct)
+2. AND the original scheduled maturity entry (duplicate)
+
+This resulted in an inflated maturity amount (e.g., ₹4,52,41,498.36 instead of ₹1,32,37,801.89 for 135 units).
+
+**Root Cause:** The `build_actual_cashflows_with_investment()` function in server.py was:
+1. Correctly calculating and adding a maturity entry with prepayment adjustments (section 3)
+2. BUT then also adding scheduled cashflows including the maturity date (section 4)
+
+**Fix Applied:**
+1. Set `has_maturity_entry = True` after adding the calculated maturity entry
+2. Skip the maturity date when adding scheduled cashflows if `has_maturity_entry` is True
+
+**Files Modified:** `/app/backend/server.py` (lines 9728-9775)
+
+**Verified Results:**
+- 135 units: Maturity now correctly shows ₹13,237,801.89 (reduced principal + accumulated interest)
+- Actual XIRR: 11.11% (correctly calculated from investment + prepayments + reduced maturity)
+
+---
+
+### User Activity Logs Feature (Jan 27, 2026) ✅
+
+**Request:** Create a "Logs" tab to showcase which sub-broker and client visited the URL and what section.
+
+**Implementation:**
+
+1. **Backend Endpoints (server.py):**
+   - `POST /api/activity-logs` - Log user activity when they visit specific sections
+   - `GET /api/activity-logs` - Retrieve activity logs with filters (pagination, role, section, date)
+   - New collection: `user_activity_logs` in MongoDB
+
+2. **Frontend Updates (TradeLogs.jsx):**
+   - Added "User Activity" tab alongside existing "Trade Logs" tab
+   - Shows: User Name, Role (Sub-Broker/Client), Page Section, Details (Bond/Property/Client), Timestamp
+   - Filters: Date range, Role, Page Section, Search
+   - Download CSV functionality
+   - Only visible to Broker and Sub-Broker roles
+
+**Note:** Activity logging needs to be integrated into individual pages (Holdings, Opportunities, etc.) to start collecting data.
+
+---
+
+### Email Templates - Website URL Already Present ✅
+
+**Status:** The previous agent had already added the website login URL (`https://kinntegraa.club/login`) to:
+- `send_welcome_email_client()` - line 326
+- `send_welcome_email_subbroker()` - line 414
+
+Both templates prominently display the login URL with a clickable button.
+
+---
+
 ## Recent Changes (Jan 25, 2026)
 
 ### Historical Repayments - Actual Cashflow & XIRR Calculation (Jan 25, 2026 - Session 7) ✅
