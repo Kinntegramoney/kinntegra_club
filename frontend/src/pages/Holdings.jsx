@@ -2223,16 +2223,16 @@ export default function Holdings() {
                                   </td>
                                 </tr>
                               ) : cf.type === 'maturity' ? (
-                                <tr key={idx} className="bg-blue-50">
-                                  <td className="py-3 px-4 font-mono text-sm text-blue-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                  <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-blue-600">
+                                <tr key={idx} className={cf.is_repaid ? "bg-green-50" : "bg-yellow-50"}>
+                                  <td className={`py-3 px-4 font-mono text-sm ${cf.is_repaid ? "text-green-700" : "text-yellow-700"}`}>{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                  <td className={`py-3 px-4 text-right font-mono text-sm font-semibold ${cf.is_repaid ? "text-green-600" : "text-yellow-600"}`}>
                                     {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
                                   </td>
                                 </tr>
                               ) : (
-                                <tr key={idx} className="bg-white hover:bg-gray-50">
-                                  <td className="py-3 px-4 font-mono text-sm text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                  <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-gray-900">
+                                <tr key={idx} className={cf.is_repaid ? "bg-green-50" : "bg-yellow-50"}>
+                                  <td className={`py-3 px-4 font-mono text-sm ${cf.is_repaid ? "text-green-700" : "text-yellow-700"}`}>{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                  <td className={`py-3 px-4 text-right font-mono text-sm font-semibold ${cf.is_repaid ? "text-green-600" : "text-yellow-600"}`}>
                                     {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
                                   </td>
                                 </tr>
