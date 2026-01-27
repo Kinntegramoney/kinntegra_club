@@ -20259,6 +20259,12 @@ async def debug_actual_repayments(client_id: str, current_user: dict = Depends(g
 # Include the router in the main app
 app.include_router(api_router)
 
+# Mount static files for uploads directory
+# This allows direct access to uploaded files via /uploads/...
+uploads_path = Path("/app/uploads")
+if uploads_path.exists():
+    app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
