@@ -9846,54 +9846,119 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         "status": "approved"
     }, {"_id": 0}).to_list(100)
     
+    # ============================================
+    # MERGE TRADES: Group trades by bond_id
+    # When multiple investments are made in the same bond (even on different dates),
+    # merge them into a single holding for consolidated view
+    # ============================================
+    trades_by_bond = {}
+    for trade in trades:
+        bond_id = trade['bond_id']
+        if bond_id not in trades_by_bond:
+            trades_by_bond[bond_id] = []
+        trades_by_bond[bond_id].append(trade)
+    
     holdings = []
     total_investment = 0
     total_repaid = 0
     total_upcoming = 0
     
-    for trade in trades:
+    for bond_id, bond_trades in trades_by_bond.items():
         # Get bond details
-        bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0})
+        bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
         if not bond:
             continue
         
-        # Check if we have stored cashflows, otherwise generate them
-        stored_cashflows = await db.holding_cashflows.find({
-            "trade_id": trade['id']
-        }, {"_id": 0}).to_list(100)
+        # Merge all trades for this bond into combined metrics
+        combined_units = sum(t.get('units', 0) for t in bond_trades)
+        combined_investment_amount = sum(t.get('total_amount', 0) for t in bond_trades)
         
-        if not stored_cashflows:
-            # Generate and store cashflows
-            cashflows = generate_client_cashflows(trade, bond)
-            if cashflows:
-                for cf in cashflows:
-                    cf['client_id'] = client_id
-                    cf['bond_id'] = trade['bond_id']
-                    cf['bond_name'] = trade['bond_name']
-                await db.holding_cashflows.insert_many(cashflows)
-                # Refetch to ensure we don't have _id in response
-                stored_cashflows = await db.holding_cashflows.find({
-                    "trade_id": trade['id']
-                }, {"_id": 0}).to_list(100)
+        # Use the first investment date for display (or earliest)
+        investment_dates = [t.get('investment_date', '') for t in bond_trades if t.get('investment_date')]
+        first_investment_date = min(investment_dates) if investment_dates else ''
         
-        # Fetch actual_repayments for this trade (historical uploads, email synced)
-        trade_actual_repayments = await db.actual_repayments.find({
-            "bond_id": trade['bond_id'],
+        # Create a combined "virtual" trade for processing
+        # Use the first trade as the base and merge others into it
+        trade = bond_trades[0].copy()
+        trade['units'] = combined_units
+        trade['total_amount'] = combined_investment_amount
+        trade['investment_date'] = first_investment_date
+        trade['merged_trades'] = len(bond_trades)  # Track how many trades were merged
+        trade['individual_trades'] = bond_trades  # Keep reference to original trades
+        
+        # Collect ALL stored cashflows from ALL trades for this bond
+        all_stored_cashflows = []
+        all_trade_ids = [t['id'] for t in bond_trades]
+        for t in bond_trades:
+            stored_cfs = await db.holding_cashflows.find({
+                "trade_id": t['id']
+            }, {"_id": 0}).to_list(100)
+            
+            if not stored_cfs:
+                # Generate and store cashflows for this individual trade
+                cashflows = generate_client_cashflows(t, bond)
+                if cashflows:
+                    for cf in cashflows:
+                        cf['client_id'] = client_id
+                        cf['bond_id'] = bond_id
+                        cf['bond_name'] = t['bond_name']
+                    await db.holding_cashflows.insert_many(cashflows)
+                    stored_cfs = await db.holding_cashflows.find({
+                        "trade_id": t['id']
+                    }, {"_id": 0}).to_list(100)
+            
+            all_stored_cashflows.extend(stored_cfs)
+        
+        # Merge cashflows by date - combine amounts for same dates
+        merged_cashflows_map = {}
+        for cf in all_stored_cashflows:
+            cf_date = cf.get('date', '')[:10] if cf.get('date') else ''
+            if not cf_date:
+                continue
+                
+            if cf_date not in merged_cashflows_map:
+                merged_cashflows_map[cf_date] = {
+                    'id': cf.get('id'),  # Keep first ID for reference
+                    'trade_id': cf.get('trade_id'),
+                    'client_id': client_id,
+                    'bond_id': bond_id,
+                    'bond_name': cf.get('bond_name', ''),
+                    'date': cf.get('date'),
+                    'type': cf.get('type', 'interest'),
+                    'principal_component': 0,
+                    'interest_component': 0,
+                    'gross_amount': 0,
+                    'tds_amount': 0,
+                    'net_amount': 0,
+                    'is_repaid': cf.get('is_repaid', False),
+                    'reinvestment_tag': cf.get('reinvestment_tag'),
+                    'source': 'merged',
+                    'merged_trade_ids': []
+                }
+            
+            # Sum up the amounts
+            merged_cashflows_map[cf_date]['principal_component'] += cf.get('principal_component', 0) or 0
+            merged_cashflows_map[cf_date]['interest_component'] += cf.get('interest_component', 0) or 0
+            merged_cashflows_map[cf_date]['gross_amount'] += cf.get('gross_amount', 0) or 0
+            merged_cashflows_map[cf_date]['tds_amount'] += cf.get('tds_amount', 0) or 0
+            merged_cashflows_map[cf_date]['net_amount'] += cf.get('net_amount', 0) or 0
+            merged_cashflows_map[cf_date]['merged_trade_ids'].append(cf.get('trade_id'))
+            
+            # If ANY cashflow for this date is repaid, mark as repaid
+            if cf.get('is_repaid'):
+                merged_cashflows_map[cf_date]['is_repaid'] = True
+        
+        # Convert to list and sort by date
+        stored_cashflows = sorted(merged_cashflows_map.values(), key=lambda x: x.get('date', ''))
+        
+        # Fetch ALL actual_repayments for this bond/client (across all trades)
+        all_actual_repayments = await db.actual_repayments.find({
+            "bond_id": bond_id,
             "client_id": client_id
         }, {"_id": 0}).to_list(500)
         
-        # Filter actual_repayments to match this trade's investment date
-        # If actual_repayment has investment_date, it must match the trade's investment_date
-        # If actual_repayment has NO investment_date, include it (it applies to any trade for this bond/client)
-        trade_inv_date = trade.get('investment_date', '')[:10] if trade.get('investment_date') else ''
-        matched_actual_repayments = []
-        for ar in trade_actual_repayments:
-            ar_inv_date = ar.get('investment_date', '')[:10] if ar.get('investment_date') else ''
-            # Include if:
-            # 1. Investment dates match exactly, OR
-            # 2. actual_repayment has no investment_date (applies to all trades for this bond/client)
-            if ar_inv_date == trade_inv_date or not ar_inv_date:
-                matched_actual_repayments.append(ar)
+        # Use all actual repayments (no need to filter by trade since we merged)
+        matched_actual_repayments = all_actual_repayments
         
         # Calculate totals for this holding (use GROSS amounts = principal + interest)
         investment_amount = trade.get('total_amount', 0)
