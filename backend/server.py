@@ -10212,18 +10212,56 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         # Use bond's Secondary IRR for Expected XIRR
         expected_xirr = bond.get('secondary_irr') or bond.get('interest_rate') or bond.get('coupon_rate')
         
-        # Build actual_cashflows FIRST (which includes calculated maturity)
-        # Then use this for XIRR calculation
-        actual_cashflows_data = build_actual_cashflows_with_investment(
-            [{
-                'investment_date': investment_date_str, 
-                'calculated_investment': calculated_investment, 
-                'units': trade['units'],
-                'total_principal': round(bond.get('face_value', 100000) * trade['units'], 2),
+        # Build trades data for actual_cashflows - handle merged trades
+        # If trades are on different dates, we need separate investment entries for each
+        trades_data = []
+        individual_trades = trade.get('individual_trades', [trade])
+        
+        for t in individual_trades:
+            t_inv_date = t.get('investment_date', '').split('T')[0].split(' ')[0] if t.get('investment_date') else ''
+            t_units = t.get('units', 0)
+            t_principal = round(bond.get('face_value', 100000) * t_units, 2)
+            
+            # Calculate investment value for this individual trade using secondary calculator logic
+            # This is needed for proper XIRR calculation when trades are on different dates
+            t_calculated_investment = 0
+            if bond.get('cashflows_per_unit') and t_inv_date:
+                t_inv_dt = datetime.fromisoformat(t_inv_date)
+                t_cutoff_days = t.get('cutoff_days', bond.get('cutoff_days', 15))
+                t_irr = secondary_irr / 100
+                
+                pv_per_unit = 0
+                for cf in bond.get('cashflows_per_unit', []):
+                    cf_date_str = cf.get('date', '').split('T')[0].split(' ')[0]
+                    try:
+                        cf_date = datetime.fromisoformat(cf_date_str)
+                    except:
+                        continue
+                    record_date = cf_date - timedelta(days=t_cutoff_days)
+                    if t_inv_dt <= record_date:
+                        cf_amount = (cf.get('interest_per_unit', 0) or 0) + (cf.get('principal_per_unit', 0) or 0)
+                        days_to_cf = (cf_date - t_inv_dt).days
+                        discount = 1 / ((1 + t_irr) ** (days_to_cf / 365))
+                        pv_per_unit += cf_amount * discount
+                t_calculated_investment = round(pv_per_unit * t_units, 2)
+            else:
+                # Fallback: use the trade's total_amount
+                t_calculated_investment = t.get('total_amount', 0)
+            
+            trades_data.append({
+                'investment_date': t_inv_date,
+                'calculated_investment': t_calculated_investment,
+                'units': t_units,
+                'total_principal': t_principal,
                 'coupon_rate': bond.get('coupon_rate', 0) or bond.get('annual_interest_rate', 0) or bond.get('interest_rate', 0),
                 'maturity_date': bond.get('end_date', '') or bond.get('maturity_date', ''),
                 'bond_start_date': bond.get('start_date', '') or bond.get('bond_start_date', '')
-            }],
+            })
+        
+        # Build actual_cashflows FIRST (which includes calculated maturity)
+        # Then use this for XIRR calculation
+        actual_cashflows_data = build_actual_cashflows_with_investment(
+            trades_data,
             stored_cashflows,
             matched_actual_repayments,
             bond_info=bond
