@@ -13512,6 +13512,117 @@ async def get_bond(bond_id: str):
     }
 
 
+@api_router.post("/bonds/{bond_id}/generate-cashflows")
+async def generate_bond_cashflows(
+    bond_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Generate cashflows_per_unit for an existing bond that doesn't have them.
+    This enables accurate daily pricing calculation.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can generate cashflows")
+    
+    bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Check if already has cashflows
+    existing_cashflows = bond.get('cashflows_per_unit', [])
+    if existing_cashflows and len(existing_cashflows) > 0:
+        return {
+            "status": "already_exists",
+            "message": f"Bond already has {len(existing_cashflows)} cashflows_per_unit entries",
+            "cashflows_count": len(existing_cashflows)
+        }
+    
+    # Generate cashflows based on bond parameters
+    face_value = bond.get('face_value', 100000)
+    coupon_rate = (bond.get('coupon_rate', 0) or 0) / 100
+    start_date_str = bond.get('start_date')
+    end_date_str = bond.get('end_date')
+    frequency = bond.get('interest_payment_frequency', 'monthly')
+    
+    if not start_date_str or not end_date_str:
+        raise HTTPException(status_code=400, detail="Bond must have start_date and end_date")
+    
+    start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00')) if isinstance(start_date_str, str) else start_date_str
+    end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00')) if isinstance(end_date_str, str) else end_date_str
+    
+    # Determine payment interval
+    if frequency == 'monthly':
+        months_interval = 1
+    elif frequency == 'quarterly':
+        months_interval = 3
+    elif frequency == 'semi-annual':
+        months_interval = 6
+    else:
+        months_interval = 12  # Annual
+    
+    # Generate cashflow schedule
+    cashflows_per_unit = []
+    current_date = start_date + relativedelta(months=months_interval)
+    payment_number = 0
+    
+    while current_date <= end_date:
+        payment_number += 1
+        
+        # Calculate interest for this period
+        interest_per_unit = face_value * coupon_rate * months_interval / 12
+        
+        # Check if this is the maturity date
+        is_maturity = current_date >= end_date - timedelta(days=15)  # Within 15 days of end
+        principal_per_unit = face_value if is_maturity else 0
+        
+        cashflows_per_unit.append({
+            "date": current_date.strftime('%Y-%m-%d'),
+            "interest_per_unit": round(interest_per_unit, 2),
+            "principal_per_unit": round(principal_per_unit, 2),
+            "payment_number": payment_number
+        })
+        
+        # Move to next payment date
+        current_date = current_date + relativedelta(months=months_interval)
+    
+    # If we didn't add maturity principal, add it at end_date
+    if cashflows_per_unit and cashflows_per_unit[-1]['principal_per_unit'] == 0:
+        # Check if end_date is beyond last payment
+        last_payment_date = datetime.strptime(cashflows_per_unit[-1]['date'], '%Y-%m-%d')
+        if end_date.replace(tzinfo=None) > last_payment_date:
+            # Calculate days since last payment for interest
+            days_since_last = (end_date.replace(tzinfo=None) - last_payment_date).days
+            additional_interest = face_value * coupon_rate * days_since_last / 365
+            
+            cashflows_per_unit.append({
+                "date": end_date.strftime('%Y-%m-%d'),
+                "interest_per_unit": round(additional_interest, 2),
+                "principal_per_unit": face_value,
+                "payment_number": payment_number + 1
+            })
+        else:
+            # Add principal to last payment
+            cashflows_per_unit[-1]['principal_per_unit'] = face_value
+    
+    # Update the bond with generated cashflows
+    await db.bonds.update_one(
+        {"id": bond_id},
+        {"$set": {
+            "cashflows_per_unit": cashflows_per_unit,
+            "cashflows_generated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "status": "success",
+        "message": f"Generated {len(cashflows_per_unit)} cashflows for bond",
+        "bond_id": bond_id,
+        "bond_name": bond.get('issuer'),
+        "cashflows_count": len(cashflows_per_unit),
+        "cashflows_per_unit": cashflows_per_unit
+    }
+
+
 @api_router.post("/bonds/{bond_id}/calculate", response_model=SecondaryMarketResult)
 async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCalculation):
     bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
