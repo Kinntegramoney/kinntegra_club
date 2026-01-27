@@ -2102,22 +2102,29 @@ export default function Holdings() {
                 </div>
               </button>
               
-              {/* Individual Transaction Tabs */}
-              {modalData.trades.map((trade, index) => (
-                <button
-                  key={trade.trade_id}
-                  onClick={() => setActiveTab(index)}
-                  className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
-                    activeTab === index 
-                      ? 'border-etihad-gold-600 text-etihad-gold-700 bg-white' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                  data-testid={`trade-tab-${index}`}
-                >
-                  <span className="block">{format(new Date(trade.investment_date), "dd MMM yyyy")}</span>
-                  <span className="text-xs text-gray-400">{trade.units} units</span>
-                </button>
-              ))}
+              {/* Individual Transaction Tabs - Only show if multiple distinct investment dates */}
+              {(() => {
+                // Get unique investment dates
+                const uniqueDates = [...new Set(modalData.trades.map(t => t.investment_date?.split('T')[0]))];
+                // Only show individual tabs if more than 1 unique date
+                if (uniqueDates.length <= 1) return null;
+                
+                return modalData.trades.map((trade, index) => (
+                  <button
+                    key={trade.trade_id}
+                    onClick={() => setActiveTab(index)}
+                    className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
+                      activeTab === index 
+                        ? 'border-etihad-gold-600 text-etihad-gold-700 bg-white' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    data-testid={`trade-tab-${index}`}
+                  >
+                    <span className="block">{format(new Date(trade.investment_date), "dd MMM yyyy")}</span>
+                    <span className="text-xs text-gray-400">{trade.units} units</span>
+                  </button>
+                ));
+              })()}
             </div>
             
             {/* Tab Content */}
