@@ -20,6 +20,22 @@ import { toast } from "sonner";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Helper function to normalize upload URLs
+// Converts /uploads/... to /api/uploads/... for proper routing through K8s ingress
+const getDocumentUrl = (url) => {
+  if (!url) return '';
+  // If URL already has /api/uploads or is a full URL, return as-is
+  if (url.startsWith('/api/uploads') || url.startsWith('http')) {
+    return `${BACKEND_URL}${url}`;
+  }
+  // Convert /uploads/... to /api/uploads/...
+  if (url.startsWith('/uploads')) {
+    return `${BACKEND_URL}/api${url}`;
+  }
+  // Default: prepend BACKEND_URL and /api
+  return `${BACKEND_URL}/api${url}`;
+};
+
 export default function RealEstateDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
