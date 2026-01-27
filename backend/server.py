@@ -6134,17 +6134,36 @@ async def bulk_upload_investment_details(
                 )
                 
                 expected_price_per_unit = calc_result.get('price_per_unit', 0)
-                # Calculate total and THEN round (not per-unit rounding)
-                expected_total_amount = round(expected_price_per_unit * units, 2)
-                amount_difference = abs(amount - expected_total_amount)
                 
-                # Tolerance of ₹5 after rounding the total (not per-unit)
+                # Calculate expected amounts using different rounding approaches
+                # The file may use: round(price) × units OR round(price × units) OR ceil(price) × units
+                import math
+                expected_total_rounded = round(expected_price_per_unit * units, 2)
+                expected_total_ceil = math.ceil(expected_price_per_unit) * units
+                expected_total_floor = math.floor(expected_price_per_unit) * units
+                expected_total_round_price = round(expected_price_per_unit) * units
+                
+                # Find the minimum difference across all rounding approaches
+                differences = [
+                    abs(amount - expected_total_rounded),
+                    abs(amount - expected_total_ceil),
+                    abs(amount - expected_total_floor),
+                    abs(amount - expected_total_round_price)
+                ]
+                amount_difference = min(differences)
+                
+                # Use the expected amount that matches closest for reporting
+                expected_amounts = [expected_total_rounded, expected_total_ceil, expected_total_floor, expected_total_round_price]
+                best_match_idx = differences.index(amount_difference)
+                expected_total_amount = expected_amounts[best_match_idx]
+                
+                # Tolerance of ₹5 after considering all rounding approaches
                 AMOUNT_TOLERANCE = 5.0
                 
                 if expected_price_per_unit > 0 and amount_difference > AMOUNT_TOLERANCE:
                     results['errors'].append(
                         f"Row {row_num}: Investment amount mismatch. "
-                        f"File amount: ₹{amount:,.2f}, Expected (from calculator): ₹{expected_total_amount:,.2f}, "
+                        f"File amount: ₹{amount:,.2f}, Expected (closest match): ₹{expected_total_amount:,.2f}, "
                         f"Difference: ₹{amount_difference:,.2f} (tolerance: ₹{AMOUNT_TOLERANCE:.2f}). "
                         f"Price per unit: ₹{expected_price_per_unit:,.2f}"
                     )
