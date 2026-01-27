@@ -18144,6 +18144,82 @@ async def list_all_inbox_emails(
     }
 
 
+@api_router.get("/email-reader/scheduler-status")
+async def get_email_scheduler_status(current_user: dict = Depends(get_current_user)):
+    """Get the status of the email reader scheduler"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this")
+    
+    global email_scheduler
+    
+    if not email_scheduler:
+        return {
+            "status": "not_running",
+            "message": "Email scheduler is not initialized"
+        }
+    
+    jobs = []
+    for job in email_scheduler.get_jobs():
+        jobs.append({
+            "id": job.id,
+            "name": job.name,
+            "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+            "trigger": str(job.trigger)
+        })
+    
+    # Get recent scheduler logs
+    recent_logs = await db.email_scheduler_logs.find(
+        {}, {"_id": 0}
+    ).sort("timestamp", -1).limit(10).to_list(10)
+    
+    return {
+        "status": "running" if email_scheduler.running else "paused",
+        "jobs": jobs,
+        "recent_logs": recent_logs,
+        "schedule_info": {
+            "interval": "Every 2 hours",
+            "fixed_times_ist": ["9:00 AM", "1:00 PM", "5:00 PM", "9:00 PM"],
+            "timezone": "IST (UTC+5:30)"
+        }
+    }
+
+
+@api_router.post("/email-reader/trigger-now")
+async def trigger_email_processing_now(
+    days_back: int = 2,
+    current_user: dict = Depends(get_current_user)
+):
+    """Manually trigger email processing immediately"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can trigger email processing")
+    
+    try:
+        logger.info(f"Manual email processing triggered by {current_user['name']}")
+        result = await process_repayment_emails(db, days_back=days_back)
+        
+        # Log the manual trigger
+        log_entry = {
+            "id": str(uuid.uuid4()),
+            "type": "manual_trigger",
+            "triggered_by": current_user['name'],
+            "triggered_by_id": current_user['id'],
+            "days_back": days_back,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "result": result,
+            "status": "success" if result.get('status') == 'success' else "error"
+        }
+        await db.email_scheduler_logs.insert_one(log_entry)
+        
+        return {
+            "status": "success",
+            "message": "Email processing triggered successfully",
+            "result": result
+        }
+    except Exception as e:
+        logger.error(f"Manual email processing failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Email processing failed: {str(e)}")
+
+
 # ==================== SCHEDULED EMAIL PROCESSING ====================
 
 async def scheduled_email_processing():
