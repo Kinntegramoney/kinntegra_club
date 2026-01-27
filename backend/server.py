@@ -9764,6 +9764,10 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
             if ar_date:
                 actual_repayment_dates.add(ar_date)
         
+        # Also exclude the maturity date if we've already added a calculated maturity entry
+        # (This prevents duplicate maturity entries when prepayments exist)
+        maturity_date_short = maturity_date_str[:10] if maturity_date_str else ''
+        
         # Add scheduled cashflows for dates that don't have actual repayments
         for cf in stored_cashflows:
             cf_date = cf.get('date', '')
@@ -9771,6 +9775,11 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
             
             # Skip if we already have an actual repayment for this date
             if cf_date_short in actual_repayment_dates:
+                continue
+            
+            # Skip the maturity date if we've already added a calculated maturity entry
+            # (with prepayments, the maturity amount is recalculated, not the scheduled one)
+            if has_maturity_entry and maturity_date_short and cf_date_short == maturity_date_short:
                 continue
             
             principal = cf.get('principal_component', 0) or 0
