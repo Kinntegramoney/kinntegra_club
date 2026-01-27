@@ -14431,7 +14431,7 @@ async def upload_bond_calculator(
 
 
 # Serve uploaded calculator files
-@api_router.get("/uploads/calculators/{filename}")
+@api_router.get("/api/uploads/calculators/{filename}")
 async def serve_calculator_file(filename: str):
     """Serve uploaded calculator files"""
     import os
@@ -14766,7 +14766,7 @@ async def upload_bond_presentations(
             "original_filename": file.filename,
             "content_type": file.content_type,
             "size": len(content),
-            "url": f"/uploads/bond_presentations/{saved_filename}",
+            "url": f"/api/uploads/bond_presentations/{saved_filename}",
             "uploaded_at": datetime.now(timezone.utc).isoformat()
         }
         new_presentations.append(presentation_data)
@@ -15638,7 +15638,7 @@ async def upload_opportunity_presentations(
             "saved_filename": saved_filename,
             "content_type": file.content_type,
             "size": len(content),
-            "url": f"/uploads/presentations/{saved_filename}",
+            "url": f"/api/uploads/presentations/{saved_filename}",
             "uploaded_at": datetime.now(timezone.utc).isoformat()
         }
         new_presentations.append(presentation_data)
@@ -16721,7 +16721,7 @@ async def upload_investor_invoice(
         "invoice_date": invoice_date or datetime.now(timezone.utc).strftime('%Y-%m-%d'),
         "due_date": due_date or payment_schedule[milestone_index].get('date'),
         "amount": opportunity.get('unit_price', 0) * payment_schedule[milestone_index].get('percentage', 0) / 100 * (investor.get('share_percentage', 0) / 100),
-        "file_url": f"/uploads/invoices/{invoice_filename}",
+        "file_url": f"/api/uploads/invoices/{invoice_filename}",
         "original_filename": invoice_file.filename,
         "notes": notes,
         "uploaded_by": current_user['id'],
@@ -16879,7 +16879,7 @@ async def upload_developer_receipt(
         "id": str(uuid.uuid4()),
         "receipt_number": receipt_number or f"RCP-{payment_id[:8]}".upper(),
         "receipt_date": receipt_date or datetime.now(timezone.utc).strftime('%Y-%m-%d'),
-        "file_url": f"/uploads/developer_receipts/{receipt_filename}",
+        "file_url": f"/api/uploads/developer_receipts/{receipt_filename}",
         "original_filename": receipt_file.filename,
         "notes": notes,
         "uploaded_by": current_user['id'],
@@ -16990,7 +16990,7 @@ async def record_investor_payment(
             content = await swift_copy.read()
             f.write(content)
         
-        swift_url = f"/uploads/swift/{swift_filename}"
+        swift_url = f"/api/uploads/swift/{swift_filename}"
     
     # Create payment record
     # If broker is recording, auto-verify the payment
@@ -17132,7 +17132,7 @@ async def upload_oqood_document(
     oqood_document = {
         "filename": file.filename,
         "stored_filename": filename,
-        "url": f"/uploads/oqood/{filename}",
+        "url": f"/api/uploads/oqood/{filename}",
         "uploaded_by": current_user['id'],
         "uploaded_by_name": current_user.get('name', current_user.get('pan_number')),
         "uploaded_at": datetime.now(timezone.utc).isoformat()
@@ -17389,7 +17389,7 @@ async def approve_dld_admin_receipt(
 
 
 # Serve uploaded files
-@api_router.get("/uploads/{folder}/{filename}")
+@api_router.get("/api/uploads/{folder}/{filename}")
 async def serve_upload(folder: str, filename: str):
     """Serve uploaded files"""
     file_path = f"/app/uploads/{folder}/{filename}"
