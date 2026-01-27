@@ -20521,6 +20521,86 @@ async def create_database_indexes():
     except Exception as e:
         logger.error(f"Error seeding default broker: {e}")
 
+
+@app.on_event("startup")
+async def start_email_scheduler():
+    """Start the automatic email reader scheduler"""
+    global email_scheduler
+    try:
+        email_scheduler = AsyncIOScheduler()
+        
+        # Schedule email processing to run every 2 hours
+        email_scheduler.add_job(
+            scheduled_email_processing_job,
+            IntervalTrigger(hours=2),
+            id='email_reader_interval',
+            name='Email Reader - Every 2 hours',
+            replace_existing=True
+        )
+        
+        # Also schedule at specific times: 9 AM, 1 PM, 5 PM, 9 PM IST (UTC+5:30)
+        # 9 AM IST = 3:30 AM UTC
+        # 1 PM IST = 7:30 AM UTC
+        # 5 PM IST = 11:30 AM UTC
+        # 9 PM IST = 3:30 PM UTC
+        for hour, minute in [(3, 30), (7, 30), (11, 30), (15, 30)]:
+            email_scheduler.add_job(
+                scheduled_email_processing_job,
+                CronTrigger(hour=hour, minute=minute),
+                id=f'email_reader_cron_{hour}_{minute}',
+                name=f'Email Reader - Daily at {hour}:{minute} UTC',
+                replace_existing=True
+            )
+        
+        email_scheduler.start()
+        logger.info("Email scheduler started - runs every 2 hours and at 9AM, 1PM, 5PM, 9PM IST")
+    except Exception as e:
+        logger.error(f"Failed to start email scheduler: {e}")
+
+
+async def scheduled_email_processing_job():
+    """Background job to process emails automatically"""
+    try:
+        logger.info("=" * 50)
+        logger.info("SCHEDULED EMAIL PROCESSING STARTED")
+        logger.info(f"Time: {datetime.now(timezone.utc).isoformat()}")
+        logger.info("=" * 50)
+        
+        # Process emails from last 2 days to catch any missed ones
+        result = await process_repayment_emails(db, days_back=2)
+        
+        # Log the result
+        log_entry = {
+            "id": str(uuid.uuid4()),
+            "type": "scheduled_processing",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "result": result,
+            "status": "success" if result.get('status') == 'success' else "error"
+        }
+        await db.email_scheduler_logs.insert_one(log_entry)
+        
+        logger.info(f"Scheduled email processing completed: {result}")
+        logger.info("=" * 50)
+    except Exception as e:
+        logger.error(f"Scheduled email processing failed: {e}")
+        # Log the error
+        error_log = {
+            "id": str(uuid.uuid4()),
+            "type": "scheduled_processing",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": str(e),
+            "status": "error"
+        }
+        try:
+            await db.email_scheduler_logs.insert_one(error_log)
+        except:
+            pass
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    global email_scheduler
+    if email_scheduler:
+        email_scheduler.shutdown()
+        logger.info("Email scheduler stopped")
     client.close()
