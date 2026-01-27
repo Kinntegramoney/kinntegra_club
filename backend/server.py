@@ -12284,6 +12284,46 @@ async def get_client_reinvestment_tags(current_user: dict = Depends(get_current_
     }
 
 
+@api_router.get("/client/reinvestment-approvals")
+async def get_client_reinvestment_approvals(current_user: dict = Depends(get_current_user)):
+    """Get all reinvestment items for client to approve/reject"""
+    
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Get client record
+    client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client record not found")
+    
+    # Get ALL tagged cashflows (pending, approved, rejected)
+    # Only include future dates and tagged for reinvestment
+    today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    
+    cashflows = await db.holding_cashflows.find({
+        "client_id": client['id'],
+        "reinvestment_tag": {"$nin": ["not_tagged", None, "none"]},
+        "date": {"$gte": today_str}  # Only future dates
+    }, {"_id": 0}).to_list(1000)
+    
+    # Enrich with bond details
+    items = []
+    for cf in cashflows:
+        bond = await db.bonds.find_one({"id": cf.get('bond_id')}, {"_id": 0, "issuer": 1, "name": 1})
+        cf['bond_name'] = bond.get('issuer') or bond.get('name', 'Unknown') if bond else cf.get('bond_name', 'Unknown')
+        items.append(cf)
+    
+    # Sort by date
+    items.sort(key=lambda x: x.get('date', ''))
+    
+    return {
+        "items": items,
+        "total": len(items),
+        "client_name": client.get('name'),
+        "client_id": client['id']
+    }
+
+
 @api_router.post("/client/trades")
 async def create_client_trade(trade_data: TradeCreate, current_user: dict = Depends(get_current_user)):
     """Client books units for themselves"""
