@@ -19646,9 +19646,12 @@ async def update_lead_status(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     
-    # Sub-brokers can only update their own leads
-    if current_user['role'] == 'sub_broker' and lead.get('shared_by_id') != current_user['id']:
-        raise HTTPException(status_code=403, detail="You can only update your own leads")
+    # Sub-brokers can update leads they shared OR leads from their managed clients
+    if current_user['role'] == 'sub_broker':
+        is_shared_by_them = lead.get('shared_by_id') == current_user['id']
+        is_their_client = lead.get('sub_broker_id') == current_user['id']
+        if not (is_shared_by_them or is_their_client):
+            raise HTTPException(status_code=403, detail="You can only update leads from your clients or opportunities you shared")
     
     await db.leads.update_one(
         {"id": lead_id},
