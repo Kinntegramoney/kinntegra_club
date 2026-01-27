@@ -340,6 +340,11 @@ def send_welcome_email_client(
                     
                     <p>Welcome to Kinntegraa! Your investment portal account has been created by <strong>{broker_name}</strong>. You can now access the platform to view opportunities and manage your investments.</p>
                     
+                    <div class="info-box" style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 16px; margin: 20px 0;">
+                        <strong>🌐 Login Website:</strong><br>
+                        <a href="{login_url}" style="color: #1976d2; font-size: 18px; font-weight: bold;">{login_url}</a>
+                    </div>
+                    
                     <div class="credentials">
                         <h3>🔐 Your Login Credentials</h3>
                         <div class="credential-item">
@@ -378,12 +383,14 @@ def send_welcome_email_client(
     
     Your account has been created by {broker_name}.
     
+    ==========================================
+    LOGIN WEBSITE: {login_url}
+    ==========================================
+    
     Login Credentials:
     - PAN (Username): {pan}
     - Password: {password}
     - PIN: {pin}
-    
-    Login URL: {login_url}
     
     Please keep your credentials safe and change your password after first login.
     
