@@ -9750,14 +9750,24 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
                 # Fallback if date parsing fails
                 pass
     
-    # 4. FALLBACK: If no actual_repayments uploaded, use ALL scheduled cashflows as actual
-    # This ensures XIRR is calculated using multiple cashflow dates (not just single maturity)
-    if not actual_repayments and stored_cashflows:
-        # Add each scheduled cashflow as an actual cashflow entry
-        # This preserves the multiple payment schedule (principal + interest at different dates)
+    # 4. Add FUTURE scheduled cashflows that don't have actual repayments yet
+    # This ensures XIRR is calculated using ALL future cashflows (not just uploaded actuals)
+    if stored_cashflows:
+        # Get dates that already have actual repayment entries
+        actual_repayment_dates = set()
+        for ar in actual_repayments:
+            ar_date = ar.get('repayment_date', '')[:10] if ar.get('repayment_date') else ''
+            if ar_date:
+                actual_repayment_dates.add(ar_date)
+        
+        # Add scheduled cashflows for dates that don't have actual repayments
         for cf in stored_cashflows:
             cf_date = cf.get('date', '')
             cf_date_short = cf_date[:10] if cf_date else ''
+            
+            # Skip if we already have an actual repayment for this date
+            if cf_date_short in actual_repayment_dates:
+                continue
             
             principal = cf.get('principal_component', 0) or 0
             interest = cf.get('interest_component', 0) or 0
