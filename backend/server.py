@@ -18177,8 +18177,9 @@ async def get_email_scheduler_status(current_user: dict = Depends(get_current_us
         "jobs": jobs,
         "recent_logs": recent_logs,
         "schedule_info": {
-            "interval": "Every 2 hours",
-            "fixed_times_ist": ["9:00 AM", "1:00 PM", "5:00 PM", "9:00 PM"],
+            "frequency": "Once daily",
+            "time_ist": "12:00 PM",
+            "time_utc": "6:30 AM",
             "timezone": "IST (UTC+5:30)"
         }
     }
