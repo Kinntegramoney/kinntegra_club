@@ -19602,14 +19602,28 @@ async def get_leads(
     
     query = {}
     
-    # Sub-brokers only see leads from their shared opportunities
+    # Sub-brokers see leads from:
+    # 1. Opportunities they shared (shared_by_id matches)
+    # 2. Their managed clients (sub_broker_id matches)
     if current_user['role'] == 'sub_broker':
-        query["shared_by_id"] = current_user['id']
+        query["$or"] = [
+            {"shared_by_id": current_user['id']},
+            {"sub_broker_id": current_user['id']}
+        ]
     
     if status:
-        query["status"] = status
+        if current_user['role'] == 'sub_broker':
+            # Combine with existing $or query
+            query = {"$and": [query, {"status": status}]}
+        else:
+            query["status"] = status
     if opportunity_type:
-        query["opportunity_type"] = opportunity_type
+        if current_user['role'] == 'sub_broker' and "$and" in query:
+            query["$and"].append({"opportunity_type": opportunity_type})
+        elif current_user['role'] == 'sub_broker':
+            query = {"$and": [query, {"opportunity_type": opportunity_type}]}
+        else:
+            query["opportunity_type"] = opportunity_type
     
     leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return leads
