@@ -618,10 +618,26 @@ export default function ReinvestmentTagging() {
                           Rejected
                         </Badge>
                       ) : (
-                        <Badge className="bg-etihad-gold-100 text-etihad-gold-700 text-xs">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Pending
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Badge className="bg-etihad-gold-100 text-etihad-gold-700 text-xs">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pending
+                          </Badge>
+                          {entry.approval_email_sent && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-1 text-xs text-blue-600 hover:text-blue-700"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                resendApprovalEmail(clientGroup.client_id, entry.id);
+                              }}
+                              title="Resend approval email"
+                            >
+                              <Mail className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
