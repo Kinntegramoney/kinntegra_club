@@ -6137,14 +6137,18 @@ async def bulk_upload_investment_details(
                 expected_total_amount = expected_price_per_unit * units
                 amount_difference = abs(amount - expected_total_amount)
                 
-                # Allow tolerance of 5 Rs
-                AMOUNT_TOLERANCE = 5.0
+                # Dynamic tolerance based on units to account for rounding differences
+                # Base tolerance of ₹2 per unit (covers rounding in price_per_unit calculation)
+                # This accounts for: file may round price_per_unit to nearest integer
+                # e.g., 523,870.13 rounded to 523,872 = ₹1.87 diff per unit
+                BASE_TOLERANCE_PER_UNIT = 3.0  # ₹3 per unit to be safe
+                AMOUNT_TOLERANCE = max(10.0, BASE_TOLERANCE_PER_UNIT * units)  # Minimum ₹10, scales with units
                 
                 if expected_price_per_unit > 0 and amount_difference > AMOUNT_TOLERANCE:
                     results['errors'].append(
                         f"Row {row_num}: Investment amount mismatch. "
                         f"File amount: ₹{amount:,.2f}, Expected (from calculator): ₹{expected_total_amount:,.2f}, "
-                        f"Difference: ₹{amount_difference:,.2f} (tolerance: ₹{AMOUNT_TOLERANCE}). "
+                        f"Difference: ₹{amount_difference:,.2f} (tolerance: ₹{AMOUNT_TOLERANCE:.2f} for {units} units). "
                         f"Price per unit: ₹{expected_price_per_unit:,.2f}"
                     )
                     results['failed'] += 1
