@@ -362,7 +362,6 @@ export default function SubBrokerReinvestment() {
   };
 
   const getSidebar = () => {
-    if (user?.role === "broker") return <Sidebar user={user} />;
     return <SubBrokerSidebar user={user} />;
   };
 
