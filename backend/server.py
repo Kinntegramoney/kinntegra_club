@@ -17389,7 +17389,7 @@ async def approve_dld_admin_receipt(
 
 
 # Serve uploaded files
-@api_router.get("/api/uploads/{folder}/{filename}")
+@api_router.get("/uploads/{folder}/{filename}")
 async def serve_upload(folder: str, filename: str):
     """Serve uploaded files"""
     file_path = f"/app/uploads/{folder}/{filename}"
