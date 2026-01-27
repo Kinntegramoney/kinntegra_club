@@ -1097,7 +1097,7 @@ export default function RealEstateDetails() {
                                           <span className={`w-6 h-6 rounded flex items-center justify-center ${isVerified ? 'bg-teal-100 text-teal-600' : 'bg-etihad-gold-100 text-etihad-gold-600'}`}>
                                             {isVerified ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                           </span>
-                                          <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${payment.swift_copy_url}`, '_blank')}>View</button>
+                                          <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(getDocumentUrl(payment.swift_copy_url), '_blank')}>View</button>
                                           {isPending && user?.role === 'broker' && (
                                             <button 
                                               className="text-[8px] text-green-600 hover:text-green-800 font-medium"
@@ -1331,7 +1331,7 @@ export default function RealEstateDetails() {
                                         {hasInvoice ? (
                                           <>
                                             <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
-                                            <button className="text-[8px] text-blue-600 hover:text-blue-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.invoice_url}`, '_blank')}>View</button>
+                                            <button className="text-[8px] text-blue-600 hover:text-blue-800 font-medium" onClick={() => window.open(getDocumentUrl(invDldAdmin.invoice_url), '_blank')}>View</button>
                                           </>
                                         ) : canManageThisInvestor ? (
                                           <>
@@ -1363,7 +1363,7 @@ export default function RealEstateDetails() {
                                             <span className={`w-6 h-6 rounded flex items-center justify-center ${isVerified ? 'bg-teal-100 text-teal-600' : 'bg-etihad-gold-100 text-etihad-gold-600'}`}>
                                               {isVerified ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </span>
-                                            <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.swift_url}`, '_blank')}>View</button>
+                                            <button className="text-[8px] text-teal-600 hover:text-teal-800 font-medium" onClick={() => window.open(getDocumentUrl(invDldAdmin.swift_url), '_blank')}>View</button>
                                             {isPending && user?.role === 'broker' && (
                                               <button 
                                                 className="text-[8px] text-green-600 hover:text-green-800 font-medium"
@@ -1415,7 +1415,7 @@ export default function RealEstateDetails() {
                                             <span className={`w-6 h-6 rounded flex items-center justify-center ${receiptApproved ? 'bg-purple-100 text-purple-600' : 'bg-etihad-gold-100 text-etihad-gold-600'}`}>
                                               {receiptApproved ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </span>
-                                            <button className="text-[8px] text-purple-600 hover:text-purple-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${invDldAdmin.receipt_url}`, '_blank')}>View</button>
+                                            <button className="text-[8px] text-purple-600 hover:text-purple-800 font-medium" onClick={() => window.open(getDocumentUrl(invDldAdmin.receipt_url), '_blank')}>View</button>
                                             {!receiptApproved && user?.role === 'broker' && (
                                               <button 
                                                 className="text-[8px] text-green-600 hover:text-green-800 font-medium"
@@ -3538,7 +3538,7 @@ function PaymentRecordModal({ opportunity, milestone, selectedInvestor, onClose,
                               <button 
                                 type="button"
                                 className="text-xs text-teal-600 hover:text-teal-800 font-medium mt-1 flex items-center gap-1"
-                                onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${p.swift_copy_url}`, '_blank')}
+                                onClick={() => window.open(getDocumentUrl(p.swift_copy_url), '_blank')}
                               >
                                 <Eye className="h-3 w-3" /> View SWIFT
                               </button>
