@@ -46,6 +46,12 @@ from email_reader import (
 )
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
+
+# Global scheduler instance
+email_scheduler = None
 
 
 # ==================== DATE AND INTEREST CALCULATION HELPERS ====================
