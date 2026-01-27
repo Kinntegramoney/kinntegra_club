@@ -2,6 +2,58 @@
 
 ## Recent Changes (Jan 27, 2026)
 
+### Holdings Merge - Same Bond Multiple Trades (Jan 27, 2026) ✅
+
+**Issue:** When a client invests in the same bond multiple times (same day or different days), the system was showing separate holdings with separate cashflows, making it confusing to view the total position.
+
+**Fix Applied:**
+1. Group trades by `bond_id` before processing
+2. Merge cashflows by date - combine amounts for same payment dates
+3. Calculate combined investment amounts, units, and XIRR across all trades for the bond
+4. Build separate investment entries for each trade date (for accurate XIRR calculation)
+5. Return `merged_trades_count` and `individual_trades` info in the response
+
+**Files Modified:** `/app/backend/server.py` - `get_client_holdings()` function
+
+**Result:** Now shows ONE consolidated holding per bond with:
+- Combined units from all trades
+- Combined investment amount
+- Merged cashflows (same dates combined)
+- Proper XIRR calculation across all investment dates
+- Info about individual trades that were merged
+
+---
+
+### Sub-Broker Reinvestment Tagging Alignment (Jan 27, 2026) ✅
+
+**Issue:** Sub-broker reinvestment tagging page had different tag options and features compared to the broker page.
+
+**Fix Applied:**
+1. Updated `SubBrokerReinvestment.jsx` to use same tag options as broker: `principal`, `interest`, `both`, `none`, `custom`
+2. Updated to use same API endpoint (`/reinvestment/upcoming`) which already filters by sub-broker's linked clients
+3. Added Past/Upcoming sub-sections
+4. Added mass tagging functionality
+5. Added email sending capability for client approval
+6. Added approval status badges
+
+**Files Modified:** `/app/frontend/src/pages/SubBrokerReinvestment.jsx` (complete rewrite)
+
+---
+
+### Email Scheduler for Repayment Updates (Jan 27, 2026) ✅
+
+**Request:** Add automatic email reading from `updates@kinntegraa.club` to update actual repayments.
+
+**Implementation:**
+- Added APScheduler with AsyncIO support
+- Runs once daily at **12:00 PM IST** (6:30 AM UTC)
+- New endpoints:
+  - `GET /api/email-reader/scheduler-status` - Check scheduler status
+  - `POST /api/email-reader/trigger-now?days_back=N` - Manual trigger
+- Logs stored in `email_scheduler_logs` collection
+
+---
+
 ### Actual XIRR Calculation Fix - Prepayment Maturity Duplication (Jan 27, 2026) ✅
 
 **Issue:** For bonds with prepayments (like Natureresidences), the actual cashflow was incorrectly showing TWO maturity entries:
