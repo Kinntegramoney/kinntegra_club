@@ -20605,31 +20605,17 @@ async def start_email_scheduler():
     try:
         email_scheduler = AsyncIOScheduler()
         
-        # Schedule email processing to run every 2 hours
+        # Schedule email processing to run once daily at 12 PM IST (6:30 AM UTC)
         email_scheduler.add_job(
             scheduled_email_processing_job,
-            IntervalTrigger(hours=2),
-            id='email_reader_interval',
-            name='Email Reader - Every 2 hours',
+            CronTrigger(hour=6, minute=30),
+            id='email_reader_daily',
+            name='Email Reader - Daily at 12:00 PM IST',
             replace_existing=True
         )
         
-        # Also schedule at specific times: 9 AM, 1 PM, 5 PM, 9 PM IST (UTC+5:30)
-        # 9 AM IST = 3:30 AM UTC
-        # 1 PM IST = 7:30 AM UTC
-        # 5 PM IST = 11:30 AM UTC
-        # 9 PM IST = 3:30 PM UTC
-        for hour, minute in [(3, 30), (7, 30), (11, 30), (15, 30)]:
-            email_scheduler.add_job(
-                scheduled_email_processing_job,
-                CronTrigger(hour=hour, minute=minute),
-                id=f'email_reader_cron_{hour}_{minute}',
-                name=f'Email Reader - Daily at {hour}:{minute} UTC',
-                replace_existing=True
-            )
-        
         email_scheduler.start()
-        logger.info("Email scheduler started - runs every 2 hours and at 9AM, 1PM, 5PM, 9PM IST")
+        logger.info("Email scheduler started - runs daily at 12:00 PM IST (6:30 AM UTC)")
     except Exception as e:
         logger.error(f"Failed to start email scheduler: {e}")
 
