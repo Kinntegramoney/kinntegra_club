@@ -7108,13 +7108,36 @@ def calculate_secondary_market_price_and_units(bond: dict, investment_date_str: 
     
     result["total_remaining_cashflow_per_unit"] = result["total_remaining_interest_per_unit"] + result["total_remaining_principal_per_unit"]
     result["present_value_per_unit"] = round(pv_total, 2)
-    result["price_per_unit"] = round(pv_total, 2)
     
-    # Calculate units if investment amount provided
-    if investment_amount and pv_total > 0:
-        result["calculated_units"] = round(investment_amount / pv_total, 4)
+    # Add ₹5 markup to the calculated price per unit
+    # This accounts for minor calculation differences and provides a buffer
+    PRICE_MARKUP = 5.0
+    base_price_per_unit = round(pv_total, 2)
+    adjusted_price_per_unit = base_price_per_unit + PRICE_MARKUP
     
-    # Calculate discount from face value
+    result["base_price_per_unit"] = base_price_per_unit  # Original PV calculation
+    result["price_markup"] = PRICE_MARKUP
+    result["price_per_unit"] = adjusted_price_per_unit  # Price with ₹5 markup
+    
+    # Situation 1: If units provided (via investment_amount), calculate final amount
+    # Final amount = adjusted_price_per_unit × units
+    if investment_amount and adjusted_price_per_unit > 0:
+        # Calculate units based on adjusted price
+        result["calculated_units"] = round(investment_amount / adjusted_price_per_unit, 4)
+        
+        # Also show what the investment amount would be for whole units
+        whole_units = int(investment_amount / adjusted_price_per_unit)
+        result["whole_units"] = whole_units
+        result["amount_for_whole_units"] = round(whole_units * adjusted_price_per_unit)
+    
+    # Situation 2: Show price bounds for the adjusted price
+    result["price_bounds"] = {
+        "min_price_per_unit": base_price_per_unit,
+        "max_price_per_unit": adjusted_price_per_unit,
+        "markup_applied": PRICE_MARKUP
+    }
+    
+    # Calculate discount from face value (using adjusted price)
     if result["face_value_per_unit"] > 0:
         result["discount_from_face_value"] = round(result["face_value_per_unit"] - result["price_per_unit"], 2)
         result["discount_percentage"] = round((result["discount_from_face_value"] / result["face_value_per_unit"]) * 100, 2)
