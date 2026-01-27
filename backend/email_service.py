@@ -61,6 +61,13 @@ def send_email(
         # Get config dynamically
         config = get_mail_config()
         
+        # Debug log config (without password)
+        logger.info(f"Email config: host={config['host']}, port={config['port']}, username={config['username']}, from={config['from_address']}")
+        
+        if not config['username'] or not config['password']:
+            logger.error("SMTP credentials are missing! Check MAIL_USERNAME and MAIL_PASSWORD in .env")
+            return False
+        
         # Create message
         message = MIMEMultipart("alternative")
         message["Subject"] = subject
@@ -97,8 +104,11 @@ def send_email(
         # Create SSL context and send
         context = ssl.create_default_context()
         
+        logger.info(f"Connecting to SMTP server {config['host']}:{config['port']}...")
         with smtplib.SMTP_SSL(config['host'], config['port'], context=context) as server:
+            logger.info("Connected, attempting login...")
             server.login(config['username'], config['password'])
+            logger.info(f"Login successful, sending email to {to_email}...")
             server.sendmail(config['from_address'], recipients, message.as_string())
         
         logger.info(f"Email sent successfully to {to_email}")
@@ -106,6 +116,8 @@ def send_email(
         
     except Exception as e:
         logger.error(f"Failed to send email to {to_email}: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return False
 
 
