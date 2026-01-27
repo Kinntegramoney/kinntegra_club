@@ -155,7 +155,7 @@ export default function Login() {
                   type="text"
                   value={formData.pan}
                   onChange={(e) => setFormData({...formData, pan: e.target.value.toUpperCase()})}
-                  maxLength={10}
+                  maxLength={12}
                   className="h-12 font-mono text-base"
                   style={{
                     borderColor: '#E5E7EB',
