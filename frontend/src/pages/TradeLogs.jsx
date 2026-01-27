@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { 
   Search, Download, Calendar, Filter, RefreshCw,
-  CheckCircle, XCircle, Clock, Users,
+  CheckCircle, XCircle, Clock, Users, Activity,
   ChevronDown, Eye, MoreVertical, ChevronLeft, ChevronRight
 } from "lucide-react";
 import {
@@ -42,9 +42,25 @@ const STATUS_CONFIG = {
   completed: { label: "Completed", color: "bg-green-100 text-green-800" },
 };
 
+const PAGE_SECTIONS = {
+  'holdings': 'Holdings',
+  'opportunities': 'Opportunities',
+  'real-estate-details': 'Real Estate Details',
+  'bond-details': 'Bond Details',
+  'dashboard': 'Dashboard',
+  'clients': 'Clients',
+  'profile': 'Profile',
+  'analysis': 'Analysis',
+  'leads': 'Lead Management',
+  'reinvestment': 'Reinvestment Tagging',
+};
+
 export default function TradeLogs() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState("trades"); // "trades" or "activity"
+  
+  // Trade logs state
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,9 +68,20 @@ export default function TradeLogs() {
   const [dateTo, setDateTo] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   
+  // User activity state
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activitySearchQuery, setActivitySearchQuery] = useState("");
+  const [activityDateFrom, setActivityDateFrom] = useState("");
+  const [activityDateTo, setActivityDateTo] = useState("");
+  const [activityRoleFilter, setActivityRoleFilter] = useState("all");
+  const [activitySectionFilter, setActivitySectionFilter] = useState("all");
+  const [activityTotalPages, setActivityTotalPages] = useState(1);
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [activityPage, setActivityPage] = useState(1);
 
   useEffect(() => {
     document.title = "Kinntegraa | Logs";
@@ -71,6 +98,13 @@ export default function TradeLogs() {
     setUser(parsedUser);
     fetchLogs();
   }, [navigate]);
+
+  // Fetch activity logs when switching to activity tab
+  useEffect(() => {
+    if (activeTab === "activity" && user) {
+      fetchActivityLogs();
+    }
+  }, [activeTab, activityPage, activityRoleFilter, activitySectionFilter, activityDateFrom, activityDateTo]);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -90,7 +124,7 @@ export default function TradeLogs() {
         type: "trade",
         client_name: trade.client_name || "N/A",
         ucc: trade.ucc || trade.client_ucc || "-",
-        date: trade.investment_date || trade.created_at, // Use investment_date first for Buy entries
+        date: trade.investment_date || trade.created_at,
         trade_type: trade.trade_type || "Buy",
         amount: trade.total_amount || trade.amount || 0,
         portfolio: trade.portfolio_category || "-",
@@ -116,7 +150,6 @@ export default function TradeLogs() {
 
       // New reinvestment tagging logs
       const taggingLogs = (reinvestmentTaggingRes.data || []).map(log => {
-        // Determine type label based on reinvestment_tag
         let typeLabel = 'Reinv';
         const tag = log.reinvestment_tag || '';
         if (tag === 'principal') typeLabel = 'Reinv-Principal';
@@ -131,7 +164,7 @@ export default function TradeLogs() {
           type: "reinvestment_tag",
           client_name: log.client_name || "N/A",
           ucc: log.target_ucc || "-",
-          date: log.expected_date || log.created_at, // Use expected_date (historical date) instead of created_at
+          date: log.expected_date || log.created_at,
           trade_type: typeLabel,
           amount: log.net_amount || 0,
           portfolio: log.portfolio_category || "-",
@@ -155,8 +188,39 @@ export default function TradeLogs() {
     }
   };
 
+  const fetchActivityLogs = async () => {
+    setActivityLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const params = new URLSearchParams({
+        page: activityPage,
+        limit: itemsPerPage,
+      });
+      
+      if (activityRoleFilter !== 'all') params.append('user_role', activityRoleFilter);
+      if (activitySectionFilter !== 'all') params.append('page_section', activitySectionFilter);
+      if (activityDateFrom) params.append('date_from', activityDateFrom);
+      if (activityDateTo) params.append('date_to', activityDateTo);
+      
+      const res = await axios.get(`${API}/activity-logs?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setActivityLogs(res.data.logs || []);
+      setActivityTotalPages(res.data.total_pages || 1);
+    } catch (error) {
+      console.error("Error fetching activity logs:", error);
+      if (error.response?.status === 403) {
+        toast.error("You don't have permission to view activity logs");
+      } else {
+        toast.error("Failed to load activity logs");
+      }
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
   const filteredLogs = logs.filter(log => {
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       if (!log.client_name?.toLowerCase().includes(query) && 
@@ -165,17 +229,27 @@ export default function TradeLogs() {
       }
     }
     
-    // Date filter
     if (dateFrom && new Date(log.date) < new Date(dateFrom)) return false;
     if (dateTo && new Date(log.date) > new Date(dateTo)) return false;
-    
-    // Status filter
     if (statusFilter !== "all" && log.status !== statusFilter) return false;
     
     return true;
   });
 
-  // Pagination calculations
+  const filteredActivityLogs = activityLogs.filter(log => {
+    if (activitySearchQuery) {
+      const query = activitySearchQuery.toLowerCase();
+      if (!log.user_name?.toLowerCase().includes(query) && 
+          !log.page_section?.toLowerCase().includes(query) &&
+          !log.bond_name?.toLowerCase().includes(query) &&
+          !log.property_name?.toLowerCase().includes(query)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Pagination calculations for trade logs
   const totalItems = filteredLogs.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -187,42 +261,51 @@ export default function TradeLogs() {
     setCurrentPage(1);
   }, [searchQuery, dateFrom, dateTo, statusFilter]);
 
+  useEffect(() => {
+    setActivityPage(1);
+  }, [activitySearchQuery, activityDateFrom, activityDateTo, activityRoleFilter, activitySectionFilter]);
+
   const goToPage = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
     }
   };
 
-  const getPageNumbers = () => {
+  const goToActivityPage = (page) => {
+    if (page >= 1 && page <= activityTotalPages) {
+      setActivityPage(page);
+    }
+  };
+
+  const getPageNumbers = (current, total) => {
     const pages = [];
     const maxVisiblePages = 5;
     
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
+    if (total <= maxVisiblePages) {
+      for (let i = 1; i <= total; i++) {
         pages.push(i);
       }
     } else {
-      if (currentPage <= 3) {
+      if (current <= 3) {
         for (let i = 1; i <= 4; i++) pages.push(i);
         pages.push('...');
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
+        pages.push(total);
+      } else if (current >= total - 2) {
         pages.push(1);
         pages.push('...');
-        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+        for (let i = total - 3; i <= total; i++) pages.push(i);
       } else {
         pages.push(1);
         pages.push('...');
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        for (let i = current - 1; i <= current + 1; i++) pages.push(i);
         pages.push('...');
-        pages.push(totalPages);
+        pages.push(total);
       }
     }
     return pages;
   };
 
   const handleDownload = () => {
-    // Export filtered logs to CSV
     const headers = ["Client Name", "UCC", "Date", "Type", "Amount", "Portfolio", "Advisor", "Status"];
     const csvContent = [
       headers.join(","),
@@ -246,6 +329,28 @@ export default function TradeLogs() {
     a.click();
   };
 
+  const handleActivityDownload = () => {
+    const headers = ["User Name", "Role", "Page Section", "Timestamp", "Bond/Property", "Client Viewed"];
+    const csvContent = [
+      headers.join(","),
+      ...filteredActivityLogs.map(log => [
+        `"${log.user_name || 'N/A'}"`,
+        log.user_role,
+        log.page_section,
+        log.timestamp ? format(new Date(log.timestamp), "dd/MM/yyyy HH:mm") : '-',
+        log.bond_name || log.property_name || '-',
+        log.viewed_client_name || '-'
+      ].join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `activity_logs_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+  };
+
   const getSidebar = () => {
     if (user?.role === "broker") return <Sidebar user={user} />;
     if (user?.role === "sub_broker") return <SubBrokerSidebar user={user} />;
@@ -261,6 +366,27 @@ export default function TradeLogs() {
     );
   };
 
+  const getRoleBadge = (role) => {
+    const colors = {
+      broker: 'bg-purple-100 text-purple-800',
+      sub_broker: 'bg-blue-100 text-blue-800',
+      client: 'bg-green-100 text-green-800',
+    };
+    const labels = {
+      broker: 'Broker',
+      sub_broker: 'Sub-Broker',
+      client: 'Client',
+    };
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[role] || 'bg-gray-100 text-gray-800'}`}>
+        {labels[role] || role}
+      </span>
+    );
+  };
+
+  // Only show activity tab for broker and sub-broker
+  const showActivityTab = user?.role === 'broker' || user?.role === 'sub_broker';
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {getSidebar()}
@@ -272,14 +398,14 @@ export default function TradeLogs() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-bold text-gray-800">Logs</h1>
-                <p className="text-sm text-gray-500">View all transaction and approval logs</p>
+                <p className="text-sm text-gray-500">View all transaction, approval, and user activity logs</p>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={fetchLogs}>
+                <Button variant="outline" size="sm" onClick={activeTab === 'trades' ? fetchLogs : fetchActivityLogs}>
                   <RefreshCw className="h-4 w-4 mr-1" />
                   Refresh
                 </Button>
-                <Button size="sm" onClick={handleDownload} className="bg-blue-600 hover:bg-blue-700">
+                <Button size="sm" onClick={activeTab === 'trades' ? handleDownload : handleActivityDownload} className="bg-blue-600 hover:bg-blue-700">
                   <Download className="h-4 w-4 mr-1" />
                   Download
                 </Button>
@@ -287,212 +413,439 @@ export default function TradeLogs() {
             </div>
           </div>
           
-        </div>
-
-        {/* Filters */}
-        <div className="px-6 py-4 bg-white border-b">
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-36 h-9"
-                placeholder="From"
-              />
-              <span className="text-gray-400">to</span>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-36 h-9"
-                placeholder="To"
-              />
-            </div>
-            
-            <div className="relative flex-1 max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by client name or UCC..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9"
-              />
-            </div>
-            
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40 h-9">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg border overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Client Name</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">UCC</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Type</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Portfolio</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Advisor</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Status</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase w-12"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {paginatedLogs.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
-                          No logs found
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-gray-800">{log.client_name}</div>
-                            {log.bond_name && (
-                              <div className="text-xs text-gray-500">{log.bond_name}</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-600 font-mono">{log.ucc}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">
-                            {log.date ? format(new Date(log.date), "dd MMM yyyy") : "-"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-sm font-medium ${
-                              log.trade_type?.startsWith("Reinv") ? "text-purple-600" : "text-blue-600"
-                            }`}>
-                              {log.trade_type}
-                            </span>
-                            {log.units && <span className="text-xs text-gray-500 ml-1">({log.units} units)</span>}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-800 text-right font-mono">
-                            ₹{log.amount?.toLocaleString('en-IN') || 0}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-600 capitalize">{log.portfolio?.replace('_', ' ')}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{log.advisor}</td>
-                          <td className="px-4 py-3 text-center">
-                            {getStatusBadge(log.status)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download Receipt
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+          {/* Tabs */}
+          {showActivityTab && (
+            <div className="px-6 border-t">
+              <div className="flex gap-6">
+                <button
+                  onClick={() => setActiveTab("trades")}
+                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "trades"
+                      ? "border-etihad-gold-600 text-etihad-gold-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                  data-testid="trade-logs-tab"
+                >
+                  Trade Logs
+                </button>
+                <button
+                  onClick={() => setActiveTab("activity")}
+                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-1 ${
+                    activeTab === "activity"
+                      ? "border-etihad-gold-600 text-etihad-gold-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                  data-testid="user-activity-tab"
+                >
+                  <Activity className="h-4 w-4" />
+                  User Activity
+                </button>
               </div>
-              
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span>Show</span>
-                    <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
-                      <SelectTrigger className="w-16 h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span>entries</span>
-                    <span className="ml-2 text-gray-400">|</span>
-                    <span className="ml-2">
-                      Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => goToPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="h-8 w-8 p-0"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    
-                    {getPageNumbers().map((page, idx) => (
-                      page === '...' ? (
-                        <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
-                      ) : (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => goToPage(page)}
-                          className={`h-8 w-8 p-0 ${currentPage === page ? 'bg-etihad-gold-600 hover:bg-etihad-gold-700' : ''}`}
-                        >
-                          {page}
-                        </Button>
-                      )
-                    ))}
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => goToPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="h-8 w-8 p-0"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Show total when pagination not needed */}
-              {totalPages <= 1 && totalItems > 0 && (
-                <div className="px-4 py-3 border-t bg-gray-50 text-sm text-gray-600">
-                  Showing {totalItems} {totalItems === 1 ? 'entry' : 'entries'}
-                </div>
-              )}
             </div>
           )}
         </div>
+
+        {/* Trade Logs Tab Content */}
+        {activeTab === "trades" && (
+          <>
+            {/* Filters */}
+            <div className="px-6 py-4 bg-white border-b">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-36 h-9"
+                    placeholder="From"
+                  />
+                  <span className="text-gray-400">to</span>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-36 h-9"
+                    placeholder="To"
+                  />
+                </div>
+                
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by client name or UCC..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-40 h-9">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Trade Logs Content */}
+            <div className="p-6">
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Client Name</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">UCC</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Type</th>
+                          <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Amount</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Portfolio</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Advisor</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Status</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase w-12"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {paginatedLogs.length === 0 ? (
+                          <tr>
+                            <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
+                              No logs found
+                            </td>
+                          </tr>
+                        ) : (
+                          paginatedLogs.map((log) => (
+                            <tr key={log.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <div className="font-medium text-gray-800">{log.client_name}</div>
+                                {log.bond_name && (
+                                  <div className="text-xs text-gray-500">{log.bond_name}</div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600 font-mono">{log.ucc}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {log.date ? format(new Date(log.date), "dd MMM yyyy") : "-"}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`text-sm font-medium ${
+                                  log.trade_type?.startsWith("Reinv") ? "text-purple-600" : "text-blue-600"
+                                }`}>
+                                  {log.trade_type}
+                                </span>
+                                {log.units && <span className="text-xs text-gray-500 ml-1">({log.units} units)</span>}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-800 text-right font-mono">
+                                ₹{log.amount?.toLocaleString('en-IN') || 0}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600 capitalize">{log.portfolio?.replace('_', ' ')}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{log.advisor}</td>
+                              <td className="px-4 py-3 text-center">
+                                {getStatusBadge(log.status)}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem>
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                      <Download className="h-4 w-4 mr-2" />
+                                      Download Receipt
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <span>Show</span>
+                        <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                          <SelectTrigger className="w-16 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span>entries</span>
+                        <span className="ml-2 text-gray-400">|</span>
+                        <span className="ml-2">
+                          Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => goToPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        
+                        {getPageNumbers(currentPage, totalPages).map((page, idx) => (
+                          page === '...' ? (
+                            <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
+                          ) : (
+                            <Button
+                              key={page}
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => goToPage(page)}
+                              className={`h-8 w-8 p-0 ${currentPage === page ? 'bg-etihad-gold-600 hover:bg-etihad-gold-700' : ''}`}
+                            >
+                              {page}
+                            </Button>
+                          )
+                        ))}
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => goToPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Show total when pagination not needed */}
+                  {totalPages <= 1 && totalItems > 0 && (
+                    <div className="px-4 py-3 border-t bg-gray-50 text-sm text-gray-600">
+                      Showing {totalItems} {totalItems === 1 ? 'entry' : 'entries'}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* User Activity Tab Content */}
+        {activeTab === "activity" && (
+          <>
+            {/* Activity Filters */}
+            <div className="px-6 py-4 bg-white border-b">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <Input
+                    type="date"
+                    value={activityDateFrom}
+                    onChange={(e) => setActivityDateFrom(e.target.value)}
+                    className="w-36 h-9"
+                    placeholder="From"
+                  />
+                  <span className="text-gray-400">to</span>
+                  <Input
+                    type="date"
+                    value={activityDateTo}
+                    onChange={(e) => setActivityDateTo(e.target.value)}
+                    className="w-36 h-9"
+                    placeholder="To"
+                  />
+                </div>
+                
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by user name or section..."
+                    value={activitySearchQuery}
+                    onChange={(e) => setActivitySearchQuery(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                
+                <Select value={activityRoleFilter} onValueChange={setActivityRoleFilter}>
+                  <SelectTrigger className="w-36 h-9">
+                    <SelectValue placeholder="All Roles" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="sub_broker">Sub-Broker</SelectItem>
+                    <SelectItem value="client">Client</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={activitySectionFilter} onValueChange={setActivitySectionFilter}>
+                  <SelectTrigger className="w-44 h-9">
+                    <SelectValue placeholder="All Sections" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sections</SelectItem>
+                    <SelectItem value="holdings">Holdings</SelectItem>
+                    <SelectItem value="opportunities">Opportunities</SelectItem>
+                    <SelectItem value="real-estate-details">Real Estate Details</SelectItem>
+                    <SelectItem value="bond-details">Bond Details</SelectItem>
+                    <SelectItem value="dashboard">Dashboard</SelectItem>
+                    <SelectItem value="profile">Profile</SelectItem>
+                    <SelectItem value="clients">Clients</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Activity Logs Content */}
+            <div className="p-6">
+              {activityLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">User</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Role</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Page Section</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Details</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Timestamp</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredActivityLogs.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-12 text-center text-gray-500">
+                              <Activity className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                              <p>No activity logs found</p>
+                              <p className="text-xs mt-1">User visits will appear here as they navigate the platform</p>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredActivityLogs.map((log) => (
+                            <tr key={log.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <div className="font-medium text-gray-800">{log.user_name || 'Unknown'}</div>
+                              </td>
+                              <td className="px-4 py-3">
+                                {getRoleBadge(log.user_role)}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium">
+                                  {PAGE_SECTIONS[log.page_section] || log.page_section}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {log.bond_name && (
+                                  <div>Bond: <span className="font-medium">{log.bond_name}</span></div>
+                                )}
+                                {log.property_name && (
+                                  <div>Property: <span className="font-medium">{log.property_name}</span></div>
+                                )}
+                                {log.viewed_client_name && (
+                                  <div>Client: <span className="font-medium">{log.viewed_client_name}</span></div>
+                                )}
+                                {!log.bond_name && !log.property_name && !log.viewed_client_name && '-'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {log.timestamp ? (
+                                  <>
+                                    <div>{format(new Date(log.timestamp), "dd MMM yyyy")}</div>
+                                    <div className="text-xs text-gray-400">{format(new Date(log.timestamp), "HH:mm:ss")}</div>
+                                  </>
+                                ) : '-'}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Activity Pagination Controls */}
+                  {activityTotalPages > 1 && (
+                    <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <span>Page {activityPage} of {activityTotalPages}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => goToActivityPage(activityPage - 1)}
+                          disabled={activityPage === 1}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        
+                        {getPageNumbers(activityPage, activityTotalPages).map((page, idx) => (
+                          page === '...' ? (
+                            <span key={`activity-ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
+                          ) : (
+                            <Button
+                              key={`activity-page-${page}`}
+                              variant={activityPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => goToActivityPage(page)}
+                              className={`h-8 w-8 p-0 ${activityPage === page ? 'bg-etihad-gold-600 hover:bg-etihad-gold-700' : ''}`}
+                            >
+                              {page}
+                            </Button>
+                          )
+                        ))}
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => goToActivityPage(activityPage + 1)}
+                          disabled={activityPage === activityTotalPages}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Show total when pagination not needed */}
+                  {activityTotalPages <= 1 && filteredActivityLogs.length > 0 && (
+                    <div className="px-4 py-3 border-t bg-gray-50 text-sm text-gray-600">
+                      Showing {filteredActivityLogs.length} {filteredActivityLogs.length === 1 ? 'entry' : 'entries'}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
