@@ -14431,7 +14431,7 @@ async def upload_bond_calculator(
 
 
 # Serve uploaded calculator files
-@api_router.get("/api/uploads/calculators/{filename}")
+@api_router.get("/uploads/calculators/{filename}")
 async def serve_calculator_file(filename: str):
     """Serve uploaded calculator files"""
     import os
