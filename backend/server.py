@@ -19503,8 +19503,12 @@ async def create_lead(request: CreateLeadRequest, current_user: dict = Depends(g
     
     # Get client details
     client = None
+    client_sub_broker_id = None
     if current_user['role'] == 'client':
         client = await db.clients.find_one({"id": current_user.get('client_id')}, {"_id": 0})
+        if client:
+            # Get the sub-broker who manages this client (if any)
+            client_sub_broker_id = client.get('sub_broker_id') or client.get('created_by_sub_broker')
     
     # Find the sub-broker/broker who shared this with the client
     shared_by_id = None
@@ -19520,6 +19524,13 @@ async def create_lead(request: CreateLeadRequest, current_user: dict = Depends(g
                 if sharer:
                     shared_by_name = sharer.get('name')
                 break
+    
+    # For bonds or if no shared_by_id found, use the client's sub-broker
+    if not shared_by_id and client_sub_broker_id:
+        shared_by_id = client_sub_broker_id
+        sharer = await db.users.find_one({"id": shared_by_id}, {"_id": 0, "name": 1})
+        if sharer:
+            shared_by_name = sharer.get('name')
     
     # Create lead record
     lead = {
@@ -19540,6 +19551,7 @@ async def create_lead(request: CreateLeadRequest, current_user: dict = Depends(g
         "status": "open",
         "shared_by_id": shared_by_id,
         "shared_by_name": shared_by_name,
+        "sub_broker_id": client_sub_broker_id,  # Also store the client's sub-broker for easy querying
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
