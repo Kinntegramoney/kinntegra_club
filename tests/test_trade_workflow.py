@@ -14,7 +14,7 @@ import requests
 import os
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://wealth-portal-46.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://wealth-dash-19.preview.emergentagent.com')
 
 # Test credentials
 BROKER_CREDS = {"pan": "ABCDE1234F", "password": "broker123", "pin": "1234"}
