@@ -9747,12 +9747,15 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
                                 'interest_start_date': interest_start_date.strftime('%Y-%m-%d') if interest_start_date else None
                             }
                         })
+                        # Mark that we've added a calculated maturity - set the flag to prevent duplicate
+                        has_maturity_entry = True
             except Exception as e:
                 # Fallback if date parsing fails
                 pass
     
     # 4. Add FUTURE scheduled cashflows that don't have actual repayments yet
     # This ensures XIRR is calculated using ALL future cashflows (not just uploaded actuals)
+    # IMPORTANT: Skip maturity date if we already added a calculated maturity entry above
     if stored_cashflows:
         # Get dates that already have actual repayment entries
         actual_repayment_dates = set()
