@@ -11600,6 +11600,80 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
     }
     await db.reinvestment_logs.insert_one(log_entry)
     
+    # AUTO-SEND EMAIL: For future dates tagged for reinvestment, send approval email automatically
+    email_sent = False
+    if (current_user['role'] in ['broker', 'sub_broker'] and 
+        not is_past_date and 
+        update.reinvestment_tag not in ['not_tagged', 'none', 'not_invest']):
+        try:
+            # Get client email
+            user = await db.users.find_one({"id": client.get('user_id')})
+            client_email = user.get('email') if user else client.get('email')
+            
+            if client_email:
+                # Calculate amount based on tag
+                tag = update.reinvestment_tag
+                if tag == 'other' or tag == 'custom':
+                    amount = update.custom_amount or 0
+                elif tag == 'principal':
+                    amount = cashflow.get('principal_component', 0) or 0
+                elif tag == 'interest':
+                    interest = cashflow.get('interest_component', 0) or 0
+                    tds = cashflow.get('tds_amount', 0) or 0
+                    amount = interest - tds
+                elif tag == 'both':
+                    principal = cashflow.get('principal_component', 0) or 0
+                    interest = cashflow.get('interest_component', 0) or 0
+                    tds = cashflow.get('tds_amount', 0) or 0
+                    amount = principal + interest - tds
+                else:
+                    amount = cashflow.get('net_amount', 0) or 0
+                
+                # Build email content for single entry
+                entries_html = f"""
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #e5e7eb;">{cashflow.get('bond_name', 'N/A')}</td>
+                    <td style="padding: 12px; border: 1px solid #e5e7eb;">{cashflow['date'][:10]}</td>
+                    <td style="padding: 12px; border: 1px solid #e5e7eb;">{tag.replace('_', ' ').title()}</td>
+                    <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: right;">₹{amount:,.2f}</td>
+                </tr>
+                """
+                
+                # Generate approval token
+                approval_token = create_access_token(
+                    data={"client_id": client['id'], "cashflow_ids": [cashflow_id], "type": "reinvestment_approval"},
+                    expires_delta=timedelta(days=7)
+                )
+                
+                # Update cashflow with email sent status
+                await db.holding_cashflows.update_one(
+                    {"id": cashflow_id},
+                    {"$set": {
+                        "approval_email_sent": True,
+                        "approval_email_sent_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                
+                # Send email in background
+                from email_service import send_reinvestment_approval_email as send_approval_email
+                # Run in background using asyncio
+                import asyncio
+                asyncio.create_task(
+                    asyncio.to_thread(
+                        send_approval_email,
+                        client_email,
+                        client['name'],
+                        entries_html,
+                        amount,
+                        approval_token,
+                        1  # count
+                    )
+                )
+                email_sent = True
+                logger.info(f"Auto-sent reinvestment approval email to {client_email} for cashflow {cashflow_id}")
+        except Exception as e:
+            logger.error(f"Failed to auto-send reinvestment approval email: {e}")
+    
     return {
         "message": "Tag updated successfully" + (" (auto-approved for past date)" if is_past_date else " (pending client approval)"), 
         "reinvestment_tag": update.reinvestment_tag, 
@@ -11607,7 +11681,8 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         "portfolio_category": update.portfolio_category,
         "target_ucc": update.target_ucc,
         "is_past_date": is_past_date,
-        "approval_status": update_data.get('approval_status')
+        "approval_status": update_data.get('approval_status'),
+        "email_sent": email_sent
     }
 
 
