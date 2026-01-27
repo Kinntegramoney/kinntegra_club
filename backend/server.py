@@ -10333,6 +10333,17 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             cf_entry['amount'] = cf.get('gross_amount', 0)  # Positive = inflow
             expected_cashflows_with_investment.append(cf_entry)
         
+        # Build list of individual trade info for merged holdings
+        individual_trades_info = []
+        if trade.get('individual_trades'):
+            for t in trade['individual_trades']:
+                individual_trades_info.append({
+                    "trade_id": t['id'],
+                    "investment_date": t.get('investment_date', ''),
+                    "units": t.get('units', 0),
+                    "amount": t.get('total_amount', 0)
+                })
+        
         holdings.append({
             "trade_id": trade['id'],
             "bond_id": trade['bond_id'],
@@ -10358,10 +10369,12 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "prepaid_amount": round(prepaid_amount, 2),
             "xirr": expected_xirr,  # Bond's Secondary IRR
             "actual_xirr": actual_xirr,  # Calculated from actual_cashflows (includes maturity)
-            "cashflows": stored_cashflows,  # Current state of cashflows
+            "cashflows": stored_cashflows,  # Current state of cashflows (merged by date)
             "expected_cashflows": expected_cashflows_with_investment,  # With investment as first entry
             "actual_cashflows": actual_cashflows_data,  # Already built above, reuse
-            "status": "active" if upcoming_gross > 0 else "fully_repaid"
+            "status": "active" if upcoming_gross > 0 else "fully_repaid",
+            "merged_trades_count": trade.get('merged_trades', 1),  # Number of trades merged
+            "individual_trades": individual_trades_info if len(individual_trades_info) > 1 else None  # Only show if merged
         })
         
         total_investment += investment_amount
