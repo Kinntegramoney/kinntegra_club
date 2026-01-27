@@ -337,6 +337,26 @@ export default function ReinvestmentTagging() {
     }
   };
 
+  const resendApprovalEmail = async (clientId, cashflowId) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `${API}/reinvestment/send-approval-email`,
+        {
+          client_id: clientId,
+          cashflow_ids: [cashflowId],
+          resend: true
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success("Approval email resent to client");
+    } catch (error) {
+      console.error("Error resending email:", error);
+      toast.error(error.response?.data?.detail || "Failed to resend email");
+    }
+  };
+
   const formatCurrency = (amount) => {
     if (!amount) return "₹0";
     return `₹${parseFloat(amount).toLocaleString('en-IN')}`;
