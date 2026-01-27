@@ -6135,22 +6135,18 @@ async def bulk_upload_investment_details(
                 
                 expected_price_per_unit = calc_result.get('price_per_unit', 0)
                 
-                # Calculate expected total after multiplying units and rounding
+                # Calculate expected investment amount: price_per_unit × units, then round
                 expected_total_amount = round(expected_price_per_unit * units)
                 amount_difference = abs(amount - expected_total_amount)
                 
-                # Tolerance: ₹2 per unit to account for minor rounding/calculation differences
-                # Historical data may have used slightly different parameters (IRR, day count)
-                # Example: 23 units with ₹1.37/unit diff = ₹31.51 total diff
-                TOLERANCE_PER_UNIT = 2.0
-                AMOUNT_TOLERANCE = TOLERANCE_PER_UNIT * units
+                # Fixed tolerance of ₹5 for minor rounding differences only
+                AMOUNT_TOLERANCE = 5.0
                 
                 if expected_price_per_unit > 0 and amount_difference > AMOUNT_TOLERANCE:
                     results['errors'].append(
                         f"Row {row_num}: Investment amount mismatch. "
-                        f"File amount: ₹{amount:,.2f}, Expected (from calculator): ₹{expected_total_amount:,.2f}, "
-                        f"Difference: ₹{amount_difference:,.2f} (tolerance: ₹{AMOUNT_TOLERANCE:.2f} for {units} units). "
-                        f"Price per unit: ₹{expected_price_per_unit:,.2f}"
+                        f"File amount: ₹{amount:,.2f}, Expected (calculator: ₹{expected_price_per_unit:,.2f} × {units} units): ₹{expected_total_amount:,.2f}, "
+                        f"Difference: ₹{amount_difference:,.2f} (tolerance: ₹{AMOUNT_TOLERANCE:.2f})"
                     )
                     results['failed'] += 1
                     continue
