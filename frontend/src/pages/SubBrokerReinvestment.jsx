@@ -42,7 +42,7 @@ const TAG_OPTIONS = [
   { value: 'custom', label: 'Custom' }
 ];
 
-export default function ReinvestmentTagging() {
+export default function SubBrokerReinvestment() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
