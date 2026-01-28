@@ -12497,18 +12497,25 @@ async def get_reinvestment_logs(
         if client_id:
             query['client_id'] = client_id
     elif current_user['role'] == 'sub_broker':
-        # Sub-broker can only see logs for their clients
-        partner = await db.partners.find_one({"user_id": current_user['id']}, {"_id": 0})
-        if partner:
-            linked_clients = await db.clients.find(
-                {"linked_subbroker_id": partner['id']},
-                {"_id": 0, "id": 1}
-            ).to_list(1000)
-            client_ids = [c['id'] for c in linked_clients]
-            if client_id and client_id in client_ids:
+        # Sub-broker can only see logs for their linked clients
+        linked_clients = await db.clients.find(
+            {"linked_subbroker_id": current_user['id']},
+            {"_id": 0, "id": 1}
+        ).to_list(1000)
+        client_ids = [c['id'] for c in linked_clients]
+        
+        if client_id:
+            # If specific client requested, verify they're linked
+            if client_id in client_ids:
                 query['client_id'] = client_id
             else:
+                return []  # Not authorized to see this client's logs
+        else:
+            # Show all linked clients' logs
+            if client_ids:
                 query['client_id'] = {'$in': client_ids}
+            else:
+                return []
     elif current_user['role'] == 'client':
         # Client can only see their own logs
         client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
