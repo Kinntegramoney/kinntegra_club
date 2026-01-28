@@ -1167,7 +1167,8 @@ export default function Holdings() {
       <SidebarComponent user={user} />
       
       <div className="flex-1 flex overflow-hidden">
-        <style>
+        {/* Client List */}
+        <div className="w-60 bg-white border-r border-gray-200 flex flex-col">
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 15px 20px; color: #374151; background: #fff; font-size: 10px; }
           .header { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #C9A227; }
