@@ -362,7 +362,7 @@ export default function ReinvestmentTagging() {
       const entry = prev[entryId];
       const allocations = entry.allocations;
       const usedAmount = allocations.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
-      const remainingAmount = Math.round((entry.totalAmount - usedAmount) * 100) / 100;
+      const remainingAmount = Math.floor(entry.totalAmount - usedAmount);
       
       // Auto-select UCC if client has only one
       const defaultUcc = (entry.entry?.ucc_list?.length === 1) ? entry.entry.ucc_list[0] : '';
