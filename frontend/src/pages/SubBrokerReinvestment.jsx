@@ -365,7 +365,7 @@ export default function SubBrokerReinvestment() {
       const entry = prev[entryId];
       const allocations = entry.allocations;
       const usedAmount = allocations.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
-      const remainingAmount = Math.round((entry.totalAmount - usedAmount) * 100) / 100;
+      const remainingAmount = Math.floor(entry.totalAmount - usedAmount);
       
       // Auto-set portfolio to 'none' if remaining amount < 1000
       const defaultPortfolio = remainingAmount < 1000 ? 'none' : '';
