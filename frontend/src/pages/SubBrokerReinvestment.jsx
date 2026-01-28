@@ -82,6 +82,10 @@ export default function SubBrokerReinvestment() {
   // Saving/sending state
   const [savingClient, setSavingClient] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(null);
+  
+  // Multi-retag modal state
+  const [showMultiRetagModal, setShowMultiRetagModal] = useState(false);
+  const [multiRetagData, setMultiRetagData] = useState({});
 
   // Log user activity
   useEffect(() => {
