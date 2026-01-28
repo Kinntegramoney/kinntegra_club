@@ -722,22 +722,30 @@ export default function ReinvestmentTagging() {
                   <th className="text-left px-3 py-2 font-medium text-gray-600">UCC *</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio *</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Tag *</th>
+                  <th className="w-16 px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {clientGroup.entries.map(entry => {
                   const changes = localChanges[entry.id] || {};
-                  const currentUcc = changes.target_ucc || entry.target_ucc || '';
-                  const currentPortfolio = changes.portfolio_category || entry.portfolio_category || '';
-                  const currentTag = changes.reinvestment_tag || entry.reinvestment_tag || '';
+                  const isSplit = hasSplitAllocations(entry.id);
+                  const splitValues = isSplit ? getSplitDisplayValues(entry.id) : null;
+                  const currentUcc = splitValues?.ucc || changes.target_ucc || entry.target_ucc || '';
+                  const currentPortfolio = splitValues?.portfolio || changes.portfolio_category || entry.portfolio_category || '';
+                  const currentTag = splitValues?.tag || changes.reinvestment_tag || entry.reinvestment_tag || '';
                   
                   return (
-                    <tr key={entry.id} className="hover:bg-gray-50">
+                    <tr key={entry.id} className={`hover:bg-gray-50 ${isSplit ? 'bg-green-50' : ''}`}>
                       <td className="px-3 py-2">
-                        <Checkbox
-                          checked={selectedEntries[entry.id] || false}
-                          onCheckedChange={(checked) => handleEntrySelect(entry.id, checked)}
-                        />
+                        {!isSplit && (
+                          <Checkbox
+                            checked={selectedEntries[entry.id] || false}
+                            onCheckedChange={(checked) => handleEntrySelect(entry.id, checked)}
+                          />
+                        )}
+                        {isSplit && (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <div className="font-medium">{entry.bond_name}</div>
@@ -750,49 +758,80 @@ export default function ReinvestmentTagging() {
                         {formatCurrency(entry.net_amount)}
                       </td>
                       <td className="px-3 py-2">
-                        <Select
-                          value={currentUcc}
-                          onValueChange={(v) => handleLocalChange(entry.id, 'target_ucc', v)}
-                        >
-                          <SelectTrigger className="w-28 h-8 text-xs">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(clientGroup.ucc_list || []).map(ucc => (
-                              <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {isSplit ? (
+                          <Badge variant={currentUcc === 'Multi' ? 'secondary' : 'outline'} className="text-xs">
+                            {currentUcc}
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={currentUcc}
+                            onValueChange={(v) => handleLocalChange(entry.id, 'target_ucc', v)}
+                          >
+                            <SelectTrigger className="w-28 h-8 text-xs">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(clientGroup.ucc_list || []).map(ucc => (
+                                <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
                       <td className="px-3 py-2">
-                        <Select
-                          value={currentPortfolio}
-                          onValueChange={(v) => handleLocalChange(entry.id, 'portfolio_category', v)}
-                        >
-                          <SelectTrigger className="w-28 h-8 text-xs">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PORTFOLIO_OPTIONS.map(opt => (
-                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {isSplit ? (
+                          <Badge variant={currentPortfolio === 'Multi' ? 'secondary' : 'outline'} className="text-xs">
+                            {currentPortfolio === 'Multi' ? 'Multi' : PORTFOLIO_OPTIONS.find(p => p.value === currentPortfolio)?.label || currentPortfolio}
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={currentPortfolio}
+                            onValueChange={(v) => handleLocalChange(entry.id, 'portfolio_category', v)}
+                          >
+                            <SelectTrigger className="w-28 h-8 text-xs">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PORTFOLIO_OPTIONS.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
                       <td className="px-3 py-2">
-                        <Select
-                          value={currentTag}
-                          onValueChange={(v) => handleLocalChange(entry.id, 'reinvestment_tag', v)}
-                        >
-                          <SelectTrigger className="w-28 h-8 text-xs">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {TAG_OPTIONS.map(opt => (
-                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {isSplit ? (
+                          <Badge className="text-xs bg-etihad-gold-100 text-etihad-gold-700 border-etihad-gold-200">
+                            {TAG_OPTIONS.find(t => t.value === currentTag)?.label || currentTag}
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={currentTag}
+                            onValueChange={(v) => handleLocalChange(entry.id, 'reinvestment_tag', v)}
+                          >
+                            <SelectTrigger className="w-28 h-8 text-xs">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TAG_OPTIONS.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {isSplit && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            onClick={() => editSplitEntry(entry, clientGroup)}
+                            title="Edit split allocation"
+                          >
+                            <Pencil className="h-4 w-4 text-gray-500" />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   );
