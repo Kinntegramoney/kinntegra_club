@@ -13070,9 +13070,9 @@ async def download_client_holdings(client_id: str, current_user: dict = Depends(
             ws['A3'] = "Investment Date"
             ws['B3'] = investment_date[:10] if investment_date else '-'
             ws['C3'] = "Units"
-            ws['D3'] = trade.get('units', holding.get('total_units', '-'))
+            ws['D3'] = trade.get('units', holding.get('units', holding.get('total_units', '-')))
             ws['E3'] = "Investment"
-            ws['F3'] = trade.get('total_amount', holding.get('total_invested', 0))
+            ws['F3'] = trade.get('invested_amount', holding.get('invested_amount', 0))
             ws['F3'].font = money_font
             ws['F3'].number_format = '₹ #,##0.00'
             
@@ -13223,8 +13223,8 @@ async def download_client_holdings(client_id: str, current_user: dict = Depends(
             ws_summary.cell(row=summary_row, column=1, value=sheet_index).border = border
             ws_summary.cell(row=summary_row, column=2, value=bond_name).border = border
             ws_summary.cell(row=summary_row, column=3, value=investment_date[:10] if investment_date else '-').border = border
-            ws_summary.cell(row=summary_row, column=4, value=trade.get('units', holding.get('total_units', '-'))).border = border
-            ws_summary.cell(row=summary_row, column=5, value=trade.get('total_amount', holding.get('total_invested', 0))).border = border
+            ws_summary.cell(row=summary_row, column=4, value=trade.get('units', holding.get('units', holding.get('total_units', '-')))).border = border
+            ws_summary.cell(row=summary_row, column=5, value=trade.get('invested_amount', holding.get('invested_amount', 0))).border = border
             ws_summary.cell(row=summary_row, column=5).font = money_font
             ws_summary.cell(row=summary_row, column=5).number_format = '₹ #,##0.00'
             ws_summary.cell(row=summary_row, column=6, value=f"{holding.get('xirr', 0):.2f}%" if holding.get('xirr') else '-').border = border
