@@ -8583,13 +8583,19 @@ async def resend_client_credentials(client_id: str, background_tasks: Background
 
 @api_router.post("/clients/{client_id}/reset-password")
 async def reset_client_password(client_id: str, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
-    """Reset client password (brokers only) - generates a new password"""
-    if current_user['role'] != 'broker':
-        raise HTTPException(status_code=403, detail="Only brokers can reset passwords")
+    """Reset client password (brokers and sub-brokers) - generates a new password"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can reset passwords")
     
-    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    # Find client based on role
+    if current_user['role'] == 'broker':
+        client = await db.clients.find_one({"id": client_id})
+    else:
+        # Sub-broker can only reset for their linked clients
+        client = await db.clients.find_one({"id": client_id, "linked_subbroker_id": current_user['id']})
+    
     if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+        raise HTTPException(status_code=404, detail="Client not found or not authorized")
     
     # Generate new password
     new_password = client['pan_number'][-4:] + str(uuid.uuid4().hex[:4])
