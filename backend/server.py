@@ -11742,15 +11742,24 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         except Exception as e:
             logger.error(f"Failed to auto-send reinvestment approval email: {e}")
     
+    # Build response message
+    if notification_created:
+        message = f"Tag updated successfully (Notification created for {update.portfolio_category.replace('_', ' ')} - no client approval needed)"
+    elif is_past_date:
+        message = "Tag updated successfully (auto-approved for past date)"
+    else:
+        message = "Tag updated successfully (pending client approval)"
+    
     return {
-        "message": "Tag updated successfully" + (" (auto-approved for past date)" if is_past_date else " (pending client approval)"), 
+        "message": message, 
         "reinvestment_tag": update.reinvestment_tag, 
         "custom_amount": update.custom_amount,
         "portfolio_category": update.portfolio_category,
         "target_ucc": update.target_ucc,
         "is_past_date": is_past_date,
         "approval_status": update_data.get('approval_status'),
-        "email_sent": email_sent
+        "email_sent": email_sent,
+        "notification_created": notification_created
     }
 
 
