@@ -2,6 +2,33 @@
 
 ## Recent Changes (Jan 28, 2026)
 
+### UCC Split Allocation Feature (Jan 28, 2026) ✅
+
+**Request:** User wanted the ability to split a single reinvestment entry across multiple UCCs with different amounts, portfolios, and tags for each allocation.
+
+**Implementation:**
+1. Enhanced the "Edit Individually" modal to support UCC allocations
+2. Each entry now shows:
+   - Entry header with bond name, client, date, and total amount
+   - Green/amber status bar showing allocation progress (Allocated: ₹X / ₹Y)
+   - Multiple allocation rows, each with: UCC dropdown, Amount input, Portfolio dropdown, Tag dropdown
+   - "Add UCC Allocation" button to add more splits (limited to client's registered UCCs)
+   - "Remove" button (minus icon) to remove allocations
+3. Validation ensures:
+   - Total allocations must equal the entry amount
+   - Each allocation requires UCC, Amount > 0, Portfolio, and Tag
+4. Data structure stores `ucc_allocations` array for backend processing
+
+**Files Modified:**
+- `/app/frontend/src/pages/ReinvestmentTagging.jsx` - New functions: `addUccAllocation`, `removeUccAllocation`, `updateAllocation`, `getAllocationTotal`, `validateAllocations`
+- `/app/frontend/src/pages/SubBrokerReinvestment.jsx` - Same changes applied
+
+**Behavior:**
+- "Add UCC Allocation" button only appears if client has multiple UCCs registered
+- Single-UCC clients can only have one allocation per entry
+
+---
+
 ### Multi-Select Retag Modal (Jan 28, 2026) ✅
 
 **Request:** User wanted a multi-select retag option where selected entries are shown side by side with individual editable fields (UCC, Portfolio, Tag) for each entry.
