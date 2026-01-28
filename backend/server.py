@@ -11601,8 +11601,76 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
     await db.reinvestment_logs.insert_one(log_entry)
     
     # AUTO-SEND EMAIL: For future dates tagged for reinvestment, send approval email automatically
+    # EXCEPT for bonds and real_estate portfolios - these just create notifications
     email_sent = False
-    if (current_user['role'] in ['broker', 'sub_broker'] and 
+    notification_created = False
+    
+    # For bonds and real_estate portfolios: Create notification instead of email
+    if update.portfolio_category in ['bonds', 'real_estate']:
+        # Don't send email, don't call Kinntegra API
+        # Instead, create a maturity notification for broker/sub-broker
+        notification = {
+            "id": str(uuid.uuid4()),
+            "type": "maturity_reinvestment",
+            "title": f"Reinvestment Tagged - {cashflow.get('bond_name', 'Unknown')}",
+            "message": f"Client {client.get('name')} has a {update.reinvestment_tag} reinvestment tagged for {update.portfolio_category.replace('_', ' ').title()} on {cashflow['date'][:10]}",
+            "client_id": client['id'],
+            "client_name": client.get('name', ''),
+            "bond_id": cashflow.get('bond_id'),
+            "bond_name": cashflow.get('bond_name', ''),
+            "cashflow_id": cashflow_id,
+            "expected_date": cashflow['date'],
+            "amount": cashflow.get('net_amount', 0),
+            "reinvestment_tag": update.reinvestment_tag,
+            "portfolio_category": update.portfolio_category,
+            "target_ucc": update.target_ucc,
+            "created_by": current_user['id'],
+            "created_by_name": current_user.get('name', ''),
+            "notify_on_date": cashflow['date'][:10],  # Notify on maturity date
+            "is_read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Create notification for the broker
+        broker_id = None
+        if current_user['role'] == 'broker':
+            broker_id = current_user['id']
+        elif current_user['role'] == 'sub_broker':
+            sub_broker = await db.sub_brokers.find_one({"id": current_user['id']}, {"_id": 0})
+            broker_id = sub_broker.get('created_by') if sub_broker else None
+        
+        if broker_id:
+            broker_notification = notification.copy()
+            broker_notification['id'] = str(uuid.uuid4())
+            broker_notification['user_id'] = broker_id
+            broker_notification['user_role'] = 'broker'
+            await db.notifications.insert_one(broker_notification)
+        
+        # Also notify sub-broker if tagged by sub-broker
+        if current_user['role'] == 'sub_broker':
+            sb_notification = notification.copy()
+            sb_notification['id'] = str(uuid.uuid4())
+            sb_notification['user_id'] = current_user['id']
+            sb_notification['user_role'] = 'sub_broker'
+            await db.notifications.insert_one(sb_notification)
+        
+        notification_created = True
+        
+        # Mark as auto-approved since no client approval needed for bonds/real_estate
+        await db.holding_cashflows.update_one(
+            {"id": cashflow_id},
+            {"$set": {
+                "client_approved": True,
+                "approval_status": "approved",
+                "approved_at": datetime.now(timezone.utc).isoformat(),
+                "auto_approved": True,
+                "auto_approved_reason": f"Portfolio: {update.portfolio_category} - No client approval required"
+            }}
+        )
+        
+        logger.info(f"Created maturity notification for {update.portfolio_category} reinvestment - no email/API needed")
+    
+    elif (current_user['role'] in ['broker', 'sub_broker'] and 
         not is_past_date and 
         update.reinvestment_tag not in ['not_tagged', 'none', 'not_invest']):
         try:
