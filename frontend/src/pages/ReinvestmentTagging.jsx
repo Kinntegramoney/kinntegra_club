@@ -398,10 +398,75 @@ export default function ReinvestmentTagging() {
     setMultiRetagData(prev => {
       const entry = prev[entryId];
       const newAllocations = [...entry.allocations];
+      let newAmount = value;
+      let newPortfolio = newAllocations[allocIndex].portfolio;
+      
+      if (field === 'amount') {
+        // Round to nearest 100 on blur (when value is set)
+        newAmount = value === '' ? '' : parseFloat(value) || 0;
+        
+        // If amount < 1000, auto-set portfolio to "none"
+        if (newAmount !== '' && newAmount < 1000) {
+          newPortfolio = 'none';
+        }
+        // If current portfolio is bonds/real_estate but amount is now below threshold, reset to empty
+        else if (newAmount !== '') {
+          const currentPortfolio = newAllocations[allocIndex].portfolio;
+          if (currentPortfolio === 'bonds' && newAmount < 1000000) {
+            newPortfolio = '';
+          } else if (currentPortfolio === 'real_estate' && newAmount < 2500000) {
+            newPortfolio = '';
+          }
+        }
+      }
+      
       newAllocations[allocIndex] = {
         ...newAllocations[allocIndex],
-        [field]: field === 'amount' ? (value === '' ? '' : parseFloat(value) || 0) : value
+        [field]: field === 'amount' ? newAmount : value,
+        ...(field === 'amount' && newPortfolio !== newAllocations[allocIndex].portfolio ? { portfolio: newPortfolio } : {})
       };
+      
+      return {
+        ...prev,
+        [entryId]: {
+          ...entry,
+          allocations: newAllocations
+        }
+      };
+    });
+  };
+
+  // Handle amount blur to round to nearest 100
+  const handleAmountBlur = (entryId, allocIndex) => {
+    setMultiRetagData(prev => {
+      const entry = prev[entryId];
+      if (!entry) return prev;
+      
+      const newAllocations = [...entry.allocations];
+      const currentAmount = newAllocations[allocIndex].amount;
+      
+      if (currentAmount !== '' && currentAmount !== 0) {
+        const roundedAmount = roundToHundred(currentAmount);
+        let newPortfolio = newAllocations[allocIndex].portfolio;
+        
+        // Auto-set to "none" if amount < 1000
+        if (roundedAmount < 1000) {
+          newPortfolio = 'none';
+        }
+        // Reset portfolio if it no longer qualifies
+        else if (newPortfolio === 'bonds' && roundedAmount < 1000000) {
+          newPortfolio = '';
+        } else if (newPortfolio === 'real_estate' && roundedAmount < 2500000) {
+          newPortfolio = '';
+        }
+        
+        newAllocations[allocIndex] = {
+          ...newAllocations[allocIndex],
+          amount: roundedAmount,
+          portfolio: newPortfolio
+        };
+      }
+      
       return {
         ...prev,
         [entryId]: {
