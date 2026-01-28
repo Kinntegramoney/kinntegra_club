@@ -310,204 +310,89 @@ export default function BondDetails() {
       return amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
     
-    // Build cashflow rows HTML
-    const cashflowRows = cashflowReportData.cashflows.map(cf => {
+    // Build cashflow rows HTML with alternating backgrounds
+    const cashflowRows = cashflowReportData.cashflows.map((cf, idx) => {
       const grossAmount = cf.principal_payment + cf.interest_payment;
       const description = cf.principal_payment > 0 ? 'Principal + Interest' : 'Interest Payment';
+      const rowBg = idx % 2 === 0 ? '#ffffff' : '#f9f9f9';
       return `
-        <tr>
-          <td>${format(new Date(cf.date), 'dd MMM yyyy')}</td>
-          <td>${description}</td>
-          <td>₹${formatCurrency(grossAmount)}</td>
-          <td>₹${formatCurrency(cf.total_net_payment)}</td>
+        <tr style="background-color: ${rowBg};">
+          <td style="border: 1px solid #999; padding: 8px 10px; text-align: left;">${format(new Date(cf.date), 'dd MMM yyyy')}</td>
+          <td style="border: 1px solid #999; padding: 8px 10px; text-align: left;">${description}</td>
+          <td style="border: 1px solid #999; padding: 8px 10px; text-align: right;">₹${formatCurrency(grossAmount)}</td>
+          <td style="border: 1px solid #999; padding: 8px 10px; text-align: right;">₹${formatCurrency(cf.total_net_payment)}</td>
         </tr>
       `;
     }).join('');
     
     // Build HTML for PDF - EXACT match to Bond_Cashflow_Final_Rupee.pdf reference
+    // Using inline styles for maximum compatibility with html2pdf
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <title>Expected Cashflow - ${cashflowReportData.bond_name}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { 
-            font-family: Arial, Helvetica, sans-serif; 
-            padding: 30px 40px; 
-            color: #000; 
-            background: #fff; 
-            font-size: 11px;
-            line-height: 1.4;
-          }
-          
-          /* Header Summary Table - 5 columns */
-          .header-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 30px;
-          }
-          .header-table th {
-            background: #f8f8f8;
-            padding: 12px 15px;
-            text-align: center;
-            font-size: 10px;
-            font-weight: 700;
-            color: #333;
-            border: 1px solid #ccc;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-          .header-table td {
-            padding: 14px 15px;
-            text-align: center;
-            font-size: 12px;
-            font-weight: 700;
-            color: #000;
-            border: 1px solid #ccc;
-            background: #fff;
-          }
-          
-          /* Section Title */
-          .section-title {
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: #000;
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-          }
-          
-          /* Main Cashflow Table */
-          .cashflow-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 25px;
-          }
-          .cashflow-table th {
-            background: #f8f8f8;
-            padding: 10px 12px;
-            font-size: 10px;
-            font-weight: 700;
-            color: #000;
-            border: 1px solid #ccc;
-            text-transform: uppercase;
-          }
-          .cashflow-table th:nth-child(1),
-          .cashflow-table th:nth-child(2) {
-            text-align: left;
-          }
-          .cashflow-table th:nth-child(3),
-          .cashflow-table th:nth-child(4) {
-            text-align: right;
-          }
-          .cashflow-table td {
-            padding: 9px 12px;
-            font-size: 11px;
-            border: 1px solid #ccc;
-            color: #000;
-          }
-          .cashflow-table td:nth-child(1),
-          .cashflow-table td:nth-child(2) {
-            text-align: left;
-          }
-          .cashflow-table td:nth-child(3),
-          .cashflow-table td:nth-child(4) {
-            text-align: right;
-            font-family: 'Courier New', Courier, monospace;
-          }
-          .cashflow-table tbody tr:nth-child(even) {
-            background: #fafafa;
-          }
-          .cashflow-table .investment-row {
-            background: #fff !important;
-          }
-          .cashflow-table .investment-row td:nth-child(4) {
-            color: #c00;
-            font-weight: 600;
-          }
-          .cashflow-table .total-row {
-            background: #f0f0f0 !important;
-          }
-          .cashflow-table .total-row td {
-            font-weight: 700;
-            font-size: 11px;
-          }
-          
-          /* Note */
-          .note {
-            font-size: 9px;
-            color: #666;
-            line-height: 1.6;
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-          }
-          .note strong {
-            color: #000;
-          }
-        </style>
       </head>
-      <body>
-        <!-- Header Summary Table - 5 columns matching reference exactly -->
-        <table class="header-table">
+      <body style="font-family: Arial, Helvetica, sans-serif; padding: 25px 30px; color: #000; background: #fff; font-size: 11px; line-height: 1.5; margin: 0;">
+        
+        <!-- Header Summary Table - 5 columns -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
           <thead>
             <tr>
-              <th>Bond Name</th>
-              <th>Amount Invested</th>
-              <th>Gross Expected</th>
-              <th>Profit</th>
-              <th>Expected XIRR</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Bond Name</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Amount Invested</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Gross Expected</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Profit</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Expected XIRR</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>${cashflowReportData.bond_name}</td>
-              <td>₹${formatCurrency(cashflowReportData.price_paid)}</td>
-              <td>₹${formatCurrency(grossExpected)}</td>
-              <td>₹${formatCurrency(profit)}</td>
-              <td>${secondaryIrr}%</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">${cashflowReportData.bond_name}</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">₹${formatCurrency(cashflowReportData.price_paid)}</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">₹${formatCurrency(grossExpected)}</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">₹${formatCurrency(profit)}</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">${secondaryIrr}%</td>
             </tr>
           </tbody>
         </table>
         
         <!-- Section Title -->
-        <div class="section-title">Expected Cashflow</div>
+        <div style="font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #000; text-align: center;">Expected Cashflow</div>
         
-        <!-- Cashflow Table - 4 columns matching reference exactly -->
-        <table class="cashflow-table">
+        <!-- Cashflow Table - 4 columns -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Description</th>
-              <th>Gross Amount (₹)</th>
-              <th>Net Amount (₹)</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: left; font-size: 10px; font-weight: bold; color: #000;">Date</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: left; font-size: 10px; font-weight: bold; color: #000;">Description</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: right; font-size: 10px; font-weight: bold; color: #000;">Gross Amount (₹)</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: right; font-size: 10px; font-weight: bold; color: #000;">Net Amount (₹)</th>
             </tr>
           </thead>
           <tbody>
             <!-- Principal Investment Row (Outflow) -->
-            <tr class="investment-row">
-              <td>${format(new Date(cashflowReportData.investment_date), 'dd MMM yyyy')}</td>
-              <td>Principal Invested</td>
-              <td></td>
-              <td>-₹${formatCurrency(cashflowReportData.price_paid)}</td>
+            <tr style="background-color: #ffffff;">
+              <td style="border: 1px solid #999; padding: 8px 10px; text-align: left;">${format(new Date(cashflowReportData.investment_date), 'dd MMM yyyy')}</td>
+              <td style="border: 1px solid #999; padding: 8px 10px; text-align: left;">Principal Invested</td>
+              <td style="border: 1px solid #999; padding: 8px 10px; text-align: right;"></td>
+              <td style="border: 1px solid #999; padding: 8px 10px; text-align: right; color: #cc0000; font-weight: bold;">-₹${formatCurrency(cashflowReportData.price_paid)}</td>
             </tr>
             <!-- Cashflow Rows (Interest & Principal Payments) -->
             ${cashflowRows}
             <!-- Total Returns Row -->
-            <tr class="total-row">
-              <td colspan="2">Total Returns</td>
-              <td>₹${formatCurrency(grossExpected)}</td>
-              <td>₹${formatCurrency(cashflowReportData.total_net_received)}</td>
+            <tr style="background-color: #f0f0f0;">
+              <td colspan="2" style="border: 1px solid #999; padding: 10px 12px; text-align: left; font-weight: bold;">Total Returns</td>
+              <td style="border: 1px solid #999; padding: 10px 12px; text-align: right; font-weight: bold;">₹${formatCurrency(grossExpected)}</td>
+              <td style="border: 1px solid #999; padding: 10px 12px; text-align: right; font-weight: bold;">₹${formatCurrency(cashflowReportData.total_net_received)}</td>
             </tr>
           </tbody>
         </table>
         
         <!-- Note -->
-        <div class="note">
-          <strong>Note:</strong> Gross Amount represents interest and principal before TDS. Net Amount reflects post-TDS cash inflow/outflow. Negative value indicates initial investment.
+        <div style="font-size: 9px; color: #555; line-height: 1.6; margin-top: 15px; font-style: italic;">
+          <strong style="color: #000;">Note:</strong> Gross Amount represents interest and principal before TDS. Net Amount reflects post-TDS cash inflow/outflow. Negative value indicates initial investment.
         </div>
       </body>
       </html>
@@ -515,7 +400,7 @@ export default function BondDetails() {
     
     try {
       const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 800px; height: 1200px; border: none;';
+      iframe.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 800px; height: 1500px; border: none;';
       document.body.appendChild(iframe);
       
       const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -523,22 +408,27 @@ export default function BondDetails() {
       iframeDoc.write(html);
       iframeDoc.close();
       
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait longer for styles to render
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       const html2pdf = (await import('html2pdf.js')).default;
       
       await html2pdf()
         .set({
-          margin: [10, 10, 10, 10],
+          margin: [15, 15, 15, 15],
           filename: `Bond_Cashflow_${cashflowReportData.bond_name.replace(/\s+/g, '_')}_${format(new Date(cashflowReportData.investment_date), 'yyyy-MM-dd')}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { 
-            scale: 2,
+            scale: 3,
             useCORS: true,
             logging: false,
             letterRendering: true,
             backgroundColor: '#ffffff',
-            windowWidth: 800
+            windowWidth: 800,
+            onclone: function(clonedDoc) {
+              // Ensure borders are visible
+              clonedDoc.body.style.webkitPrintColorAdjust = 'exact';
+            }
           },
           jsPDF: { 
             unit: 'mm', 
