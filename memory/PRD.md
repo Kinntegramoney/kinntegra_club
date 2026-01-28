@@ -1,5 +1,40 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Jan 28, 2026)
+
+### Mass Retagging Bar Position Fix (Jan 28, 2026) ✅
+
+**Issue:** The mass tagging bar in reinvestment pages was positioned within the content flow, causing it to float incorrectly when scrolling down long client lists.
+
+**Fix Applied:**
+1. Removed the inline mass tagging bar from the content area
+2. Added a sticky bar with `fixed bottom-0 left-0 right-0` CSS positioning
+3. Added `pb-24` padding to content area to prevent content from being hidden behind the sticky bar
+4. Bar now stays at the viewport bottom regardless of scroll position
+
+**Files Modified:** 
+- `/app/frontend/src/pages/ReinvestmentTagging.jsx` (lines 831-883 for sticky bar)
+- `/app/frontend/src/pages/SubBrokerReinvestment.jsx` (lines 835-887 for sticky bar)
+
+---
+
+### Holdings Frontend - Individual Investment Date Tabs (Jan 28, 2026) ✅
+
+**Issue:** The Holdings page was showing all transactions merged under a single date tab, even when the backend returned `individual_trades` data with different investment dates.
+
+**Fix Applied:**
+1. Updated `getConsolidatedHoldings()` function in Holdings.jsx
+2. When `individual_trades` array is available with multiple trades, create separate tab entries for each
+3. Each tab now shows the specific investment date and units for that trade
+
+**Files Modified:** `/app/frontend/src/pages/Holdings.jsx` (lines 726-755)
+
+**Verified Results:**
+- Fali Adi Unwalla's "Uc Inclusive Credit" bond now shows tabs: "08 May 2025 (42 units)", "13 May 2025 (15 units)"
+- "Natureresidences" bond shows tabs: "30 Apr 2025 (34 units)", "02 May 2025 (31 units)", "07 May 2025 (135 units)"
+
+---
+
 ## Recent Changes (Jan 27, 2026)
 
 ### Holdings Merge - Same Bond Multiple Trades (Jan 27, 2026) ✅
