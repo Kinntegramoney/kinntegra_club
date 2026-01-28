@@ -2,6 +2,46 @@
 
 ## Recent Changes (Jan 28, 2026)
 
+### PDF Fix - Monthly Cashflow Schedule (Jan 28, 2026) ✅
+
+**Issue:** PDF generated but Monthly Cashflow Schedule table was blank.
+
+**Root Cause:** The `max-h-[350px] overflow-y-auto` CSS was clipping the table content during PDF capture.
+
+**Fix Applied:**
+- **BondDetails.jsx**: Updated `exportCashflowToPDF()` to:
+  - Temporarily remove scroll constraints before PDF generation
+  - Added `windowWidth: 1200` and `height: reportElement.scrollHeight + 100` to html2canvas config
+  - Restore scroll constraints after PDF is generated
+
+---
+
+### Real Estate Payment Schedule View Details (Jan 28, 2026) ✅
+
+**New Feature:** Added "View Payment Schedule" button and modal for Real Estate opportunities.
+
+**Features:**
+1. **Currency Conversion** - Dropdown to convert AED to:
+   - INR (₹) - Rate: 22.75
+   - USD ($) - Rate: 0.27
+   - EUR (€) - Rate: 0.25
+   
+2. **Payment Schedule Table** with per-user contribution columns
+
+3. **Dummy Users** - When no real investors exist, shows 4 dummy investors:
+   - Investor A: 40%
+   - Investor B: 30%
+   - Investor C: 20%
+   - Investor D: 10%
+
+4. **Summary Cards** showing Unit Price, Total Cost, Milestones count, and Co-owners count
+
+**Files Modified:**
+- `/app/frontend/src/pages/RealEstateDetails.jsx`
+- `/app/frontend/src/pages/BondDetails.jsx`
+
+---
+
 ### PDF/Excel Download Fix (Jan 28, 2026) ✅
 
 **Issue:** PDFs were coming blank for all options (secondary calculator, expected vs actual XIRR)
