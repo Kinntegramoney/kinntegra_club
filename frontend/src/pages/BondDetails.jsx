@@ -1383,19 +1383,6 @@ export default function BondDetails() {
           </div>
         </div>
       )}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Footer Note */}
-                <div className="mt-4 p-2 bg-gray-50 rounded text-[10px] text-gray-500 text-center">
-                  Generated on {format(new Date(), "dd MMM yyyy")} | All amounts in INR | TDS @ 10% on interest | Cutoff: {bondData.cutoff_days || 15} days
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
