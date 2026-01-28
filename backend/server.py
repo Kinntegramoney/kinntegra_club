@@ -8514,13 +8514,19 @@ async def sync_client_activation(client_id: str, current_user: dict = Depends(ge
 
 @api_router.post("/clients/{client_id}/resend-credentials")
 async def resend_client_credentials(client_id: str, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
-    """Resend login credentials to client (brokers only)"""
-    if current_user['role'] != 'broker':
-        raise HTTPException(status_code=403, detail="Only brokers can resend credentials")
+    """Resend login credentials to client (brokers and sub-brokers)"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can resend credentials")
     
-    client = await db.clients.find_one({"id": client_id, "created_by": current_user['id']})
+    # Find client based on role
+    if current_user['role'] == 'broker':
+        client = await db.clients.find_one({"id": client_id})
+    else:
+        # Sub-broker can only resend for their linked clients
+        client = await db.clients.find_one({"id": client_id, "linked_subbroker_id": current_user['id']})
+    
     if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+        raise HTTPException(status_code=404, detail="Client not found or not authorized")
     
     # Generate new password and PIN
     new_password = client['pan_number'][-4:] + str(uuid.uuid4().hex[:4])
@@ -8535,20 +8541,32 @@ async def resend_client_credentials(client_id: str, background_tasks: Background
         }}
     )
     
+    # Update stored credentials in client record for future resends
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {
+            "stored_password": new_password,
+            "stored_pin": new_pin,
+            "credentials_updated_at": datetime.now(timezone.utc).isoformat(),
+            "credentials_updated_by": current_user['id']
+        }}
+    )
+    
     # Try to send email (may fail if SMTP not configured)
-    try:
-        background_tasks.add_task(
-            send_credentials_email,
-            email=client['email'],
-            name=client['name'],
-            pan=client['pan_number'],
-            password=new_password,
-            pin=new_pin
-        )
-        email_sent = True
-    except Exception as e:
-        logger.error(f"Failed to send credentials email: {e}")
-        email_sent = False
+    email_sent = False
+    if client.get('email'):
+        try:
+            background_tasks.add_task(
+                send_credentials_email,
+                email=client['email'],
+                name=client['name'],
+                pan=client['pan_number'],
+                password=new_password,
+                pin=new_pin
+            )
+            email_sent = True
+        except Exception as e:
+            logger.error(f"Failed to send credentials email: {e}")
     
     return {
         "message": "Credentials reset successfully",
@@ -8557,7 +8575,7 @@ async def resend_client_credentials(client_id: str, background_tasks: Background
             "pan": client['pan_number'],
             "password": new_password,
             "pin": new_pin,
-            "email": client['email'],
+            "email": client.get('email', ''),
             "name": client['name']
         }
     }
