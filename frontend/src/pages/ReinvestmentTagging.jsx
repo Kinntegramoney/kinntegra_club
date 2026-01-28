@@ -321,14 +321,14 @@ export default function ReinvestmentTagging() {
         splitAmount = entry.net_amount || 0;
       }
       
-      // Round to 2 decimal places to avoid floating point issues
-      splitAmount = Math.round(splitAmount * 100) / 100;
+      // Round down (floor) to avoid decimal amounts
+      splitAmount = Math.floor(splitAmount);
       
-      // Store all amounts for display (also rounded)
+      // Store all amounts for display (also floored)
       const amounts = {
-        principal: Math.round((entry.principal_amount || 0) * 100) / 100,
-        interest: Math.round((entry.interest_amount || 0) * 100) / 100,
-        both: Math.round((entry.net_amount || 0) * 100) / 100
+        principal: Math.floor(entry.principal_amount || 0),
+        interest: Math.floor(entry.interest_amount || 0),
+        both: Math.floor(entry.net_amount || 0)
       };
       
       // Determine initial portfolio - auto-set to 'none' if amount < 1000
