@@ -51,6 +51,11 @@ export default function SubBrokerClients() {
   const [uploadType, setUploadType] = useState("indian");
   const [uploading, setUploading] = useState(false);
 
+  // Log user activity
+  useEffect(() => {
+    logUserActivity('clients');
+  }, []);
+
   useEffect(() => {
     document.title = "Kinntegraa | My Clients";
   }, []);
