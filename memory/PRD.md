@@ -2,6 +2,23 @@
 
 ## Recent Changes (Jan 28, 2026)
 
+### Holdings PDF Redesign (Jan 28, 2026) ✅
+
+**Issue:** The Holdings "View Details" PDF export was using a dashboard-style design with colored cards, which didn't match the clean table-based design of the Secondary Calculator PDF.
+
+**Fix Applied:**
+- **`/app/frontend/src/pages/Holdings.jsx`**: Completely rewrote `downloadCombinedCashflowPDF()` function
+  - Changed to use inline CSS styles for maximum compatibility with html2pdf.js
+  - Added solid 1px grey borders (`border: 1px solid #999`) on all table cells
+  - Header table with 5 columns: Bond Name | Units | Total Investment | Expected XIRR | Actual XIRR
+  - Two-column layout for Expected and Actual Cashflows side-by-side
+  - Alternating row backgrounds for readability
+  - Total Returns and Profit rows at the bottom of each column
+  - Italicized note explaining cashflow terminology
+  - Footer with generation timestamp
+
+---
+
 ### Secondary Calculator PDF Redesign (Jan 28, 2026) ✅
 
 **Issue:** The Secondary Calculator's PDF export was generating a dashboard-style design with colored cards, which did not match the user's reference design (`Bond_Cashflow_Final_Rupee.pdf`).
