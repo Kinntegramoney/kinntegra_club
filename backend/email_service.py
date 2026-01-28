@@ -1474,7 +1474,16 @@ def send_holdings_report_email(
     © 2026 Kinntegraa L.L.C-FZ, Dubai, UAE
     """
     
-    return send_email(client_email, subject, html_content, plain_content, cc=cc_emails)
+    # Build attachments list if Excel provided
+    attachments = None
+    if excel_attachment and attachment_filename:
+        attachments = [{
+            'filename': attachment_filename,
+            'content': excel_attachment,
+            'content_type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }]
+    
+    return send_email(client_email, subject, html_content, plain_content, cc=cc_emails, attachments=attachments)
 
 
 # ==================== APPROVAL WORKFLOW EMAILS ====================
