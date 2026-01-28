@@ -343,8 +343,7 @@ export default function ReinvestmentTagging() {
               id: `${entryId}-alloc-${allocations.length}`,
               ucc: '',
               amount: Math.max(0, remainingAmount),
-              portfolio: '',
-              tag: ''
+              portfolio: ''
             }
           ]
         }
