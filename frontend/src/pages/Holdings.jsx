@@ -1183,7 +1183,12 @@ export default function Holdings() {
           </div>
           
           <div className="flex-1 overflow-y-auto">
-          .summary-item { flex: 1; text-align: center; }
+            {loading ? (
+              <div className="p-3 text-center text-gray-500 text-sm">Loading...</div>
+            ) : filteredClients.length === 0 ? (
+              <div className="p-3 text-center text-gray-500 text-sm">No investors found</div>
+            ) : (
+              filteredClients.map((client) => (
           .summary-item label { font-size: 7px; color: #5B373C; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
           .summary-item span { font-size: 11px; font-weight: 600; color: #111827; }
           .summary-item.green span { color: #059669; }
