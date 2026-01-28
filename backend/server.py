@@ -20844,6 +20844,18 @@ async def log_user_activity(request: LogUserActivityRequest, current_user: dict 
         "ip_address": None,  # Could be populated from request headers if needed
     }
     
+    # Fetch and store bond name if bond_id is provided
+    if request.bond_id:
+        bond = await db.bonds.find_one({"id": request.bond_id}, {"_id": 0, "issuer": 1, "name": 1})
+        if bond:
+            activity_log['bond_name'] = bond.get('issuer') or bond.get('name', 'Unknown Bond')
+    
+    # Fetch and store property name if property_id is provided
+    if request.property_id:
+        prop = await db.real_estate_opportunities.find_one({"id": request.property_id}, {"_id": 0, "building_name": 1})
+        if prop:
+            activity_log['property_name'] = prop.get('building_name', 'Unknown Property')
+    
     # For sub-brokers, also get their broker_id
     if current_user['role'] == 'sub_broker':
         sub_broker = await db.sub_brokers.find_one({"id": current_user['id']}, {"_id": 0})
