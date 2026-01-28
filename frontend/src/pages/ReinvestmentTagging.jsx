@@ -325,13 +325,16 @@ export default function ReinvestmentTagging() {
     setShowMultiRetagModal(true);
   };
 
-  // Add a new UCC allocation to an entry
+  // Add a new UCC allocation to an entry (allows multiple allocations for different portfolios)
   const addUccAllocation = (entryId) => {
     setMultiRetagData(prev => {
       const entry = prev[entryId];
       const allocations = entry.allocations;
       const usedAmount = allocations.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
       const remainingAmount = entry.totalAmount - usedAmount;
+      
+      // Auto-select UCC if client has only one
+      const defaultUcc = (entry.entry?.ucc_list?.length === 1) ? entry.entry.ucc_list[0] : '';
       
       return {
         ...prev,
@@ -341,7 +344,7 @@ export default function ReinvestmentTagging() {
             ...allocations,
             {
               id: `${entryId}-alloc-${allocations.length}`,
-              ucc: '',
+              ucc: defaultUcc,
               amount: Math.max(0, remainingAmount),
               portfolio: ''
             }
