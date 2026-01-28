@@ -1173,7 +1173,10 @@ export default function Holdings() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-          .header h1 { font-size: 14px; font-weight: 600; color: #5B373C; margin-bottom: 3px; }
+                data-testid="search-investor"
+                placeholder="Search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
           .header p { font-size: 10px; color: #6b7280; }
           .summary-box { display: flex; gap: 15px; margin-bottom: 12px; padding: 10px; background: linear-gradient(135deg, #F5F3EF 0%, #FBF7E9 100%); border-radius: 6px; border: 1px solid #E8D89F; }
           .summary-item { flex: 1; text-align: center; }
