@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Share2, Building2, TrendingUp, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { logUserActivity } from "@/utils/activityLogger";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -17,6 +18,11 @@ export default function SubBrokerOpportunities() {
   const [realEstateOpportunities, setRealEstateOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all"); // "all", "bonds", "real-estate"
+
+  // Log user activity
+  useEffect(() => {
+    logUserActivity('opportunities');
+  }, []);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
