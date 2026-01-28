@@ -11637,9 +11637,13 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Check if already approved by client - cannot modify
-    if cashflow.get('client_approved') and current_user['role'] != 'client':
-        raise HTTPException(status_code=400, detail="Cannot modify client-approved tags")
+    # Check if repayment has already happened - cannot modify after repayment
+    if cashflow.get('repayment_processed') or cashflow.get('kinntegra_api_submitted'):
+        raise HTTPException(status_code=400, detail="Cannot modify tags after repayment has been processed or API submitted")
+    
+    # Track if this is a modification of an already-approved tag (needs re-approval)
+    was_client_approved = cashflow.get('client_approved', False)
+    needs_reapproval = was_client_approved and current_user['role'] in ['broker', 'sub_broker']
     
     if current_user['role'] == 'client':
         # Client can only modify their own cashflows
