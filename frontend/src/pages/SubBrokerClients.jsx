@@ -40,8 +40,6 @@ export default function SubBrokerClients() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
-  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [credentialsData, setCredentialsData] = useState(null);
   const [resendingCredentials, setResendingCredentials] = useState(false);
   
   // Permission checks
