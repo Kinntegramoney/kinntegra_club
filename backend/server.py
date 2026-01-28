@@ -12355,23 +12355,37 @@ async def submit_to_kinntegraa(
                 "reinvestments": []
             }
             
+            skipped_count = 0
             for cf in cashflows:
                 tag = cf.get('reinvestment_tag', 'not_tagged')
                 if tag == 'other':
                     amount = cf.get('custom_amount', 0)
                 elif tag == 'principal':
                     amount = cf.get('principal_component', 0)
+                    # Skip if principal-only tag but principal is zero or missing
+                    if not amount or amount <= 0:
+                        logger.info(f"Skipping cashflow {cf.get('id')} in API submission - principal-only with zero principal")
+                        skipped_count += 1
+                        continue
                 elif tag == 'interest':
                     amount = cf.get('interest_component', 0) - cf.get('tds_amount', 0)
-                elif tag == 'net_amount':
+                elif tag == 'net_amount' or tag == 'both':
                     amount = cf.get('net_amount', 0)
                 else:
+                    continue
+                
+                # Round down to nearest integer for API submission
+                rounded_amount = int(amount)
+                
+                if rounded_amount <= 0:
+                    logger.info(f"Skipping cashflow {cf.get('id')} in API submission - rounded amount is zero")
+                    skipped_count += 1
                     continue
                 
                 api_payload["reinvestments"].append({
                     "bond_name": cf.get('bond_name', ''),
                     "expected_date": cf.get('date', ''),
-                    "amount": amount,
+                    "amount": rounded_amount,  # Rounded down amount
                     "tag_type": tag
                 })
             
