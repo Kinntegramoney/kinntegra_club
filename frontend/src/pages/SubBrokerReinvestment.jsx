@@ -326,11 +326,20 @@ export default function SubBrokerReinvestment() {
         splitAmount = entry.net_amount || 0;
       }
       
+      // Round to 2 decimal places to avoid floating point issues
+      splitAmount = Math.round(splitAmount * 100) / 100;
+      
       const amounts = {
-        principal: entry.principal_amount || 0,
-        interest: entry.interest_amount || 0,
-        both: entry.net_amount || 0
+        principal: Math.round((entry.principal_amount || 0) * 100) / 100,
+        interest: Math.round((entry.interest_amount || 0) * 100) / 100,
+        both: Math.round((entry.net_amount || 0) * 100) / 100
       };
+      
+      // Determine initial portfolio - auto-set to 'none' if amount < 1000
+      let initialPortfolio = existing.portfolio_category || entry.portfolio_category || '';
+      if (splitAmount < 1000) {
+        initialPortfolio = 'none';
+      }
       
       initialData[entry.id] = {
         entry: entry,
@@ -341,7 +350,7 @@ export default function SubBrokerReinvestment() {
             id: `${entry.id}-alloc-0`,
             ucc: existing.target_ucc || entry.target_ucc || entry.ucc_list?.[0] || '',
             amount: splitAmount,
-            portfolio: existing.portfolio_category || entry.portfolio_category || ''
+            portfolio: initialPortfolio
           }
         ]
       };
