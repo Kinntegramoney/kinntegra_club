@@ -102,7 +102,12 @@ export default function SubBrokerClients() {
   };
 
   const handleResendCredentials = async (client) => {
-    if (!window.confirm(`Resend login credentials to ${client.name}?`)) return;
+    if (!client.email) {
+      toast.error("Client does not have an email address. Please update their profile first.");
+      return;
+    }
+    
+    if (!window.confirm(`Send login credentials to ${client.name} at ${client.email}? This will generate a new password and PIN.`)) return;
     
     setResendingCredentials(true);
     try {
@@ -113,17 +118,10 @@ export default function SubBrokerClients() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      setCredentialsData(response.data.credentials);
-      setShowCredentialsModal(true);
-      
-      if (response.data.email_sent) {
-        toast.success(`Credentials sent to ${client.email}`);
-      } else {
-        toast.info("Credentials reset. Email not sent - please share manually.");
-      }
+      toast.success(response.data.message || "Credentials sent to client's email");
     } catch (error) {
       console.error("Error resending credentials:", error);
-      toast.error(error.response?.data?.detail || "Failed to resend credentials");
+      toast.error(error.response?.data?.detail || "Failed to send credentials");
     } finally {
       setResendingCredentials(false);
     }
