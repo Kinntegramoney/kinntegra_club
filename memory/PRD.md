@@ -2,6 +2,24 @@
 
 ## Recent Changes (Jan 28, 2026)
 
+### Holdings View: Summary vs Detail (Jan 28, 2026) ✅
+
+**Issue:** After fixing the merge logic, the Holdings Report was showing individual transactions instead of a consolidated summary view.
+
+**User Requirement:**
+- **Summary View (list)**: Show ONE row per bond with consolidated totals (units, invested, expected, etc.)
+- **Detail View (View Details popup)**: Show breakdown by investment date with separate XIRR calculations for each tranche
+
+**Fix Applied:**
+1. **Backend** (`server.py`): Still groups by `bond_id|investment_date` to calculate correct XIRR per tranche
+2. **Frontend** (`Holdings.jsx`): Updated `getConsolidatedHoldings()` to:
+   - Group by `bond_id` only for summary view
+   - Store individual holdings (with different dates) in `trades[]` array for detail view
+   - Show consolidated totals in the main list
+   - Show per-tranche details when user clicks "View Details"
+
+---
+
 ### CRITICAL FIX: Holdings Merge Logic (Jan 28, 2026) 🔴
 
 **Issue:** The system was incorrectly merging investments for the same bond regardless of investment date. This caused:
