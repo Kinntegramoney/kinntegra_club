@@ -7,7 +7,7 @@ import requests
 import os
 import json
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://tag-split-system.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://invest-dashboard-163.preview.emergentagent.com')
 
 # Test credentials
 BROKER_CREDENTIALS = {
