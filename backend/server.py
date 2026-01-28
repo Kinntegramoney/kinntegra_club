@@ -8258,6 +8258,15 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
     
     # Send welcome email in background (if email is provided)
     if client_data.email:
+        # Get sub-broker name if client is linked to one
+        subbroker_name = None
+        if client_data.linked_subbroker_id:
+            subbroker = await db.partners.find_one({"id": client_data.linked_subbroker_id}, {"_id": 0})
+            if not subbroker:
+                subbroker = await db.sub_brokers.find_one({"id": client_data.linked_subbroker_id}, {"_id": 0})
+            if subbroker:
+                subbroker_name = subbroker.get('name')
+        
         background_tasks.add_task(
             send_welcome_email_client,
             client_name=client_data.name,
@@ -8265,7 +8274,8 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
             pan=photo_id,  # Use photo_id as login ID
             password=default_password,
             pin=default_pin,
-            broker_name=current_user.get('name', 'Your Broker')
+            broker_name=current_user.get('name', 'Your Broker'),
+            subbroker_name=subbroker_name
         )
     
     return client_dict
