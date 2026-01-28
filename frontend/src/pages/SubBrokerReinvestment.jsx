@@ -918,7 +918,7 @@ export default function SubBrokerReinvestment() {
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-2">
                   <Badge className="bg-etihad-gold-600 text-white">{getSelectedCount()} selected</Badge>
-                  <span className="text-sm text-gray-700">Apply to selected entries:</span>
+                  <span className="text-sm text-gray-700">Quick apply or edit individually:</span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Select value={massUcc} onValueChange={setMassUcc}>
@@ -952,7 +952,15 @@ export default function SubBrokerReinvestment() {
                     </SelectContent>
                   </Select>
                   <Button size="sm" onClick={applyMassTag} className="bg-etihad-gold-600 hover:bg-etihad-gold-700 h-8">
-                    Apply
+                    Quick Apply
+                  </Button>
+                  <div className="w-px h-6 bg-gray-300 mx-1" />
+                  <Button 
+                    size="sm" 
+                    onClick={openMultiRetagModal} 
+                    className="bg-blue-600 hover:bg-blue-700 h-8"
+                  >
+                    Edit Individually
                   </Button>
                   <Button size="sm" variant="outline" onClick={clearSelection} className="h-8">
                     Clear
@@ -962,6 +970,113 @@ export default function SubBrokerReinvestment() {
             </div>
           </div>
         )}
+
+        {/* Multi-Retag Modal */}
+        <Dialog open={showMultiRetagModal} onOpenChange={setShowMultiRetagModal}>
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Tag className="h-5 w-5" />
+                Configure Reinvestment Tags ({Object.keys(multiRetagData).length} entries)
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="flex-1 overflow-auto py-4">
+              <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(Object.keys(multiRetagData).length, 3)}, 1fr)` }}>
+                {Object.entries(multiRetagData).map(([entryId, data]) => (
+                  <div key={entryId} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="mb-3 pb-2 border-b">
+                      <div className="font-medium text-sm truncate" title={data.entry?.bond_name}>
+                        {data.entry?.bond_name || 'Unknown Bond'}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {data.entry?.client_name} • {format(new Date(data.entry?.expected_date || new Date()), "dd MMM yyyy")}
+                      </div>
+                    </div>
+                    
+                    <div className="mb-3">
+                      <Label className="text-xs text-gray-600 mb-1 block">UCC</Label>
+                      <Select 
+                        value={data.ucc} 
+                        onValueChange={(v) => updateMultiRetagEntry(entryId, 'ucc', v)}
+                      >
+                        <SelectTrigger className="w-full h-8 text-xs">
+                          <SelectValue placeholder="Select UCC" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(data.entry?.ucc_list || []).map(ucc => (
+                            <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-white rounded p-2 border">
+                        <div className="text-[10px] text-gray-500">Principal</div>
+                        <div className="text-xs font-medium">{formatCurrency(data.amounts?.principal || 0)}</div>
+                      </div>
+                      <div className="bg-white rounded p-2 border">
+                        <div className="text-[10px] text-gray-500">Interest</div>
+                        <div className="text-xs font-medium">{formatCurrency(data.amounts?.interest || 0)}</div>
+                      </div>
+                      <div className="bg-white rounded p-2 border">
+                        <div className="text-[10px] text-gray-500">Total</div>
+                        <div className="text-xs font-medium">{formatCurrency(data.amounts?.both || data.entry?.net_amount || 0)}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-3">
+                      <Label className="text-xs text-gray-600 mb-2 block">Tag</Label>
+                      <RadioGroup 
+                        value={data.tag} 
+                        onValueChange={(v) => updateMultiRetagEntry(entryId, 'tag', v)}
+                        className="flex flex-wrap gap-2"
+                      >
+                        {TAG_OPTIONS.map(opt => (
+                          <div key={opt.value} className="flex items-center space-x-1">
+                            <RadioGroupItem value={opt.value} id={`${entryId}-${opt.value}`} />
+                            <Label htmlFor={`${entryId}-${opt.value}`} className="text-xs cursor-pointer">
+                              {opt.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-xs text-gray-600 mb-2 block">Portfolio</Label>
+                      <div className="grid grid-cols-2 gap-1">
+                        {PORTFOLIO_OPTIONS.map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => updateMultiRetagEntry(entryId, 'portfolio', opt.value)}
+                            className={`text-xs px-2 py-1.5 rounded border transition-colors ${
+                              data.portfolio === opt.value 
+                                ? 'bg-etihad-gold-600 text-white border-etihad-gold-600' 
+                                : 'bg-white hover:bg-gray-100 border-gray-200'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <DialogFooter className="border-t pt-4">
+              <Button variant="outline" onClick={() => setShowMultiRetagModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={applyMultiRetagChanges} className="bg-etihad-gold-600 hover:bg-etihad-gold-700">
+                Apply Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
