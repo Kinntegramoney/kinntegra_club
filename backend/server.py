@@ -12453,12 +12453,24 @@ async def approve_reinvestment_tag(cashflow_id: str, approval: ReinvestmentAppro
     if not client or client.get('user_id') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Update approval status
+    # Update approval status in holding_cashflows
     await db.holding_cashflows.update_one(
         {"id": cashflow_id},
         {"$set": {
             "client_approved": approval.approved,
             "approval_status": "approved" if approval.approved else "rejected",
+            "approval_notes": approval.notes,
+            "approved_by": current_user['id'],
+            "approved_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Also update the reinvestment_logs collection
+    await db.reinvestment_logs.update_many(
+        {"cashflow_id": cashflow_id},
+        {"$set": {
+            "approval_status": "approved" if approval.approved else "rejected",
+            "client_approved": approval.approved,
             "approval_notes": approval.notes,
             "approved_by": current_user['id'],
             "approved_at": datetime.now(timezone.utc).isoformat()
