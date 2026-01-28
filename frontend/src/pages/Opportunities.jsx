@@ -392,7 +392,9 @@ export default function Opportunities() {
     // Price = NPV of remaining cashflows discounted at secondary IRR
     // Uses cutoff_days logic: only include payments more than cutoff_days from today
     const calculateTodayPrice = () => {
-      const today = new Date();
+      // Use date-only (no time component) to match backend calculator
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const secondaryIRR = (bond.secondary_irr || bond.primary_irr || 12) / 100; // Annual rate
       const cutoffDays = bond.cutoff_days ?? 15; // Default 15 days cutoff, use ?? to handle 0
       
@@ -400,12 +402,17 @@ export default function Opportunities() {
       if (bond.cashflows_per_unit && bond.cashflows_per_unit.length > 0) {
         let npv = 0;
         for (const cf of bond.cashflows_per_unit) {
-          const cfDate = new Date(cf.date);
-          const daysFromToday = Math.floor((cfDate - today) / (1000 * 60 * 60 * 24));
+          const cfDateStr = cf.date.split('T')[0].split(' ')[0];
+          const cfDate = new Date(cfDateStr + 'T00:00:00');
           
-          // Only include cashflows that are MORE than cutoff_days away
-          // (payments within cutoff period go to seller, not buyer)
-          if (daysFromToday > cutoffDays) {
+          // Calculate record date (cutoff_days BEFORE payment date)
+          const recordDate = new Date(cfDate);
+          recordDate.setDate(recordDate.getDate() - cutoffDays);
+          
+          // Only include cashflows where record date is AFTER today
+          // (payment goes to buyer only if they're on register by record date)
+          if (recordDate > today) {
+            const daysFromToday = Math.floor((cfDate - today) / (1000 * 60 * 60 * 24));
             const yearsToPayment = daysFromToday / 365;
             const totalCashflow = (cf.interest_per_unit || cf.interest || 0) + (cf.principal_per_unit || cf.principal || 0);
             // Discount formula: CF / (1 + IRR)^years
@@ -449,6 +456,9 @@ export default function Opportunities() {
     };
     
     const todayPrice = calculateTodayPrice();
+    
+    // Get today's date string for display (matches calculation date)
+    const todayDateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     
     // Calculate maturity date display
     const maturityDate = new Date(bond.end_date);
