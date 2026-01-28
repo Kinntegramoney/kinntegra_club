@@ -402,8 +402,8 @@ export default function ReinvestmentTagging() {
       let newPortfolio = newAllocations[allocIndex].portfolio;
       
       if (field === 'amount') {
-        // Round to nearest 100 on blur (when value is set)
-        newAmount = value === '' ? '' : parseFloat(value) || 0;
+        // Parse and round to 2 decimal places to avoid floating point issues
+        newAmount = value === '' ? '' : Math.round((parseFloat(value) || 0) * 100) / 100;
         
         // If amount < 1000, auto-set portfolio to "none"
         if (newAmount !== '' && newAmount < 1000) {
