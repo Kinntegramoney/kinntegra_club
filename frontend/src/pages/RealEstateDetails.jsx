@@ -70,6 +70,26 @@ export default function RealEstateDetails() {
   const [showSellModal, setShowSellModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
+  // Payment Schedule View Details Modal
+  const [showPaymentScheduleModal, setShowPaymentScheduleModal] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState('AED'); // AED, INR, USD, EUR
+  
+  // Currency conversion rates (can be fetched from API or use fixed rates)
+  const currencyRates = {
+    AED: 1,
+    INR: 22.75,  // 1 AED = ~22.75 INR
+    USD: 0.27,   // 1 AED = ~0.27 USD
+    EUR: 0.25    // 1 AED = ~0.25 EUR
+  };
+  
+  // Dummy investors for demo when no real investors exist
+  const dummyInvestors = [
+    { name: 'Investor A', share_percentage: 40, contribution: 0 },
+    { name: 'Investor B', share_percentage: 30, contribution: 0 },
+    { name: 'Investor C', share_percentage: 20, contribution: 0 },
+    { name: 'Investor D', share_percentage: 10, contribution: 0 }
+  ];
+  
   // XIRR Calculator state
   const [xirrSaleStage, setXirrSaleStage] = useState(100); // % of payment completed when sold
   const [xirrSaleDate, setXirrSaleDate] = useState("");
