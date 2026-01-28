@@ -9306,7 +9306,7 @@ async def create_trade(trade_data: TradeCreate, current_user: dict = Depends(get
 
 @api_router.get("/trades")
 async def get_trades(status: Optional[str] = None, client_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
-    """Get trades - brokers see all, sub-brokers see only their own"""
+    """Get trades - brokers see all, sub-brokers see only their linked clients"""
     
     query = {}
     
@@ -9318,14 +9318,31 @@ async def get_trades(status: Optional[str] = None, client_id: Optional[str] = No
         client = await db.clients.find_one({"user_id": current_user['id']})
         if client:
             query["client_id"] = client['id']
-    else:
-        # Sub-brokers see only trades they created
-        query["created_by"] = current_user['id']
+    elif current_user['role'] == 'sub_broker':
+        # Sub-brokers see only trades for their linked clients
+        if client_id:
+            # Verify this client is linked to the sub-broker
+            client = await db.clients.find_one({"id": client_id, "linked_subbroker_id": current_user['id']})
+            if not client:
+                return []  # Client not linked to this sub-broker
+            query["client_id"] = client_id
+        else:
+            # Get all linked clients' trades
+            linked_clients = await db.clients.find(
+                {"linked_subbroker_id": current_user['id']},
+                {"_id": 0, "id": 1}
+            ).to_list(1000)
+            client_ids = [c['id'] for c in linked_clients]
+            if client_ids:
+                query["client_id"] = {"$in": client_ids}
+            else:
+                return []  # No linked clients
     
     if status:
         query["status"] = status
     
-    if client_id:
+    # For broker, if client_id is provided, filter by it
+    if client_id and current_user['role'] == 'broker':
         query["client_id"] = client_id
     
     trades = await db.trades.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
