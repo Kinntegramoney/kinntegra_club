@@ -1188,7 +1188,11 @@ export default function Holdings() {
             ) : (
               filteredClients.map((client) => (
                 <div
-          .summary-item span { font-size: 11px; font-weight: 600; color: #111827; }
+                  key={client.id}
+                  onClick={() => handleClientSelect(client)}
+                  className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                    selectedClient?.id === client.id ? 'bg-blue-50 border-blue-200' : ''
+                  }`}
           .summary-item.green span { color: #059669; }
           .summary-item.purple span { color: #7c3aed; }
           .two-col { display: flex; gap: 12px; }
