@@ -344,7 +344,7 @@ export default function SubBrokerReinvestment() {
             ...allocations,
             {
               id: `${entryId}-alloc-${allocations.length}`,
-              ucc: '',
+              ucc: (entry.entry?.ucc_list?.length === 1) ? entry.entry.ucc_list[0] : '',
               amount: Math.max(0, remainingAmount),
               portfolio: ''
             }
