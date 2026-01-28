@@ -1136,7 +1136,7 @@ async def forgot_password(request: PasswordResetRequest, background_tasks: Backg
 
 @api_router.post("/auth/reset-password")
 async def reset_password(request: PasswordResetConfirm):
-    """Reset password and PIN using reset token"""
+    """Reset password and PIN using reset token for broker, sub-broker, or client"""
     # Verify token
     payload = verify_token(request.reset_token)
     
@@ -1144,6 +1144,7 @@ async def reset_password(request: PasswordResetConfirm):
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
     
     user_id = payload.get("user_id")
+    user_type = payload.get("user_type", "broker")  # Default to broker for backward compatibility
     
     # Check if token was already used
     reset_record = await db.password_resets.find_one({
@@ -1162,14 +1163,34 @@ async def reset_password(request: PasswordResetConfirm):
     if len(request.new_pin) != 4 or not request.new_pin.isdigit():
         raise HTTPException(status_code=400, detail="PIN must be exactly 4 digits")
     
-    # Update user password and PIN
-    await db.users.update_one(
-        {"id": user_id},
-        {"$set": {
-            "password_hash": get_password_hash(request.new_password),
-            "pin_hash": get_password_hash(request.new_pin)
-        }}
-    )
+    # Update password and PIN based on user type
+    password_hash = get_password_hash(request.new_password)
+    pin_hash = get_password_hash(request.new_pin)
+    
+    if user_type == "broker":
+        await db.users.update_one(
+            {"id": user_id},
+            {"$set": {
+                "password_hash": password_hash,
+                "pin_hash": pin_hash
+            }}
+        )
+    elif user_type == "sub_broker":
+        await db.sub_brokers.update_one(
+            {"id": user_id},
+            {"$set": {
+                "password_hash": password_hash,
+                "pin_hash": pin_hash
+            }}
+        )
+    elif user_type == "client":
+        await db.clients.update_one(
+            {"id": user_id},
+            {"$set": {
+                "password_hash": password_hash,
+                "pin_hash": pin_hash
+            }}
+        )
     
     # Mark token as used
     await db.password_resets.update_one(
