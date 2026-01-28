@@ -86,6 +86,7 @@ export default function SubBrokerReinvestment() {
   // Multi-retag modal state
   const [showMultiRetagModal, setShowMultiRetagModal] = useState(false);
   const [multiRetagData, setMultiRetagData] = useState({});
+  const [selectedTagType, setSelectedTagType] = useState(""); // principal, interest, both
 
   // Log user activity
   useEffect(() => {
