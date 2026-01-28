@@ -317,7 +317,7 @@ def get_email_template_base(content: str, footer_text: str = "") -> str:
                 {content}
                 <div class="footer">
                     {footer_text}
-                    <p style="margin-top: 12px;">© 2025 Kinntegraa L.L.C-FZ. All rights reserved.</p>
+                    <p style="margin-top: 12px;">© 2026 Kinntegraa L.L.C-FZ. All rights reserved.</p>
                     <p>Dubai, UAE</p>
                     <p style="color: #9ca3af; margin-top: 8px;">This is an automated message. Please do not reply to this email.</p>
                 </div>
@@ -525,7 +525,7 @@ def send_welcome_email_subbroker(
     Best regards,
     Kinntegraa Club Team
     
-    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    © 2026 Kinntegraa L.L.C-FZ, Dubai, UAE
     """
     
     return send_email(subbroker_email, subject, html_content, plain_content)
@@ -618,7 +618,7 @@ def send_bond_opportunity_email(
                 
                 <div class="footer">
                     <p>This opportunity is subject to availability. Please login to view complete details and invest.</p>
-                    <p>&copy; 2025 Kinntegraa. All rights reserved.</p>
+                    <p>&copy; 2026 Kinntegraa. All rights reserved.</p>
                 </div>
             </div>
         </div>
@@ -776,7 +776,7 @@ def send_real_estate_opportunity_email(
                 
                 <div class="footer">
                     <p>This opportunity is subject to availability. Login to view payment schedule and XIRR calculator.</p>
-                    <p>&copy; 2025 Kinntegraa. All rights reserved.</p>
+                    <p>&copy; 2026 Kinntegraa. All rights reserved.</p>
                 </div>
             </div>
         </div>
@@ -999,7 +999,7 @@ def send_reinvestment_approval_email(
                 </p>
                 
                 <div class="footer">
-                    <p>&copy; 2025 Kinntegraa. All rights reserved.</p>
+                    <p>&copy; 2026 Kinntegraa. All rights reserved.</p>
                     <p>License No: 1922240.01</p>
                 </div>
             </div>
@@ -1085,7 +1085,7 @@ def send_password_reset_link_email(
     Best regards,
     Kinntegraa Team
     
-    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    © 2026 Kinntegraa L.L.C-FZ, Dubai, UAE
     """
     
     return send_email(recipient_email, subject, html_content, plain_content)
@@ -1300,7 +1300,7 @@ def send_prepayment_notification_email(
     Best regards,
     Kinntegraa Team
     
-    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    © 2026 Kinntegraa L.L.C-FZ, Dubai, UAE
     """
     
     return send_email(client_email, subject, html_content, plain_content)
@@ -1434,7 +1434,7 @@ def send_holdings_report_email(
     Best regards,
     Kinntegraa Team
     
-    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    © 2026 Kinntegraa L.L.C-FZ, Dubai, UAE
     """
     
     return send_email(client_email, subject, html_content, plain_content, cc=cc_emails)
@@ -1540,7 +1540,7 @@ def send_client_approval_request_email(
     Best regards,
     Kinntegraa Team
     
-    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    © 2026 Kinntegraa L.L.C-FZ, Dubai, UAE
     """
     
     return send_email(client_email, subject, html_content, plain_content)
@@ -1639,7 +1639,7 @@ def send_reinvestment_client_approval_email(
     Best regards,
     Kinntegraa Team
     
-    © 2025 Kinntegraa L.L.C-FZ, Dubai, UAE
+    © 2026 Kinntegraa L.L.C-FZ, Dubai, UAE
     """
     
     return send_email(client_email, subject, html_content, plain_content)
