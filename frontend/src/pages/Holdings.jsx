@@ -1169,7 +1169,10 @@ export default function Holdings() {
       <div className="flex-1 flex overflow-hidden">
         {/* Client List Panel - Narrower */}
         <div className="w-60 bg-white border-r border-gray-200 flex flex-col">
-          .header { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #C9A227; }
+          <div className="p-3 border-b border-gray-200">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
           .header h1 { font-size: 14px; font-weight: 600; color: #5B373C; margin-bottom: 3px; }
           .header p { font-size: 10px; color: #6b7280; }
           .summary-box { display: flex; gap: 15px; margin-bottom: 12px; padding: 10px; background: linear-gradient(135deg, #F5F3EF 0%, #FBF7E9 100%); border-radius: 6px; border: 1px solid #E8D89F; }
