@@ -2,6 +2,53 @@
 
 ## Recent Changes (Jan 28, 2026)
 
+### CRITICAL FIX: Holdings Merge Logic (Jan 28, 2026) 🔴
+
+**Issue:** The system was incorrectly merging investments for the same bond regardless of investment date. This caused:
+1. Fali Unwalla - Different date investments showing same amounts (incorrect merge)
+2. Jairaj Nevrekar - Same-day investments being doubled (incorrect calculation)
+3. Expected and Actual XIRR showing incorrect values
+
+**Root Cause:** Backend and frontend were grouping trades by `bond_id` only, not by `bond_id + investment_date`.
+
+**Fix Applied:**
+1. **Backend (`/app/backend/server.py`)**: Changed grouping key from `bond_id` to `bond_id|investment_date`
+   - Trades with SAME bond + SAME date → Merged (correct behavior)
+   - Trades with SAME bond + DIFFERENT dates → Kept separate (correct behavior)
+2. **Frontend (`/app/frontend/src/pages/Holdings.jsx`)**: Updated `getConsolidatedHoldings()` to use composite key `${bondId}|${investmentDate}`
+
+**Behavior After Fix:**
+- Each unique combination of bond + investment date gets its own holding entry
+- XIRR calculations are now correct for each tranche
+- Cashflows are properly associated with their respective investment tranches
+
+---
+
+### Business Rules & Backend Fixes (Jan 28, 2026) ✅
+
+**1. Amount Rounding (Frontend)**
+- Changed from `Math.round` to `Math.floor` for rounding to nearest 100
+- Example: 456055 → 456000 (rounds DOWN, not to nearest)
+- Files: `ReinvestmentTagging.jsx`, `SubBrokerReinvestment.jsx`
+
+**2. Kinntegra API Trigger Fix (Backend)**
+- Fixed `call_kinntegra_mf_buy_scheduler()` to handle 'both' tag (was returning "skipped")
+- Added support for split allocations (`ucc_allocations` array)
+- Now correctly calculates amount for 'both' tag using `net_amount`
+- Files: `/app/backend/server.py` lines 3105-3330
+
+**3. Allow Editing Approved Tags (Backend)**
+- Removed block that prevented editing client-approved tags
+- Now allows editing until `repayment_processed` or `kinntegra_api_submitted` is true
+- When broker/sub-broker modifies approved tag → Sets `approval_status = 'pending_reapproval'`
+- Files: `/app/backend/server.py` lines 11626-11660
+
+**4. Email BCC (Backend)**
+- All outgoing emails now BCC to `donotreply@kinntegraa.club`
+- Files: `/app/backend/email_service.py` lines 102-108
+
+---
+
 ### UCC Split Allocation Feature (Jan 28, 2026) ✅
 
 **Request:** User wanted the ability to split a single reinvestment entry across multiple UCCs with different amounts, portfolios, and tags for each allocation.
