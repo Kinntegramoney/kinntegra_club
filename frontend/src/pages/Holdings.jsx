@@ -733,11 +733,11 @@ export default function Holdings() {
       }
       
       // Use individual_trades if available (backend returns merged holdings with individual trade info)
-      // This ensures we show separate tabs for each investment date
+      // Now that we group by bond+date, trades in individual_trades should all have same date
       if (holding.individual_trades && holding.individual_trades.length > 1) {
-        // Multiple trades were merged - add each individual trade
+        // Multiple trades were merged (same date) - add each individual trade
         holding.individual_trades.forEach(indTrade => {
-          consolidated[bondId].trades.push({
+          consolidated[key].trades.push({
             trade_id: indTrade.trade_id,
             units: indTrade.units,
             investment_date: indTrade.investment_date,
@@ -756,7 +756,7 @@ export default function Holdings() {
         });
       } else {
         // Single trade or no individual trades info - use the holding data
-        consolidated[bondId].trades.push({
+        consolidated[key].trades.push({
           trade_id: holding.trade_id,
           units: holding.units,
           investment_date: holding.investment_date,
