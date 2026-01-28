@@ -321,12 +321,21 @@ export default function ReinvestmentTagging() {
         splitAmount = entry.net_amount || 0;
       }
       
-      // Store all amounts for display
+      // Round to 2 decimal places to avoid floating point issues
+      splitAmount = Math.round(splitAmount * 100) / 100;
+      
+      // Store all amounts for display (also rounded)
       const amounts = {
-        principal: entry.principal_amount || 0,
-        interest: entry.interest_amount || 0,
-        both: entry.net_amount || 0
+        principal: Math.round((entry.principal_amount || 0) * 100) / 100,
+        interest: Math.round((entry.interest_amount || 0) * 100) / 100,
+        both: Math.round((entry.net_amount || 0) * 100) / 100
       };
+      
+      // Determine initial portfolio - auto-set to 'none' if amount < 1000
+      let initialPortfolio = existing.portfolio_category || entry.portfolio_category || '';
+      if (splitAmount < 1000) {
+        initialPortfolio = 'none';
+      }
       
       // Start with one allocation using existing values or defaults
       initialData[entry.id] = {
@@ -338,7 +347,7 @@ export default function ReinvestmentTagging() {
             id: `${entry.id}-alloc-0`,
             ucc: existing.target_ucc || entry.target_ucc || entry.ucc_list?.[0] || '',
             amount: splitAmount,
-            portfolio: existing.portfolio_category || entry.portfolio_category || ''
+            portfolio: initialPortfolio
           }
         ]
       };
