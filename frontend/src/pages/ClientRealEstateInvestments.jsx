@@ -42,8 +42,6 @@ export default function ClientRealEstateInvestments() {
     logUserActivity('real-estate-investments', { extra: { action: 'view' } });
     fetchInvestments();
   }, [navigate]);
-    fetchInvestments();
-  }, [navigate]);
 
   const fetchInvestments = async () => {
     try {
