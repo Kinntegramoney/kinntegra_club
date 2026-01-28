@@ -1248,16 +1248,14 @@ export default function SubBrokerReinvestment() {
                         </div>
                       ))}
                       
-                      {/* Add Allocation Button */}
-                      {data.allocations.length < (data.entry?.ucc_list?.length || 1) && (
-                        <button
-                          onClick={() => addUccAllocation(entryId)}
-                          className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-etihad-gold-400 hover:text-etihad-gold-600 transition-colors flex items-center justify-center gap-2 text-sm"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add UCC Allocation
-                        </button>
-                      )}
+                      {/* Add Allocation Button - Always show to allow splitting across multiple portfolios */}
+                      <button
+                        onClick={() => addUccAllocation(entryId)}
+                        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-etihad-gold-400 hover:text-etihad-gold-600 transition-colors flex items-center justify-center gap-2 text-sm"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Portfolio Allocation
+                      </button>
                     </div>
                   </div>
                 );
