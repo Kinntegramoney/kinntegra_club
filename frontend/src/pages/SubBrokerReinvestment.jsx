@@ -1066,100 +1066,155 @@ export default function SubBrokerReinvestment() {
           </div>
         )}
 
-        {/* Multi-Retag Modal */}
+        {/* Multi-Retag Modal with UCC Allocations */}
         <Dialog open={showMultiRetagModal} onOpenChange={setShowMultiRetagModal}>
-          <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Tag className="h-5 w-5" />
-                Configure Reinvestment Tags ({Object.keys(multiRetagData).length} entries)
+                Split & Tag Reinvestments ({Object.keys(multiRetagData).length} entries)
               </DialogTitle>
+              <p className="text-sm text-gray-500">Split each entry across multiple UCCs with different amounts, portfolios, and tags</p>
             </DialogHeader>
             
-            <div className="flex-1 overflow-auto py-4">
-              <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(Object.keys(multiRetagData).length, 3)}, 1fr)` }}>
-                {Object.entries(multiRetagData).map(([entryId, data]) => (
-                  <div key={entryId} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="mb-3 pb-2 border-b">
-                      <div className="font-medium text-sm truncate" title={data.entry?.bond_name}>
-                        {data.entry?.bond_name || 'Unknown Bond'}
+            <div className="flex-1 overflow-auto py-4 space-y-6">
+              {Object.entries(multiRetagData).map(([entryId, data]) => {
+                const allocTotal = getAllocationTotal(entryId);
+                const isBalanced = Math.abs(allocTotal - data.totalAmount) < 0.01;
+                const remaining = data.totalAmount - allocTotal;
+                
+                return (
+                  <div key={entryId} className="border rounded-lg bg-gray-50 overflow-hidden">
+                    {/* Entry Header */}
+                    <div className="bg-white px-4 py-3 border-b flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-sm">{data.entry?.bond_name || 'Unknown Bond'}</div>
+                        <div className="text-xs text-gray-500">
+                          {data.entry?.client_name} • {format(new Date(data.entry?.expected_date || new Date()), "dd MMM yyyy")}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 truncate">
-                        {data.entry?.client_name} • {format(new Date(data.entry?.expected_date || new Date()), "dd MMM yyyy")}
-                      </div>
-                    </div>
-                    
-                    <div className="mb-3">
-                      <Label className="text-xs text-gray-600 mb-1 block">UCC</Label>
-                      <Select 
-                        value={data.ucc} 
-                        onValueChange={(v) => updateMultiRetagEntry(entryId, 'ucc', v)}
-                      >
-                        <SelectTrigger className="w-full h-8 text-xs">
-                          <SelectValue placeholder="Select UCC" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(data.entry?.ucc_list || []).map(ucc => (
-                            <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="mb-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-white rounded p-2 border">
-                        <div className="text-[10px] text-gray-500">Principal</div>
-                        <div className="text-xs font-medium">{formatCurrency(data.amounts?.principal || 0)}</div>
-                      </div>
-                      <div className="bg-white rounded p-2 border">
-                        <div className="text-[10px] text-gray-500">Interest</div>
-                        <div className="text-xs font-medium">{formatCurrency(data.amounts?.interest || 0)}</div>
-                      </div>
-                      <div className="bg-white rounded p-2 border">
-                        <div className="text-[10px] text-gray-500">Total</div>
-                        <div className="text-xs font-medium">{formatCurrency(data.amounts?.both || data.entry?.net_amount || 0)}</div>
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500">Total Amount</div>
+                        <div className="font-semibold text-etihad-gold-700">{formatCurrency(data.totalAmount)}</div>
                       </div>
                     </div>
                     
-                    <div className="mb-3">
-                      <Label className="text-xs text-gray-600 mb-2 block">Tag</Label>
-                      <RadioGroup 
-                        value={data.tag} 
-                        onValueChange={(v) => updateMultiRetagEntry(entryId, 'tag', v)}
-                        className="flex flex-wrap gap-2"
-                      >
-                        {TAG_OPTIONS.map(opt => (
-                          <div key={opt.value} className="flex items-center space-x-1">
-                            <RadioGroupItem value={opt.value} id={`${entryId}-${opt.value}`} />
-                            <Label htmlFor={`${entryId}-${opt.value}`} className="text-xs cursor-pointer">
-                              {opt.label}
-                            </Label>
+                    {/* Allocation Status Bar */}
+                    <div className={`px-4 py-2 text-xs flex items-center justify-between ${isBalanced ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                      <span>
+                        Allocated: {formatCurrency(allocTotal)} / {formatCurrency(data.totalAmount)}
+                        {!isBalanced && ` (${remaining > 0 ? '+' : ''}${formatCurrency(remaining)} ${remaining > 0 ? 'remaining' : 'over'})`}
+                      </span>
+                      {isBalanced && <CheckCircle className="h-4 w-4" />}
+                    </div>
+                    
+                    {/* UCC Allocations */}
+                    <div className="p-4 space-y-3">
+                      {data.allocations.map((alloc, allocIndex) => (
+                        <div key={alloc.id} className="bg-white rounded-lg border p-3">
+                          <div className="flex items-start gap-3">
+                            {/* Allocation Number */}
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-etihad-gold-100 text-etihad-gold-700 flex items-center justify-center text-xs font-medium">
+                              {allocIndex + 1}
+                            </div>
+                            
+                            {/* Allocation Fields */}
+                            <div className="flex-1 grid grid-cols-4 gap-3">
+                              {/* UCC */}
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block">UCC</Label>
+                                <Select 
+                                  value={alloc.ucc} 
+                                  onValueChange={(v) => updateAllocation(entryId, allocIndex, 'ucc', v)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Select UCC" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {(data.entry?.ucc_list || []).map(ucc => (
+                                      <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              {/* Amount */}
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Amount (₹)</Label>
+                                <Input
+                                  type="number"
+                                  value={alloc.amount}
+                                  onChange={(e) => updateAllocation(entryId, allocIndex, 'amount', e.target.value)}
+                                  className="h-8 text-xs"
+                                  placeholder="Enter amount"
+                                />
+                              </div>
+                              
+                              {/* Portfolio */}
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Portfolio</Label>
+                                <Select 
+                                  value={alloc.portfolio} 
+                                  onValueChange={(v) => updateAllocation(entryId, allocIndex, 'portfolio', v)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {PORTFOLIO_OPTIONS.map(opt => (
+                                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              {/* Tag */}
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Tag</Label>
+                                <Select 
+                                  value={alloc.tag} 
+                                  onValueChange={(v) => updateAllocation(entryId, allocIndex, 'tag', v)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {TAG_OPTIONS.map(opt => (
+                                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            
+                            {/* Remove Button */}
+                            {data.allocations.length > 1 && (
+                              <button
+                                onClick={() => removeUccAllocation(entryId, allocIndex)}
+                                className="flex-shrink-0 p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                                title="Remove allocation"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
-                        ))}
-                      </RadioGroup>
-                    </div>
-                    
-                    <div>
-                      <Label className="text-xs text-gray-600 mb-2 block">Portfolio</Label>
-                      <div className="grid grid-cols-2 gap-1">
-                        {PORTFOLIO_OPTIONS.map(opt => (
-                          <button
-                            key={opt.value}
-                            onClick={() => updateMultiRetagEntry(entryId, 'portfolio', opt.value)}
-                            className={`text-xs px-2 py-1.5 rounded border transition-colors ${
-                              data.portfolio === opt.value 
-                                ? 'bg-etihad-gold-600 text-white border-etihad-gold-600' 
-                                : 'bg-white hover:bg-gray-100 border-gray-200'
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
+                      
+                      {/* Add Allocation Button */}
+                      {data.allocations.length < (data.entry?.ucc_list?.length || 1) && (
+                        <button
+                          onClick={() => addUccAllocation(entryId)}
+                          className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-etihad-gold-400 hover:text-etihad-gold-600 transition-colors flex items-center justify-center gap-2 text-sm"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add UCC Allocation
+                        </button>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
             
             <DialogFooter className="border-t pt-4">
