@@ -8576,7 +8576,7 @@ async def resend_client_credentials(client_id: str, background_tasks: Background
 
 @api_router.post("/clients/{client_id}/reset-password")
 async def reset_client_password(client_id: str, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
-    """Reset client password (brokers and sub-brokers) - generates a new password"""
+    """Reset client password (brokers and sub-brokers) - sends new password via email only"""
     if current_user['role'] not in ['broker', 'sub_broker']:
         raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can reset passwords")
     
@@ -8590,6 +8590,10 @@ async def reset_client_password(client_id: str, background_tasks: BackgroundTask
     if not client:
         raise HTTPException(status_code=404, detail="Client not found or not authorized")
     
+    # Check if client has email
+    if not client.get('email'):
+        raise HTTPException(status_code=400, detail="Client does not have an email address. Please update client profile first.")
+    
     # Generate new password
     new_password = client['pan_number'][-4:] + str(uuid.uuid4().hex[:4])
     
@@ -8599,7 +8603,16 @@ async def reset_client_password(client_id: str, background_tasks: BackgroundTask
         {"$set": {"password_hash": get_password_hash(new_password)}}
     )
     
-    # Try to send email
+    # Update timestamp
+    await db.clients.update_one(
+        {"id": client_id},
+        {"$set": {
+            "password_reset_at": datetime.now(timezone.utc).isoformat(),
+            "password_reset_by": current_user['id']
+        }}
+    )
+    
+    # Send email with new password
     try:
         background_tasks.add_task(
             send_password_reset_email,
@@ -8607,16 +8620,14 @@ async def reset_client_password(client_id: str, background_tasks: BackgroundTask
             name=client['name'],
             new_password=new_password
         )
-        email_sent = True
+        return {
+            "message": f"New password has been sent to {client['email']}",
+            "email_sent": True,
+            "client_email": client['email']
+        }
     except Exception as e:
         logger.error(f"Failed to send password reset email: {e}")
-        email_sent = False
-    
-    return {
-        "message": "Password reset successfully",
-        "email_sent": email_sent,
-        "new_password": new_password
-    }
+        raise HTTPException(status_code=500, detail="Failed to send password reset email. Please try again.")
 
 
 @api_router.post("/clients/{client_id}/deactivate")
