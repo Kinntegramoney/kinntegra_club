@@ -42,6 +42,11 @@ export default function SubBrokerDashboard() {
   const [summary, setSummary] = useState(null);
   const [forexRate, setForexRate] = useState(22.5);
 
+  // Log user activity
+  useEffect(() => {
+    logUserActivity('dashboard');
+  }, []);
+
   useEffect(() => {
     document.title = "Kinntegraa | Sub-Broker Dashboard";
   }, []);
