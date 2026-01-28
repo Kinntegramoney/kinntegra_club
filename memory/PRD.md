@@ -2,6 +2,27 @@
 
 ## Recent Changes (Jan 28, 2026)
 
+### Multi-Select Retag Modal (Jan 28, 2026) ✅
+
+**Request:** User wanted a multi-select retag option where selected entries are shown side by side with individual editable fields (UCC, Portfolio, Tag) for each entry.
+
+**Implementation:**
+1. Added "Edit Individually" button to the sticky mass tagging bar
+2. Created a new multi-retag modal (`Dialog`) that displays selected entries in side-by-side columns (max 3 per row)
+3. Each entry column contains:
+   - Bond name and date header
+   - UCC dropdown for that specific entry
+   - Amount breakdown grid (Principal, Interest, Total)
+   - Tag selection via RadioGroup (Principal, Interest, Both, Custom)
+   - Portfolio button grid (Wealth, Tax, Short Term, Commodities, Bonds, Real Estate, None)
+4. "Apply Changes" button saves individual settings per entry to `localChanges` state
+
+**Files Modified:**
+- `/app/frontend/src/pages/ReinvestmentTagging.jsx` - Added imports (Dialog, RadioGroup, Label), state (`showMultiRetagModal`, `multiRetagData`), helper functions (`openMultiRetagModal`, `updateMultiRetagEntry`, `applyMultiRetagChanges`), and modal JSX
+- `/app/frontend/src/pages/SubBrokerReinvestment.jsx` - Same changes applied
+
+---
+
 ### Mass Retagging Bar Position Fix (Jan 28, 2026) ✅
 
 **Issue:** The mass tagging bar in reinvestment pages was positioned within the content flow, causing it to float incorrectly when scrolling down long client lists.
