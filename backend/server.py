@@ -20856,9 +20856,12 @@ async def log_user_activity(request: LogUserActivityRequest, current_user: dict 
         if prop:
             activity_log['property_name'] = prop.get('building_name', 'Unknown Property')
     
-    # For sub-brokers, also get their broker_id
+    # For sub-brokers, also get their broker_id from partners collection
     if current_user['role'] == 'sub_broker':
-        sub_broker = await db.sub_brokers.find_one({"id": current_user['id']}, {"_id": 0})
+        # Try partners collection first (primary), then sub_brokers for backward compatibility
+        sub_broker = await db.partners.find_one({"id": current_user['id']}, {"_id": 0})
+        if not sub_broker:
+            sub_broker = await db.sub_brokers.find_one({"id": current_user['id']}, {"_id": 0})
         if sub_broker:
             activity_log['broker_id'] = sub_broker.get('created_by')
     elif current_user['role'] == 'client':
