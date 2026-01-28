@@ -363,9 +363,12 @@ def get_email_template_base(content: str, footer_text: str = "") -> str:
                 {content}
                 <div class="footer">
                     {footer_text}
-                    <p style="margin-top: 12px;">© 2026 Kinntegraa L.L.C-FZ. All rights reserved.</p>
-                    <p>Dubai, UAE</p>
-                    <p style="color: #9ca3af; margin-top: 8px;">This is an automated message. Please do not reply to this email.</p>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+                        <p style="font-weight: 600; color: #374151; margin-bottom: 4px;">Kinntegraa L.L.C-FZ</p>
+                        <p style="margin: 2px 0;">License No: 2418465.01</p>
+                        <p style="margin: 2px 0;">Meydan Grandstand, 6th floor, Meydan Road,<br />Nad Al Sheba, Dubai, U.A.E.</p>
+                    </div>
+                    <p style="color: #9ca3af; margin-top: 12px; font-size: 11px;">This is an automated message. Please do not reply to this email.</p>
                 </div>
             </div>
         </div>
