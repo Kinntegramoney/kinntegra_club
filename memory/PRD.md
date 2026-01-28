@@ -2,6 +2,54 @@
 
 ## Recent Changes (Jan 28, 2026)
 
+### Holdings Sorting by Investment Value (Jan 28, 2026) ✅
+
+**Issue:** Client names in Holdings page were not sorted by investment value.
+
+**User Requirement:** Names should be arranged by highest investment value first, then alphabetically for equal values.
+
+**Fix Applied:**
+- **`/app/backend/server.py`**: Updated `get_holdings_clients()` endpoint
+  - Added sorting: `client_summaries.sort(key=lambda x: (-x['total_investment'], x['name'].lower()))`
+  - Clients now sorted by investment (descending), then alphabetically
+
+---
+
+### Forgot Password Fix (Jan 28, 2026) ✅
+
+**Issue:** Forgot password was not working for brokers, sub-brokers, or clients.
+
+**Root Cause:** 
+1. Server was calling wrong email function (`send_password_reset_email` expects password/PIN, but server passed reset token)
+2. Server only checked `users` table (brokers), ignoring `sub_brokers` and `clients` tables
+
+**Fix Applied:**
+- **`/app/backend/server.py`**: Updated `forgot_password()` endpoint
+  - Now checks all 3 tables: `users` (brokers), `sub_brokers`, `clients`
+  - Uses correct email function `send_password_reset_link_email` for reset link
+  - Stores `user_type` in JWT token for proper password update
+- **`/app/backend/server.py`**: Updated `reset_password()` endpoint
+  - Reads `user_type` from token to update correct collection
+
+---
+
+### User Activity Logs Access Control (Jan 28, 2026) ✅
+
+**Issue:** User activity was not visible to broker; access control needed refinement.
+
+**User Requirement:**
+- Broker should see all clients' and sub-brokers' activities (not their own)
+- Sub-broker should see only their linked clients' activities (not self or broker)
+- Clients should NOT have access to user activity
+
+**Fix Applied:**
+- **`/app/backend/server.py`**: Updated `get_user_activity_logs()` endpoint
+  - Broker: `query['broker_id'] = current_user['id']` AND `query['user_id'] = {'$ne': current_user['id']}`
+  - Sub-broker: `query['linked_subbroker_id'] = current_user['id']` AND `query['user_role'] = 'client'`
+  - Clients: Return 403 Forbidden
+
+---
+
 ### Holdings PDF Redesign (Jan 28, 2026) ✅
 
 **Issue:** The Holdings "View Details" PDF export was using a dashboard-style design with colored cards, which didn't match the clean table-based design of the Secondary Calculator PDF.
