@@ -455,7 +455,9 @@ export default function SubBrokerReinvestment() {
       const currentAmount = newAllocations[allocIndex].amount;
       
       if (currentAmount !== '' && currentAmount !== 0) {
-        const roundedAmount = roundToHundred(currentAmount);
+        // Round to 2 decimal places first to fix floating point issues
+        const cleanAmount = Math.round(currentAmount * 100) / 100;
+        const roundedAmount = roundToHundred(cleanAmount);
         let newPortfolio = newAllocations[allocIndex].portfolio;
         
         if (roundedAmount < 1000) {
