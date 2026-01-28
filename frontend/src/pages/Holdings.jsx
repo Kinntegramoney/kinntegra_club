@@ -1169,7 +1169,7 @@ export default function Holdings() {
       <div className="flex-1 flex overflow-hidden">
         {/* Client List */}
         <div className="w-60 bg-white border-r border-gray-200 flex flex-col">
-          * { margin: 0; padding: 0; box-sizing: border-box; }
+          <div className="p-3 border-b border-gray-200">
           body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 15px 20px; color: #374151; background: #fff; font-size: 10px; }
           .header { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #C9A227; }
           .header h1 { font-size: 14px; font-weight: 600; color: #5B373C; margin-bottom: 3px; }
