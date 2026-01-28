@@ -362,10 +362,13 @@ export default function ReinvestmentTagging() {
       const entry = prev[entryId];
       const allocations = entry.allocations;
       const usedAmount = allocations.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
-      const remainingAmount = entry.totalAmount - usedAmount;
+      const remainingAmount = Math.round((entry.totalAmount - usedAmount) * 100) / 100;
       
       // Auto-select UCC if client has only one
       const defaultUcc = (entry.entry?.ucc_list?.length === 1) ? entry.entry.ucc_list[0] : '';
+      
+      // Auto-set portfolio to 'none' if remaining amount < 1000
+      const defaultPortfolio = remainingAmount < 1000 ? 'none' : '';
       
       return {
         ...prev,
@@ -377,7 +380,7 @@ export default function ReinvestmentTagging() {
               id: `${entryId}-alloc-${allocations.length}`,
               ucc: defaultUcc,
               amount: Math.max(0, remainingAmount),
-              portfolio: ''
+              portfolio: defaultPortfolio
             }
           ]
         }
