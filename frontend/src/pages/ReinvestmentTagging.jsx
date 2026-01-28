@@ -1191,22 +1191,28 @@ export default function ReinvestmentTagging() {
                             
                             {/* Allocation Fields - 3 columns: UCC, Amount, Portfolio */}
                             <div className="flex-1 grid grid-cols-3 gap-3">
-                              {/* UCC */}
+                              {/* UCC - Show as text if only one UCC, otherwise dropdown */}
                               <div>
                                 <Label className="text-[10px] text-gray-500 mb-1 block">UCC</Label>
-                                <Select 
-                                  value={alloc.ucc} 
-                                  onValueChange={(v) => updateAllocation(entryId, allocIndex, 'ucc', v)}
-                                >
-                                  <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Select UCC" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {(data.entry?.ucc_list || []).map(ucc => (
-                                      <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                {(data.entry?.ucc_list?.length === 1) ? (
+                                  <div className="h-8 px-3 flex items-center text-xs bg-gray-100 border rounded-md font-medium">
+                                    {data.entry.ucc_list[0]}
+                                  </div>
+                                ) : (
+                                  <Select 
+                                    value={alloc.ucc} 
+                                    onValueChange={(v) => updateAllocation(entryId, allocIndex, 'ucc', v)}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue placeholder="Select UCC" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {(data.entry?.ucc_list || []).map(ucc => (
+                                        <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
                               </div>
                               
                               {/* Amount */}
