@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { logUserActivity } from "@/utils/activityLogger";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -28,6 +29,11 @@ export default function ClientHoldings() {
   const [showCashflowModal, setShowCashflowModal] = useState(false);
   const [activeTab, setActiveTab] = useState("summary");
   const [mainTab, setMainTab] = useState("bonds");
+
+  // Log user activity
+  useEffect(() => {
+    logUserActivity('holdings');
+  }, []);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
