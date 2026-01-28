@@ -458,9 +458,9 @@ export default function ReinvestmentTagging() {
       const currentAmount = newAllocations[allocIndex].amount;
       
       if (currentAmount !== '' && currentAmount !== 0) {
-        // Round to 2 decimal places first to fix floating point issues
-        const cleanAmount = Math.round(currentAmount * 100) / 100;
-        const roundedAmount = roundToHundred(cleanAmount);
+        // Floor first to avoid decimals, then round to nearest 100
+        const flooredAmount = Math.floor(currentAmount);
+        const roundedAmount = roundToHundred(flooredAmount);
         let newPortfolio = newAllocations[allocIndex].portfolio;
         
         // Auto-set to "none" if amount < 1000
