@@ -31,14 +31,14 @@ const PORTFOLIO_OPTIONS = [
   { value: 'short_term', label: 'Short Term' },
   { value: 'commodities', label: 'Commodities' },
   { value: 'bonds', label: 'Bonds' },
-  { value: 'real_estate', label: 'Real Estate' }
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'none', label: 'None' }
 ];
 
 const TAG_OPTIONS = [
   { value: 'principal', label: 'Principal' },
   { value: 'interest', label: 'Interest' },
   { value: 'both', label: 'Both' },
-  { value: 'none', label: 'None' },
   { value: 'custom', label: 'Custom' }
 ];
 
