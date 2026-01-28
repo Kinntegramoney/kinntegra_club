@@ -542,7 +542,7 @@ export default function ReinvestmentTagging() {
   };
 
   const saveClientTags = async (clientGroup, isPast) => {
-    // Validate: all 3 fields must be filled for entries with changes
+    // Validate: all entries with changes must have required fields
     const entriesToSave = clientGroup.entries.filter(entry => localChanges[entry.id]);
     
     if (entriesToSave.length === 0) {
@@ -550,15 +550,34 @@ export default function ReinvestmentTagging() {
       return;
     }
     
+    // Validate each entry
     for (const entry of entriesToSave) {
       const changes = localChanges[entry.id];
-      const ucc = changes.target_ucc || entry.target_ucc;
-      const portfolio = changes.portfolio_category || entry.portfolio_category;
-      const tag = changes.reinvestment_tag || entry.reinvestment_tag;
       
-      if (!ucc || !portfolio || !tag || tag === 'not_tagged') {
-        toast.error("Please fill UCC, Portfolio, and Tag for all modified entries");
-        return;
+      // Check if this is a split allocation entry
+      if (changes.ucc_allocations && changes.ucc_allocations.length > 0) {
+        // Validate split allocations
+        for (const alloc of changes.ucc_allocations) {
+          if (!alloc.ucc || !alloc.portfolio || !alloc.amount || alloc.amount <= 0) {
+            toast.error(`Please fill all fields for split allocations in "${entry.bond_name}"`);
+            return;
+          }
+        }
+        // Ensure tag is set for split entries
+        if (!changes.reinvestment_tag || changes.reinvestment_tag === 'not_tagged') {
+          toast.error(`Please select a tag type for "${entry.bond_name}"`);
+          return;
+        }
+      } else {
+        // Regular single allocation validation
+        const ucc = changes.target_ucc || entry.target_ucc;
+        const portfolio = changes.portfolio_category || entry.portfolio_category;
+        const tag = changes.reinvestment_tag || entry.reinvestment_tag;
+        
+        if (!ucc || !portfolio || !tag || tag === 'not_tagged') {
+          toast.error("Please fill UCC, Portfolio, and Tag for all modified entries");
+          return;
+        }
       }
     }
     
@@ -568,14 +587,28 @@ export default function ReinvestmentTagging() {
       
       for (const entry of entriesToSave) {
         const changes = localChanges[entry.id];
+        
+        // Prepare request body - include ucc_allocations if present
+        const requestBody = {
+          reinvestment_tag: changes.reinvestment_tag || entry.reinvestment_tag,
+          portfolio_category: changes.portfolio_category || entry.portfolio_category,
+          target_ucc: changes.target_ucc || entry.target_ucc,
+          custom_amount: changes.custom_amount
+        };
+        
+        // Add split allocations if present
+        if (changes.ucc_allocations && changes.ucc_allocations.length > 0) {
+          requestBody.ucc_allocations = changes.ucc_allocations.map(alloc => ({
+            ucc: alloc.ucc,
+            amount: parseFloat(alloc.amount) || 0,
+            portfolio: alloc.portfolio,
+            tag: alloc.tag || changes.reinvestment_tag
+          }));
+        }
+        
         await axios.put(
           `${API}/reinvestment/tag/${entry.id}`,
-          {
-            reinvestment_tag: changes.reinvestment_tag || entry.reinvestment_tag,
-            portfolio_category: changes.portfolio_category || entry.portfolio_category,
-            target_ucc: changes.target_ucc || entry.target_ucc,
-            custom_amount: changes.custom_amount
-          },
+          requestBody,
           { headers: { Authorization: `Bearer ${token}` } }
         );
       }
