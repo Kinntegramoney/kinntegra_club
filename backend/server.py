@@ -8514,7 +8514,7 @@ async def sync_client_activation(client_id: str, current_user: dict = Depends(ge
 
 @api_router.post("/clients/{client_id}/resend-credentials")
 async def resend_client_credentials(client_id: str, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
-    """Resend login credentials to client (brokers and sub-brokers)"""
+    """Resend login credentials to client via email (brokers and sub-brokers)"""
     if current_user['role'] not in ['broker', 'sub_broker']:
         raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can resend credentials")
     
@@ -8527,6 +8527,10 @@ async def resend_client_credentials(client_id: str, background_tasks: Background
     
     if not client:
         raise HTTPException(status_code=404, detail="Client not found or not authorized")
+    
+    # Check if client has email
+    if not client.get('email'):
+        raise HTTPException(status_code=400, detail="Client does not have an email address. Please update client profile first.")
     
     # Generate new password and PIN
     new_password = client['pan_number'][-4:] + str(uuid.uuid4().hex[:4])
@@ -8541,44 +8545,33 @@ async def resend_client_credentials(client_id: str, background_tasks: Background
         }}
     )
     
-    # Update stored credentials in client record for future resends
+    # Update stored credentials in client record (for admin reference only, not shown to broker)
     await db.clients.update_one(
         {"id": client_id},
         {"$set": {
-            "stored_password": new_password,
-            "stored_pin": new_pin,
             "credentials_updated_at": datetime.now(timezone.utc).isoformat(),
             "credentials_updated_by": current_user['id']
         }}
     )
     
-    # Try to send email (may fail if SMTP not configured)
-    email_sent = False
-    if client.get('email'):
-        try:
-            background_tasks.add_task(
-                send_credentials_email,
-                email=client['email'],
-                name=client['name'],
-                pan=client['pan_number'],
-                password=new_password,
-                pin=new_pin
-            )
-            email_sent = True
-        except Exception as e:
-            logger.error(f"Failed to send credentials email: {e}")
-    
-    return {
-        "message": "Credentials reset successfully",
-        "email_sent": email_sent,
-        "credentials": {
-            "pan": client['pan_number'],
-            "password": new_password,
-            "pin": new_pin,
-            "email": client.get('email', ''),
-            "name": client['name']
+    # Send email to client with credentials
+    try:
+        background_tasks.add_task(
+            send_credentials_email,
+            email=client['email'],
+            name=client['name'],
+            pan=client['pan_number'],
+            password=new_password,
+            pin=new_pin
+        )
+        return {
+            "message": f"Credentials have been sent to {client['email']}",
+            "email_sent": True,
+            "client_email": client['email']
         }
-    }
+    except Exception as e:
+        logger.error(f"Failed to send credentials email: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send credentials email. Please try again.")
 
 
 @api_router.post("/clients/{client_id}/reset-password")
