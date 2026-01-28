@@ -5,6 +5,7 @@ import ClientSidebar from "@/components/ClientSidebar";
 import { User, Building2, MapPin, CreditCard, UserCheck, FileText, Check } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { logUserActivity } from "@/utils/activityLogger";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -17,6 +18,7 @@ export default function ClientProfile() {
 
   useEffect(() => {
     document.title = "Kinntegraa | My Profile";
+    logUserActivity('profile', { extra: { action: 'view' } });
   }, []);
 
   useEffect(() => {
