@@ -266,6 +266,74 @@ export default function SubBrokerReinvestment() {
     setMassTag("");
   };
 
+  // Get selected entries data for multi-retag modal
+  const getSelectedEntriesData = () => {
+    const selectedIds = Object.keys(selectedEntries).filter(id => selectedEntries[id]);
+    const allEntries = [...untaggedPast, ...untaggedUpcoming].flatMap(g => g.entries);
+    return allEntries.filter(e => selectedIds.includes(e.id));
+  };
+
+  // Open multi-retag modal
+  const openMultiRetagModal = () => {
+    const entries = getSelectedEntriesData();
+    if (entries.length === 0) {
+      toast.error("Please select entries first");
+      return;
+    }
+    
+    const initialData = {};
+    entries.forEach(entry => {
+      const existing = localChanges[entry.id] || {};
+      initialData[entry.id] = {
+        entry: entry,
+        ucc: existing.target_ucc || entry.target_ucc || entry.ucc_list?.[0] || '',
+        portfolio: existing.portfolio_category || entry.portfolio_category || '',
+        tag: existing.reinvestment_tag || entry.reinvestment_tag || '',
+        amounts: {
+          principal: entry.principal_amount || 0,
+          interest: entry.interest_amount || 0,
+          both: entry.net_amount || 0
+        }
+      };
+    });
+    setMultiRetagData(initialData);
+    setShowMultiRetagModal(true);
+  };
+
+  const updateMultiRetagEntry = (entryId, field, value) => {
+    setMultiRetagData(prev => ({
+      ...prev,
+      [entryId]: { ...prev[entryId], [field]: value }
+    }));
+  };
+
+  const applyMultiRetagChanges = () => {
+    const updates = {};
+    Object.entries(multiRetagData).forEach(([entryId, data]) => {
+      if (data.ucc && data.portfolio && data.tag) {
+        updates[entryId] = {
+          target_ucc: data.ucc,
+          portfolio_category: data.portfolio,
+          reinvestment_tag: data.tag
+        };
+      }
+    });
+    
+    if (Object.keys(updates).length === 0) {
+      toast.error("Please fill UCC, Portfolio, and Tag for at least one entry");
+      return;
+    }
+    
+    setLocalChanges(prev => ({ ...prev, ...updates }));
+    setShowMultiRetagModal(false);
+    toast.success(`Applied changes to ${Object.keys(updates).length} entries`);
+  };
+
+  const formatCurrency = (amount) => {
+    if (!amount && amount !== 0) return '₹0';
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  };
+
   const saveClientTags = async (clientGroup, isPast) => {
     // Validate: all 3 fields must be filled for entries with changes
     const entriesToSave = clientGroup.entries.filter(entry => localChanges[entry.id]);
