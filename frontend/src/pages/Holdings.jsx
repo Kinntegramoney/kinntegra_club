@@ -1190,10 +1190,10 @@ export default function Holdings() {
                 <div
                   key={client.id}
                   onClick={() => handleClientSelect(client)}
-                  className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                    selectedClient?.id === client.id ? 'bg-blue-50 border-blue-200' : ''
+                  className={`px-3 py-2.5 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                    selectedClient?.id === client.id ? 'bg-etihad-gold-50 border-l-4 border-l-amber-600' : ''
                   }`}
-          .summary-item.green span { color: #059669; }
+                >
           .summary-item.purple span { color: #7c3aed; }
           .two-col { display: flex; gap: 12px; }
           .col { flex: 1; min-width: 0; }
