@@ -408,7 +408,6 @@ export default function ReinvestmentTagging() {
       data.allocations.forEach((alloc, idx) => {
         if (!alloc.ucc) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: UCC is required`);
         if (!alloc.portfolio) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Portfolio is required`);
-        if (!alloc.tag) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Tag is required`);
         if (!alloc.amount || alloc.amount <= 0) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Amount must be greater than 0`);
       });
     });
@@ -423,10 +422,8 @@ export default function ReinvestmentTagging() {
       return;
     }
     
-    // For now, save the primary allocation (first one) to localChanges
-    // Backend will need to handle multiple allocations when saving
+    // Save allocations with the selected tag type
     const updates = {};
-    const splitData = {}; // Store full split info for backend
     
     Object.entries(multiRetagData).forEach(([entryId, data]) => {
       // Primary allocation goes to localChanges for display
@@ -434,13 +431,13 @@ export default function ReinvestmentTagging() {
       updates[entryId] = {
         target_ucc: primaryAlloc.ucc,
         portfolio_category: primaryAlloc.portfolio,
-        reinvestment_tag: primaryAlloc.tag,
+        reinvestment_tag: selectedTagType, // Use the tag selected BEFORE opening modal
         // Store all allocations for backend processing
         ucc_allocations: data.allocations.map(a => ({
           ucc: a.ucc,
           amount: a.amount,
           portfolio: a.portfolio,
-          tag: a.tag
+          tag: selectedTagType // Same tag for all allocations
         }))
       };
     });
