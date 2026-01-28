@@ -368,9 +368,16 @@ def send_welcome_email_client(
     password: str,
     pin: str,
     broker_name: str,
-    login_url: str = "https://kinntegraa.club/login"
+    login_url: str = "https://kinntegraa.club/login",
+    subbroker_name: str = None
 ) -> bool:
-    """Send welcome email to a new client with login credentials"""
+    """Send welcome email to a new client with login credentials.
+    If subbroker_name is provided, show sub-broker as the representative."""
+    
+    # Use sub-broker name if available, otherwise use broker name
+    representative_name = subbroker_name if subbroker_name else broker_name
+    contact_name = subbroker_name if subbroker_name else broker_name
+    contact_role = "sub-broker" if subbroker_name else "broker"
     
     subject = "Welcome to Kinntegraa - Your Investment Portal Access"
     
@@ -383,7 +390,7 @@ def send_welcome_email_client(
                 <div class="content">
                     <p class="greeting">Dear <strong>{client_name}</strong>,</p>
                     
-                    <p>Welcome to Kinntegraa! Your investment portal account has been created by the representative of Kinntegraa - <strong>{broker_name}</strong>. You can now access the platform to view opportunities and manage your investments.</p>
+                    <p>Welcome to Kinntegraa! Your investment portal account has been created by the representative of Kinntegraa - <strong>{representative_name}</strong>. You can now access the platform to view opportunities and manage your investments.</p>
                     
                     <div class="info-box" style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 16px; margin: 20px 0;">
                         <strong>🌐 Login Website:</strong><br>
@@ -417,7 +424,7 @@ def send_welcome_email_client(
                 </div>
     """
     
-    footer = f"<p>If you have any questions, please contact your broker <strong>{broker_name}</strong>.</p>"
+    footer = f"<p>If you have any questions, please contact your {contact_role} <strong>{contact_name}</strong>.</p>"
     
     html_content = get_email_template_base(content, footer)
     
@@ -426,7 +433,7 @@ def send_welcome_email_client(
     
     Dear {client_name},
     
-    Your account has been created by the representative of Kinntegraa - {broker_name}.
+    Your account has been created by the representative of Kinntegraa - {representative_name}.
     
     ==========================================
     LOGIN WEBSITE: {login_url}
@@ -438,6 +445,8 @@ def send_welcome_email_client(
     - PIN: {pin}
     
     Please keep your credentials safe and change your password after first login.
+    
+    If you have any questions, please contact your {contact_role} {contact_name}.
     
     Best regards,
     Kinntegraa Team
