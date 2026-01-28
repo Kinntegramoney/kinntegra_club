@@ -7,7 +7,7 @@ import { usePermissions } from "@/contexts/PermissionsContext";
 import { 
   Plus, Search, Users, RefreshCw, Upload, MoreVertical, 
   Mail, Phone, CheckCircle, Clock, XCircle, Eye, Download,
-  FileSpreadsheet, AlertTriangle
+  FileSpreadsheet, AlertTriangle, KeyRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
