@@ -2102,6 +2102,172 @@ export default function RealEstateDetails() {
         </div>
       )}
 
+      {/* Payment Schedule View Details Modal */}
+      {showPaymentScheduleModal && opp.payment_schedule && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-teal-50 to-blue-50">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-teal-600" />
+                  Payment Schedule
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">{opp.building_name} - Unit {opp.unit_no}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Currency Selector */}
+                <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border">
+                  <span className="text-sm text-gray-600">Currency:</span>
+                  <select 
+                    value={selectedCurrency}
+                    onChange={(e) => setSelectedCurrency(e.target.value)}
+                    className="text-sm font-medium bg-transparent border-none focus:outline-none cursor-pointer"
+                  >
+                    <option value="AED">AED (د.إ)</option>
+                    <option value="INR">INR (₹)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </div>
+                <button 
+                  onClick={() => setShowPaymentScheduleModal(false)} 
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="bg-orange-50 rounded-lg p-4 text-center">
+                  <p className="text-xs text-orange-600 mb-1">Unit Price</p>
+                  <p className="text-lg font-bold text-orange-800">{convertCurrency(opp.unit_price)}</p>
+                </div>
+                <div className="bg-teal-50 rounded-lg p-4 text-center">
+                  <p className="text-xs text-teal-600 mb-1">Total Cost</p>
+                  <p className="text-lg font-bold text-teal-800">{convertCurrency(opp.total_cost)}</p>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-4 text-center">
+                  <p className="text-xs text-purple-600 mb-1">Milestones</p>
+                  <p className="text-lg font-bold text-purple-800">{opp.payment_schedule.length}</p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-4 text-center">
+                  <p className="text-xs text-blue-600 mb-1">Co-owners</p>
+                  <p className="text-lg font-bold text-blue-800">{opp.investors?.length || 4} users</p>
+                </div>
+              </div>
+              
+              {/* Payment Schedule Table with User Contributions */}
+              <div className="bg-gray-50 rounded-lg p-4 border">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-green-600" />
+                  Payment Schedule with Per-User Contribution
+                </h3>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">#</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Milestone</th>
+                        <th className="text-center py-3 px-4 font-semibold text-gray-700">Date</th>
+                        <th className="text-center py-3 px-4 font-semibold text-gray-700">%</th>
+                        <th className="text-right py-3 px-4 font-semibold text-gray-700">Total Amount</th>
+                        {/* User contribution columns - use actual investors or dummy */}
+                        {(opp.investors?.length > 0 ? opp.investors : dummyInvestors).map((inv, i) => (
+                          <th key={i} className="text-center py-3 px-3 font-medium text-gray-700 min-w-[100px] bg-blue-50">
+                            <div className="text-xs">{inv.client_name?.split(' ')[0] || inv.name}</div>
+                            <div className="text-[10px] text-gray-500">{inv.share_percentage}%</div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, idx) => {
+                        const milestoneAmount = opp.unit_price * milestone.percentage / 100;
+                        const investors = opp.investors?.length > 0 ? opp.investors : dummyInvestors;
+                        
+                        return (
+                          <tr key={idx} className="border-b border-gray-100 hover:bg-white">
+                            <td className="py-3 px-4">
+                              <div className="w-7 h-7 rounded-full bg-teal-500 text-white flex items-center justify-center text-sm font-bold">
+                                {idx + 1}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 font-medium text-gray-800">
+                              {milestone.description || `Payment ${idx + 1}`}
+                            </td>
+                            <td className="py-3 px-4 text-center text-gray-600">
+                              {formatDate(milestone.date)}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <span className="px-2 py-1 bg-etihad-gold-100 text-etihad-gold-700 rounded-full text-xs font-semibold">
+                                {milestone.percentage}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-bold text-gray-800">
+                              {convertCurrency(milestoneAmount)}
+                            </td>
+                            {/* Per-user contribution */}
+                            {investors.map((inv, i) => {
+                              const userContribution = milestoneAmount * (inv.share_percentage / 100);
+                              return (
+                                <td key={i} className="py-3 px-3 text-center bg-blue-50/50">
+                                  <span className="font-mono text-sm text-blue-700">
+                                    {convertCurrency(userContribution)}
+                                  </span>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-gray-100 font-semibold">
+                      <tr>
+                        <td colSpan="4" className="py-3 px-4 text-right text-gray-700">Total</td>
+                        <td className="py-3 px-4 text-right font-bold text-gray-800">
+                          {convertCurrency(opp.unit_price)}
+                        </td>
+                        {/* Per-user total */}
+                        {(opp.investors?.length > 0 ? opp.investors : dummyInvestors).map((inv, i) => {
+                          const userTotal = opp.unit_price * (inv.share_percentage / 100);
+                          return (
+                            <td key={i} className="py-3 px-3 text-center bg-blue-100">
+                              <span className="font-mono font-bold text-blue-800">
+                                {convertCurrency(userTotal)}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+              
+              {/* Currency Conversion Info */}
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 text-center">
+                Exchange rates: 1 AED = ₹{currencyRates.INR} INR | ${currencyRates.USD} USD | €{currencyRates.EUR} EUR
+                <br />
+                <span className="text-gray-400">Rates are indicative and may vary</span>
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowPaymentScheduleModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sell Unit Modal */}
       {showSellModal && (
         <SellUnitModal
