@@ -1096,7 +1096,7 @@ async def forgot_password(request: PasswordResetRequest, background_tasks: Backg
     # Send reset email
     try:
         background_tasks.add_task(
-            send_password_reset_email,
+            send_password_reset_link_email,
             user['email'],
             user['name'],
             reset_token
