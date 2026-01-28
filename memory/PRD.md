@@ -2,6 +2,28 @@
 
 ## Recent Changes (Jan 28, 2026)
 
+### PDF/Excel Download Fix (Jan 28, 2026) ✅
+
+**Issue:** PDFs were coming blank for all options (secondary calculator, expected vs actual XIRR)
+
+**Root Cause:** The PDF generation was using `opacity: 0` on a div element, which html2canvas couldn't capture properly.
+
+**Fixes Applied:**
+1. **PDF Generation** (`Holdings.jsx`): Changed from hidden div approach to using an iframe for more reliable rendering
+   - Uses iframe.contentDocument for HTML rendering
+   - Better html2canvas configuration with `windowWidth: 1100` and `scale: 2`
+   
+2. **Excel Download** (`Holdings.jsx`): Added new `downloadCombinedCashflowExcel()` function
+   - Generates CSV format (universally compatible)
+   - Includes both Expected and Actual cashflows
+   - Shows investment, returns, profit, and XIRR for both sections
+
+3. **UI Update**: Added separate PDF and Excel buttons in the Cashflow Details modal
+   - PDF button (gold)
+   - Excel button (green)
+
+---
+
 ### FIX: Double Entries in Actual Cashflows (Jan 28, 2026) 🔴
 
 **Issue:** View Details section was showing duplicate entries in the Actual Cashflow section for clients with multiple investment dates on the same bond.
