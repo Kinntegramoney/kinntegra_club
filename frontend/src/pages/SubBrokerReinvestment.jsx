@@ -752,56 +752,6 @@ export default function SubBrokerReinvestment() {
             </div>
           ) : activeTab === "untagged" ? (
             <>
-              {/* Mass Tag Controls */}
-              {getSelectedCount() > 0 && (
-                <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-etihad-gold-600 text-white">{getSelectedCount()} selected</Badge>
-                      <span className="text-sm text-etihad-gold-800">Apply to selected:</span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Select value={massUcc} onValueChange={setMassUcc}>
-                        <SelectTrigger className="w-32 h-8 text-xs bg-white">
-                          <SelectValue placeholder="UCC" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {getSelectedUccs().map(ucc => (
-                            <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select value={massPortfolio} onValueChange={setMassPortfolio}>
-                        <SelectTrigger className="w-28 h-8 text-xs bg-white">
-                          <SelectValue placeholder="Portfolio" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PORTFOLIO_OPTIONS.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select value={massTag} onValueChange={setMassTag}>
-                        <SelectTrigger className="w-28 h-8 text-xs bg-white">
-                          <SelectValue placeholder="Tag" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TAG_OPTIONS.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button size="sm" onClick={applyMassTag} className="bg-etihad-gold-600 hover:bg-etihad-gold-700 h-8">
-                        Apply
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={clearSelection} className="h-8">
-                        Clear
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Section Toggle */}
               <div className="flex gap-2 mb-4">
                 <Button
