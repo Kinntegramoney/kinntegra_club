@@ -399,7 +399,10 @@ def send_welcome_email_client(
     
     content = f"""
                 <div class="header">
-                    <div class="logo">K</div>
+                    <div class="logo-container">
+                        <img src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" alt="Kinntegraa" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <span class="logo-fallback" style="display:none;">K</span>
+                    </div>
                     <h1>Welcome to Kinntegraa</h1>
                     <p>Your Investment Management Portal</p>
                 </div>
@@ -489,7 +492,10 @@ def send_welcome_email_subbroker(
     
     content = f"""
                 <div class="header">
-                    <div class="logo">K</div>
+                    <div class="logo-container">
+                        <img src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" alt="Kinntegraa" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <span class="logo-fallback" style="display:none;">K</span>
+                    </div>
                     <h1>Welcome to Kinntegraa Club</h1>
                     <p>Exclusive Member Access</p>
                 </div>
@@ -880,7 +886,10 @@ def send_password_reset_email(
     
     content = f"""
                 <div class="header">
-                    <div class="logo">K</div>
+                    <div class="logo-container">
+                        <img src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" alt="Kinntegraa" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <span class="logo-fallback" style="display:none;">K</span>
+                    </div>
                     <h1>Password Reset</h1>
                     <p>Your credentials have been updated</p>
                 </div>
@@ -930,7 +939,10 @@ def send_credentials_email(
     
     content = f"""
                 <div class="header">
-                    <div class="logo">K</div>
+                    <div class="logo-container">
+                        <img src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" alt="Kinntegraa" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <span class="logo-fallback" style="display:none;">K</span>
+                    </div>
                     <h1>Your Login Credentials</h1>
                     <p>Access your investment portal</p>
                 </div>
@@ -1100,7 +1112,10 @@ def send_password_reset_link_email(
     
     content = f"""
                 <div class="header">
-                    <div class="logo">K</div>
+                    <div class="logo-container">
+                        <img src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" alt="Kinntegraa" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <span class="logo-fallback" style="display:none;">K</span>
+                    </div>
                     <h1>Password Reset Request</h1>
                     <p>We received your request</p>
                 </div>
@@ -1242,7 +1257,10 @@ def send_prepayment_notification_email(
     
     content = f"""
                 <div class="header">
-                    <div class="logo">K</div>
+                    <div class="logo-container">
+                        <img src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" alt="Kinntegraa" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <span class="logo-fallback" style="display:none;">K</span>
+                    </div>
                     <h1>Principal Prepayment</h1>
                     <p>Your investment has been updated</p>
                 </div>
@@ -1413,7 +1431,10 @@ def send_holdings_report_email(
     
     content = f"""
                 <div class="header">
-                    <div class="logo">K</div>
+                    <div class="logo-container">
+                        <img src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" alt="Kinntegraa" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <span class="logo-fallback" style="display:none;">K</span>
+                    </div>
                     <h1>Holdings Report</h1>
                     <p>Your Investment Summary</p>
                 </div>
@@ -1531,7 +1552,10 @@ def send_client_approval_request_email(
     
     content = f"""
                 <div class="header">
-                    <div class="logo">K</div>
+                    <div class="logo-container">
+                        <img src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" alt="Kinntegraa" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <span class="logo-fallback" style="display:none;">K</span>
+                    </div>
                     <h1>Account Confirmation Required</h1>
                     <p>Your Kinntegraa Investment Account</p>
                 </div>
@@ -1637,7 +1661,10 @@ def send_reinvestment_client_approval_email(
     
     content = f"""
                 <div class="header">
-                    <div class="logo">K</div>
+                    <div class="logo-container">
+                        <img src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" alt="Kinntegraa" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                        <span class="logo-fallback" style="display:none;">K</span>
+                    </div>
                     <h1>Reinvestment Approval Required</h1>
                     <p>Your Investment Decision</p>
                 </div>
