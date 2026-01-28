@@ -771,7 +771,12 @@ export default function TradeLogs() {
                                 {log.viewed_client_name && (
                                   <div>Client: <span className="font-medium">{log.viewed_client_name}</span></div>
                                 )}
-                                {!log.bond_name && !log.property_name && !log.viewed_client_name && '-'}
+                                {log.metadata?.action && (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Action: <span className="capitalize">{log.metadata.action}</span>
+                                  </div>
+                                )}
+                                {!log.bond_name && !log.property_name && !log.viewed_client_name && !log.metadata?.action && '-'}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-600">
                                 {log.timestamp ? (
