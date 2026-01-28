@@ -1212,8 +1212,6 @@ export default function Holdings() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Main Content */}
         <div className="flex-1 overflow-y-auto">
           {!selectedClient ? (
             <div className="h-full flex items-center justify-center text-gray-500">
