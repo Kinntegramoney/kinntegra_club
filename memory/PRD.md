@@ -2,6 +2,19 @@
 
 ## Recent Changes (Jan 28, 2026)
 
+### FIX: Double Entries in Actual Cashflows (Jan 28, 2026) 🔴
+
+**Issue:** View Details section was showing duplicate entries in the Actual Cashflow section for clients with multiple investment dates on the same bond.
+
+**Root Cause:** Backend was fetching ALL `actual_repayments` for the bond/client without filtering by investment date. This caused each date-grouped holding to include repayments from ALL investment tranches.
+
+**Fix Applied:**
+- **Backend (`/app/backend/server.py` lines 10085-10100)**: Added filtering to match `actual_repayments` only to the specific investment date group
+- Repayments now correctly associated with their respective investment tranches
+- Each View Details tab shows only the cashflows for that specific investment date
+
+---
+
 ### Holdings View: Summary vs Detail (Jan 28, 2026) ✅
 
 **Issue:** After fixing the merge logic, the Holdings Report was showing individual transactions instead of a consolidated summary view.
