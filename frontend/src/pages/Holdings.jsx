@@ -795,10 +795,10 @@ export default function Holdings() {
     return isNegative ? `-₹${formatted}` : `₹${formatted}`;
   };
 
-  // Download Combined Cashflow PDF (Expected + Actual) - Side by Side Layout
+  // Download Combined Cashflow PDF (Expected + Actual) - Clean Table Design with Borders
   const downloadCombinedCashflowPDF = async (holdingData, expectedCashflows, actualCashflows) => {
     const formatAmount = (amt) => {
-      if (!amt || amt === 0) return '₹0';
+      if (!amt || amt === 0) return '₹0.00';
       return `₹${Math.abs(amt).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
@@ -818,208 +818,145 @@ export default function Holdings() {
 
     toast.info("Generating PDF...");
 
-    // Build side-by-side rows - align expected and actual cashflows by date
-    const allDates = new Set([
-      ...expectedCashflows.map(cf => cf.date),
-      ...actualCashflows.map(cf => cf.date)
-    ]);
-    const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
-    
-    // Create lookup maps
-    const expMap = {};
-    expectedCashflows.forEach(cf => { expMap[cf.date] = cf; });
-    const actMap = {};
-    actualCashflows.forEach(cf => { actMap[cf.date] = cf; });
+    // Build Expected Cashflow rows with inline styles
+    const expectedRows = expectedCashflows.map((cf, idx) => {
+      const isInvestment = cf.type === 'investment';
+      const isMaturity = cf.type === 'maturity';
+      const amount = isInvestment 
+        ? Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0)
+        : (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0));
+      const rowBg = idx % 2 === 0 ? '#ffffff' : '#f9f9f9';
+      const textColor = isInvestment ? '#cc0000' : '#000000';
+      const fontWeight = isInvestment || isMaturity ? 'bold' : 'normal';
+      return `
+        <tr style="background-color: ${rowBg};">
+          <td style="border: 1px solid #999; padding: 8px 10px; text-align: left;">${format(new Date(cf.date), 'dd MMM yyyy')}</td>
+          <td style="border: 1px solid #999; padding: 8px 10px; text-align: left;">${isInvestment ? 'Investment' : isMaturity ? 'Maturity' : 'Interest Payment'}</td>
+          <td style="border: 1px solid #999; padding: 8px 10px; text-align: right; color: ${textColor}; font-weight: ${fontWeight};">${isInvestment ? '-' : ''}${formatAmount(amount)}</td>
+        </tr>
+      `;
+    }).join('');
 
-    // Build HTML for PDF - Side by Side with colors matching frontend
+    // Build Actual Cashflow rows with inline styles
+    const actualRows = actualCashflows.length > 0 ? actualCashflows.map((cf, idx) => {
+      const isInvestment = cf.type === 'investment';
+      const isMaturity = cf.type === 'maturity';
+      const isReceived = cf.is_repaid;
+      const amount = isInvestment 
+        ? Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0)
+        : (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0));
+      const rowBg = idx % 2 === 0 ? '#ffffff' : '#f9f9f9';
+      const status = isInvestment ? 'Paid' : isReceived ? 'Received' : isMaturity ? 'At Maturity' : 'Pending';
+      const textColor = isInvestment ? '#cc0000' : isReceived ? '#059669' : '#ca8a04';
+      const fontWeight = isInvestment || isMaturity ? 'bold' : 'normal';
+      return `
+        <tr style="background-color: ${rowBg};">
+          <td style="border: 1px solid #999; padding: 8px 10px; text-align: left;">${format(new Date(cf.date), 'dd MMM yyyy')}</td>
+          <td style="border: 1px solid #999; padding: 8px 10px; text-align: left;">${status}</td>
+          <td style="border: 1px solid #999; padding: 8px 10px; text-align: right; color: ${textColor}; font-weight: ${fontWeight};">${isInvestment ? '-' : ''}${formatAmount(amount)}</td>
+        </tr>
+      `;
+    }).join('') : `<tr><td colspan="3" style="border: 1px solid #999; padding: 20px; text-align: center; color: #9ca3af;">No actual cashflow yet</td></tr>`;
+
+    // Build HTML for PDF - Clean table design with solid borders
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <title>Cashflow Report - ${holdingData.bond_name}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 20px; color: #374151; background: #fff; font-size: 11px; }
-          .header { margin-bottom: 15px; padding-bottom: 12px; border-bottom: 3px solid #C9A227; }
-          .header h1 { font-size: 18px; font-weight: 700; color: #5B373C; margin-bottom: 5px; }
-          .header p { font-size: 12px; color: #6b7280; }
-          
-          /* Summary Cards - Matching Frontend */
-          .summary-cards { display: flex; gap: 15px; margin-bottom: 20px; }
-          .summary-card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; }
-          .summary-card.investment { background: #fef2f2; border: 1px solid #fecaca; }
-          .summary-card.investment .value { color: #dc2626; }
-          .summary-card.returns { background: #f0fdf4; border: 1px solid #bbf7d0; }
-          .summary-card.returns .value { color: #059669; }
-          .summary-card.profit { background: #ecfdf5; border: 1px solid #6ee7b7; }
-          .summary-card.profit .value { color: #047857; }
-          .summary-card.xirr-exp { background: #f0fdf4; border: 1px solid #86efac; }
-          .summary-card.xirr-exp .value { color: #059669; }
-          .summary-card.xirr-act { background: #f5f3ff; border: 1px solid #c4b5fd; }
-          .summary-card.xirr-act .value { color: #7c3aed; }
-          .summary-card .label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
-          .summary-card .value { font-size: 16px; font-weight: 700; }
-          
-          /* Two Column Layout */
-          .two-col { display: flex; gap: 20px; }
-          .col { flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-          
-          /* Section Headers */
-          .section-header { padding: 12px 15px; font-weight: 600; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
-          .section-header.expected { background: linear-gradient(135deg, #5B373C 0%, #7c4a50 100%); color: #fff; }
-          .section-header.actual { background: linear-gradient(135deg, #C9A227 0%, #d4b33c 100%); color: #fff; }
-          
-          /* Tables */
-          table { width: 100%; border-collapse: collapse; }
-          th { background: #f9fafb; padding: 10px 12px; text-align: left; font-size: 10px; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
-          th:last-child { text-align: right; }
-          td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
-          td:last-child { text-align: right; font-family: 'SF Mono', 'Consolas', monospace; }
-          
-          /* Row Colors - Matching Frontend */
-          tr.investment { background: #fef2f2; }
-          tr.investment td { color: #dc2626; font-weight: 600; }
-          tr.received { background: #f0fdf4; }
-          tr.received td { color: #059669; }
-          tr.pending { background: #fefce8; }
-          tr.pending td { color: #ca8a04; }
-          tr.maturity { background: #FBF7E9; }
-          tr.maturity td { color: #5B373C; font-weight: 600; }
-          
-          /* Footer Stats */
-          .footer-stats { display: flex; justify-content: space-between; padding: 12px 15px; background: #f9fafb; border-top: 1px solid #e5e7eb; }
-          .footer-stat .label { font-size: 10px; color: #6b7280; }
-          .footer-stat .value { font-size: 14px; font-weight: 700; }
-          .footer-stat .value.green { color: #059669; }
-          .footer-stat .value.purple { color: #7c3aed; }
-          
-          .page-footer { margin-top: 20px; text-align: center; font-size: 9px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px; }
-        </style>
       </head>
-      <body>
-        <div class="header">
-          <h1>📊 Cashflow Statement</h1>
-          <p><strong>${holdingData.bond_name}</strong> · ${holdingData.total_units || holdingData.units || '-'} Units · Generated: ${format(new Date(), 'dd MMM yyyy, HH:mm')}</p>
+      <body style="font-family: Arial, Helvetica, sans-serif; padding: 25px 30px; color: #000; background: #fff; font-size: 11px; line-height: 1.5; margin: 0;">
+        
+        <!-- Header Summary Table - 5 columns -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+          <thead>
+            <tr>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Bond Name</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Units</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Total Investment</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Expected XIRR</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Actual XIRR</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">${holdingData.bond_name}</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">${holdingData.total_units || holdingData.units || '-'}</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">${formatAmount(expTotalInvestment)}</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #059669;">${holdingData.xirr?.toFixed(2) || '-'}%</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #7c3aed;">${holdingData.actual_xirr?.toFixed(2) || '-'}%</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <!-- Two Column Layout for Expected and Actual -->
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <!-- Expected Cashflow Column -->
+            <td style="width: 48%; vertical-align: top; padding-right: 10px;">
+              <div style="font-size: 13px; font-weight: bold; margin-bottom: 12px; color: #000; text-align: center; background: #f0fdf4; padding: 10px; border: 1px solid #86efac;">Expected Cashflow</div>
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                <thead>
+                  <tr>
+                    <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 8px 10px; text-align: left; font-size: 10px; font-weight: bold; color: #000;">Date</th>
+                    <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 8px 10px; text-align: left; font-size: 10px; font-weight: bold; color: #000;">Description</th>
+                    <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 8px 10px; text-align: right; font-size: 10px; font-weight: bold; color: #000;">Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${expectedRows}
+                  <!-- Total Row -->
+                  <tr style="background-color: #f0f0f0;">
+                    <td colspan="2" style="border: 1px solid #999; padding: 10px; text-align: left; font-weight: bold;">Total Returns</td>
+                    <td style="border: 1px solid #999; padding: 10px; text-align: right; font-weight: bold; color: #059669;">${formatAmount(expTotalGross)}</td>
+                  </tr>
+                  <tr style="background-color: #ecfdf5;">
+                    <td colspan="2" style="border: 1px solid #999; padding: 10px; text-align: left; font-weight: bold;">Profit</td>
+                    <td style="border: 1px solid #999; padding: 10px; text-align: right; font-weight: bold; color: #047857;">${formatAmount(expProfit)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+            
+            <!-- Spacer -->
+            <td style="width: 4%;"></td>
+            
+            <!-- Actual Cashflow Column -->
+            <td style="width: 48%; vertical-align: top; padding-left: 10px;">
+              <div style="font-size: 13px; font-weight: bold; margin-bottom: 12px; color: #000; text-align: center; background: #f5f3ff; padding: 10px; border: 1px solid #c4b5fd;">Actual Cashflow</div>
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                <thead>
+                  <tr>
+                    <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 8px 10px; text-align: left; font-size: 10px; font-weight: bold; color: #000;">Date</th>
+                    <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 8px 10px; text-align: left; font-size: 10px; font-weight: bold; color: #000;">Status</th>
+                    <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 8px 10px; text-align: right; font-size: 10px; font-weight: bold; color: #000;">Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${actualRows}
+                  <!-- Total Row -->
+                  <tr style="background-color: #f0f0f0;">
+                    <td colspan="2" style="border: 1px solid #999; padding: 10px; text-align: left; font-weight: bold;">Total Returns</td>
+                    <td style="border: 1px solid #999; padding: 10px; text-align: right; font-weight: bold; color: #7c3aed;">${formatAmount(actTotalGross)}</td>
+                  </tr>
+                  <tr style="background-color: #f5f3ff;">
+                    <td colspan="2" style="border: 1px solid #999; padding: 10px; text-align: left; font-weight: bold;">Profit</td>
+                    <td style="border: 1px solid #999; padding: 10px; text-align: right; font-weight: bold; color: #7c3aed;">${formatAmount(actProfit)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Note -->
+        <div style="font-size: 9px; color: #555; line-height: 1.6; margin-top: 20px; font-style: italic; border-top: 1px solid #ddd; padding-top: 10px;">
+          <strong style="color: #000;">Note:</strong> Expected Cashflow shows projected returns based on original investment terms. Actual Cashflow shows realized transactions. Negative values indicate investments (outflows).
         </div>
         
-        <!-- Summary Cards Row -->
-        <div class="summary-cards">
-          <div class="summary-card investment">
-            <div class="label">Total Investment</div>
-            <div class="value">${formatAmount(expTotalInvestment)}</div>
-          </div>
-          <div class="summary-card returns">
-            <div class="label">Expected Returns</div>
-            <div class="value">${formatAmount(expTotalGross)}</div>
-          </div>
-          <div class="summary-card profit">
-            <div class="label">Expected Profit</div>
-            <div class="value">${formatAmount(expProfit)}</div>
-          </div>
-          <div class="summary-card xirr-exp">
-            <div class="label">Expected XIRR</div>
-            <div class="value">${holdingData.xirr?.toFixed(2) || '-'}%</div>
-          </div>
-          <div class="summary-card xirr-act">
-            <div class="label">Actual XIRR</div>
-            <div class="value">${holdingData.actual_xirr?.toFixed(2) || '-'}%</div>
-          </div>
-        </div>
-
-        <!-- Two Column Cashflow Tables -->
-        <div class="two-col">
-          <!-- Expected Cashflow Column -->
-          <div class="col">
-            <div class="section-header expected">
-              <span>📅 EXPECTED CASHFLOW</span>
-              <span>${expectedCashflows.length} entries</span>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${expectedCashflows.map(cf => {
-                  const isInvestment = cf.type === 'investment';
-                  const isMaturity = cf.type === 'maturity';
-                  const amount = isInvestment 
-                    ? Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0)
-                    : (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0));
-                  return `
-                    <tr class="${isInvestment ? 'investment' : isMaturity ? 'maturity' : 'received'}">
-                      <td>${format(new Date(cf.date), 'dd MMM yyyy')}</td>
-                      <td>${isInvestment ? 'Investment' : isMaturity ? 'Maturity' : 'Inflow'}</td>
-                      <td>${isInvestment ? '-' : ''}${formatAmount(amount)}</td>
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-            <div class="footer-stats">
-              <div class="footer-stat">
-                <div class="label">Profit</div>
-                <div class="value green">${formatAmount(expProfit)}</div>
-              </div>
-              <div class="footer-stat">
-                <div class="label">XIRR</div>
-                <div class="value green">${holdingData.xirr?.toFixed(2) || '-'}%</div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Actual Cashflow Column -->
-          <div class="col">
-            <div class="section-header actual">
-              <span>✅ ACTUAL CASHFLOW</span>
-              <span>${actualCashflows.length} entries</span>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${actualCashflows.length > 0 ? actualCashflows.map(cf => {
-                  const isInvestment = cf.type === 'investment';
-                  const isMaturity = cf.type === 'maturity';
-                  const isReceived = cf.is_repaid;
-                  const amount = isInvestment 
-                    ? Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0)
-                    : (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0));
-                  const rowClass = isInvestment ? 'investment' : isReceived ? 'received' : 'pending';
-                  const status = isInvestment ? 'Paid' : isReceived ? 'Received' : isMaturity ? 'At Maturity' : 'Pending';
-                  return `
-                    <tr class="${rowClass}">
-                      <td>${format(new Date(cf.date), 'dd MMM yyyy')}</td>
-                      <td>${status}</td>
-                      <td>${isInvestment ? '-' : ''}${formatAmount(amount)}</td>
-                    </tr>
-                  `;
-                }).join('') : '<tr><td colspan="3" style="text-align:center;padding:20px;color:#9ca3af;">No actual cashflow yet</td></tr>'}
-              </tbody>
-            </table>
-            <div class="footer-stats">
-              <div class="footer-stat">
-                <div class="label">Profit</div>
-                <div class="value green">${formatAmount(actProfit)}</div>
-              </div>
-              <div class="footer-stat">
-                <div class="label">XIRR</div>
-                <div class="value purple">${holdingData.actual_xirr?.toFixed(2) || '-'}%</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="page-footer">
+        <!-- Footer -->
+        <div style="margin-top: 15px; text-align: center; font-size: 8px; color: #9ca3af; padding-top: 10px; border-top: 1px solid #eee;">
           Generated by Kinntegraa · ${format(new Date(), 'dd MMM yyyy HH:mm')} · This is a system generated report
         </div>
       </body>
@@ -1028,7 +965,7 @@ export default function Holdings() {
 
     try {
       const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 1200px; height: 900px; border: none;';
+      iframe.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 1100px; height: 1500px; border: none;';
       document.body.appendChild(iframe);
       
       const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -1036,22 +973,26 @@ export default function Holdings() {
       iframeDoc.write(html);
       iframeDoc.close();
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait longer for styles to render
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       const html2pdf = (await import('html2pdf.js')).default;
       
       await html2pdf()
         .set({
-          margin: [8, 8, 8, 8],
+          margin: [12, 12, 12, 12],
           filename: `Cashflow_Report_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { 
-            scale: 2, 
+            scale: 3, 
             useCORS: true, 
             logging: false,
             letterRendering: true,
             backgroundColor: '#ffffff',
-            windowWidth: 1200
+            windowWidth: 1100,
+            onclone: function(clonedDoc) {
+              clonedDoc.body.style.webkitPrintColorAdjust = 'exact';
+            }
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
           pagebreak: { mode: 'avoid-all' }
