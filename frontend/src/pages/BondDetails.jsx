@@ -298,115 +298,115 @@ export default function BondDetails() {
     
     toast.info("Generating PDF...");
     
-    // Build HTML for PDF matching the reference design exactly
+    // Calculate totals
+    const grossExpected = cashflowReportData.total_principal + cashflowReportData.total_interest;
+    const profit = grossExpected - cashflowReportData.price_paid;
+    
+    // Build HTML for PDF - EXACT match to reference design
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Bond Cashflow Statement - ${cashflowReportData.bond_name}</title>
+        <title>Cashflow Report - ${cashflowReportData.bond_name}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { 
-            font-family: 'Helvetica Neue', Arial, sans-serif; 
-            padding: 30px 40px; 
+            font-family: Arial, sans-serif; 
+            padding: 25px 30px; 
             color: #000; 
             background: #fff; 
-            font-size: 12px; 
+            font-size: 11px; 
           }
           
-          /* Title */
-          .title {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: #000;
+          /* Header Table - 5 columns */
+          .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+            border: 1px solid #ddd;
           }
-          
-          /* Header Cards - 2x4 Grid with gray background */
-          .header-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0;
-            margin-bottom: 15px;
-            border: 1px solid #e0e0e0;
-          }
-          .header-cell {
-            padding: 12px 15px;
+          .header-table th {
             background: #f5f5f5;
-            border-right: 1px solid #e0e0e0;
-            border-bottom: 1px solid #e0e0e0;
-          }
-          .header-cell:nth-child(4), .header-cell:nth-child(8) {
-            border-right: none;
-          }
-          .header-cell:nth-child(5), .header-cell:nth-child(6), .header-cell:nth-child(7), .header-cell:nth-child(8) {
-            border-bottom: none;
-          }
-          .header-cell .label {
+            padding: 10px 12px;
+            text-align: center;
             font-size: 10px;
-            color: #666;
-            margin-bottom: 4px;
-          }
-          .header-cell .value {
-            font-size: 13px;
             font-weight: 600;
-            color: #000;
+            color: #333;
+            border: 1px solid #ddd;
           }
-          
-          /* XIRR Line */
-          .xirr-line {
-            font-size: 14px;
-            margin-bottom: 20px;
-            padding: 10px 0;
-          }
-          .xirr-line .label {
-            font-weight: 400;
-            color: #000;
-          }
-          .xirr-line .value {
+          .header-table td {
+            padding: 12px;
+            text-align: center;
+            font-size: 12px;
             font-weight: 700;
             color: #000;
+            border: 1px solid #ddd;
+            background: #fff;
           }
           
-          /* Table */
-          table {
+          /* Section Title */
+          .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #000;
+            text-align: center;
+          }
+          
+          /* Main Cashflow Table */
+          .cashflow-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
           }
-          th {
+          .cashflow-table th {
             background: #f5f5f5;
             padding: 10px 12px;
             text-align: left;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
             color: #000;
-            border-bottom: 2px solid #000;
+            border: 1px solid #ddd;
           }
-          th:not(:first-child) {
+          .cashflow-table th:nth-child(3),
+          .cashflow-table th:nth-child(4) {
             text-align: right;
           }
-          td {
+          .cashflow-table td {
             padding: 8px 12px;
             font-size: 11px;
-            border-bottom: 1px solid #e0e0e0;
+            border: 1px solid #ddd;
+            color: #000;
           }
-          td:not(:first-child) {
+          .cashflow-table td:nth-child(3),
+          .cashflow-table td:nth-child(4) {
             text-align: right;
-            font-family: 'SF Mono', 'Consolas', monospace;
+            font-family: 'Courier New', monospace;
           }
-          tr:nth-child(even) {
+          .cashflow-table tr:nth-child(even) {
             background: #fafafa;
+          }
+          .cashflow-table .total-row {
+            background: #f0f0f0;
+            font-weight: 700;
+          }
+          .cashflow-table .total-row td {
+            font-weight: 700;
+          }
+          .cashflow-table .investment-row {
+            background: #fff;
+          }
+          .cashflow-table .investment-row td:last-child {
+            color: #c00;
           }
           
           /* Note */
           .note {
             font-size: 10px;
-            color: #666;
-            line-height: 1.5;
-            padding-top: 10px;
-            border-top: 1px solid #e0e0e0;
+            color: #555;
+            line-height: 1.6;
+            margin-top: 15px;
           }
           .note strong {
             color: #000;
@@ -414,89 +414,82 @@ export default function BondDetails() {
         </style>
       </head>
       <body>
-        <div class="title">Bond Cashflow Statement (Single Bond)</div>
-        
-        <!-- Header Cards - 2x4 Grid -->
-        <div class="header-grid">
-          <!-- Row 1 -->
-          <div class="header-cell">
-            <div class="label">Bond</div>
-            <div class="value">${cashflowReportData.bond_name}</div>
-          </div>
-          <div class="header-cell">
-            <div class="label">Units</div>
-            <div class="value">${cashflowReportData.units}</div>
-          </div>
-          <div class="header-cell">
-            <div class="label">Investment Date</div>
-            <div class="value">${format(new Date(cashflowReportData.investment_date), 'dd MMM yyyy')}</div>
-          </div>
-          <div class="header-cell">
-            <div class="label">Price Paid</div>
-            <div class="value">₹${cashflowReportData.price_paid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          </div>
-          <!-- Row 2 -->
-          <div class="header-cell">
-            <div class="label">Total Principal</div>
-            <div class="value">₹${cashflowReportData.total_principal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          </div>
-          <div class="header-cell">
-            <div class="label">Total Interest</div>
-            <div class="value">₹${cashflowReportData.total_interest.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          </div>
-          <div class="header-cell">
-            <div class="label">TDS Deducted</div>
-            <div class="value">₹${cashflowReportData.total_tds.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          </div>
-          <div class="header-cell">
-            <div class="label">Net Received</div>
-            <div class="value">₹${cashflowReportData.total_net_received.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          </div>
-        </div>
-        
-        <!-- XIRR -->
-        <div class="xirr-line">
-          <span class="label">XIRR</span> <span class="value">${bondData?.secondary_irr || '-'}%</span>
-        </div>
-        
-        <!-- Cashflow Table -->
-        <table>
+        <!-- Header Table - 5 columns matching reference -->
+        <table class="header-table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Principal</th>
-              <th>Interest</th>
-              <th>TDS</th>
-              <th>Net Payment</th>
+              <th>Bond Name</th>
+              <th>Amount Invested</th>
+              <th>Gross Expected</th>
+              <th>Profit</th>
+              <th>Expected XIRR</th>
             </tr>
           </thead>
           <tbody>
-            ${cashflowReportData.cashflows.map(cf => `
-              <tr>
-                <td>${format(new Date(cf.date), 'dd MMM yyyy')}</td>
-                <td>${cf.principal_payment > 0 ? '₹' + cf.principal_payment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>
-                <td>₹${cf.interest_payment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>₹${cf.tds_deducted.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>₹${cf.total_net_payment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>
-            `).join('')}
+            <tr>
+              <td>${cashflowReportData.bond_name}</td>
+              <td>₹${cashflowReportData.price_paid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td>₹${grossExpected.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td>₹${profit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td>${bondData?.secondary_irr || '-'}%</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <!-- Section Title -->
+        <div class="section-title">Expected Cashflow</div>
+        
+        <!-- Cashflow Table - 4 columns matching reference -->
+        <table class="cashflow-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Gross Amount (₹)</th>
+              <th>Net Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Principal Investment Row -->
+            <tr class="investment-row">
+              <td>${format(new Date(cashflowReportData.investment_date), 'dd MMM yyyy')}</td>
+              <td>Principal Invested</td>
+              <td></td>
+              <td>-₹${cashflowReportData.price_paid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+            <!-- Cashflow Rows -->
+            ${cashflowReportData.cashflows.map(cf => {
+              const grossAmount = cf.principal_payment + cf.interest_payment;
+              const description = cf.principal_payment > 0 ? 'Principal + Interest' : 'Interest Payment';
+              return `
+                <tr>
+                  <td>${format(new Date(cf.date), 'dd MMM yyyy')}</td>
+                  <td>${description}</td>
+                  <td>₹${grossAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td>₹${cf.total_net_payment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+              `;
+            }).join('')}
+            <!-- Total Row -->
+            <tr class="total-row">
+              <td colspan="2"><strong>Total Returns</strong></td>
+              <td><strong>₹${grossExpected.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+              <td><strong>₹${cashflowReportData.total_net_received.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+            </tr>
           </tbody>
         </table>
         
         <!-- Note -->
         <div class="note">
-          <strong>Note:</strong> Interest is paid ${bondData?.coupon_frequency || 'monthly'} with ${bondData?.cutoff_days || 15} day cutoff. 
-          Principal repayments are highlighted where applicable. TDS is deducted at 10% on interest component.
-          Generated on ${format(new Date(), 'dd MMM yyyy HH:mm')}.
+          <strong>Note:</strong> Gross Amount represents interest and principal before TDS. Net Amount reflects post-TDS cash inflow/outflow. Negative value indicates initial investment.
         </div>
       </body>
       </html>
     `;
     
     try {
-      // Create iframe for PDF generation
       const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 900px; height: 1200px; border: none;';
+      iframe.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 800px; height: 1200px; border: none;';
       document.body.appendChild(iframe);
       
       const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -519,14 +512,14 @@ export default function BondDetails() {
             logging: false,
             letterRendering: true,
             backgroundColor: '#ffffff',
-            windowWidth: 900
+            windowWidth: 800
           },
           jsPDF: { 
             unit: 'mm', 
             format: 'a4', 
             orientation: 'portrait' 
           },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+          pagebreak: { mode: ['avoid-all'] }
         })
         .from(iframeDoc.body)
         .save();
