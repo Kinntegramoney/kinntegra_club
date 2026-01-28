@@ -306,10 +306,11 @@ export default function BondDetails() {
     
     try {
       // Temporarily remove scroll constraints for PDF capture
-      const scrollContainer = reportElement.querySelector('.overflow-y-auto');
-      const originalMaxHeight = scrollContainer?.style.maxHeight;
-      const originalOverflow = scrollContainer?.style.overflow;
+      const scrollContainer = reportElement.querySelector('.cashflow-table-container');
+      const originalStyles = {};
       if (scrollContainer) {
+        originalStyles.maxHeight = scrollContainer.style.maxHeight;
+        originalStyles.overflow = scrollContainer.style.overflow;
         scrollContainer.style.maxHeight = 'none';
         scrollContainer.style.overflow = 'visible';
       }
@@ -341,8 +342,8 @@ export default function BondDetails() {
       
       // Restore scroll constraints
       if (scrollContainer) {
-        scrollContainer.style.maxHeight = originalMaxHeight || '';
-        scrollContainer.style.overflow = originalOverflow || '';
+        scrollContainer.style.maxHeight = originalStyles.maxHeight || '';
+        scrollContainer.style.overflow = originalStyles.overflow || '';
       }
       
       toast.success("PDF exported successfully!");
