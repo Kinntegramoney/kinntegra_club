@@ -74,6 +74,11 @@ export default function SubBrokerReinvestment() {
   const [savingClient, setSavingClient] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(null);
 
+  // Log user activity
+  useEffect(() => {
+    logUserActivity('reinvestment');
+  }, []);
+
   useEffect(() => {
     document.title = "Kinntegraa | Reinvestment Tagging";
   }, []);
