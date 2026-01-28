@@ -9973,32 +9973,40 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
     # MERGE TRADES: Group trades by bond_id
     # When multiple investments are made in the same bond (even on different dates),
     # merge them into a single holding for consolidated view
+    # IMPORTANT: Only merge trades with SAME bond_id AND SAME investment_date
+    # Trades on different dates should remain separate
     # ============================================
-    trades_by_bond = {}
+    trades_by_bond_date = {}
     for trade in trades:
         bond_id = trade['bond_id']
-        if bond_id not in trades_by_bond:
-            trades_by_bond[bond_id] = []
-        trades_by_bond[bond_id].append(trade)
+        # Extract just the date part (YYYY-MM-DD) for grouping
+        inv_date = (trade.get('investment_date', '') or '')[:10]
+        # Create composite key: bond_id + investment_date
+        group_key = f"{bond_id}|{inv_date}"
+        if group_key not in trades_by_bond_date:
+            trades_by_bond_date[group_key] = []
+        trades_by_bond_date[group_key].append(trade)
     
     holdings = []
     total_investment = 0
     total_repaid = 0
     total_upcoming = 0
     
-    for bond_id, bond_trades in trades_by_bond.items():
+    for group_key, bond_trades in trades_by_bond_date.items():
+        bond_id = group_key.split('|')[0]
+        investment_date_str = group_key.split('|')[1] if '|' in group_key else ''
+        
         # Get bond details
         bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
         if not bond:
             continue
         
-        # Merge all trades for this bond into combined metrics
+        # Merge trades ONLY if they have the same investment date (same day purchases)
         combined_units = sum(t.get('units', 0) for t in bond_trades)
         combined_investment_amount = sum(t.get('total_amount', 0) for t in bond_trades)
         
-        # Use the first investment date for display (or earliest)
-        investment_dates = [t.get('investment_date', '') for t in bond_trades if t.get('investment_date')]
-        first_investment_date = min(investment_dates) if investment_dates else ''
+        # Use the common investment date for this group
+        first_investment_date = investment_date_str
         
         # Create a combined "virtual" trade for processing
         # Use the first trade as the base and merge others into it
@@ -10007,7 +10015,7 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         trade['total_amount'] = combined_investment_amount
         trade['investment_date'] = first_investment_date
         trade['merged_trades'] = len(bond_trades)  # Track how many trades were merged
-        trade['individual_trades'] = bond_trades  # Keep reference to original trades
+        trade['individual_trades'] = bond_trades  # Keep reference to original trades (all same date)
         
         # Collect ALL stored cashflows from ALL trades for this bond
         all_stored_cashflows = []
