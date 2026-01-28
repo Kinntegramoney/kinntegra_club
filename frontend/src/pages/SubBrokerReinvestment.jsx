@@ -1071,13 +1071,34 @@ export default function SubBrokerReinvestment() {
                     Quick Apply
                   </Button>
                   <div className="w-px h-6 bg-gray-300 mx-1" />
-                  <Button 
-                    size="sm" 
-                    onClick={openMultiRetagModal} 
-                    className="bg-blue-600 hover:bg-blue-700 h-8"
-                  >
-                    Edit Individually
-                  </Button>
+                  {/* Split by Tag Type buttons */}
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-md p-1">
+                    <span className="text-xs text-gray-600 px-1">Split:</span>
+                    <Button 
+                      size="sm" 
+                      onClick={() => openMultiRetagModal('principal')} 
+                      variant="ghost"
+                      className="h-7 text-xs px-2 hover:bg-blue-100 hover:text-blue-700"
+                    >
+                      Principal
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => openMultiRetagModal('interest')} 
+                      variant="ghost"
+                      className="h-7 text-xs px-2 hover:bg-blue-100 hover:text-blue-700"
+                    >
+                      Interest
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => openMultiRetagModal('both')} 
+                      variant="ghost"
+                      className="h-7 text-xs px-2 hover:bg-blue-100 hover:text-blue-700"
+                    >
+                      Both
+                    </Button>
+                  </div>
                   <Button size="sm" variant="outline" onClick={clearSelection} className="h-8">
                     Clear
                   </Button>
@@ -1093,9 +1114,9 @@ export default function SubBrokerReinvestment() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Tag className="h-5 w-5" />
-                Split & Tag Reinvestments ({Object.keys(multiRetagData).length} entries)
+                Split {selectedTagType.charAt(0).toUpperCase() + selectedTagType.slice(1)} Amount ({Object.keys(multiRetagData).length} entries)
               </DialogTitle>
-              <p className="text-sm text-gray-500">Split each entry across multiple UCCs with different amounts, portfolios, and tags</p>
+              <p className="text-sm text-gray-500">Split the <span className="font-medium text-etihad-gold-700">{selectedTagType}</span> amount across multiple UCCs with different portfolios</p>
             </DialogHeader>
             
             <div className="flex-1 overflow-auto py-4 space-y-6">
