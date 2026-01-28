@@ -11783,13 +11783,18 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         
         logger.info(f"Split allocation saved for cashflow {cashflow_id}: {len(validated_allocations)} allocations, total ₹{total_allocated:,.2f}")
         
+        message = f"Split allocation saved: {len(validated_allocations)} allocations totaling ₹{total_allocated:,.2f}"
+        if needs_reapproval:
+            message += " - Client re-approval required"
+        
         return {
             "success": True,
-            "message": f"Split allocation saved: {len(validated_allocations)} allocations totaling ₹{total_allocated:,.2f}",
+            "message": message,
             "cashflow_id": cashflow_id,
             "allocations": validated_allocations,
             "is_past_date": is_past_date,
-            "approval_status": update_data.get('approval_status', 'pending')
+            "approval_status": update_data.get('approval_status', 'pending'),
+            "needs_reapproval": needs_reapproval
         }
     
     # =====================================================
