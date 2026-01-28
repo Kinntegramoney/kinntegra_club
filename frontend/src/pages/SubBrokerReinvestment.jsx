@@ -380,6 +380,22 @@ export default function SubBrokerReinvestment() {
     return Array.from(uccs);
   };
 
+  // Get UCCs only from selected entries (for mass tagging)
+  const getSelectedUccs = () => {
+    const selectedIds = Object.keys(selectedEntries).filter(id => selectedEntries[id]);
+    if (selectedIds.length === 0) return [];
+    
+    const uccs = new Set();
+    [...untaggedPast, ...untaggedUpcoming].forEach(group => {
+      // Check if any entry from this client is selected
+      const hasSelectedEntry = group.entries.some(e => selectedEntries[e.id]);
+      if (hasSelectedEntry) {
+        (group.ucc_list || []).forEach(ucc => uccs.add(ucc));
+      }
+    });
+    return Array.from(uccs);
+  };
+
   const renderUntaggedClientGroup = (clientGroup, isPast, section) => {
     const key = `${section}_${clientGroup.client_id}`;
     const isExpanded = expandedClients[key];
