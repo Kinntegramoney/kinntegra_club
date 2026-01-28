@@ -1181,7 +1181,8 @@ export default function Holdings() {
               />
             </div>
           </div>
-          .summary-box { display: flex; gap: 15px; margin-bottom: 12px; padding: 10px; background: linear-gradient(135deg, #F5F3EF 0%, #FBF7E9 100%); border-radius: 6px; border: 1px solid #E8D89F; }
+          
+          <div className="flex-1 overflow-y-auto">
           .summary-item { flex: 1; text-align: center; }
           .summary-item label { font-size: 7px; color: #5B373C; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
           .summary-item span { font-size: 11px; font-weight: 600; color: #111827; }
