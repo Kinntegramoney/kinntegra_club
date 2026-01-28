@@ -1407,14 +1407,19 @@ export default function ReinvestmentTagging() {
                               
                               {/* Amount */}
                               <div>
-                                <Label className="text-[10px] text-gray-500 mb-1 block">Amount (₹)</Label>
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Amount (₹) <span className="text-gray-400">(multiples of 100)</span></Label>
                                 <Input
                                   type="number"
+                                  step="100"
                                   value={alloc.amount}
                                   onChange={(e) => updateAllocation(entryId, allocIndex, 'amount', e.target.value)}
+                                  onBlur={() => handleAmountBlur(entryId, allocIndex)}
                                   className="h-8 text-xs"
                                   placeholder="Enter amount"
                                 />
+                                {alloc.amount !== '' && alloc.amount < 1000 && (
+                                  <p className="text-[10px] text-amber-600 mt-0.5">Auto-tagged to None (amount &lt; ₹1000)</p>
+                                )}
                               </div>
                               
                               {/* Portfolio */}
@@ -1423,16 +1428,20 @@ export default function ReinvestmentTagging() {
                                 <Select 
                                   value={alloc.portfolio} 
                                   onValueChange={(v) => updateAllocation(entryId, allocIndex, 'portfolio', v)}
+                                  disabled={alloc.amount !== '' && alloc.amount < 1000}
                                 >
-                                  <SelectTrigger className="h-8 text-xs">
+                                  <SelectTrigger className={`h-8 text-xs ${alloc.amount !== '' && alloc.amount < 1000 ? 'bg-gray-100' : ''}`}>
                                     <SelectValue placeholder="Select" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {PORTFOLIO_OPTIONS.map(opt => (
+                                    {getFilteredPortfolioOptions(alloc.amount).map(opt => (
                                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                {alloc.amount >= 1000 && alloc.amount < 1000000 && (
+                                  <p className="text-[10px] text-gray-400 mt-0.5">Bonds: ≥₹10L | Real Estate: ≥₹25L</p>
+                                )}
                               </div>
                             </div>
                             
