@@ -12182,41 +12182,59 @@ async def send_reinvestment_approval_email(
     if not cashflows:
         raise HTTPException(status_code=404, detail="No cashflows found")
     
-    # Build email content
+    # Build email content with rounded down amounts
     entries_html = ""
     total_amount = 0
+    valid_cashflows = []  # Track cashflows with valid amounts
+    
     for cf in cashflows:
         tag = cf.get('reinvestment_tag', 'not_tagged')
         if tag == 'other':
             amount = cf.get('custom_amount', 0)
         elif tag == 'principal':
             amount = cf.get('principal_component', 0)
+            # Skip if principal-only tag but principal is zero or missing
+            if not amount or amount <= 0:
+                logger.info(f"Skipping cashflow {cf.get('id')} - principal-only tag with zero principal")
+                continue
         elif tag == 'interest':
             amount = cf.get('interest_component', 0) - cf.get('tds_amount', 0)
-        elif tag == 'net_amount':
+        elif tag == 'net_amount' or tag == 'both':
             amount = cf.get('net_amount', 0)
         else:
             amount = 0
         
-        total_amount += amount
+        # Round down to nearest integer for display and API
+        rounded_amount = int(amount)  # Math.floor equivalent
+        
+        if rounded_amount <= 0:
+            logger.info(f"Skipping cashflow {cf.get('id')} - rounded amount is zero or negative")
+            continue
+        
+        total_amount += rounded_amount
+        valid_cashflows.append(cf['id'])
+        
         entries_html += f"""
         <tr>
             <td style="padding: 8px; border: 1px solid #ddd;">{cf.get('bond_name', 'N/A')}</td>
             <td style="padding: 8px; border: 1px solid #ddd;">{cf.get('date', 'N/A')}</td>
             <td style="padding: 8px; border: 1px solid #ddd;">{tag.replace('_', ' ').title()}</td>
-            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">₹{amount:,.2f}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">₹{rounded_amount:,}</td>
         </tr>
         """
     
-    # Generate approval token
+    if not valid_cashflows:
+        raise HTTPException(status_code=400, detail="No valid cashflows to process. Principal-only tags with zero principal are skipped.")
+    
+    # Generate approval token with only valid cashflows
     approval_token = create_access_token(
-        data={"client_id": client['id'], "cashflow_ids": request.cashflow_ids, "type": "reinvestment_approval"},
+        data={"client_id": client['id'], "cashflow_ids": valid_cashflows, "type": "reinvestment_approval"},
         expires_delta=timedelta(days=7)
     )
     
-    # Update cashflows with pending status
+    # Update only valid cashflows with pending status
     await db.holding_cashflows.update_many(
-        {"id": {"$in": request.cashflow_ids}},
+        {"id": {"$in": valid_cashflows}},
         {"$set": {
             "approval_status": "pending",
             "approval_email_sent": True,
@@ -12234,7 +12252,7 @@ async def send_reinvestment_approval_email(
             entries_html,
             total_amount,
             approval_token,
-            len(cashflows)
+            len(valid_cashflows)
         )
     except Exception as e:
         logger.error(f"Error sending approval email: {e}")
@@ -12242,8 +12260,9 @@ async def send_reinvestment_approval_email(
     
     return {
         "message": f"Approval email sent to {client_email}",
-        "cashflows_count": len(cashflows),
-        "total_amount": total_amount
+        "cashflows_count": len(valid_cashflows),
+        "total_amount": total_amount,
+        "skipped_count": len(cashflows) - len(valid_cashflows)
     }
 
 
