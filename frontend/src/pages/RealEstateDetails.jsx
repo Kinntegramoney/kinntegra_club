@@ -176,6 +176,17 @@ export default function RealEstateDetails() {
     return new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
   };
 
+  // Convert amount from AED to selected currency
+  const convertCurrency = (amountInAED, targetCurrency = selectedCurrency) => {
+    const converted = amountInAED * currencyRates[targetCurrency];
+    const symbols = { AED: 'AED', INR: '₹', USD: '$', EUR: '€' };
+    const formattedAmount = new Intl.NumberFormat('en-US', { 
+      minimumFractionDigits: 0, 
+      maximumFractionDigits: 0 
+    }).format(converted || 0);
+    return `${symbols[targetCurrency]} ${formattedAmount}`;
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
