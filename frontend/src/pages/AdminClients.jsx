@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import CreateClientModal from "@/components/CreateClientModal";
 import EditClientModal from "@/components/EditClientModal";
 import BulkUploadModal from "@/components/BulkUploadModal";
-import { Plus, Edit2, Trash2, Link2, Search, Users, FileText, RefreshCw, UserX, Upload, MoreVertical, Mail, KeyRound, UserMinus, Copy, Check, X } from "lucide-react";
+import { Plus, Edit2, Trash2, Link2, Search, Users, FileText, RefreshCw, UserX, Upload, MoreVertical, Mail, KeyRound, UserMinus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
