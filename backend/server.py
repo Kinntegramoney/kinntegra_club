@@ -12279,14 +12279,32 @@ async def approve_reinvestment_via_link(token: str, action: str = "approve"):
         
         approved = action.lower() == "approve"
         
+        # Get client info for logging
+        client = await db.clients.find_one({"id": client_id}, {"_id": 0})
+        
         # Update all cashflows
         await db.holding_cashflows.update_many(
             {"id": {"$in": cashflow_ids}},
             {"$set": {
                 "client_approved": approved,
-                "approval_status": "approved" if approved else "rejected",
+                "approval_status": "client_approved" if approved else "client_rejected",
                 "approved_at": datetime.now(timezone.utc).isoformat()
             }}
+        )
+        
+        # Create approval log
+        await create_approval_log(
+            entity_type="reinvestment",
+            entity_id=cashflow_ids[0] if cashflow_ids else "unknown",
+            action="client_approved" if approved else "client_rejected",
+            actor_id=client_id,
+            actor_role="client",
+            actor_name=client.get('name', 'Client') if client else 'Client',
+            details={
+                "cashflow_ids": cashflow_ids,
+                "broker_id": client.get('created_by') if client else None,
+                "linked_subbroker_id": client.get('linked_subbroker_id') if client else None
+            }
         )
         
         # If approved, trigger Kinntegraa API (placeholder)
