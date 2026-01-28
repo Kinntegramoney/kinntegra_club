@@ -151,7 +151,7 @@ export default function TradeLogs() {
       // New reinvestment tagging logs
       const taggingLogs = (reinvestmentTaggingRes.data || []).map(log => {
         let typeLabel = 'Reinv';
-        const tag = log.reinvestment_tag || '';
+        const tag = log.reinvestment_tag || log.tag || '';
         if (tag === 'principal') typeLabel = 'Reinv-Principal';
         else if (tag === 'interest') typeLabel = 'Reinv-Interest';
         else if (tag === 'both') typeLabel = 'Reinv-Both';
@@ -163,11 +163,11 @@ export default function TradeLogs() {
           id: log.id,
           type: "reinvestment_tag",
           client_name: log.client_name || "N/A",
-          ucc: log.target_ucc || "-",
+          ucc: log.target_ucc || log.ucc || "-",
           date: log.expected_date || log.created_at,
           trade_type: typeLabel,
-          amount: log.net_amount || 0,
-          portfolio: log.portfolio_category || "-",
+          amount: log.amount || log.net_amount || 0,
+          portfolio: log.portfolio_category || log.portfolio || "-",
           advisor: log.tagged_by_name || "-",
           status: log.approval_status || "pending",
           bond_name: log.bond_name,
