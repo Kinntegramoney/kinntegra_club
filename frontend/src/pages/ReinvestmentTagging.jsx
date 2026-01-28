@@ -85,7 +85,8 @@ export default function ReinvestmentTagging() {
   
   // Multi-retag modal state
   const [showMultiRetagModal, setShowMultiRetagModal] = useState(false);
-  const [multiRetagData, setMultiRetagData] = useState({}); // { entryId: { ucc, portfolio, tag, amounts: { principal, interest, both } } }
+  const [multiRetagData, setMultiRetagData] = useState({});
+  const [selectedTagType, setSelectedTagType] = useState(""); // principal, interest, both - selected BEFORE opening modal
 
   useEffect(() => {
     document.title = "Kinntegraa | Reinvestment Tagging";
