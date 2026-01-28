@@ -1206,7 +1206,10 @@ export default function Holdings() {
                     </div>
                   </div>
                 </div>
-          .two-col { display: flex; gap: 12px; }
+              ))
+            )}
+          </div>
+        </div>
           .col { flex: 1; min-width: 0; }
           .section-title { font-size: 10px; font-weight: 600; color: #fff; padding: 5px 8px; margin-bottom: 0; }
           .section-title.expected { background: #5B373C; }
