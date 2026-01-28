@@ -305,18 +305,29 @@ export default function BondDetails() {
     toast.info("Generating PDF...");
     
     try {
+      // Temporarily remove scroll constraints for PDF capture
+      const scrollContainer = reportElement.querySelector('.overflow-y-auto');
+      const originalMaxHeight = scrollContainer?.style.maxHeight;
+      const originalOverflow = scrollContainer?.style.overflow;
+      if (scrollContainer) {
+        scrollContainer.style.maxHeight = 'none';
+        scrollContainer.style.overflow = 'visible';
+      }
+      
       const html2pdf = (await import('html2pdf.js')).default;
       
       const opt = {
         margin: [5, 5, 5, 5],
         filename: `Cashflow_Report_${cashflowReportData.bond_name.replace(/\s+/g, '_')}_${cashflowReportData.investment_date}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
+        image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
-          scale: 1.5,
+          scale: 2,
           useCORS: true,
           logging: false,
           letterRendering: true,
-          scrollY: 0
+          scrollY: 0,
+          windowWidth: 1200,
+          height: reportElement.scrollHeight + 100
         },
         jsPDF: { 
           unit: 'mm', 
@@ -327,6 +338,13 @@ export default function BondDetails() {
       };
       
       await html2pdf().set(opt).from(reportElement).save();
+      
+      // Restore scroll constraints
+      if (scrollContainer) {
+        scrollContainer.style.maxHeight = originalMaxHeight || '';
+        scrollContainer.style.overflow = originalOverflow || '';
+      }
+      
       toast.success("PDF exported successfully!");
     } catch (err) {
       console.error("PDF export error:", err);
