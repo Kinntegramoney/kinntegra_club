@@ -11732,9 +11732,16 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
             "portfolio_category": validated_allocations[0]['portfolio'],
         }
         
-        # Set approval status based on date
+        # Set approval status based on date and whether this is a modification
         if current_user['role'] in ['broker', 'sub_broker'] and update.reinvestment_tag not in ['not_tagged']:
-            if is_past_date:
+            if needs_reapproval:
+                # Previously approved, now modified - needs re-approval from client
+                update_data['client_approved'] = False
+                update_data['approval_status'] = 'pending_reapproval'
+                update_data['modified_after_approval'] = True
+                update_data['previous_approval_at'] = cashflow.get('approved_at')
+                update_data['modification_reason'] = 'Broker/sub-broker modified approved tag'
+            elif is_past_date:
                 update_data['client_approved'] = True
                 update_data['approval_status'] = 'approved'
                 update_data['approved_at'] = datetime.now(timezone.utc).isoformat()
