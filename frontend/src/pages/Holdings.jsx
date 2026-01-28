@@ -796,7 +796,7 @@ export default function Holdings() {
   };
 
   // Download Combined Cashflow PDF (Expected + Actual)
-  const downloadCombinedCashflowPDF = (holdingData, expectedCashflows, actualCashflows) => {
+  const downloadCombinedCashflowPDF = async (holdingData, expectedCashflows, actualCashflows) => {
     const formatAmount = (amt) => {
       if (!amt || amt === 0) return '₹0.00';
       return `₹${Math.abs(amt).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -815,6 +815,8 @@ export default function Holdings() {
     const actTotalInvestment = actInvestments.reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0), 0);
     const actTotalGross = actInflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
     const actProfit = actTotalGross - actTotalInvestment;
+
+    toast.info("Generating PDF...");
 
     // Build HTML for PDF - Combined Expected and Actual
     const html = `
