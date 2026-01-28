@@ -4679,13 +4679,23 @@ async def bulk_upload_indian_clients(
             # Send welcome email with credentials (if email is provided)
             if email:
                 try:
+                    # Get sub-broker name if client is linked to one
+                    subbroker_name = None
+                    if linked_subbroker_id:
+                        subbroker = await db.partners.find_one({"id": linked_subbroker_id}, {"_id": 0})
+                        if not subbroker:
+                            subbroker = await db.sub_brokers.find_one({"id": linked_subbroker_id}, {"_id": 0})
+                        if subbroker:
+                            subbroker_name = subbroker.get('name')
+                    
                     send_welcome_email_client(
                         client_name=name,
                         client_email=email,
                         pan=login_id,  # Use login_id (PAN or PAN+1 for role overlap)
                         password="kinntegra123",
                         pin="1234",
-                        broker_name=current_user.get('name', 'Your Broker')
+                        broker_name=current_user.get('name', 'Your Broker'),
+                        subbroker_name=subbroker_name
                     )
                 except Exception as email_error:
                     logger.warning(f"Failed to send welcome email to {email}: {email_error}")
