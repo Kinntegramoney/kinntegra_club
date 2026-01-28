@@ -35,6 +35,7 @@ export default function SubBrokerAnalysis() {
 
   useEffect(() => {
     document.title = "Kinntegraa | CAS Analysis";
+    logUserActivity('analysis', { extra: { action: 'view' } });
   }, []);
 
   useEffect(() => {
