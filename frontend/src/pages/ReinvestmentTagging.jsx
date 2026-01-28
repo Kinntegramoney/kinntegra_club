@@ -39,10 +39,32 @@ const PORTFOLIO_OPTIONS = [
   { value: 'tax', label: 'Tax' },
   { value: 'short_term', label: 'Short Term' },
   { value: 'commodities', label: 'Commodities' },
-  { value: 'bonds', label: 'Bonds' },
-  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'bonds', label: 'Bonds', minAmount: 1000000 }, // > 10 lakhs
+  { value: 'real_estate', label: 'Real Estate', minAmount: 2500000 }, // > 25 lakhs
   { value: 'none', label: 'None' }
 ];
+
+// Filter portfolio options based on amount
+const getFilteredPortfolioOptions = (amount) => {
+  const numAmount = parseFloat(amount) || 0;
+  
+  // If amount < 1000, only show "None"
+  if (numAmount < 1000) {
+    return PORTFOLIO_OPTIONS.filter(opt => opt.value === 'none');
+  }
+  
+  // Filter out options that require higher minimum amounts
+  return PORTFOLIO_OPTIONS.filter(opt => {
+    if (!opt.minAmount) return true;
+    return numAmount >= opt.minAmount;
+  });
+};
+
+// Round amount to nearest 100
+const roundToHundred = (amount) => {
+  const num = parseFloat(amount) || 0;
+  return Math.round(num / 100) * 100;
+};
 
 const TAG_OPTIONS = [
   { value: 'principal', label: 'Principal' },
