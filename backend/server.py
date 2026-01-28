@@ -11262,6 +11262,7 @@ async def send_holdings_report_email_endpoint(
 ):
     """
     Send holdings report email to client with sub-broker CC.
+    Includes Excel attachment with full holdings data.
     Broker or sub-broker can trigger this for their clients.
     """
     if current_user['role'] not in ['broker', 'sub_broker']:
@@ -11296,82 +11297,148 @@ async def send_holdings_report_email_endpoint(
         if current_user.get('email') not in cc_emails:
             cc_emails.append(current_user.get('email'))
     
-    # Get client holdings
-    trades = await db.trades.find(
-        {"client_id": client_id, "status": "approved"},
-        {"_id": 0}
-    ).to_list(1000)
+    # Get full holdings data using the same function as download
+    try:
+        holdings_data = await get_client_holdings(client_id, current_user)
+    except HTTPException:
+        raise HTTPException(status_code=404, detail="No holdings found for this client")
     
-    if not trades:
-        raise HTTPException(status_code=404, detail="No approved trades found for this client")
+    if not holdings_data.get('holdings'):
+        raise HTTPException(status_code=404, detail="No holdings found for this client")
     
-    # Get bonds for each trade
-    bond_ids = list(set(t.get('bond_id') for t in trades if t.get('bond_id')))
-    bonds = await db.bonds.find({"id": {"$in": bond_ids}}, {"_id": 0}).to_list(len(bond_ids))
-    bond_lookup = {b['id']: b for b in bonds}
+    # Generate Excel file bytes using the same logic as download endpoint
+    from io import BytesIO
     
-    # Aggregate holdings by bond
-    holdings_by_bond = {}
-    for trade in trades:
-        bond_id = trade.get('bond_id')
-        if bond_id not in holdings_by_bond:
-            bond = bond_lookup.get(bond_id, {})
-            holdings_by_bond[bond_id] = {
-                'bond_name': trade.get('bond_name') or bond.get('name', 'Unknown'),
-                'units': 0,
-                'invested_amount': 0,
-                'gross_expected': 0,
-                'profit': 0,
-                'expected_xirr': trade.get('xirr'),
-                'actual_xirr': trade.get('actual_xirr')
-            }
-        holdings_by_bond[bond_id]['units'] += trade.get('units', 0)
-        holdings_by_bond[bond_id]['invested_amount'] += trade.get('total_amount', 0)
+    wb = Workbook()
+    header_font = Font(bold=True, size=11, color="FFFFFF")
+    header_fill = PatternFill(start_color="5B373C", end_color="5B373C", fill_type="solid")
+    summary_fill = PatternFill(start_color="f5f5f5", end_color="f5f5f5", fill_type="solid")
+    title_font = Font(bold=True, size=14)
+    money_font = Font(name="Consolas", size=10)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
     
-    # Get cashflows for calculating expected returns
-    all_cashflows = await db.holding_cashflows.find(
-        {"client_id": client_id, "type": {"$ne": "investment"}},
-        {"_id": 0}
-    ).to_list(10000)
+    # Summary Sheet
+    ws_summary = wb.active
+    ws_summary.title = "Summary"
     
-    # Sum cashflows by bond
-    for cf in all_cashflows:
-        bond_id = cf.get('bond_id')
-        if bond_id in holdings_by_bond:
-            holdings_by_bond[bond_id]['gross_expected'] += cf.get('gross_amount', 0)
+    ws_summary['A1'] = f"Holdings Report - {holdings_data['client']['name']}"
+    ws_summary['A1'].font = title_font
+    ws_summary.merge_cells('A1:G1')
     
-    # Calculate profits
-    holdings_data = []
+    ws_summary['A2'] = f"PAN: {holdings_data['client']['pan_number']}"
+    ws_summary['A3'] = f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+    
+    # Summary stats
+    ws_summary['A5'] = "OVERALL SUMMARY"
+    ws_summary['A5'].font = Font(bold=True, size=12)
+    
+    summary_stats = [
+        ("Total Investment", holdings_data['summary']['total_investment']),
+        ("Total Repaid (Gross)", holdings_data['summary']['total_repaid']),
+        ("Total Upcoming (Gross)", holdings_data['summary']['total_upcoming']),
+        ("Total Expected (Gross)", holdings_data['summary']['total_expected']),
+        ("Total Profit", holdings_data['summary']['total_profit'])
+    ]
+    
+    for i, (label, value) in enumerate(summary_stats):
+        ws_summary[f'A{6+i}'] = label
+        ws_summary[f'B{6+i}'] = value
+        ws_summary[f'B{6+i}'].font = money_font
+        ws_summary[f'B{6+i}'].number_format = '₹ #,##0.00'
+    
+    # Holdings list header
+    start_row = 13
+    ws_summary[f'A{start_row}'] = "HOLDINGS BY BOND"
+    ws_summary[f'A{start_row}'].font = Font(bold=True, size=12)
+    
+    holdings_headers = ["#", "Bond Name", "Units", "Investment", "Expected XIRR", "Actual XIRR"]
+    for col, header in enumerate(holdings_headers, 1):
+        cell = ws_summary.cell(row=start_row+1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal='center')
+    
+    # Set column widths
+    ws_summary.column_dimensions['A'].width = 5
+    ws_summary.column_dimensions['B'].width = 28
+    ws_summary.column_dimensions['C'].width = 10
+    ws_summary.column_dimensions['D'].width = 18
+    ws_summary.column_dimensions['E'].width = 14
+    ws_summary.column_dimensions['F'].width = 14
+    
+    # Add holdings rows
+    row_num = start_row + 2
+    for i, holding in enumerate(holdings_data['holdings'], 1):
+        ws_summary.cell(row=row_num, column=1, value=i).border = border
+        ws_summary.cell(row=row_num, column=2, value=holding.get('bond_name', '-')).border = border
+        ws_summary.cell(row=row_num, column=3, value=holding.get('units', 0)).border = border
+        cell = ws_summary.cell(row=row_num, column=4, value=holding.get('invested_amount', 0))
+        cell.border = border
+        cell.font = money_font
+        cell.number_format = '₹ #,##0.00'
+        ws_summary.cell(row=row_num, column=5, value=f"{holding.get('xirr', 0):.2f}%" if holding.get('xirr') else '-').border = border
+        ws_summary.cell(row=row_num, column=6, value=f"{holding.get('actual_xirr', 0):.2f}%" if holding.get('actual_xirr') else '-').border = border
+        row_num += 1
+    
+    # Save to bytes
+    excel_buffer = BytesIO()
+    wb.save(excel_buffer)
+    excel_bytes = excel_buffer.getvalue()
+    excel_buffer.close()
+    
+    # Prepare holdings data for email HTML
+    email_holdings_data = []
     total_invested = 0
     total_expected = 0
     total_profit = 0
     
-    for bond_id, h in holdings_by_bond.items():
-        h['profit'] = h['gross_expected'] - h['invested_amount']
-        h['expected_xirr'] = round(h['expected_xirr'], 2) if h['expected_xirr'] else '-'
-        h['actual_xirr'] = round(h['actual_xirr'], 2) if h['actual_xirr'] else '-'
-        holdings_data.append(h)
-        total_invested += h['invested_amount']
-        total_expected += h['gross_expected']
-        total_profit += h['profit']
+    for h in holdings_data['holdings']:
+        invested = h.get('invested_amount', 0)
+        expected = h.get('gross_expected', 0)
+        profit = expected - invested
+        email_holdings_data.append({
+            'bond_name': h.get('bond_name', 'Unknown'),
+            'units': h.get('units', 0),
+            'invested_amount': invested,
+            'gross_expected': expected,
+            'profit': profit,
+            'expected_xirr': round(h.get('xirr', 0), 2) if h.get('xirr') else '-',
+            'actual_xirr': round(h.get('actual_xirr', 0), 2) if h.get('actual_xirr') else '-'
+        })
+        total_invested += invested
+        total_expected += expected
+        total_profit += profit
     
-    # Send email
+    # Generate filename
+    pan = holdings_data['client']['pan_number']
+    filename = f"holdings_{pan}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.xlsx"
+    
+    # Send email with attachment
     email_sent = send_holdings_report_email(
         client_name=client.get('name', 'Valued Investor'),
         client_email=client_email,
-        holdings_data=holdings_data,
+        holdings_data=email_holdings_data,
         total_invested=total_invested,
         total_expected=total_expected,
         total_profit=total_profit,
-        cc_emails=cc_emails if cc_emails else None
+        cc_emails=cc_emails if cc_emails else None,
+        excel_attachment=excel_bytes,
+        attachment_filename=filename
     )
     
     if email_sent:
         return {
             "success": True,
-            "message": f"Holdings report sent to {client_email}" + (f" with CC to {', '.join(cc_emails)}" if cc_emails else ""),
+            "message": f"Holdings report with Excel attachment sent to {client_email}" + (f" with CC to {', '.join(cc_emails)}" if cc_emails else ""),
             "recipient": client_email,
-            "cc": cc_emails
+            "cc": cc_emails,
+            "attachment": filename
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to send email. Please check email configuration.")
