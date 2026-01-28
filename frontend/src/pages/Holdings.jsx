@@ -1151,7 +1151,14 @@ export default function Holdings() {
       toast.error('Failed to generate Excel: ' + err.message);
     }
   };
-      <!DOCTYPE html>
+
+  const expectedCashflows = modalData ? getExpectedCashflowsByDate(modalData.trades) : [];
+  const actualCashflows = modalData ? getActualCashflowsByDate(modalData.trades) : [];
+
+  if (!user) return null;
+
+  const SidebarComponent = user.role === 'broker' ? Sidebar : user.role === 'client' ? ClientSidebar : SubBrokerSidebar;
+  const consolidatedCashflows = modalData ? getConsolidatedCashflowsByDate(modalData.trades) : [];
       <html>
       <head>
         <meta charset="UTF-8">
