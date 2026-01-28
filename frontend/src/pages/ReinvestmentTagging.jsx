@@ -1277,10 +1277,6 @@ export default function ReinvestmentTagging() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
