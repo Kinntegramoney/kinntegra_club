@@ -101,6 +101,34 @@ export default function SubBrokerClients() {
     fetchClients();
   };
 
+  const handleResendCredentials = async (client) => {
+    if (!window.confirm(`Resend login credentials to ${client.name}?`)) return;
+    
+    setResendingCredentials(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/clients/${client.id}/resend-credentials`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setCredentialsData(response.data.credentials);
+      setShowCredentialsModal(true);
+      
+      if (response.data.email_sent) {
+        toast.success(`Credentials sent to ${client.email}`);
+      } else {
+        toast.info("Credentials reset. Email not sent - please share manually.");
+      }
+    } catch (error) {
+      console.error("Error resending credentials:", error);
+      toast.error(error.response?.data?.detail || "Failed to resend credentials");
+    } finally {
+      setResendingCredentials(false);
+    }
+  };
+
   const handleDownloadTemplate = async (type) => {
     try {
       const token = localStorage.getItem("token");
