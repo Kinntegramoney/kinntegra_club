@@ -172,7 +172,12 @@ export default function AdminClients() {
 
   // Reset password
   const handleResetPassword = async (client) => {
-    if (!window.confirm(`Reset password for ${client.name}?`)) return;
+    if (!client.email) {
+      toast.error("Client does not have an email address. Please update their profile first.");
+      return;
+    }
+    
+    if (!window.confirm(`Reset password for ${client.name}? New credentials will be sent to ${client.email}`)) return;
     
     try {
       const token = localStorage.getItem("token");
@@ -180,22 +185,10 @@ export default function AdminClients() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setCredentials({
-        name: client.name,
-        pan: client.pan_number,
-        password: response.data.new_password,
-        email: client.email
-      });
-      setShowCredentialsModal(true);
-      
-      if (response.data.email_sent) {
-        toast.success("New password sent to client's email");
-      } else {
-        toast.warning("Email could not be sent. Please share password manually.");
-      }
+      toast.success(response.data.message || "New password sent to client's email");
     } catch (error) {
       console.error("Error resetting password:", error);
-      toast.error("Failed to reset password");
+      toast.error(error.response?.data?.detail || "Failed to reset password");
     }
   };
 
