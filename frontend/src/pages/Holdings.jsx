@@ -1177,7 +1177,10 @@ export default function Holdings() {
                 placeholder="Search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-          .header p { font-size: 10px; color: #6b7280; }
+                className="pl-9 h-9 text-sm"
+              />
+            </div>
+          </div>
           .summary-box { display: flex; gap: 15px; margin-bottom: 12px; padding: 10px; background: linear-gradient(135deg, #F5F3EF 0%, #FBF7E9 100%); border-radius: 6px; border: 1px solid #E8D89F; }
           .summary-item { flex: 1; text-align: center; }
           .summary-item label { font-size: 7px; color: #5B373C; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
