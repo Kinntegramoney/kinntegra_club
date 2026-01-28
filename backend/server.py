@@ -11313,8 +11313,8 @@ async def send_holdings_report_email_endpoint(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Send holdings report email to client with sub-broker CC.
-    Includes Excel attachment with full holdings data.
+    Send holdings report email to client with sub-broker CC and BCC to donotreply@kinntegraa.club.
+    Includes Excel attachment with full holdings data (same as download).
     Broker or sub-broker can trigger this for their clients.
     """
     if current_user['role'] not in ['broker', 'sub_broker']:
@@ -11337,17 +11337,18 @@ async def send_holdings_report_email_endpoint(
     if not client_email:
         raise HTTPException(status_code=400, detail="Client has no email address")
     
-    # Get sub-broker email for CC
+    # Get sub-broker email for CC (only sub-broker, not broker)
     cc_emails = []
     if client.get('linked_subbroker_id'):
-        sub_broker = await db.sub_brokers.find_one({"id": client.get('linked_subbroker_id')}, {"_id": 0})
+        # Try partners collection first (primary), then sub_brokers
+        sub_broker = await db.partners.find_one({"id": client.get('linked_subbroker_id')}, {"_id": 0})
+        if not sub_broker:
+            sub_broker = await db.sub_brokers.find_one({"id": client.get('linked_subbroker_id')}, {"_id": 0})
         if sub_broker and sub_broker.get('email'):
             cc_emails.append(sub_broker.get('email'))
     
-    # If current user is broker, also try to CC them
-    if current_user['role'] == 'broker' and current_user.get('email'):
-        if current_user.get('email') not in cc_emails:
-            cc_emails.append(current_user.get('email'))
+    # BCC to donotreply@kinntegraa.club
+    bcc_emails = ["donotreply@kinntegraa.club"]
     
     # Get full holdings data using the same function as download
     try:
@@ -11358,14 +11359,19 @@ async def send_holdings_report_email_endpoint(
     if not holdings_data.get('holdings'):
         raise HTTPException(status_code=404, detail="No holdings found for this client")
     
-    # Generate Excel file bytes using the same logic as download endpoint
+    # Generate Excel file bytes using THE SAME LOGIC as download endpoint
     from io import BytesIO
     
     wb = Workbook()
+    
+    # Styles (same as download)
     header_font = Font(bold=True, size=11, color="FFFFFF")
     header_fill = PatternFill(start_color="5B373C", end_color="5B373C", fill_type="solid")
+    expected_fill = PatternFill(start_color="059669", end_color="059669", fill_type="solid")
+    actual_fill = PatternFill(start_color="7c3aed", end_color="7c3aed", fill_type="solid")
     summary_fill = PatternFill(start_color="f5f5f5", end_color="f5f5f5", fill_type="solid")
     title_font = Font(bold=True, size=14)
+    subtitle_font = Font(bold=True, size=12)
     money_font = Font(name="Consolas", size=10)
     border = Border(
         left=Side(style='thin'),
@@ -11374,22 +11380,21 @@ async def send_holdings_report_email_endpoint(
         bottom=Side(style='thin')
     )
     
-    # Summary Sheet
+    # ========== SUMMARY SHEET ==========
     ws_summary = wb.active
     ws_summary.title = "Summary"
     
     ws_summary['A1'] = f"Holdings Report - {holdings_data['client']['name']}"
     ws_summary['A1'].font = title_font
-    ws_summary.merge_cells('A1:G1')
+    ws_summary.merge_cells('A1:H1')
     
     ws_summary['A2'] = f"PAN: {holdings_data['client']['pan_number']}"
     ws_summary['A3'] = f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
     
-    # Summary stats
     ws_summary['A5'] = "OVERALL SUMMARY"
     ws_summary['A5'].font = Font(bold=True, size=12)
     
-    summary_stats = [
+    summary_data = [
         ("Total Investment", holdings_data['summary']['total_investment']),
         ("Total Repaid (Gross)", holdings_data['summary']['total_repaid']),
         ("Total Upcoming (Gross)", holdings_data['summary']['total_upcoming']),
@@ -11397,18 +11402,17 @@ async def send_holdings_report_email_endpoint(
         ("Total Profit", holdings_data['summary']['total_profit'])
     ]
     
-    for i, (label, value) in enumerate(summary_stats):
+    for i, (label, value) in enumerate(summary_data):
         ws_summary[f'A{6+i}'] = label
         ws_summary[f'B{6+i}'] = value
         ws_summary[f'B{6+i}'].font = money_font
         ws_summary[f'B{6+i}'].number_format = '₹ #,##0.00'
     
-    # Holdings list header
     start_row = 13
     ws_summary[f'A{start_row}'] = "HOLDINGS BY BOND"
     ws_summary[f'A{start_row}'].font = Font(bold=True, size=12)
     
-    holdings_headers = ["#", "Bond Name", "Units", "Investment", "Expected XIRR", "Actual XIRR"]
+    holdings_headers = ["#", "Bond Name", "Investment Date", "Units", "Investment", "Expected XIRR", "Actual XIRR", "Sheet"]
     for col, header in enumerate(holdings_headers, 1):
         cell = ws_summary.cell(row=start_row+1, column=col, value=header)
         cell.font = header_font
@@ -11416,27 +11420,198 @@ async def send_holdings_report_email_endpoint(
         cell.border = border
         cell.alignment = Alignment(horizontal='center')
     
-    # Set column widths
     ws_summary.column_dimensions['A'].width = 5
     ws_summary.column_dimensions['B'].width = 28
-    ws_summary.column_dimensions['C'].width = 10
-    ws_summary.column_dimensions['D'].width = 18
-    ws_summary.column_dimensions['E'].width = 14
+    ws_summary.column_dimensions['C'].width = 15
+    ws_summary.column_dimensions['D'].width = 10
+    ws_summary.column_dimensions['E'].width = 18
     ws_summary.column_dimensions['F'].width = 14
+    ws_summary.column_dimensions['G'].width = 14
+    ws_summary.column_dimensions['H'].width = 12
     
-    # Add holdings rows
-    row_num = start_row + 2
-    for i, holding in enumerate(holdings_data['holdings'], 1):
-        ws_summary.cell(row=row_num, column=1, value=i).border = border
-        ws_summary.cell(row=row_num, column=2, value=holding.get('bond_name', '-')).border = border
-        ws_summary.cell(row=row_num, column=3, value=holding.get('units', 0)).border = border
-        cell = ws_summary.cell(row=row_num, column=4, value=holding.get('invested_amount', 0))
-        cell.border = border
-        cell.font = money_font
-        cell.number_format = '₹ #,##0.00'
-        ws_summary.cell(row=row_num, column=5, value=f"{holding.get('xirr', 0):.2f}%" if holding.get('xirr') else '-').border = border
-        ws_summary.cell(row=row_num, column=6, value=f"{holding.get('actual_xirr', 0):.2f}%" if holding.get('actual_xirr') else '-').border = border
-        row_num += 1
+    # ========== CREATE SEPARATE SHEET FOR EACH HOLDING ==========
+    sheet_index = 0
+    summary_row = start_row + 2
+    
+    for holding in holdings_data['holdings']:
+        trades = holding.get('trades', [holding])
+        
+        for trade in trades:
+            sheet_index += 1
+            bond_name = holding.get('bond_name', 'Bond')
+            investment_date = trade.get('investment_date', trade.get('date', ''))
+            
+            short_bond_name = bond_name[:15].replace('/', '-').replace('\\', '-').replace('*', '-').replace('?', '-').replace('[', '').replace(']', '')
+            inv_date_short = investment_date[:10] if investment_date else ''
+            sheet_name = f"{sheet_index}_{short_bond_name}_{inv_date_short}"[:31]
+            
+            ws = wb.create_sheet(title=sheet_name)
+            
+            ws['A1'] = bond_name
+            ws['A1'].font = title_font
+            ws.merge_cells('A1:F1')
+            
+            ws['A3'] = "Investment Date"
+            ws['B3'] = investment_date[:10] if investment_date else '-'
+            ws['C3'] = "Units"
+            ws['D3'] = trade.get('units', holding.get('units', holding.get('total_units', '-')))
+            ws['E3'] = "Investment"
+            ws['F3'] = trade.get('invested_amount', holding.get('invested_amount', 0))
+            ws['F3'].font = money_font
+            ws['F3'].number_format = '₹ #,##0.00'
+            
+            ws['A4'] = "Expected XIRR"
+            ws['B4'] = f"{holding.get('xirr', 0):.2f}%" if holding.get('xirr') else '-'
+            ws['C4'] = "Actual XIRR"
+            ws['D4'] = f"{holding.get('actual_xirr', 0):.2f}%" if holding.get('actual_xirr') else '-'
+            
+            for cell in ['A3', 'C3', 'E3', 'A4', 'C4']:
+                ws[cell].font = Font(bold=True)
+            
+            # Expected Cashflow Section
+            ws['A6'] = "Expected Cashflow"
+            ws['A6'].font = subtitle_font
+            ws['A6'].fill = expected_fill
+            ws['A6'].font = Font(bold=True, color="FFFFFF")
+            ws.merge_cells('A6:D6')
+            
+            expected_headers = ["Date", "Description", "Gross Amount (₹)", "Net Amount (₹)"]
+            for col, header in enumerate(expected_headers, 1):
+                cell = ws.cell(row=7, column=col, value=header)
+                cell.font = Font(bold=True)
+                cell.fill = summary_fill
+                cell.border = border
+            
+            row = 8
+            exp_total_gross = 0
+            exp_total_net = 0
+            
+            expected_cfs = trade.get('expected_cashflows', holding.get('expected_cashflows', []))
+            for cf in expected_cfs:
+                is_investment = cf.get('type') == 'investment'
+                
+                ws.cell(row=row, column=1, value=cf.get('date', '')[:10] if cf.get('date') else '').border = border
+                
+                if is_investment:
+                    ws.cell(row=row, column=2, value="Principal Invested").border = border
+                    ws.cell(row=row, column=3, value="").border = border
+                    gross = abs(cf.get('gross_amount', 0) or cf.get('investment_amount', 0) or cf.get('amount', 0))
+                    cell = ws.cell(row=row, column=4, value=-gross)
+                    cell.border = border
+                    cell.font = Font(name="Consolas", size=10, color="DC2626", bold=True)
+                    cell.number_format = '₹ #,##0.00'
+                else:
+                    cf_type = "Principal + Interest" if cf.get('principal_component', 0) > 0 else "Interest Payment"
+                    ws.cell(row=row, column=2, value=cf_type).border = border
+                    gross = cf.get('gross_amount', (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0))
+                    net = cf.get('net_amount', gross)
+                    ws.cell(row=row, column=3, value=gross).border = border
+                    ws.cell(row=row, column=3).font = money_font
+                    ws.cell(row=row, column=3).number_format = '₹ #,##0.00'
+                    ws.cell(row=row, column=4, value=net).border = border
+                    ws.cell(row=row, column=4).font = money_font
+                    ws.cell(row=row, column=4).number_format = '₹ #,##0.00'
+                    exp_total_gross += gross
+                    exp_total_net += net
+                
+                row += 1
+            
+            ws.cell(row=row, column=1, value="Total Returns").font = Font(bold=True)
+            ws.cell(row=row, column=1).border = border
+            ws.cell(row=row, column=2, value="").border = border
+            ws.cell(row=row, column=3, value=exp_total_gross).border = border
+            ws.cell(row=row, column=3).font = Font(bold=True, name="Consolas")
+            ws.cell(row=row, column=3).number_format = '₹ #,##0.00'
+            ws.cell(row=row, column=4, value=exp_total_net).border = border
+            ws.cell(row=row, column=4).font = Font(bold=True, name="Consolas")
+            ws.cell(row=row, column=4).number_format = '₹ #,##0.00'
+            
+            row += 2
+            
+            # Actual Cashflow Section
+            ws.cell(row=row, column=1, value="Actual Cashflow").font = subtitle_font
+            ws.cell(row=row, column=1).fill = actual_fill
+            ws.cell(row=row, column=1).font = Font(bold=True, color="FFFFFF")
+            ws.merge_cells(f'A{row}:D{row}')
+            
+            row += 1
+            actual_headers = ["Date", "Status", "Gross Amount (₹)", "Net Amount (₹)"]
+            for col, header in enumerate(actual_headers, 1):
+                cell = ws.cell(row=row, column=col, value=header)
+                cell.font = Font(bold=True)
+                cell.fill = summary_fill
+                cell.border = border
+            
+            row += 1
+            act_total_gross = 0
+            act_total_net = 0
+            
+            actual_cfs = trade.get('actual_cashflows', holding.get('actual_cashflows', []))
+            if actual_cfs:
+                for cf in actual_cfs:
+                    is_investment = cf.get('type') == 'investment'
+                    
+                    ws.cell(row=row, column=1, value=cf.get('date', '')[:10] if cf.get('date') else '').border = border
+                    
+                    if is_investment:
+                        ws.cell(row=row, column=2, value="Paid").border = border
+                        ws.cell(row=row, column=3, value="").border = border
+                        gross = abs(cf.get('gross_amount', 0) or cf.get('investment_amount', 0) or cf.get('amount', 0))
+                        cell = ws.cell(row=row, column=4, value=-gross)
+                        cell.border = border
+                        cell.font = Font(name="Consolas", size=10, color="DC2626", bold=True)
+                        cell.number_format = '₹ #,##0.00'
+                    else:
+                        status = "Received" if cf.get('is_repaid') else "Pending"
+                        ws.cell(row=row, column=2, value=status).border = border
+                        gross = cf.get('gross_amount', (cf.get('principal_component', 0) or 0) + (cf.get('interest_component', 0) or 0))
+                        net = cf.get('net_amount', gross)
+                        ws.cell(row=row, column=3, value=gross).border = border
+                        ws.cell(row=row, column=3).font = money_font
+                        ws.cell(row=row, column=3).number_format = '₹ #,##0.00'
+                        ws.cell(row=row, column=4, value=net).border = border
+                        ws.cell(row=row, column=4).font = money_font
+                        ws.cell(row=row, column=4).number_format = '₹ #,##0.00'
+                        act_total_gross += gross
+                        act_total_net += net
+                    
+                    row += 1
+                
+                ws.cell(row=row, column=1, value="Total Returns").font = Font(bold=True)
+                ws.cell(row=row, column=1).border = border
+                ws.cell(row=row, column=2, value="").border = border
+                ws.cell(row=row, column=3, value=act_total_gross).border = border
+                ws.cell(row=row, column=3).font = Font(bold=True, name="Consolas")
+                ws.cell(row=row, column=3).number_format = '₹ #,##0.00'
+                ws.cell(row=row, column=4, value=act_total_net).border = border
+                ws.cell(row=row, column=4).font = Font(bold=True, name="Consolas")
+                ws.cell(row=row, column=4).number_format = '₹ #,##0.00'
+            else:
+                ws.cell(row=row, column=1, value="No actual cashflows yet").font = Font(italic=True, color="999999")
+            
+            row += 2
+            ws.cell(row=row, column=1, value="Note: Gross Amount = Principal + Interest before TDS. Net Amount = Post-TDS. Negative values indicate investments (outflows).")
+            ws.cell(row=row, column=1).font = Font(italic=True, size=9, color="666666")
+            ws.merge_cells(f'A{row}:D{row}')
+            
+            ws.column_dimensions['A'].width = 15
+            ws.column_dimensions['B'].width = 20
+            ws.column_dimensions['C'].width = 18
+            ws.column_dimensions['D'].width = 18
+            
+            # Add to summary
+            ws_summary.cell(row=summary_row, column=1, value=sheet_index).border = border
+            ws_summary.cell(row=summary_row, column=2, value=bond_name).border = border
+            ws_summary.cell(row=summary_row, column=3, value=investment_date[:10] if investment_date else '-').border = border
+            ws_summary.cell(row=summary_row, column=4, value=trade.get('units', holding.get('units', holding.get('total_units', '-')))).border = border
+            ws_summary.cell(row=summary_row, column=5, value=trade.get('invested_amount', holding.get('invested_amount', 0))).border = border
+            ws_summary.cell(row=summary_row, column=5).font = money_font
+            ws_summary.cell(row=summary_row, column=5).number_format = '₹ #,##0.00'
+            ws_summary.cell(row=summary_row, column=6, value=f"{holding.get('xirr', 0):.2f}%" if holding.get('xirr') else '-').border = border
+            ws_summary.cell(row=summary_row, column=7, value=f"{holding.get('actual_xirr', 0):.2f}%" if holding.get('actual_xirr') else '-').border = border
+            ws_summary.cell(row=summary_row, column=8, value=sheet_name).border = border
+            
+            summary_row += 1
     
     # Save to bytes
     excel_buffer = BytesIO()
@@ -11471,7 +11646,7 @@ async def send_holdings_report_email_endpoint(
     pan = holdings_data['client']['pan_number']
     filename = f"holdings_{pan}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.xlsx"
     
-    # Send email with attachment
+    # Send email with attachment, CC to sub-broker, BCC to donotreply
     email_sent = send_holdings_report_email(
         client_name=client.get('name', 'Valued Investor'),
         client_email=client_email,
@@ -11481,15 +11656,17 @@ async def send_holdings_report_email_endpoint(
         total_profit=total_profit,
         cc_emails=cc_emails if cc_emails else None,
         excel_attachment=excel_bytes,
-        attachment_filename=filename
+        attachment_filename=filename,
+        bcc_emails=bcc_emails
     )
     
     if email_sent:
         return {
             "success": True,
-            "message": f"Holdings report with Excel attachment sent to {client_email}" + (f" with CC to {', '.join(cc_emails)}" if cc_emails else ""),
+            "message": f"Holdings report with Excel attachment sent to {client_email}" + (f" with CC to {', '.join(cc_emails)}" if cc_emails else "") + f" and BCC to {', '.join(bcc_emails)}",
             "recipient": client_email,
             "cc": cc_emails,
+            "bcc": bcc_emails,
             "attachment": filename
         }
     else:
