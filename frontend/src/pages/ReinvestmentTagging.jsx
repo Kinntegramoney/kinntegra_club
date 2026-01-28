@@ -1117,9 +1117,9 @@ export default function ReinvestmentTagging() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Tag className="h-5 w-5" />
-                Split & Tag Reinvestments ({Object.keys(multiRetagData).length} entries)
+                Split {selectedTagType.charAt(0).toUpperCase() + selectedTagType.slice(1)} Amount ({Object.keys(multiRetagData).length} entries)
               </DialogTitle>
-              <p className="text-sm text-gray-500">Split each entry across multiple UCCs with different amounts, portfolios, and tags</p>
+              <p className="text-sm text-gray-500">Split the <span className="font-medium text-etihad-gold-700">{selectedTagType}</span> amount across multiple UCCs with different portfolios</p>
             </DialogHeader>
             
             <div className="flex-1 overflow-auto py-4 space-y-6">
@@ -1130,17 +1130,40 @@ export default function ReinvestmentTagging() {
                 
                 return (
                   <div key={entryId} className="border rounded-lg bg-gray-50 overflow-hidden">
-                    {/* Entry Header */}
-                    <div className="bg-white px-4 py-3 border-b flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-sm">{data.entry?.bond_name || 'Unknown Bond'}</div>
-                        <div className="text-xs text-gray-500">
-                          {data.entry?.client_name} • {format(new Date(data.entry?.expected_date || new Date()), "dd MMM yyyy")}
+                    {/* Entry Header with Amount Breakdown */}
+                    <div className="bg-white px-4 py-3 border-b">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <div className="font-medium text-sm">{data.entry?.bond_name || 'Unknown Bond'}</div>
+                          <div className="text-xs text-gray-500">
+                            {data.entry?.client_name} • {format(new Date(data.entry?.expected_date || new Date()), "dd MMM yyyy")}
+                          </div>
                         </div>
+                        <Badge className="bg-etihad-gold-100 text-etihad-gold-700 border-etihad-gold-200">
+                          Tag: {selectedTagType.charAt(0).toUpperCase() + selectedTagType.slice(1)}
+                        </Badge>
                       </div>
-                      <div className="text-right">
-                        <div className="text-xs text-gray-500">Total Amount</div>
-                        <div className="font-semibold text-etihad-gold-700">{formatCurrency(data.totalAmount)}</div>
+                      
+                      {/* Amount Breakdown */}
+                      <div className="grid grid-cols-3 gap-3 text-center">
+                        <div className={`rounded-lg p-2 border ${selectedTagType === 'principal' ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-400' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="text-[10px] text-gray-500 uppercase">Principal</div>
+                          <div className={`text-sm font-semibold ${selectedTagType === 'principal' ? 'text-blue-700' : 'text-gray-600'}`}>
+                            {formatCurrency(data.amounts?.principal || 0)}
+                          </div>
+                        </div>
+                        <div className={`rounded-lg p-2 border ${selectedTagType === 'interest' ? 'bg-green-50 border-green-300 ring-2 ring-green-400' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="text-[10px] text-gray-500 uppercase">Interest</div>
+                          <div className={`text-sm font-semibold ${selectedTagType === 'interest' ? 'text-green-700' : 'text-gray-600'}`}>
+                            {formatCurrency(data.amounts?.interest || 0)}
+                          </div>
+                        </div>
+                        <div className={`rounded-lg p-2 border ${selectedTagType === 'both' ? 'bg-purple-50 border-purple-300 ring-2 ring-purple-400' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="text-[10px] text-gray-500 uppercase">Both (Total)</div>
+                          <div className={`text-sm font-semibold ${selectedTagType === 'both' ? 'text-purple-700' : 'text-gray-600'}`}>
+                            {formatCurrency(data.amounts?.both || 0)}
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
@@ -1148,12 +1171,12 @@ export default function ReinvestmentTagging() {
                     <div className={`px-4 py-2 text-xs flex items-center justify-between ${isBalanced ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
                       <span>
                         Allocated: {formatCurrency(allocTotal)} / {formatCurrency(data.totalAmount)}
-                        {!isBalanced && ` (${remaining > 0 ? '+' : ''}${formatCurrency(remaining)} ${remaining > 0 ? 'remaining' : 'over'})`}
+                        {!isBalanced && ` (${remaining > 0 ? '' : '-'}${formatCurrency(Math.abs(remaining))} ${remaining > 0 ? 'remaining' : 'over'})`}
                       </span>
                       {isBalanced && <CheckCircle className="h-4 w-4" />}
                     </div>
                     
-                    {/* UCC Allocations */}
+                    {/* UCC Allocations - Only UCC, Amount, Portfolio (NO Tag) */}
                     <div className="p-4 space-y-3">
                       {data.allocations.map((alloc, allocIndex) => (
                         <div key={alloc.id} className="bg-white rounded-lg border p-3">
@@ -1163,8 +1186,8 @@ export default function ReinvestmentTagging() {
                               {allocIndex + 1}
                             </div>
                             
-                            {/* Allocation Fields */}
-                            <div className="flex-1 grid grid-cols-4 gap-3">
+                            {/* Allocation Fields - 3 columns: UCC, Amount, Portfolio */}
+                            <div className="flex-1 grid grid-cols-3 gap-3">
                               {/* UCC */}
                               <div>
                                 <Label className="text-[10px] text-gray-500 mb-1 block">UCC</Label>
@@ -1212,24 +1235,6 @@ export default function ReinvestmentTagging() {
                                   </SelectContent>
                                 </Select>
                               </div>
-                              
-                              {/* Tag */}
-                              <div>
-                                <Label className="text-[10px] text-gray-500 mb-1 block">Tag</Label>
-                                <Select 
-                                  value={alloc.tag} 
-                                  onValueChange={(v) => updateAllocation(entryId, allocIndex, 'tag', v)}
-                                >
-                                  <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Select" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {TAG_OPTIONS.map(opt => (
-                                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
                             </div>
                             
                             {/* Remove Button */}
@@ -1268,6 +1273,10 @@ export default function ReinvestmentTagging() {
               </Button>
               <Button onClick={applyMultiRetagChanges} className="bg-etihad-gold-600 hover:bg-etihad-gold-700">
                 Apply Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
               </Button>
             </DialogFooter>
           </DialogContent>
