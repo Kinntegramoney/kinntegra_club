@@ -46,13 +46,17 @@ const PAGE_SECTIONS = {
   'holdings': 'Holdings',
   'opportunities': 'Opportunities',
   'real-estate-details': 'Real Estate Details',
+  'real-estate-investments': 'Real Estate Investments',
   'bond-details': 'Bond Details',
   'dashboard': 'Dashboard',
   'clients': 'Clients',
+  'client-details': 'Client Details',
   'profile': 'Profile',
   'analysis': 'Analysis',
   'leads': 'Lead Management',
   'reinvestment': 'Reinvestment Tagging',
+  'reinvestment-approvals': 'Reinvestment Approvals',
+  'trade-verification': 'Trade Verification',
 };
 
 export default function TradeLogs() {
