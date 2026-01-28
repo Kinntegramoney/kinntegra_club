@@ -2,6 +2,33 @@
 
 ## Recent Changes (Jan 28, 2026)
 
+### Secondary Calculator PDF Redesign (Jan 28, 2026) ✅
+
+**Issue:** The Secondary Calculator's PDF export was generating a dashboard-style design with colored cards, which did not match the user's reference design (`Bond_Cashflow_Final_Rupee.pdf`).
+
+**User Requirement:** The PDF should match the reference exactly:
+- Header table with 5 columns: Bond Name, Amount Invested, Gross Expected, Profit, Expected XIRR
+- Section title: "Expected Cashflow"
+- Simple table with 4 columns: Date, Description, Gross Amount (₹), Net Amount (₹)
+- First row shows "Principal Invested" with negative value in red
+- Total Returns row at the bottom
+- Note section explaining Gross vs Net amounts
+
+**Fix Applied:**
+- **`/app/frontend/src/pages/BondDetails.jsx`**: Completely rewrote `exportCashflowToPDF()` function
+  - Changed HTML template to match reference design exactly
+  - Fixed `secondary_irr` access (was using `bondData?.secondary_irr` before `bondData` was defined)
+  - Now correctly accesses `bond?.bond?.secondary_irr`
+  - Clean table-based layout with proper borders and styling
+  - Currency formatting using Indian locale
+
+**Testing:**
+- ✅ PDF generation working correctly
+- ✅ Modal displays correctly matching reference design
+- ✅ Toast notification confirms successful export
+
+---
+
 ### PDF Fix - Monthly Cashflow Schedule (Jan 28, 2026) ✅
 
 **Issue:** PDF generated but Monthly Cashflow Schedule table was blank.
