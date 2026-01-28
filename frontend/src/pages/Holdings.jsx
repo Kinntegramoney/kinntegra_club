@@ -1194,7 +1194,18 @@ export default function Holdings() {
                     selectedClient?.id === client.id ? 'bg-etihad-gold-50 border-l-4 border-l-amber-600' : ''
                   }`}
                 >
-          .summary-item.purple span { color: #7c3aed; }
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900 text-sm">{client.name}</div>
+                      <div className="text-xs text-gray-500">{client.pan_number}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">
+                        {client.total_invested ? formatINR(client.total_invested) : '₹ 0'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
           .two-col { display: flex; gap: 12px; }
           .col { flex: 1; min-width: 0; }
           .section-title { font-size: 10px; font-weight: 600; color: #fff; padding: 5px 8px; margin-bottom: 0; }
