@@ -1068,12 +1068,38 @@ async def login_step2(login: LoginStep2):
 # Password Reset Routes
 @api_router.post("/auth/forgot-password")
 async def forgot_password(request: PasswordResetRequest, background_tasks: BackgroundTasks):
-    """Request password reset - sends email with reset token"""
-    # Find user by PAN and email
+    """Request password reset - sends email with reset token for broker, sub-broker, or client"""
+    pan_upper = request.pan.upper()
+    email_lower = request.email.lower()
+    
+    user = None
+    user_type = None
+    
+    # Check brokers first
     user = await db.users.find_one({
-        "pan": request.pan.upper(),
-        "email": request.email.lower()
-    })
+        "pan": pan_upper,
+        "email": email_lower
+    }, {"_id": 0})
+    if user:
+        user_type = "broker"
+    
+    # Check sub-brokers
+    if not user:
+        user = await db.sub_brokers.find_one({
+            "pan": pan_upper,
+            "email": email_lower
+        }, {"_id": 0})
+        if user:
+            user_type = "sub_broker"
+    
+    # Check clients
+    if not user:
+        user = await db.clients.find_one({
+            "pan_number": pan_upper,
+            "email": email_lower
+        }, {"_id": 0})
+        if user:
+            user_type = "client"
     
     if not user:
         # Don't reveal if user exists or not for security
@@ -1081,13 +1107,14 @@ async def forgot_password(request: PasswordResetRequest, background_tasks: Backg
     
     # Create reset token (expires in 1 hour)
     reset_token = create_access_token(
-        data={"user_id": user['id'], "type": "password_reset"},
+        data={"user_id": user['id'], "user_type": user_type, "type": "password_reset"},
         expires_delta=timedelta(hours=1)
     )
     
     # Store reset token in database
     await db.password_resets.insert_one({
         "user_id": user['id'],
+        "user_type": user_type,
         "token": reset_token,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "used": False
