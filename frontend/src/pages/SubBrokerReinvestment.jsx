@@ -329,11 +329,6 @@ export default function SubBrokerReinvestment() {
     toast.success(`Applied changes to ${Object.keys(updates).length} entries`);
   };
 
-  const formatCurrency = (amount) => {
-    if (!amount && amount !== 0) return '₹0';
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
-  };
-
   const saveClientTags = async (clientGroup, isPast) => {
     // Validate: all 3 fields must be filled for entries with changes
     const entriesToSave = clientGroup.entries.filter(entry => localChanges[entry.id]);
