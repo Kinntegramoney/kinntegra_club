@@ -1237,7 +1237,7 @@ export default function BondDetails() {
                         {cashflowReportData.cashflows.length} payments from {format(new Date(cashflowReportData.investment_date), "dd MMM yyyy")} onwards
                       </p>
                     </div>
-                    <div className="max-h-[350px] overflow-y-auto">
+                    <div className="overflow-y-auto cashflow-table-container" style={{ maxHeight: '350px' }}>
                       <table className="w-full text-sm">
                         <thead className="bg-gray-100 sticky top-0">
                           <tr>
