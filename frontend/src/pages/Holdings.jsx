@@ -2123,9 +2123,18 @@ export default function Holdings() {
                 <button
                   onClick={() => downloadCombinedCashflowPDF(modalData, expectedCashflows, actualCashflows)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-etihad-gold-600 hover:bg-etihad-gold-700 rounded-lg text-white text-sm font-medium transition-colors"
+                  title="Download as PDF"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF
+                </button>
+                <button
+                  onClick={() => downloadCombinedCashflowExcel(modalData, expectedCashflows, actualCashflows)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm font-medium transition-colors"
+                  title="Download as Excel (CSV)"
                 >
                   <Download className="h-4 w-4" />
-                  Download PDF
+                  Excel
                 </button>
                 <button onClick={closeModal} className="p-2 hover:bg-white/50 rounded-full transition-colors" data-testid="close-modal-btn">
                   <X className="h-5 w-5 text-gray-500" />
