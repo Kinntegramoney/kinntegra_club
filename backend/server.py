@@ -1015,6 +1015,36 @@ async def login_step2(login: LoginStep2):
         data={"user_id": user['id'], "role": user['role']}
     )
     
+    # Log login activity for sub-brokers and clients
+    if user['role'] in ['sub_broker', 'client']:
+        login_log = {
+            "id": str(uuid.uuid4()),
+            "user_id": user['id'],
+            "user_name": user.get('name', ''),
+            "user_role": user['role'],
+            "page_section": "login",
+            "action": "login_success",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "metadata": {
+                "pan": user.get('pan', ''),
+                "login_time": datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+            }
+        }
+        
+        # For sub-brokers, get broker_id
+        if user['role'] == 'sub_broker':
+            sub_broker = await db.sub_brokers.find_one({"id": user['id']}, {"_id": 0})
+            if sub_broker:
+                login_log['broker_id'] = sub_broker.get('created_by')
+        elif user['role'] == 'client':
+            client = await db.clients.find_one({"user_id": user['id']}, {"_id": 0})
+            if client:
+                login_log['broker_id'] = client.get('created_by')
+                login_log['linked_subbroker_id'] = client.get('linked_subbroker_id')
+                login_log['client_id'] = client.get('id')
+        
+        await db.user_activity_logs.insert_one(login_log)
+    
     # Add client_id for client users
     user_response = {
         "id": user['id'],
