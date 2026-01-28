@@ -726,19 +726,44 @@ export default function Holdings() {
         }
       }
       
-      consolidated[bondId].trades.push({
-        trade_id: holding.trade_id,
-        units: holding.units,
-        investment_date: holding.investment_date,
-        invested_amount: holding.invested_amount,
-        prepaid_count: holding.prepaid_count || 0,
-        prepaid_amount: holding.prepaid_amount || 0,
-        xirr: holding.xirr,
-        actual_xirr: holding.actual_xirr,
-        cashflows: holding.cashflows.sort((a, b) => new Date(a.date) - new Date(b.date)),
-        expected_cashflows: holding.expected_cashflows || [],
-        actual_cashflows: holding.actual_cashflows || []
-      });
+      // Use individual_trades if available (backend returns merged holdings with individual trade info)
+      // This ensures we show separate tabs for each investment date
+      if (holding.individual_trades && holding.individual_trades.length > 1) {
+        // Multiple trades were merged - add each individual trade
+        holding.individual_trades.forEach(indTrade => {
+          consolidated[bondId].trades.push({
+            trade_id: indTrade.trade_id,
+            units: indTrade.units,
+            investment_date: indTrade.investment_date,
+            invested_amount: indTrade.amount || 0,
+            prepaid_count: 0,
+            prepaid_amount: 0,
+            xirr: holding.xirr,
+            actual_xirr: holding.actual_xirr,
+            // For individual trades, filter cashflows by trade_id if possible
+            cashflows: (holding.cashflows || []).filter(cf => 
+              !cf.merged_trade_ids || cf.merged_trade_ids.includes(indTrade.trade_id)
+            ).sort((a, b) => new Date(a.date) - new Date(b.date)),
+            expected_cashflows: holding.expected_cashflows || [],
+            actual_cashflows: holding.actual_cashflows || []
+          });
+        });
+      } else {
+        // Single trade or no individual trades info - use the holding data
+        consolidated[bondId].trades.push({
+          trade_id: holding.trade_id,
+          units: holding.units,
+          investment_date: holding.investment_date,
+          invested_amount: holding.invested_amount,
+          prepaid_count: holding.prepaid_count || 0,
+          prepaid_amount: holding.prepaid_amount || 0,
+          xirr: holding.xirr,
+          actual_xirr: holding.actual_xirr,
+          cashflows: (holding.cashflows || []).sort((a, b) => new Date(a.date) - new Date(b.date)),
+          expected_cashflows: holding.expected_cashflows || [],
+          actual_cashflows: holding.actual_cashflows || []
+        });
+      }
     });
     
     Object.values(consolidated).forEach(bond => {
