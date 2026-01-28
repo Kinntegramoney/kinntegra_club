@@ -60,10 +60,10 @@ const getFilteredPortfolioOptions = (amount) => {
   });
 };
 
-// Round amount to nearest 100
+// Round amount DOWN to nearest 100 (floor rounding)
 const roundToHundred = (amount) => {
   const num = parseFloat(amount) || 0;
-  return Math.round(num / 100) * 100;
+  return Math.floor(num / 100) * 100;
 };
 
 const TAG_OPTIONS = [
