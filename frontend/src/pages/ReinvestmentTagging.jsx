@@ -762,7 +762,7 @@ export default function ReinvestmentTagging() {
                           <SelectValue placeholder="UCC" />
                         </SelectTrigger>
                         <SelectContent>
-                          {allUccs.map(ucc => (
+                          {getSelectedUccs().map(ucc => (
                             <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
                           ))}
                         </SelectContent>
