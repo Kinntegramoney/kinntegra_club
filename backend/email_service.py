@@ -1485,7 +1485,7 @@ def send_holdings_report_email(
             'content_type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         }]
     
-    return send_email(client_email, subject, html_content, plain_content, cc=cc_emails, attachments=attachments)
+    return send_email(client_email, subject, html_content, plain_content, cc=cc_emails, bcc=bcc_emails, attachments=attachments)
 
 
 # ==================== APPROVAL WORKFLOW EMAILS ====================
