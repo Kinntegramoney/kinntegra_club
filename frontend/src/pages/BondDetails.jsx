@@ -296,60 +296,176 @@ export default function BondDetails() {
   const exportCashflowToPDF = async () => {
     if (!cashflowReportData) return;
     
-    const reportElement = document.getElementById('cashflow-report-content');
-    if (!reportElement) {
-      toast.error("Unable to generate PDF");
-      return;
-    }
-    
     toast.info("Generating PDF...");
     
+    // Calculate totals
+    const totalInvestment = cashflowReportData.price_paid;
+    const grossExpected = cashflowReportData.total_principal + cashflowReportData.total_interest;
+    const profit = grossExpected - totalInvestment;
+    
+    // Build HTML for PDF matching the reference format
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Cashflow Report - ${cashflowReportData.bond_name}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 20px; color: #374151; background: #fff; font-size: 11px; }
+          
+          /* Header Cards - Matching the reference image colors */
+          .header-cards { display: flex; margin-bottom: 20px; border: 1px solid #e5e7eb; }
+          .header-card { flex: 1; padding: 15px 20px; text-align: center; border-right: 1px solid #e5e7eb; }
+          .header-card:last-child { border-right: none; }
+          .header-card .label { font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 8px; text-transform: uppercase; }
+          .header-card .value { font-size: 16px; font-weight: 700; color: #111827; }
+          
+          /* Card Colors - Matching Reference */
+          .header-card.bond-name { background: #DBEAFE; } /* Light Blue */
+          .header-card.amount-invested { background: #FED7AA; } /* Light Orange */
+          .header-card.gross-expected { background: #E9D5FF; } /* Light Purple */
+          .header-card.profit { background: #BBF7D0; } /* Light Green */
+          .header-card.xirr { background: #FECACA; } /* Light Coral/Pink */
+          
+          /* Table Section */
+          .section-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #C9A227; }
+          
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th { background: #f9fafb; padding: 12px 15px; text-align: left; font-size: 11px; text-transform: uppercase; color: #6b7280; border-bottom: 2px solid #e5e7eb; font-weight: 600; }
+          th:nth-child(3), th:nth-child(4) { text-align: right; }
+          td { padding: 10px 15px; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
+          td:nth-child(3), td:nth-child(4) { text-align: right; font-family: 'SF Mono', 'Consolas', monospace; }
+          
+          /* Row Colors */
+          tr.investment { background: #fef2f2; }
+          tr.investment td { color: #dc2626; font-weight: 600; }
+          tr:hover { background: #f9fafb; }
+          
+          /* Total Row */
+          tfoot tr { background: #f3f4f6; font-weight: 600; }
+          tfoot td { border-top: 2px solid #e5e7eb; color: #111827; }
+          
+          .page-footer { margin-top: 20px; text-align: center; font-size: 9px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <!-- Colored Header Cards Row -->
+        <div class="header-cards">
+          <div class="header-card bond-name">
+            <div class="label">Bond Name</div>
+            <div class="value">${cashflowReportData.bond_name}</div>
+          </div>
+          <div class="header-card amount-invested">
+            <div class="label">Amount Invested</div>
+            <div class="value">₹${totalInvestment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          </div>
+          <div class="header-card gross-expected">
+            <div class="label">Gross Expected</div>
+            <div class="value">₹${grossExpected.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          </div>
+          <div class="header-card profit">
+            <div class="label">Profit</div>
+            <div class="value">₹${profit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          </div>
+          <div class="header-card xirr">
+            <div class="label">Expected XIRR</div>
+            <div class="value">${bondData?.secondary_irr || cashflowReportData.xirr || '-'}%</div>
+          </div>
+        </div>
+        
+        <!-- Expected Cashflow Table -->
+        <div class="section-title">Expected Cashflow</div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 20%;">Date</th>
+              <th style="width: 30%;">Description</th>
+              <th style="width: 25%;">Gross Amount</th>
+              <th style="width: 25%;">Net Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Principal Investment Row -->
+            <tr class="investment">
+              <td>${format(new Date(cashflowReportData.investment_date), 'dd MMM yyyy')}</td>
+              <td>Principal Invested</td>
+              <td></td>
+              <td>-₹${totalInvestment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+            <!-- Cashflow Rows -->
+            ${cashflowReportData.cashflows.map((cf, idx) => {
+              const grossAmount = cf.principal_payment + cf.interest_payment;
+              const isMaturity = cf.principal_payment > 0;
+              return `
+                <tr>
+                  <td>${format(new Date(cf.date), 'dd MMM yyyy')}</td>
+                  <td>${isMaturity ? 'Principal + Interest' : 'Interest Payment'}</td>
+                  <td>₹${grossAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td>₹${cf.total_net_payment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2"><strong>Total Returns</strong></td>
+              <td><strong>₹${grossExpected.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+              <td><strong>₹${cashflowReportData.total_net_received.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+        
+        <div class="page-footer">
+          Generated by Kinntegraa · ${format(new Date(), 'dd MMM yyyy HH:mm')} · Investment Date: ${format(new Date(cashflowReportData.investment_date), 'dd MMM yyyy')} · ${cashflowReportData.units} Units
+        </div>
+      </body>
+      </html>
+    `;
+    
     try {
-      // Temporarily remove scroll constraints for PDF capture
-      const scrollContainer = reportElement.querySelector('.cashflow-table-container');
-      const originalStyles = {};
-      if (scrollContainer) {
-        originalStyles.maxHeight = scrollContainer.style.maxHeight;
-        originalStyles.overflow = scrollContainer.style.overflow;
-        scrollContainer.style.maxHeight = 'none';
-        scrollContainer.style.overflow = 'visible';
-      }
+      // Create iframe for PDF generation
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 1200px; height: 900px; border: none;';
+      document.body.appendChild(iframe);
+      
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const html2pdf = (await import('html2pdf.js')).default;
       
-      const opt = {
-        margin: [5, 5, 5, 5],
-        filename: `Cashflow_Report_${cashflowReportData.bond_name.replace(/\s+/g, '_')}_${cashflowReportData.investment_date}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          letterRendering: true,
-          scrollY: 0,
-          windowWidth: 1200,
-          height: reportElement.scrollHeight + 100
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'landscape' 
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
+      await html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename: `Cashflow_Report_${cashflowReportData.bond_name.replace(/\s+/g, '_')}_${format(new Date(cashflowReportData.investment_date), 'yyyyMMdd')}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { 
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            letterRendering: true,
+            backgroundColor: '#ffffff',
+            windowWidth: 1200
+          },
+          jsPDF: { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'landscape' 
+          },
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        })
+        .from(iframeDoc.body)
+        .save();
       
-      await html2pdf().set(opt).from(reportElement).save();
-      
-      // Restore scroll constraints
-      if (scrollContainer) {
-        scrollContainer.style.maxHeight = originalStyles.maxHeight || '';
-        scrollContainer.style.overflow = originalStyles.overflow || '';
-      }
-      
+      document.body.removeChild(iframe);
       toast.success("PDF exported successfully!");
     } catch (err) {
       console.error("PDF export error:", err);
-      toast.error("Failed to export PDF");
+      toast.error("Failed to export PDF: " + err.message);
     }
   };
 
