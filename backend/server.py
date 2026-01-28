@@ -3119,16 +3119,40 @@ async def call_kinntegra_mf_buy_scheduler(cashflow: dict, client: dict, is_revis
     try:
         # Determine the investment amount based on reinvestment tag
         tag = cashflow.get('reinvestment_tag', 'not_tagged')
-        if tag == 'other':
+        
+        # Handle split allocations - if present, process each allocation separately
+        if cashflow.get('has_split_allocations') and cashflow.get('ucc_allocations'):
+            allocations = cashflow.get('ucc_allocations', [])
+            results = []
+            
+            for alloc in allocations:
+                alloc_result = await _call_kinntegra_for_allocation(
+                    cashflow, client, alloc, is_revision
+                )
+                results.append(alloc_result)
+            
+            # Return combined result
+            success_count = sum(1 for r in results if r.get('status') == 'success')
+            return {
+                "status": "success" if success_count > 0 else "error",
+                "message": f"Submitted {success_count}/{len(results)} allocations to Kinntegra",
+                "allocation_results": results
+            }
+        
+        # Standard single allocation processing
+        if tag == 'other' or tag == 'custom':
             amount = cashflow.get('custom_amount', 0)
         elif tag == 'principal':
             amount = cashflow.get('principal_component', 0)
         elif tag == 'interest':
             amount = cashflow.get('interest_component', 0) - cashflow.get('tds_amount', 0)
-        elif tag == 'net_amount':
+        elif tag == 'both' or tag == 'net_amount':
+            # 'both' means principal + interest (net amount)
             amount = cashflow.get('net_amount', 0)
+        elif tag == 'none' or tag == 'not_tagged' or tag == 'not_invest':
+            return {"status": "skipped", "message": f"Reinvestment tag '{tag}' - no API call needed"}
         else:
-            return {"status": "skipped", "message": f"Invalid reinvestment tag: {tag}"}
+            return {"status": "skipped", "message": f"Unknown reinvestment tag: {tag}"}
         
         if amount <= 0:
             return {"status": "skipped", "message": "Investment amount is zero or negative"}
@@ -3137,8 +3161,8 @@ async def call_kinntegra_mf_buy_scheduler(cashflow: dict, client: dict, is_revis
         bond = await db.bonds.find_one({"id": cashflow.get('bond_id')}, {"_id": 0})
         deal_id = bond.get('bond_code', '') if bond else cashflow.get('bond_id', '')
         
-        # Get UCC from client (Unique Client Code for MF)
-        ucc = client.get('ucc', client.get('pan_number', ''))
+        # Get UCC - use target_ucc from cashflow if available, otherwise client's UCC
+        ucc = cashflow.get('target_ucc') or client.get('ucc') or client.get('pan_number', '')
         
         # Prepare investment data
         investment_item = {
@@ -3227,6 +3251,105 @@ async def call_kinntegra_mf_buy_scheduler(cashflow: dict, client: dict, is_revis
     except Exception as e:
         logger.error(f"Error calling Kinntegra API: {e}")
         return {"status": "error", "message": str(e)}
+
+
+async def _call_kinntegra_for_allocation(cashflow: dict, client: dict, allocation: dict, is_revision: bool = False) -> dict:
+    """
+    Helper function to call Kinntegra API for a single allocation within a split.
+    """
+    import httpx
+    
+    try:
+        amount = allocation.get('amount', 0)
+        if amount <= 0:
+            return {"status": "skipped", "message": "Allocation amount is zero or negative", "allocation": allocation}
+        
+        # Skip 'none' portfolio allocations
+        if allocation.get('portfolio') == 'none':
+            return {"status": "skipped", "message": "Portfolio is 'none' - no API call needed", "allocation": allocation}
+        
+        # Get bond details for DealId
+        bond = await db.bonds.find_one({"id": cashflow.get('bond_id')}, {"_id": 0})
+        deal_id = bond.get('bond_code', '') if bond else cashflow.get('bond_id', '')
+        
+        # Get UCC from allocation
+        ucc = allocation.get('ucc') or client.get('ucc') or client.get('pan_number', '')
+        
+        # Prepare investment data
+        investment_item = {
+            "UCC": ucc,
+            "DealId": deal_id,
+            "BondInvestmentDate": cashflow.get('date', datetime.now(timezone.utc).strftime('%Y-%m-%d')),
+            "InvestmentAmount": amount,
+            "PortfolioName": allocation.get('portfolio', 'wealth'),
+            "MFInvestmentDate": datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        }
+        
+        if is_revision:
+            investment_item["RevisedAmount"] = amount
+            investment_item["RevisedDate"] = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        
+        api_payload = {"InvestmentData": [investment_item]}
+        endpoint = f"{KINNTEGRA_API_BASE_URL}/{'revisebuyschedule' if is_revision else 'addbuyschedule'}"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": KINNTEGRA_API_KEY
+        }
+        
+        # Log the API request
+        api_log = {
+            "id": str(uuid.uuid4()),
+            "cashflow_id": cashflow.get('id'),
+            "allocation_ucc": ucc,
+            "allocation_amount": amount,
+            "allocation_portfolio": allocation.get('portfolio'),
+            "client_id": client.get('id'),
+            "client_name": client.get('name'),
+            "endpoint": endpoint,
+            "payload": api_payload,
+            "status": "pending",
+            "is_split_allocation": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.kinntegra_api_logs.insert_one(api_log)
+        
+        # Make the API call
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            response = await http_client.post(endpoint, json=api_payload, headers=headers)
+            
+            response_data = response.json() if response.headers.get('content-type', '').startswith('application/json') else {"raw": response.text}
+            
+            # Update log with response
+            await db.kinntegra_api_logs.update_one(
+                {"id": api_log['id']},
+                {"$set": {
+                    "status": "success" if response.status_code == 200 else "error",
+                    "response_status_code": response.status_code,
+                    "response_body": response_data,
+                    "completed_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"Successfully submitted split allocation to Kinntegra: UCC={ucc}, Amount={amount}")
+                return {
+                    "status": "success",
+                    "allocation": allocation,
+                    "api_response": response_data
+                }
+            else:
+                logger.error(f"Kinntegra API error for allocation: {response.status_code} - {response_data}")
+                return {
+                    "status": "error",
+                    "allocation": allocation,
+                    "message": f"API returned status {response.status_code}",
+                    "api_response": response_data
+                }
+                
+    except Exception as e:
+        logger.error(f"Error calling Kinntegra API for allocation: {e}")
+        return {"status": "error", "allocation": allocation, "message": str(e)}
 
 
 async def submit_to_kinntegra_internal(submission_id: str) -> dict:
