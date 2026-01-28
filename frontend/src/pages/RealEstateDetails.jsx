@@ -166,6 +166,9 @@ export default function RealEstateDetails() {
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
     
+    // Log activity when viewing real estate details
+    logUserActivity('real-estate-details', { property_id: id, extra: { action: 'view' } });
+    
     // Fetch data after setting user
     const initializeData = async () => {
       await fetchData();
