@@ -13,6 +13,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { toast } from "sonner";
+import { logUserActivity } from "@/utils/activityLogger";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
