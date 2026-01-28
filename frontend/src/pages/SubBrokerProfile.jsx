@@ -50,6 +50,7 @@ export default function SubBrokerProfile() {
 
   useEffect(() => {
     document.title = "Kinntegraa | Profile";
+    logUserActivity('profile', { extra: { action: 'view' } });
   }, []);
 
   useEffect(() => {
