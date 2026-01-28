@@ -19,6 +19,7 @@ import {
   ArrowLeft, RefreshCw, User, MapPin, Building2, Phone, Mail,
   CreditCard, UserCheck, Calendar, Edit2, Save, X, Clock, CheckCircle, XCircle
 } from "lucide-react";
+import { logUserActivity } from "@/utils/activityLogger";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -35,7 +36,8 @@ export default function SubBrokerClientDetails() {
 
   useEffect(() => {
     document.title = "Kinntegraa | Client Details";
-  }, []);
+    logUserActivity('client-details', { client_id: clientId, extra: { action: 'view' } });
+  }, [clientId]);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
