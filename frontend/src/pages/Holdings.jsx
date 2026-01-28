@@ -668,7 +668,9 @@ export default function Holdings() {
     return Object.values(byDate).sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
-  // Consolidate holdings by bond_id
+  // Consolidate holdings by bond_id AND investment_date
+  // IMPORTANT: Holdings with different investment dates should NOT be merged
+  // They represent separate tranches with different XIRR calculations
   const getConsolidatedHoldings = () => {
     if (!clientHoldings?.holdings) return [];
     
@@ -676,11 +678,15 @@ export default function Holdings() {
     
     clientHoldings.holdings.forEach(holding => {
       const bondId = holding.bond_id;
+      const investmentDate = (holding.investment_date || '').substring(0, 10);
+      // Create unique key combining bond_id and investment_date
+      const key = `${bondId}|${investmentDate}`;
       
-      if (!consolidated[bondId]) {
-        consolidated[bondId] = {
+      if (!consolidated[key]) {
+        consolidated[key] = {
           bond_id: bondId,
           bond_name: holding.bond_name,
+          investment_date: investmentDate,
           total_units: 0,
           invested_amount: 0,
           total_principal: 0,
@@ -699,30 +705,30 @@ export default function Holdings() {
         };
       }
       
-      consolidated[bondId].total_units += holding.units || 0;
-      consolidated[bondId].invested_amount += holding.invested_amount;
-      consolidated[bondId].total_principal += holding.total_principal;
-      consolidated[bondId].total_interest_gross += holding.total_interest_gross;
-      consolidated[bondId].total_tds += holding.total_tds;
-      consolidated[bondId].repaid_principal += holding.repaid_principal;
-      consolidated[bondId].repaid_interest += holding.repaid_interest;
-      consolidated[bondId].repaid_tds += holding.repaid_tds;
-      consolidated[bondId].net_repaid += holding.net_repaid;
-      consolidated[bondId].upcoming_expected += holding.upcoming_expected;
-      consolidated[bondId].prepaid_count += holding.prepaid_count || 0;
-      consolidated[bondId].prepaid_amount += holding.prepaid_amount || 0;
+      consolidated[key].total_units += holding.units || 0;
+      consolidated[key].invested_amount += holding.invested_amount;
+      consolidated[key].total_principal += holding.total_principal;
+      consolidated[key].total_interest_gross += holding.total_interest_gross;
+      consolidated[key].total_tds += holding.total_tds;
+      consolidated[key].repaid_principal += holding.repaid_principal;
+      consolidated[key].repaid_interest += holding.repaid_interest;
+      consolidated[key].repaid_tds += holding.repaid_tds;
+      consolidated[key].net_repaid += holding.net_repaid;
+      consolidated[key].upcoming_expected += holding.upcoming_expected;
+      consolidated[key].prepaid_count += holding.prepaid_count || 0;
+      consolidated[key].prepaid_amount += holding.prepaid_amount || 0;
       
       // Use the XIRR from the holding if available
       if (holding.xirr !== null && holding.xirr !== undefined) {
-        if (consolidated[bondId].xirr === null) {
-          consolidated[bondId].xirr = holding.xirr;
+        if (consolidated[key].xirr === null) {
+          consolidated[key].xirr = holding.xirr;
         }
       }
       
       // Use the Actual XIRR from the holding if available
       if (holding.actual_xirr !== null && holding.actual_xirr !== undefined) {
-        if (consolidated[bondId].actual_xirr === null) {
-          consolidated[bondId].actual_xirr = holding.actual_xirr;
+        if (consolidated[key].actual_xirr === null) {
+          consolidated[key].actual_xirr = holding.actual_xirr;
         }
       }
       
