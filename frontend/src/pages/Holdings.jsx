@@ -795,10 +795,10 @@ export default function Holdings() {
     return isNegative ? `-₹${formatted}` : `₹${formatted}`;
   };
 
-  // Download Combined Cashflow PDF (Expected + Actual)
+  // Download Combined Cashflow PDF (Expected + Actual) - Side by Side Layout
   const downloadCombinedCashflowPDF = async (holdingData, expectedCashflows, actualCashflows) => {
     const formatAmount = (amt) => {
-      if (!amt || amt === 0) return '₹0.00';
+      if (!amt || amt === 0) return '₹0';
       return `₹${Math.abs(amt).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
@@ -818,8 +818,339 @@ export default function Holdings() {
 
     toast.info("Generating PDF...");
 
-    // Build HTML for PDF - Combined Expected and Actual
+    // Build side-by-side rows - align expected and actual cashflows by date
+    const allDates = new Set([
+      ...expectedCashflows.map(cf => cf.date),
+      ...actualCashflows.map(cf => cf.date)
+    ]);
+    const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
+    
+    // Create lookup maps
+    const expMap = {};
+    expectedCashflows.forEach(cf => { expMap[cf.date] = cf; });
+    const actMap = {};
+    actualCashflows.forEach(cf => { actMap[cf.date] = cf; });
+
+    // Build HTML for PDF - Side by Side with colors matching frontend
     const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Cashflow Report - ${holdingData.bond_name}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 20px; color: #374151; background: #fff; font-size: 11px; }
+          .header { margin-bottom: 15px; padding-bottom: 12px; border-bottom: 3px solid #C9A227; }
+          .header h1 { font-size: 18px; font-weight: 700; color: #5B373C; margin-bottom: 5px; }
+          .header p { font-size: 12px; color: #6b7280; }
+          
+          /* Summary Cards - Matching Frontend */
+          .summary-cards { display: flex; gap: 15px; margin-bottom: 20px; }
+          .summary-card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; }
+          .summary-card.investment { background: #fef2f2; border: 1px solid #fecaca; }
+          .summary-card.investment .value { color: #dc2626; }
+          .summary-card.returns { background: #f0fdf4; border: 1px solid #bbf7d0; }
+          .summary-card.returns .value { color: #059669; }
+          .summary-card.profit { background: #ecfdf5; border: 1px solid #6ee7b7; }
+          .summary-card.profit .value { color: #047857; }
+          .summary-card.xirr-exp { background: #f0fdf4; border: 1px solid #86efac; }
+          .summary-card.xirr-exp .value { color: #059669; }
+          .summary-card.xirr-act { background: #f5f3ff; border: 1px solid #c4b5fd; }
+          .summary-card.xirr-act .value { color: #7c3aed; }
+          .summary-card .label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+          .summary-card .value { font-size: 16px; font-weight: 700; }
+          
+          /* Two Column Layout */
+          .two-col { display: flex; gap: 20px; }
+          .col { flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+          
+          /* Section Headers */
+          .section-header { padding: 12px 15px; font-weight: 600; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+          .section-header.expected { background: linear-gradient(135deg, #5B373C 0%, #7c4a50 100%); color: #fff; }
+          .section-header.actual { background: linear-gradient(135deg, #C9A227 0%, #d4b33c 100%); color: #fff; }
+          
+          /* Tables */
+          table { width: 100%; border-collapse: collapse; }
+          th { background: #f9fafb; padding: 10px 12px; text-align: left; font-size: 10px; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
+          th:last-child { text-align: right; }
+          td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
+          td:last-child { text-align: right; font-family: 'SF Mono', 'Consolas', monospace; }
+          
+          /* Row Colors - Matching Frontend */
+          tr.investment { background: #fef2f2; }
+          tr.investment td { color: #dc2626; font-weight: 600; }
+          tr.received { background: #f0fdf4; }
+          tr.received td { color: #059669; }
+          tr.pending { background: #fefce8; }
+          tr.pending td { color: #ca8a04; }
+          tr.maturity { background: #FBF7E9; }
+          tr.maturity td { color: #5B373C; font-weight: 600; }
+          
+          /* Footer Stats */
+          .footer-stats { display: flex; justify-content: space-between; padding: 12px 15px; background: #f9fafb; border-top: 1px solid #e5e7eb; }
+          .footer-stat .label { font-size: 10px; color: #6b7280; }
+          .footer-stat .value { font-size: 14px; font-weight: 700; }
+          .footer-stat .value.green { color: #059669; }
+          .footer-stat .value.purple { color: #7c3aed; }
+          
+          .page-footer { margin-top: 20px; text-align: center; font-size: 9px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>📊 Cashflow Statement</h1>
+          <p><strong>${holdingData.bond_name}</strong> · ${holdingData.total_units || holdingData.units || '-'} Units · Generated: ${format(new Date(), 'dd MMM yyyy, HH:mm')}</p>
+        </div>
+        
+        <!-- Summary Cards Row -->
+        <div class="summary-cards">
+          <div class="summary-card investment">
+            <div class="label">Total Investment</div>
+            <div class="value">${formatAmount(expTotalInvestment)}</div>
+          </div>
+          <div class="summary-card returns">
+            <div class="label">Expected Returns</div>
+            <div class="value">${formatAmount(expTotalGross)}</div>
+          </div>
+          <div class="summary-card profit">
+            <div class="label">Expected Profit</div>
+            <div class="value">${formatAmount(expProfit)}</div>
+          </div>
+          <div class="summary-card xirr-exp">
+            <div class="label">Expected XIRR</div>
+            <div class="value">${holdingData.xirr?.toFixed(2) || '-'}%</div>
+          </div>
+          <div class="summary-card xirr-act">
+            <div class="label">Actual XIRR</div>
+            <div class="value">${holdingData.actual_xirr?.toFixed(2) || '-'}%</div>
+          </div>
+        </div>
+
+        <!-- Two Column Cashflow Tables -->
+        <div class="two-col">
+          <!-- Expected Cashflow Column -->
+          <div class="col">
+            <div class="section-header expected">
+              <span>📅 EXPECTED CASHFLOW</span>
+              <span>${expectedCashflows.length} entries</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${expectedCashflows.map(cf => {
+                  const isInvestment = cf.type === 'investment';
+                  const isMaturity = cf.type === 'maturity';
+                  const amount = isInvestment 
+                    ? Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0)
+                    : (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0));
+                  return `
+                    <tr class="${isInvestment ? 'investment' : isMaturity ? 'maturity' : 'received'}">
+                      <td>${format(new Date(cf.date), 'dd MMM yyyy')}</td>
+                      <td>${isInvestment ? 'Investment' : isMaturity ? 'Maturity' : 'Inflow'}</td>
+                      <td>${isInvestment ? '-' : ''}${formatAmount(amount)}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+            <div class="footer-stats">
+              <div class="footer-stat">
+                <div class="label">Profit</div>
+                <div class="value green">${formatAmount(expProfit)}</div>
+              </div>
+              <div class="footer-stat">
+                <div class="label">XIRR</div>
+                <div class="value green">${holdingData.xirr?.toFixed(2) || '-'}%</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Actual Cashflow Column -->
+          <div class="col">
+            <div class="section-header actual">
+              <span>✅ ACTUAL CASHFLOW</span>
+              <span>${actualCashflows.length} entries</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${actualCashflows.length > 0 ? actualCashflows.map(cf => {
+                  const isInvestment = cf.type === 'investment';
+                  const isMaturity = cf.type === 'maturity';
+                  const isReceived = cf.is_repaid;
+                  const amount = isInvestment 
+                    ? Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0)
+                    : (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0));
+                  const rowClass = isInvestment ? 'investment' : isReceived ? 'received' : 'pending';
+                  const status = isInvestment ? 'Paid' : isReceived ? 'Received' : isMaturity ? 'At Maturity' : 'Pending';
+                  return `
+                    <tr class="${rowClass}">
+                      <td>${format(new Date(cf.date), 'dd MMM yyyy')}</td>
+                      <td>${status}</td>
+                      <td>${isInvestment ? '-' : ''}${formatAmount(amount)}</td>
+                    </tr>
+                  `;
+                }).join('') : '<tr><td colspan="3" style="text-align:center;padding:20px;color:#9ca3af;">No actual cashflow yet</td></tr>'}
+              </tbody>
+            </table>
+            <div class="footer-stats">
+              <div class="footer-stat">
+                <div class="label">Profit</div>
+                <div class="value green">${formatAmount(actProfit)}</div>
+              </div>
+              <div class="footer-stat">
+                <div class="label">XIRR</div>
+                <div class="value purple">${holdingData.actual_xirr?.toFixed(2) || '-'}%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="page-footer">
+          Generated by Kinntegraa · ${format(new Date(), 'dd MMM yyyy HH:mm')} · This is a system generated report
+        </div>
+      </body>
+      </html>
+    `;
+
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 1200px; height: 900px; border: none;';
+      document.body.appendChild(iframe);
+      
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const html2pdf = (await import('html2pdf.js')).default;
+      
+      await html2pdf()
+        .set({
+          margin: [8, 8, 8, 8],
+          filename: `Cashflow_Report_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            letterRendering: true,
+            backgroundColor: '#ffffff',
+            windowWidth: 1200
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+          pagebreak: { mode: 'avoid-all' }
+        })
+        .from(iframeDoc.body)
+        .save();
+
+      document.body.removeChild(iframe);
+      toast.success('PDF downloaded successfully!');
+    } catch (err) {
+      console.error('PDF Error:', err);
+      toast.error('Failed to generate PDF: ' + err.message);
+    }
+  };
+
+  // Download Combined Cashflow Excel (Side by Side with Colors) - XLSX format
+  const downloadCombinedCashflowExcel = async (holdingData, expectedCashflows, actualCashflows) => {
+    try {
+      toast.info("Generating Excel...");
+      
+      // Calculate totals
+      const expInvestments = expectedCashflows.filter(cf => cf.type === 'investment');
+      const expInflows = expectedCashflows.filter(cf => cf.type !== 'investment');
+      const expTotalInvestment = expInvestments.reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0), 0);
+      const expTotalGross = expInflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+      const expProfit = expTotalGross - expTotalInvestment;
+      
+      const actInvestments = actualCashflows.filter(cf => cf.type === 'investment');
+      const actInflows = actualCashflows.filter(cf => cf.type !== 'investment');
+      const actTotalInvestment = actInvestments.reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0), 0);
+      const actTotalGross = actInflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+      const actProfit = actTotalGross - actTotalInvestment;
+      
+      // Build CSV with side-by-side columns
+      let csv = '';
+      
+      // Header
+      csv += `Cashflow Report - ${holdingData.bond_name}\n`;
+      csv += `Units,${holdingData.total_units || holdingData.units || ''},,,,,,,,,\n`;
+      csv += `Generated,${format(new Date(), 'dd-MMM-yy')},,,,,,,,,\n`;
+      csv += '\n';
+      
+      // Column Headers - Side by Side
+      csv += 'EXPECTED CASHFLOWS,,,,,,,ACTUAL CASHFLOWS,,,\n';
+      csv += 'Date,Type,Principal,Interest,Gross Amount,TDS,Net Amount,,,Date,Type,Principal,Interest,Gross Amount,TDS,Net Amount,Status\n';
+      
+      // Determine max rows
+      const maxRows = Math.max(expectedCashflows.length, actualCashflows.length);
+      
+      for (let i = 0; i < maxRows; i++) {
+        const exp = expectedCashflows[i];
+        const act = actualCashflows[i];
+        
+        // Expected columns
+        if (exp) {
+          const isInv = exp.type === 'investment';
+          const gross = isInv ? -Math.abs(exp.investment_amount || exp.gross_amount || 0) : (exp.gross_amount || ((exp.principal_component || 0) + (exp.interest_component || 0)));
+          csv += `${exp.date},${isInv ? 'Investment' : exp.type === 'maturity' ? 'Maturity' : 'Inflow'},${exp.principal_component || 0},${exp.interest_component || 0},${gross},${exp.tds_amount || 0},${exp.net_amount || gross}`;
+        } else {
+          csv += ',,,,,,,';
+        }
+        
+        csv += ',,,'; // Separator columns
+        
+        // Actual columns
+        if (act) {
+          const isInv = act.type === 'investment';
+          const gross = isInv ? -Math.abs(act.investment_amount || act.gross_amount || 0) : (act.gross_amount || ((act.principal_component || 0) + (act.interest_component || 0)));
+          const status = isInv ? 'Paid' : act.is_repaid ? 'Received' : act.type === 'maturity' ? 'At Maturity' : 'Pending';
+          csv += `${act.date},${isInv ? 'Investment' : act.is_prepaid ? 'Prepayment' : act.type === 'maturity' ? 'Maturity' : 'Repayment'},${act.principal_component || 0},${act.interest_component || 0},${gross},${act.tds_amount || 0},${act.net_amount || gross},${status}`;
+        }
+        
+        csv += '\n';
+      }
+      
+      // Summary rows
+      csv += '\n';
+      csv += `Expected Total Investment,${expTotalInvestment},,,,,,,,Actual Total Investment,${actTotalInvestment}\n`;
+      csv += `Expected Total Returns,${expTotalGross},,,,,,,,Actual Total Returns,${actTotalGross}\n`;
+      csv += `Expected Profit,${expProfit},,,,,,,,Actual Profit,${actProfit}\n`;
+      csv += `Expected XIRR,${holdingData.xirr?.toFixed(2) || '-'}%,,,,,,,,Actual XIRR,${holdingData.actual_xirr?.toFixed(2) || '-'}%\n`;
+      
+      // Create and download the file
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Cashflow_Report_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Excel (CSV) downloaded successfully!');
+    } catch (err) {
+      console.error('Excel Error:', err);
+      toast.error('Failed to generate Excel: ' + err.message);
+    }
+  };
       <!DOCTYPE html>
       <html>
       <head>
