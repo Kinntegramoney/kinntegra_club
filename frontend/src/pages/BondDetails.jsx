@@ -60,6 +60,8 @@ export default function BondDetails() {
     }
     fetchBond();
     fetchClients();
+    // Log activity when viewing bond details
+    logUserActivity('bond-details', { bond_id: id, extra: { action: 'view' } });
   }, [id]);
 
   const fetchBond = async () => {
