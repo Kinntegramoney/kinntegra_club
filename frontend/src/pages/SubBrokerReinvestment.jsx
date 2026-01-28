@@ -564,6 +564,63 @@ export default function SubBrokerReinvestment() {
     return `₹${parseFloat(amount).toLocaleString('en-IN')}`;
   };
 
+  // Check if an entry has split allocations saved
+  const hasSplitAllocations = (entryId) => {
+    const changes = localChanges[entryId];
+    return changes?.ucc_allocations && changes.ucc_allocations.length > 0;
+  };
+
+  // Check if entry has multiple UCCs or portfolios in allocations
+  const getSplitDisplayValues = (entryId) => {
+    const changes = localChanges[entryId];
+    if (!changes?.ucc_allocations || changes.ucc_allocations.length === 0) {
+      return { ucc: changes?.target_ucc || '', portfolio: changes?.portfolio_category || '', tag: changes?.reinvestment_tag || '' };
+    }
+    
+    const allocations = changes.ucc_allocations;
+    const uniqueUccs = [...new Set(allocations.map(a => a.ucc))];
+    const uniquePortfolios = [...new Set(allocations.map(a => a.portfolio))];
+    const tag = allocations[0]?.tag || changes?.reinvestment_tag || '';
+    
+    return {
+      ucc: uniqueUccs.length > 1 ? 'Multi' : uniqueUccs[0] || '',
+      portfolio: uniquePortfolios.length > 1 ? 'Multi' : uniquePortfolios[0] || '',
+      tag: tag
+    };
+  };
+
+  // Open modal to edit an existing split entry
+  const editSplitEntry = (entry, clientGroup) => {
+    const changes = localChanges[entry.id];
+    if (!changes?.ucc_allocations) return;
+    
+    const tagType = changes.reinvestment_tag || changes.ucc_allocations[0]?.tag || 'both';
+    setSelectedTagType(tagType);
+    
+    const modalData = {
+      [entry.id]: {
+        entry: { ...entry, ucc_list: clientGroup.ucc_list },
+        amounts: {
+          principal: entry.principal_amount || 0,
+          interest: entry.interest_amount || 0,
+          both: entry.net_amount || 0
+        },
+        totalAmount: tagType === 'principal' ? (entry.principal_amount || 0) : 
+                     tagType === 'interest' ? (entry.interest_amount || 0) : 
+                     (entry.net_amount || 0),
+        allocations: changes.ucc_allocations.map((a, idx) => ({
+          id: `${entry.id}-alloc-${idx}`,
+          ucc: a.ucc,
+          amount: a.amount,
+          portfolio: a.portfolio
+        }))
+      }
+    };
+    
+    setMultiRetagData(modalData);
+    setShowMultiRetagModal(true);
+  };
+
   const getSidebar = () => {
     return <SubBrokerSidebar user={user} />;
   };
