@@ -518,7 +518,7 @@ export default function Opportunities() {
         ) : (
           <div className="bg-etihad-gold-50 rounded-lg p-3 mb-4">
             <p className="text-xs text-gray-500 mb-1">
-              Price/Unit ({new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})
+              Price/Unit ({todayDateStr})
             </p>
             <p className="font-semibold text-etihad-gold-700">{formatCurrency(Math.round(todayPrice))}</p>
           </div>
