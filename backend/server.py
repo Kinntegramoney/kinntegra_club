@@ -2448,13 +2448,24 @@ async def approve_client(
         if client.get('email'):
             from email_service import send_welcome_email_client
             broker = await db.users.find_one({"id": current_user['id']}, {"_id": 0})
+            
+            # Get sub-broker name if client is linked to one
+            subbroker_name = None
+            if client.get('linked_subbroker_id'):
+                subbroker = await db.partners.find_one({"id": client.get('linked_subbroker_id')}, {"_id": 0})
+                if not subbroker:
+                    subbroker = await db.sub_brokers.find_one({"id": client.get('linked_subbroker_id')}, {"_id": 0})
+                if subbroker:
+                    subbroker_name = subbroker.get('name')
+            
             send_welcome_email_client(
                 client_name=client.get('name', ''),
                 client_email=client.get('email'),
                 pan=client.get('pan', ''),
                 password=client.get('default_password', '') or client.get('temp_password', ''),
                 pin=client.get('default_pin', '') or client.get('temp_pin', ''),
-                broker_name=broker.get('name', 'Your Broker') if broker else 'Your Broker'
+                broker_name=broker.get('name', 'Your Broker') if broker else 'Your Broker',
+                subbroker_name=subbroker_name
             )
         
         return {"message": "Client approved successfully", "status": "approved"}
