@@ -1163,7 +1163,7 @@ export default function Holdings() {
   const actualCashflows = modalData ? getActualCashflowsByDate(modalData.trades) : [];
 
   return (
-      <head>
+    <div className="flex h-screen bg-gray-50">
         <meta charset="UTF-8">
         <title>Cashflow Report - ${holdingData.bond_name}</title>
         <style>
