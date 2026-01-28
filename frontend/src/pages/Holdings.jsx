@@ -1159,7 +1159,6 @@ export default function Holdings() {
 
   const SidebarComponent = user.role === 'broker' ? Sidebar : user.role === 'client' ? ClientSidebar : SubBrokerSidebar;
   const consolidatedCashflows = modalData ? getConsolidatedCashflowsByDate(modalData.trades) : [];
-  const actualCashflows = modalData ? getActualCashflowsByDate(modalData.trades) : [];
 
   return (
     <div className="flex h-screen bg-gray-50">
