@@ -11492,7 +11492,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
             # Frontend will filter and categorize them
             
             # Get client details including ucc_list
-            client = await db.clients.find_one({"id": cf['client_id']}, {"_id": 0, "name": 1, "pan_number": 1, "email": 1, "ucc_list": 1, "ucc": 1})
+            client = await db.clients.find_one({"id": cf['client_id']}, {"_id": 0, "name": 1, "pan_number": 1, "email": 1, "ucc_list": 1, "ucc": 1, "linked_subbroker_id": 1})
             
             # Get trade details
             trade = await db.trades.find_one({"id": cf['trade_id']}, {"_id": 0})
