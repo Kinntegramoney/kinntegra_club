@@ -276,58 +276,159 @@ export default function ReinvestmentTagging() {
       return;
     }
     
-    // Initialize multi-retag data for each selected entry
+    // Initialize multi-retag data for each selected entry with UCC allocations
     const initialData = {};
     entries.forEach(entry => {
       const existing = localChanges[entry.id] || {};
+      const totalAmount = entry.net_amount || 0;
+      
+      // Start with one allocation using existing values or defaults
       initialData[entry.id] = {
         entry: entry,
-        ucc: existing.target_ucc || entry.target_ucc || entry.ucc_list?.[0] || '',
-        portfolio: existing.portfolio_category || entry.portfolio_category || '',
-        tag: existing.reinvestment_tag || entry.reinvestment_tag || '',
-        amounts: {
-          principal: entry.principal_amount || 0,
-          interest: entry.interest_amount || 0,
-          both: entry.net_amount || 0
-        }
+        totalAmount: totalAmount,
+        allocations: [
+          {
+            id: `${entry.id}-alloc-0`,
+            ucc: existing.target_ucc || entry.target_ucc || entry.ucc_list?.[0] || '',
+            amount: totalAmount,
+            portfolio: existing.portfolio_category || entry.portfolio_category || '',
+            tag: existing.reinvestment_tag || entry.reinvestment_tag || ''
+          }
+        ]
       };
     });
     setMultiRetagData(initialData);
     setShowMultiRetagModal(true);
   };
 
-  // Update multi-retag data for an entry
-  const updateMultiRetagEntry = (entryId, field, value) => {
-    setMultiRetagData(prev => ({
-      ...prev,
-      [entryId]: {
-        ...prev[entryId],
-        [field]: value
-      }
-    }));
+  // Add a new UCC allocation to an entry
+  const addUccAllocation = (entryId) => {
+    setMultiRetagData(prev => {
+      const entry = prev[entryId];
+      const allocations = entry.allocations;
+      const usedAmount = allocations.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+      const remainingAmount = entry.totalAmount - usedAmount;
+      
+      return {
+        ...prev,
+        [entryId]: {
+          ...entry,
+          allocations: [
+            ...allocations,
+            {
+              id: `${entryId}-alloc-${allocations.length}`,
+              ucc: '',
+              amount: Math.max(0, remainingAmount),
+              portfolio: '',
+              tag: ''
+            }
+          ]
+        }
+      };
+    });
   };
 
-  // Apply multi-retag changes
-  const applyMultiRetagChanges = () => {
-    const updates = {};
-    Object.entries(multiRetagData).forEach(([entryId, data]) => {
-      if (data.ucc && data.portfolio && data.tag) {
-        updates[entryId] = {
-          target_ucc: data.ucc,
-          portfolio_category: data.portfolio,
-          reinvestment_tag: data.tag
-        };
-      }
+  // Remove a UCC allocation from an entry
+  const removeUccAllocation = (entryId, allocIndex) => {
+    setMultiRetagData(prev => {
+      const entry = prev[entryId];
+      if (entry.allocations.length <= 1) return prev; // Keep at least one allocation
+      
+      const newAllocations = entry.allocations.filter((_, idx) => idx !== allocIndex);
+      return {
+        ...prev,
+        [entryId]: {
+          ...entry,
+          allocations: newAllocations
+        }
+      };
     });
-    
-    if (Object.keys(updates).length === 0) {
-      toast.error("Please fill UCC, Portfolio, and Tag for at least one entry");
+  };
+
+  // Update a specific allocation field
+  const updateAllocation = (entryId, allocIndex, field, value) => {
+    setMultiRetagData(prev => {
+      const entry = prev[entryId];
+      const newAllocations = [...entry.allocations];
+      newAllocations[allocIndex] = {
+        ...newAllocations[allocIndex],
+        [field]: field === 'amount' ? (value === '' ? '' : parseFloat(value) || 0) : value
+      };
+      return {
+        ...prev,
+        [entryId]: {
+          ...entry,
+          allocations: newAllocations
+        }
+      };
+    });
+  };
+
+  // Calculate allocation totals for an entry
+  const getAllocationTotal = (entryId) => {
+    const entry = multiRetagData[entryId];
+    if (!entry) return 0;
+    return entry.allocations.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+  };
+
+  // Validate all allocations
+  const validateAllocations = () => {
+    const errors = [];
+    Object.entries(multiRetagData).forEach(([entryId, data]) => {
+      const total = getAllocationTotal(entryId);
+      const diff = Math.abs(total - data.totalAmount);
+      
+      if (diff > 0.01) { // Allow small rounding differences
+        errors.push(`${data.entry.bond_name}: Allocation total (₹${total.toLocaleString('en-IN')}) doesn't match entry amount (₹${data.totalAmount.toLocaleString('en-IN')})`);
+      }
+      
+      data.allocations.forEach((alloc, idx) => {
+        if (!alloc.ucc) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: UCC is required`);
+        if (!alloc.portfolio) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Portfolio is required`);
+        if (!alloc.tag) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Tag is required`);
+        if (!alloc.amount || alloc.amount <= 0) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Amount must be greater than 0`);
+      });
+    });
+    return errors;
+  };
+
+  // Apply multi-retag changes with UCC splits
+  const applyMultiRetagChanges = () => {
+    const errors = validateAllocations();
+    if (errors.length > 0) {
+      toast.error(errors[0]); // Show first error
       return;
     }
     
+    // For now, save the primary allocation (first one) to localChanges
+    // Backend will need to handle multiple allocations when saving
+    const updates = {};
+    const splitData = {}; // Store full split info for backend
+    
+    Object.entries(multiRetagData).forEach(([entryId, data]) => {
+      // Primary allocation goes to localChanges for display
+      const primaryAlloc = data.allocations[0];
+      updates[entryId] = {
+        target_ucc: primaryAlloc.ucc,
+        portfolio_category: primaryAlloc.portfolio,
+        reinvestment_tag: primaryAlloc.tag,
+        // Store all allocations for backend processing
+        ucc_allocations: data.allocations.map(a => ({
+          ucc: a.ucc,
+          amount: a.amount,
+          portfolio: a.portfolio,
+          tag: a.tag
+        }))
+      };
+    });
+    
     setLocalChanges(prev => ({ ...prev, ...updates }));
     setShowMultiRetagModal(false);
-    toast.success(`Applied changes to ${Object.keys(updates).length} entries`);
+    
+    const totalAllocations = Object.values(multiRetagData).reduce(
+      (sum, d) => sum + d.allocations.length, 0
+    );
+    toast.success(`Applied ${totalAllocations} allocations across ${Object.keys(updates).length} entries`);
   };
 
   const saveClientTags = async (clientGroup, isPast) => {
