@@ -150,7 +150,12 @@ export default function AdminClients() {
 
   // Resend credentials
   const handleResendCredentials = async (client) => {
-    if (!window.confirm(`Resend login credentials to ${client.name}? This will generate a new password and PIN.`)) return;
+    if (!client.email) {
+      toast.error("Client does not have an email address. Please update their profile first.");
+      return;
+    }
+    
+    if (!window.confirm(`Send login credentials to ${client.name} at ${client.email}? This will generate a new password and PIN.`)) return;
     
     try {
       const token = localStorage.getItem("token");
@@ -158,17 +163,10 @@ export default function AdminClients() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setCredentials(response.data.credentials);
-      setShowCredentialsModal(true);
-      
-      if (response.data.email_sent) {
-        toast.success("Credentials sent to client's email");
-      } else {
-        toast.warning("Email could not be sent. Please share credentials manually.");
-      }
+      toast.success(response.data.message || "Credentials sent to client's email");
     } catch (error) {
       console.error("Error resending credentials:", error);
-      toast.error("Failed to resend credentials");
+      toast.error(error.response?.data?.detail || "Failed to send credentials");
     }
   };
 
