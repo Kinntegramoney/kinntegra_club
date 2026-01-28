@@ -164,6 +164,8 @@ def send_email(
 
 def get_email_template_base(content: str, footer_text: str = "") -> str:
     """Generate base email template with Kinntegraa branding"""
+    logo_url = "https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png"
+    
     return f"""
     <!DOCTYPE html>
     <html>
@@ -197,18 +199,29 @@ def get_email_template_base(content: str, footer_text: str = "") -> str:
                 padding: 30px; 
                 text-align: center;
             }}
-            .logo {{
-                width: 50px;
-                height: 50px;
-                background: linear-gradient(135deg, #D4A853, #B8860B);
-                border-radius: 12px;
-                display: inline-flex;
+            .logo-container {{
+                width: 70px;
+                height: 70px;
+                margin: 0 auto 15px;
+                border-radius: 50%;
+                overflow: hidden;
+                background: linear-gradient(135deg, #C9A227 0%, #A68521 100%);
+                box-shadow: 0 8px 20px rgba(201, 162, 39, 0.3);
+                display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 24px;
-                font-weight: bold;
+            }}
+            .logo-img {{
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                transform: scale(1.4);
+            }}
+            .logo-fallback {{
                 color: white;
-                margin-bottom: 15px;
+                font-size: 28px;
+                font-weight: bold;
+                font-family: serif;
             }}
             .header h1 {{
                 margin: 10px 0 5px 0;
