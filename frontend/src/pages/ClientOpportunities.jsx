@@ -6,6 +6,7 @@ import { TrendingUp, Calendar, DollarSign, Percent, ChevronRight, Building2 } fr
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { logUserActivity } from "@/utils/activityLogger";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -16,6 +17,11 @@ export default function ClientOpportunities() {
   const [bonds, setBonds] = useState([]);
   const [realEstateOpportunities, setRealEstateOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Log user activity
+  useEffect(() => {
+    logUserActivity('opportunities');
+  }, []);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
