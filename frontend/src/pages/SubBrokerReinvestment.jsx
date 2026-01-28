@@ -689,7 +689,9 @@ export default function SubBrokerReinvestment() {
 
   const formatCurrency = (amount) => {
     if (!amount) return "₹0";
-    return `₹${parseFloat(amount).toLocaleString('en-IN')}`;
+    // Round down (floor) for display
+    const roundedDown = Math.floor(parseFloat(amount));
+    return `₹${roundedDown.toLocaleString('en-IN')}`;
   };
 
   // Check if an entry has split allocations saved
