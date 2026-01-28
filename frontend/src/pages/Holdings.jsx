@@ -1142,7 +1142,7 @@ export default function Holdings() {
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-gray-500">
-                        {client.total_invested ? formatINR(client.total_invested) : '₹ 0'}
+                        {client.total_investment ? formatINR(client.total_investment) : '₹ 0'}
                       </div>
                     </div>
                   </div>
