@@ -9732,6 +9732,9 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
             "is_active": client.get('is_active', True)
         })
     
+    # Sort by investment value (highest first), then alphabetically by name
+    client_summaries.sort(key=lambda x: (-x['total_investment'], x['name'].lower()))
+    
     return client_summaries
 
 
