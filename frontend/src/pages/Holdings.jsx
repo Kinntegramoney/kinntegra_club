@@ -1059,88 +1059,128 @@ export default function Holdings() {
       </html>
     `;
 
-    // Create container for PDF generation
-    // Position it on-screen but make it visually hidden with opacity
-    // html2canvas needs the element to be visible and renderable
-    const container = document.createElement('div');
-    container.id = 'pdf-temp-container';
-    container.style.cssText = `
-      position: fixed;
-      left: 0;
-      top: 0;
-      width: 1100px;
-      min-height: 800px;
-      background: white;
-      z-index: 99999;
-      opacity: 0;
-      pointer-events: none;
-      overflow: visible;
-    `;
-    container.innerHTML = html;
-    document.body.appendChild(container);
+    try {
+      // Create an iframe for PDF generation - more reliable than div
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 1100px; height: 800px; border: none;';
+      document.body.appendChild(iframe);
+      
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
 
-    // Give time for DOM to render properly
-    setTimeout(() => {
-      const element = document.getElementById('pdf-temp-container');
-      if (!element) {
-        toast.error('PDF generation failed - element not found');
-        return;
-      }
+      // Wait for content to render
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const html2pdf = (await import('html2pdf.js')).default;
       
-      // Make visible temporarily for capture
-      element.style.opacity = '1';
+      await html2pdf()
+        .set({
+          margin: [5, 5, 5, 5],
+          filename: `Cashflow_Report_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            letterRendering: true,
+            backgroundColor: '#ffffff',
+            windowWidth: 1100
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+          pagebreak: { mode: 'avoid-all' }
+        })
+        .from(iframeDoc.body)
+        .save();
+
+      document.body.removeChild(iframe);
+      toast.success('PDF downloaded successfully!');
+    } catch (err) {
+      console.error('PDF Error:', err);
+      toast.error('Failed to generate PDF: ' + err.message);
+    }
+  };
+
+  // Download Combined Cashflow Excel (Expected + Actual)
+  const downloadCombinedCashflowExcel = async (holdingData, expectedCashflows, actualCashflows) => {
+    try {
+      toast.info("Generating Excel...");
       
-      // Force layout recalculation
-      void element.offsetHeight;
+      // Build CSV data (simpler and works without external libraries)
+      let csv = 'Cashflow Report - ' + holdingData.bond_name + '\n';
+      csv += 'Units,' + (holdingData.total_units || holdingData.units || '') + '\n';
+      csv += 'Generated,' + format(new Date(), 'dd MMM yyyy') + '\n\n';
       
-      import('html2pdf.js').then(html2pdf => {
-        html2pdf.default()
-          .set({
-            margin: [3, 3, 3, 3],
-            filename: `Cashflow_Report_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.pdf`,
-            image: { type: 'jpeg', quality: 0.95 },
-            html2canvas: { 
-              scale: 1.5, 
-              useCORS: true, 
-              logging: false,
-              letterRendering: true,
-              allowTaint: true,
-              backgroundColor: '#ffffff',
-              width: 1050,
-              onclone: (clonedDoc) => {
-                const clonedEl = clonedDoc.getElementById('pdf-temp-container');
-                if (clonedEl) {
-                  clonedEl.style.opacity = '1';
-                  clonedEl.style.position = 'relative';
-                  clonedEl.style.left = '0';
-                  clonedEl.style.top = '0';
-                  clonedEl.style.width = '1050px';
-                }
-              }
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-            pagebreak: { mode: 'avoid-all', before: '.page-break' }
-          })
-          .from(element)
-          .save()
-          .then(() => {
-            const el = document.getElementById('pdf-temp-container');
-            if (el) document.body.removeChild(el);
-            toast.success('PDF downloaded');
-          })
-          .catch((err) => {
-            console.error('PDF Error:', err);
-            const el = document.getElementById('pdf-temp-container');
-            if (el) document.body.removeChild(el);
-            toast.error('Failed to generate PDF: ' + err.message);
-          });
-      }).catch(err => {
-        console.error('html2pdf import error:', err);
-        const el = document.getElementById('pdf-temp-container');
-        if (el) document.body.removeChild(el);
-        toast.error('PDF library failed to load');
+      // Expected Cashflows section
+      csv += 'EXPECTED CASHFLOWS\n';
+      csv += 'Date,Type,Principal,Interest,Gross Amount,TDS,Net Amount\n';
+      
+      const expInvestments = expectedCashflows.filter(cf => cf.type === 'investment');
+      const expInflows = expectedCashflows.filter(cf => cf.type !== 'investment');
+      let expTotalInvestment = 0;
+      let expTotalGross = 0;
+      
+      expInvestments.forEach(cf => {
+        const amt = Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0);
+        expTotalInvestment += amt;
+        csv += `${cf.date},Investment,-${amt},0,-${amt},0,-${amt}\n`;
       });
-    }, 300);
+      
+      expInflows.forEach(cf => {
+        const gross = cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0));
+        expTotalGross += gross;
+        csv += `${cf.date},${cf.type === 'maturity' ? 'Maturity' : 'Inflow'},${cf.principal_component || 0},${cf.interest_component || 0},${gross},${cf.tds_amount || 0},${cf.net_amount || 0}\n`;
+      });
+      
+      csv += `\nExpected Total Investment,${expTotalInvestment}\n`;
+      csv += `Expected Total Returns,${expTotalGross}\n`;
+      csv += `Expected Profit,${expTotalGross - expTotalInvestment}\n`;
+      csv += `Expected XIRR,${holdingData.xirr?.toFixed(2) || '-'}%\n\n`;
+      
+      // Actual Cashflows section
+      csv += 'ACTUAL CASHFLOWS\n';
+      csv += 'Date,Type,Principal,Interest,Gross Amount,TDS,Net Amount,Status\n';
+      
+      const actInvestments = actualCashflows.filter(cf => cf.type === 'investment');
+      const actInflows = actualCashflows.filter(cf => cf.type !== 'investment');
+      let actTotalInvestment = 0;
+      let actTotalGross = 0;
+      
+      actInvestments.forEach(cf => {
+        const amt = Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0);
+        actTotalInvestment += amt;
+        csv += `${cf.date},Investment,-${amt},0,-${amt},0,-${amt},Paid\n`;
+      });
+      
+      actInflows.forEach(cf => {
+        const gross = cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0));
+        actTotalGross += gross;
+        const status = cf.is_repaid ? 'Received' : (cf.type === 'maturity' ? 'Due at Maturity' : 'Pending');
+        csv += `${cf.date},${cf.type === 'maturity' ? 'Maturity' : (cf.is_prepaid ? 'Prepayment' : 'Repayment')},${cf.principal_component || 0},${cf.interest_component || 0},${gross},${cf.tds_amount || 0},${cf.net_amount || 0},${status}\n`;
+      });
+      
+      csv += `\nActual Total Investment,${actTotalInvestment}\n`;
+      csv += `Actual Total Returns,${actTotalGross}\n`;
+      csv += `Actual Profit,${actTotalGross - actTotalInvestment}\n`;
+      csv += `Actual XIRR,${holdingData.actual_xirr?.toFixed(2) || '-'}%\n`;
+      
+      // Create and download the file
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Cashflow_Report_${holdingData.bond_name?.replace(/\s+/g, '_') || 'Report'}_${format(new Date(), 'yyyyMMdd')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Excel (CSV) downloaded successfully!');
+    } catch (err) {
+      console.error('Excel Error:', err);
+      toast.error('Failed to generate Excel: ' + err.message);
+    }
   };
 
   if (!user) return null;
