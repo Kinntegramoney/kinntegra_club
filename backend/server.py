@@ -10088,8 +10088,16 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             "client_id": client_id
         }, {"_id": 0}).to_list(500)
         
-        # Use all actual repayments (no need to filter by trade since we merged)
-        matched_actual_repayments = all_actual_repayments
+        # Filter actual_repayments to match this specific investment date group
+        # This ensures different date tranches don't share repayments
+        matched_actual_repayments = []
+        group_inv_date = investment_date_str  # The investment date for this group
+        
+        for ar in all_actual_repayments:
+            ar_inv_date = (ar.get('investment_date', '') or '')[:10]
+            # Match repayments that have the same investment date OR no investment date (legacy data)
+            if ar_inv_date == group_inv_date or not ar_inv_date:
+                matched_actual_repayments.append(ar)
         
         # Calculate totals for this holding (use GROSS amounts = principal + interest)
         investment_amount = trade.get('total_amount', 0)
