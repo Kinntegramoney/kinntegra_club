@@ -1347,10 +1347,11 @@ def send_holdings_report_email(
     total_profit: float,
     cc_emails: list = None,
     excel_attachment: bytes = None,
-    attachment_filename: str = None
+    attachment_filename: str = None,
+    bcc_emails: list = None
 ) -> bool:
     """
-    Send holdings report email to client with optional sub-broker CC.
+    Send holdings report email to client with optional sub-broker CC and BCC.
     
     Args:
         client_name: Client's name
@@ -1362,6 +1363,7 @@ def send_holdings_report_email(
         cc_emails: List of CC email addresses (e.g., sub-broker email)
         excel_attachment: Excel file bytes to attach (optional)
         attachment_filename: Filename for the Excel attachment (optional)
+        bcc_emails: List of BCC email addresses (optional)
     """
     subject = "Your Investment Holdings Report - Kinntegraa"
     
