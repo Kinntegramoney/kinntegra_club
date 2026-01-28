@@ -1167,10 +1167,8 @@ export default function Holdings() {
       <SidebarComponent user={user} />
       
       <div className="flex-1 flex overflow-hidden">
-        {/* Client List */}
+        {/* Client List Panel - Narrower */}
         <div className="w-60 bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-3 border-b border-gray-200">
-            <div className="relative">
           .header { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #C9A227; }
           .header h1 { font-size: 14px; font-weight: 600; color: #5B373C; margin-bottom: 3px; }
           .header p { font-size: 10px; color: #6b7280; }
