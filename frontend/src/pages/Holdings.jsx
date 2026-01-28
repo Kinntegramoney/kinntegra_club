@@ -668,9 +668,9 @@ export default function Holdings() {
     return Object.values(byDate).sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
-  // Consolidate holdings by bond_id AND investment_date
-  // IMPORTANT: Holdings with different investment dates should NOT be merged
-  // They represent separate tranches with different XIRR calculations
+  // Consolidate holdings by bond_id for SUMMARY VIEW
+  // Shows one row per bond with total units/amounts
+  // Individual trades (with different investment dates) are stored in trades[] array for detail view
   const getConsolidatedHoldings = () => {
     if (!clientHoldings?.holdings) return [];
     
@@ -678,15 +678,11 @@ export default function Holdings() {
     
     clientHoldings.holdings.forEach(holding => {
       const bondId = holding.bond_id;
-      const investmentDate = (holding.investment_date || '').substring(0, 10);
-      // Create unique key combining bond_id and investment_date
-      const key = `${bondId}|${investmentDate}`;
       
-      if (!consolidated[key]) {
-        consolidated[key] = {
+      if (!consolidated[bondId]) {
+        consolidated[bondId] = {
           bond_id: bondId,
           bond_name: holding.bond_name,
-          investment_date: investmentDate,
           total_units: 0,
           invested_amount: 0,
           total_principal: 0,
@@ -701,43 +697,55 @@ export default function Holdings() {
           prepaid_amount: 0,
           xirr: null,
           actual_xirr: null,
-          trades: []
+          trades: []  // Will contain separate entries for each investment date
         };
       }
       
-      consolidated[key].total_units += holding.units || 0;
-      consolidated[key].invested_amount += holding.invested_amount;
-      consolidated[key].total_principal += holding.total_principal;
-      consolidated[key].total_interest_gross += holding.total_interest_gross;
-      consolidated[key].total_tds += holding.total_tds;
-      consolidated[key].repaid_principal += holding.repaid_principal;
-      consolidated[key].repaid_interest += holding.repaid_interest;
-      consolidated[key].repaid_tds += holding.repaid_tds;
-      consolidated[key].net_repaid += holding.net_repaid;
-      consolidated[key].upcoming_expected += holding.upcoming_expected;
-      consolidated[key].prepaid_count += holding.prepaid_count || 0;
-      consolidated[key].prepaid_amount += holding.prepaid_amount || 0;
+      // Accumulate totals for summary view
+      consolidated[bondId].total_units += holding.units || 0;
+      consolidated[bondId].invested_amount += holding.invested_amount;
+      consolidated[bondId].total_principal += holding.total_principal;
+      consolidated[bondId].total_interest_gross += holding.total_interest_gross;
+      consolidated[bondId].total_tds += holding.total_tds;
+      consolidated[bondId].repaid_principal += holding.repaid_principal;
+      consolidated[bondId].repaid_interest += holding.repaid_interest;
+      consolidated[bondId].repaid_tds += holding.repaid_tds;
+      consolidated[bondId].net_repaid += holding.net_repaid;
+      consolidated[bondId].upcoming_expected += holding.upcoming_expected;
+      consolidated[bondId].prepaid_count += holding.prepaid_count || 0;
+      consolidated[bondId].prepaid_amount += holding.prepaid_amount || 0;
       
-      // Use the XIRR from the holding if available
+      // For XIRR in summary, use weighted average or the bond's expected rate
+      // Since different tranches may have different actual XIRRs, we'll show the bond's expected XIRR
       if (holding.xirr !== null && holding.xirr !== undefined) {
-        if (consolidated[key].xirr === null) {
-          consolidated[key].xirr = holding.xirr;
+        if (consolidated[bondId].xirr === null) {
+          consolidated[bondId].xirr = holding.xirr;
         }
       }
       
-      // Use the Actual XIRR from the holding if available
+      // For actual XIRR in summary, we need to recalculate based on combined cashflows
+      // For now, show the first available actual XIRR (detail view will show per-tranche XIRRs)
       if (holding.actual_xirr !== null && holding.actual_xirr !== undefined) {
-        if (consolidated[key].actual_xirr === null) {
-          consolidated[key].actual_xirr = holding.actual_xirr;
+        if (consolidated[bondId].actual_xirr === null) {
+          consolidated[bondId].actual_xirr = holding.actual_xirr;
         }
       }
       
-      // Use individual_trades if available (backend returns merged holdings with individual trade info)
-      // Now that we group by bond+date, trades in individual_trades should all have same date
-      if (holding.individual_trades && holding.individual_trades.length > 1) {
-        // Multiple trades were merged (same date) - add each individual trade
-        holding.individual_trades.forEach(indTrade => {
-          consolidated[key].trades.push({
+      // Add this holding as a separate trade entry for the detail view
+      // Each holding from backend now represents a unique bond+date combination
+      consolidated[bondId].trades.push({
+        trade_id: holding.trade_id,
+        units: holding.units,
+        investment_date: holding.investment_date,
+        invested_amount: holding.invested_amount,
+        prepaid_count: holding.prepaid_count || 0,
+        prepaid_amount: holding.prepaid_amount || 0,
+        xirr: holding.xirr,
+        actual_xirr: holding.actual_xirr,
+        cashflows: (holding.cashflows || []).sort((a, b) => new Date(a.date) - new Date(b.date)),
+        expected_cashflows: holding.expected_cashflows || [],
+        actual_cashflows: holding.actual_cashflows || []
+      });
             trade_id: indTrade.trade_id,
             units: indTrade.units,
             investment_date: indTrade.investment_date,
