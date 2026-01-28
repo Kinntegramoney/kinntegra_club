@@ -11,6 +11,7 @@ import {
   FileUp, Download, Trash2, Upload, FileSpreadsheet, RefreshCw,
   FileText, CheckCircle2, Loader2, AlertCircle, Clock, Search, Users
 } from "lucide-react";
+import { logUserActivity } from "@/utils/activityLogger";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
