@@ -1106,8 +1106,8 @@ export default function Holdings() {
       <SidebarComponent user={user} />
       
       <div className="flex-1 flex overflow-hidden">
-        {/* Client List Panel - Narrower */}
-        <div className="w-60 bg-white border-r border-gray-200 flex flex-col">
+        {/* Client List Panel - Wider for better display */}
+        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
           <div className="p-3 border-b border-gray-200">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -1135,13 +1135,13 @@ export default function Holdings() {
                     selectedClient?.id === client.id ? 'bg-etihad-gold-50 border-l-4 border-l-amber-600' : ''
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-gray-900 text-sm">{client.name}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 text-sm truncate">{client.name}</div>
                       <div className="text-xs text-gray-500">{client.pan_number}</div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs text-gray-500">
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-xs font-medium text-gray-700 whitespace-nowrap">
                         {client.total_investment ? formatINR(client.total_investment) : '₹ 0'}
                       </div>
                     </div>
