@@ -2809,6 +2809,16 @@ async def client_approve_via_link(token: str, action: str = "approve"):
             # Send welcome email with credentials
             if client.get('email'):
                 broker = await db.users.find_one({"id": client.get('broker_id')}, {"_id": 0})
+                
+                # Get sub-broker name if client is linked to one
+                subbroker_name = None
+                if client.get('linked_subbroker_id'):
+                    subbroker = await db.partners.find_one({"id": client.get('linked_subbroker_id')}, {"_id": 0})
+                    if not subbroker:
+                        subbroker = await db.sub_brokers.find_one({"id": client.get('linked_subbroker_id')}, {"_id": 0})
+                    if subbroker:
+                        subbroker_name = subbroker.get('name')
+                
                 from email_service import send_welcome_email_client
                 send_welcome_email_client(
                     client_name=client.get('name', ''),
@@ -2816,7 +2826,8 @@ async def client_approve_via_link(token: str, action: str = "approve"):
                     pan=client.get('pan_number', ''),
                     password=temp_password,
                     pin=temp_pin,
-                    broker_name=broker.get('name', 'Your Broker') if broker else 'Your Broker'
+                    broker_name=broker.get('name', 'Your Broker') if broker else 'Your Broker',
+                    subbroker_name=subbroker_name
                 )
             
             return {
