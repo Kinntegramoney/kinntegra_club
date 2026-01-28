@@ -29,11 +29,6 @@ export default function AdminClients() {
   
   // Edit modal state - now uses EditClientModal component
   const [editingClient, setEditingClient] = useState(null);
-  
-  // Credentials modal state
-  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [credentials, setCredentials] = useState(null);
-  const [copiedField, setCopiedField] = useState(null);
 
   // Set page title
   useEffect(() => {
