@@ -204,14 +204,6 @@ export default function AdminClients() {
     }
   };
 
-  // Copy to clipboard
-  const copyToClipboard = (text, field) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-    toast.success("Copied to clipboard!");
-  };
-
   const handleLinkSubbroker = async (clientId, subbrokerId) => {
     try {
       const token = localStorage.getItem("token");
