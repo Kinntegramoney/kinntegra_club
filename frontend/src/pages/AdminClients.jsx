@@ -531,69 +531,6 @@ export default function AdminClients() {
           subbrokers={partners}
         />
       )}
-
-      {/* Credentials Modal */}
-      {showCredentialsModal && credentials && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md">
-            <div className="bg-gradient-to-r from-etihad-gold-500 to-etihad-gold-600 px-6 py-4 text-white rounded-t-lg">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <KeyRound className="h-6 w-6" />
-                Client Credentials
-              </h2>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-gray-600">
-                Share these credentials with <strong>{credentials.name}</strong>:
-              </p>
-              
-              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                {/* PAN */}
-                <div className="flex items-center justify-between bg-white rounded-md p-3 border">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase">PAN (Username)</p>
-                    <p className="font-mono font-semibold">{credentials.pan}</p>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(credentials.pan, 'pan')}>
-                    {copiedField === 'pan' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                </div>
-                
-                {/* Password */}
-                <div className="flex items-center justify-between bg-white rounded-md p-3 border">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase">Password</p>
-                    <p className="font-mono font-semibold">{credentials.password}</p>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(credentials.password, 'password')}>
-                    {copiedField === 'password' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                </div>
-                
-                {/* PIN (if available) */}
-                {credentials.pin && (
-                  <div className="flex items-center justify-between bg-white rounded-md p-3 border">
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase">PIN</p>
-                      <p className="font-mono font-semibold">{credentials.pin}</p>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(credentials.pin, 'pin')}>
-                      {copiedField === 'pin' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex justify-end">
-                <Button onClick={() => { setShowCredentialsModal(false); setCredentials(null); }}>
-                  Done
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
