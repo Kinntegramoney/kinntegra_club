@@ -1039,45 +1039,51 @@ export default function ReinvestmentTagging() {
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-2">
                   <Badge className="bg-etihad-gold-600 text-white">{getSelectedCount()} selected</Badge>
-                  <span className="text-sm text-gray-700">Quick apply or edit individually:</span>
+                  <span className="text-sm text-gray-700">
+                    {getSelectedCount() === 1 ? 'Split entry:' : 'Quick apply or split:'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Quick Apply Dropdowns */}
-                  <Select value={massUcc} onValueChange={setMassUcc}>
-                    <SelectTrigger className="w-32 h-8 text-xs bg-white">
-                      <SelectValue placeholder="UCC" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getSelectedUccs().map(ucc => (
-                        <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={massPortfolio} onValueChange={setMassPortfolio}>
-                    <SelectTrigger className="w-28 h-8 text-xs bg-white">
-                      <SelectValue placeholder="Portfolio" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PORTFOLIO_OPTIONS.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={massTag} onValueChange={setMassTag}>
-                    <SelectTrigger className="w-28 h-8 text-xs bg-white">
-                      <SelectValue placeholder="Tag" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TAG_OPTIONS.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" onClick={applyMassTag} className="bg-etihad-gold-600 hover:bg-etihad-gold-700 h-8">
-                    Quick Apply
-                  </Button>
-                  <div className="w-px h-6 bg-gray-300 mx-1" />
-                  {/* Split by Tag Type buttons */}
+                  {/* Quick Apply Dropdowns - Only show for multiple selections */}
+                  {getSelectedCount() > 1 && (
+                    <>
+                      <Select value={massUcc} onValueChange={setMassUcc}>
+                        <SelectTrigger className="w-32 h-8 text-xs bg-white">
+                          <SelectValue placeholder="UCC" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getSelectedUccs().map(ucc => (
+                            <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={massPortfolio} onValueChange={setMassPortfolio}>
+                        <SelectTrigger className="w-28 h-8 text-xs bg-white">
+                          <SelectValue placeholder="Portfolio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PORTFOLIO_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={massTag} onValueChange={setMassTag}>
+                        <SelectTrigger className="w-28 h-8 text-xs bg-white">
+                          <SelectValue placeholder="Tag" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TAG_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" onClick={applyMassTag} className="bg-etihad-gold-600 hover:bg-etihad-gold-700 h-8">
+                        Quick Apply
+                      </Button>
+                      <div className="w-px h-6 bg-gray-300 mx-1" />
+                    </>
+                  )}
+                  {/* Split by Tag Type buttons - Always visible */}
                   <div className="flex items-center gap-1 bg-gray-100 rounded-md p-1">
                     <span className="text-xs text-gray-600 px-1">Split:</span>
                     <Button 
