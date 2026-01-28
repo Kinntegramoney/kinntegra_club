@@ -20874,8 +20874,10 @@ async def get_user_activity_logs(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Get user activity logs. Only brokers can view all logs.
-    Sub-brokers can only see activity from their linked clients.
+    Get user activity logs.
+    - Brokers can view all their clients' and sub-brokers' activity logs
+    - Sub-brokers can only see activity from their linked clients (not self or broker)
+    - Clients do NOT have access to this endpoint
     """
     if current_user['role'] not in ['broker', 'sub_broker']:
         raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can view activity logs")
@@ -20884,13 +20886,14 @@ async def get_user_activity_logs(
     query = {}
     
     if current_user['role'] == 'broker':
+        # Broker sees all activity under their broker_id (clients and sub-brokers)
         query['broker_id'] = current_user['id']
+        # Exclude broker's own activity
+        query['user_id'] = {'$ne': current_user['id']}
     elif current_user['role'] == 'sub_broker':
-        # Sub-brokers can see their own activity and their linked clients' activity
-        query['$or'] = [
-            {'user_id': current_user['id']},
-            {'linked_subbroker_id': current_user['id']}
-        ]
+        # Sub-brokers can ONLY see their linked clients' activity (NOT their own)
+        query['linked_subbroker_id'] = current_user['id']
+        query['user_role'] = 'client'  # Only show client activity
     
     if user_role and user_role != 'all':
         query['user_role'] = user_role
