@@ -269,31 +269,54 @@ export default function ReinvestmentTagging() {
     return allEntries.filter(e => selectedIds.includes(e.id));
   };
 
-  // Open multi-retag modal
-  const openMultiRetagModal = () => {
+  // Open multi-retag modal with a specific tag type
+  const openMultiRetagModal = (tagType) => {
     const entries = getSelectedEntriesData();
     if (entries.length === 0) {
       toast.error("Please select entries first");
       return;
     }
     
+    if (!tagType) {
+      toast.error("Please select a tag type first");
+      return;
+    }
+    
+    setSelectedTagType(tagType);
+    
     // Initialize multi-retag data for each selected entry with UCC allocations
     const initialData = {};
     entries.forEach(entry => {
       const existing = localChanges[entry.id] || {};
-      const totalAmount = entry.net_amount || 0;
+      
+      // Get the amount based on tag type selection
+      let splitAmount = 0;
+      if (tagType === 'principal') {
+        splitAmount = entry.principal_amount || 0;
+      } else if (tagType === 'interest') {
+        splitAmount = entry.interest_amount || 0;
+      } else if (tagType === 'both') {
+        splitAmount = entry.net_amount || 0;
+      }
+      
+      // Store all amounts for display
+      const amounts = {
+        principal: entry.principal_amount || 0,
+        interest: entry.interest_amount || 0,
+        both: entry.net_amount || 0
+      };
       
       // Start with one allocation using existing values or defaults
       initialData[entry.id] = {
         entry: entry,
-        totalAmount: totalAmount,
+        amounts: amounts,
+        totalAmount: splitAmount, // This is the amount to split based on tag type
         allocations: [
           {
             id: `${entry.id}-alloc-0`,
             ucc: existing.target_ucc || entry.target_ucc || entry.ucc_list?.[0] || '',
-            amount: totalAmount,
-            portfolio: existing.portfolio_category || entry.portfolio_category || '',
-            tag: existing.reinvestment_tag || entry.reinvestment_tag || ''
+            amount: splitAmount,
+            portfolio: existing.portfolio_category || entry.portfolio_category || ''
           }
         ]
       };
