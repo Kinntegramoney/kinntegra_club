@@ -12665,12 +12665,22 @@ async def approve_reinvestment_via_link(token: str, action: str = "approve"):
         # Get client info for logging
         client = await db.clients.find_one({"id": client_id}, {"_id": 0})
         
-        # Update all cashflows
+        # Update all cashflows in holding_cashflows
         await db.holding_cashflows.update_many(
             {"id": {"$in": cashflow_ids}},
             {"$set": {
                 "client_approved": approved,
-                "approval_status": "client_approved" if approved else "client_rejected",
+                "approval_status": "approved" if approved else "rejected",
+                "approved_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        # Also update reinvestment_logs collection
+        await db.reinvestment_logs.update_many(
+            {"cashflow_id": {"$in": cashflow_ids}},
+            {"$set": {
+                "client_approved": approved,
+                "approval_status": "approved" if approved else "rejected",
                 "approved_at": datetime.now(timezone.utc).isoformat()
             }}
         )
