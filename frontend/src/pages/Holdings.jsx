@@ -1165,7 +1165,8 @@ export default function Holdings() {
   return (
     <div className="flex h-screen bg-gray-50">
       <SidebarComponent user={user} />
-        <title>Cashflow Report - ${holdingData.bond_name}</title>
+      
+      <div className="flex-1 flex overflow-hidden">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 15px 20px; color: #374151; background: #fff; font-size: 10px; }
