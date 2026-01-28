@@ -1159,7 +1159,10 @@ export default function Holdings() {
 
   const SidebarComponent = user.role === 'broker' ? Sidebar : user.role === 'client' ? ClientSidebar : SubBrokerSidebar;
   const consolidatedCashflows = modalData ? getConsolidatedCashflowsByDate(modalData.trades) : [];
-      <html>
+  const expectedCashflows = modalData ? getExpectedCashflowsByDate(modalData.trades) : [];
+  const actualCashflows = modalData ? getActualCashflowsByDate(modalData.trades) : [];
+
+  return (
       <head>
         <meta charset="UTF-8">
         <title>Cashflow Report - ${holdingData.bond_name}</title>
