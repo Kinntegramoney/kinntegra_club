@@ -11502,7 +11502,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
 
 @api_router.put("/reinvestment/tag/{cashflow_id}")
 async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdate, current_user: dict = Depends(get_current_user)):
-    """Update reinvestment tag for a cashflow"""
+    """Update reinvestment tag for a cashflow. Supports split allocations across multiple UCCs/portfolios."""
     
     # Find the cashflow
     cashflow = await db.holding_cashflows.find_one({"id": cashflow_id})
@@ -11526,11 +11526,149 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         if client.get('linked_subbroker_id') != current_user['id']:
             raise HTTPException(status_code=403, detail="Access denied")
     
+    # Get client's valid UCCs for validation
+    client_ucc_list = client.get('ucc_list', [])
+    if not client_ucc_list and client.get('ucc'):
+        client_ucc_list = [client.get('ucc')]
+    client_ucc_list_upper = [u.upper() for u in client_ucc_list]
+    
+    # Check if this is a past date or future date
+    today = datetime.now(timezone.utc).date()
+    cf_date = datetime.fromisoformat(cashflow['date']).date()
+    is_past_date = cf_date < today
+    
+    # =====================================================
+    # HANDLE SPLIT ALLOCATIONS (ucc_allocations array)
+    # =====================================================
+    if update.ucc_allocations and len(update.ucc_allocations) > 0:
+        # Validate all allocations
+        total_allocated = 0
+        validated_allocations = []
+        
+        for alloc in update.ucc_allocations:
+            # Validate UCC belongs to client
+            if alloc.ucc.upper() not in client_ucc_list_upper:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"UCC '{alloc.ucc}' does not belong to this client"
+                )
+            
+            # Validate amount
+            if alloc.amount <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="All allocation amounts must be greater than 0"
+                )
+            
+            # Validate portfolio - must not be empty
+            if not alloc.portfolio:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Portfolio is required for all allocations"
+                )
+            
+            # Validate portfolio based on amount rules
+            if alloc.portfolio == 'bonds' and alloc.amount < 1000000:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Bonds portfolio requires amount >= ₹10,00,000 (got ₹{alloc.amount:,.0f})"
+                )
+            if alloc.portfolio == 'real_estate' and alloc.amount < 2500000:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Real Estate portfolio requires amount >= ₹25,00,000 (got ₹{alloc.amount:,.0f})"
+                )
+            if alloc.amount < 1000 and alloc.portfolio != 'none':
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Amount < ₹1,000 must use 'none' portfolio (got '{alloc.portfolio}')"
+                )
+            
+            total_allocated += alloc.amount
+            validated_allocations.append({
+                "ucc": alloc.ucc.upper(),
+                "amount": alloc.amount,
+                "portfolio": alloc.portfolio,
+                "tag": alloc.tag or update.reinvestment_tag
+            })
+        
+        # Store split allocations on the cashflow
+        update_data = {
+            "reinvestment_tag": update.reinvestment_tag,
+            "tagged_by": current_user['id'],
+            "tagged_at": datetime.now(timezone.utc).isoformat(),
+            "has_split_allocations": True,
+            "ucc_allocations": validated_allocations,
+            "total_allocated_amount": total_allocated,
+            # Store first allocation values for backward compatibility
+            "target_ucc": validated_allocations[0]['ucc'],
+            "portfolio_category": validated_allocations[0]['portfolio'],
+        }
+        
+        # Set approval status based on date
+        if current_user['role'] in ['broker', 'sub_broker'] and update.reinvestment_tag not in ['not_tagged']:
+            if is_past_date:
+                update_data['client_approved'] = True
+                update_data['approval_status'] = 'approved'
+                update_data['approved_at'] = datetime.now(timezone.utc).isoformat()
+                update_data['approved_by'] = current_user['id']
+                update_data['auto_approved'] = True
+            else:
+                update_data['client_approved'] = False
+                update_data['approval_status'] = 'pending'
+        
+        await db.holding_cashflows.update_one(
+            {"id": cashflow_id},
+            {"$set": update_data}
+        )
+        
+        # Create log entries for each allocation
+        for idx, alloc in enumerate(validated_allocations):
+            log_entry = {
+                "id": str(uuid.uuid4()),
+                "type": "reinvestment_tag_split",
+                "cashflow_id": cashflow_id,
+                "client_id": cashflow['client_id'],
+                "client_name": client.get('name', ''),
+                "bond_id": cashflow.get('bond_id'),
+                "bond_name": cashflow.get('bond_name', ''),
+                "expected_date": cashflow['date'],
+                "allocation_index": idx,
+                "ucc": alloc['ucc'],
+                "amount": alloc['amount'],
+                "portfolio": alloc['portfolio'],
+                "tag": alloc['tag'],
+                "total_allocations": len(validated_allocations),
+                "tagged_by": current_user['id'],
+                "tagged_by_name": current_user.get('name', ''),
+                "is_past_date": is_past_date,
+                "approval_status": update_data.get('approval_status', 'pending'),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.reinvestment_logs.insert_one(log_entry)
+        
+        logger.info(f"Split allocation saved for cashflow {cashflow_id}: {len(validated_allocations)} allocations, total ₹{total_allocated:,.2f}")
+        
+        return {
+            "success": True,
+            "message": f"Split allocation saved: {len(validated_allocations)} allocations totaling ₹{total_allocated:,.2f}",
+            "cashflow_id": cashflow_id,
+            "allocations": validated_allocations,
+            "is_past_date": is_past_date,
+            "approval_status": update_data.get('approval_status', 'pending')
+        }
+    
+    # =====================================================
+    # HANDLE SINGLE ALLOCATION (original logic)
+    # =====================================================
+    
     # Update tag - reset approval status if broker/sub-broker modifies
     update_data = {
         "reinvestment_tag": update.reinvestment_tag,
         "tagged_by": current_user['id'],
-        "tagged_at": datetime.now(timezone.utc).isoformat()
+        "tagged_at": datetime.now(timezone.utc).isoformat(),
+        "has_split_allocations": False,
+        "ucc_allocations": None,  # Clear any previous split allocations
     }
     
     # Handle custom amount for "other" tag
@@ -11550,20 +11688,12 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
     # Handle target UCC for reinvestment
     if update.target_ucc:
         # Validate that the UCC belongs to the client
-        client_ucc_list = client.get('ucc_list', [])
-        if not client_ucc_list and client.get('ucc'):
-            client_ucc_list = [client.get('ucc')]
-        if update.target_ucc.upper() not in [u.upper() for u in client_ucc_list]:
+        if update.target_ucc.upper() not in client_ucc_list_upper:
             raise HTTPException(status_code=400, detail=f"UCC '{update.target_ucc}' does not belong to this client")
         update_data['target_ucc'] = update.target_ucc.upper()
     elif update.reinvestment_tag in ['not_tagged', 'not_invest']:
         # Clear target UCC if not investing
         update_data['target_ucc'] = None
-    
-    # Check if this is a past date or future date
-    today = datetime.now(timezone.utc).date()
-    cf_date = datetime.fromisoformat(cashflow['date']).date()
-    is_past_date = cf_date < today
     
     # If broker/sub-broker is tagging:
     # - Past dates: Auto-approve (no client approval needed)
