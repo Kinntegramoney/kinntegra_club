@@ -1324,15 +1324,13 @@ export default function BondDetails() {
         </div>
       )}
       
-      {/* Cashflow Report Modal - Matching reference design */}
+      {/* Cashflow Report Modal - Matching exact reference design */}
       {showCashflowReport && cashflowReportData && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between z-10">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">Bond Cashflow Statement (Single Bond)</h2>
-              </div>
+              <h2 className="text-lg font-bold text-gray-900">Expected Cashflow Report</h2>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={exportCashflowToPDF}>
                   <Download className="h-4 w-4 mr-2" /> Export PDF
@@ -1345,90 +1343,76 @@ export default function BondDetails() {
             
             {/* Report Content */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
-              <div id="cashflow-report-content" className="bg-white">
-                
-                {/* Header Cards - 2x4 Grid with gray background */}
-                <div className="grid grid-cols-4 border border-gray-200 mb-4">
-                  {/* Row 1 */}
-                  <div className="p-3 bg-gray-100 border-r border-b border-gray-200">
-                    <p className="text-[10px] text-gray-500 mb-1">Bond</p>
-                    <p className="text-sm font-semibold text-gray-900">{cashflowReportData.bond_name}</p>
-                  </div>
-                  <div className="p-3 bg-gray-100 border-r border-b border-gray-200">
-                    <p className="text-[10px] text-gray-500 mb-1">Units</p>
-                    <p className="text-sm font-semibold text-gray-900">{cashflowReportData.units}</p>
-                  </div>
-                  <div className="p-3 bg-gray-100 border-r border-b border-gray-200">
-                    <p className="text-[10px] text-gray-500 mb-1">Investment Date</p>
-                    <p className="text-sm font-semibold text-gray-900">{format(new Date(cashflowReportData.investment_date), "dd MMM yyyy")}</p>
-                  </div>
-                  <div className="p-3 bg-gray-100 border-b border-gray-200">
-                    <p className="text-[10px] text-gray-500 mb-1">Price Paid</p>
-                    <p className="text-sm font-semibold text-gray-900">₹{cashflowReportData.price_paid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  {/* Row 2 */}
-                  <div className="p-3 bg-gray-100 border-r border-gray-200">
-                    <p className="text-[10px] text-gray-500 mb-1">Total Principal</p>
-                    <p className="text-sm font-semibold text-gray-900">₹{cashflowReportData.total_principal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  <div className="p-3 bg-gray-100 border-r border-gray-200">
-                    <p className="text-[10px] text-gray-500 mb-1">Total Interest</p>
-                    <p className="text-sm font-semibold text-gray-900">₹{cashflowReportData.total_interest.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  <div className="p-3 bg-gray-100 border-r border-gray-200">
-                    <p className="text-[10px] text-gray-500 mb-1">TDS Deducted</p>
-                    <p className="text-sm font-semibold text-gray-900">₹{cashflowReportData.total_tds.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  <div className="p-3 bg-gray-100">
-                    <p className="text-[10px] text-gray-500 mb-1">Net Received</p>
-                    <p className="text-sm font-semibold text-gray-900">₹{cashflowReportData.total_net_received.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                  </div>
-                </div>
-                
-                {/* XIRR Line */}
-                <div className="mb-4 py-2">
-                  <span className="text-sm text-gray-900">XIRR</span> <span className="text-sm font-bold text-gray-900">{bondData.secondary_irr}%</span>
-                </div>
-                
-                {/* Cashflow Table */}
-                <div className="overflow-y-auto" style={{ maxHeight: '400px' }}>
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-100 sticky top-0">
-                      <tr className="border-b-2 border-gray-900">
-                        <th className="text-left px-3 py-2 font-semibold text-gray-900">Date</th>
-                        <th className="text-right px-3 py-2 font-semibold text-gray-900">Principal</th>
-                        <th className="text-right px-3 py-2 font-semibold text-gray-900">Interest</th>
-                        <th className="text-right px-3 py-2 font-semibold text-gray-900">TDS</th>
-                        <th className="text-right px-3 py-2 font-semibold text-gray-900">Net Payment</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cashflowReportData.cashflows.map((cf, idx) => (
-                        <tr key={idx} className={`border-b border-gray-200 ${idx % 2 === 1 ? 'bg-gray-50' : ''}`}>
-                          <td className="px-3 py-2 font-medium text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                          <td className="px-3 py-2 text-right font-mono text-gray-700">
-                            {cf.principal_payment > 0 ? `₹${cf.principal_payment.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono text-gray-700">
-                            ₹{cf.interest_payment.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono text-gray-700">
-                            ₹{cf.tds_deducted.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono font-semibold text-gray-900">
-                            ₹{cf.total_net_payment.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </td>
+              {/* Header Table - 5 columns */}
+              <table className="w-full border-collapse mb-6 border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 text-center">Bond Name</th>
+                    <th className="border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 text-center">Amount Invested</th>
+                    <th className="border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 text-center">Gross Expected</th>
+                    <th className="border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 text-center">Profit</th>
+                    <th className="border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 text-center">Expected XIRR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-gray-300 px-3 py-3 text-center font-bold text-gray-900">{cashflowReportData.bond_name}</td>
+                    <td className="border border-gray-300 px-3 py-3 text-center font-bold text-gray-900">₹{cashflowReportData.price_paid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="border border-gray-300 px-3 py-3 text-center font-bold text-gray-900">₹{(cashflowReportData.total_principal + cashflowReportData.total_interest).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="border border-gray-300 px-3 py-3 text-center font-bold text-gray-900">₹{((cashflowReportData.total_principal + cashflowReportData.total_interest) - cashflowReportData.price_paid).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="border border-gray-300 px-3 py-3 text-center font-bold text-gray-900">{bondData.secondary_irr}%</td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              {/* Section Title */}
+              <h3 className="text-center font-bold text-gray-900 mb-4">Expected Cashflow</h3>
+              
+              {/* Cashflow Table - 4 columns */}
+              <div className="overflow-y-auto" style={{ maxHeight: '400px' }}>
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead className="sticky top-0">
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-3 py-2 text-left text-xs font-bold text-gray-900">Date</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-xs font-bold text-gray-900">Description</th>
+                      <th className="border border-gray-300 px-3 py-2 text-right text-xs font-bold text-gray-900">Gross Amount (₹)</th>
+                      <th className="border border-gray-300 px-3 py-2 text-right text-xs font-bold text-gray-900">Net Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Principal Investment Row */}
+                    <tr>
+                      <td className="border border-gray-300 px-3 py-2 text-sm">{format(new Date(cashflowReportData.investment_date), "dd MMM yyyy")}</td>
+                      <td className="border border-gray-300 px-3 py-2 text-sm">Principal Invested</td>
+                      <td className="border border-gray-300 px-3 py-2 text-right text-sm font-mono"></td>
+                      <td className="border border-gray-300 px-3 py-2 text-right text-sm font-mono text-red-600">-₹{cashflowReportData.price_paid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    {/* Cashflow Rows */}
+                    {cashflowReportData.cashflows.map((cf, idx) => {
+                      const grossAmount = cf.principal_payment + cf.interest_payment;
+                      const description = cf.principal_payment > 0 ? 'Principal + Interest' : 'Interest Payment';
+                      return (
+                        <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-50' : ''}>
+                          <td className="border border-gray-300 px-3 py-2 text-sm">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-sm">{description}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right text-sm font-mono">₹{grossAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="border border-gray-300 px-3 py-2 text-right text-sm font-mono">₹{cf.total_net_payment.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Note */}
-                <div className="mt-4 pt-3 border-t border-gray-200 text-xs text-gray-500">
-                  <strong className="text-gray-700">Note:</strong> Interest is paid {bondData?.coupon_frequency || 'monthly'} with {bondData?.cutoff_days || 15} day cutoff. 
-                  Principal repayments are highlighted where applicable. TDS is deducted at 10% on interest component.
-                </div>
+                      );
+                    })}
+                    {/* Total Row */}
+                    <tr className="bg-gray-100 font-bold">
+                      <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={2}><strong>Total Returns</strong></td>
+                      <td className="border border-gray-300 px-3 py-2 text-right text-sm font-mono"><strong>₹{(cashflowReportData.total_principal + cashflowReportData.total_interest).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>
+                      <td className="border border-gray-300 px-3 py-2 text-right text-sm font-mono"><strong>₹{cashflowReportData.total_net_received.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Note */}
+              <div className="mt-4 text-xs text-gray-600">
+                <strong className="text-gray-900">Note:</strong> Gross Amount represents interest and principal before TDS. Net Amount reflects post-TDS cash inflow/outflow. Negative value indicates initial investment.
               </div>
             </div>
           </div>
