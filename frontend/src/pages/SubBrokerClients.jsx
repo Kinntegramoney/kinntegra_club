@@ -400,6 +400,13 @@ export default function SubBrokerClients() {
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleResendCredentials(client)}
+                                disabled={resendingCredentials}
+                              >
+                                <KeyRound className="h-4 w-4 mr-2" />
+                                {resendingCredentials ? "Sending..." : "Resend Credentials"}
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </td>
