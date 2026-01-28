@@ -411,7 +411,6 @@ export default function SubBrokerReinvestment() {
       data.allocations.forEach((alloc, idx) => {
         if (!alloc.ucc) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: UCC is required`);
         if (!alloc.portfolio) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Portfolio is required`);
-        if (!alloc.tag) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Tag is required`);
         if (!alloc.amount || alloc.amount <= 0) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Amount must be greater than 0`);
       });
     });
@@ -432,12 +431,12 @@ export default function SubBrokerReinvestment() {
       updates[entryId] = {
         target_ucc: primaryAlloc.ucc,
         portfolio_category: primaryAlloc.portfolio,
-        reinvestment_tag: primaryAlloc.tag,
+        reinvestment_tag: selectedTagType, // Use the tag selected BEFORE opening modal
         ucc_allocations: data.allocations.map(a => ({
           ucc: a.ucc,
           amount: a.amount,
           portfolio: a.portfolio,
-          tag: a.tag
+          tag: selectedTagType
         }))
       };
     });
