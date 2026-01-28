@@ -41,7 +41,8 @@ def send_email(
     html_content: str,
     plain_content: Optional[str] = None,
     cc: Optional[List[str]] = None,
-    bcc: Optional[List[str]] = None
+    bcc: Optional[List[str]] = None,
+    attachments: Optional[List[dict]] = None
 ) -> bool:
     """
     Send an email using SMTP SSL (outgoing only, no incoming mail)
@@ -53,6 +54,7 @@ def send_email(
         plain_content: Plain text fallback (optional)
         cc: List of CC recipients (optional)
         bcc: List of BCC recipients (optional)
+        attachments: List of attachment dicts with 'filename', 'content' (bytes), 'content_type' (optional)
     
     Returns:
         bool: True if email sent successfully, False otherwise
@@ -68,8 +70,16 @@ def send_email(
             logger.error("SMTP credentials are missing! Check MAIL_USERNAME and MAIL_PASSWORD in .env")
             return False
         
-        # Create message
-        message = MIMEMultipart("alternative")
+        # Create message - use mixed type if attachments, otherwise alternative
+        if attachments:
+            message = MIMEMultipart("mixed")
+            # Create a sub-part for the text/html alternatives
+            msg_alternative = MIMEMultipart("alternative")
+            message.attach(msg_alternative)
+        else:
+            message = MIMEMultipart("alternative")
+            msg_alternative = message
+            
         message["Subject"] = subject
         message["From"] = f"{config['from_name']} <{config['from_address']}>"
         message["To"] = to_email
@@ -88,11 +98,28 @@ def send_email(
         # Add plain text part
         if plain_content:
             part1 = MIMEText(plain_content, "plain")
-            message.attach(part1)
+            msg_alternative.attach(part1)
         
         # Add HTML part
         part2 = MIMEText(html_content, "html")
-        message.attach(part2)
+        msg_alternative.attach(part2)
+        
+        # Add attachments
+        if attachments:
+            from email.mime.base import MIMEBase
+            from email import encoders
+            
+            for att in attachments:
+                filename = att.get('filename', 'attachment')
+                content = att.get('content', b'')
+                content_type = att.get('content_type', 'application/octet-stream')
+                
+                maintype, subtype = content_type.split('/', 1)
+                part = MIMEBase(maintype, subtype)
+                part.set_payload(content)
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition', 'attachment', filename=filename)
+                message.attach(part)
         
         # Build recipient list
         recipients = [to_email]
