@@ -12214,13 +12214,12 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                         status_code=400,
                         detail=f"Real Estate portfolio requires amount >= ₹25,00,000 (got ₹{alloc.amount:,.0f})"
                     )
-                )
             
             total_allocated += alloc.amount
             validated_allocations.append({
-                "ucc": alloc.ucc.upper(),
+                "ucc": alloc_ucc.upper() if alloc_ucc else '',
                 "amount": alloc.amount,
-                "portfolio": alloc.portfolio,
+                "portfolio": alloc.portfolio if alloc.portfolio else 'none',
                 "tag": alloc.tag or update.reinvestment_tag
             })
         
