@@ -1569,85 +1569,18 @@ export default function ReinvestmentTagging() {
                 })}
               </div>
             </div>
-          )}
-          
-          {/* Client View Tabs - Only show in client view */}
-          {viewMode === "client" && (
-            <div className="px-6 border-t">
-              <div className="flex">
-                <button
-                  onClick={() => setActiveTab("untagged")}
-                  className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === "untagged"
-                      ? "border-etihad-gold-600 text-etihad-gold-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  Untagged ({untaggedPast.length + untaggedUpcoming.length} clients)
-                </button>
-                <button
-                  onClick={() => setActiveTab("tagged")}
-                  className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === "tagged"
-                      ? "border-etihad-gold-600 text-etihad-gold-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  Tagged ({taggedPast.length + taggedUpcoming.length} clients)
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Content */}
-        <div className="p-6 pb-24"> {/* Added padding bottom for sticky bar */}
+        {/* Content - Month View Only */}
+        <div className="p-6 pb-24">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600" />
             </div>
-          ) : viewMode === "month" ? (
-            /* MONTH VIEW */
+          ) : (
             renderMonthView()
-          ) : activeTab === "untagged" ? (
-            <>
-              {/* Section Toggle */}
-              <div className="flex gap-2 mb-4">
-                <Button
-                  variant={untaggedSection === "past" ? "default" : "outline"}
-                  onClick={() => setUntaggedSection("past")}
-                  className={untaggedSection === "past" ? "bg-blue-600 hover:bg-blue-700" : ""}
-                  size="sm"
-                >
-                  <History className="h-4 w-4 mr-1" />
-                  Historical ({untaggedPast.length})
-                </Button>
-                <Button
-                  variant={untaggedSection === "upcoming" ? "default" : "outline"}
-                  onClick={() => setUntaggedSection("upcoming")}
-                  className={untaggedSection === "upcoming" ? "bg-etihad-gold-600 hover:bg-etihad-gold-700" : ""}
-                  size="sm"
-                >
-                  <ArrowRight className="h-4 w-4 mr-1" />
-                  Upcoming ({untaggedUpcoming.length})
-                </Button>
-              </div>
-
-              {/* Client Groups */}
-              {currentUntaggedGroups.length === 0 ? (
-                <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
-                  {untaggedSection === "past" ? (
-                    <History className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                  ) : (
-                    <ArrowRight className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                  )}
-                  <p>No {untaggedSection === "past" ? "historical" : "upcoming"} entries to tag</p>
-                </div>
-              ) : (
-                currentUntaggedGroups.map(group => 
-                  renderUntaggedClientGroup(group, untaggedSection === "past", untaggedSection)
-                )
-              )}
+          )}
+        </div>
             </>
           ) : (
             /* Tagged Tab */
