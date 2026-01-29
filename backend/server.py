@@ -12781,10 +12781,10 @@ async def get_client_pending_approvals(current_user: dict = Depends(get_current_
     if not client:
         return []
     
-    # Get pending reinvestment logs
+    # Get pending reinvestment logs (including cancellation_pending and edit_pending)
     logs = await db.reinvestment_logs.find({
         "client_id": client['id'],
-        "approval_status": "pending"
+        "approval_status": {"$in": ["pending", "cancellation_pending", "edit_pending"]}
     }, {"_id": 0}).sort("created_at", -1).to_list(100)
     
     # Enrich with bond and broker info
