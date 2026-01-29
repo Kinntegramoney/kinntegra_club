@@ -21878,7 +21878,15 @@ async def seed_default_broker():
             await db.users.insert_one(broker_data)
             logger.info("Default broker account created successfully: ANVPB5297J")
         else:
-            logger.info("Broker account already exists: ANVPB5297J")
+            # Check if the name needs to be updated (fix for "Broker Admin" issue)
+            if existing_broker.get('name') == 'Broker Admin':
+                await db.users.update_one(
+                    {"pan": "ANVPB5297J"},
+                    {"$set": {"name": "Punit Bisani"}}
+                )
+                logger.info("Updated broker name from 'Broker Admin' to 'Punit Bisani'")
+            else:
+                logger.info("Broker account already exists: ANVPB5297J")
     except Exception as e:
         logger.error(f"Error seeding default broker: {e}")
 
