@@ -39,6 +39,7 @@ export default function Sidebar({ user }) {
     { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
     { path: "/broker/leads", label: "Lead Mgmt", icon: UserPlus },
+    { path: "/broker/approvals", label: "Approve", icon: CheckSquare },
     { path: "/broker/logs", label: "Logs", icon: FileText },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
     { path: "/broker/reinvestment", label: "Reinv Tag", icon: Tag },
