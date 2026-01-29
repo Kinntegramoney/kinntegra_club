@@ -27,7 +27,7 @@ import { toast } from "sonner";
 import { format, addMonths, startOfMonth, endOfMonth, subDays, isBefore } from "date-fns";
 import { 
   Tag, RefreshCw, ChevronDown, ChevronUp, Mail, Save, 
-  Clock, CheckCircle, History, ArrowRight, Check, X, Plus, Minus, Pencil, Lock, Calendar, Eye
+  Clock, CheckCircle, History, ArrowRight, Check, X, Plus, Minus, Pencil, Lock, Calendar, Eye, Ban, MoreVertical
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
