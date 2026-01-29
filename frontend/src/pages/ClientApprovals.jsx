@@ -89,7 +89,7 @@ export default function ClientApprovals() {
   };
 
   // Filter approvals by type
-  const newApprovals = pendingApprovals.filter(a => a.approval_status === 'pending');
+  const newApprovals = pendingApprovals.filter(a => a.approval_status === 'pending' || a.approval_status === 'pending_reapproval');
   const cancellationApprovals = pendingApprovals.filter(a => a.approval_status === 'cancellation_pending');
   const editApprovals = pendingApprovals.filter(a => a.approval_status === 'edit_pending');
 
