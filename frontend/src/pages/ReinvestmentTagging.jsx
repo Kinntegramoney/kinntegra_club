@@ -186,24 +186,34 @@ export default function ReinvestmentTagging() {
     const byMonth = {};
     
     allEntries.forEach(clientGroup => {
+      if (!clientGroup.entries) return;
+      
       clientGroup.entries.forEach(entry => {
-        const entryDate = parseISO(entry.date);
-        const monthKey = format(entryDate, 'yyyy-MM');
+        if (!entry.date) return;
         
-        if (!byMonth[monthKey]) {
-          byMonth[monthKey] = {
-            untagged: [],
-            tagged: []
-          };
-        }
-        
-        const isTagged = entry.reinvestment_tag && entry.reinvestment_tag !== 'not_tagged';
-        const entryWithClient = { ...entry, client_name: clientGroup.client_name, client_id: clientGroup.client_id };
-        
-        if (isTagged) {
-          byMonth[monthKey].tagged.push(entryWithClient);
-        } else {
-          byMonth[monthKey].untagged.push(entryWithClient);
+        try {
+          const entryDate = new Date(entry.date);
+          if (isNaN(entryDate.getTime())) return;
+          
+          const monthKey = format(entryDate, 'yyyy-MM');
+          
+          if (!byMonth[monthKey]) {
+            byMonth[monthKey] = {
+              untagged: [],
+              tagged: []
+            };
+          }
+          
+          const isTagged = entry.reinvestment_tag && entry.reinvestment_tag !== 'not_tagged';
+          const entryWithClient = { ...entry, client_name: clientGroup.client_name, client_id: clientGroup.client_id };
+          
+          if (isTagged) {
+            byMonth[monthKey].tagged.push(entryWithClient);
+          } else {
+            byMonth[monthKey].untagged.push(entryWithClient);
+          }
+        } catch (e) {
+          console.error('Error parsing date:', entry.date, e);
         }
       });
     });
