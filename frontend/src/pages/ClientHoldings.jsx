@@ -57,8 +57,6 @@ export default function ClientHoldings() {
     
     setUser(parsedUser);
     fetchHoldings();
-    fetchRealEstateHoldings();
-    fetchClientTrades();
   }, [navigate]);
 
   const fetchHoldings = async () => {
