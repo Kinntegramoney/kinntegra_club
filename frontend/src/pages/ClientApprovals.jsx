@@ -41,6 +41,7 @@ export default function ClientApprovals() {
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
+  const [activeTab, setActiveTab] = useState("new");
   
   // Modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -87,6 +88,11 @@ export default function ClientApprovals() {
     }
   };
 
+  // Filter approvals by type
+  const newApprovals = pendingApprovals.filter(a => a.approval_status === 'pending');
+  const cancellationApprovals = pendingApprovals.filter(a => a.approval_status === 'cancellation_pending');
+  const editApprovals = pendingApprovals.filter(a => a.approval_status === 'edit_pending');
+
   const openConfirmModal = (item, action) => {
     setSelectedItem(item);
     setActionType(action);
@@ -110,11 +116,24 @@ export default function ClientApprovals() {
         { headers: { Authorization: `Bearer ${token}` }}
       );
       
-      toast.success(
-        actionType === 'approve' 
+      const approvalType = selectedItem.approval_status;
+      let successMsg = '';
+      
+      if (approvalType === 'cancellation_pending') {
+        successMsg = actionType === 'approve' 
+          ? 'Cancellation approved. Reinvestment has been cancelled.' 
+          : 'Cancellation rejected. Original reinvestment remains active.';
+      } else if (approvalType === 'edit_pending') {
+        successMsg = actionType === 'approve' 
+          ? 'Edit approved! Updated reinvestment will be scheduled.' 
+          : 'Edit rejected. Original values restored.';
+      } else {
+        successMsg = actionType === 'approve' 
           ? 'Reinvestment approved! Investment will be scheduled.' 
-          : 'Reinvestment rejected.'
-      );
+          : 'Reinvestment rejected.';
+      }
+      
+      toast.success(successMsg);
       setShowConfirmModal(false);
       fetchPendingApprovals();
     } catch (error) {
@@ -158,6 +177,160 @@ export default function ClientApprovals() {
     };
     return labels[portfolio] || portfolio;
   };
+
+  // Render individual approval item
+  const renderApprovalItem = (item) => {
+    const isCancellation = item.approval_status === 'cancellation_pending';
+    const isEdit = item.approval_status === 'edit_pending';
+    
+    return (
+      <div key={item.id} className="p-4 hover:bg-gray-50" data-testid={`approval-${item.id}`}>
+        <div className="flex items-start justify-between gap-4">
+          {/* Left: Main Info */}
+          <div className="flex items-start gap-3 flex-1">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              isCancellation ? 'bg-red-100' : isEdit ? 'bg-amber-100' : 'bg-teal-100'
+            }`}>
+              {isCancellation ? (
+                <Ban className="h-5 w-5 text-red-600" />
+              ) : isEdit ? (
+                <Pencil className="h-5 w-5 text-amber-600" />
+              ) : (
+                <TrendingUp className="h-5 w-5 text-teal-600" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h4 className="font-semibold text-gray-800">{item.bond_name}</h4>
+                {isCancellation && (
+                  <Badge className="bg-red-100 text-red-700 text-xs">Cancellation Request</Badge>
+                )}
+                {isEdit && (
+                  <Badge className="bg-amber-100 text-amber-700 text-xs">Edit Request</Badge>
+                )}
+              </div>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Maturity: {formatDate(item.expected_date)}
+              </p>
+              
+              {/* Cancellation Reason */}
+              {isCancellation && item.cancellation_reason && (
+                <div className="mt-2 p-2 bg-red-50 rounded-lg border border-red-100">
+                  <p className="text-xs text-red-700">
+                    <span className="font-medium">Reason: </span>{item.cancellation_reason}
+                  </p>
+                </div>
+              )}
+              
+              {/* Edit Changes */}
+              {isEdit && item.original_values && (
+                <div className="mt-2 p-2 bg-amber-50 rounded-lg border border-amber-100">
+                  <p className="text-xs font-medium text-amber-800 mb-1">Changes requested:</p>
+                  <div className="space-y-1">
+                    {item.original_values.reinvestment_tag !== item.reinvestment_tag && (
+                      <p className="text-xs text-amber-700">
+                        Tag: {getTagLabel(item.original_values.reinvestment_tag)} <ArrowRight className="h-3 w-3 inline mx-1" /> {getTagLabel(item.reinvestment_tag)}
+                      </p>
+                    )}
+                    {item.original_values.portfolio_category !== item.portfolio_category && (
+                      <p className="text-xs text-amber-700">
+                        Portfolio: {getPortfolioLabel(item.original_values.portfolio_category)} <ArrowRight className="h-3 w-3 inline mx-1" /> {getPortfolioLabel(item.portfolio_category)}
+                      </p>
+                    )}
+                    {item.original_values.target_ucc !== item.target_ucc && (
+                      <p className="text-xs text-amber-700">
+                        UCC: {item.original_values.target_ucc || 'Default'} <ArrowRight className="h-3 w-3 inline mx-1" /> {item.target_ucc || 'Default'}
+                      </p>
+                    )}
+                    {item.edit_reason && (
+                      <p className="text-xs text-amber-600 mt-1 italic">Reason: {item.edit_reason}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Investment Details */}
+              <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <p className="text-xs text-gray-500">Net Amount</p>
+                  <p className="font-semibold text-gray-800">₹{formatCurrency(item.net_amount)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <p className="text-xs text-gray-500">Reinvest Tag</p>
+                  <p className="font-medium text-teal-700 text-sm">{getTagLabel(item.reinvestment_tag)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <p className="text-xs text-gray-500">Portfolio</p>
+                  <p className="font-medium text-gray-700 text-sm">{getPortfolioLabel(item.portfolio_category)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <p className="text-xs text-gray-500">Target UCC</p>
+                  <p className="font-medium text-gray-700 text-sm">{item.target_ucc || 'Default'}</p>
+                </div>
+              </div>
+              
+              {/* Split Allocations if present */}
+              {item.has_split_allocations && item.ucc_allocations?.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-gray-500 mb-2">Split Allocations:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {item.ucc_allocations.map((alloc, idx) => (
+                      <Badge key={idx} variant="outline" className="text-xs">
+                        {alloc.ucc}: ₹{formatCurrency(alloc.amount)} → {alloc.portfolio}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Tagged By */}
+              <p className="text-xs text-gray-400 mt-3">
+                {isCancellation ? 'Cancellation requested' : isEdit ? 'Edited' : 'Tagged'} by: {item.tagged_by_name} on {formatDate(isCancellation ? item.cancellation_requested_at : isEdit ? item.last_edited_at : item.created_at)}
+              </p>
+            </div>
+          </div>
+          
+          {/* Right: Actions */}
+          <div className="flex flex-col gap-2">
+            <Button
+              size="sm"
+              onClick={() => openConfirmModal(item, 'approve')}
+              disabled={processingId === item.id}
+              className={isCancellation ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+            >
+              <CheckCircle className="h-4 w-4 mr-1" />
+              {isCancellation ? 'Approve Cancel' : isEdit ? 'Approve Edit' : 'Approve'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openConfirmModal(item, 'reject')}
+              disabled={processingId === item.id}
+              className={isCancellation ? "text-teal-600 border-teal-200 hover:bg-teal-50" : "text-red-600 border-red-200 hover:bg-red-50"}
+            >
+              <XCircle className="h-4 w-4 mr-1" />
+              {isCancellation ? 'Keep Active' : isEdit ? 'Reject Edit' : 'Reject'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render empty state for a tab
+  const renderEmptyState = (type) => (
+    <div className="text-center py-12">
+      <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-4 flex items-center justify-center">
+        <CheckCircle className="h-8 w-8 text-green-500" />
+      </div>
+      <h3 className="text-lg font-medium text-gray-600 mb-1">All Caught Up!</h3>
+      <p className="text-gray-400 text-sm">
+        {type === 'new' && 'No new reinvestment approvals'}
+        {type === 'cancellation' && 'No cancellation requests pending'}
+        {type === 'edit' && 'No edit requests pending'}
+      </p>
+    </div>
+  );
 
   if (!user) return null;
 
