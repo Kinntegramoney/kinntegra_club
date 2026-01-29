@@ -298,7 +298,7 @@ export default function ClientReinvestmentApprovals() {
               }`}
               data-testid="pending-tab"
             >
-              Pending ({pendingApprovals.length})
+              Pending Approval ({pendingApprovals.length})
             </button>
             <button
               onClick={() => setActiveTab("approved")}
@@ -307,9 +307,9 @@ export default function ClientReinvestmentApprovals() {
                   ? "border-etihad-gold-600 text-etihad-gold-700" 
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
-              data-testid="approved-tab"
+              data-testid="my-trades-tab"
             >
-              Approved ({approvedItems.length})
+              My Trades ({approvedItems.length})
             </button>
             <button
               onClick={() => setActiveTab("rejected")}
