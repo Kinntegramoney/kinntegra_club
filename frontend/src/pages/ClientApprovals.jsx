@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { 
   CheckCircle, XCircle, Clock, RefreshCw, ChevronDown, ChevronUp,
-  Wallet, TrendingUp, Calendar, AlertCircle, Info
+  Wallet, TrendingUp, Calendar, AlertCircle, Info, Ban, Pencil, ArrowRight
 } from "lucide-react";
 import {
   Dialog,
@@ -25,6 +25,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
