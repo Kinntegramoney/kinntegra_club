@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { 
   Search, Users, MapPin, User,
   CheckCircle, XCircle, Clock, MoreVertical, TrendingUp, Building2,
-  RefreshCw, FileText, ChevronDown, ChevronUp
+  RefreshCw, FileText, ChevronDown, ChevronUp, ExternalLink
 } from "lucide-react";
 import {
   DropdownMenu,
