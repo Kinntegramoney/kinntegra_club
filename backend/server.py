@@ -13238,11 +13238,68 @@ async def get_client_reinvestment_approvals(current_user: dict = Depends(get_cur
         "date": {"$gte": today_str}  # Only future dates
     }, {"_id": 0}).to_list(1000)
     
-    # Enrich with bond details
+    # Also get reinvestment_logs to get allocation details
+    log_map = {}
+    for cf in cashflows:
+        logs = await db.reinvestment_logs.find({
+            "cashflow_id": cf.get('id')
+        }, {"_id": 0}).to_list(100)
+        if logs:
+            log_map[cf.get('id')] = logs
+    
+    # Enrich with bond details and allocation info
     items = []
     for cf in cashflows:
         bond = await db.bonds.find_one({"id": cf.get('bond_id')}, {"_id": 0, "issuer": 1, "name": 1})
         cf['bond_name'] = bond.get('issuer') or bond.get('name', 'Unknown') if bond else cf.get('bond_name', 'Unknown')
+        
+        # Get allocation details from logs
+        allocations = log_map.get(cf.get('id'), [])
+        if allocations:
+            # Aggregate allocation details
+            cf['allocations'] = []
+            for alloc in allocations:
+                cf['allocations'].append({
+                    'portfolio': alloc.get('portfolio', 'None'),
+                    'portfolio_name': alloc.get('portfolio_name', alloc.get('portfolio', 'None')),
+                    'percentage': alloc.get('percentage', 0),
+                    'amount': alloc.get('amount', 0),
+                    'rounded_amount': alloc.get('rounded_amount', alloc.get('amount', 0)),
+                    'round_off_amount': alloc.get('amount', 0) - alloc.get('rounded_amount', alloc.get('amount', 0)),
+                    'mf_investment_date': alloc.get('mf_investment_date'),
+                    'approval_status': alloc.get('approval_status', 'pending')
+                })
+        
+        # Add client UCC
+        cf['ucc'] = client.get('ucc') or client.get('pan_number')
+        
+        # Calculate total reinvestment amount and round-off based on tag
+        tag = cf.get('reinvestment_tag', '')
+        if tag == 'principal':
+            cf['reinvestment_amount'] = cf.get('principal_component', 0)
+            cf['tag_description'] = 'Principal Only'
+        elif tag == 'interest':
+            cf['reinvestment_amount'] = cf.get('interest_component', 0)
+            cf['tag_description'] = 'Interest Only'
+        elif tag in ['both', 'net_amount']:
+            cf['reinvestment_amount'] = cf.get('net_amount', 0)
+            cf['tag_description'] = 'Both (P+I)'
+        elif tag == 'custom' or tag == 'other':
+            cf['reinvestment_amount'] = cf.get('custom_amount', 0)
+            cf['tag_description'] = 'Custom Amount'
+        else:
+            cf['reinvestment_amount'] = cf.get('net_amount', 0)
+            cf['tag_description'] = tag.title() if tag else 'Unknown'
+        
+        # Calculate round-off amount (difference between original and rounded)
+        if allocations:
+            total_rounded = sum(a.get('rounded_amount', a.get('amount', 0)) for a in allocations)
+            cf['rounded_total'] = total_rounded
+            cf['round_off_total'] = cf['reinvestment_amount'] - total_rounded
+        else:
+            cf['rounded_total'] = cf.get('reinvestment_amount', 0)
+            cf['round_off_total'] = 0
+        
         items.append(cf)
     
     # Sort by date
@@ -13252,7 +13309,8 @@ async def get_client_reinvestment_approvals(current_user: dict = Depends(get_cur
         "items": items,
         "total": len(items),
         "client_name": client.get('name'),
-        "client_id": client['id']
+        "client_id": client['id'],
+        "client_ucc": client.get('ucc') or client.get('pan_number')
     }
 
 
