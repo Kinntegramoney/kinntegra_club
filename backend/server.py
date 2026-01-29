@@ -9488,16 +9488,26 @@ async def create_trade(trade_data: TradeCreate, current_user: dict = Depends(get
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    # Check access to client
+    # Check access to client and get broker_id
+    broker_id = None
     if current_user['role'] == 'sub_broker':
         if client.get('linked_subbroker_id') != current_user['id']:
             raise HTTPException(status_code=403, detail="You can only create trades for your linked clients")
+        # Get broker_id from client or from sub-broker's partner record
+        broker_id = client.get('broker_id')
+        if not broker_id:
+            partner = await db.partners.find_one({"id": current_user['id']})
+            if partner:
+                broker_id = partner.get('created_by') or partner.get('broker_id')
+    elif current_user['role'] == 'broker':
+        broker_id = current_user['id']
     
     # Determine if auto-approve (broker creates) or pending (sub-broker creates)
     status = "approved" if current_user['role'] == 'broker' else "pending"
     
     trade_dict = {
         "id": str(uuid.uuid4()),
+        "broker_id": broker_id,  # Add broker_id for approval workflow
         "bond_id": trade_data.bond_id,
         "bond_name": bond['name'],
         "client_id": trade_data.client_id,
