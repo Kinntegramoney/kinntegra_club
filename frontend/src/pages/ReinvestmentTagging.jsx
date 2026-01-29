@@ -434,10 +434,26 @@ export default function ReinvestmentTagging() {
         }
       }
       
+      // If portfolio is being changed, auto-round the amount
+      if (field === 'portfolio') {
+        newPortfolio = value;
+        // Round the current amount to nearest 100 when portfolio is selected
+        if (newAmount !== '' && newAmount > 0) {
+          const flooredAmount = Math.floor(newAmount);
+          newAmount = roundToHundred(flooredAmount);
+        }
+      }
+      
+      // If UCC is being changed
+      if (field === 'ucc') {
+        newUcc = value;
+      }
+      
       newAllocations[allocIndex] = {
         ...newAllocations[allocIndex],
-        [field]: field === 'amount' ? newAmount : value,
-        ...(field === 'amount' && newPortfolio !== newAllocations[allocIndex].portfolio ? { portfolio: newPortfolio } : {})
+        amount: newAmount,
+        portfolio: newPortfolio,
+        ucc: newUcc
       };
       
       return {
