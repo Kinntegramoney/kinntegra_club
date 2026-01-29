@@ -1582,39 +1582,6 @@ export default function ReinvestmentTagging() {
           )}
         </div>
 
-        {/* Multi-Retag Modal */} 
-                      onClick={() => openMultiRetagModal('principal')} 
-                      variant="ghost"
-                      className="h-7 text-xs px-2 hover:bg-blue-100 hover:text-blue-700"
-                    >
-                      Principal
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={() => openMultiRetagModal('interest')} 
-                      variant="ghost"
-                      className="h-7 text-xs px-2 hover:bg-blue-100 hover:text-blue-700"
-                    >
-                      Interest
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={() => openMultiRetagModal('both')} 
-                      variant="ghost"
-                      className="h-7 text-xs px-2 hover:bg-blue-100 hover:text-blue-700"
-                    >
-                      Both
-                    </Button>
-                  </div>
-                  <Button size="sm" variant="outline" onClick={clearSelection} className="h-8">
-                    Clear
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Multi-Retag Modal with UCC Allocations */}
         <Dialog open={showMultiRetagModal} onOpenChange={setShowMultiRetagModal}>
           <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
