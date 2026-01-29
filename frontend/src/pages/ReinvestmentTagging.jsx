@@ -1068,7 +1068,7 @@ export default function ReinvestmentTagging() {
     return Array.from(uccs);
   };
 
-  // Render the month view with separate sections for untagged and tagged
+  // Render the month view with Untagged/Tagged tabs
   const renderMonthView = () => {
     if (!selectedMonth) {
       return (
@@ -1111,9 +1111,9 @@ export default function ReinvestmentTagging() {
       untaggedByClient[entry.client_id].entries.push(entry);
     });
     
-    // Group TAGGED entries by client for this month  
+    // Group TAGGED entries by client for this month (only pending status - not yet client approved)
     const taggedByClient = {};
-    monthData.tagged.forEach(entry => {
+    monthData.tagged.filter(e => !e.client_approved && e.approval_status !== 'submitted').forEach(entry => {
       if (!taggedByClient[entry.client_id]) {
         const clientData = [...untaggedPast, ...untaggedUpcoming, ...taggedPast, ...taggedUpcoming]
           .find(g => g.client_id === entry.client_id);
@@ -1138,6 +1138,11 @@ export default function ReinvestmentTagging() {
     const selectedCount = Object.keys(selectedEntries).filter(id => 
       selectedEntries[id] && monthData.untagged.some(e => e.id === id)
     ).length;
+
+    // Filter tagged entries to only show pending (not client approved yet)
+    const pendingTaggedEntries = monthData.tagged.filter(e => 
+      !e.client_approved && e.approval_status !== 'submitted' && e.approval_status !== 'auto_tagged'
+    );
     
     return (
       <div className="space-y-4">
@@ -1168,7 +1173,7 @@ export default function ReinvestmentTagging() {
                   )}
                 </div>
                 <p className="text-sm text-gray-500">
-                  {monthData.untagged.length} untagged, {monthData.tagged.length} tagged
+                  {monthData.untagged.length} untagged, {pendingTaggedEntries.length} pending
                   {!canTag && ' • Tagging opens 5 days before this quarter'}
                 </p>
               </div>
@@ -1188,80 +1193,122 @@ export default function ReinvestmentTagging() {
           </div>
         </div>
         
-        {/* Mass Tagging Actions - Only show when entries are selected and tagging is allowed */}
-        {canTag && selectedCount > 0 && (
-          <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Badge className="bg-etihad-gold-600 text-white">{selectedCount} selected</Badge>
-                <Button variant="outline" size="sm" onClick={clearSelection}>
-                  <X className="h-4 w-4 mr-1" />
-                  Clear
-                </Button>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium text-gray-700">Split Amount:</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openMultiRetagModal('principal')}
-                  className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                >
-                  Principal
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openMultiRetagModal('interest')}
-                  className="border-green-300 text-green-700 hover:bg-green-50"
-                >
-                  Interest
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openMultiRetagModal('both')}
-                  className="border-purple-300 text-purple-700 hover:bg-purple-50"
-                >
-                  Both (P+I)
-                </Button>
-              </div>
+        {/* Sub-tabs for Untagged / Tagged */}
+        <div className="bg-white rounded-lg border">
+          <div className="border-b">
+            <div className="flex">
+              <button
+                onClick={() => setMonthSubTab("untagged")}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  monthSubTab === "untagged"
+                    ? "text-amber-700 border-b-2 border-amber-500 bg-amber-50"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Tag className="h-4 w-4" />
+                  Untagged
+                  <Badge className="bg-amber-100 text-amber-700 text-xs">{monthData.untagged.length}</Badge>
+                </div>
+              </button>
+              <button
+                onClick={() => setMonthSubTab("tagged")}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  monthSubTab === "tagged"
+                    ? "text-green-700 border-b-2 border-green-500 bg-green-50"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Tagged (Pending)
+                  <Badge className="bg-green-100 text-green-700 text-xs">{pendingTaggedEntries.length}</Badge>
+                </div>
+              </button>
             </div>
           </div>
-        )}
-        
-        {/* UNTAGGED Section */}
-        {untaggedClientGroups.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="h-px bg-amber-200 flex-1"></div>
-              <Badge className="bg-amber-100 text-amber-700 px-3">
-                Untagged Entries ({monthData.untagged.length})
-              </Badge>
-              <div className="h-px bg-amber-200 flex-1"></div>
-            </div>
-            {untaggedClientGroups.map(clientGroup => 
-              renderMonthClientGroup(clientGroup, monthConfig)
+          
+          {/* Tab Content */}
+          <div className="p-4">
+            {monthSubTab === "untagged" ? (
+              <>
+                {/* Mass Tagging Actions - Only show when entries are selected and tagging is allowed */}
+                {canTag && selectedCount > 0 && (
+                  <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4 mb-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-etihad-gold-600 text-white">{selectedCount} selected</Badge>
+                        <Button variant="outline" size="sm" onClick={clearSelection}>
+                          <X className="h-4 w-4 mr-1" />
+                          Clear
+                        </Button>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700">Split Amount:</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openMultiRetagModal('principal')}
+                          className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                        >
+                          Principal
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openMultiRetagModal('interest')}
+                          className="border-green-300 text-green-700 hover:bg-green-50"
+                        >
+                          Interest
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openMultiRetagModal('both')}
+                          className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                        >
+                          Both (P+I)
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Untagged Client Groups */}
+                {untaggedClientGroups.length > 0 ? (
+                  <div className="space-y-3">
+                    {untaggedClientGroups.map(clientGroup => 
+                      renderMonthClientGroup(clientGroup, monthConfig)
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <CheckCircle className="h-12 w-12 mx-auto text-green-300 mb-3" />
+                    <p>All entries have been tagged</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Tagged Entries (Pending) */}
+                {taggedClientGroups.length > 0 ? (
+                  <div className="space-y-3">
+                    {taggedClientGroups.map(clientGroup => 
+                      renderTaggedClientGroup(clientGroup, monthConfig)
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <Clock className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                    <p>No pending tagged entries</p>
+                    <p className="text-sm mt-1">Tag entries from the Untagged tab</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
-        )}
-        
-        {/* TAGGED Section */}
-        {taggedClientGroups.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="h-px bg-green-200 flex-1"></div>
-              <Badge className="bg-green-100 text-green-700 px-3">
-                Tagged Entries ({monthData.tagged.length})
-              </Badge>
-              <div className="h-px bg-green-200 flex-1"></div>
-            </div>
-            {taggedClientGroups.map(clientGroup => 
-              renderTaggedClientGroup(clientGroup, monthConfig)
-            )}
-          </div>
-        )}
+        </div>
       </div>
     );
   };
