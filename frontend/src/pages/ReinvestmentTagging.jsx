@@ -81,6 +81,10 @@ export default function ReinvestmentTagging() {
   const [untaggedSection, setUntaggedSection] = useState("past");
   const [taggedSection, setTaggedSection] = useState("past");
   
+  // Month-wise view state
+  const [selectedMonth, setSelectedMonth] = useState(null); // Format: "2026-01"
+  const [viewMode, setViewMode] = useState("month"); // "month" or "client"
+  
   // Data grouped by client
   const [untaggedPast, setUntaggedPast] = useState([]);
   const [untaggedUpcoming, setUntaggedUpcoming] = useState([]);
@@ -109,6 +113,117 @@ export default function ReinvestmentTagging() {
   const [showMultiRetagModal, setShowMultiRetagModal] = useState(false);
   const [multiRetagData, setMultiRetagData] = useState({});
   const [selectedTagType, setSelectedTagType] = useState(""); // principal, interest, both - selected BEFORE opening modal
+
+  // Calculate available months and their lock status
+  const getMonthsConfig = useMemo(() => {
+    const today = new Date();
+    const currentMonth = startOfMonth(today);
+    const months = [];
+    
+    // Historical months (past 6 months)
+    for (let i = 6; i >= 1; i--) {
+      const monthDate = addMonths(currentMonth, -i);
+      months.push({
+        key: format(monthDate, 'yyyy-MM'),
+        label: format(monthDate, 'MMMM yyyy'),
+        shortLabel: format(monthDate, 'MMM yyyy'),
+        isHistorical: true,
+        isLocked: false,
+        startDate: startOfMonth(monthDate),
+        endDate: endOfMonth(monthDate)
+      });
+    }
+    
+    // Current month
+    months.push({
+      key: format(currentMonth, 'yyyy-MM'),
+      label: format(currentMonth, 'MMMM yyyy'),
+      shortLabel: format(currentMonth, 'MMM yyyy'),
+      isCurrent: true,
+      isLocked: false,
+      startDate: startOfMonth(currentMonth),
+      endDate: endOfMonth(currentMonth)
+    });
+    
+    // Future months (next 6 months)
+    for (let i = 1; i <= 6; i++) {
+      const monthDate = addMonths(currentMonth, i);
+      
+      // Determine if month is locked
+      // Current quarter: months 1-3 from current month are always open
+      // Next quarter (months 4-6) opens 5 days before first month of next quarter
+      let isLocked = false;
+      
+      if (i > 3) {
+        // This is in next quarter
+        // Find the start of next quarter (month 4 from current)
+        const nextQuarterStart = addMonths(currentMonth, 4);
+        const unlockDate = subDays(startOfMonth(nextQuarterStart), 5);
+        
+        // If today is before the unlock date, it's locked
+        isLocked = isBefore(today, unlockDate);
+      }
+      
+      months.push({
+        key: format(monthDate, 'yyyy-MM'),
+        label: format(monthDate, 'MMMM yyyy'),
+        shortLabel: format(monthDate, 'MMM yyyy'),
+        isHistorical: false,
+        isFuture: true,
+        monthsAhead: i,
+        isLocked: isLocked,
+        startDate: startOfMonth(monthDate),
+        endDate: endOfMonth(monthDate)
+      });
+    }
+    
+    return months;
+  }, []);
+
+  // Get entries grouped by month
+  const getEntriesByMonth = useMemo(() => {
+    const allEntries = [...untaggedPast, ...untaggedUpcoming, ...taggedPast, ...taggedUpcoming];
+    const byMonth = {};
+    
+    allEntries.forEach(clientGroup => {
+      clientGroup.entries.forEach(entry => {
+        const entryDate = parseISO(entry.date);
+        const monthKey = format(entryDate, 'yyyy-MM');
+        
+        if (!byMonth[monthKey]) {
+          byMonth[monthKey] = {
+            untagged: [],
+            tagged: []
+          };
+        }
+        
+        const isTagged = entry.reinvestment_tag && entry.reinvestment_tag !== 'not_tagged';
+        const entryWithClient = { ...entry, client_name: clientGroup.client_name, client_id: clientGroup.client_id };
+        
+        if (isTagged) {
+          byMonth[monthKey].tagged.push(entryWithClient);
+        } else {
+          byMonth[monthKey].untagged.push(entryWithClient);
+        }
+      });
+    });
+    
+    return byMonth;
+  }, [untaggedPast, untaggedUpcoming, taggedPast, taggedUpcoming]);
+
+  // Get counts for each month
+  const getMonthCounts = useMemo(() => {
+    const counts = {};
+    getMonthsConfig.forEach(month => {
+      const monthData = getEntriesByMonth[month.key];
+      counts[month.key] = {
+        total: monthData ? monthData.untagged.length + monthData.tagged.length : 0,
+        untagged: monthData ? monthData.untagged.length : 0,
+        tagged: monthData ? monthData.tagged.length : 0
+      };
+    });
+    return counts;
+  }, [getMonthsConfig, getEntriesByMonth]);
 
   useEffect(() => {
     document.title = "Kinntegraa | Reinvestment Tagging";
