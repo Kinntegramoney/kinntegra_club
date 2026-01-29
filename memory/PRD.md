@@ -45,6 +45,35 @@
 - `/app/frontend/src/components/Sidebar.jsx` (Added "Approve" link)
 - `/app/frontend/src/App.js` (Added route, removed old redirect)
 
+### Multi-Tagging in Month-Wise View (Jan 29, 2026) ✅
+
+**Feature:** Client-wise grouping with checkboxes and split allocation modal in month-wise reinvestment view.
+
+**Changes Applied:**
+- `/app/frontend/src/pages/ReinvestmentTagging.jsx`:
+  - Rewrote `renderMonthView` to use client-wise grouping
+  - Added `renderMonthClientGroup` component with expandable client cards
+  - Each client card shows entries with checkboxes for multi-selection
+  - "Split Amount" buttons (Principal, Interest, Both) appear when entries selected
+  - UCC, Portfolio, and Tag dropdowns available for each entry
+  - Supports split allocation modal for dividing amounts across multiple UCCs
+
+### Notification Bell with Sound (Jan 29, 2026) ✅
+
+**Feature:** Real-time notification bell with sound alerts for new approvals and leads.
+
+**Implementation:**
+- `/app/frontend/src/components/NotificationBell.jsx` (Created):
+  - Polls backend every 30 seconds for pending approvals and open leads
+  - Plays notification sound (Web Audio API) when new items arrive
+  - Shows dropdown with clickable notifications linking to relevant pages
+  - Amber pulsing bell icon when there are unread notifications
+  - Badge showing total pending count
+
+- `/app/frontend/src/components/Sidebar.jsx` (Updated):
+  - Added NotificationBell component in sidebar header
+  - Visible for broker users only
+
 ### Read-Only Future Months Feature (Jan 29, 2026) ✅
 
 **Feature:** Future months >3 months away are view-only (can see entries but cannot tag).
