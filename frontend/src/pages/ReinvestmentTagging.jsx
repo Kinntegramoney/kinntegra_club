@@ -130,6 +130,9 @@ export default function ReinvestmentTagging() {
   const [cancelReason, setCancelReason] = useState("");
   const [processingAction, setProcessingAction] = useState(false);
 
+  // Split allocations state for tracking UCC/portfolio splits
+  const [splitAllocations, setSplitAllocations] = useState({});
+
   // Calculate available months and their lock status
   const getMonthsConfig = useMemo(() => {
     const today = new Date();
