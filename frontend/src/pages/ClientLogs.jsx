@@ -143,18 +143,51 @@ export default function ClientLogs() {
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl font-bold text-gray-800" data-testid="logs-title">Reinvestment Logs</h1>
-                <p className="text-sm text-gray-500">History of all reinvestment activities</p>
+                <h1 className="text-xl font-bold text-gray-800" data-testid="logs-title">Logs</h1>
+                <p className="text-sm text-gray-500">History of all reinvestment and investment activities</p>
               </div>
-              <Button variant="outline" size="sm" onClick={fetchLogs}>
+              <Button variant="outline" size="sm" onClick={() => { fetchLogs(); fetchApiLogs(); }}>
                 <RefreshCw className="h-4 w-4 mr-1" />
                 Refresh
               </Button>
             </div>
           </div>
+          
+          {/* Tabs */}
+          <div className="px-6 flex gap-1">
+            <button
+              onClick={() => setActiveTab("reinvestment")}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === "reinvestment"
+                  ? "bg-teal-50 text-teal-700 border-teal-500"
+                  : "text-gray-600 border-transparent hover:bg-gray-50"
+              }`}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reinvestment Logs
+              {logs.length > 0 && (
+                <Badge variant="secondary" className="bg-teal-100 text-teal-700">{logs.length}</Badge>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("api")}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === "api"
+                  ? "bg-blue-50 text-blue-700 border-blue-500"
+                  : "text-gray-600 border-transparent hover:bg-gray-50"
+              }`}
+            >
+              <Server className="h-4 w-4" />
+              Investment API Logs
+              {apiLogs.length > 0 && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700">{apiLogs.length}</Badge>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Filters */}
+        {/* Filters - only for reinvestment logs */}
+        {activeTab === "reinvestment" && (
         <div className="px-6 py-3 bg-white border-b">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
