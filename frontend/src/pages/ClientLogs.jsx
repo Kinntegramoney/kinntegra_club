@@ -296,6 +296,82 @@ export default function ClientLogs() {
               </div>
             )}
           </div>
+          )}
+          
+          {/* Investment API Logs Tab */}
+          {activeTab === "api" && (
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {apiLogs.length === 0 ? (
+              <div className="text-center py-12">
+                <Server className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <h3 className="text-lg font-medium text-gray-600 mb-1">No API Logs Found</h3>
+                <p className="text-gray-400 text-sm">Investment API call history will appear here after approvals</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Transaction ID</th>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Bond</th>
+                      <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">UCC</th>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Scheme</th>
+                      <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Response</th>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {apiLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-50" data-testid={`api-log-${log.id}`}>
+                        <td className="py-3 px-4 text-sm font-mono text-gray-600">
+                          {log.transaction_id || log.id?.substring(0, 8)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="font-medium text-gray-800 text-sm">{log.bond_name}</span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-sm">
+                          ₹{formatCurrency(log.amount)}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600 font-mono">
+                          {log.ucc}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {log.scheme_name || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {log.api_status === 'success' ? (
+                            <Badge className="bg-green-100 text-green-700 text-xs">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Success
+                            </Badge>
+                          ) : log.api_status === 'error' ? (
+                            <Badge className="bg-red-100 text-red-700 text-xs">
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Failed
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-100 text-amber-700 text-xs">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Pending
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-500 max-w-[200px] truncate" title={log.api_response}>
+                          {log.api_response || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-500">
+                          {formatDate(log.created_at)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          )}
         </div>
       </div>
     </div>
