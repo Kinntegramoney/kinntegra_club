@@ -74,12 +74,6 @@ const getFilteredPortfolioOptions = (amount) => {
   });
 };
 
-// Round amount DOWN to nearest 100 (floor rounding)
-const roundToHundred = (amount) => {
-  const num = parseFloat(amount) || 0;
-  return Math.floor(num / 100) * 100;
-};
-
 const TAG_OPTIONS = [
   { value: 'principal', label: 'Principal' },
   { value: 'interest', label: 'Interest' },
