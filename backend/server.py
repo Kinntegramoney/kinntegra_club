@@ -12159,11 +12159,12 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                 "custom_amount": cf.get('custom_amount'),
                 "portfolio_category": cf.get('portfolio_category'),
                 "target_ucc": cf.get('target_ucc'),  # Selected UCC for reinvestment
-                "approval_status": cf.get('approval_status', 'not_sent'),  # not_sent, pending, approved, rejected
+                "approval_status": cf.get('approval_status', 'not_sent'),  # not_sent, pending, approved, rejected, auto_tagged
                 "client_approved": cf.get('client_approved', False),
                 "tagged_at": cf.get('tagged_at'),
                 "month": cf_date.strftime("%B %Y"),
                 "is_past_date": cf_date < today,  # True if date has passed - no client approval needed
+                "auto_tagged": cf.get('auto_tagged', False),  # True if auto-tagged (before 30 April 2025)
                 # Prepayment-related fields
                 "is_amended": cf.get('is_amended', False),
                 "prepayment_affected": cf.get('prepayment_affected', False),
