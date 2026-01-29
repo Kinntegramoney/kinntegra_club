@@ -11896,10 +11896,10 @@ async def export_client_cashflows(client_id: str, current_user: dict = Depends(g
 
 class UccAllocation(BaseModel):
     """Single UCC allocation within a split reinvestment"""
-    ucc: str
+    ucc: Optional[str] = ''  # Optional for amounts < 1000 (tagged to 'none')
     amount: float
     portfolio: str
-    tag: str
+    tag: Optional[str] = None
 
 
 class ReinvestmentTagUpdate(BaseModel):
