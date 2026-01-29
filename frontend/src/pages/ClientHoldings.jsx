@@ -202,6 +202,34 @@ export default function ClientHoldings() {
     setShowCashflowModal(true);
   };
 
+  const downloadHoldingPDF = async (holding) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${API}/holdings/${holding.bond_id}/pdf`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob'
+        }
+      );
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${holding.bond_name.replace(/[^a-zA-Z0-9]/g, '_')}_holding_report.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Holding report downloaded");
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      toast.error("Failed to download holding report");
+    }
+  };
+
   // Calculate totals for summary
   const totalReceived = filteredHoldings.reduce((sum, h) => sum + (h.net_repaid || 0), 0);
   const totalOutstanding = filteredHoldings.reduce((sum, h) => sum + (h.upcoming_expected || 0), 0);
