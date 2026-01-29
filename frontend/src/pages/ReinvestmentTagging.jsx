@@ -1534,17 +1534,17 @@ export default function ReinvestmentTagging() {
               {getMonthsConfig.map(month => {
                 const counts = getMonthCounts[month.key] || { total: 0, untagged: 0 };
                 const isSelected = selectedMonth === month.key;
+                const isViewOnly = !month.canTag; // Can view but not tag
                   
                   return (
                     <button
                       key={month.key}
-                      onClick={() => !month.isLocked && setSelectedMonth(month.key)}
-                      disabled={month.isLocked}
+                      onClick={() => setSelectedMonth(month.key)}
                       className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
                         isSelected
                           ? "border-etihad-gold-600 text-etihad-gold-600 bg-etihad-gold-50"
-                          : month.isLocked
-                          ? "border-transparent text-gray-300 cursor-not-allowed"
+                          : isViewOnly
+                          ? "border-transparent text-orange-500 hover:text-orange-600 hover:bg-orange-50"
                           : month.isCurrent
                           ? "border-transparent text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                           : month.isHistorical
@@ -1553,16 +1553,17 @@ export default function ReinvestmentTagging() {
                       }`}
                       data-testid={`month-tab-${month.key}`}
                     >
-                      {month.isLocked && <Lock className="h-3 w-3" />}
+                      {isViewOnly && <Eye className="h-3 w-3" />}
                       <span>{month.shortLabel}</span>
-                      {counts.untagged > 0 && !month.isLocked && (
+                      {counts.untagged > 0 && (
                         <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${
-                          isSelected ? 'bg-etihad-gold-200 text-etihad-gold-800' : 'bg-amber-100 text-amber-700'
+                          isSelected ? 'bg-etihad-gold-200 text-etihad-gold-800' : 
+                          isViewOnly ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700'
                         }`}>
                           {counts.untagged}
                         </Badge>
                       )}
-                      {counts.tagged > 0 && !month.isLocked && counts.untagged === 0 && (
+                      {counts.tagged > 0 && counts.untagged === 0 && (
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-100 text-green-700">
                           {counts.tagged}
                         </Badge>
