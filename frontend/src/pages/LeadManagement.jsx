@@ -201,9 +201,15 @@ export default function LeadManagement() {
     setProcessingId(selectedItem.id);
     try {
       const token = localStorage.getItem("token");
-      const endpoint = itemType === 'client' 
-        ? `${API}/approval-workflow/client/${selectedItem.id}/${approvalAction}`
-        : `${API}/approval-workflow/reinvestment/${selectedItem.id}/${approvalAction}`;
+      let endpoint;
+      
+      if (itemType === 'client') {
+        endpoint = `${API}/approval-workflow/client/${selectedItem.id}/${approvalAction}`;
+      } else if (itemType === 'reinvestment') {
+        endpoint = `${API}/approval-workflow/reinvestment/${selectedItem.id}/${approvalAction}`;
+      } else if (itemType === 'trade') {
+        endpoint = `${API}/approval-workflow/trade/${selectedItem.id}?action=${approvalAction}`;
+      }
       
       await axios.post(endpoint, {
         notes: approvalNotes,
@@ -212,7 +218,8 @@ export default function LeadManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      toast.success(`${itemType === 'client' ? 'Client' : 'Reinvestment'} ${approvalAction === 'approve' ? 'approved' : 'rejected'} successfully`);
+      const typeLabel = itemType === 'client' ? 'Client' : itemType === 'reinvestment' ? 'Reinvestment' : 'Unit Allotment';
+      toast.success(`${typeLabel} ${approvalAction === 'approve' ? 'approved' : 'rejected'} successfully`);
       setShowApprovalModal(false);
       fetchPendingApprovals();
     } catch (error) {
