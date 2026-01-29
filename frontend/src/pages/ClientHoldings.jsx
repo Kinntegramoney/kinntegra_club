@@ -398,7 +398,7 @@ export default function ClientHoldings() {
                   )}
                 </div>
 
-                {/* Holdings Table */}
+                {/* Holdings Table - Aligned with Broker View */}
                 <div className="bg-white rounded-lg border border-gray-200">
                   <div className="flex items-center justify-between p-4 border-b border-gray-200">
                     <div className="flex items-center gap-4">
@@ -447,87 +447,99 @@ export default function ClientHoldings() {
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Bond</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Units</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Invested</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest (Gross)</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">TDS</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Repaid</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Upcoming</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Expected XIRR</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Actual XIRR</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Action</th>
+                          <th className="text-left py-2 px-2 text-[10px] font-medium text-gray-500 uppercase sticky left-0 bg-gray-50">Scheme</th>
+                          <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Investment</th>
+                          <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Gross Expected</th>
+                          <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Profit</th>
+                          <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Expected XIRR</th>
+                          <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Actual XIRR</th>
+                          <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredHoldings.map((holding) => (
-                          <>
-                            <tr key={holding.bond_id} className="hover:bg-gray-50">
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  {holding.trades.length > 1 && (
-                                    <button 
-                                      onClick={() => toggleBondExpand(holding.bond_id)}
-                                      className="p-1 hover:bg-gray-100 rounded"
-                                    >
-                                      {expandedBonds[holding.bond_id] ? (
-                                        <ChevronDown className="h-4 w-4 text-gray-400" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4 text-gray-400" />
-                                      )}
-                                    </button>
-                                  )}
-                                  <div>
-                                    <span className="font-medium text-gray-800">{holding.bond_name}</span>
-                                    {holding.trades.length > 1 && (
-                                      <span className="text-xs text-gray-500 ml-2">({holding.trades.length} tranches)</span>
-                                    )}
-                                  </div>
-                                </div>
+                      <tbody>
+                        {filteredHoldings.map((holding) => {
+                          // Get all expected cashflows
+                          const allExpectedCashflows = (holding.trades || []).flatMap(trade => trade.expected_cashflows || []);
+                          // EXPECTED Gross (sum of expected inflows)
+                          const expectedGross = allExpectedCashflows
+                            .filter(cf => cf.type !== 'investment')
+                            .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                          const expectedProfit = expectedGross - holding.invested_amount;
+                          
+                          // ACTUAL Gross (from actual cashflows)
+                          const allActualCashflows = (holding.trades || []).flatMap(trade => trade.actual_cashflows || []);
+                          const actualGross = allActualCashflows
+                            .filter(cf => cf.type !== 'investment')
+                            .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                          const actualProfit = actualGross - holding.invested_amount;
+                          
+                          // Difference due to prepayments
+                          const grossDifference = actualGross - expectedGross;
+                          const profitDifference = actualProfit - expectedProfit;
+                          
+                          // Format number with commas (Indian format)
+                          const formatNum = (num) => num.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                          
+                          // Format difference in brackets
+                          const formatDiff = (num) => `(${Math.abs(num).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})})`;
+                          
+                          // Show difference row if there's a significant change
+                          const showDifference = Math.abs(grossDifference) > 1;
+                          
+                          // Use actualGross if available, otherwise fallback to expected
+                          const displayGross = actualGross > 0 ? actualGross : expectedGross;
+                          const displayProfit = actualGross > 0 ? actualProfit : expectedProfit;
+                          
+                          return (
+                            <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="py-2 px-2 sticky left-0 bg-white">
+                                <p className="font-medium text-gray-800 text-xs truncate max-w-[120px]" title={holding.bond_name}>{holding.bond_name}</p>
+                                <p className="text-[10px] text-gray-400">{holding.total_units} units</p>
                               </td>
-                              <td className="py-3 px-4 text-center font-mono text-sm">{holding.total_units}</td>
-                              <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(holding.invested_amount)}</td>
-                              <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(holding.total_principal)}</td>
-                              <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(holding.total_interest_gross)}</td>
-                              <td className="py-3 px-4 text-right font-mono text-sm text-red-600">{formatINR(holding.total_tds)}</td>
-                              <td className="py-3 px-4 text-right font-mono text-sm text-green-600">{formatINR(holding.net_repaid)}</td>
-                              <td className="py-3 px-4 text-right font-mono text-sm text-blue-600">{formatINR(holding.upcoming_expected)}</td>
-                              <td className="py-3 px-4 text-center">
-                                <span className={`text-sm font-semibold ${holding.xirr ? 'text-emerald-600' : 'text-gray-400'}`}>
-                                  {holding.xirr ? `${holding.xirr.toFixed(2)}%` : '-'}
-                                </span>
+                              <td className="py-2 px-2 text-right font-mono text-xs">
+                                <p>{formatNum(holding.invested_amount)}</p>
                               </td>
-                              <td className="py-3 px-4 text-center">
-                                <span className={`text-sm font-semibold ${holding.actual_xirr ? 'text-purple-600' : 'text-gray-400'}`}>
-                                  {holding.actual_xirr ? `${holding.actual_xirr.toFixed(2)}%` : '-'}
-                                </span>
+                              <td className="py-2 px-2 text-right font-mono text-xs">
+                                <p>{formatNum(displayGross)}</p>
+                                {showDifference && <p className="text-[10px] text-red-600">{formatDiff(grossDifference)}</p>}
                               </td>
-                              <td className="py-3 px-4 text-center">
-                                {holding.status === 'fully_repaid' ? (
-                                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                                    Completed
-                                  </span>
+                              <td className="py-2 px-2 text-right font-mono text-xs">
+                                <p className={displayProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{formatNum(displayProfit)}</p>
+                                {showDifference && <p className="text-[10px] text-red-600">{formatDiff(profitDifference)}</p>}
+                              </td>
+                              <td className="py-2 px-2 text-center">
+                                {holding.xirr !== null && holding.xirr !== undefined ? (
+                                  <span className="font-mono text-xs">{holding.xirr.toFixed(2)}%</span>
                                 ) : (
-                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                                    Active
-                                  </span>
+                                  <span className="text-gray-400 text-[10px]">-</span>
                                 )}
                               </td>
-                              <td className="py-3 px-4 text-center">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => viewCashflows(holding)}
-                                  className="text-xs"
+                              <td className="py-2 px-2 text-center">
+                                {holding.actual_xirr !== null && holding.actual_xirr !== undefined ? (
+                                  <span className="font-mono text-xs">{holding.actual_xirr.toFixed(2)}%</span>
+                                ) : (
+                                  <span className="text-gray-400 text-[10px]">-</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-2 text-center">
+                                <button 
+                                  onClick={() => viewCashflows(holding)} 
+                                  className="px-2 py-1 text-[10px] font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 rounded border border-teal-200 transition-colors"
                                 >
-                                  <Eye className="h-3 w-3 mr-1" /> View
-                                </Button>
+                                  View Details
+                                </button>
                               </td>
                             </tr>
-                            
-                            {/* Expanded Tranches */}
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    
+                    {filteredHoldings.length === 0 && (
+                      <div className="p-8 text-center text-gray-500">No holdings found for selected filter</div>
+                    )}
+                  </div>
+                </div>
                             {expandedBonds[holding.bond_id] && holding.trades.map((trade, idx) => (
                               <tr key={`${holding.bond_id}-${idx}`} className="bg-gray-50/50">
                                 <td className="py-2 px-4 pl-12">
