@@ -36,6 +36,7 @@ import ApprovalCenter from "@/pages/ApprovalCenter";
 import PendingApprovals from "@/pages/PendingApprovals";
 import SubBrokerClientDetails from "@/pages/SubBrokerClientDetails";
 import BrokerSettings from "@/pages/BrokerSettings";
+import BrokerProfile from "@/pages/BrokerProfile";
 import LeadManagement from "@/pages/LeadManagement";
 import TradeLogs from "@/pages/TradeLogs";
 import UntaggedTrades from "@/pages/UntaggedTrades";
