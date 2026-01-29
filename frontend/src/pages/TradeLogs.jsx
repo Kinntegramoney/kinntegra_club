@@ -62,7 +62,7 @@ const PAGE_SECTIONS = {
 export default function TradeLogs() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState("trades"); // "trades" or "activity"
+  const [activeTab, setActiveTab] = useState("trades"); // "trades", "activity", or "investment"
   
   // Trade logs state
   const [logs, setLogs] = useState([]);
@@ -82,10 +82,22 @@ export default function TradeLogs() {
   const [activitySectionFilter, setActivitySectionFilter] = useState("all");
   const [activityTotalPages, setActivityTotalPages] = useState(1);
   
+  // Investment logs state (client-approved reinvestments)
+  const [investmentLogs, setInvestmentLogs] = useState([]);
+  const [investmentLoading, setInvestmentLoading] = useState(false);
+  const [investmentSearchQuery, setInvestmentSearchQuery] = useState("");
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showModifyModal, setShowModifyModal] = useState(false);
+  const [selectedInvestment, setSelectedInvestment] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [modifyFormData, setModifyFormData] = useState({});
+  const [processingAction, setProcessingAction] = useState(false);
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activityPage, setActivityPage] = useState(1);
+  const [investmentPage, setInvestmentPage] = useState(1);
 
   useEffect(() => {
     document.title = "Kinntegraa | Logs";
