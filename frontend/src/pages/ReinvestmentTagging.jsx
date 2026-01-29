@@ -1070,6 +1070,7 @@ export default function ReinvestmentTagging() {
                   const isTagged = entry.reinvestment_tag && entry.reinvestment_tag !== 'not_tagged';
                   const changes = localChanges[entry.id] || {};
                   const currentTag = changes.reinvestment_tag || entry.reinvestment_tag || 'not_tagged';
+                  const canTag = monthConfig?.canTag !== false; // Default to true if not specified
                   
                   return (
                     <tr key={entry.id} className={`hover:bg-gray-50 ${isTagged ? 'bg-green-50/30' : ''}`}>
@@ -1095,25 +1096,33 @@ export default function ReinvestmentTagging() {
                         ₹{(entry.net_amount || 0).toLocaleString('en-IN')}
                       </td>
                       <td className="py-3 px-4">
-                        <Select
-                          value={currentTag}
-                          onValueChange={(value) => handleLocalChange(entry.id, 'reinvestment_tag', value)}
-                        >
-                          <SelectTrigger className={`h-8 text-xs w-28 ${
-                            currentTag === 'not_tagged' ? 'border-amber-300 bg-amber-50' : 'border-green-300 bg-green-50'
+                        {canTag ? (
+                          <Select
+                            value={currentTag}
+                            onValueChange={(value) => handleLocalChange(entry.id, 'reinvestment_tag', value)}
+                          >
+                            <SelectTrigger className={`h-8 text-xs w-28 ${
+                              currentTag === 'not_tagged' ? 'border-amber-300 bg-amber-50' : 'border-green-300 bg-green-50'
+                            }`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="not_tagged">Not Tagged</SelectItem>
+                              <SelectItem value="principal">Principal</SelectItem>
+                              <SelectItem value="interest">Interest</SelectItem>
+                              <SelectItem value="both">Both</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge className={`text-xs ${
+                            currentTag === 'not_tagged' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
                           }`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="not_tagged">Not Tagged</SelectItem>
-                            <SelectItem value="principal">Principal</SelectItem>
-                            <SelectItem value="interest">Interest</SelectItem>
-                            <SelectItem value="both">Both</SelectItem>
-                          </SelectContent>
-                        </Select>
+                            {currentTag === 'not_tagged' ? 'Not Tagged' : currentTag.charAt(0).toUpperCase() + currentTag.slice(1)}
+                          </Badge>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        {changes.reinvestment_tag && changes.reinvestment_tag !== entry.reinvestment_tag && (
+                        {canTag && changes.reinvestment_tag && changes.reinvestment_tag !== entry.reinvestment_tag && (
                           <Button
                             size="sm"
                             onClick={() => saveMonthEntry(entry)}
@@ -1123,7 +1132,7 @@ export default function ReinvestmentTagging() {
                             Save
                           </Button>
                         )}
-                        {isTagged && !changes.reinvestment_tag && (
+                        {isTagged && (!changes.reinvestment_tag || !canTag) && (
                           <Badge className="bg-green-100 text-green-700 text-xs">
                             <Check className="h-3 w-3 mr-1" />
                             Tagged
