@@ -1252,6 +1252,10 @@ Complete 3-phase approval workflow for sub-broker actions:
 1. **Kinntegra API Integration**: Awaiting API authentication details from user
 
 ## P1 - Upcoming Tasks
+- Frontend for `GET /api/clients/{client_id}/projected-vs-actuals` API
+- Verify "Sell Unit" Feature end-to-end
+- Test trade approval flow (unit reduction on opportunity)
+- Verify multi-UCC email content format
 - Frontend for Pincode Lookup on client creation form
 - Complete Kinntegra API integration when credentials available
 - Test end-to-end approval workflow with real email
