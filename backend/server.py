@@ -12942,6 +12942,241 @@ async def client_approve_reinvestment(
     }
 
 
+@api_router.get("/client/investment-api-logs")
+async def get_client_investment_api_logs(current_user: dict = Depends(get_current_user)):
+    """Get investment API call logs for client"""
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Find client record
+    client = await db.clients.find_one({"user_id": current_user['id']})
+    if not client:
+        return []
+    
+    # Get investment API logs for this client
+    logs = await db.investment_api_logs.find({
+        "client_id": client['id']
+    }, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    return logs
+
+
+# Broker cancel/edit reinvestment tag endpoints
+class CancelReinvestmentRequest(BaseModel):
+    reason: Optional[str] = None
+
+
+@api_router.post("/reinvestment/cancel/{log_id}")
+async def cancel_reinvestment_tag(
+    log_id: str,
+    request: CancelReinvestmentRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Broker/Sub-broker cancels a reinvestment tag"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers can cancel reinvestment tags")
+    
+    # Find the log entry
+    log_entry = await db.reinvestment_logs.find_one({"id": log_id})
+    if not log_entry:
+        raise HTTPException(status_code=404, detail="Reinvestment log not found")
+    
+    current_status = log_entry.get('approval_status', 'pending')
+    client_approved = log_entry.get('client_approved', False)
+    
+    # If client has already approved, need to create a cancellation request
+    if client_approved and current_status == 'submitted':
+        # Update status to "cancellation_pending"
+        await db.reinvestment_logs.update_one(
+            {"id": log_id},
+            {"$set": {
+                "approval_status": "cancellation_pending",
+                "cancellation_requested_by": current_user['id'],
+                "cancellation_requested_at": datetime.now(timezone.utc).isoformat(),
+                "cancellation_reason": request.reason
+            }}
+        )
+        
+        # Notify client about cancellation request
+        client = await db.clients.find_one({"id": log_entry['client_id']})
+        if client and client.get('user_id'):
+            notification = {
+                "id": str(uuid.uuid4()),
+                "type": "reinvestment_cancellation_request",
+                "client_id": client['id'],
+                "log_id": log_id,
+                "for_user_id": client['user_id'],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "read": False,
+                "message": f"Your broker has requested cancellation of reinvestment for {log_entry.get('bond_name', 'a bond')}"
+            }
+            await db.notifications.insert_one(notification)
+        
+        return {
+            "message": "Cancellation request sent to client for approval",
+            "status": "cancellation_pending",
+            "requires_client_approval": True
+        }
+    else:
+        # Direct cancellation if not yet approved by client
+        await db.reinvestment_logs.update_one(
+            {"id": log_id},
+            {"$set": {
+                "approval_status": "cancelled",
+                "cancelled_by": current_user['id'],
+                "cancelled_at": datetime.now(timezone.utc).isoformat(),
+                "cancellation_reason": request.reason
+            }}
+        )
+        
+        # Also update cashflow entry back to untagged
+        if log_entry.get('cashflow_id'):
+            await db.holding_cashflows.update_one(
+                {"id": log_entry['cashflow_id']},
+                {"$set": {
+                    "reinvestment_tag": "not_tagged",
+                    "portfolio_category": None,
+                    "target_ucc": None,
+                    "approval_status": None,
+                    "client_approved": False
+                }}
+            )
+        
+        # Notify client if they exist
+        client = await db.clients.find_one({"id": log_entry['client_id']})
+        if client and client.get('user_id'):
+            notification = {
+                "id": str(uuid.uuid4()),
+                "type": "reinvestment_cancelled",
+                "client_id": client['id'],
+                "log_id": log_id,
+                "for_user_id": client['user_id'],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "read": False,
+                "message": f"Reinvestment tag cancelled by broker for {log_entry.get('bond_name', 'a bond')}"
+            }
+            await db.notifications.insert_one(notification)
+        
+        return {
+            "message": "Reinvestment tag cancelled successfully",
+            "status": "cancelled",
+            "requires_client_approval": False
+        }
+
+
+class EditReinvestmentRequest(BaseModel):
+    reinvestment_tag: Optional[str] = None
+    portfolio_category: Optional[str] = None
+    target_ucc: Optional[str] = None
+    custom_amount: Optional[float] = None
+    reason: Optional[str] = None
+
+
+@api_router.put("/reinvestment/edit/{log_id}")
+async def edit_reinvestment_tag(
+    log_id: str,
+    request: EditReinvestmentRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Broker/Sub-broker edits a reinvestment tag (before or after client approval)"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers can edit reinvestment tags")
+    
+    # Find the log entry
+    log_entry = await db.reinvestment_logs.find_one({"id": log_id})
+    if not log_entry:
+        raise HTTPException(status_code=404, detail="Reinvestment log not found")
+    
+    current_status = log_entry.get('approval_status', 'pending')
+    
+    # Check if edit is allowed (1 day before transaction date for approved entries)
+    if current_status == 'submitted':
+        expected_date = log_entry.get('expected_date')
+        if expected_date:
+            from datetime import timedelta
+            expected_dt = datetime.fromisoformat(expected_date.replace('Z', '+00:00')) if isinstance(expected_date, str) else expected_date
+            if isinstance(expected_dt, datetime):
+                cutoff = expected_dt - timedelta(days=1)
+                if datetime.now(timezone.utc) > cutoff:
+                    raise HTTPException(status_code=400, detail="Cannot edit within 1 day of transaction date")
+    
+    # Build update data
+    update_data = {
+        "last_edited_by": current_user['id'],
+        "last_edited_at": datetime.now(timezone.utc).isoformat(),
+        "edit_reason": request.reason
+    }
+    
+    if request.reinvestment_tag:
+        update_data["reinvestment_tag"] = request.reinvestment_tag
+    if request.portfolio_category:
+        update_data["portfolio_category"] = request.portfolio_category
+    if request.target_ucc:
+        update_data["target_ucc"] = request.target_ucc
+    if request.custom_amount is not None:
+        update_data["custom_amount"] = request.custom_amount
+    
+    # If already approved by client, need re-approval
+    client_approved = log_entry.get('client_approved', False)
+    if client_approved:
+        update_data["approval_status"] = "edit_pending"
+        update_data["client_approved"] = False
+        update_data["previous_approval_status"] = current_status
+        
+        # Store original values for reference
+        update_data["original_values"] = {
+            "reinvestment_tag": log_entry.get('reinvestment_tag'),
+            "portfolio_category": log_entry.get('portfolio_category'),
+            "target_ucc": log_entry.get('target_ucc')
+        }
+        
+        # Notify client about edit request
+        client = await db.clients.find_one({"id": log_entry['client_id']})
+        if client and client.get('user_id'):
+            notification = {
+                "id": str(uuid.uuid4()),
+                "type": "reinvestment_edit_request",
+                "client_id": client['id'],
+                "log_id": log_id,
+                "for_user_id": client['user_id'],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "read": False,
+                "message": f"Your broker has modified reinvestment details for {log_entry.get('bond_name', 'a bond')}. Approval required."
+            }
+            await db.notifications.insert_one(notification)
+        
+        requires_approval = True
+    else:
+        requires_approval = False
+    
+    await db.reinvestment_logs.update_one({"id": log_id}, {"$set": update_data})
+    
+    # Also update cashflow entry
+    if log_entry.get('cashflow_id'):
+        cashflow_update = {}
+        if request.reinvestment_tag:
+            cashflow_update["reinvestment_tag"] = request.reinvestment_tag
+        if request.portfolio_category:
+            cashflow_update["portfolio_category"] = request.portfolio_category
+        if request.target_ucc:
+            cashflow_update["target_ucc"] = request.target_ucc
+        
+        if client_approved:
+            cashflow_update["client_approved"] = False
+            cashflow_update["approval_status"] = "edit_pending"
+        
+        if cashflow_update:
+            await db.holding_cashflows.update_one(
+                {"id": log_entry['cashflow_id']},
+                {"$set": cashflow_update}
+            )
+    
+    return {
+        "message": "Reinvestment tag updated" + (" - awaiting client re-approval" if requires_approval else ""),
+        "requires_client_approval": requires_approval
+    }
+
+
 @api_router.get("/reinvestment/logs")
 async def get_reinvestment_logs(
     status: Optional[str] = None,
