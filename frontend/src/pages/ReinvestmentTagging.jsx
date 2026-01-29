@@ -947,6 +947,214 @@ export default function ReinvestmentTagging() {
     return Array.from(uccs);
   };
 
+  // Render Month View
+  const renderMonthView = () => {
+    if (!selectedMonth) {
+      return (
+        <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+          <Calendar className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+          <p>Select a month to view entries</p>
+        </div>
+      );
+    }
+    
+    const monthConfig = getMonthsConfig.find(m => m.key === selectedMonth);
+    const monthData = getEntriesByMonth[selectedMonth] || { untagged: [], tagged: [] };
+    const allEntries = [...monthData.untagged, ...monthData.tagged];
+    
+    if (allEntries.length === 0) {
+      return (
+        <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+          <Calendar className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+          <p>No entries for {monthConfig?.label || selectedMonth}</p>
+        </div>
+      );
+    }
+    
+    // Group entries by client for this month
+    const entriesByClient = {};
+    allEntries.forEach(entry => {
+      if (!entriesByClient[entry.client_id]) {
+        entriesByClient[entry.client_id] = {
+          client_id: entry.client_id,
+          client_name: entry.client_name,
+          entries: []
+        };
+      }
+      entriesByClient[entry.client_id].entries.push(entry);
+    });
+    
+    const clientGroups = Object.values(entriesByClient);
+    
+    return (
+      <div className="space-y-4">
+        {/* Month Summary */}
+        <div className="bg-white rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${
+                monthConfig?.isHistorical ? 'bg-gray-100' :
+                monthConfig?.isCurrent ? 'bg-blue-100' :
+                monthConfig?.isLocked ? 'bg-red-100' : 'bg-green-100'
+              }`}>
+                {monthConfig?.isLocked ? (
+                  <Lock className={`h-5 w-5 text-red-600`} />
+                ) : monthConfig?.isHistorical ? (
+                  <History className="h-5 w-5 text-gray-600" />
+                ) : monthConfig?.isCurrent ? (
+                  <Clock className="h-5 w-5 text-blue-600" />
+                ) : (
+                  <Calendar className="h-5 w-5 text-green-600" />
+                )}
+              </div>
+              <div>
+                <h2 className="font-semibold text-gray-800">{monthConfig?.label || selectedMonth}</h2>
+                <p className="text-sm text-gray-500">
+                  {monthData.untagged.length} untagged, {monthData.tagged.length} tagged
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xs text-gray-500">Total Amount</p>
+                <p className="font-semibold text-gray-800">
+                  ₹{allEntries.reduce((sum, e) => sum + (e.net_amount || 0), 0).toLocaleString('en-IN')}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500">Clients</p>
+                <p className="font-semibold text-gray-800">{clientGroups.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Entries Table */}
+        <div className="bg-white rounded-lg border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Investor</th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Opportunity</th>
+                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Amount Invested</th>
+                  <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Expected Date</th>
+                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal</th>
+                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest</th>
+                  <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Amount</th>
+                  <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Reinvestment Tag</th>
+                  <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {allEntries.map(entry => {
+                  const isTagged = entry.reinvestment_tag && entry.reinvestment_tag !== 'not_tagged';
+                  const changes = localChanges[entry.id] || {};
+                  const currentTag = changes.reinvestment_tag || entry.reinvestment_tag || 'not_tagged';
+                  
+                  return (
+                    <tr key={entry.id} className={`hover:bg-gray-50 ${isTagged ? 'bg-green-50/30' : ''}`}>
+                      <td className="py-3 px-4">
+                        <span className="font-medium text-gray-800">{entry.client_name}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-gray-700">{entry.bond_name}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-sm">
+                        ₹{(entry.invested_amount || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4 text-center text-sm">
+                        {format(new Date(entry.date), 'dd MMM yyyy')}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-sm">
+                        ₹{(entry.principal_component || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-sm">
+                        ₹{((entry.interest_component || 0) - (entry.tds_amount || 0)).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-sm font-semibold">
+                        ₹{(entry.net_amount || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Select
+                          value={currentTag}
+                          onValueChange={(value) => updateLocalChange(entry.id, 'reinvestment_tag', value)}
+                        >
+                          <SelectTrigger className={`h-8 text-xs w-28 ${
+                            currentTag === 'not_tagged' ? 'border-amber-300 bg-amber-50' : 'border-green-300 bg-green-50'
+                          }`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="not_tagged">Not Tagged</SelectItem>
+                            <SelectItem value="principal">Principal</SelectItem>
+                            <SelectItem value="interest">Interest</SelectItem>
+                            <SelectItem value="both">Both</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {changes.reinvestment_tag && changes.reinvestment_tag !== entry.reinvestment_tag && (
+                          <Button
+                            size="sm"
+                            onClick={() => saveMonthEntry(entry)}
+                            className="bg-etihad-gold-600 hover:bg-etihad-gold-700 h-7 text-xs"
+                          >
+                            <Save className="h-3 w-3 mr-1" />
+                            Save
+                          </Button>
+                        )}
+                        {isTagged && !changes.reinvestment_tag && (
+                          <Badge className="bg-green-100 text-green-700 text-xs">
+                            <Check className="h-3 w-3 mr-1" />
+                            Tagged
+                          </Badge>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Save a single entry from month view
+  const saveMonthEntry = async (entry) => {
+    const changes = localChanges[entry.id];
+    if (!changes || !changes.reinvestment_tag) {
+      toast.error("Please select a tag");
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API}/reinvestment/tag/${entry.id}`, {
+        reinvestment_tag: changes.reinvestment_tag
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success("Tag saved successfully");
+      
+      // Clear local change
+      setLocalChanges(prev => {
+        const next = { ...prev };
+        delete next[entry.id];
+        return next;
+      });
+      
+      // Refresh data
+      fetchData();
+    } catch (error) {
+      console.error("Error saving tag:", error);
+      toast.error(error.response?.data?.detail || "Failed to save tag");
+    }
+  };
+
   const renderUntaggedClientGroup = (clientGroup, isPast, section) => {
     const key = `${section}_${clientGroup.client_id}`;
     const isExpanded = expandedClients[key];
