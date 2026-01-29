@@ -49,6 +49,7 @@ export default function ClientLogs() {
     
     setUser(parsedUser);
     fetchLogs();
+    fetchApiLogs();
   }, [navigate]);
 
   const fetchLogs = async () => {
@@ -66,6 +67,19 @@ export default function ClientLogs() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchApiLogs = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/client/investment-api-logs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setApiLogs(response.data || []);
+    } catch (error) {
+      console.error("Error fetching API logs:", error);
+      // Don't show error toast for API logs as it may not have any
     }
   };
 
