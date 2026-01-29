@@ -385,7 +385,7 @@ export default function ClientReinvestmentApprovals() {
                           className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50"
                         >
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-2">
                               <span className="text-sm font-medium text-gray-700">
                                 {formatDate(item.date)}
                               </span>
@@ -397,15 +397,48 @@ export default function ClientReinvestmentApprovals() {
                               }`}>
                                 {TAG_LABELS[item.reinvestment_tag] || item.reinvestment_tag}
                               </Badge>
-                              {item.portfolio_category && (
-                                <Badge variant="outline" className="text-xs capitalize">
-                                  {item.portfolio_category}
-                                </Badge>
-                              )}
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                              <span>UCC: <span className="font-mono">{item.target_ucc || '-'}</span></span>
-                              <span>Amount: <span className="font-semibold text-gray-800">{formatCurrency(getAmount(item))}</span></span>
+                            
+                            {/* Amount Details */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-2">
+                              <div className="bg-gray-50 rounded px-2 py-1">
+                                <span className="text-gray-500">Reinv. Amount</span>
+                                <p className="font-semibold text-gray-800">{formatCurrency(item.reinvestment_amount || getAmount(item))}</p>
+                              </div>
+                              <div className="bg-gray-50 rounded px-2 py-1">
+                                <span className="text-gray-500">Rounded Amount</span>
+                                <p className="font-semibold text-gray-800">{formatCurrency(item.rounded_total || getAmount(item))}</p>
+                              </div>
+                              <div className="bg-amber-50 rounded px-2 py-1">
+                                <span className="text-amber-600">Round-off</span>
+                                <p className="font-semibold text-amber-700">{formatCurrency(item.round_off_total || 0)}</p>
+                              </div>
+                              <div className="bg-blue-50 rounded px-2 py-1">
+                                <span className="text-blue-600">Tagged</span>
+                                <p className="font-semibold text-blue-700">{item.tag_description || TAG_LABELS[item.reinvestment_tag] || 'N/A'}</p>
+                              </div>
+                            </div>
+                            
+                            {/* UCC and Portfolio Details */}
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                              <span className="bg-indigo-50 px-2 py-1 rounded">
+                                <span className="text-indigo-500">UCC:</span> <span className="font-mono font-semibold text-indigo-700">{item.ucc || item.target_ucc || '-'}</span>
+                              </span>
+                              {item.allocations && item.allocations.length > 0 ? (
+                                item.allocations.map((alloc, idx) => (
+                                  <span key={idx} className="bg-purple-50 px-2 py-1 rounded">
+                                    <span className="text-purple-500">{alloc.portfolio_name || alloc.portfolio}:</span>{' '}
+                                    <span className="font-semibold text-purple-700">{formatCurrency(alloc.rounded_amount || alloc.amount)}</span>
+                                    {alloc.mf_investment_date && (
+                                      <span className="text-purple-400 ml-1">({formatDate(alloc.mf_investment_date)})</span>
+                                    )}
+                                  </span>
+                                ))
+                              ) : item.portfolio_category && (
+                                <span className="bg-purple-50 px-2 py-1 rounded capitalize">
+                                  <span className="text-purple-500">Portfolio:</span> <span className="font-semibold text-purple-700">{item.portfolio_category}</span>
+                                </span>
+                              )}
                             </div>
                           </div>
                           
