@@ -141,6 +141,7 @@ export default function ReinvestmentTagging() {
       shortLabel: format(currentMonth, 'MMM yyyy'),
       isCurrent: true,
       isLocked: false,
+      canTag: true, // Can tag current month
       startDate: startOfMonth(currentMonth),
       endDate: endOfMonth(currentMonth)
     });
@@ -149,10 +150,10 @@ export default function ReinvestmentTagging() {
     for (let i = 1; i <= 6; i++) {
       const monthDate = addMonths(currentMonth, i);
       
-      // Determine if month is locked
-      // Current quarter: months 1-3 from current month are always open
-      // Next quarter (months 4-6) opens 5 days before first month of next quarter
-      let isLocked = false;
+      // Determine if tagging is allowed
+      // Current quarter: months 1-3 from current month can be tagged
+      // Next quarter (months 4-6) can be tagged 5 days before first month of next quarter
+      let canTag = true;
       
       if (i > 3) {
         // This is in next quarter
@@ -160,8 +161,8 @@ export default function ReinvestmentTagging() {
         const nextQuarterStart = addMonths(currentMonth, 4);
         const unlockDate = subDays(startOfMonth(nextQuarterStart), 5);
         
-        // If today is before the unlock date, it's locked
-        isLocked = isBefore(today, unlockDate);
+        // If today is before the unlock date, tagging is disabled
+        canTag = !isBefore(today, unlockDate);
       }
       
       months.push({
@@ -171,7 +172,8 @@ export default function ReinvestmentTagging() {
         isHistorical: false,
         isFuture: true,
         monthsAhead: i,
-        isLocked: isLocked,
+        isLocked: false, // Can always view
+        canTag: canTag, // But tagging may be disabled
         startDate: startOfMonth(monthDate),
         endDate: endOfMonth(monthDate)
       });
