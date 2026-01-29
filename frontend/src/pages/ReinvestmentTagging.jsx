@@ -2098,6 +2098,165 @@ export default function ReinvestmentTagging() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Cancel Reinvestment Modal */}
+        <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <Ban className="h-5 w-5" />
+                Cancel Reinvestment
+              </DialogTitle>
+              <DialogDescription>
+                {selectedEntryForAction?.client_approved 
+                  ? "This reinvestment has been approved by the client. Cancellation will require client re-approval."
+                  : "Cancel this reinvestment tag. The entry will be reset to untagged."
+                }
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedEntryForAction && (
+              <div className="py-4 space-y-4">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Bond</span>
+                    <span className="font-medium">{selectedEntryForAction.bond_name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Amount</span>
+                    <span className="font-medium">{formatCurrency(selectedEntryForAction.net_amount)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Current Tag</span>
+                    <span className="font-medium capitalize">{selectedEntryForAction.reinvestment_tag}</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium">Reason for cancellation (optional)</Label>
+                  <Textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Enter reason..."
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCancelModal(false)} disabled={processingAction}>
+                Back
+              </Button>
+              <Button 
+                onClick={handleCancelSubmit} 
+                disabled={processingAction}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {processingAction ? (
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Ban className="h-4 w-4 mr-2" />
+                )}
+                {selectedEntryForAction?.client_approved ? "Request Cancellation" : "Cancel Tag"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Reinvestment Modal */}
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Pencil className="h-5 w-5 text-amber-600" />
+                Edit Reinvestment Tag
+              </DialogTitle>
+              <DialogDescription>
+                {selectedEntryForAction?.client_approved 
+                  ? "This reinvestment has been approved by the client. Changes will require client re-approval."
+                  : "Update the reinvestment tag details."
+                }
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedEntryForAction && (
+              <div className="py-4 space-y-4">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                  <div className="font-medium">{selectedEntryForAction.bond_name}</div>
+                  <div className="text-sm text-gray-500">
+                    {formatCurrency(selectedEntryForAction.net_amount)} • {format(new Date(selectedEntryForAction.date || selectedEntryForAction.expected_date), "dd MMM yyyy")}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium">Tag Type</Label>
+                    <Select
+                      value={editFormData.reinvestment_tag}
+                      onValueChange={(value) => setEditFormData(prev => ({ ...prev, reinvestment_tag: value }))}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select tag" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="principal">Principal</SelectItem>
+                        <SelectItem value="interest">Interest</SelectItem>
+                        <SelectItem value="both">Both (P+I)</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Portfolio</Label>
+                    <Select
+                      value={editFormData.portfolio_category}
+                      onValueChange={(value) => setEditFormData(prev => ({ ...prev, portfolio_category: value }))}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select portfolio" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getFilteredPortfolioOptions(selectedEntryForAction.net_amount).map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Reason for change (optional)</Label>
+                    <Textarea
+                      value={editFormData.reason || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, reason: e.target.value }))}
+                      placeholder="Enter reason..."
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={processingAction}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleEditSubmit} 
+                disabled={processingAction || !editFormData.reinvestment_tag || !editFormData.portfolio_category}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {processingAction ? (
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Pencil className="h-4 w-4 mr-2" />
+                )}
+                {selectedEntryForAction?.client_approved ? "Request Edit" : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
