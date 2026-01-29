@@ -1,5 +1,52 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Jan 29, 2026)
+
+### Client Reinvestment Approval UI Enhancement (Jan 29, 2026) ✅
+
+**Feature:** Enhanced the Client Reinvestment Approvals page with richer data display and improved UX.
+
+**Changes Applied:**
+- **`/app/frontend/src/pages/ClientReinvestmentApprovals.jsx`**:
+  - Renamed "Approved" tab to "My Trades" for clarity
+  - Added detailed Portfolio Allocations section showing MF Investment Dates
+  - Enhanced amount details display (Reinvestment Amount, Rounded Amount, Round-off, UCC)
+  - Improved empty state messages with contextual guidance
+  - Better visual hierarchy with icons and color-coded sections
+  - Added support for multiple portfolio allocations per reinvestment
+
+---
+
+### Broker Profile Page (Jan 29, 2026) ✅
+
+**Feature:** Created a dedicated profile page for brokers to manage their account information.
+
+**Files Created/Modified:**
+- **`/app/frontend/src/pages/BrokerProfile.jsx`**: New page allowing brokers to:
+  - View and edit Full Name, Email, Phone
+  - View PAN (read-only)
+  - See stats: Role, Sub-Broker count, Client count
+- **`/app/frontend/src/App.js`**: Added route `/broker/profile`
+- **`/app/frontend/src/components/Sidebar.jsx`**: Added "Profile" link for brokers
+
+**Backend endpoints used:**
+- `GET /api/broker/profile` - Fetch broker profile
+- `PUT /api/broker/profile` - Update broker profile (name, email, phone)
+
+---
+
+### Email Link Approval - Kinntegra API Integration (Jan 29, 2026) ✅
+
+**Issue:** When clients approved reinvestments via email link (`/api/reinvestment/approve-via-link`), the Kinntegra MF Buy Scheduler API was not being called.
+
+**Fix Applied:**
+- **`/app/backend/server.py`**: Updated `approve_reinvestment_via_link()` endpoint
+  - Now calls `call_kinntegra_mf_buy_scheduler()` for each approved cashflow
+  - Returns `kinntegra_results` array with status for each API call
+  - Removed old placeholder submission logic
+
+---
+
 ## Recent Changes (Jan 28, 2026)
 
 ### Holdings Sorting by Investment Value (Jan 28, 2026) ✅
