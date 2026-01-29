@@ -18968,6 +18968,38 @@ async def approve_dld_admin_receipt(
     return {"message": "DLD+Admin receipt approved successfully"}
 
 
+# Generic file upload endpoint
+@api_router.post("/upload")
+async def upload_file(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """Upload a file and return its URL"""
+    import os
+    import uuid as uuid_module
+    
+    # Create uploads directory if it doesn't exist
+    upload_dir = "/app/uploads/files"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generate unique filename
+    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".bin"
+    unique_filename = f"{uuid_module.uuid4()}{file_ext}"
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    # Save the file
+    try:
+        contents = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    
+    # Return the URL
+    return {
+        "url": f"/api/uploads/files/{unique_filename}",
+        "filename": unique_filename,
+        "original_filename": file.filename
+    }
+
+
 # Serve uploaded files
 @api_router.get("/uploads/{folder}/{filename}")
 async def serve_upload(folder: str, filename: str):
