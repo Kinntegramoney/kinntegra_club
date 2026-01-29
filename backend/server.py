@@ -12667,7 +12667,21 @@ async def send_reinvestment_approval_email(
     if not cashflows:
         raise HTTPException(status_code=404, detail="No cashflows found")
     
-    # Build email content with rounded down amounts
+    # Get all allocation details from reinvestment_logs
+    cashflow_ids = [cf.get('id') for cf in cashflows]
+    all_logs = await db.reinvestment_logs.find(
+        {"cashflow_id": {"$in": cashflow_ids}}
+    ).to_list(1000)
+    
+    # Group logs by cashflow_id
+    logs_by_cashflow = {}
+    for log in all_logs:
+        cf_id = log.get('cashflow_id')
+        if cf_id not in logs_by_cashflow:
+            logs_by_cashflow[cf_id] = []
+        logs_by_cashflow[cf_id].append(log)
+    
+    # Build email content with rounded down amounts and UCC allocations
     entries_html = ""
     total_amount = 0
     valid_cashflows = []  # Track cashflows with valid amounts
@@ -12699,9 +12713,28 @@ async def send_reinvestment_approval_email(
         total_amount += rounded_amount
         valid_cashflows.append(cf['id'])
         
+        # Get allocations for this cashflow
+        allocations = logs_by_cashflow.get(cf['id'], [])
+        
+        # Build allocation details string
+        alloc_details = ""
+        if allocations:
+            alloc_html_parts = []
+            for alloc in allocations:
+                ucc = alloc.get('target_ucc', alloc.get('ucc', ''))
+                portfolio = alloc.get('portfolio', alloc.get('portfolio_category', ''))
+                alloc_amount = alloc.get('rounded_amount', alloc.get('amount', 0))
+                if ucc or portfolio:
+                    portfolio_display = portfolio.replace('_', ' ').title() if portfolio else 'N/A'
+                    if alloc_amount and alloc_amount >= 1000:
+                        alloc_html_parts.append(f"<div style='font-size: 11px; color: #6366F1; margin-top: 4px;'>{ucc} • {portfolio_display} • ₹{int(alloc_amount):,}</div>")
+                    elif alloc_amount and alloc_amount < 1000:
+                        alloc_html_parts.append(f"<div style='font-size: 11px; color: #9CA3AF; margin-top: 4px;'>₹{int(alloc_amount):,} (None - below ₹1000)</div>")
+            alloc_details = "".join(alloc_html_parts)
+        
         entries_html += f"""
         <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;">{cf.get('bond_name', 'N/A')}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">{cf.get('bond_name', 'N/A')}{alloc_details}</td>
             <td style="padding: 8px; border: 1px solid #ddd;">{cf.get('date', 'N/A')}</td>
             <td style="padding: 8px; border: 1px solid #ddd;">{tag.replace('_', ' ').title()}</td>
             <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">₹{rounded_amount:,}</td>
