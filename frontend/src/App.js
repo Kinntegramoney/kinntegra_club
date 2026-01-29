@@ -300,6 +300,22 @@ function App() {
             } 
           />
           <Route 
+            path="/client/approvals" 
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ClientApprovals />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/client/logs" 
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ClientLogs />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/client/trades" 
             element={
               <ProtectedRoute allowedRoles={["client"]}>
