@@ -996,6 +996,335 @@ export default function TradeLogs() {
             </div>
           </>
         )}
+
+        {/* Investment Logs Tab Content */}
+        {activeTab === "investment" && (
+          <>
+            {/* Investment Filters */}
+            <div className="px-6 py-4 bg-white border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="relative flex-1 max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by client, bond or UCC..."
+                      value={investmentSearchQuery}
+                      onChange={(e) => setInvestmentSearchQuery(e.target.value)}
+                      className="pl-9 h-9 w-64"
+                    />
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={fetchInvestmentLogs}>
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Refresh
+                </Button>
+              </div>
+            </div>
+
+            {/* Investment Logs Content */}
+            <div className="p-6">
+              {investmentLoading ? (
+                <div className="bg-white rounded-lg border p-8 text-center">
+                  <RefreshCw className="h-8 w-8 animate-spin text-green-600 mx-auto mb-3" />
+                  <p className="text-gray-500">Loading investment logs...</p>
+                </div>
+              ) : filteredInvestmentLogs.length === 0 ? (
+                <div className="bg-white rounded-lg border p-8 text-center">
+                  <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">No client-approved investments found</p>
+                  <p className="text-gray-400 text-sm mt-1">Investments will appear here after client approval</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg border overflow-hidden">
+                  <div className="px-4 py-3 bg-green-50 border-b flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                    <span className="font-medium text-green-800">Client-Approved Investments</span>
+                    <Badge className="bg-green-100 text-green-700 ml-2">{filteredInvestmentLogs.length}</Badge>
+                  </div>
+                  
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-600">Client</th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name (Deal ID)</th>
+                        <th className="text-right px-4 py-3 font-medium text-gray-600">Net Amount</th>
+                        <th className="text-right px-4 py-3 font-medium text-gray-600">Investment Amt</th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-600">UCC</th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-600">Portfolio</th>
+                        <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+                        <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredInvestmentLogs.map((log, idx) => {
+                        const netAmount = log.amount || log.net_amount || 0;
+                        const roundDownAmount = roundToHundred(netAmount);
+                        
+                        return (
+                          <tr key={log.id || idx} className="border-b hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <span className="font-medium">
+                                {log.expected_date ? format(new Date(log.expected_date), "dd MMM yyyy") : 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <div className="font-medium">{log.client_name}</div>
+                                <div className="text-xs text-gray-500">{log.client_pan}</div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div>
+                                <div className="font-medium">{log.bond_name}</div>
+                                <div className="text-xs text-gray-500">({log.bond_code || log.deal_id || 'N/A'})</div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono">
+                              ₹{netAmount.toLocaleString('en-IN')}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-green-700 font-semibold">
+                              ₹{roundDownAmount.toLocaleString('en-IN')}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant="outline" className="text-xs">
+                                {log.target_ucc || 'Default'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
+                                {log.portfolio_category || 'N/A'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {log.approval_status === 'submitted' ? (
+                                <Badge className="bg-green-100 text-green-700 text-xs">
+                                  <CheckCircle className="h-3 w-3 mr-1 inline" />
+                                  Submitted
+                                </Badge>
+                              ) : log.approval_status === 'cancellation_pending' ? (
+                                <Badge className="bg-red-100 text-red-700 text-xs">
+                                  Cancel Pending
+                                </Badge>
+                              ) : log.approval_status === 'edit_pending' ? (
+                                <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                  Edit Pending
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-blue-100 text-blue-700 text-xs">
+                                  Approved
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => openModifyModal(log)}>
+                                    <Pencil className="h-3 w-3 mr-2" />
+                                    Modify
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => openCancelModal(log)}
+                                    className="text-red-600 focus:text-red-600"
+                                  >
+                                    <Ban className="h-3 w-3 mr-2" />
+                                    Cancel
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  
+                  {/* Summary Footer */}
+                  <div className="px-4 py-3 bg-green-50 border-t flex items-center justify-between">
+                    <span className="text-sm text-green-700">
+                      {filteredInvestmentLogs.length} approved investment{filteredInvestmentLogs.length !== 1 ? 's' : ''}
+                    </span>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-xs text-green-600">Total Net Amount</p>
+                        <p className="font-semibold text-green-800">
+                          ₹{filteredInvestmentLogs.reduce((sum, l) => sum + (l.amount || l.net_amount || 0), 0).toLocaleString('en-IN')}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-green-600">Total Investment</p>
+                        <p className="font-bold text-green-800">
+                          ₹{filteredInvestmentLogs.reduce((sum, l) => sum + roundToHundred(l.amount || l.net_amount || 0), 0).toLocaleString('en-IN')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Cancel Investment Modal */}
+        <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <Ban className="h-5 w-5" />
+                Cancel Investment
+              </DialogTitle>
+              <DialogDescription>
+                This investment has been approved by the client. Cancellation will require client re-approval.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedInvestment && (
+              <div className="py-4 space-y-4">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Client</span>
+                    <span className="font-medium">{selectedInvestment.client_name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Bond</span>
+                    <span className="font-medium">{selectedInvestment.bond_name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Amount</span>
+                    <span className="font-medium">₹{(selectedInvestment.amount || selectedInvestment.net_amount || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium">Reason for cancellation</Label>
+                  <Textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Enter reason..."
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCancelModal(false)} disabled={processingAction}>
+                Back
+              </Button>
+              <Button 
+                onClick={handleCancelInvestment} 
+                disabled={processingAction}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {processingAction ? (
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Ban className="h-4 w-4 mr-2" />
+                )}
+                Request Cancellation
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modify Investment Modal */}
+        <Dialog open={showModifyModal} onOpenChange={setShowModifyModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Pencil className="h-5 w-5 text-amber-600" />
+                Modify Investment
+              </DialogTitle>
+              <DialogDescription>
+                Modify this approved investment. Changes will require client re-approval.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedInvestment && (
+              <div className="py-4 space-y-4">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                  <div className="font-medium">{selectedInvestment.bond_name}</div>
+                  <div className="text-sm text-gray-500">
+                    ₹{(selectedInvestment.amount || selectedInvestment.net_amount || 0).toLocaleString('en-IN')} • {selectedInvestment.client_name}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium">Tag Type</Label>
+                    <Select
+                      value={modifyFormData.reinvestment_tag}
+                      onValueChange={(value) => setModifyFormData(prev => ({ ...prev, reinvestment_tag: value }))}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select tag" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="principal">Principal</SelectItem>
+                        <SelectItem value="interest">Interest</SelectItem>
+                        <SelectItem value="both">Both (P+I)</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Portfolio</Label>
+                    <Select
+                      value={modifyFormData.portfolio_category}
+                      onValueChange={(value) => setModifyFormData(prev => ({ ...prev, portfolio_category: value }))}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select portfolio" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="wealth">Wealth</SelectItem>
+                        <SelectItem value="tax">Tax</SelectItem>
+                        <SelectItem value="short_term">Short Term</SelectItem>
+                        <SelectItem value="commodities">Commodities</SelectItem>
+                        <SelectItem value="bonds">Bonds</SelectItem>
+                        <SelectItem value="real_estate">Real Estate</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Reason for change</Label>
+                    <Textarea
+                      value={modifyFormData.reason || ''}
+                      onChange={(e) => setModifyFormData(prev => ({ ...prev, reason: e.target.value }))}
+                      placeholder="Enter reason..."
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowModifyModal(false)} disabled={processingAction}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleModifyInvestment} 
+                disabled={processingAction || !modifyFormData.reinvestment_tag || !modifyFormData.portfolio_category}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {processingAction ? (
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Pencil className="h-4 w-4 mr-2" />
+                )}
+                Request Modification
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
