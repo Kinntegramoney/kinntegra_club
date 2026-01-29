@@ -192,10 +192,12 @@ export default function ReinvestmentTagging() {
       if (!clientGroup.entries) return;
       
       clientGroup.entries.forEach(entry => {
-        if (!entry.date) return;
+        // Use expected_date from API (cashflow date)
+        const dateField = entry.expected_date || entry.date;
+        if (!dateField) return;
         
         try {
-          const entryDate = new Date(entry.date);
+          const entryDate = new Date(dateField);
           if (isNaN(entryDate.getTime())) return;
           
           const monthKey = format(entryDate, 'yyyy-MM');
@@ -208,7 +210,12 @@ export default function ReinvestmentTagging() {
           }
           
           const isTagged = entry.reinvestment_tag && entry.reinvestment_tag !== 'not_tagged';
-          const entryWithClient = { ...entry, client_name: clientGroup.client_name, client_id: clientGroup.client_id };
+          const entryWithClient = { 
+            ...entry, 
+            client_name: clientGroup.client_name, 
+            client_id: clientGroup.client_id,
+            date: dateField // Ensure date field is set for downstream use
+          };
           
           if (isTagged) {
             byMonth[monthKey].tagged.push(entryWithClient);
@@ -216,7 +223,7 @@ export default function ReinvestmentTagging() {
             byMonth[monthKey].untagged.push(entryWithClient);
           }
         } catch (e) {
-          console.error('Error parsing date:', entry.date, e);
+          console.error('Error parsing date:', dateField, e);
         }
       });
     });
