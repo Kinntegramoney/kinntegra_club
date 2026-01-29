@@ -11,6 +11,19 @@
   - `ReinvestmentTagging.jsx` already handles both broker and sub_broker roles via `getSidebar()` function
   - Eliminates code duplication and ensures feature parity
 
+### Unit Blocking File Upload Fix (Jan 29, 2026) ✅
+
+**Issue:** Sub-brokers could not block units for clients - "Not Found" error when uploading UTR copy.
+
+**Root Cause:** The `/api/upload` endpoint didn't exist in the backend.
+
+**Fix Applied:**
+- `/app/backend/server.py`: Added new `POST /api/upload` endpoint
+  - Accepts multipart file uploads
+  - Saves files to `/app/uploads/files/` directory
+  - Returns file URL in format `/api/uploads/files/{filename}`
+  - Requires authentication
+
 ### Read-Only Future Months Feature (Jan 29, 2026) ✅
 
 **Feature:** Future months >3 months away are view-only (can see entries but cannot tag).
