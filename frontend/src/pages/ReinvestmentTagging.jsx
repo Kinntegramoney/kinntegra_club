@@ -41,6 +41,12 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Round down to nearest 100 for investment amount
+const roundToHundred = (amount) => {
+  if (!amount || amount <= 0) return 0;
+  return Math.floor(amount / 100) * 100;
+};
+
 // Original options
 const PORTFOLIO_OPTIONS = [
   { value: 'wealth', label: 'Wealth' },
