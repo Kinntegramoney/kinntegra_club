@@ -335,12 +335,19 @@ export default function ClientReinvestmentApprovals() {
           ) : getCurrentItems().length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border">
               <Wallet className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">
+              <p className="text-gray-500 font-medium">
                 {activeTab === 'pending' 
                   ? "No pending reinvestment approvals" 
                   : activeTab === 'approved'
-                  ? "No approved reinvestments yet"
+                  ? "No approved trades yet"
                   : "No rejected reinvestments"}
+              </p>
+              <p className="text-sm text-gray-400 mt-2">
+                {activeTab === 'pending' 
+                  ? "When your broker tags reinvestments for you, they will appear here for approval" 
+                  : activeTab === 'approved'
+                  ? "Your approved reinvestments will be listed here as confirmed trades"
+                  : "Reinvestments you reject will appear here for reference"}
               </p>
             </div>
           ) : (
