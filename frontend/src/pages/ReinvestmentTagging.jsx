@@ -1415,16 +1415,42 @@ export default function ReinvestmentTagging() {
                       </td>
                       {canTag && (
                         <td className="px-3 py-2">
-                          {isSplit && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => editSplitEntry(entry, clientGroup)}
-                              className="h-7 w-7 p-0"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {isSplit && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => editSplitEntry(entry, clientGroup)}
+                                className="h-7 w-7 p-0"
+                                title="Edit split allocations"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            )}
+                            {/* Show action menu for tagged items that have been processed */}
+                            {isTagged && (entry.client_approved || entry.approval_status === 'approved' || entry.approval_status === 'submitted') && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                    <MoreVertical className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => openEditModal(entry)}>
+                                    <Pencil className="h-3 w-3 mr-2" />
+                                    Edit Tag
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => openCancelModal(entry)}
+                                    className="text-red-600 focus:text-red-600"
+                                  >
+                                    <Ban className="h-3 w-3 mr-2" />
+                                    Cancel
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
                         </td>
                       )}
                     </tr>
