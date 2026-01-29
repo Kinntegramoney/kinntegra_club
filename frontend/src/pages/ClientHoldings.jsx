@@ -1,8 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import ClientSidebar from "@/components/ClientSidebar";
-import { Wallet, TrendingUp, Calendar, Download, ChevronDown, ChevronUp, Check, Clock, X, Building2, MapPin, Percent, ChevronRight, ClipboardList, Eye } from "lucide-react";
+import { 
+  Wallet, TrendingUp, Calendar, Download, ChevronDown, ChevronUp, 
+  Check, Clock, X, Building2, MapPin, Percent, ChevronRight, 
+  ClipboardList, Eye, RefreshCw, IndianRupee, Calculator, FileText
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -29,10 +33,16 @@ export default function ClientHoldings() {
   const [showCashflowModal, setShowCashflowModal] = useState(false);
   const [activeTab, setActiveTab] = useState("summary");
   const [mainTab, setMainTab] = useState("bonds");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [expandedBonds, setExpandedBonds] = useState({});
 
   // Log user activity
   useEffect(() => {
     logUserActivity('holdings');
+  }, []);
+
+  useEffect(() => {
+    document.title = "Kinntegraa | My Holdings";
   }, []);
 
   useEffect(() => {
@@ -88,50 +98,131 @@ export default function ClientHoldings() {
       });
       setClientTrades(response.data || []);
     } catch (error) {
-      console.error("Error fetching client trades:", error);
+      console.error("Error fetching trades:", error);
     }
   };
+
+  // Consolidate holdings by bond for summary view
+  const getConsolidatedHoldings = useCallback(() => {
+    if (!holdings?.holdings) return [];
+    
+    const consolidated = {};
+    
+    holdings.holdings.forEach(holding => {
+      const bondId = holding.bond_id;
+      
+      if (!consolidated[bondId]) {
+        consolidated[bondId] = {
+          bond_id: bondId,
+          bond_name: holding.bond_name,
+          total_units: 0,
+          invested_amount: 0,
+          total_principal: 0,
+          total_interest_gross: 0,
+          total_tds: 0,
+          repaid_principal: 0,
+          repaid_interest: 0,
+          repaid_tds: 0,
+          net_repaid: 0,
+          upcoming_expected: 0,
+          prepaid_count: 0,
+          prepaid_amount: 0,
+          xirr: null,
+          actual_xirr: null,
+          status: 'active',
+          trades: []
+        };
+      }
+      
+      // Accumulate totals
+      consolidated[bondId].total_units += holding.units || 0;
+      consolidated[bondId].invested_amount += holding.invested_amount || 0;
+      consolidated[bondId].total_principal += holding.total_principal || 0;
+      consolidated[bondId].total_interest_gross += holding.total_interest_gross || 0;
+      consolidated[bondId].total_tds += holding.total_tds || 0;
+      consolidated[bondId].repaid_principal += holding.repaid_principal || 0;
+      consolidated[bondId].repaid_interest += holding.repaid_interest || 0;
+      consolidated[bondId].repaid_tds += holding.repaid_tds || 0;
+      consolidated[bondId].net_repaid += holding.net_repaid || 0;
+      consolidated[bondId].upcoming_expected += holding.upcoming_expected || 0;
+      consolidated[bondId].prepaid_count += holding.prepaid_count || 0;
+      consolidated[bondId].prepaid_amount += holding.prepaid_amount || 0;
+      
+      // XIRR - use first available
+      if (holding.xirr !== null && holding.xirr !== undefined) {
+        if (consolidated[bondId].xirr === null) {
+          consolidated[bondId].xirr = holding.xirr;
+        }
+      }
+      if (holding.actual_xirr !== null && holding.actual_xirr !== undefined) {
+        if (consolidated[bondId].actual_xirr === null) {
+          consolidated[bondId].actual_xirr = holding.actual_xirr;
+        }
+      }
+      
+      // Add trade entry
+      consolidated[bondId].trades.push({
+        trade_id: holding.trade_id,
+        units: holding.units,
+        investment_date: holding.investment_date,
+        invested_amount: holding.invested_amount,
+        prepaid_count: holding.prepaid_count || 0,
+        prepaid_amount: holding.prepaid_amount || 0,
+        xirr: holding.xirr,
+        actual_xirr: holding.actual_xirr,
+        cashflows: (holding.cashflows || []).sort((a, b) => new Date(a.date) - new Date(b.date)),
+        expected_cashflows: holding.expected_cashflows || [],
+        actual_cashflows: holding.actual_cashflows || []
+      });
+    });
+    
+    // Sort trades and determine status
+    Object.values(consolidated).forEach(bond => {
+      bond.trades.sort((a, b) => new Date(a.investment_date) - new Date(b.investment_date));
+      bond.status = bond.upcoming_expected > 0 ? 'active' : 'fully_repaid';
+    });
+    
+    return Object.values(consolidated);
+  }, [holdings]);
+
+  const consolidatedHoldings = getConsolidatedHoldings();
+  const filteredHoldings = consolidatedHoldings.filter(h => 
+    statusFilter === 'all' || h.status === statusFilter
+  );
 
   const formatINR = (amount) => {
-    return `₹ ${(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  };
-
-  const formatAED = (amount) => {
-    return `AED ${(amount || 0).toLocaleString('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  };
-
-  const handleDownload = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const userData = JSON.parse(localStorage.getItem("user"));
-      
-      // Get client_id from user
-      const profileRes = await axios.get(`${API}/client/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      const response = await axios.get(
-        `${API}/holdings/client/${profileRes.data.client.id}/download`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob'
-        }
-      );
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `holdings_${userData.name.replace(/\s+/g, '_')}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      
-      toast.success("Holdings report downloaded");
-    } catch (error) {
-      console.error("Error downloading:", error);
-      toast.error("Failed to download report");
+    if (!amount || amount === 0) return '₹0';
+    const isNegative = amount < 0;
+    const absAmount = Math.abs(amount);
+    let formatted;
+    if (absAmount >= 10000000) {
+      formatted = `₹${(absAmount / 10000000).toFixed(2)} Cr`;
+    } else if (absAmount >= 100000) {
+      formatted = `₹${(absAmount / 100000).toFixed(2)} L`;
+    } else if (absAmount >= 1000) {
+      formatted = `₹${(absAmount / 1000).toFixed(2)} K`;
+    } else {
+      formatted = `₹${absAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
+    return isNegative ? `-${formatted}` : formatted;
+  };
+
+  const formatAbsoluteINR = (amount) => {
+    if (!amount || amount === 0) return '₹0.00';
+    const isNegative = amount < 0;
+    const absAmount = Math.abs(amount);
+    const formatted = absAmount.toLocaleString('en-IN', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+    return isNegative ? `-₹${formatted}` : `₹${formatted}`;
+  };
+
+  const toggleBondExpand = (bondId) => {
+    setExpandedBonds(prev => ({
+      ...prev,
+      [bondId]: !prev[bondId]
+    }));
   };
 
   const viewCashflows = (holding) => {
@@ -140,176 +231,390 @@ export default function ClientHoldings() {
     setShowCashflowModal(true);
   };
 
-  if (!user) return null;
+  // Calculate totals for summary
+  const totalReceived = filteredHoldings.reduce((sum, h) => sum + (h.net_repaid || 0), 0);
+  const totalOutstanding = filteredHoldings.reduce((sum, h) => sum + (h.upcoming_expected || 0), 0);
+  const grandTotal = totalReceived + totalOutstanding;
+  const receivedPercent = grandTotal > 0 ? (totalReceived / grandTotal) * 100 : 0;
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-100">
+        <ClientSidebar user={user} />
+        <div className="flex-1 flex items-center justify-center">
+          <RefreshCw className="h-8 w-8 animate-spin text-teal-600" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-100">
       <ClientSidebar user={user} />
       
       <div className="flex-1 overflow-auto">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-8 py-6">
+        <div className="bg-white border-b px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800" data-testid="page-title">
-                My Holdings
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Track your investments and cashflows
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-teal-100 rounded-lg">
+                <Wallet className="h-6 w-6 text-teal-600" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-800" data-testid="holdings-title">My Holdings</h1>
+                <p className="text-sm text-gray-500">View your bond investments and cashflows</p>
+              </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={handleDownload}
-              disabled={!holdings || holdings.holdings?.length === 0}
-              className="gap-2"
+          </div>
+
+          {/* Main Tabs */}
+          <div className="flex gap-6 mt-4 border-b border-gray-200">
+            <button 
+              onClick={() => setMainTab("bonds")}
+              className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
+                mainTab === "bonds" 
+                  ? "border-teal-600 text-teal-700" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+              data-testid="tab-bonds"
             >
-              <Download className="h-4 w-4" />
-              Download Report
-            </Button>
+              <TrendingUp className="h-4 w-4" />
+              Bonds
+              {holdings?.holdings?.length > 0 && (
+                <Badge variant="secondary" className="ml-1 bg-teal-100 text-teal-700">{consolidatedHoldings.length}</Badge>
+              )}
+            </button>
+            <button 
+              onClick={() => setMainTab("trades")}
+              className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
+                mainTab === "trades" 
+                  ? "border-teal-600 text-teal-700" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+              data-testid="tab-trades"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Trades
+              {clientTrades.length > 0 && (
+                <Badge variant="secondary" className="ml-1 bg-blue-100 text-blue-700">{clientTrades.length}</Badge>
+              )}
+            </button>
+            <button 
+              onClick={() => setMainTab("real-estate")}
+              className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
+                mainTab === "real-estate" 
+                  ? "border-teal-600 text-teal-700" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+              data-testid="tab-real-estate"
+            >
+              <Building2 className="h-4 w-4" />
+              Real Estate
+              {realEstateHoldings.length > 0 && (
+                <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-700">{realEstateHoldings.length}</Badge>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-4 md:p-8">
-          {loading ? (
-            <div className="text-center py-12 text-gray-500">Loading holdings...</div>
-          ) : (
-            <>
-              {/* Header Tabs - Same style as broker Holdings */}
-              <div className="flex items-center gap-6 mb-6 border-b border-gray-200">
-                <button 
-                  onClick={() => setMainTab("bonds")}
-                  className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
-                    mainTab === "bonds" 
-                      ? "border-etihad-gold-600 text-etihad-gold-700" 
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                  data-testid="tab-bonds"
+        <div className="p-6">
+          {/* Bonds Tab */}
+          {mainTab === "bonds" && (
+            !holdings || holdings.holdings?.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-xl border">
+                <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">No bond holdings yet</p>
+                <p className="text-sm text-gray-400 mt-2">Your bond investments will appear here</p>
+                <Button
+                  className="mt-4 bg-teal-600 hover:bg-teal-700"
+                  onClick={() => navigate("/client/opportunities")}
                 >
-                  <Wallet className="h-4 w-4" />
-                  Bonds
-                  {holdings?.holdings?.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-etihad-gold-100 text-etihad-gold-700">{holdings.holdings.length}</Badge>
-                  )}
-                </button>
-                <button 
-                  onClick={() => setMainTab("trades")}
-                  className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
-                    mainTab === "trades" 
-                      ? "border-etihad-gold-600 text-etihad-gold-700" 
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                  data-testid="tab-trades"
-                >
-                  <ClipboardList className="h-4 w-4" />
-                  Trades
-                  {clientTrades.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-blue-100 text-blue-700">{clientTrades.length}</Badge>
-                  )}
-                </button>
-                <button 
-                  onClick={() => setMainTab("real-estate")}
-                  className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
-                    mainTab === "real-estate" 
-                      ? "border-etihad-gold-600 text-etihad-gold-700" 
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                  data-testid="tab-real-estate"
-                >
-                  <Building2 className="h-4 w-4" />
-                  Real Estate
-                  {realEstateHoldings.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-teal-100 text-teal-700">{realEstateHoldings.length}</Badge>
-                  )}
-                </button>
+                  Browse Bond Opportunities
+                </Button>
               </div>
-
-              {/* Bonds Tab */}
-              {mainTab === "bonds" && (
-                !holdings || holdings.holdings?.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No bond holdings yet</p>
-                    <Button
-                      className="mt-4 bg-teal-600 hover:bg-teal-700"
-                      onClick={() => navigate("/client/opportunities")}
-                    >
-                      Browse Bond Opportunities
-                    </Button>
+            ) : (
+              <>
+                {/* Summary Stats Bar */}
+                <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+                  <div className="flex flex-wrap items-center gap-4 text-xs mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-500">Total Investment:</span>
+                      <span className="font-mono font-semibold text-gray-800">{formatINR(holdings.summary?.total_investment)}</span>
+                    </div>
+                    <div className="h-4 w-px bg-gray-200"></div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-500">Total Gross Expected:</span>
+                      <span className="font-mono font-semibold text-emerald-600">{formatINR(holdings.summary?.total_expected || (holdings.summary?.total_investment + holdings.summary?.total_profit))}</span>
+                    </div>
+                    <div className="h-4 w-px bg-gray-200"></div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-500">Total Gross Profit:</span>
+                      <span className={`font-mono font-semibold ${(holdings.summary?.total_profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatINR(holdings.summary?.total_profit)}
+                      </span>
+                    </div>
+                    <div className="h-4 w-px bg-gray-200"></div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-500">Outstanding Principal:</span>
+                      <span className="font-mono font-semibold text-blue-600">{formatINR(
+                        filteredHoldings.reduce((sum, h) => sum + (h.total_principal - h.repaid_principal), 0)
+                      )}</span>
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="bg-white rounded-lg border border-gray-200 p-5">
-                        <p className="text-sm text-gray-500 uppercase tracking-wide">Total Investment</p>
-                        <p className="text-2xl font-bold text-gray-800 mt-1">
-                          {formatINR(holdings.summary?.total_investment)}
-                        </p>
+                  
+                  {/* Repayment Status Progress Bar */}
+                  {filteredHoldings.length > 0 && (
+                    <div className="pt-3 border-t border-gray-100">
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Repayment Status:</span>
+                        
+                        <div className="flex-1 relative h-5 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-500"
+                            style={{ width: `${receivedPercent}%` }}
+                          />
+                          <div 
+                            className="absolute top-0 h-full bg-blue-500 transition-all duration-500"
+                            style={{ left: `${receivedPercent}%`, width: `${100 - receivedPercent}%` }}
+                          />
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-xs whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                            <span className="text-gray-600">Received:</span>
+                            <span className="font-mono font-semibold text-green-700">{formatINR(totalReceived)}</span>
+                            <span className="text-gray-400">({receivedPercent.toFixed(0)}%)</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+                            <span className="text-gray-600">Outstanding:</span>
+                            <span className="font-mono font-semibold text-blue-700">{formatINR(totalOutstanding)}</span>
+                            <span className="text-gray-400">({(100 - receivedPercent).toFixed(0)}%)</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="bg-white rounded-lg border border-gray-200 p-5">
-                        <p className="text-sm text-gray-500 uppercase tracking-wide">Total Repaid (Net)</p>
-                  <p className="text-2xl font-bold text-green-600 mt-1">
-                    {formatINR(holdings.summary?.total_repaid)}
-                  </p>
+                    </div>
+                  )}
                 </div>
-                <div className="bg-white rounded-lg border border-gray-200 p-5">
-                  <p className="text-sm text-gray-500 uppercase tracking-wide">Upcoming (Expected)</p>
-                  <p className="text-2xl font-bold text-blue-600 mt-1">
-                    {formatINR(holdings.summary?.total_upcoming)}
-                  </p>
-                </div>
-              </div>
 
-              {/* Holdings Table */}
+                {/* Holdings Table */}
+                <div className="bg-white rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <ClipboardList className="h-5 w-5 text-teal-600" />
+                        <h3 className="font-semibold text-gray-800">Holding Report</h3>
+                      </div>
+                      
+                      {/* Status Filter */}
+                      <div className="flex items-center gap-4 ml-4 pl-4 border-l border-gray-200">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="holdingStatus" 
+                            checked={statusFilter === 'all'} 
+                            onChange={() => setStatusFilter('all')} 
+                            className="h-3.5 w-3.5 text-teal-600 focus:ring-teal-500" 
+                          />
+                          <span className="text-sm text-gray-600">All</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="holdingStatus" 
+                            checked={statusFilter === 'active'} 
+                            onChange={() => setStatusFilter('active')} 
+                            className="h-3.5 w-3.5 text-teal-600 focus:ring-teal-500" 
+                          />
+                          <span className="text-sm text-gray-600">Active</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="holdingStatus" 
+                            checked={statusFilter === 'fully_repaid'} 
+                            onChange={() => setStatusFilter('fully_repaid')} 
+                            className="h-3.5 w-3.5 text-teal-600 focus:ring-teal-500" 
+                          />
+                          <span className="text-sm text-gray-600">Completed</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Bond</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Units</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Invested</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Principal</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Interest (Gross)</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">TDS</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Net Repaid</th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Upcoming</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Expected XIRR</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Actual XIRR</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredHoldings.map((holding) => (
+                          <>
+                            <tr key={holding.bond_id} className="hover:bg-gray-50">
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  {holding.trades.length > 1 && (
+                                    <button 
+                                      onClick={() => toggleBondExpand(holding.bond_id)}
+                                      className="p-1 hover:bg-gray-100 rounded"
+                                    >
+                                      {expandedBonds[holding.bond_id] ? (
+                                        <ChevronDown className="h-4 w-4 text-gray-400" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                                      )}
+                                    </button>
+                                  )}
+                                  <div>
+                                    <span className="font-medium text-gray-800">{holding.bond_name}</span>
+                                    {holding.trades.length > 1 && (
+                                      <span className="text-xs text-gray-500 ml-2">({holding.trades.length} tranches)</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-center font-mono text-sm">{holding.total_units}</td>
+                              <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(holding.invested_amount)}</td>
+                              <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(holding.total_principal)}</td>
+                              <td className="py-3 px-4 text-right font-mono text-sm">{formatINR(holding.total_interest_gross)}</td>
+                              <td className="py-3 px-4 text-right font-mono text-sm text-red-600">{formatINR(holding.total_tds)}</td>
+                              <td className="py-3 px-4 text-right font-mono text-sm text-green-600">{formatINR(holding.net_repaid)}</td>
+                              <td className="py-3 px-4 text-right font-mono text-sm text-blue-600">{formatINR(holding.upcoming_expected)}</td>
+                              <td className="py-3 px-4 text-center">
+                                <span className={`text-sm font-semibold ${holding.xirr ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                  {holding.xirr ? `${holding.xirr.toFixed(2)}%` : '-'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className={`text-sm font-semibold ${holding.actual_xirr ? 'text-purple-600' : 'text-gray-400'}`}>
+                                  {holding.actual_xirr ? `${holding.actual_xirr.toFixed(2)}%` : '-'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                {holding.status === 'fully_repaid' ? (
+                                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                                    Completed
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                                    Active
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => viewCashflows(holding)}
+                                  className="text-xs"
+                                >
+                                  <Eye className="h-3 w-3 mr-1" /> View
+                                </Button>
+                              </td>
+                            </tr>
+                            
+                            {/* Expanded Tranches */}
+                            {expandedBonds[holding.bond_id] && holding.trades.map((trade, idx) => (
+                              <tr key={`${holding.bond_id}-${idx}`} className="bg-gray-50/50">
+                                <td className="py-2 px-4 pl-12">
+                                  <span className="text-sm text-gray-600">
+                                    Tranche {idx + 1} - {format(new Date(trade.investment_date), 'dd MMM yyyy')}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-4 text-center font-mono text-xs text-gray-600">{trade.units}</td>
+                                <td className="py-2 px-4 text-right font-mono text-xs text-gray-600">{formatINR(trade.invested_amount)}</td>
+                                <td colSpan="5"></td>
+                                <td className="py-2 px-4 text-center">
+                                  <span className="text-xs text-gray-500">{trade.xirr ? `${trade.xirr.toFixed(2)}%` : '-'}</span>
+                                </td>
+                                <td className="py-2 px-4 text-center">
+                                  <span className="text-xs text-gray-500">{trade.actual_xirr ? `${trade.actual_xirr.toFixed(2)}%` : '-'}</span>
+                                </td>
+                                <td colSpan="2"></td>
+                              </tr>
+                            ))}
+                          </>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )
+          )}
+
+          {/* Trades Tab */}
+          {mainTab === "trades" && (
+            clientTrades.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-xl border">
+                <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">No trades found</p>
+                <p className="text-sm text-gray-400 mt-2">Your bond trades will appear here</p>
+              </div>
+            ) : (
               <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Bond Name</th>
-                        <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Units</th>
-                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Invested</th>
-                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Repaid</th>
-                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Upcoming</th>
+                        <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Bond</th>
+                        <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Type</th>
+                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Units</th>
                         <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {holdings.holdings?.map((holding) => (
-                        <tr key={holding.trade_id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tbody className="divide-y divide-gray-100">
+                      {clientTrades.map((trade) => (
+                        <tr key={trade.id} className="hover:bg-gray-50">
                           <td className="py-3 px-4">
-                            <span className="font-medium text-gray-800">{holding.bond_name}</span>
-                            <br />
-                            <span className="text-xs text-gray-500">
-                              Invested: {format(new Date(holding.investment_date), "MMM dd, yyyy")}
+                            <span className="text-sm text-gray-800">
+                              {trade.investment_date ? format(new Date(trade.investment_date), 'dd MMM yyyy') : '-'}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-center font-mono">{holding.units}</td>
-                          <td className="py-3 px-4 text-right font-mono">{formatINR(holding.invested_amount)}</td>
-                          <td className="py-3 px-4 text-right font-mono text-green-600">{formatINR(holding.net_repaid)}</td>
-                          <td className="py-3 px-4 text-right font-mono text-blue-600">{formatINR(holding.upcoming_expected)}</td>
-                          <td className="py-3 px-4 text-center">
-                            {holding.status === 'completed' ? (
-                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                                Completed
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                                Active
-                              </span>
-                            )}
+                          <td className="py-3 px-4">
+                            <span className="font-medium text-gray-800">{trade.bond_name}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge variant="outline" className="text-xs">
+                              {trade.is_reinvestment_log ? 'Reinvestment' : 'Trade'}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono text-sm">
+                            {formatINR(trade.total_amount)}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono text-sm">
+                            {trade.units || '-'}
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => viewCashflows(holding)}
-                            >
-                              View Cashflows
-                            </Button>
+                            {trade.status === 'approved' || trade.status === 'completed' ? (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full flex items-center gap-1 w-fit mx-auto">
+                                <Check className="h-3 w-3" /> Approved
+                              </span>
+                            ) : trade.status === 'pending' ? (
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full flex items-center gap-1 w-fit mx-auto">
+                                <Clock className="h-3 w-3" /> Pending
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                                {trade.status || 'Active'}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -317,313 +622,196 @@ export default function ClientHoldings() {
                   </table>
                 </div>
               </div>
-                  </>
-                )
-              )}
+            )
+          )}
 
-              {/* Trades Tab */}
-              {mainTab === "trades" && (
-                clientTrades.length === 0 ? (
-                  <div className="text-center py-12">
-                    <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No trades found</p>
-                    <p className="text-sm text-gray-400 mt-2">Your bond trades will appear here</p>
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
-                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Bond</th>
-                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Type</th>
-                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
-                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Units</th>
-                            <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {clientTrades.map((trade) => (
-                            <tr key={trade.id} className="hover:bg-gray-50">
-                              <td className="py-3 px-4">
-                                <p className="text-sm text-gray-800">
-                                  {trade.trade_date ? format(new Date(trade.trade_date), "MMM dd, yyyy") : '-'}
-                                </p>
-                              </td>
-                              <td className="py-3 px-4">
-                                <p className="font-medium text-gray-800">{trade.bond_name || '-'}</p>
-                              </td>
-                              <td className="py-3 px-4">
-                                <Badge className={trade.trade_type === 'buy' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
-                                  {trade.trade_type === 'buy' ? 'Buy' : 'Sell'}
-                                </Badge>
-                              </td>
-                              <td className="py-3 px-4 text-right">
-                                <p className="font-mono font-medium text-gray-800">{formatINR(trade.amount)}</p>
-                              </td>
-                              <td className="py-3 px-4 text-right">
-                                <p className="font-medium text-gray-800">{trade.units || 1}</p>
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                <Badge className={
-                                  trade.status === 'verified' ? 'bg-green-100 text-green-700' :
-                                  trade.status === 'pending' ? 'bg-etihad-gold-100 text-etihad-gold-700' :
-                                  'bg-gray-100 text-gray-700'
-                                }>
-                                  {trade.status === 'verified' ? (
-                                    <><Check className="h-3 w-3 mr-1" />Verified</>
-                                  ) : trade.status === 'pending' ? (
-                                    <><Clock className="h-3 w-3 mr-1" />Pending</>
-                                  ) : (
-                                    trade.status || 'N/A'
-                                  )}
-                                </Badge>
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => navigate(`/bonds/${trade.bond_id}`)}
-                                >
-                                  <Eye className="h-3 w-3 mr-1" />
-                                  View
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )
-              )}
-
-              {/* Real Estate Tab */}
-              {mainTab === "real-estate" && (
-                realEstateHoldings.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No real estate holdings yet</p>
-                    <Button
-                      className="mt-4 bg-teal-600 hover:bg-teal-700"
-                      onClick={() => navigate("/client/opportunities")}
-                    >
-                      Browse Real Estate Opportunities
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    {/* Real Estate Summary - Matching Broker View */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="bg-white rounded-xl border border-gray-200 p-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-green-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Total Properties</p>
-                            <p className="text-2xl font-bold text-gray-800">{realEstateHoldings.length}</p>
-                          </div>
+          {/* Real Estate Tab */}
+          {mainTab === "real-estate" && (
+            realEstateHoldings.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-xl border">
+                <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">No real estate investments yet</p>
+                <p className="text-sm text-gray-400 mt-2">Your real estate investments will appear here</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {realEstateHoldings.map((property) => (
+                  <div key={property.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-gray-800">{property.property_name}</h3>
+                          <span className={`px-2 py-0.5 text-xs rounded-full ${
+                            property.status === 'fully_invested' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {property.status === 'fully_invested' ? 'Fully Allocated' : 'Active'}
+                          </span>
                         </div>
-                      </div>
-                      <div className="bg-white rounded-xl border border-gray-200 p-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                            <TrendingUp className="h-5 w-5 text-orange-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Total Investment</p>
-                            <p className="text-2xl font-bold text-gray-800">
-                              {formatAED(realEstateHoldings.reduce((sum, h) => sum + (h.my_investment?.amount || h.investment_amount || 0), 0))}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-xl border border-gray-200 p-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <Percent className="h-5 w-5 text-purple-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Avg Share</p>
-                            <p className="text-2xl font-bold text-gray-800">
-                              {(realEstateHoldings.reduce((sum, h) => sum + (h.my_investment?.share_percentage || h.share_percentage || 0), 0) / realEstateHoldings.length).toFixed(1)}%
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Real Estate Holdings Grid - Matching Broker View */}
-                    <div className="space-y-4">
-                      {realEstateHoldings.map((property) => {
-                        const investment = property.my_investment || {};
-                        const sharePercent = investment.share_percentage || property.share_percentage || 0;
-                        const investmentAmount = investment.amount || property.investment_amount || 0;
-                        const unitPrice = property.total_cost || property.unit_price || 0;
-                        const investedDate = investment.invested_at || property.invested_on;
-                        const paymentSchedule = property.payment_schedule || [];
-                        const completedPayments = paymentSchedule.filter(p => p.is_paid).length;
+                        <p className="text-sm text-gray-500 mb-3">
+                          {property.project_name} • Unit {property.unit_no} • {property.developer_name}
+                        </p>
                         
-                        return (
-                          <div key={property.id || property.opportunity_id} className="bg-white rounded-xl border border-gray-200 p-6 hover:border-purple-300 transition-colors">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                                  <Building2 className="h-6 w-6 text-purple-600" />
-                                </div>
-                                <div>
-                                  <h3 className="font-bold text-gray-800 text-lg">{property.building_name}</h3>
-                                  <p className="text-sm text-gray-500">
-                                    Unit {property.unit_no}{property.floor ? `, ${property.floor}` : ''}
-                                  </p>
-                                </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <p className="text-xs text-gray-500">Share</p>
+                            <p className="font-semibold text-gray-800">{property.share_percentage?.toFixed(1)}%</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Investment</p>
+                            <p className="font-semibold text-gray-800">AED {new Intl.NumberFormat('en-AE').format(property.investment_amount || 0)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Unit Price</p>
+                            <p className="font-semibold text-gray-800">AED {new Intl.NumberFormat('en-AE').format(property.unit_price || 0)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Invested On</p>
+                            <p className="font-semibold text-gray-800">
+                              {property.invested_at ? format(new Date(property.invested_at), 'dd MMM yyyy') : '-'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Payment Progress */}
+                        {property.payment_schedule && property.payment_schedule.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-2">Payment Progress</p>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-teal-500 h-2 rounded-full transition-all" 
+                                  style={{ width: `${property.payments_completed_percent || 0}%` }}
+                                />
                               </div>
-                              <Badge className={`${property.status === 'fully_invested' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
-                                {property.status === 'fully_invested' ? 'Fully Allocated' : property.property_type === 'off_plan' ? 'Off-Plan' : 'Ready'}
-                              </Badge>
-                            </div>
-                            
-                            {/* Property Details Grid - Like Broker View */}
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 py-4 border-t border-gray-100">
-                              <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Share</p>
-                                <p className="font-bold text-purple-600 text-lg">{sharePercent.toFixed(1)}%</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Investment</p>
-                                <p className="font-bold text-gray-800">{formatAED(investmentAmount)}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Unit Price</p>
-                                <p className="font-semibold text-gray-600">{formatAED(unitPrice)}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Invested On</p>
-                                <p className="font-semibold text-gray-600">
-                                  {investedDate ? format(new Date(investedDate), "dd MMM yyyy") : '-'}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Payment Progress</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                    <div 
-                                      className="bg-purple-500 h-2 rounded-full" 
-                                      style={{ width: `${paymentSchedule.length > 0 ? (completedPayments / paymentSchedule.length) * 100 : 0}%` }} 
-                                    />
-                                  </div>
-                                  <span className="text-sm font-medium text-gray-600">{completedPayments}/{paymentSchedule.length} milestones</span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Action Button */}
-                            <div className="flex justify-end pt-4 border-t border-gray-100">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="gap-2"
-                                onClick={() => navigate(`/client/real-estate/${property.id || property.opportunity_id}`)}
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                                View
-                              </Button>
+                              <span className="text-sm font-medium text-gray-600">
+                                {property.payments_completed || 0}/{property.payment_schedule.length} milestones
+                              </span>
                             </div>
                           </div>
-                        );
-                      })}
+                        )}
+                      </div>
                     </div>
-                  </>
-                )
-              )}
-            </>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>
 
       {/* Cashflow Modal */}
       <Dialog open={showCashflowModal} onOpenChange={setShowCashflowModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              Cashflow Schedule - {selectedHolding?.bond_name}
+            <DialogTitle className="flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-teal-600" />
+              {selectedHolding?.bond_name} - Cashflows
             </DialogTitle>
           </DialogHeader>
           
           {selectedHolding && (
-            <div className="mt-4">
-              {/* Summary Info */}
-              <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+            <div className="space-y-4">
+              {/* Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Units</p>
-                  <p className="font-semibold">{selectedHolding.units}</p>
+                  <p className="text-xs text-gray-500">Total Units</p>
+                  <p className="font-semibold">{selectedHolding.total_units}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Invested</p>
+                  <p className="text-xs text-gray-500">Invested</p>
                   <p className="font-semibold">{formatINR(selectedHolding.invested_amount)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Investment Date</p>
-                  <p className="font-semibold">
-                    {format(new Date(selectedHolding.investment_date), "MMM dd, yyyy")}
+                  <p className="text-xs text-gray-500">Expected XIRR</p>
+                  <p className="font-semibold text-emerald-600">
+                    {selectedHolding.xirr ? `${selectedHolding.xirr.toFixed(2)}%` : '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Actual XIRR</p>
+                  <p className="font-semibold text-purple-600">
+                    {selectedHolding.actual_xirr ? `${selectedHolding.actual_xirr.toFixed(2)}%` : '-'}
                   </p>
                 </div>
               </div>
 
-              {/* Cashflows Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="text-left py-2 px-3">Date</th>
-                      <th className="text-right py-2 px-3">Principal</th>
-                      <th className="text-right py-2 px-3">Interest</th>
-                      <th className="text-right py-2 px-3">TDS</th>
-                      <th className="text-right py-2 px-3">Net Amount</th>
-                      <th className="text-center py-2 px-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedHolding.cashflows?.map((cf, idx) => (
-                      <tr key={idx} className="border-b border-gray-100">
-                        <td className="py-2 px-3 font-mono">
-                          {format(new Date(cf.date), "MMM dd, yyyy")}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono">
-                          {formatINR(cf.principal_component)}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono">
-                          {formatINR(cf.interest_component)}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono text-red-600">
-                          -{formatINR(cf.tds_amount)}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono font-medium">
-                          {formatINR(cf.net_amount)}
-                        </td>
-                        <td className="py-2 px-3 text-center">
-                          {cf.is_repaid ? (
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full flex items-center justify-center gap-1">
-                              <Check className="h-3 w-3" /> Repaid
-                            </span>
-                          ) : new Date(cf.date) < new Date() ? (
-                            <span className="px-2 py-0.5 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded-full flex items-center justify-center gap-1">
-                              <Clock className="h-3 w-3" /> Due
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
-                              Upcoming
-                            </span>
-                          )}
-                        </td>
-                      </tr>
+              {/* Tabs for each tranche */}
+              {selectedHolding.trades && selectedHolding.trades.length > 0 && (
+                <div>
+                  <div className="flex gap-2 border-b mb-4">
+                    <button
+                      onClick={() => setActiveTab("summary")}
+                      className={`px-3 py-2 text-sm font-medium border-b-2 ${
+                        activeTab === "summary" 
+                          ? "border-teal-600 text-teal-700" 
+                          : "border-transparent text-gray-500"
+                      }`}
+                    >
+                      Summary
+                    </button>
+                    {selectedHolding.trades.map((trade, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveTab(idx)}
+                        className={`px-3 py-2 text-sm font-medium border-b-2 ${
+                          activeTab === idx 
+                            ? "border-teal-600 text-teal-700" 
+                            : "border-transparent text-gray-500"
+                        }`}
+                      >
+                        {format(new Date(trade.investment_date), 'dd MMM yy')}
+                      </button>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+
+                  {activeTab === "summary" ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>Select a tranche to view detailed cashflows</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left py-2 px-3">Date</th>
+                            <th className="text-left py-2 px-3">Type</th>
+                            <th className="text-right py-2 px-3">Principal</th>
+                            <th className="text-right py-2 px-3">Interest</th>
+                            <th className="text-right py-2 px-3">TDS</th>
+                            <th className="text-right py-2 px-3">Net Amount</th>
+                            <th className="text-center py-2 px-3">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {selectedHolding.trades[activeTab]?.cashflows?.map((cf, idx) => (
+                            <tr key={idx} className={cf.is_repaid ? 'bg-green-50/50' : ''}>
+                              <td className="py-2 px-3">{format(new Date(cf.date), 'dd MMM yyyy')}</td>
+                              <td className="py-2 px-3 capitalize">{cf.type?.replace('_', ' ') || 'Payment'}</td>
+                              <td className="py-2 px-3 text-right font-mono">{formatAbsoluteINR(cf.principal_component)}</td>
+                              <td className="py-2 px-3 text-right font-mono">{formatAbsoluteINR(cf.interest_component)}</td>
+                              <td className="py-2 px-3 text-right font-mono text-red-600">{formatAbsoluteINR(cf.tds_amount)}</td>
+                              <td className="py-2 px-3 text-right font-mono font-semibold">{formatAbsoluteINR(cf.net_amount)}</td>
+                              <td className="py-2 px-3 text-center">
+                                {cf.is_repaid ? (
+                                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                                    Received
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                                    Pending
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
