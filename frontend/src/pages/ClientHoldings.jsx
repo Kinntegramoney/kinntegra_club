@@ -540,31 +540,6 @@ export default function ClientHoldings() {
                     )}
                   </div>
                 </div>
-                            {expandedBonds[holding.bond_id] && holding.trades.map((trade, idx) => (
-                              <tr key={`${holding.bond_id}-${idx}`} className="bg-gray-50/50">
-                                <td className="py-2 px-4 pl-12">
-                                  <span className="text-sm text-gray-600">
-                                    Tranche {idx + 1} - {format(new Date(trade.investment_date), 'dd MMM yyyy')}
-                                  </span>
-                                </td>
-                                <td className="py-2 px-4 text-center font-mono text-xs text-gray-600">{trade.units}</td>
-                                <td className="py-2 px-4 text-right font-mono text-xs text-gray-600">{formatINR(trade.invested_amount)}</td>
-                                <td colSpan="5"></td>
-                                <td className="py-2 px-4 text-center">
-                                  <span className="text-xs text-gray-500">{trade.xirr ? `${trade.xirr.toFixed(2)}%` : '-'}</span>
-                                </td>
-                                <td className="py-2 px-4 text-center">
-                                  <span className="text-xs text-gray-500">{trade.actual_xirr ? `${trade.actual_xirr.toFixed(2)}%` : '-'}</span>
-                                </td>
-                                <td colSpan="2"></td>
-                              </tr>
-                            ))}
-                          </>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               </>
             )
           )}
