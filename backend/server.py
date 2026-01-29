@@ -12802,28 +12802,37 @@ async def approve_reinvestment_via_link(token: str, action: str = "approve"):
             }
         )
         
-        # If approved, trigger Kinntegraa API (placeholder)
+        # If approved, trigger Kinntegraa API
+        kinntegra_results = []
         if approved:
             # Get approved cashflows for API submission
             cashflows = await db.holding_cashflows.find(
-                {"id": {"$in": cashflow_ids}}
+                {"id": {"$in": cashflow_ids}},
+                {"_id": 0}
             ).to_list(1000)
             
-            # TODO: Implement Kinntegraa API integration
-            # For now, store the submission request
-            submission = {
-                "id": str(uuid.uuid4()),
-                "client_id": client_id,
-                "cashflow_ids": cashflow_ids,
-                "status": "pending_submission",
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            await db.kinntegraa_submissions.insert_one(submission)
+            # Call Kinntegra API for each approved cashflow
+            for cashflow in cashflows:
+                try:
+                    result = await call_kinntegra_mf_buy_scheduler(cashflow, client)
+                    kinntegra_results.append({
+                        "cashflow_id": cashflow.get('id'),
+                        "status": result.get('status', 'error'),
+                        "message": result.get('message', '')
+                    })
+                except Exception as e:
+                    logger.error(f"Error calling Kinntegra API for cashflow {cashflow.get('id')}: {e}")
+                    kinntegra_results.append({
+                        "cashflow_id": cashflow.get('id'),
+                        "status": "error",
+                        "message": str(e)
+                    })
         
         return {
             "message": f"Reinvestment {'approved' if approved else 'rejected'} successfully",
             "action": action,
-            "cashflows_count": len(cashflow_ids)
+            "cashflows_count": len(cashflow_ids),
+            "kinntegra_results": kinntegra_results if approved else None
         }
     except Exception as e:
         logger.error(f"Error in approval link: {e}")
