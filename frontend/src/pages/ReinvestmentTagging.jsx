@@ -1006,12 +1006,12 @@ export default function ReinvestmentTagging() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${
+                !monthConfig?.canTag ? 'bg-orange-100' :
                 monthConfig?.isHistorical ? 'bg-gray-100' :
-                monthConfig?.isCurrent ? 'bg-blue-100' :
-                monthConfig?.isLocked ? 'bg-red-100' : 'bg-green-100'
+                monthConfig?.isCurrent ? 'bg-blue-100' : 'bg-green-100'
               }`}>
-                {monthConfig?.isLocked ? (
-                  <Lock className={`h-5 w-5 text-red-600`} />
+                {!monthConfig?.canTag ? (
+                  <Eye className="h-5 w-5 text-orange-600" />
                 ) : monthConfig?.isHistorical ? (
                   <History className="h-5 w-5 text-gray-600" />
                 ) : monthConfig?.isCurrent ? (
@@ -1021,9 +1021,15 @@ export default function ReinvestmentTagging() {
                 )}
               </div>
               <div>
-                <h2 className="font-semibold text-gray-800">{monthConfig?.label || selectedMonth}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold text-gray-800">{monthConfig?.label || selectedMonth}</h2>
+                  {!monthConfig?.canTag && (
+                    <Badge className="bg-orange-100 text-orange-700 text-xs">View Only</Badge>
+                  )}
+                </div>
                 <p className="text-sm text-gray-500">
                   {monthData.untagged.length} untagged, {monthData.tagged.length} tagged
+                  {!monthConfig?.canTag && ' • Tagging opens 5 days before this quarter'}
                 </p>
               </div>
             </div>
