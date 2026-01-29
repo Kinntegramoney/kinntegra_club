@@ -410,16 +410,18 @@ export default function ReinvestmentTagging() {
     setMultiRetagData(prev => {
       const entry = prev[entryId];
       const newAllocations = [...entry.allocations];
-      let newAmount = value;
+      let newAmount = newAllocations[allocIndex].amount;
       let newPortfolio = newAllocations[allocIndex].portfolio;
+      let newUcc = newAllocations[allocIndex].ucc;
       
       if (field === 'amount') {
         // Parse and floor to avoid decimal amounts
         newAmount = value === '' ? '' : Math.floor(parseFloat(value) || 0);
         
-        // If amount < 1000, auto-set portfolio to "none"
+        // If amount < 1000, auto-set portfolio to "none" and clear UCC (not needed)
         if (newAmount !== '' && newAmount < 1000) {
           newPortfolio = 'none';
+          newUcc = ''; // Clear UCC for small amounts - not needed for reinvestment
         }
         // If current portfolio is bonds/real_estate but amount is now below threshold, reset to empty
         else if (newAmount !== '') {
