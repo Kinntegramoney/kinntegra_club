@@ -74,6 +74,25 @@
   - Added NotificationBell component in sidebar header
   - Visible for broker users only
 
+### Client Holdings Page Alignment (Jan 29, 2026) ✅
+
+**Feature:** Aligned client holdings table with broker/sub-broker holdings report.
+
+**Changes:**
+- `/app/frontend/src/pages/ClientHoldings.jsx`:
+  - Removed 12-column table layout
+  - Updated to match broker's 7-column format:
+    - SCHEME (bond name + units)
+    - INVESTMENT
+    - GROSS EXPECTED
+    - PROFIT
+    - EXPECTED XIRR
+    - ACTUAL XIRR
+    - ACTION
+  - Removed Quick Tools section (not applicable to clients)
+  - Auto-sync happens on page load (no manual sync needed)
+  - Shows difference values in parentheses when actual differs from expected
+
 ### Read-Only Future Months Feature (Jan 29, 2026) ✅
 
 **Feature:** Future months >3 months away are view-only (can see entries but cannot tag).
