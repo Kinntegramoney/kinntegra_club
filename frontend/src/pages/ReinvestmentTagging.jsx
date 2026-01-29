@@ -1064,7 +1064,7 @@ export default function ReinvestmentTagging() {
     return Array.from(uccs);
   };
 
-  // Render Month View - Now uses client-wise grouping with split tagging support
+  // Render the month view with separate sections for untagged and tagged
   const renderMonthView = () => {
     if (!selectedMonth) {
       return (
@@ -1088,15 +1088,14 @@ export default function ReinvestmentTagging() {
       );
     }
     
-    // Group entries by client for this month
-    const entriesByClient = {};
-    allEntries.forEach(entry => {
-      if (!entriesByClient[entry.client_id]) {
-        // Get client's UCC list from the original data
+    // Group UNTAGGED entries by client for this month
+    const untaggedByClient = {};
+    monthData.untagged.forEach(entry => {
+      if (!untaggedByClient[entry.client_id]) {
         const clientData = [...untaggedPast, ...untaggedUpcoming, ...taggedPast, ...taggedUpcoming]
           .find(g => g.client_id === entry.client_id);
         
-        entriesByClient[entry.client_id] = {
+        untaggedByClient[entry.client_id] = {
           client_id: entry.client_id,
           client_name: entry.client_name,
           client_pan: entry.client_pan || clientData?.client_pan || '',
@@ -1105,15 +1104,35 @@ export default function ReinvestmentTagging() {
           entries: []
         };
       }
-      entriesByClient[entry.client_id].entries.push(entry);
+      untaggedByClient[entry.client_id].entries.push(entry);
     });
     
-    const clientGroups = Object.values(entriesByClient);
+    // Group TAGGED entries by client for this month  
+    const taggedByClient = {};
+    monthData.tagged.forEach(entry => {
+      if (!taggedByClient[entry.client_id]) {
+        const clientData = [...untaggedPast, ...untaggedUpcoming, ...taggedPast, ...taggedUpcoming]
+          .find(g => g.client_id === entry.client_id);
+        
+        taggedByClient[entry.client_id] = {
+          client_id: entry.client_id,
+          client_name: entry.client_name,
+          client_pan: entry.client_pan || clientData?.client_pan || '',
+          client_email: entry.client_email || clientData?.client_email || '',
+          ucc_list: entry.ucc_list || clientData?.ucc_list || [],
+          entries: []
+        };
+      }
+      taggedByClient[entry.client_id].entries.push(entry);
+    });
+    
+    const untaggedClientGroups = Object.values(untaggedByClient);
+    const taggedClientGroups = Object.values(taggedByClient);
     const canTag = monthConfig?.canTag !== false;
     
     // Check if any entries are selected for this month
     const selectedCount = Object.keys(selectedEntries).filter(id => 
-      selectedEntries[id] && allEntries.some(e => e.id === id)
+      selectedEntries[id] && monthData.untagged.some(e => e.id === id)
     ).length;
     
     return (
@@ -1159,7 +1178,7 @@ export default function ReinvestmentTagging() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-500">Clients</p>
-                <p className="font-semibold text-gray-800">{clientGroups.length}</p>
+                <p className="font-semibold text-gray-800">{untaggedClientGroups.length + taggedClientGroups.length}</p>
               </div>
             </div>
           </div>
@@ -1208,12 +1227,37 @@ export default function ReinvestmentTagging() {
           </div>
         )}
         
-        {/* Client Groups */}
-        <div className="space-y-3">
-          {clientGroups.map(clientGroup => 
-            renderMonthClientGroup(clientGroup, monthConfig)
-          )}
-        </div>
+        {/* UNTAGGED Section */}
+        {untaggedClientGroups.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-px bg-amber-200 flex-1"></div>
+              <Badge className="bg-amber-100 text-amber-700 px-3">
+                Untagged Entries ({monthData.untagged.length})
+              </Badge>
+              <div className="h-px bg-amber-200 flex-1"></div>
+            </div>
+            {untaggedClientGroups.map(clientGroup => 
+              renderMonthClientGroup(clientGroup, monthConfig)
+            )}
+          </div>
+        )}
+        
+        {/* TAGGED Section */}
+        {taggedClientGroups.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-px bg-green-200 flex-1"></div>
+              <Badge className="bg-green-100 text-green-700 px-3">
+                Tagged Entries ({monthData.tagged.length})
+              </Badge>
+              <div className="h-px bg-green-200 flex-1"></div>
+            </div>
+            {taggedClientGroups.map(clientGroup => 
+              renderTaggedClientGroup(clientGroup, monthConfig)
+            )}
+          </div>
+        )}
       </div>
     );
   };
