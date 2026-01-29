@@ -254,6 +254,105 @@ export default function TradeLogs() {
     }
   };
 
+  // Fetch investment logs (client-approved reinvestments)
+  const fetchInvestmentLogs = async () => {
+    setInvestmentLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/reinvestment/approved-logs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setInvestmentLogs(res.data || []);
+    } catch (error) {
+      console.error("Error fetching investment logs:", error);
+      toast.error("Failed to load investment logs");
+    } finally {
+      setInvestmentLoading(false);
+    }
+  };
+
+  // Fetch investment logs when switching to investment tab
+  useEffect(() => {
+    if (activeTab === "investment" && user) {
+      fetchInvestmentLogs();
+    }
+  }, [activeTab, user]);
+
+  // Handle cancel investment (requires client approval)
+  const handleCancelInvestment = async () => {
+    if (!selectedInvestment) return;
+    setProcessingAction(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `${API}/reinvestment/cancel/${selectedInvestment.id}`,
+        { reason: cancelReason },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      toast.success("Cancellation request sent to client for approval");
+      setShowCancelModal(false);
+      setCancelReason("");
+      setSelectedInvestment(null);
+      fetchInvestmentLogs();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to request cancellation");
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  // Handle modify investment (requires client re-approval)
+  const handleModifyInvestment = async () => {
+    if (!selectedInvestment) return;
+    setProcessingAction(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `${API}/reinvestment/edit/${selectedInvestment.id}`,
+        modifyFormData,
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      toast.success("Modification request sent to client for re-approval");
+      setShowModifyModal(false);
+      setModifyFormData({});
+      setSelectedInvestment(null);
+      fetchInvestmentLogs();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to request modification");
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  // Open cancel modal
+  const openCancelModal = (investment) => {
+    setSelectedInvestment(investment);
+    setCancelReason("");
+    setShowCancelModal(true);
+  };
+
+  // Open modify modal
+  const openModifyModal = (investment) => {
+    setSelectedInvestment(investment);
+    setModifyFormData({
+      reinvestment_tag: investment.reinvestment_tag || 'both',
+      portfolio_category: investment.portfolio_category || 'wealth',
+      target_ucc: investment.target_ucc || '',
+      reason: ''
+    });
+    setShowModifyModal(true);
+  };
+
+  const filteredInvestmentLogs = investmentLogs.filter(log => {
+    if (investmentSearchQuery) {
+      const query = investmentSearchQuery.toLowerCase();
+      return log.client_name?.toLowerCase().includes(query) || 
+             log.bond_name?.toLowerCase().includes(query) ||
+             log.target_ucc?.toLowerCase().includes(query);
+    }
+    return true;
+  });
+
   const filteredLogs = logs.filter(log => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
