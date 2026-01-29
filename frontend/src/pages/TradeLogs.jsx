@@ -6,12 +6,16 @@ import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import ClientSidebar from "@/components/ClientSidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { 
   Search, Download, Calendar, Filter, RefreshCw,
   CheckCircle, XCircle, Clock, Users, Activity,
-  ChevronDown, Eye, MoreVertical, ChevronLeft, ChevronRight
+  ChevronDown, Eye, MoreVertical, ChevronLeft, ChevronRight,
+  TrendingUp, Pencil, Ban, FileText
 } from "lucide-react";
 import {
   Select,
@@ -26,9 +30,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Round down to nearest 100
+const roundToHundred = (amount) => {
+  if (!amount || amount <= 0) return 0;
+  return Math.floor(amount / 100) * 100;
+};
 
 const STATUS_CONFIG = {
   pending: { label: "Pending", color: "bg-etihad-gold-100 text-etihad-gold-800" },
