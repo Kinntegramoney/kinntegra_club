@@ -171,10 +171,6 @@ function App() {
             path="/broker/approval-logs" 
             element={<Navigate to="/broker/leads" replace />}
           />
-          <Route 
-            path="/broker/approvals" 
-            element={<Navigate to="/broker/leads" replace />}
-          />
           
           {/* Sub-Broker Routes */}
           <Route 
