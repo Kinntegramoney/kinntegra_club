@@ -2,6 +2,25 @@
 
 ## Recent Changes (Jan 29, 2026)
 
+### SubBrokerReinvestment Component Sync (Jan 29, 2026) ✅
+
+**Issue:** `SubBrokerReinvestment.jsx` was severely outdated and missing all recent month-wise UI changes.
+
+**Fix Applied:**
+- `/app/frontend/src/pages/SubBrokerReinvestment.jsx`: Replaced entire file with re-export of `ReinvestmentTagging.jsx`
+  - `ReinvestmentTagging.jsx` already handles both broker and sub_broker roles via `getSidebar()` function
+  - Eliminates code duplication and ensures feature parity
+
+### Read-Only Future Months Feature (Jan 29, 2026) ✅
+
+**Feature:** Future months >3 months away are view-only (can see entries but cannot tag).
+
+**Implementation Verified:**
+- Eye icon (👁) displays on month tabs for May, Jun, Jul 2026 (>3 months from current Jan 2026)
+- Tagging controls (Select dropdowns, Save button) are disabled for view-only months
+- Badge shown instead of Select dropdown for tag status
+- "View Only" badge and explanation text shown when viewing a locked month
+
 ### Month-Wise Reinvestment Tagging (Jan 29, 2026) ✅
 
 **Feature:** Redesigned reinvestment tagging with month-wise view and 3-month rolling window.
@@ -11,16 +30,14 @@
   - Added month tabs showing past 6 months + current + next 6 months
   - Historical entries always accessible
   - Current month + next 3 months are active (Jan 2026 → Apr 2026)
-  - Months 4-6 in future are LOCKED with lock icons
+  - Months 4-6 in future are VIEW-ONLY with Eye icons (can see but not tag)
   - Next quarter unlocks 5 days before it starts
-  - Toggle between "Month View" and "Client View"
   - Month view shows table with: Investor, Opportunity, Amount, Expected Date, Principal, Interest, Net Amount, Tag dropdown, Save button
 
 **Logic:**
 - If current month is January 2026:
-  - Jan, Feb, Mar 2026 → Active (within 3-month window)
-  - Apr 2026 → Locked until ~Mar 27, 2026 (5 days before April)
-  - May, Jun, Jul 2026 → Locked
+  - Jan, Feb, Mar, Apr 2026 → Active (within rolling 3-month + 1 window)
+  - May, Jun, Jul 2026 → View-only (Eye icon, disabled controls)
 
 ---
 
