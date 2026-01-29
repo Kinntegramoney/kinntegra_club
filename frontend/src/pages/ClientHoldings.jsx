@@ -266,60 +266,11 @@ export default function ClientHoldings() {
               </div>
             </div>
           </div>
-
-          {/* Main Tabs */}
-          <div className="flex gap-6 mt-4 border-b border-gray-200">
-            <button 
-              onClick={() => setMainTab("bonds")}
-              className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
-                mainTab === "bonds" 
-                  ? "border-teal-600 text-teal-700" 
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-              data-testid="tab-bonds"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Bonds
-              {holdings?.holdings?.length > 0 && (
-                <Badge variant="secondary" className="ml-1 bg-teal-100 text-teal-700">{consolidatedHoldings.length}</Badge>
-              )}
-            </button>
-            <button 
-              onClick={() => setMainTab("trades")}
-              className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
-                mainTab === "trades" 
-                  ? "border-teal-600 text-teal-700" 
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-              data-testid="tab-trades"
-            >
-              <ClipboardList className="h-4 w-4" />
-              Trades
-              {clientTrades.length > 0 && (
-                <Badge variant="secondary" className="ml-1 bg-blue-100 text-blue-700">{clientTrades.length}</Badge>
-              )}
-            </button>
-            <button 
-              onClick={() => setMainTab("real-estate")}
-              className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
-                mainTab === "real-estate" 
-                  ? "border-teal-600 text-teal-700" 
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-              data-testid="tab-real-estate"
-            >
-              <Building2 className="h-4 w-4" />
-              Real Estate
-              {realEstateHoldings.length > 0 && (
-                <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-700">{realEstateHoldings.length}</Badge>
-              )}
-            </button>
-          </div>
         </div>
 
         <div className="p-6">
-          {/* Bonds Tab */}
-          {mainTab === "bonds" && (
+          {/* Summary Stats */}
+          {holdings && (
             !holdings || holdings.holdings?.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-xl border">
                 <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
