@@ -2,6 +2,29 @@
 
 ## Recent Changes (Jan 29, 2026)
 
+### Auto Round-off on Portfolio Selection & UCC Handling Improvements (Jan 29, 2026) ✅
+
+**Issues Fixed:**
+1. **Auto round-off when portfolio is chosen**: Amount now automatically rounds to nearest 100 when user selects a portfolio
+2. **Amounts < ₹1000 skip UCC**: 
+   - Automatically tagged to "None" portfolio
+   - UCC field shows "N/A (amount < ₹1000)" instead of requiring selection
+   - Validation no longer requires UCC for amounts < ₹1000 with "None" portfolio
+3. **Multiple UCC display**: 
+   - Client Reinvestment Approvals now shows UCC for each allocation in the Portfolio Allocations section
+   - Approval email now includes UCC details for each allocation
+   - Backend API returns UCC in allocation data
+
+**Files Modified:**
+- `/app/frontend/src/pages/ReinvestmentTagging.jsx`: Auto round-off on portfolio selection, UCC N/A for small amounts, updated validation
+- `/app/frontend/src/pages/SubBrokerReinvestment.jsx`: Same changes as above
+- `/app/frontend/src/pages/ClientReinvestmentApprovals.jsx`: Shows UCC per allocation
+- `/app/backend/server.py`: 
+  - Returns UCC in allocation data (`/api/client/reinvestment-approvals`)
+  - Email includes UCC allocation details
+
+---
+
 ### Client Reinvestment Approval UI Enhancement (Jan 29, 2026) ✅
 
 **Feature:** Enhanced the Client Reinvestment Approvals page with richer data display and improved UX.
