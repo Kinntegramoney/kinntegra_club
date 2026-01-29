@@ -20,32 +20,36 @@
 
 - `POST /api/client/approve-reinvestment/{log_id}`: Enhanced to handle:
   - `pending`: Standard new reinvestment approval (calls Kinntegra API)
+  - `pending_reapproval`: Re-approval for modified entries
   - `cancellation_pending`: Client approves/rejects cancellation request
   - `edit_pending`: Client approves/rejects edit request (restores original values on rejection)
 
+- `GET /api/client/pending-approvals`: Now includes `pending_reapproval` status
+
 **Frontend Changes:**
 - `ReinvestmentTagging.jsx`:
-  - Added DropdownMenu (⋮) on tagged items with `client_approved=true` or `approval_status in ['approved', 'submitted']`
-  - "Edit Tag" option opens modal to modify tag, portfolio, and add reason
-  - "Cancel" option opens modal to cancel with optional reason
-  - Both modals show current values and explain approval requirements
+  - **Separated untagged/tagged sections**: Month view now shows separate sections for untagged (amber) and tagged (green) entries
+  - **New Tagged Entries Table**: Shows Bond Name, Date, UCC, Portfolio, Tag, Amount, Status, and Actions columns
+  - **Multi-allocation display**: Multiple UCC/portfolio allocations for same bond shown one below another with boxed total
+  - **Client totals**: Green footer shows total tagged amount per client
+  - Added DropdownMenu (⋮) with "Edit Tag" and "Cancel/Untag" options
+  - Status badges: Pending, Re-approval, Approved, Cancelled, Cancel Pending, Edit Pending
 
 - `ClientApprovals.jsx`:
   - Added tabs: "New Approvals", "Cancellations", "Edits"
-  - Each tab filters by approval_status (pending, cancellation_pending, edit_pending)
-  - Cancellation items show reason and "Approve Cancel" / "Keep Active" buttons
-  - Edit items show before/after comparison and "Approve Edit" / "Reject Edit" buttons
+  - New Approvals now includes both `pending` and `pending_reapproval` statuses
+  - Each tab filters by approval_status
   - Badge counts on each tab
 
 **Statuses:**
 - `pending`: Awaiting client approval
+- `pending_reapproval`: Modified after client approval, awaiting re-approval
 - `approved`: Client approved (legacy)
 - `submitted`: Client approved and API called
 - `rejected`: Client rejected
 - `cancelled`: Cancelled by broker (direct or after client approval)
 - `cancellation_pending`: Broker requested cancel, awaiting client approval
 - `edit_pending`: Broker edited, awaiting client re-approval
-- `pending_reapproval`: Modified after client approval
 
 ---
 
