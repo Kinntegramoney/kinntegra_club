@@ -2,6 +2,28 @@
 
 ## Recent Changes (Jan 29, 2026)
 
+### Month-Wise Reinvestment Tagging (Jan 29, 2026) ✅
+
+**Feature:** Redesigned reinvestment tagging with month-wise view and 3-month rolling window.
+
+**Changes Applied:**
+- `/app/frontend/src/pages/ReinvestmentTagging.jsx`:
+  - Added month tabs showing past 6 months + current + next 6 months
+  - Historical entries always accessible
+  - Current month + next 3 months are active (Jan 2026 → Apr 2026)
+  - Months 4-6 in future are LOCKED with lock icons
+  - Next quarter unlocks 5 days before it starts
+  - Toggle between "Month View" and "Client View"
+  - Month view shows table with: Investor, Opportunity, Amount, Expected Date, Principal, Interest, Net Amount, Tag dropdown, Save button
+
+**Logic:**
+- If current month is January 2026:
+  - Jan, Feb, Mar 2026 → Active (within 3-month window)
+  - Apr 2026 → Locked until ~Mar 27, 2026 (5 days before April)
+  - May, Jun, Jul 2026 → Locked
+
+---
+
 ### Client Holdings Page Overhaul (Jan 29, 2026) ✅
 
 **Feature:** Redesigned the client holdings page to match the broker/sub-broker view but showing only the client's own data.
