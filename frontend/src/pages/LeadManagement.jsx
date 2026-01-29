@@ -462,7 +462,7 @@ export default function LeadManagement() {
                       ))}
                     </div>
                   )
-                ) : (
+                ) : pendingSubTab === "reinvestments" ? (
                   pendingReinvestments.length === 0 ? (
                     <div className="text-center py-12">
                       <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-3" />
@@ -514,7 +514,69 @@ export default function LeadManagement() {
                       ))}
                     </div>
                   )
-                )}
+                ) : pendingSubTab === "unit_allotment" ? (
+                  /* Unit Allotment Tab - Blocked Units from Sub-Brokers */
+                  pendingTrades.length === 0 ? (
+                    <div className="text-center py-12">
+                      <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-3" />
+                      <h3 className="text-lg font-medium text-gray-600 mb-1">All Caught Up!</h3>
+                      <p className="text-gray-400 text-sm">No pending unit allotments</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {pendingTrades.map((trade) => (
+                        <div key={trade.id} className="border border-gray-200 rounded-lg overflow-hidden" data-testid={`pending-trade-${trade.id}`}>
+                          <div 
+                            className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                            onClick={() => toggleExpand(`trade-${trade.id}`)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
+                                <TrendingUp className="h-4 w-4 text-green-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-800 text-sm">{trade.client_name || "Unknown Client"}</p>
+                                <p className="text-xs text-gray-500">{trade.bond_name} • {trade.units} units</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="text-right">
+                                <p className="font-mono text-sm font-semibold text-gray-800">₹{(trade.total_amount || 0).toLocaleString('en-IN')}</p>
+                                <p className="text-xs text-gray-500">By: {trade.sub_broker_name || "Self"}</p>
+                              </div>
+                              <span className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">Pending</span>
+                              {expandedItems[`trade-${trade.id}`] ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                            </div>
+                          </div>
+                          
+                          {expandedItems[`trade-${trade.id}`] && (
+                            <div className="p-3 border-t bg-white">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
+                                <div><p className="text-xs text-gray-500">Client PAN</p><p className="font-medium font-mono">{trade.client_pan || "-"}</p></div>
+                                <div><p className="text-xs text-gray-500">Units</p><p className="font-medium">{trade.units}</p></div>
+                                <div><p className="text-xs text-gray-500">Investment Date</p><p className="font-medium">{formatDate(trade.investment_date)}</p></div>
+                                <div><p className="text-xs text-gray-500">Created On</p><p className="font-medium">{formatDate(trade.created_at)}</p></div>
+                              </div>
+                              {trade.sub_broker_name && (
+                                <div className="mb-3 px-3 py-2 bg-blue-50 rounded-lg">
+                                  <p className="text-xs text-blue-600">Submitted by: <span className="font-medium">{trade.sub_broker_name}</span> {trade.sub_broker_code && `(${trade.sub_broker_code})`}</p>
+                                </div>
+                              )}
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => openApprovalModal(trade, 'trade', 'reject')}>
+                                  <XCircle className="h-4 w-4 mr-1" /> Reject
+                                </Button>
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => openApprovalModal(trade, 'trade', 'approve')}>
+                                  <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : null}
               </div>
             </div>
           )}
