@@ -61,6 +61,7 @@ export default function LeadManagement() {
   // Pending approvals data
   const [pendingClients, setPendingClients] = useState([]);
   const [pendingReinvestments, setPendingReinvestments] = useState([]);
+  const [pendingTrades, setPendingTrades] = useState([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   
   // Sub-broker's own submissions
