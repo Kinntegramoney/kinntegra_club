@@ -26,13 +26,10 @@ export default function ClientHoldings() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [holdings, setHoldings] = useState(null);
-  const [realEstateHoldings, setRealEstateHoldings] = useState([]);
-  const [clientTrades, setClientTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedHolding, setSelectedHolding] = useState(null);
   const [showCashflowModal, setShowCashflowModal] = useState(false);
   const [activeTab, setActiveTab] = useState("summary");
-  const [mainTab, setMainTab] = useState("bonds");
   const [statusFilter, setStatusFilter] = useState("all");
   const [expandedBonds, setExpandedBonds] = useState({});
 
