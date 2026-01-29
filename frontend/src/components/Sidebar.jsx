@@ -45,6 +45,7 @@ export default function Sidebar({ user }) {
     { path: "/broker/admin/sub-brokers", label: "Sub Broker", icon: Users },
     { path: "/broker/admin/clients", label: "Client", icon: UserCheck },
     { path: "/broker/bulk-upload", label: "Upload", icon: Upload },
+    { path: "/broker/profile", label: "Profile", icon: User },
     { path: "/broker/settings", label: "Settings", icon: Settings },
   ];
 
