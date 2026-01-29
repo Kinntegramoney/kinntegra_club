@@ -1298,40 +1298,109 @@ export default function ReinvestmentTagging() {
                   <Tag className="h-5 w-5 text-etihad-gold-600" />
                   Reinvestment Tagging
                 </h1>
-                <p className="text-sm text-gray-500">Tag client cashflows for reinvestment</p>
+                <p className="text-sm text-gray-500">Tag client cashflows for reinvestment (next 3 months active)</p>
               </div>
-              <Button variant="outline" size="sm" onClick={fetchData}>
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Refresh
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant={viewMode === "month" ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setViewMode("month")}
+                  className={viewMode === "month" ? "bg-etihad-gold-600 hover:bg-etihad-gold-700" : ""}
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Month View
+                </Button>
+                <Button 
+                  variant={viewMode === "client" ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setViewMode("client")}
+                  className={viewMode === "client" ? "bg-etihad-gold-600 hover:bg-etihad-gold-700" : ""}
+                >
+                  <Tag className="h-4 w-4 mr-1" />
+                  Client View
+                </Button>
+                <Button variant="outline" size="sm" onClick={fetchData}>
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </div>
           
-          {/* Main Tabs */}
-          <div className="px-6 border-t">
-            <div className="flex">
-              <button
-                onClick={() => setActiveTab("untagged")}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "untagged"
-                    ? "border-etihad-gold-600 text-etihad-gold-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Untagged ({untaggedPast.length + untaggedUpcoming.length} clients)
-              </button>
-              <button
-                onClick={() => setActiveTab("tagged")}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "tagged"
-                    ? "border-etihad-gold-600 text-etihad-gold-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Tagged ({taggedPast.length + taggedUpcoming.length} clients)
-              </button>
+          {/* Month Tabs - Only show in month view */}
+          {viewMode === "month" && (
+            <div className="px-6 border-t overflow-x-auto">
+              <div className="flex min-w-max">
+                {getMonthsConfig.map(month => {
+                  const counts = getMonthCounts[month.key] || { total: 0, untagged: 0 };
+                  const isSelected = selectedMonth === month.key;
+                  
+                  return (
+                    <button
+                      key={month.key}
+                      onClick={() => !month.isLocked && setSelectedMonth(month.key)}
+                      disabled={month.isLocked}
+                      className={`px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                        isSelected
+                          ? "border-etihad-gold-600 text-etihad-gold-600 bg-etihad-gold-50"
+                          : month.isLocked
+                          ? "border-transparent text-gray-300 cursor-not-allowed"
+                          : month.isCurrent
+                          ? "border-transparent text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          : month.isHistorical
+                          ? "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                          : "border-transparent text-green-600 hover:text-green-700 hover:bg-green-50"
+                      }`}
+                      data-testid={`month-tab-${month.key}`}
+                    >
+                      {month.isLocked && <Lock className="h-3 w-3" />}
+                      <span>{month.shortLabel}</span>
+                      {counts.untagged > 0 && !month.isLocked && (
+                        <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${
+                          isSelected ? 'bg-etihad-gold-200 text-etihad-gold-800' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {counts.untagged}
+                        </Badge>
+                      )}
+                      {counts.tagged > 0 && !month.isLocked && counts.untagged === 0 && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-100 text-green-700">
+                          {counts.tagged}
+                        </Badge>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+          
+          {/* Client View Tabs - Only show in client view */}
+          {viewMode === "client" && (
+            <div className="px-6 border-t">
+              <div className="flex">
+                <button
+                  onClick={() => setActiveTab("untagged")}
+                  className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === "untagged"
+                      ? "border-etihad-gold-600 text-etihad-gold-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Untagged ({untaggedPast.length + untaggedUpcoming.length} clients)
+                </button>
+                <button
+                  onClick={() => setActiveTab("tagged")}
+                  className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === "tagged"
+                      ? "border-etihad-gold-600 text-etihad-gold-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Tagged ({taggedPast.length + taggedUpcoming.length} clients)
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -1340,6 +1409,9 @@ export default function ReinvestmentTagging() {
             <div className="flex items-center justify-center h-64">
               <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600" />
             </div>
+          ) : viewMode === "month" ? (
+            /* MONTH VIEW */
+            renderMonthView()
           ) : activeTab === "untagged" ? (
             <>
               {/* Section Toggle */}
