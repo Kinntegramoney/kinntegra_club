@@ -1775,6 +1775,66 @@ async def reset_partner_password(
         }
 
 
+# ==================== BROKER PROFILE ENDPOINTS ====================
+
+@api_router.get("/broker/profile")
+async def get_broker_profile(current_user: dict = Depends(get_current_user)):
+    """Get broker profile information"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this endpoint")
+    
+    broker = await db.users.find_one({"id": current_user['id']}, {"_id": 0})
+    if not broker:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    # Count sub-brokers and clients
+    sub_brokers_count = await db.partners.count_documents({"created_by": current_user['id']})
+    clients_count = await db.clients.count_documents({"created_by": current_user['id']})
+    
+    return {
+        "id": broker.get('id'),
+        "name": broker.get('name'),
+        "email": broker.get('email'),
+        "phone": broker.get('phone'),
+        "pan": broker.get('pan') or broker.get('pan_number'),
+        "is_active": broker.get('is_active', True),
+        "created_at": broker.get('created_at'),
+        "sub_brokers_count": sub_brokers_count,
+        "clients_count": clients_count
+    }
+
+
+@api_router.put("/broker/profile")
+async def update_broker_profile(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update broker profile information (name, email, phone)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can update their profile")
+    
+    update_fields = {}
+    
+    if 'name' in data and data['name']:
+        update_fields['name'] = data['name'].strip()
+    
+    if 'email' in data and data['email']:
+        update_fields['email'] = data['email'].lower().strip()
+    
+    if 'phone' in data and data['phone']:
+        update_fields['phone'] = data['phone'].strip()
+    
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    await db.users.update_one(
+        {"id": current_user['id']},
+        {"$set": update_fields}
+    )
+    
+    return {"message": "Profile updated successfully", "updated_fields": list(update_fields.keys())}
+
+
 # ==================== SUB-BROKER PROFILE ENDPOINTS ====================
 
 @api_router.get("/sub-broker/profile")
