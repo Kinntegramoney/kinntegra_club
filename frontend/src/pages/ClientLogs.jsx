@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { 
   CheckCircle, XCircle, Clock, RefreshCw, FileText,
-  TrendingUp, Calendar, Filter
+  TrendingUp, Calendar, Filter, Server, AlertCircle
 } from "lucide-react";
 import {
   Select,
@@ -25,8 +25,10 @@ export default function ClientLogs() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [logs, setLogs] = useState([]);
+  const [apiLogs, setApiLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("reinvestment"); // 'reinvestment' or 'api'
 
   useEffect(() => {
     document.title = "Kinntegraa | My Logs";
