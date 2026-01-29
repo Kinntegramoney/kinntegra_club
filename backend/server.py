@@ -12749,6 +12749,199 @@ async def approve_reinvestment_tag(cashflow_id: str, approval: ReinvestmentAppro
     }
 
 
+# Client-specific endpoints for approvals and logs
+@api_router.get("/client/pending-approvals/count")
+async def get_client_pending_approvals_count(current_user: dict = Depends(get_current_user)):
+    """Get count of pending approvals for client"""
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Find client record
+    client = await db.clients.find_one({"user_id": current_user['id']})
+    if not client:
+        return {"count": 0}
+    
+    # Count pending reinvestment logs for this client
+    count = await db.reinvestment_logs.count_documents({
+        "client_id": client['id'],
+        "approval_status": "pending"
+    })
+    
+    return {"count": count}
+
+
+@api_router.get("/client/pending-approvals")
+async def get_client_pending_approvals(current_user: dict = Depends(get_current_user)):
+    """Get pending reinvestment approvals for client"""
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Find client record
+    client = await db.clients.find_one({"user_id": current_user['id']})
+    if not client:
+        return []
+    
+    # Get pending reinvestment logs
+    logs = await db.reinvestment_logs.find({
+        "client_id": client['id'],
+        "approval_status": "pending"
+    }, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Enrich with bond and broker info
+    for log in logs:
+        bond = await db.bonds.find_one({"id": log.get('bond_id')}, {"_id": 0, "name": 1})
+        if bond:
+            log['bond_name'] = bond.get('name', log.get('bond_name', 'Unknown'))
+        
+        # Get who tagged it
+        if log.get('tagged_by'):
+            tagger = await db.users.find_one({"id": log.get('tagged_by')}, {"_id": 0, "name": 1})
+            log['tagged_by_name'] = tagger.get('name', 'Broker') if tagger else 'Broker'
+        else:
+            log['tagged_by_name'] = 'Broker'
+    
+    return logs
+
+
+@api_router.get("/client/reinvestment-logs")
+async def get_client_reinvestment_logs(current_user: dict = Depends(get_current_user)):
+    """Get all reinvestment logs for client (approved, rejected, pending)"""
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Find client record
+    client = await db.clients.find_one({"user_id": current_user['id']})
+    if not client:
+        return []
+    
+    # Get all reinvestment logs for this client
+    logs = await db.reinvestment_logs.find({
+        "client_id": client['id']
+    }, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Enrich with bond info
+    for log in logs:
+        bond = await db.bonds.find_one({"id": log.get('bond_id')}, {"_id": 0, "name": 1})
+        if bond:
+            log['bond_name'] = bond.get('name', log.get('bond_name', 'Unknown'))
+        
+        # Get who tagged it
+        if log.get('tagged_by'):
+            tagger = await db.users.find_one({"id": log.get('tagged_by')}, {"_id": 0, "name": 1})
+            log['tagged_by_name'] = tagger.get('name', 'Broker') if tagger else 'Broker'
+        else:
+            log['tagged_by_name'] = 'Broker'
+    
+    return logs
+
+
+class ClientApprovalAction(BaseModel):
+    action: str  # 'approve' or 'reject'
+    notes: Optional[str] = None
+
+
+@api_router.post("/client/approve-reinvestment/{log_id}")
+async def client_approve_reinvestment(
+    log_id: str,
+    approval: ClientApprovalAction,
+    current_user: dict = Depends(get_current_user)
+):
+    """Client approves or rejects a reinvestment request"""
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Find client record
+    client = await db.clients.find_one({"user_id": current_user['id']})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client record not found")
+    
+    # Find the log entry
+    log_entry = await db.reinvestment_logs.find_one({
+        "id": log_id,
+        "client_id": client['id']
+    })
+    
+    if not log_entry:
+        raise HTTPException(status_code=404, detail="Reinvestment log not found")
+    
+    if log_entry.get('approval_status') != 'pending':
+        raise HTTPException(status_code=400, detail="This request has already been processed")
+    
+    is_approved = approval.action == 'approve'
+    new_status = 'approved' if is_approved else 'rejected'
+    
+    # Update the log entry
+    await db.reinvestment_logs.update_one(
+        {"id": log_id},
+        {"$set": {
+            "approval_status": new_status,
+            "client_approved": is_approved,
+            "approval_notes": approval.notes,
+            "approved_by": current_user['id'],
+            "approved_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Also update the cashflow entry if it exists
+    if log_entry.get('cashflow_id'):
+        await db.holding_cashflows.update_one(
+            {"id": log_entry['cashflow_id']},
+            {"$set": {
+                "client_approved": is_approved,
+                "approval_status": new_status,
+                "approval_notes": approval.notes,
+                "approved_by": current_user['id'],
+                "approved_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    
+    # Create notification for broker/sub-broker
+    broker_id = client.get('linked_subbroker_id') or client.get('broker_id') or client.get('created_by')
+    if broker_id:
+        notification = {
+            "id": str(uuid.uuid4()),
+            "type": "client_reinvestment_approval",
+            "client_id": client['id'],
+            "client_name": client['name'],
+            "log_id": log_id,
+            "approved": is_approved,
+            "notes": approval.notes,
+            "for_user_id": broker_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "read": False,
+            "message": f"Client {client['name']} {'approved' if is_approved else 'rejected'} reinvestment for {log_entry.get('bond_name', 'a bond')}"
+        }
+        await db.notifications.insert_one(notification)
+    
+    # If approved, call the Kinntegra MF Buy Scheduler API
+    kinntegra_result = None
+    if is_approved:
+        try:
+            # Get cashflow data for API call
+            cashflow = await db.holding_cashflows.find_one({"id": log_entry.get('cashflow_id')})
+            if cashflow:
+                kinntegra_result = await call_kinntegra_mf_buy_scheduler(cashflow, client)
+                
+                # Update log with API submission status
+                await db.reinvestment_logs.update_one(
+                    {"id": log_id},
+                    {"$set": {
+                        "api_submitted": True,
+                        "api_result": kinntegra_result,
+                        "approval_status": "submitted"
+                    }}
+                )
+        except Exception as e:
+            logger.error(f"Error calling Kinntegra API: {e}")
+            kinntegra_result = {"status": "error", "message": str(e)}
+    
+    return {
+        "message": f"Reinvestment {'approved' if is_approved else 'rejected'} successfully",
+        "status": new_status,
+        "kinntegra_api_result": kinntegra_result
+    }
+
+
 @api_router.get("/reinvestment/logs")
 async def get_reinvestment_logs(
     status: Optional[str] = None,
