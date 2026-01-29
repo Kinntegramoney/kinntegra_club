@@ -384,108 +384,146 @@ export default function ClientReinvestmentApprovals() {
                       {bond.items.map((item) => (
                         <div 
                           key={item.id} 
-                          className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50"
+                          className="p-4 hover:bg-gray-50"
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-sm font-medium text-gray-700">
-                                {formatDate(item.date)}
-                              </span>
-                              <Badge className={`text-xs ${
-                                item.reinvestment_tag === 'principal' ? 'bg-blue-100 text-blue-700' :
-                                item.reinvestment_tag === 'interest' ? 'bg-green-100 text-green-700' :
-                                item.reinvestment_tag === 'both' ? 'bg-purple-100 text-purple-700' :
-                                'bg-gray-100 text-gray-700'
-                              }`}>
-                                {TAG_LABELS[item.reinvestment_tag] || item.reinvestment_tag}
-                              </Badge>
-                            </div>
-                            
-                            {/* Amount Details */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-2">
-                              <div className="bg-gray-50 rounded px-2 py-1">
-                                <span className="text-gray-500">Reinv. Amount</span>
-                                <p className="font-semibold text-gray-800">{formatCurrency(item.reinvestment_amount || getAmount(item))}</p>
-                              </div>
-                              <div className="bg-gray-50 rounded px-2 py-1">
-                                <span className="text-gray-500">Rounded Amount</span>
-                                <p className="font-semibold text-gray-800">{formatCurrency(item.rounded_total || getAmount(item))}</p>
-                              </div>
-                              <div className="bg-amber-50 rounded px-2 py-1">
-                                <span className="text-amber-600">Round-off</span>
-                                <p className="font-semibold text-amber-700">{formatCurrency(item.round_off_total || 0)}</p>
-                              </div>
-                              <div className="bg-blue-50 rounded px-2 py-1">
-                                <span className="text-blue-600">Tagged</span>
-                                <p className="font-semibold text-blue-700">{item.tag_description || TAG_LABELS[item.reinvestment_tag] || 'N/A'}</p>
-                              </div>
-                            </div>
-                            
-                            {/* UCC and Portfolio Details */}
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                              <span className="bg-indigo-50 px-2 py-1 rounded">
-                                <span className="text-indigo-500">UCC:</span> <span className="font-mono font-semibold text-indigo-700">{item.ucc || item.target_ucc || '-'}</span>
-                              </span>
-                              {item.allocations && item.allocations.length > 0 ? (
-                                item.allocations.map((alloc, idx) => (
-                                  <span key={idx} className="bg-purple-50 px-2 py-1 rounded">
-                                    <span className="text-purple-500">{alloc.portfolio_name || alloc.portfolio}:</span>{' '}
-                                    <span className="font-semibold text-purple-700">{formatCurrency(alloc.rounded_amount || alloc.amount)}</span>
-                                    {alloc.mf_investment_date && (
-                                      <span className="text-purple-400 ml-1">({formatDate(alloc.mf_investment_date)})</span>
-                                    )}
+                          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                            <div className="flex-1 space-y-3">
+                              {/* Date and Tag Header */}
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-gray-400" />
+                                  <span className="font-medium text-gray-700">
+                                    {formatDate(item.date)}
                                   </span>
-                                ))
+                                </div>
+                                <Badge className={`text-xs ${
+                                  item.reinvestment_tag === 'principal' ? 'bg-blue-100 text-blue-700' :
+                                  item.reinvestment_tag === 'interest' ? 'bg-green-100 text-green-700' :
+                                  item.reinvestment_tag === 'both' ? 'bg-purple-100 text-purple-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {TAG_LABELS[item.reinvestment_tag] || item.reinvestment_tag}
+                                </Badge>
+                              </div>
+                              
+                              {/* Amount Details Row */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                                  <div className="flex items-center gap-1 text-gray-500">
+                                    <IndianRupee className="h-3 w-3" />
+                                    <span>Reinv. Amount</span>
+                                  </div>
+                                  <p className="font-semibold text-gray-800 mt-1">{formatCurrency(item.reinvestment_amount || getAmount(item))}</p>
+                                </div>
+                                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                                  <div className="flex items-center gap-1 text-gray-500">
+                                    <CreditCard className="h-3 w-3" />
+                                    <span>Rounded Amount</span>
+                                  </div>
+                                  <p className="font-semibold text-gray-800 mt-1">{formatCurrency(item.rounded_total || getAmount(item))}</p>
+                                </div>
+                                <div className="bg-amber-50 rounded-lg px-3 py-2">
+                                  <div className="flex items-center gap-1 text-amber-600">
+                                    <FileText className="h-3 w-3" />
+                                    <span>Round-off</span>
+                                  </div>
+                                  <p className="font-semibold text-amber-700 mt-1">{formatCurrency(item.round_off_total || 0)}</p>
+                                </div>
+                                <div className="bg-indigo-50 rounded-lg px-3 py-2">
+                                  <div className="flex items-center gap-1 text-indigo-600">
+                                    <Briefcase className="h-3 w-3" />
+                                    <span>UCC</span>
+                                  </div>
+                                  <p className="font-mono font-semibold text-indigo-700 mt-1">{item.ucc || item.target_ucc || '-'}</p>
+                                </div>
+                              </div>
+                              
+                              {/* Allocations/Portfolio Details */}
+                              {item.allocations && item.allocations.length > 0 ? (
+                                <div className="bg-purple-50/50 rounded-lg p-3">
+                                  <div className="flex items-center gap-2 text-xs text-purple-600 font-medium mb-2">
+                                    <Briefcase className="h-3 w-3" />
+                                    Portfolio Allocations ({item.allocations.length})
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {item.allocations.map((alloc, idx) => (
+                                      <div key={idx} className="bg-white rounded px-3 py-2 text-xs border border-purple-100">
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-medium text-purple-800 capitalize">
+                                            {alloc.portfolio_name || alloc.portfolio || 'Unknown'}
+                                          </span>
+                                          <span className="font-semibold text-purple-700">{formatCurrency(alloc.rounded_amount || alloc.amount)}</span>
+                                        </div>
+                                        {alloc.mf_investment_date && (
+                                          <div className="flex items-center gap-1 text-purple-500 mt-1">
+                                            <Calendar className="h-3 w-3" />
+                                            <span>MF Date: {formatDate(alloc.mf_investment_date)}</span>
+                                          </div>
+                                        )}
+                                        {alloc.percentage > 0 && (
+                                          <div className="text-purple-400 mt-1">
+                                            {alloc.percentage}% allocation
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               ) : item.portfolio_category && (
-                                <span className="bg-purple-50 px-2 py-1 rounded capitalize">
-                                  <span className="text-purple-500">Portfolio:</span> <span className="font-semibold text-purple-700">{item.portfolio_category}</span>
-                                </span>
+                                <div className="flex items-center gap-2 text-xs">
+                                  <span className="bg-purple-50 px-3 py-2 rounded-lg">
+                                    <span className="text-purple-500">Portfolio:</span>{' '}
+                                    <span className="font-semibold text-purple-700 capitalize">{item.portfolio_category?.replace('_', ' ')}</span>
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Actions Column */}
+                            <div className="flex lg:flex-col gap-2 lg:min-w-[140px]">
+                              {activeTab === 'pending' && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => setConfirmDialog({ open: true, type: 'approve', item })}
+                                    disabled={processing === item.id}
+                                    className="bg-green-600 hover:bg-green-700 flex-1"
+                                  >
+                                    {processing === item.id ? (
+                                      <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                                    ) : (
+                                      <Check className="h-4 w-4 mr-1" />
+                                    )}
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setConfirmDialog({ open: true, type: 'reject', item })}
+                                    disabled={processing === item.id}
+                                    className="text-red-600 border-red-200 hover:bg-red-50 flex-1"
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                              
+                              {activeTab === 'approved' && (
+                                <Badge className="bg-green-100 text-green-700 w-full justify-center py-2">
+                                  <Check className="h-4 w-4 mr-1" />
+                                  Trade Confirmed
+                                </Badge>
+                              )}
+                              
+                              {activeTab === 'rejected' && (
+                                <Badge className="bg-red-100 text-red-700 w-full justify-center py-2">
+                                  <X className="h-4 w-4 mr-1" />
+                                  Rejected
+                                </Badge>
                               )}
                             </div>
                           </div>
-                          
-                          {/* Actions */}
-                          {activeTab === 'pending' && (
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setConfirmDialog({ open: true, type: 'reject', item })}
-                                disabled={processing === item.id}
-                                className="text-red-600 border-red-200 hover:bg-red-50"
-                              >
-                                <X className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => setConfirmDialog({ open: true, type: 'approve', item })}
-                                disabled={processing === item.id}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                {processing === item.id ? (
-                                  <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                                ) : (
-                                  <Check className="h-4 w-4 mr-1" />
-                                )}
-                                Approve
-                              </Button>
-                            </div>
-                          )}
-                          
-                          {activeTab === 'approved' && (
-                            <Badge className="bg-green-100 text-green-700">
-                              <Check className="h-3 w-3 mr-1" />
-                              Approved
-                            </Badge>
-                          )}
-                          
-                          {activeTab === 'rejected' && (
-                            <Badge className="bg-red-100 text-red-700">
-                              <X className="h-3 w-3 mr-1" />
-                              Rejected
-                            </Badge>
-                          )}
                         </div>
                       ))}
                     </div>
