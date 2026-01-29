@@ -2,6 +2,31 @@
 
 ## Recent Changes (Jan 29, 2026)
 
+### Client Holdings Page Overhaul (Jan 29, 2026) ✅
+
+**Feature:** Redesigned the client holdings page to match the broker/sub-broker view but showing only the client's own data.
+
+**Changes Applied:**
+- `/app/frontend/src/pages/ClientHoldings.jsx`: Complete rewrite with:
+  - Summary stats bar (Total Investment, Expected, Profit, Outstanding Principal)
+  - Repayment Status progress bar with received/outstanding breakdown
+  - Status filter (All, Active, Completed)
+  - Detailed holdings table with:
+    - Units, Invested, Principal, Interest (Gross), TDS, Net Repaid, Upcoming
+    - Expected XIRR and Actual XIRR columns
+    - Expandable tranches for bonds with multiple investments
+  - Cashflow modal with per-tranche details
+  - Real Estate tab with payment progress
+
+### Client Sidebar Cleanup (Jan 29, 2026) ✅
+
+**Feature:** Removed unnecessary tabs from client sidebar.
+
+**Changes Applied:**
+- `/app/frontend/src/components/ClientSidebar.jsx`: Removed Trade Approvals, Trade Verification, Analysis, Approval Logs. Client now sees: Opportunities, Holdings, Reinvestments, Profile.
+
+---
+
 ### Auto Round-off on Portfolio Selection & UCC Handling Improvements (Jan 29, 2026) ✅
 
 **Issues Fixed:**
