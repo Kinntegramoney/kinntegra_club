@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { TrendingUp, Wallet, ClipboardCheck, User, LogOut, Menu, X, Bell, Building2, FileBarChart, ClipboardList, CheckSquare, RefreshCw } from "lucide-react";
+import { TrendingUp, Wallet, User, LogOut, Menu, X, Bell, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
 
