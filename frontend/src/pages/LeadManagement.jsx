@@ -54,21 +54,7 @@ export default function LeadManagement() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   
-  // Tab state
-  const [activeTab, setActiveTab] = useState("approvals");
-  const [pendingSubTab, setPendingSubTab] = useState("clients");
-  
-  // Pending approvals data
-  const [pendingClients, setPendingClients] = useState([]);
-  const [pendingReinvestments, setPendingReinvestments] = useState([]);
-  const [pendingTrades, setPendingTrades] = useState([]);
-  const [pendingLoading, setPendingLoading] = useState(false);
-  
-  // Sub-broker's own submissions
-  const [mySubmissions, setMySubmissions] = useState([]);
-  const [submissionsLoading, setSubmissionsLoading] = useState(false);
-  
-  // Leads data
+  // Only leads/client interest data needed now
   const [leads, setLeads] = useState([]);
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [leadsFilter, setLeadsFilter] = useState("all");
@@ -77,12 +63,6 @@ export default function LeadManagement() {
   
   // UI state
   const [expandedItems, setExpandedItems] = useState({});
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [itemType, setItemType] = useState(null);
-  const [approvalAction, setApprovalAction] = useState(null);
-  const [approvalNotes, setApprovalNotes] = useState("");
-  const [sendClientEmail, setSendClientEmail] = useState(true);
   const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
@@ -98,6 +78,8 @@ export default function LeadManagement() {
     
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
+    fetchLeads();
+  }, [navigate]);
     
     if (parsedUser.role === 'broker') {
       fetchPendingApprovals();
