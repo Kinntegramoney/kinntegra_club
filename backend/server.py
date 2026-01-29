@@ -12953,8 +12953,8 @@ async def client_approve_reinvestment(
             }}
         )
         
-    else:
-        # Standard new reinvestment approval (pending status)
+    elif current_status in ['pending', 'pending_reapproval']:
+        # Standard new or re-approval request
         new_status = 'approved' if is_approved else 'rejected'
         
         # Update the log entry
