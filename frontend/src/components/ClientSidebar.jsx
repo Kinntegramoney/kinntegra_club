@@ -108,9 +108,9 @@ export default function ClientSidebar({ user }) {
             >
               <Icon className="h-5 w-5 flex-shrink-0" />
               <span className="font-medium text-sm md:text-base">{item.label}</span>
-              {item.path === "/client/trades" && unreadCount > 0 && (
+              {item.badge > 0 && (
                 <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                  {unreadCount}
+                  {item.badge}
                 </span>
               )}
             </button>
