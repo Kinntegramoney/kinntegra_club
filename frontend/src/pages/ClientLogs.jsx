@@ -204,6 +204,7 @@ export default function ClientLogs() {
                 <SelectItem value="approved">Approved</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
                 <SelectItem value="submitted">Submitted</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
             
@@ -212,9 +213,11 @@ export default function ClientLogs() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Content */}
         <div className="p-6">
+          {activeTab === "reinvestment" && (
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {loading ? (
               <div className="text-center py-12">
