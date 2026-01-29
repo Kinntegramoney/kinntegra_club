@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, User, CheckSquare, History, Settings, UserPlus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/contexts/PermissionsContext";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function Sidebar({ user }) {
   const navigate = useNavigate();
