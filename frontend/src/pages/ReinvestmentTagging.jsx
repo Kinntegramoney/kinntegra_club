@@ -114,6 +114,14 @@ export default function ReinvestmentTagging() {
   const [multiRetagData, setMultiRetagData] = useState({});
   const [selectedTagType, setSelectedTagType] = useState(""); // principal, interest, both - selected BEFORE opening modal
 
+  // Edit/Cancel modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedEntryForAction, setSelectedEntryForAction] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [cancelReason, setCancelReason] = useState("");
+  const [processingAction, setProcessingAction] = useState(false);
+
   // Calculate available months and their lock status
   const getMonthsConfig = useMemo(() => {
     const today = new Date();
