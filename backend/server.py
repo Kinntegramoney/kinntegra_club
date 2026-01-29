@@ -3291,6 +3291,88 @@ async def reinvestment_approve_via_link(token: str, action: str = "approve"):
         return {"success": False, "message": "Invalid or expired approval link"}
 
 
+@api_router.post("/approval-workflow/trade/{trade_id}")
+async def broker_approve_trade(
+    trade_id: str,
+    action: str,  # "approve" or "reject"
+    notes: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Broker approves or rejects a pending trade (blocked units) from sub-broker"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can approve trades")
+    
+    trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+    if not trade:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    
+    if trade.get('broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="You can only approve trades under your brokerage")
+    
+    if trade.get('status') != 'pending':
+        raise HTTPException(status_code=400, detail=f"Trade is already {trade.get('status')}")
+    
+    if action.lower() == "approve":
+        # Update trade status to approved
+        await db.trades.update_one(
+            {"id": trade_id},
+            {
+                "$set": {
+                    "status": "approved",
+                    "broker_approved": True,
+                    "broker_approved_at": datetime.now(timezone.utc).isoformat(),
+                    "broker_notes": notes
+                }
+            }
+        )
+        
+        # Update bond's units_sold count
+        bond = await db.bonds.find_one({"id": trade.get('bond_id')}, {"_id": 0})
+        if bond:
+            current_units_sold = bond.get('units_sold', 0) or 0
+            new_units_sold = current_units_sold + trade.get('units', 0)
+            
+            await db.bonds.update_one(
+                {"id": trade.get('bond_id')},
+                {"$set": {"units_sold": new_units_sold}}
+            )
+            
+            logger.info(f"Updated bond {bond.get('name')} units_sold from {current_units_sold} to {new_units_sold}")
+        
+        # Generate holding and cashflows for this trade
+        # (The holding generation logic should be triggered here)
+        
+        return {
+            "message": "Trade approved successfully",
+            "trade_id": trade_id,
+            "status": "approved",
+            "units": trade.get('units'),
+            "bond_name": trade.get('bond_name')
+        }
+    
+    elif action.lower() == "reject":
+        # Update trade status to rejected
+        await db.trades.update_one(
+            {"id": trade_id},
+            {
+                "$set": {
+                    "status": "rejected",
+                    "broker_rejected": True,
+                    "broker_rejected_at": datetime.now(timezone.utc).isoformat(),
+                    "broker_rejection_notes": notes
+                }
+            }
+        )
+        
+        return {
+            "message": "Trade rejected",
+            "trade_id": trade_id,
+            "status": "rejected"
+        }
+    
+    raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
+
+
 # Kinntegra MF Buy Scheduler API Configuration
 KINNTEGRA_API_BASE_URL = "https://api.kinntegra.co.in/api/transaction"
 KINNTEGRA_API_KEY = "397071386F563639685674495956545432704E4F6E673D3D"
