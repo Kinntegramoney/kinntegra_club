@@ -1780,27 +1780,33 @@ export default function ReinvestmentTagging() {
     );
   };
 
-  // Render tagged entries for a client in a clean summary format
+  // Render tagged entries for a client in the new format
   const renderTaggedClientGroup = (clientGroup, monthConfig) => {
     const key = `tagged_${selectedMonth}_${clientGroup.client_id}`;
     const isExpanded = expandedClients[key] !== false;
-    const totalAmount = clientGroup.entries.reduce((sum, e) => sum + (e.net_amount || 0), 0);
+    const totalNetAmount = clientGroup.entries.reduce((sum, e) => sum + (e.net_amount || 0), 0);
     const canTag = monthConfig?.canTag !== false;
     
     // Group entries by bond for summary display
     const entriesByBond = {};
     clientGroup.entries.forEach(entry => {
-      const bondKey = entry.bond_code || entry.bond_name;
+      const bondKey = `${entry.bond_code || entry.bond_name}_${entry.id}`;
       if (!entriesByBond[bondKey]) {
         entriesByBond[bondKey] = {
           bond_name: entry.bond_name,
           bond_code: entry.bond_code,
           date: entry.date || entry.expected_date,
           allocations: [],
-          total_amount: 0,
-          entries: []
+          total_net_amount: 0,
+          total_round_down_amount: 0,
+          entry: entry
         };
       }
+      
+      // Calculate round down amount for this entry
+      const portfolio = entry.portfolio_category;
+      const netAmount = entry.net_amount || 0;
+      const roundDownAmount = roundToHundred(netAmount);
       
       // Get allocation info
       const allocation = {
@@ -1808,31 +1814,36 @@ export default function ReinvestmentTagging() {
         ucc: entry.target_ucc || 'Default',
         portfolio: entry.portfolio_category || 'N/A',
         tag: entry.reinvestment_tag || 'N/A',
-        amount: entry.net_amount || 0,
+        net_amount: netAmount,
+        round_down_amount: roundDownAmount,
         approval_status: entry.approval_status || 'pending',
         client_approved: entry.client_approved || false,
-        reinvestment_log_id: entry.reinvestment_log_id || entry.id,
-        has_split: hasSplitAllocations(entry.id)
+        auto_tagged: entry.auto_tagged || false
       };
       
       // If entry has split allocations, get the individual splits
-      if (allocation.has_split) {
+      if (hasSplitAllocations(entry.id)) {
         const splits = splitAllocations[entry.id] || [];
         splits.forEach(split => {
+          const splitRoundDown = roundToHundred(split.amount || 0);
           entriesByBond[bondKey].allocations.push({
             ...allocation,
             ucc: split.ucc,
             portfolio: split.portfolio,
-            amount: split.amount
+            net_amount: split.amount,
+            round_down_amount: splitRoundDown
           });
+          entriesByBond[bondKey].total_round_down_amount += splitRoundDown;
         });
       } else {
         entriesByBond[bondKey].allocations.push(allocation);
+        entriesByBond[bondKey].total_round_down_amount += roundDownAmount;
       }
       
-      entriesByBond[bondKey].total_amount += entry.net_amount || 0;
-      entriesByBond[bondKey].entries.push(entry);
+      entriesByBond[bondKey].total_net_amount += netAmount;
     });
+    
+    const totalRoundDownAmount = Object.values(entriesByBond).reduce((sum, b) => sum + b.total_round_down_amount, 0);
     
     return (
       <div key={key} className="bg-white rounded-lg border overflow-hidden border-green-200">
@@ -1843,80 +1854,97 @@ export default function ReinvestmentTagging() {
         >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <Clock className="h-4 w-4 text-amber-600" />
             </div>
             <div>
               <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <span>{clientGroup.client_pan}</span>
                 <span>•</span>
-                <span>{clientGroup.entries.length} tagged entries</span>
-                <span>•</span>
-                <span className="font-medium text-green-700">₹{totalAmount.toLocaleString('en-IN')}</span>
+                <span>{clientGroup.entries.length} pending entries</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Net Repayment</p>
+              <p className="font-semibold text-gray-800">₹{totalNetAmount.toLocaleString('en-IN')}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Investment Amt</p>
+              <p className="font-semibold text-green-700">₹{totalRoundDownAmount.toLocaleString('en-IN')}</p>
+            </div>
             {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
           </div>
         </div>
         
-        {/* Tagged Entries Summary Table */}
+        {/* Tagged Entries Table */}
         {isExpanded && (
           <div className="p-4">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond Name</th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Date of Repayment</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond Name (Deal ID)</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Net Repayment</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Round Down Inv. Amt</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio</th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600">Tag</th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-600">Amount</th>
                   <th className="text-center px-3 py-2 font-medium text-gray-600">Status</th>
-                  {canTag && <th className="text-center px-3 py-2 font-medium text-gray-600">Actions</th>}
+                  <th className="text-center px-3 py-2 font-medium text-gray-600">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.values(entriesByBond).map((bondGroup, bondIdx) => {
                   const allocations = bondGroup.allocations;
                   const hasMultiple = allocations.length > 1;
+                  const entry = bondGroup.entry;
+                  const isPending = entry.approval_status === 'pending' || entry.approval_status === 'pending_reapproval' || !entry.approval_status;
+                  const isAutoTagged = entry.auto_tagged;
                   
                   return (
                     <React.Fragment key={bondIdx}>
                       {allocations.map((alloc, allocIdx) => {
                         const isFirst = allocIdx === 0;
                         const isLast = allocIdx === allocations.length - 1;
-                        const entry = bondGroup.entries.find(e => e.id === alloc.entry_id) || bondGroup.entries[0];
-                        const canModify = canTag;
-                        const needsClientApproval = alloc.client_approved || alloc.approval_status === 'approved' || alloc.approval_status === 'submitted';
                         
                         return (
                           <tr 
                             key={`${bondIdx}-${allocIdx}`}
                             className={`
                               ${hasMultiple ? (isFirst ? 'border-t-2 border-green-200' : '') : 'border-t'}
-                              ${hasMultiple && isLast ? 'border-b-2 border-green-200' : 'border-b border-gray-100'}
+                              ${hasMultiple && isLast ? '' : 'border-b border-gray-100'}
                               ${hasMultiple ? 'bg-green-50/30' : 'hover:bg-gray-50'}
+                              ${isAutoTagged ? 'bg-gray-50' : ''}
                             `}
                           >
-                            {/* Bond Name - only show on first row if multiple */}
+                            {/* Date of Repayment - only show on first row */}
                             <td className={`px-3 py-2 ${hasMultiple && !isFirst ? 'border-l-4 border-green-300' : ''}`}>
-                              {isFirst ? (
-                                <div>
-                                  <div className="font-medium">{bondGroup.bond_name}</div>
-                                  <div className="text-xs text-gray-500">{bondGroup.bond_code}</div>
-                                </div>
-                              ) : null}
-                            </td>
-                            
-                            {/* Date - only show on first row */}
-                            <td className="px-3 py-2">
                               {isFirst && (
-                                <span className="whitespace-nowrap">
+                                <span className="whitespace-nowrap font-medium">
                                   {format(new Date(bondGroup.date), "dd MMM yyyy")}
                                 </span>
                               )}
+                            </td>
+                            
+                            {/* Bond Name (Deal ID) - only show on first row */}
+                            <td className="px-3 py-2">
+                              {isFirst && (
+                                <div>
+                                  <div className="font-medium">{bondGroup.bond_name}</div>
+                                  <div className="text-xs text-gray-500">({bondGroup.bond_code})</div>
+                                </div>
+                              )}
+                            </td>
+                            
+                            {/* Net Repayment Amount */}
+                            <td className="px-3 py-2 text-right font-mono">
+                              ₹{(alloc.net_amount || 0).toLocaleString('en-IN')}
+                            </td>
+                            
+                            {/* Round Down Investment Amount */}
+                            <td className="px-3 py-2 text-right font-mono text-green-700 font-semibold">
+                              ₹{(alloc.round_down_amount || 0).toLocaleString('en-IN')}
                             </td>
                             
                             {/* UCC */}
@@ -1928,47 +1956,29 @@ export default function ReinvestmentTagging() {
                             
                             {/* Portfolio */}
                             <td className="px-3 py-2">
-                              <span className="text-sm capitalize">{alloc.portfolio}</span>
-                            </td>
-                            
-                            {/* Tag */}
-                            <td className="px-3 py-2">
-                              <Badge className="bg-green-100 text-green-700 text-xs capitalize">
-                                {alloc.tag}
+                              <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
+                                {alloc.portfolio}
                               </Badge>
-                            </td>
-                            
-                            {/* Amount */}
-                            <td className="px-3 py-2 text-right font-mono">
-                              ₹{(alloc.amount || 0).toLocaleString('en-IN')}
                             </td>
                             
                             {/* Status */}
                             <td className="px-3 py-2 text-center">
-                              {alloc.approval_status === 'submitted' || alloc.client_approved ? (
-                                <Badge className="bg-blue-100 text-blue-700 text-xs">
-                                  <CheckCircle className="h-3 w-3 mr-1 inline" />
-                                  Approved
+                              {isAutoTagged ? (
+                                <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                  Auto-Tagged
                                 </Badge>
-                              ) : alloc.approval_status === 'pending' || alloc.approval_status === 'pending_reapproval' ? (
+                              ) : isPending ? (
                                 <Badge className="bg-amber-100 text-amber-700 text-xs">
                                   <Clock className="h-3 w-3 mr-1 inline" />
-                                  {alloc.approval_status === 'pending_reapproval' ? 'Re-approval' : 'Pending'}
+                                  Pending
                                 </Badge>
                               ) : alloc.approval_status === 'cancellation_pending' ? (
                                 <Badge className="bg-red-100 text-red-700 text-xs">
-                                  <Ban className="h-3 w-3 mr-1 inline" />
                                   Cancel Pending
                                 </Badge>
                               ) : alloc.approval_status === 'edit_pending' ? (
                                 <Badge className="bg-amber-100 text-amber-700 text-xs">
-                                  <Pencil className="h-3 w-3 mr-1 inline" />
                                   Edit Pending
-                                </Badge>
-                              ) : alloc.approval_status === 'cancelled' ? (
-                                <Badge className="bg-red-100 text-red-700 text-xs">
-                                  <Ban className="h-3 w-3 mr-1 inline" />
-                                  Cancelled
                                 </Badge>
                               ) : (
                                 <Badge className="bg-gray-100 text-gray-600 text-xs">
@@ -1977,47 +1987,50 @@ export default function ReinvestmentTagging() {
                               )}
                             </td>
                             
-                            {/* Actions - show on first row */}
-                            {canModify && (
-                              <td className="px-3 py-2 text-center">
-                                {isFirst && (
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={() => openEditModal(entry)}>
-                                        <Pencil className="h-3 w-3 mr-2" />
-                                        {needsClientApproval ? 'Edit (Needs Approval)' : 'Edit Tag'}
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        onClick={() => openCancelModal(entry)}
-                                        className="text-red-600 focus:text-red-600"
-                                      >
-                                        <Ban className="h-3 w-3 mr-2" />
-                                        {needsClientApproval ? 'Cancel (Needs Approval)' : 'Untag'}
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                )}
-                              </td>
-                            )}
+                            {/* Actions - Edit and Untag only for pending status */}
+                            <td className="px-3 py-2 text-center">
+                              {isFirst && isPending && !isAutoTagged && canTag && (
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    onClick={() => openEditModal(entry)}
+                                    title="Edit tag"
+                                  >
+                                    <Pencil className="h-3 w-3 mr-1" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={() => handleUntagEntry(entry)}
+                                    title="Untag and move back"
+                                  >
+                                    <X className="h-3 w-3 mr-1" />
+                                    Untag
+                                  </Button>
+                                </div>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
                       
                       {/* Total row for multiple allocations */}
                       {hasMultiple && (
-                        <tr className="bg-green-100/50 border-b-2 border-green-300">
-                          <td colSpan="5" className="px-3 py-2 text-right font-medium text-gray-700">
+                        <tr className="bg-green-100/50 border-b-2 border-green-300 border-t">
+                          <td colSpan="2" className="px-3 py-2 text-right font-medium text-gray-700">
                             Total for {bondGroup.bond_name}:
                           </td>
-                          <td className="px-3 py-2 text-right font-mono font-semibold text-green-700">
-                            ₹{bondGroup.total_amount.toLocaleString('en-IN')}
+                          <td className="px-3 py-2 text-right font-mono font-semibold">
+                            ₹{bondGroup.total_net_amount.toLocaleString('en-IN')}
                           </td>
-                          <td colSpan={canTag ? 2 : 1}></td>
+                          <td className="px-3 py-2 text-right font-mono font-semibold text-green-700">
+                            ₹{bondGroup.total_round_down_amount.toLocaleString('en-IN')}
+                          </td>
+                          <td colSpan="4"></td>
                         </tr>
                       )}
                     </React.Fragment>
@@ -2027,18 +2040,49 @@ export default function ReinvestmentTagging() {
             </table>
             
             {/* Client Total */}
-            <div className="mt-3 p-3 bg-green-100 rounded-lg flex items-center justify-between">
-              <span className="font-medium text-green-800">
-                Total Tagged for {clientGroup.client_name}
-              </span>
-              <span className="font-bold text-green-800 text-lg">
-                ₹{totalAmount.toLocaleString('en-IN')}
-              </span>
+            <div className="mt-3 p-3 bg-green-100 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-green-800">
+                  Total for {clientGroup.client_name}
+                </span>
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
+                    <p className="text-xs text-green-700">Net Repayment</p>
+                    <p className="font-bold text-green-800">₹{totalNetAmount.toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-green-700">Investment Amount</p>
+                    <p className="font-bold text-green-800 text-lg">₹{totalRoundDownAmount.toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
     );
+  };
+
+  // Handle untag entry - move it back to untagged
+  const handleUntagEntry = async (entry) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `${API}/reinvestment/tag/${entry.id}`,
+        {
+          reinvestment_tag: "not_tagged",
+          portfolio_category: null,
+          target_ucc: null
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      toast.success("Entry untagged and moved back");
+      fetchData();
+    } catch (error) {
+      console.error("Error untagging:", error);
+      toast.error(error.response?.data?.detail || "Failed to untag entry");
+    }
   };
 
   const currentUntaggedGroups = untaggedSection === "past" ? untaggedPast : untaggedUpcoming;
