@@ -1902,10 +1902,10 @@ export default function ReinvestmentTagging() {
                                   <CheckCircle className="h-3 w-3 mr-1 inline" />
                                   Approved
                                 </Badge>
-                              ) : alloc.approval_status === 'pending' ? (
+                              ) : alloc.approval_status === 'pending' || alloc.approval_status === 'pending_reapproval' ? (
                                 <Badge className="bg-amber-100 text-amber-700 text-xs">
                                   <Clock className="h-3 w-3 mr-1 inline" />
-                                  Pending
+                                  {alloc.approval_status === 'pending_reapproval' ? 'Re-approval' : 'Pending'}
                                 </Badge>
                               ) : alloc.approval_status === 'cancellation_pending' ? (
                                 <Badge className="bg-red-100 text-red-700 text-xs">
@@ -1916,6 +1916,11 @@ export default function ReinvestmentTagging() {
                                 <Badge className="bg-amber-100 text-amber-700 text-xs">
                                   <Pencil className="h-3 w-3 mr-1 inline" />
                                   Edit Pending
+                                </Badge>
+                              ) : alloc.approval_status === 'cancelled' ? (
+                                <Badge className="bg-red-100 text-red-700 text-xs">
+                                  <Ban className="h-3 w-3 mr-1 inline" />
+                                  Cancelled
                                 </Badge>
                               ) : (
                                 <Badge className="bg-gray-100 text-gray-600 text-xs">
