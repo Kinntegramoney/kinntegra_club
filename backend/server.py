@@ -12867,7 +12867,7 @@ async def client_approve_reinvestment(
     current_status = log_entry.get('approval_status')
     
     # Validate status is one we can process
-    if current_status not in ['pending', 'cancellation_pending', 'edit_pending']:
+    if current_status not in ['pending', 'pending_reapproval', 'cancellation_pending', 'edit_pending']:
         raise HTTPException(status_code=400, detail="This request has already been processed")
     
     is_approved = approval.action == 'approve'
