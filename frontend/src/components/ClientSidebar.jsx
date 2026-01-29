@@ -47,10 +47,6 @@ export default function ClientSidebar({ user }) {
     { path: "/client/opportunities", label: "Opportunities", icon: TrendingUp },
     { path: "/client/holdings", label: "Holdings", icon: Wallet },
     { path: "/client/reinvestment-approvals", label: "Reinvestments", icon: RefreshCw },
-    { path: "/client/trade-approvals", label: "Trade Approvals", icon: CheckSquare },
-    { path: "/client/trades", label: "Trade Verification", icon: ClipboardCheck },
-    { path: "/analysis", label: "Analysis", icon: FileBarChart },
-    { path: "/client/approval-logs", label: "Approval Logs", icon: ClipboardList },
     { path: "/client/profile", label: "Profile", icon: User },
   ];
 
