@@ -371,105 +371,86 @@ export default function ClientApprovals() {
 
         {/* Content */}
         <div className="p-6">
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            {loading ? (
-              <div className="text-center py-12">
-                <RefreshCw className="h-8 w-8 animate-spin text-teal-600 mx-auto mb-3" />
-                <p className="text-gray-500">Loading...</p>
+          {loading ? (
+            <div className="bg-white rounded-lg border border-gray-200 text-center py-12">
+              <RefreshCw className="h-8 w-8 animate-spin text-teal-600 mx-auto mb-3" />
+              <p className="text-gray-500">Loading...</p>
+            </div>
+          ) : pendingApprovals.length === 0 ? (
+            <div className="bg-white rounded-lg border border-gray-200 text-center py-12">
+              <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-4 flex items-center justify-center">
+                <CheckCircle className="h-8 w-8 text-green-500" />
               </div>
-            ) : pendingApprovals.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-4 flex items-center justify-center">
-                  <CheckCircle className="h-8 w-8 text-green-500" />
+              <h3 className="text-lg font-medium text-gray-600 mb-1">All Caught Up!</h3>
+              <p className="text-gray-400 text-sm">No pending approvals at the moment</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <div className="border-b px-4">
+                  <TabsList className="h-12 bg-transparent">
+                    <TabsTrigger 
+                      value="new" 
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-teal-600 rounded-none"
+                    >
+                      New Approvals
+                      {newApprovals.length > 0 && (
+                        <Badge className="ml-2 bg-teal-100 text-teal-700">{newApprovals.length}</Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="cancellation" 
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none"
+                    >
+                      Cancellations
+                      {cancellationApprovals.length > 0 && (
+                        <Badge className="ml-2 bg-red-100 text-red-700">{cancellationApprovals.length}</Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="edit" 
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-amber-600 rounded-none"
+                    >
+                      Edits
+                      {editApprovals.length > 0 && (
+                        <Badge className="ml-2 bg-amber-100 text-amber-700">{editApprovals.length}</Badge>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
-                <h3 className="text-lg font-medium text-gray-600 mb-1">All Caught Up!</h3>
-                <p className="text-gray-400 text-sm">No pending approvals at the moment</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {pendingApprovals.map((item) => (
-                  <div key={item.id} className="p-4 hover:bg-gray-50" data-testid={`approval-${item.id}`}>
-                    <div className="flex items-start justify-between gap-4">
-                      {/* Left: Main Info */}
-                      <div className="flex items-start gap-3 flex-1">
-                        <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
-                          <TrendingUp className="h-5 w-5 text-teal-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-800">{item.bond_name}</h4>
-                          <p className="text-sm text-gray-500 mt-0.5">
-                            Maturity: {formatDate(item.expected_date)}
-                          </p>
-                          
-                          {/* Investment Details */}
-                          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <div className="bg-gray-50 rounded-lg p-2">
-                              <p className="text-xs text-gray-500">Net Amount</p>
-                              <p className="font-semibold text-gray-800">₹{formatCurrency(item.net_amount)}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-lg p-2">
-                              <p className="text-xs text-gray-500">Reinvest Tag</p>
-                              <p className="font-medium text-teal-700 text-sm">{getTagLabel(item.reinvestment_tag)}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-lg p-2">
-                              <p className="text-xs text-gray-500">Portfolio</p>
-                              <p className="font-medium text-gray-700 text-sm">{getPortfolioLabel(item.portfolio_category)}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-lg p-2">
-                              <p className="text-xs text-gray-500">Target UCC</p>
-                              <p className="font-medium text-gray-700 text-sm">{item.target_ucc || 'Default'}</p>
-                            </div>
-                          </div>
-                          
-                          {/* Split Allocations if present */}
-                          {item.has_split_allocations && item.ucc_allocations?.length > 0 && (
-                            <div className="mt-3">
-                              <p className="text-xs text-gray-500 mb-2">Split Allocations:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {item.ucc_allocations.map((alloc, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">
-                                    {alloc.ucc}: ₹{formatCurrency(alloc.amount)} → {alloc.portfolio}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Tagged By */}
-                          <p className="text-xs text-gray-400 mt-3">
-                            Tagged by: {item.tagged_by_name} on {formatDate(item.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {/* Right: Actions */}
-                      <div className="flex flex-col gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => openConfirmModal(item, 'approve')}
-                          disabled={processingId === item.id}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Approve
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openConfirmModal(item, 'reject')}
-                          disabled={processingId === item.id}
-                          className="text-red-600 border-red-200 hover:bg-red-50"
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Reject
-                        </Button>
-                      </div>
+
+                <TabsContent value="new" className="m-0">
+                  {newApprovals.length === 0 ? (
+                    renderEmptyState('new')
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {newApprovals.map(item => renderApprovalItem(item))}
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="cancellation" className="m-0">
+                  {cancellationApprovals.length === 0 ? (
+                    renderEmptyState('cancellation')
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {cancellationApprovals.map(item => renderApprovalItem(item))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="edit" className="m-0">
+                  {editApprovals.length === 0 ? (
+                    renderEmptyState('edit')
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {editApprovals.map(item => renderApprovalItem(item))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
         </div>
       </div>
 
@@ -478,12 +459,28 @@ export default function ClientApprovals() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionType === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
+              {selectedItem?.approval_status === 'cancellation_pending' ? (
+                actionType === 'approve' ? 'Confirm Cancellation' : 'Keep Reinvestment Active'
+              ) : selectedItem?.approval_status === 'edit_pending' ? (
+                actionType === 'approve' ? 'Confirm Edit' : 'Reject Edit'
+              ) : (
+                actionType === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'
+              )}
             </DialogTitle>
             <DialogDescription>
-              {actionType === 'approve' 
-                ? 'By approving, you authorize the reinvestment to be scheduled through Kinntegra. This action cannot be undone.' 
-                : 'Are you sure you want to reject this reinvestment request?'}
+              {selectedItem?.approval_status === 'cancellation_pending' ? (
+                actionType === 'approve' 
+                  ? 'By approving, the reinvestment will be cancelled and funds will not be invested.' 
+                  : 'By rejecting, the original reinvestment will remain active.'
+              ) : selectedItem?.approval_status === 'edit_pending' ? (
+                actionType === 'approve' 
+                  ? 'By approving, the updated reinvestment details will be applied.' 
+                  : 'By rejecting, the original values will be restored.'
+              ) : (
+                actionType === 'approve' 
+                  ? 'By approving, you authorize the reinvestment to be scheduled through Kinntegra. This action cannot be undone.' 
+                  : 'Are you sure you want to reject this reinvestment request?'
+              )}
             </DialogDescription>
           </DialogHeader>
           
@@ -529,12 +526,24 @@ export default function ClientApprovals() {
             <Button
               onClick={handleApprovalAction}
               disabled={processingId === selectedItem?.id}
-              className={actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+              className={
+                selectedItem?.approval_status === 'cancellation_pending' && actionType === 'approve' 
+                  ? 'bg-red-600 hover:bg-red-700' 
+                  : actionType === 'approve' 
+                    ? 'bg-green-600 hover:bg-green-700' 
+                    : 'bg-red-600 hover:bg-red-700'
+              }
             >
               {processingId === selectedItem?.id ? (
                 <RefreshCw className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              {actionType === 'approve' ? 'Approve & Schedule' : 'Reject'}
+              {selectedItem?.approval_status === 'cancellation_pending' ? (
+                actionType === 'approve' ? 'Confirm Cancellation' : 'Keep Active'
+              ) : selectedItem?.approval_status === 'edit_pending' ? (
+                actionType === 'approve' ? 'Approve Edit' : 'Reject Edit'
+              ) : (
+                actionType === 'approve' ? 'Approve & Schedule' : 'Reject'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
