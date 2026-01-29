@@ -92,6 +92,7 @@ export default function ReinvestmentTagging() {
   // Month-wise view state
   const [selectedMonth, setSelectedMonth] = useState(null); // Format: "2026-01"
   const [viewMode, setViewMode] = useState("month"); // "month" or "client"
+  const [monthSubTab, setMonthSubTab] = useState("untagged"); // "untagged" or "tagged"
   
   // Data grouped by client
   const [untaggedPast, setUntaggedPast] = useState([]);
