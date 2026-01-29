@@ -455,14 +455,21 @@ export default function ClientReinvestmentApprovals() {
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {item.allocations.map((alloc, idx) => (
                                       <div key={idx} className="bg-white rounded px-3 py-2 text-xs border border-purple-100">
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between mb-1">
                                           <span className="font-medium text-purple-800 capitalize">
                                             {alloc.portfolio_name || alloc.portfolio || 'Unknown'}
                                           </span>
                                           <span className="font-semibold text-purple-700">{formatCurrency(alloc.rounded_amount || alloc.amount)}</span>
                                         </div>
+                                        {/* Show UCC for this allocation */}
+                                        {alloc.ucc && (
+                                          <div className="flex items-center gap-1 text-indigo-600 mb-1">
+                                            <CreditCard className="h-3 w-3" />
+                                            <span className="font-mono">{alloc.ucc}</span>
+                                          </div>
+                                        )}
                                         {alloc.mf_investment_date && (
-                                          <div className="flex items-center gap-1 text-purple-500 mt-1">
+                                          <div className="flex items-center gap-1 text-purple-500">
                                             <Calendar className="h-3 w-3" />
                                             <span>MF Date: {formatDate(alloc.mf_investment_date)}</span>
                                           </div>
