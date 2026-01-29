@@ -273,7 +273,7 @@ export default function LeadManagement() {
   
   const isBroker = user.role === 'broker';
   const isSubBroker = user.role === 'sub_broker';
-  const pendingCount = pendingClients.length + pendingReinvestments.length;
+  const pendingCount = pendingClients.length + pendingReinvestments.length + pendingTrades.length;
   const openLeadsCount = leads.filter(l => l.status === 'open').length;
   const pendingSubmissionsCount = mySubmissions.filter(s => s.status === 'pending_broker').length;
 
