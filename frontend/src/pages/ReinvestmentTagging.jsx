@@ -1453,10 +1453,14 @@ export default function ReinvestmentTagging() {
                             
                             {/* Allocation Fields - 3 columns: UCC, Amount, Portfolio */}
                             <div className="flex-1 grid grid-cols-3 gap-3">
-                              {/* UCC - Show as text if only one UCC, otherwise dropdown */}
+                              {/* UCC - Show as N/A if amount < 1000, show as text if only one UCC, otherwise dropdown */}
                               <div>
                                 <Label className="text-[10px] text-gray-500 mb-1 block">UCC</Label>
-                                {(data.entry?.ucc_list?.length === 1) ? (
+                                {(alloc.amount !== '' && alloc.amount < 1000) ? (
+                                  <div className="h-8 px-3 flex items-center text-xs bg-gray-100 border rounded-md text-gray-400 italic">
+                                    N/A (amount &lt; ₹1000)
+                                  </div>
+                                ) : (data.entry?.ucc_list?.length === 1) ? (
                                   <div className="h-8 px-3 flex items-center text-xs bg-gray-100 border rounded-md font-medium">
                                     {data.entry.ucc_list[0]}
                                   </div>
