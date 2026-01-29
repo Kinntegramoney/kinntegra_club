@@ -2677,10 +2677,43 @@ async def get_pending_approvals_workflow(current_user: dict = Depends(get_curren
             reinv['sub_broker_name'] = sub_broker.get('name') if sub_broker else 'Unknown'
             reinv['sub_broker_code'] = sub_broker.get('partner_code') if sub_broker else ''
     
+    # Get pending trades (blocked units) from sub-brokers
+    pending_trades = await db.trades.find(
+        {
+            "broker_id": current_user['id'],
+            "status": "pending"
+        },
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Enrich trades with client and sub-broker info
+    for trade in pending_trades:
+        if trade.get('client_id'):
+            client = await db.clients.find_one(
+                {"id": trade['client_id']},
+                {"_id": 0, "name": 1, "pan_number": 1}
+            )
+            trade['client_name'] = client.get('name') if client else 'Unknown'
+            trade['client_pan'] = client.get('pan_number') if client else ''
+        if trade.get('created_by'):
+            sub_broker = await db.partners.find_one(
+                {"id": trade['created_by']},
+                {"_id": 0, "name": 1, "partner_code": 1}
+            )
+            if sub_broker:
+                trade['sub_broker_name'] = sub_broker.get('name', 'Unknown')
+                trade['sub_broker_code'] = sub_broker.get('partner_code', '')
+            else:
+                # Check if it's the broker themselves
+                user = await db.users.find_one({"id": trade['created_by']}, {"_id": 0, "name": 1})
+                trade['sub_broker_name'] = user.get('name', 'Broker') if user else 'Unknown'
+                trade['sub_broker_code'] = ''
+    
     return {
         "pending_clients": pending_clients,
         "pending_reinvestments": pending_reinvestments,
-        "total_pending": len(pending_clients) + len(pending_reinvestments)
+        "pending_trades": pending_trades,
+        "total_pending": len(pending_clients) + len(pending_reinvestments) + len(pending_trades)
     }
 
 
