@@ -569,6 +569,30 @@ export default function LeadManagement() {
                                   <p className="text-xs text-blue-600">Submitted by: <span className="font-medium">{trade.sub_broker_name}</span> {trade.sub_broker_code && `(${trade.sub_broker_code})`}</p>
                                 </div>
                               )}
+                              {/* Payment Proof */}
+                              {trade.payment_proof_url && (
+                                <div className="mb-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                                  <p className="text-xs text-green-700 font-medium mb-2 flex items-center gap-1">
+                                    <CheckCircle className="h-3 w-3" />
+                                    Payment Proof Attached
+                                  </p>
+                                  <a 
+                                    href={trade.payment_proof_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-green-700 underline hover:text-green-800 flex items-center gap-1"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                    View Payment Proof
+                                  </a>
+                                </div>
+                              )}
+                              {trade.notes && (
+                                <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                                  <p className="text-xs text-gray-500">Notes:</p>
+                                  <p className="text-sm text-gray-700">{trade.notes}</p>
+                                </div>
+                              )}
                               <div className="flex justify-end gap-2">
                                 <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => openApprovalModal(trade, 'trade', 'reject')}>
                                   <XCircle className="h-4 w-4 mr-1" /> Reject
