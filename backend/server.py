@@ -12080,11 +12080,34 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
     
     # Filter by date and group by month
     # Include ALL untagged cashflows (past and future) plus tagged cashflows within 6 months
+    # Auto-tag bonds before 30 April 2025 as "none"
+    auto_tag_cutoff = datetime(2025, 4, 30).date()
+    
     upcoming = []
     for cf in cashflows:
         try:
             cf_date = datetime.fromisoformat(cf['date']).date()
             reinvestment_tag = cf.get('reinvestment_tag', 'not_tagged')
+            
+            # Auto-tag old bonds (before 30 April 2025) as "none" if not already tagged
+            if cf_date < auto_tag_cutoff and reinvestment_tag == 'not_tagged':
+                # Update the cashflow in database
+                await db.holding_cashflows.update_one(
+                    {"id": cf['id']},
+                    {"$set": {
+                        "reinvestment_tag": "none",
+                        "portfolio_category": "none",
+                        "auto_tagged": True,
+                        "auto_tagged_reason": "Investment dated before 30 April 2025",
+                        "approval_status": "auto_tagged"
+                    }}
+                )
+                # Update local variable for response
+                reinvestment_tag = "none"
+                cf['reinvestment_tag'] = "none"
+                cf['portfolio_category'] = "none"
+                cf['auto_tagged'] = True
+                cf['approval_status'] = "auto_tagged"
             
             # Include ALL cashflows - both past and future, tagged and untagged
             # Frontend will filter and categorize them
