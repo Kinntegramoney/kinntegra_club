@@ -1078,7 +1078,7 @@ export default function ReinvestmentTagging() {
                       <td className="py-3 px-4">
                         <Select
                           value={currentTag}
-                          onValueChange={(value) => updateLocalChange(entry.id, 'reinvestment_tag', value)}
+                          onValueChange={(value) => handleLocalChange(entry.id, 'reinvestment_tag', value)}
                         >
                           <SelectTrigger className={`h-8 text-xs w-28 ${
                             currentTag === 'not_tagged' ? 'border-amber-300 bg-amber-50' : 'border-green-300 bg-green-50'
