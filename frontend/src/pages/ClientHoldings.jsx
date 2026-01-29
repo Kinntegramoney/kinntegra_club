@@ -270,8 +270,7 @@ export default function ClientHoldings() {
 
         <div className="p-6">
           {/* Summary Stats */}
-          {holdings && (
-            !holdings || holdings.holdings?.length === 0 ? (
+          {!holdings || holdings.holdings?.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-xl border">
                 <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 font-medium">No bond holdings yet</p>
