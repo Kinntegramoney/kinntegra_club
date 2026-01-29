@@ -1,0 +1,365 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import ClientSidebar from "@/components/ClientSidebar";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { 
+  CheckCircle, XCircle, Clock, RefreshCw, ChevronDown, ChevronUp,
+  Wallet, TrendingUp, Calendar, AlertCircle, Info
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+export default function ClientApprovals() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState(null);
+  
+  // Modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [actionType, setActionType] = useState(null);
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    document.title = "Kinntegraa | Pending Approvals";
+  }, []);
+
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (!userData) {
+      navigate("/login");
+      return;
+    }
+    
+    const parsedUser = JSON.parse(userData);
+    if (parsedUser.role !== "client") {
+      navigate("/broker/dashboard");
+      return;
+    }
+    
+    setUser(parsedUser);
+    fetchPendingApprovals();
+  }, [navigate]);
+
+  const fetchPendingApprovals = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/client/pending-approvals`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingApprovals(response.data || []);
+    } catch (error) {
+      console.error("Error fetching pending approvals:", error);
+      if (error.response?.status !== 404) {
+        toast.error("Failed to load pending approvals");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openConfirmModal = (item, action) => {
+    setSelectedItem(item);
+    setActionType(action);
+    setNotes("");
+    setShowConfirmModal(true);
+  };
+
+  const handleApprovalAction = async () => {
+    if (!selectedItem || !actionType) return;
+    
+    setProcessingId(selectedItem.id);
+    try {
+      const token = localStorage.getItem("token");
+      
+      await axios.post(
+        `${API}/client/approve-reinvestment/${selectedItem.id}`,
+        {
+          action: actionType,
+          notes: notes
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      toast.success(
+        actionType === 'approve' 
+          ? 'Reinvestment approved! Investment will be scheduled.' 
+          : 'Reinvestment rejected.'
+      );
+      setShowConfirmModal(false);
+      fetchPendingApprovals();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || `Failed to ${actionType}`);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "N/A";
+    try {
+      return format(new Date(dateStr), "dd MMM yyyy");
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
+  };
+
+  const getTagLabel = (tag) => {
+    const labels = {
+      'principal': 'Principal Only',
+      'interest': 'Interest Only',
+      'both': 'Principal + Interest',
+      'none': 'No Reinvestment',
+      'custom': 'Custom Amount'
+    };
+    return labels[tag] || tag;
+  };
+
+  const getPortfolioLabel = (portfolio) => {
+    const labels = {
+      'wealth': 'Wealth Portfolio',
+      'short_term': 'Short Term Portfolio',
+      'bonds': 'Bonds',
+      'real_estate': 'Real Estate',
+      'none': 'No Portfolio'
+    };
+    return labels[portfolio] || portfolio;
+  };
+
+  if (!user) return null;
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex" data-testid="client-approvals-page">
+      <ClientSidebar user={user} />
+
+      <div className="flex-1 overflow-auto">
+        {/* Header */}
+        <div className="bg-white border-b sticky top-0 z-10">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-gray-800" data-testid="approvals-title">Pending Approvals</h1>
+                <p className="text-sm text-gray-500">Review and approve reinvestment requests from your broker</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchPendingApprovals}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Info Banner */}
+        <div className="mx-6 mt-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-blue-800 font-medium">About Reinvestment Approvals</p>
+              <p className="text-sm text-blue-700 mt-1">
+                Your broker has tagged upcoming maturity amounts for reinvestment. 
+                Once approved, the funds will be automatically invested in mutual funds through Kinntegra.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {loading ? (
+              <div className="text-center py-12">
+                <RefreshCw className="h-8 w-8 animate-spin text-teal-600 mx-auto mb-3" />
+                <p className="text-gray-500">Loading...</p>
+              </div>
+            ) : pendingApprovals.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-4 flex items-center justify-center">
+                  <CheckCircle className="h-8 w-8 text-green-500" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-600 mb-1">All Caught Up!</h3>
+                <p className="text-gray-400 text-sm">No pending approvals at the moment</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {pendingApprovals.map((item) => (
+                  <div key={item.id} className="p-4 hover:bg-gray-50" data-testid={`approval-${item.id}`}>
+                    <div className="flex items-start justify-between gap-4">
+                      {/* Left: Main Info */}
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
+                          <TrendingUp className="h-5 w-5 text-teal-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-800">{item.bond_name}</h4>
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            Maturity: {formatDate(item.expected_date)}
+                          </p>
+                          
+                          {/* Investment Details */}
+                          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="bg-gray-50 rounded-lg p-2">
+                              <p className="text-xs text-gray-500">Net Amount</p>
+                              <p className="font-semibold text-gray-800">₹{formatCurrency(item.net_amount)}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-2">
+                              <p className="text-xs text-gray-500">Reinvest Tag</p>
+                              <p className="font-medium text-teal-700 text-sm">{getTagLabel(item.reinvestment_tag)}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-2">
+                              <p className="text-xs text-gray-500">Portfolio</p>
+                              <p className="font-medium text-gray-700 text-sm">{getPortfolioLabel(item.portfolio_category)}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-2">
+                              <p className="text-xs text-gray-500">Target UCC</p>
+                              <p className="font-medium text-gray-700 text-sm">{item.target_ucc || 'Default'}</p>
+                            </div>
+                          </div>
+                          
+                          {/* Split Allocations if present */}
+                          {item.has_split_allocations && item.ucc_allocations?.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-xs text-gray-500 mb-2">Split Allocations:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {item.ucc_allocations.map((alloc, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs">
+                                    {alloc.ucc}: ₹{formatCurrency(alloc.amount)} → {alloc.portfolio}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Tagged By */}
+                          <p className="text-xs text-gray-400 mt-3">
+                            Tagged by: {item.tagged_by_name} on {formatDate(item.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Right: Actions */}
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => openConfirmModal(item, 'approve')}
+                          disabled={processingId === item.id}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openConfirmModal(item, 'reject')}
+                          disabled={processingId === item.id}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Confirmation Modal */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
+            </DialogTitle>
+            <DialogDescription>
+              {actionType === 'approve' 
+                ? 'By approving, you authorize the reinvestment to be scheduled through Kinntegra. This action cannot be undone.' 
+                : 'Are you sure you want to reject this reinvestment request?'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedItem && (
+            <div className="py-4">
+              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Bond</span>
+                  <span className="text-sm font-medium">{selectedItem.bond_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Amount</span>
+                  <span className="text-sm font-medium">₹{formatCurrency(selectedItem.net_amount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Reinvest Type</span>
+                  <span className="text-sm font-medium">{getTagLabel(selectedItem.reinvestment_tag)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Portfolio</span>
+                  <span className="text-sm font-medium">{getPortfolioLabel(selectedItem.portfolio_category)}</span>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Notes (Optional)
+                </label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder={actionType === 'approve' ? "Any special instructions..." : "Reason for rejection..."}
+                  className="min-h-[80px]"
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleApprovalAction}
+              disabled={processingId === selectedItem?.id}
+              className={actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+            >
+              {processingId === selectedItem?.id ? (
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {actionType === 'approve' ? 'Approve & Schedule' : 'Reject'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
