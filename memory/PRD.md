@@ -24,6 +24,27 @@
   - Returns file URL in format `/api/uploads/files/{filename}`
   - Requires authentication
 
+### UI Restructure: Approvals Page & Lead Management (Jan 29, 2026) ✅
+
+**Changes:**
+1. **New "Approve" sidebar menu** - Added to broker navigation
+2. **New `ApprovalsPage.jsx`** - Centralized approval page with 4 tabs:
+   - Reinvestment - Bonds (for bond reinvestment approvals)
+   - Client Creation (for sub-broker client creation approvals)
+   - Allotment - Bonds (for unit allotment approvals)
+   - Payment Tag - Real Estate (placeholder for future real estate payment approvals)
+
+3. **Simplified `LeadManagement.jsx`** - Now shows only "Client Interest" functionality:
+   - Search and filter client interest/leads
+   - Update lead status (Open, Closed, Not Interested)
+   - Removed all approval-related tabs (moved to new Approve page)
+
+**Files Modified:**
+- `/app/frontend/src/pages/ApprovalsPage.jsx` (Created)
+- `/app/frontend/src/pages/LeadManagement.jsx` (Simplified)
+- `/app/frontend/src/components/Sidebar.jsx` (Added "Approve" link)
+- `/app/frontend/src/App.js` (Added route, removed old redirect)
+
 ### Read-Only Future Months Feature (Jan 29, 2026) ✅
 
 **Feature:** Future months >3 months away are view-only (can see entries but cannot tag).
