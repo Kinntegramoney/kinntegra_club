@@ -229,6 +229,16 @@ export default function ReinvestmentTagging() {
     document.title = "Kinntegraa | Reinvestment Tagging";
   }, []);
 
+  // Set default selected month to current month
+  useEffect(() => {
+    if (!selectedMonth && getMonthsConfig.length > 0) {
+      const currentMonthConfig = getMonthsConfig.find(m => m.isCurrent);
+      if (currentMonthConfig) {
+        setSelectedMonth(currentMonthConfig.key);
+      }
+    }
+  }, [getMonthsConfig, selectedMonth]);
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
