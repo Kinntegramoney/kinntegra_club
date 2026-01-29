@@ -101,7 +101,10 @@ export default function ClientLogs() {
       'pending': { label: 'Pending', color: 'bg-amber-100 text-amber-700', icon: Clock },
       'approved': { label: 'Approved', color: 'bg-green-100 text-green-700', icon: CheckCircle },
       'rejected': { label: 'Rejected', color: 'bg-red-100 text-red-700', icon: XCircle },
-      'submitted': { label: 'Submitted to API', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
+      'submitted': { label: 'Submitted', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
+      'cancelled': { label: 'Cancelled', color: 'bg-gray-100 text-gray-700', icon: XCircle },
+      'cancellation_pending': { label: 'Cancellation Pending', color: 'bg-orange-100 text-orange-700', icon: AlertCircle },
+      'edit_pending': { label: 'Edit Pending Approval', color: 'bg-purple-100 text-purple-700', icon: Clock },
     };
     
     const config = statusConfig[status] || { label: status, color: 'bg-gray-100 text-gray-700', icon: Clock };
