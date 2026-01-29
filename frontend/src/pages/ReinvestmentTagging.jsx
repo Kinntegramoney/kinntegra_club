@@ -120,7 +120,7 @@ export default function ReinvestmentTagging() {
     const currentMonth = startOfMonth(today);
     const months = [];
     
-    // Historical months (past 6 months)
+    // Historical months (past 6 months) - Can always view AND tag
     for (let i = 6; i >= 1; i--) {
       const monthDate = addMonths(currentMonth, -i);
       months.push({
@@ -129,6 +129,7 @@ export default function ReinvestmentTagging() {
         shortLabel: format(monthDate, 'MMM yyyy'),
         isHistorical: true,
         isLocked: false,
+        canTag: true, // Historical months can be tagged
         startDate: startOfMonth(monthDate),
         endDate: endOfMonth(monthDate)
       });
