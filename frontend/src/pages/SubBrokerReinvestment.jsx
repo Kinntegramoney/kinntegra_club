@@ -523,7 +523,10 @@ export default function SubBrokerReinvestment() {
       }
       
       data.allocations.forEach((alloc, idx) => {
-        if (!alloc.ucc) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: UCC is required`);
+        // For amounts < 1000 with portfolio 'none', UCC is not required
+        const isSmallAmount = (alloc.amount || 0) < 1000 && alloc.portfolio === 'none';
+        
+        if (!isSmallAmount && !alloc.ucc) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: UCC is required`);
         if (!alloc.portfolio) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Portfolio is required`);
         if (!alloc.amount || alloc.amount <= 0) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Amount must be greater than 0`);
       });
