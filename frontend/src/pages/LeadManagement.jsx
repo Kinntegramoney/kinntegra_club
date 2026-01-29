@@ -385,6 +385,21 @@ export default function LeadManagement() {
                       <span className="bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded">{pendingReinvestments.length}</span>
                     )}
                   </button>
+                  <button
+                    onClick={() => setPendingSubTab("unit_allotment")}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      pendingSubTab === "unit_allotment" 
+                        ? "bg-white text-green-700 shadow-sm" 
+                        : "text-gray-600 hover:bg-white"
+                    }`}
+                    data-testid="subtab-unit-allotment"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    Unit Allotment
+                    {pendingTrades.length > 0 && (
+                      <span className="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded">{pendingTrades.length}</span>
+                    )}
+                  </button>
                 </div>
               </div>
 
