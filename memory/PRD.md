@@ -2,6 +2,59 @@
 
 ## Recent Changes (Jan 29, 2026)
 
+### Reinvestment Tagging UI Complete Reframe (Jan 29, 2026) ✅
+
+**Major overhaul of the reinvestment tagging workflow per user requirements:**
+
+**1. Auto-Tagging Old Bonds**
+- Bonds with investment dated before 30 April 2025 are automatically tagged as "none" when data loads
+- Auto-tagged entries appear in the Tagged tab with "Auto-Tagged" status
+- These entries are not editable
+
+**2. Month View Structure - Untagged/Tagged Tabs**
+- Each month now has two clear tabs:
+  - **Untagged Tab**: Current client-wise tagging functionality with multi-tagging options
+  - **Tagged Tab (Pending)**: Shows tagged entries awaiting client approval
+
+**3. Tagged Tab Columns (New Format)**
+- Date of Repayment
+- Bond Name (Deal ID)
+- Net Repayment Amount
+- Round Down Investment Amount (floored to nearest 100)
+- UCC
+- Portfolio Type
+- Status (Pending, Auto-Tagged, etc.)
+- Actions (Edit | Untag - only for pending status)
+
+**4. Split Allocations Display**
+- Multiple UCC/Portfolio allocations shown grouped under one bond
+- Individual rows for each allocation with subtotals
+- Total row showing sum of Net Repayment and Investment amounts
+
+**5. Status Flow**
+```
+Untagged → [Save] → Tagged (Pending) → [Client Approves] → Logs > Investment Tab
+                  → [Cancel] → Back to Untagged
+                  → [Edit] → Stay in Pending (modified)
+                  → [Client Rejects] → Back to Untagged
+```
+
+**6. Investment Logs Tab (New)**
+- New "Investment" tab added to Logs page
+- Shows only client-approved investments
+- Columns: Date, Client, Bond Name, Net Amount, Investment Amt, UCC, Portfolio, Status, Actions
+- **Cancel**: Requests cancellation (requires client re-approval)
+- **Modify**: Opens same modal as tagging (requires client re-approval)
+- Summary footer shows total amounts
+
+**Backend Endpoints Added:**
+- `GET /api/reinvestment/approved-logs`: Fetches client-approved investments for Investment tab
+
+**Helper Functions:**
+- `roundToHundred()`: Floors amount to nearest 100 for investment calculation
+
+---
+
 ### Reinvestment Edit/Cancel Workflow (Jan 29, 2026) ✅
 
 **Feature:** Brokers can now edit or cancel reinvestment tags that have already been approved by clients.
