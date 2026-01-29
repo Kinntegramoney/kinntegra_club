@@ -240,22 +240,21 @@ export default function ClientHoldings() {
         </div>
 
         <div className="p-6">
-          {/* Summary Stats */}
           {!holdings || holdings.holdings?.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-xl border">
-                <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 font-medium">No bond holdings yet</p>
-                <p className="text-sm text-gray-400 mt-2">Your bond investments will appear here</p>
-                <Button
-                  className="mt-4 bg-teal-600 hover:bg-teal-700"
-                  onClick={() => navigate("/client/opportunities")}
-                >
-                  Browse Bond Opportunities
-                </Button>
-              </div>
-            ) : (
-              <>
-                {/* Summary Stats Bar */}
+            <div className="text-center py-12 bg-white rounded-xl border">
+              <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 font-medium">No bond holdings yet</p>
+              <p className="text-sm text-gray-400 mt-2">Your bond investments will appear here</p>
+              <Button
+                className="mt-4 bg-teal-600 hover:bg-teal-700"
+                onClick={() => navigate("/client/opportunities")}
+              >
+                Browse Bond Opportunities
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Summary Stats Bar */}
                 <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
                   <div className="flex flex-wrap items-center gap-4 text-xs mb-3">
                     <div className="flex items-center gap-1.5">
