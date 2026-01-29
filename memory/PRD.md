@@ -2,6 +2,53 @@
 
 ## Recent Changes (Jan 29, 2026)
 
+### Reinvestment Edit/Cancel Workflow (Jan 29, 2026) ✅
+
+**Feature:** Brokers can now edit or cancel reinvestment tags that have already been approved by clients.
+
+**Backend Changes:**
+- `POST /api/reinvestment/cancel/{log_id}`: 
+  - For unapproved items: Directly cancels and resets to untagged
+  - For client-approved items: Sets status to `cancellation_pending`, requires client re-approval
+  - Stores cancellation reason and creates notification for client
+
+- `PUT /api/reinvestment/edit/{log_id}`:
+  - Updates tag, portfolio, UCC with optional reason
+  - For unapproved items: Direct update
+  - For client-approved items: Sets status to `edit_pending`, stores original values, requires client re-approval
+  - Creates notification for client
+
+- `POST /api/client/approve-reinvestment/{log_id}`: Enhanced to handle:
+  - `pending`: Standard new reinvestment approval (calls Kinntegra API)
+  - `cancellation_pending`: Client approves/rejects cancellation request
+  - `edit_pending`: Client approves/rejects edit request (restores original values on rejection)
+
+**Frontend Changes:**
+- `ReinvestmentTagging.jsx`:
+  - Added DropdownMenu (⋮) on tagged items with `client_approved=true` or `approval_status in ['approved', 'submitted']`
+  - "Edit Tag" option opens modal to modify tag, portfolio, and add reason
+  - "Cancel" option opens modal to cancel with optional reason
+  - Both modals show current values and explain approval requirements
+
+- `ClientApprovals.jsx`:
+  - Added tabs: "New Approvals", "Cancellations", "Edits"
+  - Each tab filters by approval_status (pending, cancellation_pending, edit_pending)
+  - Cancellation items show reason and "Approve Cancel" / "Keep Active" buttons
+  - Edit items show before/after comparison and "Approve Edit" / "Reject Edit" buttons
+  - Badge counts on each tab
+
+**Statuses:**
+- `pending`: Awaiting client approval
+- `approved`: Client approved (legacy)
+- `submitted`: Client approved and API called
+- `rejected`: Client rejected
+- `cancelled`: Cancelled by broker (direct or after client approval)
+- `cancellation_pending`: Broker requested cancel, awaiting client approval
+- `edit_pending`: Broker edited, awaiting client re-approval
+- `pending_reapproval`: Modified after client approval
+
+---
+
 ### SubBrokerReinvestment Component Sync (Jan 29, 2026) ✅
 
 **Issue:** `SubBrokerReinvestment.jsx` was severely outdated and missing all recent month-wise UI changes.
