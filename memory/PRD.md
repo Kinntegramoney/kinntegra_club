@@ -90,8 +90,48 @@
     - ACTUAL XIRR
     - ACTION
   - Removed Quick Tools section (not applicable to clients)
+  - Removed Trades tab (moved to Logs page)
   - Auto-sync happens on page load (no manual sync needed)
   - Shows difference values in parentheses when actual differs from expected
+
+### Client Approval & Logs Flow (Jan 29, 2026) ✅
+
+**Feature:** Complete client approval workflow for reinvestments with Kinntegra API integration.
+
+**Workflow:**
+1. Broker tags a reinvestment → Entry created in `reinvestment_logs` with `approval_status: pending`
+2. Client sees pending items in new "Approve" tab
+3. Client approves/rejects → Triggers Kinntegra MF Buy Scheduler API on approval
+4. Entry moves to "Logs" tab → Broker/Sub-broker notified
+
+**Frontend Changes:**
+- `/app/frontend/src/pages/ClientApprovals.jsx` (Created):
+  - Shows pending reinvestment approvals
+  - Approve/Reject actions with confirmation modal
+  - Shows bond details, amounts, portfolio, UCC allocations
+
+- `/app/frontend/src/pages/ClientLogs.jsx` (Created):
+  - Shows all reinvestment logs (approved, rejected, pending, submitted)
+  - Filterable by status
+  - Shows tagged by, dates, and status
+
+- `/app/frontend/src/components/ClientSidebar.jsx` (Updated):
+  - Added "Approve" link with pending count badge
+  - Added "Logs" link
+  - Removed old "Reinvestments" link
+
+- `/app/frontend/src/App.js` (Updated):
+  - Added routes for `/client/approvals` and `/client/logs`
+
+**Backend Changes:**
+- `/app/backend/server.py` (Added endpoints):
+  - `GET /api/client/pending-approvals/count` - Returns pending approval count
+  - `GET /api/client/pending-approvals` - Returns pending reinvestment logs
+  - `GET /api/client/reinvestment-logs` - Returns all logs for client
+  - `POST /api/client/approve-reinvestment/{log_id}` - Client approves/rejects
+    - On approval: Calls Kinntegra MF Buy Scheduler API
+    - Creates notification for broker/sub-broker
+    - Updates `approval_status` to "submitted" after API call
 
 ### Read-Only Future Months Feature (Jan 29, 2026) ✅
 
