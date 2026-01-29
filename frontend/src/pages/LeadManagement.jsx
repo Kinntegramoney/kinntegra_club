@@ -138,6 +138,7 @@ export default function LeadManagement() {
       });
       setPendingClients(response.data.pending_clients || []);
       setPendingReinvestments(response.data.pending_reinvestments || []);
+      setPendingTrades(response.data.pending_trades || []);
     } catch (error) {
       console.error("Error fetching pending approvals:", error);
       toast.error("Failed to load pending approvals");
