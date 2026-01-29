@@ -242,6 +242,14 @@ function App() {
             } 
           />
           <Route 
+            path="/broker/approvals" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <ApprovalsPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/broker/logs" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
