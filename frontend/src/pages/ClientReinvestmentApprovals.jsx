@@ -273,10 +273,11 @@ export default function ClientReinvestmentApprovals() {
             </div>
             <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg p-4 text-white">
               <div className="flex items-center gap-2">
-                <Check className="h-5 w-5" />
-                <p className="text-green-100 text-sm">Approved</p>
+                <TrendingUp className="h-5 w-5" />
+                <p className="text-green-100 text-sm">My Trades</p>
               </div>
               <p className="text-2xl font-bold mt-1">{approvedItems.length}</p>
+              <p className="text-green-100 text-sm">{formatCurrency(approvedItems.reduce((sum, item) => sum + getAmount(item), 0))}</p>
             </div>
             <div className="bg-gradient-to-r from-red-500 to-rose-500 rounded-lg p-4 text-white">
               <div className="flex items-center gap-2">
