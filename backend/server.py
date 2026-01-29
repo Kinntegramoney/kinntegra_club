@@ -13269,6 +13269,7 @@ async def get_client_reinvestment_approvals(current_user: dict = Depends(get_cur
             cf['allocations'] = []
             for alloc in allocations:
                 cf['allocations'].append({
+                    'ucc': alloc.get('target_ucc', alloc.get('ucc', '')),
                     'portfolio': alloc.get('portfolio', 'None'),
                     'portfolio_name': alloc.get('portfolio_name', alloc.get('portfolio', 'None')),
                     'percentage': alloc.get('percentage', 0),
