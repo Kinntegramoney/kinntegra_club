@@ -73,30 +73,6 @@ export default function ClientHoldings() {
     }
   };
 
-  const fetchRealEstateHoldings = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/client/real-estate-investments`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setRealEstateHoldings(response.data || []);
-    } catch (error) {
-      console.error("Error fetching real estate holdings:", error);
-    }
-  };
-
-  const fetchClientTrades = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/client/trades`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setClientTrades(response.data || []);
-    } catch (error) {
-      console.error("Error fetching trades:", error);
-    }
-  };
-
   // Consolidate holdings by bond for summary view
   const getConsolidatedHoldings = useCallback(() => {
     if (!holdings?.holdings) return [];
