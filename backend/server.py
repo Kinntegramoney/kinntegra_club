@@ -12162,12 +12162,31 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         validated_allocations = []
         
         for alloc in update.ucc_allocations:
-            # Validate UCC belongs to client
-            if alloc.ucc.upper() not in client_ucc_list_upper:
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"UCC '{alloc.ucc}' does not belong to this client"
-                )
+            # For amounts < 1000, UCC is not required (portfolio must be 'none')
+            is_small_amount = alloc.amount < 1000
+            
+            if is_small_amount:
+                # Force portfolio to 'none' for small amounts
+                if alloc.portfolio and alloc.portfolio != 'none':
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Amount < ₹1,000 must use 'none' portfolio (got '{alloc.portfolio}')"
+                    )
+                # Set empty UCC for small amounts (not needed)
+                alloc_ucc = ''
+            else:
+                # Validate UCC belongs to client for regular amounts
+                if not alloc.ucc:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="UCC is required for amounts >= ₹1,000"
+                    )
+                if alloc.ucc.upper() not in client_ucc_list_upper:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"UCC '{alloc.ucc}' does not belong to this client"
+                    )
+                alloc_ucc = alloc.ucc
             
             # Validate amount
             if alloc.amount <= 0:
@@ -12183,21 +12202,18 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                     detail="Portfolio is required for all allocations"
                 )
             
-            # Validate portfolio based on amount rules
-            if alloc.portfolio == 'bonds' and alloc.amount < 1000000:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Bonds portfolio requires amount >= ₹10,00,000 (got ₹{alloc.amount:,.0f})"
-                )
-            if alloc.portfolio == 'real_estate' and alloc.amount < 2500000:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Real Estate portfolio requires amount >= ₹25,00,000 (got ₹{alloc.amount:,.0f})"
-                )
-            if alloc.amount < 1000 and alloc.portfolio != 'none':
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Amount < ₹1,000 must use 'none' portfolio (got '{alloc.portfolio}')"
+            # Validate portfolio based on amount rules (only for non-small amounts)
+            if not is_small_amount:
+                if alloc.portfolio == 'bonds' and alloc.amount < 1000000:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Bonds portfolio requires amount >= ₹10,00,000 (got ₹{alloc.amount:,.0f})"
+                    )
+                if alloc.portfolio == 'real_estate' and alloc.amount < 2500000:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Real Estate portfolio requires amount >= ₹25,00,000 (got ₹{alloc.amount:,.0f})"
+                    )
                 )
             
             total_allocated += alloc.amount
