@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
@@ -24,10 +24,10 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, addMonths, startOfMonth, endOfMonth, subDays, isAfter, isBefore, parseISO } from "date-fns";
 import { 
   Tag, RefreshCw, ChevronDown, ChevronUp, Mail, Save, 
-  Clock, CheckCircle, History, ArrowRight, Check, X, Plus, Minus, Pencil
+  Clock, CheckCircle, History, ArrowRight, Check, X, Plus, Minus, Pencil, Lock, Calendar
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
