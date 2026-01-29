@@ -1729,145 +1729,256 @@ export default function ReinvestmentTagging() {
     );
   };
 
-  const renderTaggedClientGroup = (clientGroup, isPast, section) => {
-    const key = `tagged_${section}_${clientGroup.client_id}`;
-    const isExpanded = expandedClients[key];
-    const pendingCount = clientGroup.entries.filter(e => !e.client_approved && e.approval_status !== 'approved').length;
-    const approvedCount = clientGroup.entries.filter(e => e.client_approved || e.approval_status === 'approved').length;
+  // Render tagged entries for a client in a clean summary format
+  const renderTaggedClientGroup = (clientGroup, monthConfig) => {
+    const key = `tagged_${selectedMonth}_${clientGroup.client_id}`;
+    const isExpanded = expandedClients[key] !== false;
     const totalAmount = clientGroup.entries.reduce((sum, e) => sum + (e.net_amount || 0), 0);
+    const canTag = monthConfig?.canTag !== false;
+    
+    // Group entries by bond for summary display
+    const entriesByBond = {};
+    clientGroup.entries.forEach(entry => {
+      const bondKey = entry.bond_code || entry.bond_name;
+      if (!entriesByBond[bondKey]) {
+        entriesByBond[bondKey] = {
+          bond_name: entry.bond_name,
+          bond_code: entry.bond_code,
+          date: entry.date || entry.expected_date,
+          allocations: [],
+          total_amount: 0,
+          entries: []
+        };
+      }
+      
+      // Get allocation info
+      const allocation = {
+        entry_id: entry.id,
+        ucc: entry.target_ucc || 'Default',
+        portfolio: entry.portfolio_category || 'N/A',
+        tag: entry.reinvestment_tag || 'N/A',
+        amount: entry.net_amount || 0,
+        approval_status: entry.approval_status || 'pending',
+        client_approved: entry.client_approved || false,
+        reinvestment_log_id: entry.reinvestment_log_id || entry.id,
+        has_split: hasSplitAllocations(entry.id)
+      };
+      
+      // If entry has split allocations, get the individual splits
+      if (allocation.has_split) {
+        const splits = splitAllocations[entry.id] || [];
+        splits.forEach(split => {
+          entriesByBond[bondKey].allocations.push({
+            ...allocation,
+            ucc: split.ucc,
+            portfolio: split.portfolio,
+            amount: split.amount
+          });
+        });
+      } else {
+        entriesByBond[bondKey].allocations.push(allocation);
+      }
+      
+      entriesByBond[bondKey].total_amount += entry.net_amount || 0;
+      entriesByBond[bondKey].entries.push(entry);
+    });
     
     return (
-      <div key={key} className="bg-white rounded-lg border mb-3 overflow-hidden">
+      <div key={key} className="bg-white rounded-lg border overflow-hidden border-green-200">
         {/* Client Header */}
         <div 
-          className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b"
-          onClick={() => setExpandedClients(prev => ({ ...prev, [key]: !prev[key] }))}
+          className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-green-50 border-b border-green-100 bg-green-50/50"
+          onClick={() => toggleClientExpand(clientGroup.client_id, `tagged_${selectedMonth}`)}
         >
-          <div>
-            <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <span>{clientGroup.client_pan}</span>
-              <span>•</span>
-              <span>{clientGroup.entries.length} entries</span>
-              <span>•</span>
-              <span className="font-medium text-gray-700">{formatCurrency(totalAmount)}</span>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>{clientGroup.client_pan}</span>
+                <span>•</span>
+                <span>{clientGroup.entries.length} tagged entries</span>
+                <span>•</span>
+                <span className="font-medium text-green-700">₹{totalAmount.toLocaleString('en-IN')}</span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {approvedCount > 0 && (
-              <Badge className="bg-green-100 text-green-700">
-                <Check className="h-3 w-3 mr-1" />
-                {approvedCount} Approved
-              </Badge>
-            )}
-            {pendingCount > 0 && (
-              <>
-                <Badge className="bg-etihad-gold-100 text-etihad-gold-700">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {pendingCount} Pending
-                </Badge>
-                {!isPast && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => { e.stopPropagation(); sendEmailToClient(clientGroup); }}
-                    disabled={sendingEmail === clientGroup.client_id}
-                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                  >
-                    {sendingEmail === clientGroup.client_id ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Mail className="h-4 w-4 mr-1" />
-                        Send Email
-                      </>
-                    )}
-                  </Button>
-                )}
-              </>
-            )}
             {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
           </div>
         </div>
         
-        {/* Expanded Entries */}
+        {/* Tagged Entries Summary Table */}
         {isExpanded && (
-          <div className="overflow-x-auto">
+          <div className="p-4">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond Name</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
-                  <th className="text-right px-3 py-2 font-medium text-gray-600">Amount</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Tag</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Amount</th>
                   <th className="text-center px-3 py-2 font-medium text-gray-600">Status</th>
+                  {canTag && <th className="text-center px-3 py-2 font-medium text-gray-600">Actions</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y">
-                {clientGroup.entries.map(entry => (
-                  <tr key={entry.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2">
-                      <div className="font-medium">{entry.bond_name}</div>
-                      <div className="text-xs text-gray-500">{entry.bond_code}</div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {format(new Date(entry.expected_date), "dd MMM yyyy")}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono">
-                      {formatCurrency(entry.net_amount)}
-                    </td>
-                    <td className="px-3 py-2">{entry.target_ucc || '-'}</td>
-                    <td className="px-3 py-2 capitalize">{entry.portfolio_category?.replace('_', ' ') || '-'}</td>
-                    <td className="px-3 py-2">
-                      <Badge variant="outline" className="text-xs">
-                        {entry.reinvestment_tag === 'principal' ? 'Principal' :
-                         entry.reinvestment_tag === 'interest' ? 'Interest' :
-                         entry.reinvestment_tag === 'both' ? 'Both' :
-                         entry.reinvestment_tag === 'none' ? 'None' :
-                         entry.reinvestment_tag === 'custom' ? 'Custom' :
-                         entry.reinvestment_tag}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      {entry.client_approved || entry.approval_status === 'approved' ? (
-                        <Badge className="bg-green-100 text-green-700 text-xs">
-                          <Check className="h-3 w-3 mr-1" />
-                          Approved
-                        </Badge>
-                      ) : entry.approval_status === 'rejected' ? (
-                        <Badge className="bg-red-100 text-red-700 text-xs">
-                          <X className="h-3 w-3 mr-1" />
-                          Rejected
-                        </Badge>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <Badge className="bg-etihad-gold-100 text-etihad-gold-700 text-xs">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Pending
-                          </Badge>
-                          {entry.approval_email_sent && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 px-1 text-xs text-blue-600 hover:text-blue-700"
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                resendApprovalEmail(clientGroup.client_id, entry.id);
-                              }}
-                              title="Resend approval email"
-                            >
-                              <Mail className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
+              <tbody>
+                {Object.values(entriesByBond).map((bondGroup, bondIdx) => {
+                  const allocations = bondGroup.allocations;
+                  const hasMultiple = allocations.length > 1;
+                  
+                  return (
+                    <React.Fragment key={bondIdx}>
+                      {allocations.map((alloc, allocIdx) => {
+                        const isFirst = allocIdx === 0;
+                        const isLast = allocIdx === allocations.length - 1;
+                        const entry = bondGroup.entries.find(e => e.id === alloc.entry_id) || bondGroup.entries[0];
+                        const canModify = canTag;
+                        const needsClientApproval = alloc.client_approved || alloc.approval_status === 'approved' || alloc.approval_status === 'submitted';
+                        
+                        return (
+                          <tr 
+                            key={`${bondIdx}-${allocIdx}`}
+                            className={`
+                              ${hasMultiple ? (isFirst ? 'border-t-2 border-green-200' : '') : 'border-t'}
+                              ${hasMultiple && isLast ? 'border-b-2 border-green-200' : 'border-b border-gray-100'}
+                              ${hasMultiple ? 'bg-green-50/30' : 'hover:bg-gray-50'}
+                            `}
+                          >
+                            {/* Bond Name - only show on first row if multiple */}
+                            <td className={`px-3 py-2 ${hasMultiple && !isFirst ? 'border-l-4 border-green-300' : ''}`}>
+                              {isFirst ? (
+                                <div>
+                                  <div className="font-medium">{bondGroup.bond_name}</div>
+                                  <div className="text-xs text-gray-500">{bondGroup.bond_code}</div>
+                                </div>
+                              ) : null}
+                            </td>
+                            
+                            {/* Date - only show on first row */}
+                            <td className="px-3 py-2">
+                              {isFirst && (
+                                <span className="whitespace-nowrap">
+                                  {format(new Date(bondGroup.date), "dd MMM yyyy")}
+                                </span>
+                              )}
+                            </td>
+                            
+                            {/* UCC */}
+                            <td className="px-3 py-2">
+                              <Badge variant="outline" className="text-xs">
+                                {alloc.ucc}
+                              </Badge>
+                            </td>
+                            
+                            {/* Portfolio */}
+                            <td className="px-3 py-2">
+                              <span className="text-sm capitalize">{alloc.portfolio}</span>
+                            </td>
+                            
+                            {/* Tag */}
+                            <td className="px-3 py-2">
+                              <Badge className="bg-green-100 text-green-700 text-xs capitalize">
+                                {alloc.tag}
+                              </Badge>
+                            </td>
+                            
+                            {/* Amount */}
+                            <td className="px-3 py-2 text-right font-mono">
+                              ₹{(alloc.amount || 0).toLocaleString('en-IN')}
+                            </td>
+                            
+                            {/* Status */}
+                            <td className="px-3 py-2 text-center">
+                              {alloc.approval_status === 'submitted' || alloc.client_approved ? (
+                                <Badge className="bg-blue-100 text-blue-700 text-xs">
+                                  <CheckCircle className="h-3 w-3 mr-1 inline" />
+                                  Approved
+                                </Badge>
+                              ) : alloc.approval_status === 'pending' ? (
+                                <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                  <Clock className="h-3 w-3 mr-1 inline" />
+                                  Pending
+                                </Badge>
+                              ) : alloc.approval_status === 'cancellation_pending' ? (
+                                <Badge className="bg-red-100 text-red-700 text-xs">
+                                  <Ban className="h-3 w-3 mr-1 inline" />
+                                  Cancel Pending
+                                </Badge>
+                              ) : alloc.approval_status === 'edit_pending' ? (
+                                <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                  <Pencil className="h-3 w-3 mr-1 inline" />
+                                  Edit Pending
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                  {alloc.approval_status || 'N/A'}
+                                </Badge>
+                              )}
+                            </td>
+                            
+                            {/* Actions - show on first row */}
+                            {canModify && (
+                              <td className="px-3 py-2 text-center">
+                                {isFirst && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => openEditModal(entry)}>
+                                        <Pencil className="h-3 w-3 mr-2" />
+                                        {needsClientApproval ? 'Edit (Needs Approval)' : 'Edit Tag'}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => openCancelModal(entry)}
+                                        className="text-red-600 focus:text-red-600"
+                                      >
+                                        <Ban className="h-3 w-3 mr-2" />
+                                        {needsClientApproval ? 'Cancel (Needs Approval)' : 'Untag'}
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                      
+                      {/* Total row for multiple allocations */}
+                      {hasMultiple && (
+                        <tr className="bg-green-100/50 border-b-2 border-green-300">
+                          <td colSpan="5" className="px-3 py-2 text-right font-medium text-gray-700">
+                            Total for {bondGroup.bond_name}:
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono font-semibold text-green-700">
+                            ₹{bondGroup.total_amount.toLocaleString('en-IN')}
+                          </td>
+                          <td colSpan={canTag ? 2 : 1}></td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
+            
+            {/* Client Total */}
+            <div className="mt-3 p-3 bg-green-100 rounded-lg flex items-center justify-between">
+              <span className="font-medium text-green-800">
+                Total Tagged for {clientGroup.client_name}
+              </span>
+              <span className="font-bold text-green-800 text-lg">
+                ₹{totalAmount.toLocaleString('en-IN')}
+              </span>
+            </div>
           </div>
         )}
       </div>
