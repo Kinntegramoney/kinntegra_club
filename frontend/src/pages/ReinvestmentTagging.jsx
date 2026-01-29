@@ -880,6 +880,87 @@ export default function ReinvestmentTagging() {
     }
   };
 
+  // Open cancel modal for a tagged entry
+  const openCancelModal = (entry) => {
+    setSelectedEntryForAction(entry);
+    setCancelReason("");
+    setShowCancelModal(true);
+  };
+
+  // Open edit modal for a tagged entry
+  const openEditModal = (entry) => {
+    setSelectedEntryForAction(entry);
+    setEditFormData({
+      reinvestment_tag: entry.reinvestment_tag || '',
+      portfolio_category: entry.portfolio_category || '',
+      target_ucc: entry.target_ucc || '',
+      reason: ''
+    });
+    setShowEditModal(true);
+  };
+
+  // Handle cancel submission
+  const handleCancelSubmit = async () => {
+    if (!selectedEntryForAction) return;
+    
+    setProcessingAction(true);
+    try {
+      const token = localStorage.getItem("token");
+      const logId = selectedEntryForAction.reinvestment_log_id || selectedEntryForAction.id;
+      
+      const response = await axios.post(
+        `${API}/reinvestment/cancel/${logId}`,
+        { reason: cancelReason },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.requires_client_approval) {
+        toast.success("Cancellation request sent to client for approval");
+      } else {
+        toast.success("Reinvestment tag cancelled successfully");
+      }
+      
+      setShowCancelModal(false);
+      fetchData();
+    } catch (error) {
+      console.error("Error cancelling:", error);
+      toast.error(error.response?.data?.detail || "Failed to cancel reinvestment");
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  // Handle edit submission
+  const handleEditSubmit = async () => {
+    if (!selectedEntryForAction) return;
+    
+    setProcessingAction(true);
+    try {
+      const token = localStorage.getItem("token");
+      const logId = selectedEntryForAction.reinvestment_log_id || selectedEntryForAction.id;
+      
+      const response = await axios.put(
+        `${API}/reinvestment/edit/${logId}`,
+        editFormData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.requires_approval) {
+        toast.success("Edit request sent to client for re-approval");
+      } else {
+        toast.success("Reinvestment tag updated successfully");
+      }
+      
+      setShowEditModal(false);
+      fetchData();
+    } catch (error) {
+      console.error("Error editing:", error);
+      toast.error(error.response?.data?.detail || "Failed to edit reinvestment");
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
   const formatCurrency = (amount) => {
     if (!amount) return "₹0";
     // Round down (floor) for display
