@@ -12846,7 +12846,7 @@ async def client_approve_reinvestment(
     approval: ClientApprovalAction,
     current_user: dict = Depends(get_current_user)
 ):
-    """Client approves or rejects a reinvestment request"""
+    """Client approves or rejects a reinvestment request (including cancellation and edit requests)"""
     if current_user['role'] != 'client':
         raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
     
@@ -12864,43 +12864,152 @@ async def client_approve_reinvestment(
     if not log_entry:
         raise HTTPException(status_code=404, detail="Reinvestment log not found")
     
-    if log_entry.get('approval_status') != 'pending':
+    current_status = log_entry.get('approval_status')
+    
+    # Validate status is one we can process
+    if current_status not in ['pending', 'cancellation_pending', 'edit_pending']:
         raise HTTPException(status_code=400, detail="This request has already been processed")
     
     is_approved = approval.action == 'approve'
-    new_status = 'approved' if is_approved else 'rejected'
+    kinntegra_result = None
     
-    # Update the log entry
-    await db.reinvestment_logs.update_one(
-        {"id": log_id},
-        {"$set": {
-            "approval_status": new_status,
-            "client_approved": is_approved,
-            "approval_notes": approval.notes,
-            "approved_by": current_user['id'],
-            "approved_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    
-    # Also update the cashflow entry if it exists
-    if log_entry.get('cashflow_id'):
-        await db.holding_cashflows.update_one(
-            {"id": log_entry['cashflow_id']},
+    # Handle different approval types
+    if current_status == 'cancellation_pending':
+        # Client is approving/rejecting a cancellation request
+        if is_approved:
+            new_status = 'cancelled'
+            # Reset the cashflow to untagged
+            if log_entry.get('cashflow_id'):
+                await db.holding_cashflows.update_one(
+                    {"id": log_entry['cashflow_id']},
+                    {"$set": {
+                        "reinvestment_tag": "not_tagged",
+                        "portfolio_category": None,
+                        "target_ucc": None,
+                        "approval_status": None,
+                        "client_approved": False
+                    }}
+                )
+        else:
+            # Client rejected cancellation - keep original approved status
+            new_status = 'submitted'
+        
+        await db.reinvestment_logs.update_one(
+            {"id": log_id},
             {"$set": {
-                "client_approved": is_approved,
                 "approval_status": new_status,
+                "cancellation_approved_by_client": is_approved,
+                "cancellation_approved_at": datetime.now(timezone.utc).isoformat(),
+                "cancellation_approval_notes": approval.notes
+            }}
+        )
+        
+    elif current_status == 'edit_pending':
+        # Client is approving/rejecting an edit request
+        if is_approved:
+            new_status = 'submitted'
+            # Apply the edited values to cashflow
+            if log_entry.get('cashflow_id'):
+                await db.holding_cashflows.update_one(
+                    {"id": log_entry['cashflow_id']},
+                    {"$set": {
+                        "client_approved": True,
+                        "reinvestment_tag": log_entry.get('reinvestment_tag'),
+                        "portfolio_category": log_entry.get('portfolio_category'),
+                        "target_ucc": log_entry.get('target_ucc'),
+                        "approval_status": new_status
+                    }}
+                )
+            # Call Kinntegra API for the edited reinvestment
+            try:
+                cashflow = await db.holding_cashflows.find_one({"id": log_entry.get('cashflow_id')})
+                if cashflow:
+                    kinntegra_result = await call_kinntegra_mf_buy_scheduler(cashflow, client)
+            except Exception as e:
+                logger.error(f"Error calling Kinntegra API for edit: {e}")
+                kinntegra_result = {"status": "error", "message": str(e)}
+        else:
+            # Client rejected edit - restore original values if available
+            original = log_entry.get('original_values', {})
+            if original and log_entry.get('cashflow_id'):
+                await db.holding_cashflows.update_one(
+                    {"id": log_entry['cashflow_id']},
+                    {"$set": {
+                        "reinvestment_tag": original.get('reinvestment_tag'),
+                        "portfolio_category": original.get('portfolio_category'),
+                        "target_ucc": original.get('target_ucc')
+                    }}
+                )
+            new_status = log_entry.get('previous_approval_status', 'submitted')
+        
+        await db.reinvestment_logs.update_one(
+            {"id": log_id},
+            {"$set": {
+                "approval_status": new_status,
+                "client_approved": is_approved,
+                "edit_approved_by_client": is_approved,
+                "edit_approved_at": datetime.now(timezone.utc).isoformat(),
+                "edit_approval_notes": approval.notes
+            }}
+        )
+        
+    else:
+        # Standard new reinvestment approval (pending status)
+        new_status = 'approved' if is_approved else 'rejected'
+        
+        # Update the log entry
+        await db.reinvestment_logs.update_one(
+            {"id": log_id},
+            {"$set": {
+                "approval_status": new_status,
+                "client_approved": is_approved,
                 "approval_notes": approval.notes,
                 "approved_by": current_user['id'],
                 "approved_at": datetime.now(timezone.utc).isoformat()
             }}
         )
+        
+        # Also update the cashflow entry if it exists
+        if log_entry.get('cashflow_id'):
+            await db.holding_cashflows.update_one(
+                {"id": log_entry['cashflow_id']},
+                {"$set": {
+                    "client_approved": is_approved,
+                    "approval_status": new_status,
+                    "approval_notes": approval.notes,
+                    "approved_by": current_user['id'],
+                    "approved_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+        
+        # If approved, call the Kinntegra MF Buy Scheduler API
+        if is_approved:
+            try:
+                # Get cashflow data for API call
+                cashflow = await db.holding_cashflows.find_one({"id": log_entry.get('cashflow_id')})
+                if cashflow:
+                    kinntegra_result = await call_kinntegra_mf_buy_scheduler(cashflow, client)
+                    
+                    # Update log with API submission status
+                    await db.reinvestment_logs.update_one(
+                        {"id": log_id},
+                        {"$set": {
+                            "api_submitted": True,
+                            "api_result": kinntegra_result,
+                            "approval_status": "submitted"
+                        }}
+                    )
+            except Exception as e:
+                logger.error(f"Error calling Kinntegra API: {e}")
+                kinntegra_result = {"status": "error", "message": str(e)}
     
     # Create notification for broker/sub-broker
     broker_id = client.get('linked_subbroker_id') or client.get('broker_id') or client.get('created_by')
     if broker_id:
+        action_type = "cancellation" if current_status == 'cancellation_pending' else ("edit" if current_status == 'edit_pending' else "reinvestment")
         notification = {
             "id": str(uuid.uuid4()),
-            "type": "client_reinvestment_approval",
+            "type": f"client_{action_type}_approval",
             "client_id": client['id'],
             "client_name": client['name'],
             "log_id": log_id,
@@ -12909,35 +13018,14 @@ async def client_approve_reinvestment(
             "for_user_id": broker_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "read": False,
-            "message": f"Client {client['name']} {'approved' if is_approved else 'rejected'} reinvestment for {log_entry.get('bond_name', 'a bond')}"
+            "message": f"Client {client['name']} {'approved' if is_approved else 'rejected'} {action_type} for {log_entry.get('bond_name', 'a bond')}"
         }
         await db.notifications.insert_one(notification)
     
-    # If approved, call the Kinntegra MF Buy Scheduler API
-    kinntegra_result = None
-    if is_approved:
-        try:
-            # Get cashflow data for API call
-            cashflow = await db.holding_cashflows.find_one({"id": log_entry.get('cashflow_id')})
-            if cashflow:
-                kinntegra_result = await call_kinntegra_mf_buy_scheduler(cashflow, client)
-                
-                # Update log with API submission status
-                await db.reinvestment_logs.update_one(
-                    {"id": log_id},
-                    {"$set": {
-                        "api_submitted": True,
-                        "api_result": kinntegra_result,
-                        "approval_status": "submitted"
-                    }}
-                )
-        except Exception as e:
-            logger.error(f"Error calling Kinntegra API: {e}")
-            kinntegra_result = {"status": "error", "message": str(e)}
-    
     return {
-        "message": f"Reinvestment {'approved' if is_approved else 'rejected'} successfully",
+        "message": f"Request {'approved' if is_approved else 'rejected'} successfully",
         "status": new_status,
+        "approval_type": current_status,
         "kinntegra_api_result": kinntegra_result
     }
 
