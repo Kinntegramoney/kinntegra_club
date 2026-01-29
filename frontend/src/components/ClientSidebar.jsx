@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { TrendingUp, Wallet, User, LogOut, Menu, X, Bell, RefreshCw } from "lucide-react";
+import { TrendingUp, Wallet, User, LogOut, Menu, X, Bell, RefreshCw, CheckSquare, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
 
@@ -12,6 +12,7 @@ export default function ClientSidebar({ user }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -19,7 +20,11 @@ export default function ClientSidebar({ user }) {
 
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
+    fetchPendingApprovals();
+    const interval = setInterval(() => {
+      fetchUnreadCount();
+      fetchPendingApprovals();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -35,6 +40,19 @@ export default function ClientSidebar({ user }) {
     }
   };
 
+  const fetchPendingApprovals = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/client/pending-approvals/count`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingApprovals(response.data.count || 0);
+    } catch (error) {
+      // Endpoint might not exist yet
+      console.error("Error fetching pending approvals:", error);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -46,7 +64,8 @@ export default function ClientSidebar({ user }) {
   const menuItems = [
     { path: "/client/opportunities", label: "Opportunities", icon: TrendingUp },
     { path: "/client/holdings", label: "Holdings", icon: Wallet },
-    { path: "/client/reinvestment-approvals", label: "Reinvestments", icon: RefreshCw },
+    { path: "/client/approvals", label: "Approve", icon: CheckSquare, badge: pendingApprovals },
+    { path: "/client/logs", label: "Logs", icon: FileText },
     { path: "/client/profile", label: "Profile", icon: User },
   ];
 
