@@ -461,8 +461,7 @@ export default function ClientHoldings() {
                   </div>
                 </div>
               </>
-            )
-          )}
+            )}
         </div>
       </div>
 
