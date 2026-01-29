@@ -13317,6 +13317,44 @@ async def get_reinvestment_logs(
     return logs
 
 
+@api_router.get("/reinvestment/approved-logs")
+async def get_approved_reinvestment_logs(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get client-approved reinvestment logs for the Investment Logs tab"""
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers can access this endpoint")
+    
+    query = {
+        "approval_status": {"$in": ["submitted", "approved"]},
+        "client_approved": True
+    }
+    
+    # Sub-brokers can only see their clients' logs
+    if current_user['role'] == 'sub_broker':
+        clients = await db.clients.find(
+            {"linked_subbroker_id": current_user['id']}, 
+            {"_id": 0, "id": 1}
+        ).to_list(1000)
+        client_ids = [c['id'] for c in clients]
+        query["client_id"] = {"$in": client_ids}
+    
+    logs = await db.reinvestment_logs.find(query, {"_id": 0}).sort("approved_at", -1).to_list(500)
+    
+    # Enrich with bond and client info
+    for log in logs:
+        bond = await db.bonds.find_one({"id": log.get('bond_id')}, {"_id": 0, "name": 1, "issuer_name": 1})
+        if bond:
+            log['bond_name'] = bond.get('name', log.get('bond_name', 'Unknown'))
+        
+        client = await db.clients.find_one({"id": log.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1})
+        if client:
+            log['client_name'] = client.get('name', log.get('client_name', 'Unknown'))
+            log['client_pan'] = client.get('pan_number', '')
+    
+    return logs
+
+
 @api_router.post("/reinvestment/send-approval-email")
 async def send_reinvestment_approval_email(
     request: SendReinvestmentApprovalRequest,
