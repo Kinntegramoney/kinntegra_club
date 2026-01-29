@@ -410,15 +410,18 @@ export default function SubBrokerReinvestment() {
     setMultiRetagData(prev => {
       const entry = prev[entryId];
       const newAllocations = [...entry.allocations];
-      let newAmount = value;
+      let newAmount = newAllocations[allocIndex].amount;
       let newPortfolio = newAllocations[allocIndex].portfolio;
+      let newUcc = newAllocations[allocIndex].ucc;
       
       if (field === 'amount') {
         // Parse and floor to avoid decimal amounts
         newAmount = value === '' ? '' : Math.floor(parseFloat(value) || 0);
         
+        // If amount < 1000, auto-set portfolio to "none" and clear UCC (not needed)
         if (newAmount !== '' && newAmount < 1000) {
           newPortfolio = 'none';
+          newUcc = ''; // Clear UCC for small amounts - not needed for reinvestment
         } else if (newAmount !== '') {
           const currentPortfolio = newAllocations[allocIndex].portfolio;
           if (currentPortfolio === 'bonds' && newAmount < 1000000) {
@@ -429,10 +432,26 @@ export default function SubBrokerReinvestment() {
         }
       }
       
+      // If portfolio is being changed, auto-round the amount
+      if (field === 'portfolio') {
+        newPortfolio = value;
+        // Round the current amount to nearest 100 when portfolio is selected
+        if (newAmount !== '' && newAmount > 0) {
+          const flooredAmount = Math.floor(newAmount);
+          newAmount = roundToHundred(flooredAmount);
+        }
+      }
+      
+      // If UCC is being changed
+      if (field === 'ucc') {
+        newUcc = value;
+      }
+      
       newAllocations[allocIndex] = {
         ...newAllocations[allocIndex],
-        [field]: field === 'amount' ? newAmount : value,
-        ...(field === 'amount' && newPortfolio !== newAllocations[allocIndex].portfolio ? { portfolio: newPortfolio } : {})
+        amount: newAmount,
+        portfolio: newPortfolio,
+        ucc: newUcc
       };
       
       return {
