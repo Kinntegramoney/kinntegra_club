@@ -26,6 +26,8 @@ import ClientTradeVerification from "@/pages/ClientTradeVerification";
 import ClientProfile from "@/pages/ClientProfile";
 import ClientRealEstateInvestments from "@/pages/ClientRealEstateInvestments";
 import ClientReinvestmentApprovals from "@/pages/ClientReinvestmentApprovals";
+import ClientApprovals from "@/pages/ClientApprovals";
+import ClientLogs from "@/pages/ClientLogs";
 import BulkUpload from "@/pages/BulkUpload";
 import Analysis from "@/pages/Analysis";
 import AnalysisDashboard from "@/pages/AnalysisDashboard";
