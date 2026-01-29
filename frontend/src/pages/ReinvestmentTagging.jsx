@@ -1516,42 +1516,21 @@ export default function ReinvestmentTagging() {
                   <Tag className="h-5 w-5 text-etihad-gold-600" />
                   Reinvestment Tagging
                 </h1>
-                <p className="text-sm text-gray-500">Tag client cashflows for reinvestment (next 3 months active)</p>
+                <p className="text-sm text-gray-500">Tag client cashflows month-wise (next 3 months active)</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant={viewMode === "month" ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => setViewMode("month")}
-                  className={viewMode === "month" ? "bg-etihad-gold-600 hover:bg-etihad-gold-700" : ""}
-                >
-                  <Calendar className="h-4 w-4 mr-1" />
-                  Month View
-                </Button>
-                <Button 
-                  variant={viewMode === "client" ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => setViewMode("client")}
-                  className={viewMode === "client" ? "bg-etihad-gold-600 hover:bg-etihad-gold-700" : ""}
-                >
-                  <Tag className="h-4 w-4 mr-1" />
-                  Client View
-                </Button>
-                <Button variant="outline" size="sm" onClick={fetchData}>
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Refresh
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" onClick={fetchData}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh
+              </Button>
             </div>
           </div>
           
-          {/* Month Tabs - Only show in month view */}
-          {viewMode === "month" && (
-            <div className="px-6 border-t overflow-x-auto">
-              <div className="flex min-w-max">
-                {getMonthsConfig.map(month => {
-                  const counts = getMonthCounts[month.key] || { total: 0, untagged: 0 };
-                  const isSelected = selectedMonth === month.key;
+          {/* Month Tabs - Always visible */}
+          <div className="px-6 border-t overflow-x-auto">
+            <div className="flex min-w-max">
+              {getMonthsConfig.map(month => {
+                const counts = getMonthCounts[month.key] || { total: 0, untagged: 0 };
+                const isSelected = selectedMonth === month.key;
                   
                   return (
                     <button
