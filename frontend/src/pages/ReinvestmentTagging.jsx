@@ -967,7 +967,7 @@ export default function ReinvestmentTagging() {
     return Array.from(uccs);
   };
 
-  // Render Month View
+  // Render Month View - Now uses client-wise grouping with split tagging support
   const renderMonthView = () => {
     if (!selectedMonth) {
       return (
@@ -995,9 +995,16 @@ export default function ReinvestmentTagging() {
     const entriesByClient = {};
     allEntries.forEach(entry => {
       if (!entriesByClient[entry.client_id]) {
+        // Get client's UCC list from the original data
+        const clientData = [...untaggedPast, ...untaggedUpcoming, ...taggedPast, ...taggedUpcoming]
+          .find(g => g.client_id === entry.client_id);
+        
         entriesByClient[entry.client_id] = {
           client_id: entry.client_id,
           client_name: entry.client_name,
+          client_pan: entry.client_pan || clientData?.client_pan || '',
+          client_email: entry.client_email || clientData?.client_email || '',
+          ucc_list: entry.ucc_list || clientData?.ucc_list || [],
           entries: []
         };
       }
@@ -1005,19 +1012,334 @@ export default function ReinvestmentTagging() {
     });
     
     const clientGroups = Object.values(entriesByClient);
+    const canTag = monthConfig?.canTag !== false;
+    
+    // Check if any entries are selected for this month
+    const selectedCount = Object.keys(selectedEntries).filter(id => 
+      selectedEntries[id] && allEntries.some(e => e.id === id)
+    ).length;
     
     return (
       <div className="space-y-4">
-        {/* Month Summary */}
+        {/* Month Summary Header */}
         <div className="bg-white rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${
-                !monthConfig?.canTag ? 'bg-orange-100' :
+                !canTag ? 'bg-orange-100' :
                 monthConfig?.isHistorical ? 'bg-gray-100' :
                 monthConfig?.isCurrent ? 'bg-blue-100' : 'bg-green-100'
               }`}>
-                {!monthConfig?.canTag ? (
+                {!canTag ? (
+                  <Eye className="h-5 w-5 text-orange-600" />
+                ) : monthConfig?.isHistorical ? (
+                  <History className="h-5 w-5 text-gray-600" />
+                ) : monthConfig?.isCurrent ? (
+                  <Clock className="h-5 w-5 text-blue-600" />
+                ) : (
+                  <Calendar className="h-5 w-5 text-green-600" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold text-gray-800">{monthConfig?.label || selectedMonth}</h2>
+                  {!canTag && (
+                    <Badge className="bg-orange-100 text-orange-700 text-xs">View Only</Badge>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500">
+                  {monthData.untagged.length} untagged, {monthData.tagged.length} tagged
+                  {!canTag && ' • Tagging opens 5 days before this quarter'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xs text-gray-500">Total Amount</p>
+                <p className="font-semibold text-gray-800">
+                  ₹{allEntries.reduce((sum, e) => sum + (e.net_amount || 0), 0).toLocaleString('en-IN')}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500">Clients</p>
+                <p className="font-semibold text-gray-800">{clientGroups.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Mass Tagging Actions - Only show when entries are selected and tagging is allowed */}
+        {canTag && selectedCount > 0 && (
+          <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-etihad-gold-600 text-white">{selectedCount} selected</Badge>
+                <Button variant="outline" size="sm" onClick={clearSelection}>
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Split Amount:</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openMultiRetagModal('principal')}
+                  className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                >
+                  Principal
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openMultiRetagModal('interest')}
+                  className="border-green-300 text-green-700 hover:bg-green-50"
+                >
+                  Interest
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openMultiRetagModal('both')}
+                  className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                >
+                  Both (P+I)
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Client Groups */}
+        <div className="space-y-3">
+          {clientGroups.map(clientGroup => 
+            renderMonthClientGroup(clientGroup, monthConfig)
+          )}
+        </div>
+      </div>
+    );
+  };
+  
+  // Render a single client group within month view
+  const renderMonthClientGroup = (clientGroup, monthConfig) => {
+    const key = `month_${selectedMonth}_${clientGroup.client_id}`;
+    const isExpanded = expandedClients[key] !== false; // Default expanded
+    const hasChanges = clientGroup.entries.some(e => localChanges[e.id]);
+    const allSelected = clientGroup.entries.length > 0 && clientGroup.entries.every(e => selectedEntries[e.id]);
+    const someSelected = clientGroup.entries.some(e => selectedEntries[e.id]);
+    const totalAmount = clientGroup.entries.reduce((sum, e) => sum + (e.net_amount || 0), 0);
+    const canTag = monthConfig?.canTag !== false;
+    
+    return (
+      <div key={key} className="bg-white rounded-lg border overflow-hidden">
+        {/* Client Header */}
+        <div 
+          className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b"
+          onClick={() => toggleClientExpand(clientGroup.client_id, `month_${selectedMonth}`)}
+        >
+          <div className="flex items-center gap-3">
+            {canTag && (
+              <Checkbox
+                checked={allSelected}
+                indeterminate={someSelected && !allSelected}
+                onCheckedChange={(checked) => handleSelectAllForClient(clientGroup.entries, checked)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+            <div>
+              <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>{clientGroup.client_pan}</span>
+                <span>•</span>
+                <span>{clientGroup.entries.length} entries</span>
+                <span>•</span>
+                <span className="font-medium text-gray-700">₹{totalAmount.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {canTag && hasChanges && (
+              <Button
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); saveClientTags(clientGroup, monthConfig?.isHistorical); }}
+                disabled={savingClient === clientGroup.client_id}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {savingClient === clientGroup.client_id ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-1" />
+                    Save
+                  </>
+                )}
+              </Button>
+            )}
+            {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
+          </div>
+        </div>
+        
+        {/* Expanded Entries Table */}
+        {isExpanded && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  {canTag && <th className="w-10 px-3 py-2"></th>}
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Principal</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Interest</th>
+                  <th className="text-right px-3 py-2 font-medium text-gray-600">Net Amount</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Tag</th>
+                  {canTag && <th className="w-16 px-3 py-2"></th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {clientGroup.entries.map(entry => {
+                  const changes = localChanges[entry.id] || {};
+                  const isSplit = hasSplitAllocations(entry.id);
+                  const splitValues = isSplit ? getSplitDisplayValues(entry.id) : null;
+                  const currentUcc = splitValues?.ucc || changes.target_ucc || entry.target_ucc || '';
+                  const currentPortfolio = splitValues?.portfolio || changes.portfolio_category || entry.portfolio_category || '';
+                  const currentTag = splitValues?.tag || changes.reinvestment_tag || entry.reinvestment_tag || '';
+                  const isTagged = currentTag && currentTag !== 'not_tagged';
+                  
+                  // Get available UCCs for this client
+                  const availableUccs = clientGroup.ucc_list || [];
+                  
+                  return (
+                    <tr key={entry.id} className={`hover:bg-gray-50 ${isSplit ? 'bg-green-50' : isTagged ? 'bg-green-50/30' : ''}`}>
+                      {canTag && (
+                        <td className="px-3 py-2">
+                          {!isSplit ? (
+                            <Checkbox
+                              checked={selectedEntries[entry.id] || false}
+                              onCheckedChange={(checked) => handleEntrySelect(entry.id, checked)}
+                            />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          )}
+                        </td>
+                      )}
+                      <td className="px-3 py-2">
+                        <div className="font-medium">{entry.bond_name}</div>
+                        <div className="text-xs text-gray-500">{entry.bond_code}</div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {format(new Date(entry.date || entry.expected_date), "dd MMM yyyy")}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono">
+                        ₹{(entry.principal_net || entry.principal_component || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono">
+                        ₹{(entry.interest_net || ((entry.interest_component || 0) - (entry.tds_amount || 0))).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold">
+                        ₹{(entry.net_amount || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2">
+                        {isSplit ? (
+                          <Badge variant={currentUcc === 'Multi' ? 'secondary' : 'outline'} className="text-xs">
+                            {currentUcc}
+                          </Badge>
+                        ) : canTag ? (
+                          <Select
+                            value={currentUcc}
+                            onValueChange={(value) => handleLocalChange(entry.id, 'target_ucc', value)}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-24">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableUccs.map(ucc => (
+                                <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-sm text-gray-600">{currentUcc || '-'}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {isSplit ? (
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {currentPortfolio}
+                          </Badge>
+                        ) : canTag ? (
+                          <Select
+                            value={currentPortfolio}
+                            onValueChange={(value) => handleLocalChange(entry.id, 'portfolio_category', value)}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-24">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getFilteredPortfolioOptions(entry.net_amount).map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-sm text-gray-600 capitalize">{currentPortfolio || '-'}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {isSplit ? (
+                          <Badge className="bg-green-100 text-green-700 text-xs capitalize">
+                            {currentTag}
+                          </Badge>
+                        ) : canTag ? (
+                          <Select
+                            value={currentTag}
+                            onValueChange={(value) => handleLocalChange(entry.id, 'reinvestment_tag', value)}
+                          >
+                            <SelectTrigger className={`h-7 text-xs w-24 ${
+                              currentTag === 'not_tagged' || !currentTag ? 'border-amber-300 bg-amber-50' : 'border-green-300 bg-green-50'
+                            }`}>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="not_tagged">Not Tagged</SelectItem>
+                              <SelectItem value="principal">Principal</SelectItem>
+                              <SelectItem value="interest">Interest</SelectItem>
+                              <SelectItem value="both">Both</SelectItem>
+                              <SelectItem value="none">None</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge className={`text-xs capitalize ${isTagged ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                            {currentTag || 'Not Tagged'}
+                          </Badge>
+                        )}
+                      </td>
+                      {canTag && (
+                        <td className="px-3 py-2">
+                          {isSplit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => editSplitEntry(entry, clientGroup)}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
                   <Eye className="h-5 w-5 text-orange-600" />
                 ) : monthConfig?.isHistorical ? (
                   <History className="h-5 w-5 text-gray-600" />
