@@ -5019,7 +5019,7 @@ async def bulk_upload_indian_clients(
                 "country": get_val(address_row, 'country') or 'India',
                 "pincode": get_val(address_row, 'pincode'),
                 "nominee_name": get_val(nominee_row, 'nominee_name'),
-                "nominee_dob": get_val(nominee_row, 'nominee_dob'),
+                "nominee_dob": get_date_val(nominee_row, 'nominee_dob'),
                 "nominee_mobile": get_val(nominee_row, 'nominee_mobile'),
                 "nominee_relationship": get_val(nominee_row, 'relationship'),
                 "linked_subbroker_id": linked_subbroker_id,
