@@ -468,7 +468,205 @@ function EmptyState({ icon: Icon, title, description }) {
   );
 }
 
-// Reinvestment Card Component
+// Round down to nearest 100 for investment amount
+const roundToHundred = (amount) => {
+  if (!amount || amount <= 0) return 0;
+  return Math.floor(amount / 100) * 100;
+};
+
+// Reinvestment Approval Table Component - matches Tagged table design
+function ReinvestmentApprovalTable({ items, onApprove, onReject, processingId, formatCurrency, formatDate }) {
+  // Group items by client
+  const clientGroups = {};
+  items.forEach(item => {
+    const clientId = item.client_id;
+    if (!clientGroups[clientId]) {
+      clientGroups[clientId] = {
+        client_id: clientId,
+        client_name: item.client_name,
+        client_pan: item.client_pan,
+        entries: []
+      };
+    }
+    clientGroups[clientId].entries.push(item);
+  });
+
+  return (
+    <div className="space-y-4">
+      {Object.values(clientGroups).map(clientGroup => {
+        const totalNetAmount = clientGroup.entries.reduce((sum, e) => sum + (e.net_amount || e.amount || 0), 0);
+        const totalRoundDownAmount = clientGroup.entries.reduce((sum, e) => sum + roundToHundred(e.net_amount || e.amount || 0), 0);
+        
+        return (
+          <div key={clientGroup.client_id} className="bg-white rounded-lg border border-green-200 overflow-hidden">
+            {/* Client Header */}
+            <div className="px-4 py-3 flex items-center justify-between bg-green-50/50 border-b border-green-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span>{clientGroup.client_pan}</span>
+                    <span>•</span>
+                    <span>{clientGroup.entries.length} pending entries</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Net Repayment</p>
+                  <p className="font-semibold text-gray-800">₹{totalNetAmount.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Investment Amt</p>
+                  <p className="font-semibold text-green-700">₹{totalRoundDownAmount.toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Entries Table */}
+            <div className="p-4">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium text-gray-600">Date of Repayment</th>
+                    <th className="text-left px-3 py-2 font-medium text-gray-600">Bond Name</th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-600">Net Repayment</th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-600">Round Down Inv. Amt</th>
+                    <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
+                    <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio</th>
+                    <th className="text-left px-3 py-2 font-medium text-gray-600">Tagged By</th>
+                    <th className="text-center px-3 py-2 font-medium text-gray-600">Status</th>
+                    <th className="text-center px-3 py-2 font-medium text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clientGroup.entries.map((item, idx) => {
+                    const netAmount = item.net_amount || item.amount || 0;
+                    const roundDownAmount = roundToHundred(netAmount);
+                    const taggedByName = item.tagged_by_name || item.sub_broker_name || 'Broker';
+                    const isSubBroker = item.tagged_by_sub_broker || item.sub_broker_name;
+                    
+                    return (
+                      <tr key={item.id} className="border-t hover:bg-gray-50">
+                        {/* Date of Repayment */}
+                        <td className="px-3 py-2">
+                          <span className="whitespace-nowrap font-medium">
+                            {formatDate(item.expected_date)}
+                          </span>
+                        </td>
+                        
+                        {/* Bond Name */}
+                        <td className="px-3 py-2">
+                          <div>
+                            <div className="font-medium">{item.bond_name}</div>
+                            {item.bond_code && <div className="text-xs text-gray-500">({item.bond_code})</div>}
+                          </div>
+                        </td>
+                        
+                        {/* Net Repayment Amount */}
+                        <td className="px-3 py-2 text-right font-mono">
+                          ₹{netAmount.toLocaleString('en-IN')}
+                        </td>
+                        
+                        {/* Round Down Investment Amount */}
+                        <td className="px-3 py-2 text-right font-mono text-green-700 font-semibold">
+                          ₹{roundDownAmount.toLocaleString('en-IN')}
+                        </td>
+                        
+                        {/* UCC */}
+                        <td className="px-3 py-2">
+                          <Badge variant="outline" className="text-xs">
+                            {item.ucc || item.target_ucc || 'N/A'}
+                          </Badge>
+                        </td>
+                        
+                        {/* Portfolio */}
+                        <td className="px-3 py-2">
+                          <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
+                            {item.portfolio || item.portfolio_category || 'N/A'}
+                          </Badge>
+                        </td>
+                        
+                        {/* Tagged By */}
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            {isSubBroker && (
+                              <Badge className="bg-purple-100 text-purple-700 text-xs">
+                                Sub-Broker
+                              </Badge>
+                            )}
+                            <span className="text-sm text-gray-700">{taggedByName}</span>
+                          </div>
+                        </td>
+                        
+                        {/* Status */}
+                        <td className="px-3 py-2 text-center">
+                          <Badge className="bg-amber-100 text-amber-700 text-xs">
+                            <Clock className="h-3 w-3 mr-1 inline" />
+                            Pending
+                          </Badge>
+                        </td>
+                        
+                        {/* Actions */}
+                        <td className="px-3 py-2 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onReject(item)}
+                              disabled={processingId === item.id}
+                              className="h-7 px-2 text-red-600 border-red-200 hover:bg-red-50"
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => onApprove(item)}
+                              disabled={processingId === item.id}
+                              className="h-7 px-2 bg-green-600 hover:bg-green-700"
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Approve
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              
+              {/* Client Total */}
+              <div className="mt-3 p-3 bg-green-100 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-green-800">
+                    Total for {clientGroup.client_name}
+                  </span>
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <p className="text-xs text-green-700">Net Repayment</p>
+                      <p className="font-bold text-green-800">₹{totalNetAmount.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-green-700">Investment Amount</p>
+                      <p className="font-bold text-green-800 text-lg">₹{totalRoundDownAmount.toLocaleString('en-IN')}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Reinvestment Card Component (kept for backwards compatibility)
 function ReinvestmentCard({ item, expanded, onToggle, onApprove, onReject, processingId, formatCurrency, formatDate }) {
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden" data-testid={`reinvestment-${item.id}`}>
