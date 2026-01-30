@@ -5545,8 +5545,8 @@ async def bulk_upload_clients(
                 # Personal details
                 if should_update(existing_client.get('occupation'), get_val(row, 'occupation')):
                     update_data['occupation'] = get_val(row, 'occupation')
-                if should_update(existing_client.get('date_of_birth'), get_val(row, 'date_of_birth')):
-                    update_data['date_of_birth'] = get_val(row, 'date_of_birth')
+                if should_update(existing_client.get('date_of_birth'), get_date_val(row, 'date_of_birth')):
+                    update_data['date_of_birth'] = get_date_val(row, 'date_of_birth')
                 if should_update(existing_client.get('father_husband_name'), get_val(row, 'father_husband_name')):
                     update_data['father_husband_name'] = get_val(row, 'father_husband_name')
                 if should_update(existing_client.get('demat_account_no'), get_val(row, 'demat_account_no')):
