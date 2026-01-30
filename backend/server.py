@@ -13129,9 +13129,16 @@ async def get_client_pending_approvals(current_user: dict = Depends(get_current_
         return []
     
     # Get pending reinvestment logs (including cancellation_pending, edit_pending, pending_reapproval)
+    # Only include entries with UCC and portfolio tagged (actual investment entries)
     logs = await db.reinvestment_logs.find({
         "client_id": client['id'],
-        "approval_status": {"$in": ["pending", "cancellation_pending", "edit_pending", "pending_reapproval"]}
+        "approval_status": {"$in": ["pending", "cancellation_pending", "edit_pending", "pending_reapproval"]},
+        # Only include entries with UCC and portfolio (actual investment entries)
+        "$or": [
+            {"ucc": {"$exists": True, "$ne": None, "$ne": ""}},
+            {"target_ucc": {"$exists": True, "$ne": None, "$ne": ""}}
+        ],
+        "portfolio": {"$exists": True, "$ne": None, "$ne": ""}
     }, {"_id": 0}).sort("created_at", -1).to_list(100)
     
     # Enrich with bond and broker info
@@ -13143,6 +13150,9 @@ async def get_client_pending_approvals(current_user: dict = Depends(get_current_
         # Get who tagged it
         if log.get('tagged_by'):
             tagger = await db.users.find_one({"id": log.get('tagged_by')}, {"_id": 0, "name": 1})
+            if not tagger:
+                # Check if it's a sub-broker
+                tagger = await db.partners.find_one({"id": log.get('tagged_by')}, {"_id": 0, "name": 1})
             log['tagged_by_name'] = tagger.get('name', 'Broker') if tagger else 'Broker'
         else:
             log['tagged_by_name'] = 'Broker'
