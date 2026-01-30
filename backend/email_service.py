@@ -1654,8 +1654,9 @@ def send_reinvestment_client_approval_email(
 ) -> bool:
     """Send reinvestment approval request email to client"""
     
-    approve_url = f"{base_url}/api/approval-workflow/reinvestment-approve?token={approval_token}&action=approve"
-    reject_url = f"{base_url}/api/approval-workflow/reinvestment-approve?token={approval_token}&action=reject"
+    # Redirect to login page with return URL to approvals tab
+    # The token is stored in backend, client will login and see pending approvals
+    login_url = f"{base_url}/login?redirect=/client/approvals"
     
     subject = f"Action Required: Approve Reinvestment of ₹{total_amount:,.0f}"
     
@@ -1691,21 +1692,19 @@ def send_reinvestment_client_approval_email(
                     </div>
                     
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{approve_url}" style="display: inline-block; background: linear-gradient(135deg, #22C55E, #16A34A); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 10px;">
-                            ✓ Approve Reinvestment
+                        <a href="{login_url}" style="display: inline-block; background: linear-gradient(135deg, #22C55E, #16A34A); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 10px;">
+                            Review &amp; Approve
                         </a>
                     </div>
                     
                     <div class="info-box warning">
                         <strong>⚠️ Important:</strong><br>
-                        This approval link expires in 7 days. If you do not approve, the cashflows will remain in your account without automatic reinvestment.
+                        Please login to your Kinntegraa account to review and approve the reinvestment. You can approve or reject the request from your dashboard.
                     </div>
                     
-                    <div style="text-align: center; margin: 20px 0;">
-                        <a href="{reject_url}" style="display: inline-block; background: #DC2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-size: 14px;">
-                            Decline Reinvestment
-                        </a>
-                    </div>
+                    <p style="text-align: center; font-size: 13px; color: #6B7280; margin-top: 20px;">
+                        Click the button above to login and review your pending approvals.
+                    </p>
                 </div>
     """
     
