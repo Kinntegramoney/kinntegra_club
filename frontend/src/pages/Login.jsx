@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,9 @@ const API = `${BACKEND_URL}/api`;
 
 export default function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
+  
   const [step, setStep] = useState(1); // 1: PAN+Password, 2: PIN
   const [formData, setFormData] = useState({
     pan: "",
