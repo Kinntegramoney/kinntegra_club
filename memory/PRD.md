@@ -1,5 +1,29 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Jan 30, 2026 - Session 2)
+
+### ClientLogs.jsx Refactor (Jan 30, 2026) ✅
+
+**Issue:** The `ClientLogs.jsx` component was broken with undefined variables (`logs`, `apiLogs`, `fetchLogs`, `fetchApiLogs`) causing the page to fail to render.
+
+**Fix Applied:**
+- Complete rewrite of `/app/frontend/src/pages/ClientLogs.jsx`
+- Added two tabs mirroring broker's `TradeLogs.jsx`:
+  - **Trade Logs**: Shows all reinvestment logs with filtering by status (Pending, Approved, Rejected, etc.)
+  - **Investment**: Shows approved/submitted investments with columns:
+    - Sr No, Date of Repayment, Bond Name, UCC, Portfolio Type
+    - Net Repayment, Round Down Inv. Amt, Residual
+    - Status (Approved/Submitted)
+- Footer shows summary totals for Net Repayment, Investment, and Residual amounts
+- Correctly excludes "User Activity" tab (broker/sub-broker only feature)
+
+**Verification:**
+- Frontend testing passed 14/14 tests (100%)
+- Client Logs page renders correctly with both tabs
+- Broker Logs page continues to work with all 3 tabs
+
+---
+
 ## Recent Changes (Jan 30, 2026)
 
 ### Sub-Broker to Broker Approval Workflow Fix (Jan 30, 2026) ✅
