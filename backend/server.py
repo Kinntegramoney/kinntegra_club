@@ -5639,10 +5639,10 @@ async def bulk_upload_clients(
                 # Passport details from sheet 4
                 if should_update(existing_client.get('passport_number'), get_val(passport_row, 'passport_number')):
                     update_data['passport_number'] = get_val(passport_row, 'passport_number')
-                if should_update(existing_client.get('passport_valid_from'), get_val(passport_row, 'passport_valid_from')):
-                    update_data['passport_valid_from'] = get_val(passport_row, 'passport_valid_from')
-                if should_update(existing_client.get('passport_valid_until'), get_val(passport_row, 'passport_valid_until')):
-                    update_data['passport_valid_until'] = get_val(passport_row, 'passport_valid_until')
+                if should_update(existing_client.get('passport_valid_from'), get_date_val(passport_row, 'passport_valid_from')):
+                    update_data['passport_valid_from'] = get_date_val(passport_row, 'passport_valid_from')
+                if should_update(existing_client.get('passport_valid_until'), get_date_val(passport_row, 'passport_valid_until')):
+                    update_data['passport_valid_until'] = get_date_val(passport_row, 'passport_valid_until')
                 if should_update(existing_client.get('passport_country_of_issue'), get_val(passport_row, 'passport_country_of_issue')):
                     update_data['passport_country_of_issue'] = get_val(passport_row, 'passport_country_of_issue')
                 
