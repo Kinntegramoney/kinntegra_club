@@ -12860,6 +12860,11 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         {"$set": update_data}
     )
     
+    # Calculate round-down investment amount and residual
+    cashflow_net_amount = cashflow.get('net_amount', 0)
+    round_down_amount = (cashflow_net_amount // 100) * 100  # Round down to nearest 100
+    residual_amount = cashflow_net_amount - round_down_amount
+    
     # Create a log entry for Reinvestment Approvals tab
     log_entry = {
         "id": str(uuid.uuid4()),
@@ -12870,7 +12875,9 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         "bond_id": cashflow.get('bond_id'),
         "bond_name": cashflow.get('bond_name', ''),
         "expected_date": cashflow['date'],
-        "net_amount": cashflow.get('net_amount', 0),
+        "net_amount": cashflow_net_amount,  # Original cashflow net amount
+        "amount": round_down_amount,  # Round-down investment amount
+        "residual_amount": round(residual_amount, 2),  # Difference (net - round_down)
         "reinvestment_tag": update.reinvestment_tag,
         "portfolio_category": update.portfolio_category,
         "target_ucc": update.target_ucc,
