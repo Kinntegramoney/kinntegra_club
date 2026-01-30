@@ -5506,6 +5506,30 @@ async def bulk_upload_clients(
                     return data.get(key, default)
                 return default
             
+            def get_date_val(data, key, default=''):
+                """Extract date value from Excel, handling various formats"""
+                if isinstance(data, pd.Series):
+                    val = data.get(key)
+                    if pd.isna(val) or val == '' or val is None:
+                        return default
+                    # If it's already a datetime object (from pandas)
+                    if isinstance(val, (pd.Timestamp, datetime)):
+                        return val.strftime('%Y-%m-%d')
+                    # If it's a string, try to parse it
+                    val_str = str(val).strip()
+                    if not val_str or val_str.lower() in ['nat', 'none', 'nan']:
+                        return default
+                    # Try various date formats
+                    for fmt in ['%Y-%m-%d', '%d-%m-%Y', '%d/%m/%Y', '%Y/%m/%d', '%d.%m.%Y', '%m/%d/%Y']:
+                        try:
+                            parsed = datetime.strptime(val_str.split()[0], fmt)  # split to remove time portion
+                            return parsed.strftime('%Y-%m-%d')
+                        except ValueError:
+                            continue
+                    # Return as-is if no format matched
+                    return val_str
+                return default
+            
             if existing_client:
                 # UPDATE existing client - only update fields that are empty/missing and have new values
                 update_data = {}
