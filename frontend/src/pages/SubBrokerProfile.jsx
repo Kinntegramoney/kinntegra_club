@@ -79,20 +79,27 @@ export default function SubBrokerProfile() {
   };
 
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (!userData) {
-      navigate("/login");
-      return;
-    }
+    const initializeProfile = () => {
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        navigate("/login");
+        return null;
+      }
+      
+      const parsedUser = JSON.parse(userData);
+      if (parsedUser.role !== "sub_broker") {
+        navigate("/broker/dashboard");
+        return null;
+      }
+      
+      return parsedUser;
+    };
     
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== "sub_broker") {
-      navigate("/broker/dashboard");
-      return;
+    const userData = initializeProfile();
+    if (userData) {
+      setUser(userData);
+      fetchProfile();
     }
-    
-    setUser(parsedUser);
-    fetchProfile();
   }, [navigate]);
 
   const handleUpdateEmail = async () => {
