@@ -21,14 +21,20 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Round down to nearest 100
+const roundToHundred = (amount) => {
+  if (!amount || amount <= 0) return 0;
+  return Math.floor(amount / 100) * 100;
+};
+
 export default function ClientLogs() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [logs, setLogs] = useState([]);
-  const [apiLogs, setApiLogs] = useState([]);
+  const [tradeLogs, setTradeLogs] = useState([]);
+  const [investmentLogs, setInvestmentLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [activeTab, setActiveTab] = useState("reinvestment"); // 'reinvestment' or 'api'
+  const [activeTab, setActiveTab] = useState("trade_logs"); // 'trade_logs' or 'investment'
 
   useEffect(() => {
     document.title = "Kinntegraa | My Logs";
