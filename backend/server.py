@@ -12581,8 +12581,20 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                 update_data['approved_at'] = datetime.now(timezone.utc).isoformat()
                 update_data['approved_by'] = current_user['id']
                 update_data['auto_approved'] = True
+            elif current_user['role'] == 'sub_broker':
+                # Sub-broker tagging future date - needs broker approval first
+                update_data['client_approved'] = False
+                update_data['broker_approved'] = False
+                update_data['approval_status'] = 'pending_broker_approval'
+                update_data['tagged_by_sub_broker'] = current_user['id']
+                update_data['tagged_by_sub_broker_name'] = current_user.get('name', '')
+                # Get the broker ID for this sub-broker
+                sub_broker_info = await db.partners.find_one({"id": current_user['id']}, {"_id": 0, "broker_id": 1})
+                if sub_broker_info:
+                    update_data['broker_id'] = sub_broker_info.get('broker_id')
             else:
                 update_data['client_approved'] = False
+                update_data['broker_approved'] = True  # Broker tagging is auto broker-approved
                 update_data['approval_status'] = 'pending'
         
         await db.holding_cashflows.update_one(
