@@ -2700,21 +2700,34 @@ async def get_pending_approvals_workflow(current_user: dict = Depends(get_curren
     
     pending_reinvestments_logs = []
     if sub_broker_ids:
+        # Only get entries with UCC and portfolio tagged (actual investment entries)
         pending_reinvestments_logs = await db.reinvestment_logs.find(
             {
                 "tagged_by": {"$in": sub_broker_ids},
-                "approval_status": "pending_broker_approval"
+                "approval_status": "pending_broker_approval",
+                # Only include entries with UCC and portfolio tagged
+                "$or": [
+                    {"ucc": {"$exists": True, "$ne": None, "$ne": ""}},
+                    {"target_ucc": {"$exists": True, "$ne": None, "$ne": ""}}
+                ],
+                "portfolio": {"$exists": True, "$ne": None, "$ne": ""}
             },
             {"_id": 0}
         ).to_list(100)
     
     # Also check holding_cashflows directly for pending_broker_approval
+    # Only include properly tagged entries (with UCC and portfolio)
     pending_cashflows = []
     if sub_broker_ids:
         pending_cashflows = await db.holding_cashflows.find(
             {
                 "tagged_by": {"$in": sub_broker_ids},
-                "approval_status": "pending_broker_approval"
+                "approval_status": "pending_broker_approval",
+                # Only include entries with UCC/target_ucc and portfolio_category
+                "$or": [
+                    {"target_ucc": {"$exists": True, "$ne": None, "$ne": ""}},
+                ],
+                "portfolio_category": {"$exists": True, "$ne": None, "$ne": ""}
             },
             {"_id": 0}
         ).to_list(100)
