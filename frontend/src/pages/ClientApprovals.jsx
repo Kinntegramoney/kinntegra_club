@@ -423,9 +423,14 @@ export default function ClientApprovals() {
                   {newApprovals.length === 0 ? (
                     renderEmptyState('new')
                   ) : (
-                    <div className="divide-y divide-gray-100">
-                      {newApprovals.map(item => renderApprovalItem(item))}
-                    </div>
+                    <ClientApprovalTable 
+                      items={newApprovals}
+                      onApprove={(item) => openConfirmModal(item, 'approve')}
+                      onReject={(item) => openConfirmModal(item, 'reject')}
+                      processingId={processingId}
+                      formatCurrency={formatCurrency}
+                      formatDate={formatDate}
+                    />
                   )}
                 </TabsContent>
 
