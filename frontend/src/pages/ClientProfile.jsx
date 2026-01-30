@@ -207,7 +207,12 @@ export default function ClientProfile() {
               </div>
               
               {/* International Bank Details (NRI) */}
-              {(clientDetails.passport_type === 'foreign' || clientDetails.intl_bank_name) && (
+              {(clientDetails.passport_type === 'foreign' || 
+                clientDetails.intl_bank_name || 
+                clientDetails.intl_account_number || 
+                clientDetails.intl_iban || 
+                clientDetails.intl_swift_code ||
+                clientDetails.country_of_residency !== 'India') && (
                 <div className="bg-white rounded-lg border border-gray-200 p-5">
                   <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
                     <Building2 className="h-5 w-5 text-blue-600" />
