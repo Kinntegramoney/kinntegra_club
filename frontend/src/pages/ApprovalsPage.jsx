@@ -610,27 +610,26 @@ function ReinvestmentApprovalTable({ items, onApprove, onReject, processingId, f
                           </Badge>
                         </td>
                         
-                        {/* Actions */}
+                        {/* Actions - Single dropdown button */}
                         <td className="px-3 py-2 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onReject(item)}
-                              disabled={processingId === item.id}
-                              className="h-7 px-2 text-red-600 border-red-200 hover:bg-red-50"
-                            >
-                              <XCircle className="h-3 w-3 mr-1" />
-                              Reject
-                            </Button>
+                          <div className="flex items-center justify-center gap-2">
                             <Button
                               size="sm"
                               onClick={() => onApprove(item)}
                               disabled={processingId === item.id}
-                              className="h-7 px-2 bg-green-600 hover:bg-green-700"
+                              className="h-7 px-3 bg-green-600 hover:bg-green-700"
                             >
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Approve
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onReject(item)}
+                              disabled={processingId === item.id}
+                              className="h-7 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <XCircle className="h-4 w-4" />
                             </Button>
                           </div>
                         </td>
