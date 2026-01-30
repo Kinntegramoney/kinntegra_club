@@ -3312,6 +3312,8 @@ async def broker_approve_reinvestment_tag(
         # Send approval email to client
         if client and client.get('email'):
             try:
+                from email_service import send_reinvestment_client_approval_email
+                
                 # Generate approval token
                 approval_token = create_access_token(
                     data={
@@ -3322,8 +3324,25 @@ async def broker_approve_reinvestment_tag(
                     expires_delta=timedelta(days=7)
                 )
                 
-                # TODO: Send email to client
-                logger.info(f"Broker approved reinvestment tag for {cashflow.get('bond_name')}, pending client approval")
+                # Get broker name
+                broker = await db.users.find_one({"id": current_user['id']}, {"_id": 0, "name": 1})
+                broker_name = broker.get('name', 'Your Broker') if broker else 'Your Broker'
+                
+                # Get the net amount for email
+                net_amount = cashflow.get('net_amount', cashflow.get('amount', 0))
+                
+                # Send email asynchronously
+                background_tasks.add_task(
+                    send_reinvestment_client_approval_email,
+                    client_name=client.get('name', ''),
+                    client_email=client.get('email'),
+                    total_amount=net_amount,
+                    cashflows_count=1,
+                    approval_token=approval_token,
+                    broker_name=broker_name
+                )
+                
+                logger.info(f"Broker approved reinvestment tag for {cashflow.get('bond_name')}, approval email sent to {client.get('email')}")
             except Exception as e:
                 logger.error(f"Error sending client approval email: {e}")
         
