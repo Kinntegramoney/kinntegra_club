@@ -5713,7 +5713,7 @@ async def bulk_upload_clients(
                 "pincode": get_val(address_row, 'pincode'),
                 # Nominee details from sheet 6
                 "nominee_name": get_val(nominee_row, 'nominee_name'),
-                "nominee_dob": get_val(nominee_row, 'nominee_dob'),
+                "nominee_dob": get_date_val(nominee_row, 'nominee_dob'),
                 "nominee_mobile": get_val(nominee_row, 'nominee_mobile'),
                 "nominee_relationship": get_val(nominee_row, 'relationship'),
                 # Sub-broker assignment
