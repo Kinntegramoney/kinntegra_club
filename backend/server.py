@@ -12728,6 +12728,10 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         
         # Create log entries for each allocation
         for idx, alloc in enumerate(validated_allocations):
+            # Calculate net amount share and residual for this allocation
+            alloc_net_amount = cashflow.get('net_amount', 0) * (alloc['amount'] / total_allocated) if total_allocated > 0 else alloc['amount']
+            alloc_residual = alloc_net_amount - alloc['amount']
+            
             log_entry = {
                 "id": str(uuid.uuid4()),
                 "type": "reinvestment_tag_split",
@@ -12739,10 +12743,13 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                 "expected_date": cashflow['date'],
                 "allocation_index": idx,
                 "ucc": alloc['ucc'],
-                "amount": alloc['amount'],
+                "amount": alloc['amount'],  # Round-down investment amount
+                "net_amount": round(alloc_net_amount, 2),  # Actual net amount (share of cashflow)
+                "residual_amount": round(alloc_residual, 2),  # Difference (net - round_down)
                 "portfolio": alloc['portfolio'],
                 "tag": alloc['tag'],
                 "total_allocations": len(validated_allocations),
+                "total_cashflow_net_amount": cashflow.get('net_amount', 0),  # Full cashflow net amount
                 "tagged_by": current_user['id'],
                 "tagged_by_name": current_user.get('name', ''),
                 "is_past_date": is_past_date,
