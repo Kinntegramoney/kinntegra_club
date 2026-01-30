@@ -1,5 +1,41 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Jan 30, 2026)
+
+### Sub-Broker to Broker Approval Workflow Fix (Jan 30, 2026) ✅
+
+**Issue:** Sub-broker tagged reinvestments were not appearing in the broker's approval queue.
+
+**Root Causes Identified & Fixed:**
+1. **Missing `broker_id` in partners collection**: Partners (sub-brokers) didn't have `broker_id` field, so the query to find sub-brokers under a broker returned empty results.
+   - Fix: Added `broker_id` field to partners collection, derived from `created_by`.
+
+2. **Inconsistent data between `reinvestment_logs` and `holding_cashflows`**: The backend tagging logic was creating logs with `pending_broker_approval` status, but the approval endpoint was checking the cashflows table which had the old `pending` status.
+   - Fix: Data migration to update both collections to `pending_broker_approval` for sub-broker tagged entries.
+
+3. **Missing route for sub-broker profile page**: The `/sub-broker/profile` route was not defined in `App.js`, causing a blank page.
+   - Fix: Added the route to `App.js`.
+
+**Data Migration Applied:**
+- Updated `reinvestment_logs` and `holding_cashflows` with `approval_status: "pending_broker_approval"` and `tagged_by_sub_broker: true` for entries tagged by sub-broker.
+- Added `broker_id` field to `partners` collection.
+
+**Status Flow (Complete):**
+```
+Sub-broker tags → pending_broker_approval → Broker approves → pending → Client approves → approved
+```
+
+### Sub-Broker Profile Page Fix (Jan 30, 2026) ✅
+
+**Issue:** Sub-broker profile page was showing blank.
+
+**Root Cause:** Missing route `/sub-broker/profile` in `App.js`.
+
+**Fix Applied:**
+- Added route: `<Route path="/sub-broker/profile" element={<ProtectedRoute><SubBrokerProfile /></ProtectedRoute>} />`
+
+---
+
 ## Recent Changes (Jan 29, 2026)
 
 ### Reinvestment Tagging UI Complete Reframe (Jan 29, 2026) ✅
