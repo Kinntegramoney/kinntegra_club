@@ -5010,7 +5010,7 @@ async def bulk_upload_indian_clients(
                 "demat_account_no": get_val(bank_row, 'demat_account_no'),
                 "ucc_list": ucc_list,
                 "occupation": get_val(row, 'occupation'),
-                "date_of_birth": get_val(row, 'date_of_birth'),
+                "date_of_birth": get_date_val(row, 'date_of_birth'),
                 "father_husband_name": get_val(row, 'father_husband_name'),
                 "address_line1": get_val(address_row, 'address_line_1'),
                 "address_line2": get_val(address_row, 'address_line_2'),
