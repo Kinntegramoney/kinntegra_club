@@ -2744,8 +2744,22 @@ async def get_pending_approvals_workflow(current_user: dict = Depends(get_curren
                 cf['sub_broker_name'] = sub_broker.get('name') if sub_broker else 'Unknown'
                 cf['sub_broker_code'] = sub_broker.get('partner_code') if sub_broker else ''
     
-    # Combine all reinvestment sources
-    pending_reinvestments = pending_reinvestments_submissions + pending_reinvestments_logs + pending_cashflows
+    # Combine all reinvestment sources, but deduplicate
+    # First, collect cashflow IDs from logs to avoid duplicates
+    log_cashflow_ids = {log.get('cashflow_id') for log in pending_reinvestments_logs if log.get('cashflow_id')}
+    
+    # Filter out cashflows that already have logs
+    unique_cashflows = [cf for cf in pending_cashflows if cf.get('id') not in log_cashflow_ids]
+    
+    # Combine all sources
+    pending_reinvestments = pending_reinvestments_submissions + pending_reinvestments_logs + unique_cashflows
+    
+    # Filter to only include entries with proper UCC and portfolio
+    pending_reinvestments = [
+        r for r in pending_reinvestments 
+        if (r.get('ucc') or r.get('target_ucc')) and (r.get('portfolio') or r.get('portfolio_category'))
+        and r.get('ucc') != '' and r.get('portfolio') not in ['none', '']
+    ]
     
     # Enrich reinvestments with client and sub-broker info
     for reinv in pending_reinvestments:
