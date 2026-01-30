@@ -503,11 +503,6 @@ def send_welcome_email_subbroker(
                         <span class="badge">🏆 Member Code: {partner_code}</span>
                     </center>
                     
-                    <div class="info-box" style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 16px; margin: 20px 0;">
-                        <strong>🌐 Login Website:</strong><br>
-                        <a href="{login_url}" style="color: #1976d2; font-size: 18px; font-weight: bold;">{login_url}</a>
-                    </div>
-                    
                     <div class="credentials">
                         <h3>🔐 Your Login Credentials</h3>
                         <div class="credential-item">
