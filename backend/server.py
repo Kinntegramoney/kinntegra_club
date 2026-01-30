@@ -5609,8 +5609,8 @@ async def bulk_upload_clients(
                 # Nominee details from sheet 6
                 if should_update(existing_client.get('nominee_name'), get_val(nominee_row, 'nominee_name')):
                     update_data['nominee_name'] = get_val(nominee_row, 'nominee_name')
-                if should_update(existing_client.get('nominee_dob'), get_val(nominee_row, 'nominee_dob')):
-                    update_data['nominee_dob'] = get_val(nominee_row, 'nominee_dob')
+                if should_update(existing_client.get('nominee_dob'), get_date_val(nominee_row, 'nominee_dob')):
+                    update_data['nominee_dob'] = get_date_val(nominee_row, 'nominee_dob')
                 if should_update(existing_client.get('nominee_mobile'), get_val(nominee_row, 'nominee_mobile')):
                     update_data['nominee_mobile'] = get_val(nominee_row, 'nominee_mobile')
                 if should_update(existing_client.get('nominee_relationship'), get_val(nominee_row, 'relationship')):
