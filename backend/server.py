@@ -5319,7 +5319,7 @@ async def bulk_upload_foreign_clients(
                 "intl_iban": intl_iban,
                 "intl_swift_code": intl_swift_code,
                 "occupation": get_val(row, 'occupation'),
-                "date_of_birth": get_val(row, 'date_of_birth'),
+                "date_of_birth": get_date_val(row, 'date_of_birth'),
                 "address_line1": get_val(address_row, 'address_line_1'),
                 "address_line2": get_val(address_row, 'address_line_2'),
                 "city": get_val(address_row, 'city'),
