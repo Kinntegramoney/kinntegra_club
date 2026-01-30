@@ -54,23 +54,6 @@ export default function SubBrokerProfile() {
     logUserActivity('profile', { extra: { action: 'view' } });
   }, []);
 
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (!userData) {
-      navigate("/login");
-      return;
-    }
-    
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== "sub_broker") {
-      navigate("/broker/dashboard");
-      return;
-    }
-    
-    setUser(parsedUser);
-    fetchProfile();
-  }, [navigate]);
-
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -94,6 +77,23 @@ export default function SubBrokerProfile() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (!userData) {
+      navigate("/login");
+      return;
+    }
+    
+    const parsedUser = JSON.parse(userData);
+    if (parsedUser.role !== "sub_broker") {
+      navigate("/broker/dashboard");
+      return;
+    }
+    
+    setUser(parsedUser);
+    fetchProfile();
+  }, [navigate]);
 
   const handleUpdateEmail = async () => {
     if (!newEmail || !newEmail.includes("@")) {
