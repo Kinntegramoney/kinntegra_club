@@ -470,20 +470,13 @@ export default function ClientHoldings() {
                                 )}
                               </td>
                               <td className="py-2 px-2 text-center">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button 
-                                    onClick={() => viewCashflows(holding)} 
-                                    className="px-2 py-1 text-[10px] font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 rounded border border-teal-200 transition-colors"
-                                  >
-                                    View
-                                  </button>
-                                  <button 
-                                    onClick={() => downloadHoldingPDF(holding)} 
-                                    className="px-2 py-1 text-[10px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
-                                  >
-                                    <Download className="h-3 w-3" />
-                                  </button>
-                                </div>
+                                <button 
+                                  onClick={() => viewCashflows(holding)} 
+                                  className="px-2 py-1 text-[10px] font-medium text-etihad-gold-700 bg-etihad-gold-50 hover:bg-etihad-gold-100 rounded border border-etihad-gold-200 transition-colors"
+                                  data-testid={`view-details-${holding.bond_id}`}
+                                >
+                                  View Details
+                                </button>
                               </td>
                             </tr>
                           );
