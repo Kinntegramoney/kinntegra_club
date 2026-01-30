@@ -332,15 +332,69 @@ export default function TradeLogs() {
   };
 
   // Open modify modal
-  const openModifyModal = (investment) => {
+  const openModifyModal = (investment, group = null) => {
     setSelectedInvestment(investment);
+    // Store the group data for multi-allocation editing
+    const groupData = group || { 
+      entries: [investment], 
+      total_net_amount: investment.net_amount || investment.amount 
+    };
+    
+    // Build allocations from group entries
+    const allocations = groupData.entries.map((entry, idx) => ({
+      id: `alloc-${idx}`,
+      ucc: entry.ucc || entry.target_ucc || '',
+      amount: entry.amount || '',
+      portfolio: entry.portfolio || entry.portfolio_category || 'wealth',
+      tag: entry.reinvestment_tag || entry.tag || 'both'
+    }));
+    
     setModifyFormData({
-      reinvestment_tag: investment.reinvestment_tag || 'both',
-      portfolio_category: investment.portfolio_category || 'wealth',
-      target_ucc: investment.target_ucc || '',
-      reason: ''
+      reinvestment_tag: investment.reinvestment_tag || investment.tag || 'both',
+      portfolio_category: investment.portfolio_category || investment.portfolio || 'wealth',
+      target_ucc: investment.target_ucc || investment.ucc || '',
+      reason: '',
+      total_amount: groupData.total_net_amount || investment.net_amount || investment.amount || 0,
+      allocations: allocations
     });
     setShowModifyModal(true);
+  };
+  
+  // Add allocation to modify form
+  const addModifyAllocation = () => {
+    setModifyFormData(prev => ({
+      ...prev,
+      allocations: [...prev.allocations, {
+        id: `alloc-${Date.now()}`,
+        ucc: '',
+        amount: '',
+        portfolio: 'wealth',
+        tag: prev.reinvestment_tag || 'both'
+      }]
+    }));
+  };
+  
+  // Remove allocation from modify form
+  const removeModifyAllocation = (index) => {
+    setModifyFormData(prev => ({
+      ...prev,
+      allocations: prev.allocations.filter((_, i) => i !== index)
+    }));
+  };
+  
+  // Update allocation in modify form
+  const updateModifyAllocation = (index, field, value) => {
+    setModifyFormData(prev => ({
+      ...prev,
+      allocations: prev.allocations.map((alloc, i) => 
+        i === index ? { ...alloc, [field]: field === 'amount' ? (value === '' ? '' : Number(value)) : value } : alloc
+      )
+    }));
+  };
+  
+  // Get allocation total for modify form
+  const getModifyAllocationTotal = () => {
+    return modifyFormData.allocations?.reduce((sum, alloc) => sum + (Number(alloc.amount) || 0), 0) || 0;
   };
 
   const filteredInvestmentLogs = investmentLogs.filter(log => {
