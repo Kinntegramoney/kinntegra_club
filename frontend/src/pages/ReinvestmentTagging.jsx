@@ -762,14 +762,14 @@ export default function ReinvestmentTagging() {
       if (changes.ucc_allocations && changes.ucc_allocations.length > 0) {
         // Validate split allocations
         for (const alloc of changes.ucc_allocations) {
-          // For amounts < 1000 with 'none' portfolio, UCC is not required
-          const isSmallAmount = (alloc.amount || 0) < 1000 && alloc.portfolio === 'none';
+          // For amounts < 1000, UCC is not required (will be auto-tagged as 'none')
+          const isSmallAmount = (alloc.amount || 0) < 1000;
           
           if (!isSmallAmount && !alloc.ucc) {
             toast.error(`UCC is required for amounts >= ₹1,000 in "${entry.bond_name}"`);
             return;
           }
-          if (!alloc.portfolio || !alloc.amount || alloc.amount <= 0) {
+          if (!isSmallAmount && (!alloc.portfolio || !alloc.amount || alloc.amount <= 0)) {
             toast.error(`Please fill all fields for split allocations in "${entry.bond_name}"`);
             return;
           }
