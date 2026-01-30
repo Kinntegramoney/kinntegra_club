@@ -77,6 +77,12 @@ export default function Login() {
       
       toast.success(`Welcome, ${response.data.user.name}!`);
       
+      // Check for redirect URL from query params (e.g., from email link)
+      if (redirectUrl && response.data.user.role === 'client') {
+        navigate(redirectUrl);
+        return;
+      }
+      
       // Redirect based on role - always go to opportunities as dashboard may be disabled
       if (response.data.user.role === "broker") {
         navigate("/broker/opportunities");
