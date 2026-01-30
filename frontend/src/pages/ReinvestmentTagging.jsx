@@ -693,13 +693,15 @@ export default function ReinvestmentTagging() {
       }
       
       data.allocations.forEach((alloc, idx) => {
-        // For amounts < 1000 with portfolio 'none', UCC is not required
-        const isSmallAmount = (alloc.amount || 0) < 1000 && alloc.portfolio === 'none';
+        // For amounts < 1000, UCC is not required (will be auto-tagged as 'none')
+        const isSmallAmount = (alloc.amount || 0) < 1000;
         
         if (!isSmallAmount && !alloc.ucc) {
-          errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: UCC is required`);
+          errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: UCC is required for amounts >= ₹1,000`);
         }
-        if (!alloc.portfolio) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Portfolio is required`);
+        if (!isSmallAmount && !alloc.portfolio) {
+          errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Portfolio is required`);
+        }
         if (!alloc.amount || alloc.amount <= 0) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Amount must be greater than 0`);
       });
     });
