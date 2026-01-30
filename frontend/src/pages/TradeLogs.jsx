@@ -1211,53 +1211,6 @@ export default function TradeLogs() {
                       );
                     });
                   })()}
-                            <td className="px-4 py-3">
-                              <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
-                                {log.portfolio_category || 'N/A'}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              {log.approval_status === 'submitted' ? (
-                                <Badge className="bg-green-100 text-green-700 text-xs">
-                                  <CheckCircle className="h-3 w-3 mr-1 inline" />
-                                  Submitted
-                                </Badge>
-                              ) : log.approval_status === 'cancellation_pending' ? (
-                                <Badge className="bg-red-100 text-red-700 text-xs">
-                                  Cancel Pending
-                                </Badge>
-                              ) : log.approval_status === 'edit_pending' ? (
-                                <Badge className="bg-amber-100 text-amber-700 text-xs">
-                                  Edit Pending
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-blue-100 text-blue-700 text-xs">
-                                  Approved
-                                </Badge>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => openModifyModal(log)}>
-                                    <Pencil className="h-3 w-3 mr-2" />
-                                    Modify
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => openCancelModal(log)}
-                                    className="text-red-600 focus:text-red-600"
-                                  >
-                                    <Ban className="h-3 w-3 mr-2" />
-                                    Cancel
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
                           </tr>
                         );
                       })}
