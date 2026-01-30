@@ -1211,11 +1211,6 @@ export default function TradeLogs() {
                       );
                     });
                   })()}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
                   
                   {/* Summary Footer */}
                   <div className="px-4 py-3 bg-green-50 border-t flex items-center justify-between">
