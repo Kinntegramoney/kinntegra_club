@@ -1843,13 +1843,20 @@ async def get_sub_broker_profile(current_user: dict = Depends(get_current_user))
     if current_user['role'] != 'sub_broker':
         raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
     
+    # Try to find in partners collection first
     partner = await db.partners.find_one({"id": current_user['id']}, {"_id": 0})
+    
+    # If not found in partners, check users collection
+    if not partner:
+        partner = await db.users.find_one({"id": current_user['id']}, {"_id": 0})
+    
     if not partner:
         raise HTTPException(status_code=404, detail="Profile not found")
     
     # Count linked clients
     linked_clients = await db.clients.count_documents({"linked_subbroker_id": current_user['id']})
     
+    # Return comprehensive profile data
     return {
         "id": partner.get('id'),
         "name": partner.get('name'),
@@ -1860,7 +1867,33 @@ async def get_sub_broker_profile(current_user: dict = Depends(get_current_user))
         "partner_code": partner.get('partner_code'),
         "is_active": partner.get('is_active', True),
         "created_at": partner.get('created_at'),
-        "linked_clients_count": linked_clients
+        "linked_clients_count": linked_clients,
+        # Additional fields from sub-broker creation
+        "date_of_birth": partner.get('date_of_birth'),
+        "gender": partner.get('gender'),
+        "designation": partner.get('designation'),
+        "department": partner.get('department'),
+        "employee_id": partner.get('employee_id'),
+        "arn_number": partner.get('arn_number'),
+        "euin_number": partner.get('euin_number'),
+        "gst_number": partner.get('gst_number'),
+        "bank_name": partner.get('bank_name'),
+        "bank_account_number": partner.get('bank_account_number'),
+        "bank_ifsc": partner.get('bank_ifsc'),
+        "bank_branch": partner.get('bank_branch'),
+        # Address fields
+        "address_line1": partner.get('address_line1'),
+        "address_line2": partner.get('address_line2'),
+        "city": partner.get('city'),
+        "state": partner.get('state'),
+        "pincode": partner.get('pincode'),
+        "country": partner.get('country', 'India'),
+        # Commission details
+        "commission_percentage": partner.get('commission_percentage'),
+        "payout_frequency": partner.get('payout_frequency'),
+        # Parent broker info
+        "broker_id": partner.get('broker_id'),
+        "broker_name": partner.get('broker_name')
     }
 
 
