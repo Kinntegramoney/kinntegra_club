@@ -226,8 +226,11 @@ export default function ClientApprovals() {
                   </thead>
                   <tbody>
                     {group.entries.map((item) => {
+                      // Use stored values - net_amount is the actual cashflow amount
                       const netAmount = item.net_amount || item.amount || 0;
-                      const roundDownAmount = roundToHundred(item.amount || item.net_amount || 0);
+                      // amount is the round-down investment amount (stored separately)
+                      const roundDownAmount = item.amount || roundToHundred(netAmount);
+                      const residualAmount = item.residual_amount || (netAmount - roundDownAmount);
                       const taggedByName = item.tagged_by_name || 'Broker';
                       const isSubBroker = item.tagged_by_sub_broker;
                       const isReapproval = item.approval_status === 'pending_reapproval';
