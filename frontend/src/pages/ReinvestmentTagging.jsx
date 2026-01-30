@@ -1901,7 +1901,7 @@ export default function ReinvestmentTagging() {
                   const allocations = bondGroup.allocations;
                   const hasMultiple = allocations.length > 1;
                   const entry = bondGroup.entry;
-                  const isPending = entry.approval_status === 'pending' || entry.approval_status === 'pending_reapproval' || !entry.approval_status;
+                  const isPending = entry.approval_status === 'pending' || entry.approval_status === 'pending_reapproval' || entry.approval_status === 'pending_broker_approval' || !entry.approval_status;
                   const isAutoTagged = entry.auto_tagged;
                   
                   return (
