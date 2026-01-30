@@ -1048,8 +1048,9 @@ export default function TradeLogs() {
                         <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
                         <th className="text-left px-4 py-3 font-medium text-gray-600">Client</th>
                         <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name (Deal ID)</th>
-                        <th className="text-right px-4 py-3 font-medium text-gray-600">Net Amount</th>
+                        <th className="text-right px-4 py-3 font-medium text-gray-600">Net Repayment</th>
                         <th className="text-right px-4 py-3 font-medium text-gray-600">Investment Amt</th>
+                        <th className="text-right px-4 py-3 font-medium text-gray-600">Residual</th>
                         <th className="text-left px-4 py-3 font-medium text-gray-600">UCC</th>
                         <th className="text-left px-4 py-3 font-medium text-gray-600">Portfolio</th>
                         <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
