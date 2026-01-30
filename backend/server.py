@@ -12521,9 +12521,10 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         update_data['target_ucc'] = None
     
     # If broker/sub-broker is tagging:
-    # - If previously approved: Set to pending re-approval
+    # - Sub-broker tags: Set to pending_broker_approval (broker must approve first)
+    # - Broker tags: Set to pending (goes directly to client)
     # - Past dates: Auto-approve (no client approval needed)
-    # - Future dates: Set to pending approval
+    # - Previously approved: Set to pending re-approval
     if current_user['role'] in ['broker', 'sub_broker'] and update.reinvestment_tag not in ['not_tagged']:
         if needs_reapproval:
             # Previously approved, now modified - needs re-approval from client
@@ -12539,9 +12540,21 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
             update_data['approved_at'] = datetime.now(timezone.utc).isoformat()
             update_data['approved_by'] = current_user['id']
             update_data['auto_approved'] = True  # Mark as auto-approved for past dates
-        else:
-            # Future date - requires client approval
+        elif current_user['role'] == 'sub_broker':
+            # Sub-broker tagging future date - needs broker approval first
             update_data['client_approved'] = False
+            update_data['broker_approved'] = False
+            update_data['approval_status'] = 'pending_broker_approval'
+            update_data['tagged_by_sub_broker'] = current_user['id']
+            update_data['tagged_by_sub_broker_name'] = current_user.get('name', '')
+            # Get the broker ID for this sub-broker
+            sub_broker = await db.partners.find_one({"id": current_user['id']}, {"_id": 0, "broker_id": 1})
+            if sub_broker:
+                update_data['broker_id'] = sub_broker.get('broker_id')
+        else:
+            # Broker tagging future date - requires client approval
+            update_data['client_approved'] = False
+            update_data['broker_approved'] = True  # Broker tagging is auto broker-approved
             update_data['approval_status'] = 'pending'
     
     await db.holding_cashflows.update_one(
