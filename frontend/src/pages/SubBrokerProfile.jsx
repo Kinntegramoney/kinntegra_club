@@ -220,7 +220,7 @@ export default function SubBrokerProfile() {
   if (!user || loading) {
     return (
       <div className="flex h-screen bg-gray-50">
-        <Sidebar user={user} />
+        <SubBrokerSidebar user={user} />
         <div className="flex-1 flex items-center justify-center">
           <p className="text-gray-500">Loading...</p>
         </div>
@@ -230,7 +230,7 @@ export default function SubBrokerProfile() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar user={user} />
+      <SubBrokerSidebar user={user} />
       
       <div className="flex-1 overflow-auto">
         {/* Header */}
