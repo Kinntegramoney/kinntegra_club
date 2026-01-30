@@ -12639,6 +12639,9 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         }
         
         # Set approval status based on date and whether this is a modification
+        # SPECIAL CASE: Amounts < 1000 without UCC are auto-approved (no broker/client approval needed)
+        all_small_amounts = all(alloc['amount'] < 1000 for alloc in validated_allocations)
+        
         if current_user['role'] in ['broker', 'sub_broker'] and update.reinvestment_tag not in ['not_tagged']:
             if needs_reapproval:
                 # Previously approved, now modified - needs re-approval from client
@@ -12647,12 +12650,15 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                 update_data['modified_after_approval'] = True
                 update_data['previous_approval_at'] = cashflow.get('approved_at')
                 update_data['modification_reason'] = 'Broker/sub-broker modified approved tag'
-            elif is_past_date:
+            elif is_past_date or all_small_amounts:
+                # Past date OR all amounts < 1000 - auto approve (no approval needed)
                 update_data['client_approved'] = True
                 update_data['approval_status'] = 'approved'
                 update_data['approved_at'] = datetime.now(timezone.utc).isoformat()
                 update_data['approved_by'] = current_user['id']
                 update_data['auto_approved'] = True
+                if all_small_amounts:
+                    update_data['auto_approved_reason'] = 'Amount < 1000'
             elif current_user['role'] == 'sub_broker':
                 # Sub-broker tagging future date - needs broker approval first
                 update_data['client_approved'] = False
