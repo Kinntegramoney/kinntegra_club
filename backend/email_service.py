@@ -1723,12 +1723,9 @@ def send_reinvestment_client_approval_email(
     - Total Amount: ₹{total_amount:,.2f}
     - Number of Cashflows: {cashflows_count}
     
-    APPROVE REINVESTMENT:
-    Click here to approve: {approve_url}
-    
-    Or decline: {reject_url}
-    
-    This link expires in 7 days.
+    REVIEW & APPROVE:
+    Please login to your Kinntegraa account to review and approve the reinvestment:
+    {login_url}
     
     WHAT HAPPENS WHEN YOU APPROVE?
     Your reinvestment instructions will be processed automatically when the cashflows mature.
