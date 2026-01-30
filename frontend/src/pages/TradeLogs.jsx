@@ -1205,28 +1205,6 @@ export default function TradeLogs() {
                     </div>
                   </div>
                 </div>
-                  
-                  {/* Summary Footer */}
-                  <div className="px-4 py-3 bg-green-50 border-t flex items-center justify-between">
-                    <span className="text-sm text-green-700">
-                      {filteredInvestmentLogs.length} approved investment{filteredInvestmentLogs.length !== 1 ? 's' : ''}
-                    </span>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-xs text-green-600">Total Net Amount</p>
-                        <p className="font-semibold text-green-800">
-                          ₹{filteredInvestmentLogs.reduce((sum, l) => sum + (l.amount || l.net_amount || 0), 0).toLocaleString('en-IN')}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-green-600">Total Investment</p>
-                        <p className="font-bold text-green-800">
-                          ₹{filteredInvestmentLogs.reduce((sum, l) => sum + roundToHundred(l.amount || l.net_amount || 0), 0).toLocaleString('en-IN')}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               )}
             </div>
           </>
