@@ -156,6 +156,190 @@ export default function ClientApprovals() {
     return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
   };
 
+  // Round down to nearest 100 for investment amount
+  const roundToHundred = (amount) => {
+    if (!amount || amount <= 0) return 0;
+    return Math.floor(amount / 100) * 100;
+  };
+
+  // Client Approval Table Component - matches broker's format exactly
+  const ClientApprovalTable = ({ items, onApprove, onReject, processingId, formatCurrency, formatDate }) => {
+    // Group items by bond (for better organization)
+    const groupedItems = items.reduce((acc, item) => {
+      const bondId = item.bond_id || 'unknown';
+      if (!acc[bondId]) {
+        acc[bondId] = {
+          bond_id: bondId,
+          bond_name: item.bond_name,
+          entries: []
+        };
+      }
+      acc[bondId].entries.push(item);
+      return acc;
+    }, {});
+
+    return (
+      <div className="p-4 space-y-4">
+        {Object.values(groupedItems).map(group => {
+          const totalNetAmount = group.entries.reduce((sum, e) => sum + (e.net_amount || e.amount || 0), 0);
+          const totalRoundDownAmount = group.entries.reduce((sum, e) => sum + roundToHundred(e.amount || e.net_amount || 0), 0);
+          
+          return (
+            <div key={group.bond_id} className="bg-white rounded-lg border border-teal-200 overflow-hidden">
+              {/* Bond Header */}
+              <div className="px-4 py-3 flex items-center justify-between bg-teal-50/50 border-b border-teal-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
+                    <TrendingUp className="h-4 w-4 text-teal-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-800">{group.bond_name}</h3>
+                    <p className="text-sm text-gray-500">{group.entries.length} pending approval(s)</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Net Repayment</p>
+                    <p className="font-semibold text-gray-800">₹{formatCurrency(totalNetAmount)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Investment Amt</p>
+                    <p className="font-semibold text-teal-700">₹{formatCurrency(totalRoundDownAmount)}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Entries Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium text-gray-600">Date of Repayment</th>
+                      <th className="text-right px-3 py-2 font-medium text-gray-600">Net Repayment</th>
+                      <th className="text-right px-3 py-2 font-medium text-gray-600">Round Down Inv. Amt</th>
+                      <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
+                      <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio</th>
+                      <th className="text-left px-3 py-2 font-medium text-gray-600">Tagged By</th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-600">Status</th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.entries.map((item) => {
+                      const netAmount = item.net_amount || item.amount || 0;
+                      const roundDownAmount = roundToHundred(item.amount || item.net_amount || 0);
+                      const taggedByName = item.tagged_by_name || 'Broker';
+                      const isSubBroker = item.tagged_by_sub_broker;
+                      const isReapproval = item.approval_status === 'pending_reapproval';
+                      
+                      return (
+                        <tr key={item.id} className="border-t hover:bg-gray-50">
+                          {/* Date of Repayment */}
+                          <td className="px-3 py-2">
+                            <span className="whitespace-nowrap font-medium">
+                              {formatDate(item.expected_date)}
+                            </span>
+                          </td>
+                          
+                          {/* Net Repayment Amount */}
+                          <td className="px-3 py-2 text-right font-mono">
+                            ₹{formatCurrency(netAmount)}
+                          </td>
+                          
+                          {/* Round Down Investment Amount */}
+                          <td className="px-3 py-2 text-right font-mono text-teal-700 font-semibold">
+                            ₹{formatCurrency(roundDownAmount)}
+                          </td>
+                          
+                          {/* UCC */}
+                          <td className="px-3 py-2">
+                            <Badge variant="outline" className="text-xs">
+                              {item.ucc || item.target_ucc || 'N/A'}
+                            </Badge>
+                          </td>
+                          
+                          {/* Portfolio */}
+                          <td className="px-3 py-2">
+                            <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
+                              {item.portfolio || item.portfolio_category || 'N/A'}
+                            </Badge>
+                          </td>
+                          
+                          {/* Tagged By */}
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {isSubBroker && (
+                                <Badge className="bg-purple-100 text-purple-700 text-xs">
+                                  Sub-Broker
+                                </Badge>
+                              )}
+                              <span className="text-sm text-gray-700">{taggedByName}</span>
+                            </div>
+                          </td>
+                          
+                          {/* Status */}
+                          <td className="px-3 py-2 text-center">
+                            <Badge className={isReapproval ? "bg-amber-100 text-amber-700 text-xs" : "bg-teal-100 text-teal-700 text-xs"}>
+                              <Clock className="h-3 w-3 mr-1 inline" />
+                              {isReapproval ? 'Re-approval' : 'Pending'}
+                            </Badge>
+                          </td>
+                          
+                          {/* Actions */}
+                          <td className="px-3 py-2 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => onApprove(item)}
+                                disabled={processingId === item.id}
+                                className="h-7 px-3 bg-teal-600 hover:bg-teal-700"
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onReject(item)}
+                                disabled={processingId === item.id}
+                                className="h-7 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Total */}
+              <div className="p-3 bg-teal-100 border-t border-teal-200">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-teal-800">
+                    Total Investment
+                  </span>
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <p className="text-xs text-teal-700">Net Repayment</p>
+                      <p className="font-bold text-teal-800">₹{formatCurrency(totalNetAmount)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-teal-700">Investment Amount</p>
+                      <p className="font-bold text-teal-800 text-lg">₹{formatCurrency(totalRoundDownAmount)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const getTagLabel = (tag) => {
     const labels = {
       'principal': 'Principal Only',
