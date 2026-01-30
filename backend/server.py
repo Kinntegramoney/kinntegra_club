@@ -12758,10 +12758,15 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         # Clear target UCC if not investing
         update_data['target_ucc'] = None
     
+    # Check if this is a small amount (< 1000) that should be auto-approved
+    net_amount = cashflow.get('net_amount', 0)
+    is_small_amount = net_amount < 1000
+    
     # If broker/sub-broker is tagging:
     # - Sub-broker tags: Set to pending_broker_approval (broker must approve first)
     # - Broker tags: Set to pending (goes directly to client)
     # - Past dates: Auto-approve (no client approval needed)
+    # - Small amounts < 1000: Auto-approve (no approval needed)
     # - Previously approved: Set to pending re-approval
     if current_user['role'] in ['broker', 'sub_broker'] and update.reinvestment_tag not in ['not_tagged']:
         if needs_reapproval:
@@ -12771,13 +12776,15 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
             update_data['modified_after_approval'] = True
             update_data['previous_approval_at'] = cashflow.get('approved_at')
             update_data['modification_reason'] = 'Broker/sub-broker modified approved tag'
-        elif is_past_date:
-            # Past date - auto approve, no client approval needed
+        elif is_past_date or is_small_amount:
+            # Past date OR small amount (< 1000) - auto approve, no client/broker approval needed
             update_data['client_approved'] = True
             update_data['approval_status'] = 'approved'
             update_data['approved_at'] = datetime.now(timezone.utc).isoformat()
             update_data['approved_by'] = current_user['id']
-            update_data['auto_approved'] = True  # Mark as auto-approved for past dates
+            update_data['auto_approved'] = True
+            if is_small_amount:
+                update_data['auto_approved_reason'] = 'Amount < 1000'
         elif current_user['role'] == 'sub_broker':
             # Sub-broker tagging future date - needs broker approval first
             update_data['client_approved'] = False
