@@ -2684,8 +2684,8 @@ async def get_pending_approvals_workflow(current_user: dict = Depends(get_curren
             client['sub_broker_name'] = sub_broker.get('name') if sub_broker else 'Unknown'
             client['sub_broker_code'] = sub_broker.get('partner_code') if sub_broker else ''
     
-    # Get pending reinvestments from sub-brokers
-    pending_reinvestments = await db.reinvestment_submissions.find(
+    # Get pending reinvestments from sub-brokers (from reinvestment_submissions)
+    pending_reinvestments_submissions = await db.reinvestment_submissions.find(
         {
             "broker_id": current_user['id'],
             "broker_approval_status": "pending"
@@ -2693,16 +2693,57 @@ async def get_pending_approvals_workflow(current_user: dict = Depends(get_curren
         {"_id": 0}
     ).to_list(100)
     
+    # Also get pending reinvestments from reinvestment_logs with pending_broker_approval status
+    # Get all sub-brokers under this broker
+    sub_brokers = await db.partners.find({"broker_id": current_user['id']}, {"_id": 0, "id": 1}).to_list(1000)
+    sub_broker_ids = [sb['id'] for sb in sub_brokers]
+    
+    pending_reinvestments_logs = []
+    if sub_broker_ids:
+        pending_reinvestments_logs = await db.reinvestment_logs.find(
+            {
+                "tagged_by": {"$in": sub_broker_ids},
+                "approval_status": "pending_broker_approval"
+            },
+            {"_id": 0}
+        ).to_list(100)
+    
+    # Also check holding_cashflows directly for pending_broker_approval
+    pending_cashflows = []
+    if sub_broker_ids:
+        pending_cashflows = await db.holding_cashflows.find(
+            {
+                "tagged_by": {"$in": sub_broker_ids},
+                "approval_status": "pending_broker_approval"
+            },
+            {"_id": 0}
+        ).to_list(100)
+        
+        # Enrich cashflows with client and bond info
+        for cf in pending_cashflows:
+            client = await db.clients.find_one({"id": cf.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1})
+            cf['client_name'] = client.get('name') if client else 'Unknown'
+            cf['client_pan'] = client.get('pan_number') if client else ''
+            
+            # Get sub-broker info
+            if cf.get('tagged_by'):
+                sub_broker = await db.partners.find_one({"id": cf['tagged_by']}, {"_id": 0, "name": 1, "partner_code": 1})
+                cf['sub_broker_name'] = sub_broker.get('name') if sub_broker else 'Unknown'
+                cf['sub_broker_code'] = sub_broker.get('partner_code') if sub_broker else ''
+    
+    # Combine all reinvestment sources
+    pending_reinvestments = pending_reinvestments_submissions + pending_reinvestments_logs + pending_cashflows
+    
     # Enrich reinvestments with client and sub-broker info
     for reinv in pending_reinvestments:
-        if reinv.get('client_id'):
+        if not reinv.get('client_name') and reinv.get('client_id'):
             client = await db.clients.find_one(
                 {"id": reinv['client_id']},
                 {"_id": 0, "name": 1, "pan_number": 1}
             )
             reinv['client_name'] = client.get('name') if client else 'Unknown'
             reinv['client_pan'] = client.get('pan_number') if client else ''
-        if reinv.get('sub_broker_id'):
+        if not reinv.get('sub_broker_name') and reinv.get('sub_broker_id'):
             sub_broker = await db.partners.find_one(
                 {"id": reinv['sub_broker_id']},
                 {"_id": 0, "name": 1, "partner_code": 1}
