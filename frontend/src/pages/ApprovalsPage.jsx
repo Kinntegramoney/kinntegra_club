@@ -298,21 +298,14 @@ export default function ApprovalsPage() {
                         description="All bond reinvestment requests have been processed"
                       />
                     ) : (
-                      <div className="space-y-3">
-                        {pendingReinvestments.map((item) => (
-                          <ReinvestmentCard 
-                            key={item.id} 
-                            item={item}
-                            expanded={expandedItems[item.id]}
-                            onToggle={() => toggleExpand(item.id)}
-                            onApprove={() => openApprovalModal(item, 'reinvestment', 'approve')}
-                            onReject={() => openApprovalModal(item, 'reinvestment', 'reject')}
-                            processingId={processingId}
-                            formatCurrency={formatCurrency}
-                            formatDate={formatDate}
-                          />
-                        ))}
-                      </div>
+                      <ReinvestmentApprovalTable 
+                        items={pendingReinvestments}
+                        onApprove={(item) => openApprovalModal(item, 'reinvestment', 'approve')}
+                        onReject={(item) => openApprovalModal(item, 'reinvestment', 'reject')}
+                        processingId={processingId}
+                        formatCurrency={formatCurrency}
+                        formatDate={formatDate}
+                      />
                     )
                   )}
 
