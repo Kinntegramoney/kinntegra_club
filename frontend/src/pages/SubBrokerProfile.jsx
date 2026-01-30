@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import Sidebar from "@/components/Sidebar";
-import { User, Mail, Phone, Key, Lock, Save, Eye, EyeOff, MapPin, Building, Hash } from "lucide-react";
+import SubBrokerSidebar from "@/components/SubBrokerSidebar";
+import { User, Mail, Phone, Key, Lock, Save, Eye, EyeOff, MapPin, Building, Hash, CreditCard, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { logUserActivity } from "@/utils/activityLogger";
 
