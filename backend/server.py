@@ -5682,7 +5682,7 @@ async def bulk_upload_clients(
                 "email": get_val(row, 'email'),
                 "mobile": get_val(row, 'mobile'),
                 # Personal details from sheet 1
-                "date_of_birth": get_val(row, 'date_of_birth'),
+                "date_of_birth": get_date_val(row, 'date_of_birth'),
                 "occupation": get_val(row, 'occupation'),
                 "father_husband_name": get_val(row, 'father_husband_name'),
                 "demat_account_no": get_val(row, 'demat_account_no'),
