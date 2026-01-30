@@ -1096,175 +1096,115 @@ export default function TradeLogs() {
                     <Badge className="bg-green-100 text-green-700 ml-2">{filteredInvestmentLogs.length}</Badge>
                   </div>
                   
-                  {/* Group logs by cashflow_id to show split allocations together */}
-                  {(() => {
-                    // Group by cashflow_id
-                    const groupedLogs = filteredInvestmentLogs.reduce((acc, log) => {
-                      const key = log.cashflow_id || log.id;
-                      if (!acc[key]) {
-                        acc[key] = {
-                          cashflow_id: key,
-                          client_name: log.client_name,
-                          client_pan: log.client_pan,
-                          bond_name: log.bond_name,
-                          bond_code: log.bond_code || log.deal_id,
-                          expected_date: log.expected_date,
-                          total_net_amount: 0,
-                          entries: []
-                        };
-                      }
-                      acc[key].entries.push(log);
-                      acc[key].total_net_amount = log.total_cashflow_net_amount || log.net_amount || acc[key].total_net_amount;
-                      return acc;
-                    }, {});
-                    
-                    return Object.values(groupedLogs).map((group, groupIdx) => {
-                      const hasMultipleAllocations = group.entries.length > 1;
-                      const totalInvestment = group.entries.reduce((sum, e) => sum + (e.amount || 0), 0);
-                      const totalResidual = (group.total_net_amount || 0) - totalInvestment;
-                      
-                      return (
-                        <div key={group.cashflow_id} className={`${groupIdx > 0 ? 'border-t-2 border-gray-200' : ''}`}>
-                          {/* Main Entry Header */}
-                          <div className={`px-4 py-3 ${hasMultipleAllocations ? 'bg-blue-50 border-b' : 'bg-white border-b hover:bg-gray-50'} flex items-center justify-between`}>
-                            <div className="flex items-center gap-4 flex-1">
-                              <div className="min-w-[100px]">
-                                <span className="font-medium text-sm">
-                                  {group.expected_date ? format(new Date(group.expected_date), "dd MMM yyyy") : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="min-w-[160px]">
-                                <div className="font-medium text-sm">{group.client_name}</div>
-                                <div className="text-xs text-gray-500">{group.client_pan}</div>
-                              </div>
-                              <div className="min-w-[200px]">
-                                <div className="font-medium text-sm">{group.bond_name}</div>
-                                <div className="text-xs text-gray-500">({group.bond_code || 'N/A'})</div>
-                              </div>
-                              <div className="text-right min-w-[100px] font-mono">
-                                <div className="text-sm">₹{(group.total_net_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
-                                <div className="text-xs text-gray-500">Net Repayment</div>
-                              </div>
-                              {hasMultipleAllocations && (
-                                <Badge className="bg-blue-100 text-blue-700 text-xs ml-2">
-                                  {group.entries.length} Allocations
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-medium text-gray-600 w-12">Sr No</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-600">Date of Repayment</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-600">Date of Reinvestment</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-600">Name of the Client</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-600">UCC</th>
+                          <th className="text-left px-4 py-3 font-medium text-gray-600">Portfolio Type</th>
+                          <th className="text-right px-4 py-3 font-medium text-gray-600">Round Down Amount</th>
+                          <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+                          <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredInvestmentLogs.map((log, idx) => {
+                          const roundDownAmount = log.amount || roundToHundred(log.net_amount || 0);
+                          const hasUCC = log.ucc || log.target_ucc;
+                          const hasPortfolio = log.portfolio || log.portfolio_category;
+                          const isIncomplete = !hasUCC || !hasPortfolio || hasPortfolio === 'none';
                           
-                          {/* Allocation Rows */}
-                          <table className="w-full text-sm">
-                            {hasMultipleAllocations && (
-                              <thead className="bg-gray-50 border-b text-xs">
-                                <tr>
-                                  <th className="text-left px-4 py-2 font-medium text-gray-500 w-10">#</th>
-                                  <th className="text-right px-4 py-2 font-medium text-gray-500">Investment Amt</th>
-                                  <th className="text-left px-4 py-2 font-medium text-gray-500">UCC</th>
-                                  <th className="text-left px-4 py-2 font-medium text-gray-500">Portfolio</th>
-                                  <th className="text-center px-4 py-2 font-medium text-gray-500">Status</th>
-                                  <th className="text-center px-4 py-2 font-medium text-gray-500">Actions</th>
-                                </tr>
-                              </thead>
-                            )}
-                            <tbody>
-                              {group.entries.map((log, idx) => {
-                                const netAmount = log.net_amount || log.amount || 0;
-                                const roundDownAmount = log.amount || roundToHundred(netAmount);
-                                const residualAmount = log.residual_amount || (netAmount - roundDownAmount);
-                                
-                                return (
-                                  <tr key={log.id} className={`border-b hover:bg-gray-50 ${hasMultipleAllocations ? 'bg-white' : ''}`}>
-                                    {hasMultipleAllocations ? (
-                                      <>
-                                        <td className="px-4 py-2 text-gray-500 text-center">{idx + 1}</td>
-                                        <td className="px-4 py-2 text-right font-mono text-green-700 font-semibold">
-                                          ₹{roundDownAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                                        </td>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <td className="px-4 py-2"></td>
-                                        <td className="px-4 py-2 text-right font-mono text-green-700 font-semibold">
-                                          ₹{roundDownAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                                          <div className="text-xs text-amber-600 font-normal">
-                                            Residual: ₹{residualAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                                          </div>
-                                        </td>
-                                      </>
-                                    )}
-                                    <td className="px-4 py-2">
-                                      <Badge variant="outline" className="text-xs">
-                                        {log.ucc || log.target_ucc || 'Default'}
-                                      </Badge>
-                                    </td>
-                                    <td className="px-4 py-2">
-                                      <Badge className="bg-purple-100 text-purple-700 text-xs capitalize">
-                                        {log.portfolio || log.portfolio_category || 'N/A'}
-                                      </Badge>
-                                    </td>
-                                    <td className="px-4 py-2 text-center">
-                                      {log.approval_status === 'submitted' || log.api_submitted ? (
-                                        <Badge className="bg-green-100 text-green-700 text-xs">
-                                          <CheckCircle className="h-3 w-3 mr-1 inline" />
-                                          Submitted
-                                        </Badge>
-                                      ) : log.approval_status === 'cancellation_pending' ? (
-                                        <Badge className="bg-red-100 text-red-700 text-xs">
-                                          <Clock className="h-3 w-3 mr-1 inline" />
-                                          Cancel Pending
-                                        </Badge>
-                                      ) : log.approval_status === 'edit_pending' ? (
-                                        <Badge className="bg-amber-100 text-amber-700 text-xs">
-                                          <Clock className="h-3 w-3 mr-1 inline" />
-                                          Edit Pending
-                                        </Badge>
-                                      ) : (
-                                        <Badge className="bg-teal-100 text-teal-700 text-xs">
-                                          <CheckCircle className="h-3 w-3 mr-1 inline" />
-                                          Approved
-                                        </Badge>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-2 text-center">
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                            <MoreVertical className="h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => openModifyModal(log, group)}>
-                                            <Pencil className="h-4 w-4 mr-2 text-amber-600" />
-                                            Modify
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => openCancelModal(log)} className="text-red-600">
-                                            <Ban className="h-4 w-4 mr-2" />
-                                            Cancel
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                          // Calculate reinvestment date (typically repayment date + 1 day for next month)
+                          let reinvestmentDate = 'NA';
+                          if (log.expected_date && hasUCC && hasPortfolio && hasPortfolio !== 'none') {
+                            const repaymentDate = new Date(log.expected_date);
+                            const nextMonth = new Date(repaymentDate);
+                            nextMonth.setMonth(nextMonth.getMonth() + 1);
+                            nextMonth.setDate(1);
+                            reinvestmentDate = format(nextMonth, "dd-MM-yyyy");
+                          }
                           
-                          {/* Group Total */}
-                          {hasMultipleAllocations && (
-                            <div className="px-4 py-2 bg-green-50 border-t flex items-center justify-between text-sm">
-                              <span className="font-medium text-green-800">Total Investment</span>
-                              <div className="flex items-center gap-4">
-                                <span className="font-semibold text-green-700">₹{totalInvestment.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                                <span className="text-amber-600 text-xs">Residual: ₹{totalResidual.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    });
-                  })()}
+                          return (
+                            <tr key={log.id || idx} className={`border-b hover:bg-gray-50 ${isIncomplete ? 'bg-red-50' : ''}`}>
+                              <td className="px-4 py-3 text-gray-600">{idx + 1}</td>
+                              <td className={`px-4 py-3 font-medium ${isIncomplete ? 'text-red-600' : ''}`}>
+                                {log.expected_date ? format(new Date(log.expected_date), "dd-MMM-yy") : 'NA'}
+                              </td>
+                              <td className={`px-4 py-3 ${!hasUCC || !hasPortfolio || hasPortfolio === 'none' ? 'text-red-600' : ''}`}>
+                                {reinvestmentDate}
+                              </td>
+                              <td className="px-4 py-3">
+                                {log.client_name || 'Unknown'}
+                              </td>
+                              <td className={`px-4 py-3 ${!hasUCC ? 'text-red-600' : ''}`}>
+                                {hasUCC || 'NA'}
+                              </td>
+                              <td className={`px-4 py-3 capitalize ${!hasPortfolio || hasPortfolio === 'none' ? 'text-red-600' : ''}`}>
+                                {hasPortfolio && hasPortfolio !== 'none' ? hasPortfolio : 'NA'}
+                              </td>
+                              <td className={`px-4 py-3 text-right font-mono font-semibold ${isIncomplete ? 'text-red-600' : 'text-green-700'}`}>
+                                {roundDownAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {log.approval_status === 'submitted' || log.api_submitted ? (
+                                  <Badge className="bg-green-100 text-green-700 text-xs">
+                                    Submitted
+                                  </Badge>
+                                ) : log.approval_status === 'cancellation_pending' ? (
+                                  <Badge className="bg-red-100 text-red-700 text-xs">
+                                    Cancel Pending
+                                  </Badge>
+                                ) : log.approval_status === 'edit_pending' ? (
+                                  <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                    Edit Pending
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-teal-100 text-teal-700 text-xs">
+                                    Approved
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    onClick={() => openModifyModal(log)}
+                                    className="h-auto p-0 text-blue-600 hover:text-blue-800 text-xs"
+                                  >
+                                    Modify
+                                  </Button>
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    onClick={() => openCancelModal(log)}
+                                    className="h-auto p-0 text-red-600 hover:text-red-800 text-xs"
+                                  >
+                                    cancel
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Footer - Net Repayment Summary */}
+                  <div className="px-4 py-3 bg-blue-50 border-t flex items-center justify-end">
+                    <div className="flex items-center gap-4">
+                      <span className="text-gray-600 font-medium">Net repayment</span>
+                      <span className="text-lg font-bold text-blue-700">
+                        {filteredInvestmentLogs.reduce((sum, log) => sum + (log.net_amount || log.amount || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
                   
                   {/* Summary Footer */}
                   <div className="px-4 py-3 bg-green-50 border-t flex items-center justify-between">
