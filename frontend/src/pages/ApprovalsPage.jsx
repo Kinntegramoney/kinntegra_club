@@ -131,7 +131,15 @@ export default function ApprovalsPage() {
       if (itemType === 'client') {
         endpoint = `${API}/approval-workflow/client/${selectedItem.id}/${approvalAction}`;
       } else if (itemType === 'reinvestment') {
-        endpoint = `${API}/approval-workflow/reinvestment/${selectedItem.id}/${approvalAction}`;
+        // Check if it's a cashflow-based tag or a submission
+        if (selectedItem.cashflow_id || !selectedItem.submission_id) {
+          // Cashflow-based reinvestment tag (from sub-broker)
+          const cfId = selectedItem.cashflow_id || selectedItem.id;
+          endpoint = `${API}/approval-workflow/reinvestment-tag/${cfId}/${approvalAction}`;
+        } else {
+          // Submission-based reinvestment
+          endpoint = `${API}/approval-workflow/reinvestment/${selectedItem.id}/${approvalAction}`;
+        }
       } else if (itemType === 'trade') {
         endpoint = `${API}/approval-workflow/trade/${selectedItem.id}?action=${approvalAction}`;
       } else if (itemType === 'real_estate_payment') {
