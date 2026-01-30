@@ -544,8 +544,11 @@ function ReinvestmentApprovalTable({ items, onApprove, onReject, processingId, f
                 </thead>
                 <tbody>
                   {clientGroup.entries.map((item, idx) => {
+                    // Use stored values or calculate - net_amount is the actual cashflow amount
                     const netAmount = item.net_amount || item.amount || 0;
-                    const roundDownAmount = roundToHundred(netAmount);
+                    // amount is the round-down investment amount (stored separately)
+                    const roundDownAmount = item.amount || roundToHundred(netAmount);
+                    const residualAmount = item.residual_amount || (netAmount - roundDownAmount);
                     const taggedByName = item.tagged_by_name || item.sub_broker_name || 'Broker';
                     const isSubBroker = item.tagged_by_sub_broker || item.sub_broker_name;
                     
@@ -568,12 +571,12 @@ function ReinvestmentApprovalTable({ items, onApprove, onReject, processingId, f
                         
                         {/* Net Repayment Amount */}
                         <td className="px-3 py-2 text-right font-mono">
-                          ₹{netAmount.toLocaleString('en-IN')}
+                          ₹{netAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                         </td>
                         
                         {/* Round Down Investment Amount */}
                         <td className="px-3 py-2 text-right font-mono text-green-700 font-semibold">
-                          ₹{roundDownAmount.toLocaleString('en-IN')}
+                          ₹{roundDownAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                         </td>
                         
                         {/* UCC */}
