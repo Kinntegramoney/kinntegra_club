@@ -5258,8 +5258,8 @@ async def bulk_upload_foreign_clients(
             
             # Get passport details (required for all foreign clients)
             passport_row = passport_by_id.get(passport_number, {})
-            passport_valid_from = get_val(passport_row, 'passport_valid_from')
-            passport_valid_until = get_val(passport_row, 'passport_valid_until')
+            passport_valid_from = get_date_val(passport_row, 'passport_valid_from')
+            passport_valid_until = get_date_val(passport_row, 'passport_valid_until')
             passport_country_of_issue = get_val(passport_row, 'passport_country_of_issue')
             
             if not passport_valid_from or not passport_valid_until or not passport_country_of_issue:
