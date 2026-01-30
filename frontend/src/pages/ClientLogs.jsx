@@ -89,30 +89,6 @@ export default function ClientLogs() {
       console.error("Error fetching investment logs:", error);
     }
   };
-      });
-      setLogs(response.data || []);
-    } catch (error) {
-      console.error("Error fetching logs:", error);
-      if (error.response?.status !== 404) {
-        toast.error("Failed to load logs");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchApiLogs = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/client/investment-api-logs`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setApiLogs(response.data || []);
-    } catch (error) {
-      console.error("Error fetching API logs:", error);
-      // Don't show error toast for API logs as it may not have any
-    }
-  };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
@@ -126,6 +102,12 @@ export default function ClientLogs() {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
   };
+
+  // Filter trade logs by status
+  const filteredTradeLogs = tradeLogs.filter(log => {
+    if (statusFilter === "all") return true;
+    return log.approval_status === statusFilter;
+  });
 
   const getStatusBadge = (status) => {
     const statusConfig = {
