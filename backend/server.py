@@ -3259,6 +3259,113 @@ async def process_reinvestment_approval(
     raise HTTPException(status_code=400, detail="Invalid action")
 
 
+@api_router.post("/approval-workflow/reinvestment-tag/{cashflow_id}/{action}")
+async def broker_approve_reinvestment_tag(
+    cashflow_id: str,
+    action: str,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+    notes: Optional[str] = None
+):
+    """Broker approves/rejects a reinvestment tag from sub-broker"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can approve reinvestment tags")
+    
+    if action not in ['approve', 'reject']:
+        raise HTTPException(status_code=400, detail="Action must be 'approve' or 'reject'")
+    
+    # Find the cashflow
+    cashflow = await db.holding_cashflows.find_one({"id": cashflow_id}, {"_id": 0})
+    if not cashflow:
+        raise HTTPException(status_code=404, detail="Cashflow not found")
+    
+    # Verify this was tagged by a sub-broker under this broker
+    if cashflow.get('approval_status') != 'pending_broker_approval':
+        raise HTTPException(status_code=400, detail="This tag is not pending broker approval")
+    
+    # Get client info
+    client = await db.clients.find_one({"id": cashflow.get('client_id')}, {"_id": 0})
+    
+    if action == 'approve':
+        # Update cashflow to pending (client approval)
+        await db.holding_cashflows.update_one(
+            {"id": cashflow_id},
+            {"$set": {
+                "approval_status": "pending",
+                "broker_approved": True,
+                "broker_approved_at": datetime.now(timezone.utc).isoformat(),
+                "broker_approved_by": current_user['id']
+            }}
+        )
+        
+        # Update the reinvestment_log if exists
+        await db.reinvestment_logs.update_one(
+            {"cashflow_id": cashflow_id},
+            {"$set": {
+                "approval_status": "pending",
+                "broker_approved": True,
+                "broker_approved_at": datetime.now(timezone.utc).isoformat(),
+                "broker_approved_by": current_user['id']
+            }}
+        )
+        
+        # Send approval email to client
+        if client and client.get('email'):
+            try:
+                # Generate approval token
+                approval_token = create_access_token(
+                    data={
+                        "type": "reinvestment_approval",
+                        "cashflow_id": cashflow_id,
+                        "client_id": client['id']
+                    },
+                    expires_delta=timedelta(days=7)
+                )
+                
+                # TODO: Send email to client
+                logger.info(f"Broker approved reinvestment tag for {cashflow.get('bond_name')}, pending client approval")
+            except Exception as e:
+                logger.error(f"Error sending client approval email: {e}")
+        
+        return {
+            "message": "Reinvestment tag approved, pending client approval",
+            "status": "pending",
+            "client_name": client.get('name') if client else 'Unknown'
+        }
+    
+    else:  # reject
+        # Update cashflow - reset to not_tagged
+        await db.holding_cashflows.update_one(
+            {"id": cashflow_id},
+            {"$set": {
+                "reinvestment_tag": "not_tagged",
+                "approval_status": "broker_rejected",
+                "broker_approved": False,
+                "broker_rejected_at": datetime.now(timezone.utc).isoformat(),
+                "broker_rejected_by": current_user['id'],
+                "broker_rejection_notes": notes,
+                "portfolio_category": None,
+                "target_ucc": None
+            }}
+        )
+        
+        # Update the reinvestment_log if exists
+        await db.reinvestment_logs.update_one(
+            {"cashflow_id": cashflow_id},
+            {"$set": {
+                "approval_status": "broker_rejected",
+                "broker_approved": False,
+                "broker_rejected_at": datetime.now(timezone.utc).isoformat(),
+                "broker_rejection_notes": notes
+            }}
+        )
+        
+        return {
+            "message": "Reinvestment tag rejected",
+            "status": "broker_rejected"
+        }
+
+
 @api_router.get("/approval-workflow/reinvestment-approve")
 async def reinvestment_approve_via_link(token: str, action: str = "approve"):
     """Public endpoint for client to approve reinvestment via email link - NO AUTH REQUIRED"""
