@@ -1354,76 +1354,157 @@ export default function TradeLogs() {
           </DialogContent>
         </Dialog>
 
-        {/* Modify Investment Modal */}
+        {/* Modify Investment Modal - Multi-allocation form */}
         <Dialog open={showModifyModal} onOpenChange={setShowModifyModal}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Pencil className="h-5 w-5 text-amber-600" />
                 Modify Investment
               </DialogTitle>
               <DialogDescription>
-                Modify this approved investment. Changes will require client re-approval.
+                Modify allocations. Changes will require client re-approval.
               </DialogDescription>
             </DialogHeader>
             
             {selectedInvestment && (
-              <div className="py-4 space-y-4">
-                <div className="bg-gray-50 rounded-lg p-3 space-y-1">
-                  <div className="font-medium">{selectedInvestment.bond_name}</div>
-                  <div className="text-sm text-gray-500">
-                    ₹{(selectedInvestment.amount || selectedInvestment.net_amount || 0).toLocaleString('en-IN')} • {selectedInvestment.client_name}
+              <div className="flex-1 overflow-auto py-4 space-y-4">
+                {/* Entry Header */}
+                <div className="bg-gray-50 rounded-lg p-4 border">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="font-medium">{selectedInvestment.bond_name}</div>
+                      <div className="text-sm text-gray-500">
+                        {selectedInvestment.client_name} • {selectedInvestment.expected_date ? format(new Date(selectedInvestment.expected_date), "dd MMM yyyy") : 'N/A'}
+                      </div>
+                    </div>
+                    <Badge className="bg-amber-100 text-amber-700">
+                      {modifyFormData.reinvestment_tag?.charAt(0).toUpperCase() + modifyFormData.reinvestment_tag?.slice(1) || 'Both'}
+                    </Badge>
+                  </div>
+                  
+                  {/* Total Amount */}
+                  <div className="text-center p-3 bg-white rounded-lg border">
+                    <div className="text-xs text-gray-500 uppercase">Total Net Amount</div>
+                    <div className="text-xl font-bold text-gray-800">
+                      ₹{(modifyFormData.total_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </div>
                   </div>
                 </div>
                 
+                {/* Allocation Status */}
+                {(() => {
+                  const allocTotal = getModifyAllocationTotal();
+                  const totalAmount = roundToHundred(modifyFormData.total_amount || 0);
+                  const isBalanced = Math.abs(allocTotal - totalAmount) < 1;
+                  const remaining = totalAmount - allocTotal;
+                  
+                  return (
+                    <div className={`px-4 py-2 text-xs flex items-center justify-between rounded-lg ${isBalanced ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                      <span>
+                        Allocated: ₹{allocTotal.toLocaleString('en-IN')} / ₹{totalAmount.toLocaleString('en-IN')} (Round-down)
+                        {!isBalanced && ` (₹${Math.abs(remaining).toLocaleString('en-IN')} ${remaining > 0 ? 'remaining' : 'over'})`}
+                      </span>
+                      {isBalanced && <CheckCircle className="h-4 w-4" />}
+                    </div>
+                  );
+                })()}
+                
+                {/* Allocations */}
                 <div className="space-y-3">
-                  <div>
-                    <Label className="text-sm font-medium">Tag Type</Label>
-                    <Select
-                      value={modifyFormData.reinvestment_tag}
-                      onValueChange={(value) => setModifyFormData(prev => ({ ...prev, reinvestment_tag: value }))}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select tag" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="principal">Principal</SelectItem>
-                        <SelectItem value="interest">Interest</SelectItem>
-                        <SelectItem value="both">Both (P+I)</SelectItem>
-                        <SelectItem value="none">None</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {modifyFormData.allocations?.map((alloc, index) => (
+                    <div key={alloc.id} className="bg-white rounded-lg border p-3">
+                      <div className="flex items-start gap-3">
+                        {/* Allocation Number */}
+                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-medium">
+                          {index + 1}
+                        </div>
+                        
+                        {/* Allocation Fields */}
+                        <div className="flex-1 grid grid-cols-3 gap-3">
+                          {/* UCC */}
+                          <div>
+                            <Label className="text-[10px] text-gray-500 mb-1 block">UCC</Label>
+                            <Input
+                              value={alloc.ucc}
+                              onChange={(e) => updateModifyAllocation(index, 'ucc', e.target.value.toUpperCase())}
+                              className="h-8 text-xs"
+                              placeholder="Enter UCC"
+                            />
+                          </div>
+                          
+                          {/* Amount */}
+                          <div>
+                            <Label className="text-[10px] text-gray-500 mb-1 block">Amount (₹) <span className="text-gray-400">(multiples of 100)</span></Label>
+                            <Input
+                              type="number"
+                              step="100"
+                              value={alloc.amount}
+                              onChange={(e) => updateModifyAllocation(index, 'amount', e.target.value)}
+                              className="h-8 text-xs"
+                              placeholder="Enter amount"
+                            />
+                          </div>
+                          
+                          {/* Portfolio */}
+                          <div>
+                            <Label className="text-[10px] text-gray-500 mb-1 block">Portfolio</Label>
+                            <Select 
+                              value={alloc.portfolio} 
+                              onValueChange={(v) => updateModifyAllocation(index, 'portfolio', v)}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="wealth">Wealth</SelectItem>
+                                <SelectItem value="tax">Tax</SelectItem>
+                                <SelectItem value="short_term">Short Term</SelectItem>
+                                <SelectItem value="commodities">Commodities</SelectItem>
+                                <SelectItem value="bonds">Bonds</SelectItem>
+                                <SelectItem value="real_estate">Real Estate</SelectItem>
+                                <SelectItem value="none">None</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        {/* Remove Button */}
+                        {modifyFormData.allocations.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeModifyAllocation(index)}
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                   
-                  <div>
-                    <Label className="text-sm font-medium">Portfolio</Label>
-                    <Select
-                      value={modifyFormData.portfolio_category}
-                      onValueChange={(value) => setModifyFormData(prev => ({ ...prev, portfolio_category: value }))}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select portfolio" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="wealth">Wealth</SelectItem>
-                        <SelectItem value="tax">Tax</SelectItem>
-                        <SelectItem value="short_term">Short Term</SelectItem>
-                        <SelectItem value="commodities">Commodities</SelectItem>
-                        <SelectItem value="bonds">Bonds</SelectItem>
-                        <SelectItem value="real_estate">Real Estate</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <Label className="text-sm font-medium">Reason for change</Label>
-                    <Textarea
-                      value={modifyFormData.reason || ''}
-                      onChange={(e) => setModifyFormData(prev => ({ ...prev, reason: e.target.value }))}
-                      placeholder="Enter reason..."
-                      className="mt-1"
-                    />
-                  </div>
+                  {/* Add Allocation Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addModifyAllocation}
+                    className="w-full border-dashed"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Another Allocation
+                  </Button>
+                </div>
+                
+                {/* Reason */}
+                <div>
+                  <Label className="text-sm font-medium">Reason for change</Label>
+                  <Textarea
+                    value={modifyFormData.reason || ''}
+                    onChange={(e) => setModifyFormData(prev => ({ ...prev, reason: e.target.value }))}
+                    placeholder="Enter reason..."
+                    className="mt-1"
+                  />
                 </div>
               </div>
             )}
@@ -1434,7 +1515,7 @@ export default function TradeLogs() {
               </Button>
               <Button 
                 onClick={handleModifyInvestment} 
-                disabled={processingAction || !modifyFormData.reinvestment_tag || !modifyFormData.portfolio_category}
+                disabled={processingAction || getModifyAllocationTotal() === 0}
                 className="bg-amber-600 hover:bg-amber-700"
               >
                 {processingAction ? (
