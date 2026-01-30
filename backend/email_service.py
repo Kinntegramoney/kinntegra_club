@@ -1655,85 +1655,49 @@ def send_reinvestment_client_approval_email(
     """Send reinvestment approval request email to client"""
     
     # Redirect to login page with return URL to approvals tab
-    # The token is stored in backend, client will login and see pending approvals
     login_url = f"{base_url}/login?redirect=/client/approvals"
     
-    subject = f"Action Required: Approve Reinvestment of ₹{total_amount:,.0f}"
+    subject = f"Kinntegraa | New MF Purchase Order"
     
     content = f"""
-                <div class="header">
-                    <div class="logo-container">
-                        <img src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" alt="Kinntegraa" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
-                        <span class="logo-fallback" style="display:none;">K</span>
-                    </div>
-                    <h1>Reinvestment Approval Required</h1>
-                    <p>Your Investment Decision</p>
-                </div>
-                <div class="content">
-                    <p class="greeting">Dear <strong>{client_name}</strong>,</p>
+                <div class="content" style="padding: 30px;">
+                    <p style="font-size: 16px; color: #333; margin-bottom: 20px;">Dear <strong>{client_name}</strong>,</p>
                     
-                    <p>Your broker <strong>{broker_name}</strong> has prepared a reinvestment plan for your upcoming cashflows and requires your approval to proceed.</p>
+                    <p style="font-size: 16px; color: #333; margin-bottom: 20px;">Greetings from Kinntegraa!!!</p>
                     
-                    <div style="background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%); padding: 24px; border-radius: 12px; margin: 24px 0; text-align: center;">
-                        <div style="font-size: 14px; color: #6366F1; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
-                            Total Reinvestment Amount
-                        </div>
-                        <div style="font-size: 36px; font-weight: 700; color: #4338CA;">
-                            ₹{total_amount:,.2f}
-                        </div>
-                        <div style="font-size: 14px; color: #6B7280; margin-top: 8px;">
-                            Across {cashflows_count} cashflow(s)
-                        </div>
-                    </div>
+                    <p style="font-size: 16px; color: #333; margin-bottom: 30px;">
+                        <strong>{broker_name}</strong> - representative of Kinntegraa Wealth Private Limited has submitted electronically MF application through Kinntegraa on your behalf.
+                    </p>
                     
-                    <div class="info-box">
-                        <strong>What happens when you approve?</strong><br>
-                        Your reinvestment instructions will be processed automatically when the cashflows mature. The funds will be reinvested according to the plan prepared by your broker.
-                    </div>
+                    <p style="font-size: 16px; color: #333; margin-bottom: 30px;">
+                        Please click the button below for verifying and approving the transactions.
+                    </p>
                     
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="{login_url}" style="display: inline-block; background: linear-gradient(135deg, #22C55E, #16A34A); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 10px;">
-                            Review &amp; Approve
+                    <div style="text-align: left; margin: 30px 0;">
+                        <a href="{login_url}" style="display: inline-block; background-color: #5B7F5E; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 15px;">
+                            Verify & Approve
                         </a>
                     </div>
-                    
-                    <div class="info-box warning">
-                        <strong>⚠️ Important:</strong><br>
-                        Please login to your Kinntegraa account to review and approve the reinvestment. You can approve or reject the request from your dashboard.
-                    </div>
-                    
-                    <p style="text-align: center; font-size: 13px; color: #6B7280; margin-top: 20px;">
-                        Click the button above to login and review your pending approvals.
-                    </p>
                 </div>
     """
     
-    footer = f"<p>This reinvestment plan was prepared by <strong>{broker_name}</strong>. Contact them for any questions.</p>"
+    footer = f"<p style='font-size: 13px; color: #666;'>This is an automated message from Kinntegraa. Please do not reply to this email.</p>"
     
     html_content = get_email_template_base(content, footer)
     
     plain_content = f"""
-    Reinvestment Approval Required - Kinntegraa
+    Kinntegraa | New MF Purchase Order
     
     Dear {client_name},
     
-    Your broker {broker_name} has prepared a reinvestment plan for your upcoming cashflows.
+    Greetings from Kinntegraa!!!
     
-    REINVESTMENT DETAILS:
-    - Total Amount: ₹{total_amount:,.2f}
-    - Number of Cashflows: {cashflows_count}
+    {broker_name} - representative of Kinntegraa Wealth Private Limited has submitted electronically MF application through Kinntegraa on your behalf.
     
-    REVIEW & APPROVE:
-    Please login to your Kinntegraa account to review and approve the reinvestment:
+    Please click the link below for verifying and approving the transactions:
     {login_url}
     
-    WHAT HAPPENS WHEN YOU APPROVE?
-    Your reinvestment instructions will be processed automatically when the cashflows mature.
-    
-    If you have questions, please contact {broker_name}.
-    
-    Best regards,
-    Kinntegraa Team
+    This is an automated message from Kinntegraa. Please do not reply to this email.
     
     © 2026 Kinntegraa L.L.C-FZ, Dubai, UAE
     """
