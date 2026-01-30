@@ -54,16 +54,41 @@ export default function ClientLogs() {
     }
     
     setUser(parsedUser);
-    fetchLogs();
-    fetchApiLogs();
+    fetchTradeLogs();
+    fetchInvestmentLogs();
   }, [navigate]);
 
-  const fetchLogs = async () => {
+  const fetchTradeLogs = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(`${API}/client/reinvestment-logs`, {
         headers: { Authorization: `Bearer ${token}` }
+      });
+      setTradeLogs(response.data || []);
+    } catch (error) {
+      console.error("Error fetching trade logs:", error);
+      toast.error("Failed to load trade logs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInvestmentLogs = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/client/reinvestment-logs?status=approved,submitted`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Filter to only show approved/submitted entries
+      const approved = (response.data || []).filter(log => 
+        ['approved', 'submitted'].includes(log.approval_status)
+      );
+      setInvestmentLogs(approved);
+    } catch (error) {
+      console.error("Error fetching investment logs:", error);
+    }
+  };
       });
       setLogs(response.data || []);
     } catch (error) {
