@@ -1058,8 +1058,10 @@ export default function TradeLogs() {
                     </thead>
                     <tbody>
                       {filteredInvestmentLogs.map((log, idx) => {
-                        const netAmount = log.amount || log.net_amount || 0;
-                        const roundDownAmount = roundToHundred(netAmount);
+                        // Use stored values or calculate from net_amount
+                        const netAmount = log.net_amount || log.amount || 0;
+                        const roundDownAmount = log.amount || roundToHundred(netAmount);
+                        const residualAmount = log.residual_amount || (netAmount - roundDownAmount);
                         
                         return (
                           <tr key={log.id || idx} className="border-b hover:bg-gray-50">
@@ -1081,10 +1083,13 @@ export default function TradeLogs() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-right font-mono">
-                              ₹{netAmount.toLocaleString('en-IN')}
+                              ₹{netAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                             </td>
                             <td className="px-4 py-3 text-right font-mono text-green-700 font-semibold">
-                              ₹{roundDownAmount.toLocaleString('en-IN')}
+                              ₹{roundDownAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-amber-600 text-xs">
+                              ₹{residualAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                             </td>
                             <td className="px-4 py-3">
                               <Badge variant="outline" className="text-xs">
