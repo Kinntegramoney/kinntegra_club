@@ -539,13 +539,13 @@ export default function SubBrokerProfile() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-gray-500">Partner Code</p>
-                <p className="font-mono font-medium">{profile?.partner_code}</p>
+                <p className="font-mono font-medium">{profile?.partner_code || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-gray-500">Status</p>
-                <p className={`font-medium ${profile?.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                <Badge className={profile?.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
                   {profile?.is_active ? 'Active' : 'Inactive'}
-                </p>
+                </Badge>
               </div>
               <div>
                 <p className="text-gray-500">Linked Clients</p>
@@ -559,6 +559,115 @@ export default function SubBrokerProfile() {
               </div>
             </div>
           </div>
+
+          {/* Personal Information */}
+          <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <User className="h-5 w-5 text-gray-400" />
+              Personal Information
+            </h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500">PAN Number</p>
+                <p className="font-mono font-medium">{profile?.pan || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Date of Birth</p>
+                <p className="font-medium">
+                  {profile?.date_of_birth ? new Date(profile.date_of_birth).toLocaleDateString() : 'N/A'}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500">Gender</p>
+                <p className="font-medium capitalize">{profile?.gender || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Designation</p>
+                <p className="font-medium">{profile?.designation || 'N/A'}</p>
+              </div>
+              {profile?.department && (
+                <div>
+                  <p className="text-gray-500">Department</p>
+                  <p className="font-medium">{profile?.department}</p>
+                </div>
+              )}
+              {profile?.employee_id && (
+                <div>
+                  <p className="text-gray-500">Employee ID</p>
+                  <p className="font-mono font-medium">{profile?.employee_id}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Registration Details */}
+          <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-gray-400" />
+              Registration Details
+            </h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500">ARN Number</p>
+                <p className="font-mono font-medium">{profile?.arn_number || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">EUIN Number</p>
+                <p className="font-mono font-medium">{profile?.euin_number || 'N/A'}</p>
+              </div>
+              {profile?.gst_number && (
+                <div>
+                  <p className="text-gray-500">GST Number</p>
+                  <p className="font-mono font-medium">{profile?.gst_number}</p>
+                </div>
+              )}
+              {profile?.commission_percentage !== undefined && (
+                <div>
+                  <p className="text-gray-500">Commission</p>
+                  <p className="font-medium">{profile?.commission_percentage}%</p>
+                </div>
+              )}
+              {profile?.payout_frequency && (
+                <div>
+                  <p className="text-gray-500">Payout Frequency</p>
+                  <p className="font-medium capitalize">{profile?.payout_frequency}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bank Details */}
+          {(profile?.bank_name || profile?.bank_account_number) && (
+            <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-gray-400" />
+                Bank Details
+              </h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-500">Bank Name</p>
+                  <p className="font-medium">{profile?.bank_name || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Account Number</p>
+                  <p className="font-mono font-medium">
+                    {profile?.bank_account_number ? 
+                      '••••' + profile.bank_account_number.slice(-4) : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">IFSC Code</p>
+                  <p className="font-mono font-medium">{profile?.bank_ifsc || 'N/A'}</p>
+                </div>
+                {profile?.bank_branch && (
+                  <div>
+                    <p className="text-gray-500">Branch</p>
+                    <p className="font-medium">{profile?.bank_branch}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
