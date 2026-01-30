@@ -97,6 +97,7 @@ export default function SubBrokerProfile() {
     
     const userData = initializeProfile();
     if (userData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUser(userData);
       fetchProfile();
     }
