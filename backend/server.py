@@ -12668,8 +12668,8 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                     detail="Portfolio is required for all allocations"
                 )
             
-            # Validate portfolio based on amount rules (only for non-small amounts)
-            if not is_small_amount:
+            # Validate portfolio based on amount rules (only for actual investments, not "none" portfolio)
+            if not skip_ucc_validation:
                 if alloc.portfolio == 'bonds' and alloc.amount < 1000000:
                     raise HTTPException(
                         status_code=400,
