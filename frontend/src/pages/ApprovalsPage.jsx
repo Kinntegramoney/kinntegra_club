@@ -476,7 +476,7 @@ const roundToHundred = (amount) => {
 
 // Reinvestment Approval Table Component - matches Tagged table design
 function ReinvestmentApprovalTable({ items, onApprove, onReject, processingId, formatCurrency, formatDate }) {
-  // Group items by client
+  // Group items by client, then by bond within client
   const clientGroups = {};
   items.forEach(item => {
     const clientId = item.client_id;
@@ -485,17 +485,55 @@ function ReinvestmentApprovalTable({ items, onApprove, onReject, processingId, f
         client_id: clientId,
         client_name: item.client_name,
         client_pan: item.client_pan,
+        sub_broker_name: item.sub_broker_name || item.tagged_by_name || 'Sub-Broker',
         entries: []
       };
     }
     clientGroups[clientId].entries.push(item);
   });
 
+  // Group entries by bond within each client
+  const groupEntriesByBond = (entries) => {
+    const bondGroups = {};
+    entries.forEach(entry => {
+      const bondKey = `${entry.bond_id || entry.bond_name}_${entry.cashflow_id || entry.id}`;
+      if (!bondGroups[bondKey]) {
+        bondGroups[bondKey] = {
+          bond_name: entry.bond_name,
+          bond_code: entry.bond_code,
+          date: entry.expected_date || entry.date,
+          entry: entry,
+          allocations: [],
+          total_net_amount: 0,
+          total_round_down_amount: 0
+        };
+      }
+      
+      const netAmount = entry.net_amount || entry.amount || 0;
+      const roundDownAmount = entry.amount || roundToHundred(netAmount);
+      
+      bondGroups[bondKey].allocations.push({
+        id: entry.id,
+        entry: entry,
+        ucc: entry.ucc || entry.target_ucc || '',
+        portfolio: entry.portfolio || entry.portfolio_category || '',
+        net_amount: netAmount,
+        round_down_amount: roundDownAmount,
+        investment_date: entry.mf_investment_date || entry.investment_date,
+        tagged_by_name: entry.tagged_by_name || entry.sub_broker_name || 'Sub-Broker'
+      });
+      bondGroups[bondKey].total_net_amount += netAmount;
+      bondGroups[bondKey].total_round_down_amount += roundDownAmount;
+    });
+    return bondGroups;
+  };
+
   return (
     <div className="space-y-4">
       {Object.values(clientGroups).map(clientGroup => {
-        const totalNetAmount = clientGroup.entries.reduce((sum, e) => sum + (e.net_amount || e.amount || 0), 0);
-        const totalRoundDownAmount = clientGroup.entries.reduce((sum, e) => sum + roundToHundred(e.net_amount || e.amount || 0), 0);
+        const bondGroups = groupEntriesByBond(clientGroup.entries);
+        const totalNetAmount = Object.values(bondGroups).reduce((sum, b) => sum + b.total_net_amount, 0);
+        const totalRoundDownAmount = Object.values(bondGroups).reduce((sum, b) => sum + b.total_round_down_amount, 0);
         
         return (
           <div key={clientGroup.client_id} className="bg-white rounded-lg border border-green-200 overflow-hidden">
@@ -511,13 +549,17 @@ function ReinvestmentApprovalTable({ items, onApprove, onReject, processingId, f
                     <span>{clientGroup.client_pan}</span>
                     <span>•</span>
                     <span>{clientGroup.entries.length} pending entries</span>
+                    <span>•</span>
+                    <Badge className="bg-purple-100 text-purple-700 text-xs">
+                      Tagged by: {clientGroup.sub_broker_name}
+                    </Badge>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <p className="text-xs text-gray-500">Net Repayment</p>
-                  <p className="font-semibold text-gray-800">₹{totalNetAmount.toLocaleString('en-IN')}</p>
+                  <p className="font-semibold text-gray-800">₹{totalNetAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-500">Investment Amt</p>
@@ -526,117 +568,175 @@ function ReinvestmentApprovalTable({ items, onApprove, onReject, processingId, f
               </div>
             </div>
             
-            {/* Entries Table */}
-            <div className="p-4">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="text-left px-3 py-2 font-medium text-gray-600">Date of Repayment</th>
-                    <th className="text-left px-3 py-2 font-medium text-gray-600">Bond Name</th>
-                    <th className="text-right px-3 py-2 font-medium text-gray-600">Net Repayment</th>
-                    <th className="text-right px-3 py-2 font-medium text-gray-600">Round Down Inv. Amt</th>
-                    <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
-                    <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio</th>
-                    <th className="text-left px-3 py-2 font-medium text-gray-600">Tagged By</th>
-                    <th className="text-center px-3 py-2 font-medium text-gray-600">Status</th>
-                    <th className="text-center px-3 py-2 font-medium text-gray-600">Actions</th>
+            {/* Entries Table - Matching Tagged (Pending) structure */}
+            <div className="p-4 overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                {/* Two-level header */}
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th colSpan="3" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200 bg-blue-50">
+                      Repayment Details
+                    </th>
+                    <th colSpan="4" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200 bg-green-50">
+                      Investment Details
+                    </th>
+                    <th rowSpan="2" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200">
+                      Status
+                    </th>
+                    <th rowSpan="2" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200">
+                      Actions
+                    </th>
+                  </tr>
+                  <tr className="bg-gray-50">
+                    <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Date of Repayment</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Bond Name</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Net Amount</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Date of Investment</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Portfolio</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">UCC</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {clientGroup.entries.map((item, idx) => {
-                    // Use stored values or calculate - net_amount is the actual cashflow amount
-                    const netAmount = item.net_amount || item.amount || 0;
-                    // amount is the round-down investment amount (stored separately)
-                    const roundDownAmount = item.amount || roundToHundred(netAmount);
-                    const residualAmount = item.residual_amount || (netAmount - roundDownAmount);
-                    const taggedByName = item.tagged_by_name || item.sub_broker_name || 'Broker';
-                    const isSubBroker = item.tagged_by_sub_broker || item.sub_broker_name;
+                  {Object.values(bondGroups).map((bondGroup, bondIdx) => {
+                    const allocations = bondGroup.allocations;
+                    const hasMultiple = allocations.length > 1;
+                    const rowCount = allocations.length;
+                    const primaryEntry = bondGroup.entry;
                     
                     return (
-                      <tr key={item.id} className="border-t hover:bg-gray-50">
-                        {/* Date of Repayment */}
-                        <td className="px-3 py-2">
-                          <span className="whitespace-nowrap font-medium">
-                            {formatDate(item.expected_date)}
-                          </span>
-                        </td>
-                        
-                        {/* Bond Name */}
-                        <td className="px-3 py-2">
-                          <div>
-                            <div className="font-medium">{item.bond_name}</div>
-                            {item.bond_code && <div className="text-xs text-gray-500">({item.bond_code})</div>}
-                          </div>
-                        </td>
-                        
-                        {/* Net Repayment Amount */}
-                        <td className="px-3 py-2 text-right font-mono">
-                          ₹{netAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                        </td>
-                        
-                        {/* Round Down Investment Amount */}
-                        <td className="px-3 py-2 text-right font-mono text-green-700 font-semibold">
-                          ₹{roundDownAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                        </td>
-                        
-                        {/* UCC */}
-                        <td className="px-3 py-2">
-                          <Badge variant="outline" className="text-xs">
-                            {item.ucc || item.target_ucc || 'N/A'}
-                          </Badge>
-                        </td>
-                        
-                        {/* Portfolio */}
-                        <td className="px-3 py-2">
-                          <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
-                            {item.portfolio || item.portfolio_category || 'N/A'}
-                          </Badge>
-                        </td>
-                        
-                        {/* Tagged By */}
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
-                            {isSubBroker && (
-                              <Badge className="bg-purple-100 text-purple-700 text-xs">
-                                Sub-Broker
-                              </Badge>
-                            )}
-                            <span className="text-sm text-gray-700">{taggedByName}</span>
-                          </div>
-                        </td>
-                        
-                        {/* Status */}
-                        <td className="px-3 py-2 text-center">
-                          <Badge className="bg-amber-100 text-amber-700 text-xs">
-                            <Clock className="h-3 w-3 mr-1 inline" />
-                            Pending
-                          </Badge>
-                        </td>
-                        
-                        {/* Actions - Single dropdown button */}
-                        <td className="px-3 py-2 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => onApprove(item)}
-                              disabled={processingId === item.id}
-                              className="h-7 px-3 bg-green-600 hover:bg-green-700"
+                      <React.Fragment key={bondIdx}>
+                        {allocations.map((alloc, allocIdx) => {
+                          const isFirst = allocIdx === 0;
+                          
+                          return (
+                            <tr 
+                              key={`${bondIdx}-${allocIdx}`}
+                              className={`
+                                ${hasMultiple ? (isFirst ? 'border-t-2 border-t-green-400' : '') : ''}
+                                ${hasMultiple ? 'bg-green-50/30' : 'hover:bg-gray-50'}
+                              `}
                             >
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onReject(item)}
-                              disabled={processingId === item.id}
-                              className="h-7 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
+                              {/* Date of Repayment - merged */}
+                              {isFirst && (
+                                <td 
+                                  className={`px-3 py-2 border border-gray-200 align-middle ${hasMultiple ? 'border-l-4 border-l-green-400' : ''}`}
+                                  rowSpan={hasMultiple ? rowCount : 1}
+                                >
+                                  <span className="whitespace-nowrap font-medium text-gray-800">
+                                    {formatDate(bondGroup.date)}
+                                  </span>
+                                </td>
+                              )}
+                              
+                              {/* Bond Name - merged */}
+                              {isFirst && (
+                                <td 
+                                  className="px-3 py-2 border border-gray-200 align-middle"
+                                  rowSpan={hasMultiple ? rowCount : 1}
+                                >
+                                  <div>
+                                    <div className="font-medium text-gray-800">{bondGroup.bond_name}</div>
+                                    {bondGroup.bond_code && (
+                                      <div className="text-xs text-gray-500">({bondGroup.bond_code})</div>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
+                              
+                              {/* Net Amount - per allocation */}
+                              <td className="px-3 py-2 text-right font-mono text-gray-800 border border-gray-200">
+                                ₹{(alloc.net_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                              </td>
+                              
+                              {/* Date of Investment */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                <span className="whitespace-nowrap text-gray-700">
+                                  {alloc.investment_date ? format(new Date(alloc.investment_date), "dd MMM yyyy") : '-'}
+                                </span>
+                              </td>
+                              
+                              {/* Portfolio */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
+                                  {alloc.portfolio || '-'}
+                                </Badge>
+                              </td>
+                              
+                              {/* UCC */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                <Badge variant="outline" className="text-xs font-mono">
+                                  {alloc.ucc || '-'}
+                                </Badge>
+                              </td>
+                              
+                              {/* Amount (Round Down) */}
+                              <td className="px-3 py-2 text-right font-mono text-green-700 font-semibold border border-gray-200">
+                                ₹{(alloc.round_down_amount || 0).toLocaleString('en-IN')}
+                              </td>
+                              
+                              {/* Status - merged */}
+                              {isFirst && (
+                                <td 
+                                  className="px-3 py-2 text-center border border-gray-200 align-middle"
+                                  rowSpan={hasMultiple ? rowCount : 1}
+                                >
+                                  <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                    <Clock className="h-3 w-3 mr-1 inline" />
+                                    Pending
+                                  </Badge>
+                                </td>
+                              )}
+                              
+                              {/* Actions - merged */}
+                              {isFirst && (
+                                <td 
+                                  className="px-3 py-2 text-center border border-gray-200 align-middle"
+                                  rowSpan={hasMultiple ? rowCount : 1}
+                                >
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => onApprove(primaryEntry)}
+                                      disabled={processingId === primaryEntry.id}
+                                      className="h-7 px-2 bg-green-600 hover:bg-green-700"
+                                    >
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => onReject(primaryEntry)}
+                                      disabled={processingId === primaryEntry.id}
+                                      className="h-7 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                        
+                        {/* Total row for multi-allocation */}
+                        {hasMultiple && (
+                          <tr className="bg-green-100/50 border-b-2 border-b-green-400">
+                            <td colSpan="2" className="px-3 py-2 text-right font-semibold text-gray-700 border border-gray-200">
+                              Total for {bondGroup.bond_name}:
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono font-bold text-gray-800 border border-gray-200">
+                              ₹{(bondGroup.total_net_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            </td>
+                            <td colSpan="3" className="border border-gray-200"></td>
+                            <td className="px-3 py-2 text-right font-mono font-bold text-green-700 border border-gray-200">
+                              ₹{(bondGroup.total_round_down_amount || 0).toLocaleString('en-IN')}
+                            </td>
+                            <td colSpan="2" className="border border-gray-200"></td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -651,7 +751,7 @@ function ReinvestmentApprovalTable({ items, onApprove, onReject, processingId, f
                   <div className="flex items-center gap-6">
                     <div className="text-right">
                       <p className="text-xs text-green-700">Net Repayment</p>
-                      <p className="font-bold text-green-800">₹{totalNetAmount.toLocaleString('en-IN')}</p>
+                      <p className="font-bold text-green-800">₹{totalNetAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-green-700">Investment Amount</p>
