@@ -12740,6 +12740,9 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
             {"$set": update_data}
         )
         
+        # Delete any existing log entries for this cashflow (to prevent duplicates)
+        await db.reinvestment_logs.delete_many({"cashflow_id": cashflow_id})
+        
         # Create log entries for each allocation
         for idx, alloc in enumerate(validated_allocations):
             # Calculate net amount share and residual for this allocation
