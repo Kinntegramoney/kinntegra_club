@@ -351,173 +351,214 @@ export default function ClientReinvestmentApprovals() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {getCurrentItems().map((bond) => (
-                <div 
-                  key={bond.bond_id}
-                  className="bg-white rounded-xl border border-gray-200 overflow-hidden"
-                >
-                  {/* Bond Header */}
-                  <button
-                    onClick={() => toggleBondExpand(bond.bond_id)}
-                    className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-etihad-gold-500 to-amber-600 flex items-center justify-center text-white font-bold text-sm">
-                        <TrendingUp className="h-5 w-5" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-semibold text-gray-800">{bond.bond_name}</p>
-                        <p className="text-xs text-gray-500">{bond.items.length} entries</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-800">
-                          {formatCurrency(bond.items.reduce((sum, item) => sum + getAmount(item), 0))}
-                        </p>
-                        <p className="text-xs text-gray-500">Total Amount</p>
-                      </div>
-                      {expandedBonds[bond.bond_id] 
-                        ? <ChevronUp className="h-5 w-5 text-gray-400" />
-                        : <ChevronDown className="h-5 w-5 text-gray-400" />
-                      }
-                    </div>
-                  </button>
-                  
-                  {/* Expanded Items */}
-                  {expandedBonds[bond.bond_id] && (
-                    <div className="border-t border-gray-100 divide-y divide-gray-100">
-                      {bond.items.map((item) => (
-                        <div 
-                          key={item.id} 
-                          className="p-4 hover:bg-gray-50"
-                        >
-                          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                            <div className="flex-1 space-y-3">
-                              {/* Date and Tag Header */}
-                              <div className="flex flex-wrap items-center gap-2">
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="h-4 w-4 text-gray-400" />
-                                  <span className="font-medium text-gray-700">
-                                    {formatDate(item.date)}
-                                  </span>
-                                </div>
-                                <Badge className={`text-xs ${
-                                  item.reinvestment_tag === 'principal' ? 'bg-blue-100 text-blue-700' :
-                                  item.reinvestment_tag === 'interest' ? 'bg-green-100 text-green-700' :
-                                  item.reinvestment_tag === 'both' ? 'bg-purple-100 text-purple-700' :
-                                  'bg-gray-100 text-gray-700'
-                                }`}>
-                                  {TAG_LABELS[item.reinvestment_tag] || item.reinvestment_tag}
-                                </Badge>
-                              </div>
-                              
-                              {/* Amount Details Row */}
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                                <div className="bg-gray-50 rounded-lg px-3 py-2">
-                                  <div className="flex items-center gap-1 text-gray-500">
-                                    <IndianRupee className="h-3 w-3" />
-                                    <span>Reinv. Amount</span>
-                                  </div>
-                                  <p className="font-semibold text-gray-800 mt-1">{formatCurrency(item.reinvestment_amount || getAmount(item))}</p>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg px-3 py-2">
-                                  <div className="flex items-center gap-1 text-gray-500">
-                                    <CreditCard className="h-3 w-3" />
-                                    <span>Rounded Amount</span>
-                                  </div>
-                                  <p className="font-semibold text-gray-800 mt-1">{formatCurrency(item.rounded_total || getAmount(item))}</p>
-                                </div>
-                                <div className="bg-amber-50 rounded-lg px-3 py-2">
-                                  <div className="flex items-center gap-1 text-amber-600">
-                                    <FileText className="h-3 w-3" />
-                                    <span>Round-off</span>
-                                  </div>
-                                  <p className="font-semibold text-amber-700 mt-1">{formatCurrency(item.round_off_total || 0)}</p>
-                                </div>
-                                <div className="bg-indigo-50 rounded-lg px-3 py-2">
-                                  <div className="flex items-center gap-1 text-indigo-600">
-                                    <Briefcase className="h-3 w-3" />
-                                    <span>UCC</span>
-                                  </div>
-                                  <p className="font-mono font-semibold text-indigo-700 mt-1">{item.ucc || item.target_ucc || '-'}</p>
-                                </div>
-                              </div>
-                              
-                              {/* Allocations/Portfolio Details */}
-                              {item.allocations && item.allocations.length > 0 ? (
-                                <div className="bg-purple-50/50 rounded-lg p-3">
-                                  <div className="flex items-center gap-2 text-xs text-purple-600 font-medium mb-2">
-                                    <Briefcase className="h-3 w-3" />
-                                    Portfolio Allocations ({item.allocations.length})
-                                  </div>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    {item.allocations.map((alloc, idx) => (
-                                      <div key={idx} className="bg-white rounded px-3 py-2 text-xs border border-purple-100">
-                                        <div className="flex items-center justify-between mb-1">
-                                          <span className="font-medium text-purple-800 capitalize">
-                                            {alloc.portfolio_name || alloc.portfolio || 'Unknown'}
-                                          </span>
-                                          <span className="font-semibold text-purple-700">{formatCurrency(alloc.rounded_amount || alloc.amount)}</span>
-                                        </div>
-                                        {/* Show UCC for this allocation */}
-                                        {alloc.ucc && (
-                                          <div className="flex items-center gap-1 text-indigo-600 mb-1">
-                                            <CreditCard className="h-3 w-3" />
-                                            <span className="font-mono">{alloc.ucc}</span>
-                                          </div>
-                                        )}
-                                        {alloc.mf_investment_date && (
-                                          <div className="flex items-center gap-1 text-purple-500">
-                                            <Calendar className="h-3 w-3" />
-                                            <span>MF Date: {formatDate(alloc.mf_investment_date)}</span>
-                                          </div>
-                                        )}
-                                        {alloc.percentage > 0 && (
-                                          <div className="text-purple-400 mt-1">
-                                            {alloc.percentage}% allocation
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : item.portfolio_category && (
-                                <div className="flex items-center gap-2 text-xs">
-                                  <span className="bg-purple-50 px-3 py-2 rounded-lg">
-                                    <span className="text-purple-500">Portfolio:</span>{' '}
-                                    <span className="font-semibold text-purple-700 capitalize">{item.portfolio_category?.replace('_', ' ')}</span>
-                                  </span>
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {/* Table Header - matching broker's Tagged (Pending) view */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-medium text-gray-600">Date of Repayment</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name (Deal ID)</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-600">Net Repayment</th>
+                      <th className="text-right px-4 py-3 font-medium text-gray-600">Round Down Inv. Amt</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-600">UCC</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-600">Portfolio</th>
+                      <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+                      {activeTab === 'pending' && (
+                        <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      // Flatten all items with their allocations for table display
+                      const flatItems = [];
+                      getCurrentItems().forEach((bond) => {
+                        bond.items.forEach((item) => {
+                          // If item has allocations, create a row for each
+                          if (item.allocations && item.allocations.length > 0) {
+                            item.allocations.forEach((alloc, allocIdx) => {
+                              flatItems.push({
+                                ...item,
+                                allocation: alloc,
+                                isFirst: allocIdx === 0,
+                                isLast: allocIdx === item.allocations.length - 1,
+                                hasMultiple: item.allocations.length > 1,
+                                allocCount: item.allocations.length
+                              });
+                            });
+                          } else {
+                            // No allocations - single row
+                            flatItems.push({
+                              ...item,
+                              allocation: null,
+                              isFirst: true,
+                              isLast: true,
+                              hasMultiple: false,
+                              allocCount: 1
+                            });
+                          }
+                        });
+                      });
+
+                      return flatItems.map((item, idx) => {
+                        const isPending = activeTab === 'pending';
+                        const isApproved = activeTab === 'approved';
+                        const isRejected = activeTab === 'rejected';
+
+                        return (
+                          <tr 
+                            key={`${item.id}-${idx}`}
+                            className={`
+                              ${item.hasMultiple ? (item.isFirst ? 'border-t-2 border-green-200' : '') : 'border-t border-gray-100'}
+                              ${item.hasMultiple && item.isLast ? '' : 'border-b border-gray-100'}
+                              ${item.hasMultiple ? 'bg-green-50/30' : 'hover:bg-gray-50'}
+                            `}
+                          >
+                            {/* Date of Repayment - only show on first row of grouped items */}
+                            <td className={`px-4 py-3 ${item.hasMultiple && !item.isFirst ? 'border-l-4 border-green-300' : ''}`}>
+                              {item.isFirst && (
+                                <span className="whitespace-nowrap font-medium text-gray-900">
+                                  {formatDate(item.date)}
+                                </span>
+                              )}
+                            </td>
+                            
+                            {/* Bond Name (Deal ID) - only show on first row */}
+                            <td className="px-4 py-3">
+                              {item.isFirst && (
+                                <div>
+                                  <div className="font-medium text-gray-900">{item.bond_name}</div>
+                                  {item.bond_code && (
+                                    <div className="text-xs text-gray-500">({item.bond_code})</div>
+                                  )}
                                 </div>
                               )}
-                            </div>
+                            </td>
                             
-                            {/* Actions Column */}
-                            <div className="flex lg:flex-col gap-2 lg:min-w-[140px]">
-                              {activeTab === 'pending' && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => setConfirmDialog({ open: true, type: 'approve', item })}
-                                    disabled={processing === item.id}
-                                    className="bg-green-600 hover:bg-green-700 flex-1"
-                                  >
-                                    {processing === item.id ? (
-                                      <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                                    ) : (
-                                      <Check className="h-4 w-4 mr-1" />
-                                    )}
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setConfirmDialog({ open: true, type: 'reject', item })}
-                                    disabled={processing === item.id}
-                                    className="text-red-600 border-red-200 hover:bg-red-50 flex-1"
-                                  >
-                                    <X className="h-4 w-4 mr-1" />
+                            {/* Net Repayment Amount */}
+                            <td className="px-4 py-3 text-right font-mono text-gray-900">
+                              {formatCurrency(
+                                item.allocation 
+                                  ? (item.allocation.amount || item.allocation.net_amount || 0)
+                                  : (item.reinvestment_amount || getAmount(item))
+                              )}
+                            </td>
+                            
+                            {/* Round Down Investment Amount */}
+                            <td className="px-4 py-3 text-right font-mono text-green-700 font-semibold">
+                              {formatCurrency(
+                                item.allocation 
+                                  ? (item.allocation.rounded_amount || item.allocation.round_down_amount || item.allocation.amount || 0)
+                                  : (item.rounded_total || getAmount(item))
+                              )}
+                            </td>
+                            
+                            {/* UCC */}
+                            <td className="px-4 py-3">
+                              <Badge variant="outline" className="text-xs font-mono">
+                                {item.allocation?.ucc || item.ucc || item.target_ucc || '-'}
+                              </Badge>
+                            </td>
+                            
+                            {/* Portfolio */}
+                            <td className="px-4 py-3">
+                              <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
+                                {item.allocation?.portfolio_name || item.allocation?.portfolio || item.portfolio_category || '-'}
+                              </Badge>
+                            </td>
+                            
+                            {/* Status */}
+                            <td className="px-4 py-3 text-center">
+                              {isPending ? (
+                                <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                  <Clock className="h-3 w-3 mr-1 inline" />
+                                  Pending
+                                </Badge>
+                              ) : isApproved ? (
+                                <Badge className="bg-green-100 text-green-700 text-xs">
+                                  <Check className="h-3 w-3 mr-1 inline" />
+                                  Approved
+                                </Badge>
+                              ) : isRejected ? (
+                                <Badge className="bg-red-100 text-red-700 text-xs">
+                                  <X className="h-3 w-3 mr-1 inline" />
+                                  Rejected
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                  {item.approval_status || '-'}
+                                </Badge>
+                              )}
+                            </td>
+                            
+                            {/* Actions - only show for pending and on first row */}
+                            {activeTab === 'pending' && (
+                              <td className="px-4 py-3 text-center">
+                                {item.isFirst && (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => setConfirmDialog({ open: true, type: 'approve', item })}
+                                      disabled={processing === item.id}
+                                      className="bg-green-600 hover:bg-green-700 h-8 px-3"
+                                    >
+                                      {processing === item.id ? (
+                                        <RefreshCw className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Check className="h-3 w-3" />
+                                      )}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setConfirmDialog({ open: true, type: 'reject', item })}
+                                      disabled={processing === item.id}
+                                      className="text-red-600 border-red-200 hover:bg-red-50 h-8 px-3"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Summary Footer */}
+              <div className="bg-gray-50 border-t border-gray-200 px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="text-sm text-gray-600">
+                    Showing <span className="font-semibold">{getCurrentItems().reduce((sum, bond) => sum + bond.items.length, 0)}</span> entries
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm">
+                      <span className="text-gray-500">Total Net Repayment:</span>
+                      <span className="font-semibold text-gray-800 ml-2">
+                        {formatCurrency(getCurrentItems().reduce((sum, bond) => 
+                          sum + bond.items.reduce((s, item) => s + (item.reinvestment_amount || getAmount(item)), 0), 0
+                        ))}
+                      </span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-gray-500">Total Investment:</span>
+                      <span className="font-semibold text-green-700 ml-2">
+                        {formatCurrency(getCurrentItems().reduce((sum, bond) => 
+                          sum + bond.items.reduce((s, item) => s + (item.rounded_total || getAmount(item)), 0), 0
+                        ))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
                                     Reject
                                   </Button>
                                 </>
