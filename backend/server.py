@@ -13202,6 +13202,14 @@ async def get_client_pending_approvals(current_user: dict = Depends(get_current_
         if bond:
             log['bond_name'] = bond.get('name', log.get('bond_name', 'Unknown'))
         
+        # Calculate investment date if not present (T+1 from expected_date)
+        if not log.get('mf_investment_date') and log.get('expected_date'):
+            try:
+                expected = datetime.strptime(log['expected_date'], '%Y-%m-%d')
+                log['mf_investment_date'] = (expected + timedelta(days=1)).strftime('%Y-%m-%d')
+            except:
+                pass
+        
         # Get who tagged it
         if log.get('tagged_by'):
             tagger = await db.users.find_one({"id": log.get('tagged_by')}, {"_id": 0, "name": 1})
