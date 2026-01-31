@@ -222,8 +222,11 @@ export default function ClientReinvestmentApprovals() {
         };
       }
       
-      const netAmount = item.reinvestment_amount || getAmount(item);
-      const roundDownAmount = roundToHundred(netAmount);
+      // Use net_amount for display (total cashflow), not reinvestment_amount
+      // This matches the broker's "Net Amount" column which shows total cashflow
+      const displayNetAmount = item.net_amount || item.reinvestment_amount || getAmount(item);
+      const investmentAmount = item.reinvestment_amount || getAmount(item);
+      const roundDownAmount = roundToHundred(investmentAmount);
       
       // Calculate default investment date (T+1 of repayment)
       const repaymentDate = item.date || item.expected_date;
@@ -239,7 +242,7 @@ export default function ClientReinvestmentApprovals() {
             entry_id: item.id,
             ucc: alloc.ucc || item.ucc || '-',
             portfolio: alloc.portfolio_name || alloc.portfolio || item.portfolio_category || '-',
-            net_amount: alloc.amount || 0,
+            allocation_amount: alloc.amount || 0,
             round_down_amount: allocRoundDown,
             investment_date: alloc.investment_date || alloc.mf_investment_date || defaultInvestmentDate,
             approval_status: item.approval_status
@@ -252,7 +255,7 @@ export default function ClientReinvestmentApprovals() {
           entry_id: item.id,
           ucc: item.ucc || item.target_ucc || '-',
           portfolio: item.portfolio_category || '-',
-          net_amount: netAmount,
+          allocation_amount: investmentAmount,
           round_down_amount: roundDownAmount,
           investment_date: item.investment_date || item.mf_investment_date || defaultInvestmentDate,
           approval_status: item.approval_status
@@ -260,7 +263,8 @@ export default function ClientReinvestmentApprovals() {
         entriesByBond[bondKey].total_round_down_amount += roundDownAmount;
       }
       
-      entriesByBond[bondKey].total_net_amount += netAmount;
+      // total_net_amount is the cashflow net amount (for display)
+      entriesByBond[bondKey].total_net_amount += displayNetAmount;
     });
     
     return entriesByBond;
