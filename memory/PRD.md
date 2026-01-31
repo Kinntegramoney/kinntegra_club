@@ -1,5 +1,41 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Jan 31, 2026)
+
+### Split Both Amount Modal Bugs Fixed (Jan 31, 2026) ✅
+
+**Bug 1: Interest amount showing ₹0 in Split modal**
+- **Issue:** When selecting an entry for reinvestment tagging (e.g., Shashikant's entry with Interest ₹66,348.43), the Interest column inside the Split modal showed ₹0 instead of the correct amount.
+- **Root Cause:** Field name mismatch - backend API returns `principal_net` and `interest_net`, but frontend was looking for `principal_amount` and `interest_amount`.
+- **Fix:** Updated `/app/frontend/src/pages/ReinvestmentTagging.jsx` (lines 479-498, 1020-1035) to use correct field names with fallback support.
+
+**Bug 2: Auto-add allocation for remaining balance**
+- **Issue:** When the allocated amount didn't match the selected tag amount, users had to manually click the "+" button to add a new allocation row.
+- **Fix:** Enhanced `handleAmountBlur` function in `/app/frontend/src/pages/ReinvestmentTagging.jsx` (lines 636-697) to automatically add a new allocation row when remaining balance >= ₹100 after editing the last allocation.
+
+**Verification:**
+- Frontend testing passed 11/11 tests (100%)
+- Interest column now correctly displays amounts (e.g., ₹51,366 for Shashikant's entry)
+- Auto-add allocation works: entering ₹30,000 for an entry with ₹12,66,992 total auto-adds second row with ₹12,36,992
+
+### Client Holdings "View Details" Modal Refactor (Jan 31, 2026) ✅
+
+**Issue:** Client's "View Details" modal on the Holdings page did not match the broker's side-by-side "Expected vs. Actual Cashflow" layout.
+
+**Fix Applied:**
+- Refactored `/app/frontend/src/pages/ClientHoldings.jsx` modal to match broker's `Holdings.jsx`:
+  - Added two-column grid layout with "Expected Cashflow" (blue header) and "Actual Cashflow" (green header)
+  - Each panel shows Date and Amount columns
+  - Footer shows Profits and XIRR values
+  - Added PDF and Excel download buttons
+  - Added helper functions `getExpectedCashflowsByDate` and `getActualCashflowsByDate`
+
+**Verification:**
+- Code review confirmed implementation matches broker's modal layout
+- Testing agent verified structure is correct
+
+---
+
 ## Recent Changes (Jan 30, 2026 - Session 2)
 
 ### ClientLogs.jsx Refactor (Jan 30, 2026) ✅
