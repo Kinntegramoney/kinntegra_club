@@ -612,15 +612,6 @@ export default function ClientReinvestmentApprovals() {
                             </tr>
                           );
                         })}
-                                  <td className="px-3 py-2 text-right font-mono font-bold text-green-700 border border-gray-200">
-                                    ₹{bondGroup.total_round_down_amount.toLocaleString('en-IN')}
-                                  </td>
-                                  <td colSpan="2" className="border border-gray-200"></td>
-                                </tr>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
                       </tbody>
                     </table>
                     
