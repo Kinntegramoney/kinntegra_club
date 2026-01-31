@@ -12437,6 +12437,19 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
             if not client_ucc_list and client and client.get('ucc'):
                 client_ucc_list = [client.get('ucc')]  # Convert old single UCC to list
             
+            # Get allocation details from reinvestment_logs
+            allocations = []
+            logs = await db.reinvestment_logs.find({"cashflow_id": cf['id']}, {"_id": 0}).to_list(100)
+            if logs:
+                for log in logs:
+                    allocations.append({
+                        'ucc': log.get('target_ucc', log.get('ucc', '')),
+                        'portfolio': log.get('portfolio', log.get('portfolio_name', 'None')),
+                        'portfolio_name': log.get('portfolio_name', log.get('portfolio', 'None')),
+                        'amount': log.get('amount', 0),
+                        'investment_date': log.get('mf_investment_date', log.get('investment_date'))
+                    })
+            
             upcoming.append({
                 "cashflow_id": cf['id'],
                 "client_id": cf['client_id'],
@@ -12464,6 +12477,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                 "month": cf_date.strftime("%B %Y"),
                 "is_past_date": cf_date < today,  # True if date has passed - no client approval needed
                 "auto_tagged": cf.get('auto_tagged', False),  # True if auto-tagged (before 30 April 2025)
+                "allocations": allocations,  # Split allocations for multi-portfolio display
                 # Prepayment-related fields
                 "is_amended": cf.get('is_amended', False),
                 "prepayment_affected": cf.get('prepayment_affected', False),
