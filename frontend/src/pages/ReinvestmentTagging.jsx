@@ -783,7 +783,8 @@ export default function ReinvestmentTagging() {
           ucc: a.ucc,
           amount: a.amount,
           portfolio: a.portfolio,
-          tag: selectedTagType // Same tag for all allocations
+          tag: selectedTagType, // Same tag for all allocations
+          investment_date: a.investment_date // Include investment date
         }))
       };
     });
