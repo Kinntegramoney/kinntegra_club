@@ -2478,7 +2478,7 @@ export default function ReinvestmentTagging() {
                                   </div>
                                 ) : (
                                   <Select 
-                                    value={alloc.ucc} 
+                                    value={alloc.ucc || ''} 
                                     onValueChange={(v) => updateAllocation(entryId, allocIndex, 'ucc', v)}
                                   >
                                     <SelectTrigger className="h-8 text-xs">
