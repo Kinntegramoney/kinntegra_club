@@ -197,30 +197,88 @@ export default function ClientReinvestmentApprovals() {
     }));
   };
 
-  // Group items by bond
-  const groupByBond = (items) => {
-    const groups = {};
-    items.forEach(item => {
-      const bondId = item.bond_id;
-      if (!groups[bondId]) {
-        groups[bondId] = {
-          bond_id: bondId,
-          bond_name: item.bond_name,
-          items: []
-        };
-      }
-      groups[bondId].items.push(item);
-    });
-    return Object.values(groups);
+  // Helper function to round to nearest 100
+  const roundToHundred = (amount) => {
+    return Math.floor(amount / 100) * 100;
   };
 
-  const getCurrentItems = () => {
-    if (activeTab === 'pending') return groupByBond(pendingApprovals);
-    if (activeTab === 'approved') return groupByBond(approvedItems);
-    return groupByBond(rejectedItems);
+  // Group items by bond with allocations (matching broker's structure)
+  const groupItemsByBond = (items) => {
+    const entriesByBond = {};
+    
+    items.forEach(item => {
+      const bondKey = `${item.bond_id}_${item.date}`;
+      
+      if (!entriesByBond[bondKey]) {
+        entriesByBond[bondKey] = {
+          bond_id: item.bond_id,
+          bond_name: item.bond_name,
+          bond_code: item.bond_code || item.deal_id || '',
+          date: item.date,
+          entry: item,
+          allocations: [],
+          total_net_amount: 0,
+          total_round_down_amount: 0
+        };
+      }
+      
+      const netAmount = item.reinvestment_amount || getAmount(item);
+      const roundDownAmount = roundToHundred(netAmount);
+      
+      // If item has allocations from the backend
+      if (item.allocations && item.allocations.length > 0) {
+        item.allocations.forEach(alloc => {
+          const allocRoundDown = roundToHundred(alloc.amount || 0);
+          entriesByBond[bondKey].allocations.push({
+            entry_id: item.id,
+            ucc: alloc.ucc || item.ucc || '-',
+            portfolio: alloc.portfolio_name || alloc.portfolio || item.portfolio_category || '-',
+            net_amount: alloc.amount || 0,
+            round_down_amount: allocRoundDown,
+            approval_status: item.approval_status
+          });
+          entriesByBond[bondKey].total_round_down_amount += allocRoundDown;
+        });
+      } else {
+        // Single allocation
+        entriesByBond[bondKey].allocations.push({
+          entry_id: item.id,
+          ucc: item.ucc || item.target_ucc || '-',
+          portfolio: item.portfolio_category || '-',
+          net_amount: netAmount,
+          round_down_amount: roundDownAmount,
+          approval_status: item.approval_status
+        });
+        entriesByBond[bondKey].total_round_down_amount += roundDownAmount;
+      }
+      
+      entriesByBond[bondKey].total_net_amount += netAmount;
+    });
+    
+    return entriesByBond;
+  };
+
+  // Get current items based on active tab
+  const getCurrentItemsList = () => {
+    if (activeTab === 'pending') return pendingApprovals;
+    if (activeTab === 'approved') return approvedItems;
+    return rejectedItems;
+  };
+
+  // Toggle expand for a bond group
+  const toggleExpand = (key) => {
+    setExpandedBonds(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
   if (!user) return null;
+
+  const currentItems = getCurrentItemsList();
+  const entriesByBond = groupItemsByBond(currentItems);
+  const totalNetAmount = Object.values(entriesByBond).reduce((sum, b) => sum + b.total_net_amount, 0);
+  const totalRoundDownAmount = Object.values(entriesByBond).reduce((sum, b) => sum + b.total_round_down_amount, 0);
 
   return (
     <div className="flex h-screen bg-gray-50">
