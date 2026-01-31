@@ -7,6 +7,7 @@ import {
   Check, Clock, X, MapPin, Percent, ChevronRight, 
   ClipboardList, Eye, RefreshCw, IndianRupee, Calculator, FileText
 } from "lucide-react";
+import html2pdf from 'html2pdf.js';
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
