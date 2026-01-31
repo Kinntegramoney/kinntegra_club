@@ -935,6 +935,66 @@ export default function ReinvestmentTagging() {
     setShowEditModal(true);
   };
 
+  // Edit tagged entry using the Split Amount modal (same as Untagged section)
+  const editTaggedEntry = (entry, clientGroup) => {
+    // Determine tag type from entry
+    const tagType = entry.reinvestment_tag || 'both';
+    setSelectedTagType(tagType);
+    
+    // Build allocations from existing data
+    let allocations = [];
+    
+    // Check if entry has split allocations in localChanges
+    const changes = localChanges[entry.id];
+    if (changes?.ucc_allocations && changes.ucc_allocations.length > 0) {
+      allocations = changes.ucc_allocations.map((a, idx) => ({
+        id: `${entry.id}-alloc-${idx}`,
+        ucc: a.ucc,
+        amount: a.amount,
+        portfolio: a.portfolio
+      }));
+    } else if (splitAllocations[entry.id] && splitAllocations[entry.id].length > 0) {
+      // Use existing split allocations from database
+      allocations = splitAllocations[entry.id].map((a, idx) => ({
+        id: `${entry.id}-alloc-${idx}`,
+        ucc: a.ucc,
+        amount: a.amount,
+        portfolio: a.portfolio
+      }));
+    } else {
+      // Single allocation - use entry's values
+      allocations = [{
+        id: `${entry.id}-alloc-0`,
+        ucc: entry.target_ucc || (clientGroup.ucc_list?.length === 1 ? clientGroup.ucc_list[0] : ''),
+        amount: Math.floor(tagType === 'principal' ? (entry.principal_net || entry.principal_amount || 0) :
+                          tagType === 'interest' ? (entry.interest_net || entry.interest_amount || 0) :
+                          (entry.net_amount || 0)),
+        portfolio: entry.portfolio_category || ''
+      }];
+    }
+    
+    // Build modal data
+    const modalData = {
+      [entry.id]: {
+        entry: { ...entry, ucc_list: clientGroup.ucc_list || [] },
+        amounts: {
+          principal: Math.floor(entry.principal_net || entry.principal_amount || 0),
+          interest: Math.floor(entry.interest_net || entry.interest_amount || 0),
+          both: Math.floor(entry.net_amount || 0)
+        },
+        totalAmount: Math.floor(
+          tagType === 'principal' ? (entry.principal_net || entry.principal_amount || 0) :
+          tagType === 'interest' ? (entry.interest_net || entry.interest_amount || 0) :
+          (entry.net_amount || 0)
+        ),
+        allocations: allocations
+      }
+    };
+    
+    setMultiRetagData(modalData);
+    setShowMultiRetagModal(true);
+  };
+
   // Handle cancel submission
   const handleCancelSubmit = async () => {
     if (!selectedEntryForAction) return;
