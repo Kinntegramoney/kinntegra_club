@@ -662,7 +662,14 @@ export default function ReinvestmentTagging() {
           const remainingAmount = Math.floor(entry.totalAmount - usedAmount);
           
           // Auto-add if there's remaining amount > 0
-          if (remainingAmount > 0) {
+          // Only add if there isn't already a "pending" allocation (amount = remaining)
+          const lastAllocAmount = newAllocations[newAllocations.length - 1]?.amount || 0;
+          const secondLastAllocAmount = newAllocations.length > 1 ? (newAllocations[newAllocations.length - 2]?.amount || 0) : 0;
+          
+          // Don't add if remaining amount matches an existing allocation (to prevent duplicates)
+          const alreadyHasRemaining = newAllocations.some(a => a.amount === remainingAmount && a.amount > 0);
+          
+          if (remainingAmount > 0 && !alreadyHasRemaining) {
             // Auto-select UCC if client has only one
             const defaultUcc = (entry.entry?.ucc_list?.length === 1) ? entry.entry.ucc_list[0] : '';
             
