@@ -1018,16 +1018,17 @@ export default function ReinvestmentTagging() {
     setSelectedTagType(tagType);
     
     // Rebuild the modal data from saved allocations
+    // Use principal_net and interest_net from backend
     const modalData = {
       [entry.id]: {
         entry: { ...entry, ucc_list: clientGroup.ucc_list },
         amounts: {
-          principal: entry.principal_amount || 0,
-          interest: entry.interest_amount || 0,
+          principal: entry.principal_net || entry.principal_amount || 0,
+          interest: entry.interest_net || entry.interest_amount || 0,
           both: entry.net_amount || 0
         },
-        totalAmount: tagType === 'principal' ? (entry.principal_amount || 0) : 
-                     tagType === 'interest' ? (entry.interest_amount || 0) : 
+        totalAmount: tagType === 'principal' ? (entry.principal_net || entry.principal_amount || 0) : 
+                     tagType === 'interest' ? (entry.interest_net || entry.interest_amount || 0) : 
                      (entry.net_amount || 0),
         allocations: changes.ucc_allocations.map((a, idx) => ({
           id: `${entry.id}-alloc-${idx}`,
