@@ -699,8 +699,14 @@ export default function ReinvestmentTagging() {
         const usedAmount = newAllocations.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
         const remainingAmount = Math.floor(entry.totalAmount - usedAmount);
         
-        // Only auto-add if remaining is >= 100 (meaningful amount) and not editing the last allocation
-        if (remainingAmount >= 100 && allocIndex === newAllocations.length - 1) {
+        // Auto-add if:
+        // 1. Remaining >= 100 (meaningful amount)
+        // 2. We're editing the last allocation (to avoid adding during middle edits)
+        // 3. The last allocation has a valid amount (not empty or 0)
+        const isLastAllocation = allocIndex === newAllocations.length - 1;
+        const lastAllocHasAmount = newAllocations[newAllocations.length - 1].amount > 0;
+        
+        if (remainingAmount >= 100 && isLastAllocation && lastAllocHasAmount) {
           // Auto-select UCC if client has only one
           const defaultUcc = (entry.entry?.ucc_list?.length === 1) ? entry.entry.ucc_list[0] : '';
           
