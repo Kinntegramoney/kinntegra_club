@@ -5,7 +5,7 @@ import ClientSidebar from "@/components/ClientSidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { 
   RefreshCw, Check, X, Clock, AlertCircle, 
   IndianRupee, TrendingUp, Wallet, ChevronDown, ChevronUp,
