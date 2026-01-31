@@ -2080,7 +2080,7 @@ export default function ReinvestmentTagging() {
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                    onClick={() => openEditModal(entry)}
+                                    onClick={() => editTaggedEntry(entry, clientGroup)}
                                     title="Edit tag"
                                   >
                                     <Pencil className="h-3 w-3 mr-1" />
