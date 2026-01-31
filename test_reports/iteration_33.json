@@ -1,0 +1,56 @@
+{
+  "summary": "Frontend testing completed for Split Both Amount modal bug fixes. Both reported bugs are FIXED and working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Login flow works for broker user (PAN: ANVPB5297J, Password: Laksh@0208, PIN: 0516)",
+    "Navigate to /broker/reinvestment page successfully",
+    "BUG 1 FIXED: Interest column in Split modal shows correct amount (₹51,366) instead of ₹0",
+    "BUG 1 VERIFIED: For 'All Home Bharat Platform' entry - Principal shows ₹0, Interest shows ₹51,366, Both shows ₹51,366",
+    "BUG 1 VERIFIED: For 'Uc Inclusive Credit' entry - Principal shows ₹11,66,666, Interest shows ₹1,00,325, Both shows ₹12,66,992",
+    "BUG 2 FIXED: Auto-add allocation row works when entering partial amount",
+    "BUG 2 VERIFIED: Entered ₹30,000 in first allocation, tabbed out, system auto-added second row with remaining ₹12,36,992",
+    "Allocation status bar correctly shows 'Allocated: ₹X / ₹Y' totals",
+    "Split modal correctly displays Principal, Interest, and Both (Total) boxes",
+    "UCC dropdown populated correctly with client's UCCs",
+    "Portfolio dropdown shows correct options based on amount thresholds"
+  ],
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Field name fix in openMultiRetagModal (lines 479-498): Now correctly uses entry.principal_net and entry.interest_net with fallback to entry.principal_amount and entry.interest_amount",
+    "Auto-add allocation in handleAmountBlur (lines 636-697): Correctly adds new allocation row when remaining balance >= 100 after editing the last allocation"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend-only testing)",
+    "frontend": "100% (11/11 tests passed)"
+  },
+  "test_credentials": {
+    "broker": {"PAN": "ANVPB5297J", "Password": "Laksh@0208", "PIN": "0516"}
+  },
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Split Both Amount modal bugs are fixed. The modal now correctly displays Interest amounts using principal_net/interest_net fields from backend API. Auto-add allocation feature works when user enters partial amount and tabs out - remaining balance is automatically added as new allocation row.",
+  "verification_details": {
+    "bug_1_interest_display": {
+      "issue": "Interest column showed ₹0 instead of correct amount in Split modal",
+      "root_cause": "Frontend was looking for 'principal_amount' and 'interest_amount' but backend returns 'principal_net' and 'interest_net'",
+      "fix_location": "/app/frontend/src/pages/ReinvestmentTagging.jsx lines 479-498",
+      "verification": "Tested with 'All Home Bharat Platform' entry - Interest correctly shows ₹51,366"
+    },
+    "bug_2_auto_add_allocation": {
+      "issue": "User had to manually click '+' button to add allocation row for remaining balance",
+      "fix_location": "/app/frontend/src/pages/ReinvestmentTagging.jsx lines 636-697 (handleAmountBlur function)",
+      "verification": "Entered ₹30,000 for entry with total ₹12,66,992, tabbed out, new row auto-added with ₹12,36,992"
+    }
+  }
+}
