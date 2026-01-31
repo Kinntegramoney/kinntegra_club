@@ -2515,7 +2515,8 @@ export default function ReinvestmentTagging() {
                               <div>
                                 <Label className="text-[10px] text-gray-500 mb-1 block">Portfolio</Label>
                                 <Select 
-                                  value={alloc.portfolio} 
+                                  key={`portfolio-select-${entryId}-${allocIndex}`}
+                                  value={alloc.portfolio || ''} 
                                   onValueChange={(v) => updateAllocation(entryId, allocIndex, 'portfolio', v)}
                                   disabled={alloc.amount !== '' && alloc.amount < 1000}
                                 >
