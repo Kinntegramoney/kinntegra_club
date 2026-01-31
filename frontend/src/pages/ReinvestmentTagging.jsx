@@ -633,6 +633,8 @@ export default function ReinvestmentTagging() {
           const flooredAmount = Math.floor(newAmount);
           newAmount = roundToHundred(flooredAmount);
         }
+        // Preserve UCC - ensure it's not reset
+        // newUcc is already set from the existing allocation
       }
       
       // If UCC is being changed
