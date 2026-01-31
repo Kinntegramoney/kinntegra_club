@@ -13184,8 +13184,8 @@ async def get_client_pending_approvals(current_user: dict = Depends(get_current_
         return []
     
     # Get pending reinvestment logs (including cancellation_pending, edit_pending, pending_reapproval)
-    # Only include entries with UCC and portfolio tagged (actual investment entries)
-    logs = await db.reinvestment_logs.find({
+    # First get main investment allocations (with UCC and real portfolio)
+    main_logs = await db.reinvestment_logs.find({
         "client_id": client['id'],
         "approval_status": {"$in": ["pending", "cancellation_pending", "edit_pending", "pending_reapproval"]},
         # Only include entries with UCC and portfolio (actual investment entries)
@@ -13193,8 +13193,19 @@ async def get_client_pending_approvals(current_user: dict = Depends(get_current_
             {"ucc": {"$exists": True, "$ne": None, "$ne": ""}},
             {"target_ucc": {"$exists": True, "$ne": None, "$ne": ""}}
         ],
-        "portfolio": {"$exists": True, "$ne": None, "$ne": ""}
+        "portfolio": {"$exists": True, "$ne": None, "$ne": "", "$ne": "none"}
     }, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Get unique cashflow_ids from main logs
+    cashflow_ids = list(set(log.get('cashflow_id') for log in main_logs if log.get('cashflow_id')))
+    
+    # Now get ALL allocations for these cashflows (including 'none' portfolio for bifurcation display)
+    all_logs = await db.reinvestment_logs.find({
+        "cashflow_id": {"$in": cashflow_ids},
+        "approval_status": {"$in": ["pending", "cancellation_pending", "edit_pending", "pending_reapproval"]}
+    }, {"_id": 0}).sort([("cashflow_id", 1), ("allocation_index", 1)]).to_list(500)
+    
+    logs = all_logs
     
     # Enrich with bond and broker info
     for log in logs:
