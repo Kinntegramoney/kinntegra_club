@@ -867,121 +867,333 @@ export default function ClientHoldings() {
         </div>
       </div>
 
-      {/* Cashflow Modal */}
-      <Dialog open={showCashflowModal} onOpenChange={setShowCashflowModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5 text-teal-600" />
-              {selectedHolding?.bond_name} - Cashflows
-            </DialogTitle>
-          </DialogHeader>
+      {/* Cashflow Modal - Side by Side Expected vs Actual (matching Broker view) */}
+      {showCashflowModal && selectedHolding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowCashflowModal(false)} />
           
-          {selectedHolding && (
-            <div className="space-y-4">
-              {/* Summary */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="text-xs text-gray-500">Total Units</p>
-                  <p className="font-semibold">{selectedHolding.total_units}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Invested</p>
-                  <p className="font-semibold">{formatINR(selectedHolding.invested_amount)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Expected XIRR</p>
-                  <p className="font-semibold text-emerald-600">
-                    {selectedHolding.xirr ? `${selectedHolding.xirr.toFixed(2)}%` : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Actual XIRR</p>
-                  <p className="font-semibold text-purple-600">
-                    {selectedHolding.actual_xirr ? `${selectedHolding.actual_xirr.toFixed(2)}%` : '-'}
-                  </p>
-                </div>
+          <div className="relative bg-white rounded-xl shadow-2xl w-[95%] max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-emerald-50">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">Cashflow Details</h2>
+                <p className="text-sm text-gray-600">{selectedHolding.bond_name} • {selectedHolding.total_units} units • Invested: {formatINR(selectedHolding.invested_amount)}</p>
               </div>
-
-              {/* Tabs for each tranche */}
-              {selectedHolding.trades && selectedHolding.trades.length > 0 && (
-                <div>
-                  <div className="flex gap-2 border-b mb-4">
-                    <button
-                      onClick={() => setActiveTab("summary")}
-                      className={`px-3 py-2 text-sm font-medium border-b-2 ${
-                        activeTab === "summary" 
-                          ? "border-teal-600 text-teal-700" 
-                          : "border-transparent text-gray-500"
-                      }`}
-                    >
-                      Summary
-                    </button>
-                    {selectedHolding.trades.map((trade, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setActiveTab(idx)}
-                        className={`px-3 py-2 text-sm font-medium border-b-2 ${
-                          activeTab === idx 
-                            ? "border-teal-600 text-teal-700" 
-                            : "border-transparent text-gray-500"
-                        }`}
-                      >
-                        {format(new Date(trade.investment_date), 'dd MMM yy')}
-                      </button>
-                    ))}
-                  </div>
-
-                  {activeTab === "summary" ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>Select a tranche to view detailed cashflows</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="text-left py-2 px-3">Date</th>
-                            <th className="text-left py-2 px-3">Type</th>
-                            <th className="text-right py-2 px-3">Principal</th>
-                            <th className="text-right py-2 px-3">Interest</th>
-                            <th className="text-right py-2 px-3">TDS</th>
-                            <th className="text-right py-2 px-3">Net Amount</th>
-                            <th className="text-center py-2 px-3">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {selectedHolding.trades[activeTab]?.cashflows?.map((cf, idx) => (
-                            <tr key={idx} className={cf.is_repaid ? 'bg-green-50/50' : ''}>
-                              <td className="py-2 px-3">{format(new Date(cf.date), 'dd MMM yyyy')}</td>
-                              <td className="py-2 px-3 capitalize">{cf.type?.replace('_', ' ') || 'Payment'}</td>
-                              <td className="py-2 px-3 text-right font-mono">{formatAbsoluteINR(cf.principal_component)}</td>
-                              <td className="py-2 px-3 text-right font-mono">{formatAbsoluteINR(cf.interest_component)}</td>
-                              <td className="py-2 px-3 text-right font-mono text-red-600">{formatAbsoluteINR(cf.tds_amount)}</td>
-                              <td className="py-2 px-3 text-right font-mono font-semibold">{formatAbsoluteINR(cf.net_amount)}</td>
-                              <td className="py-2 px-3 text-center">
-                                {cf.is_repaid ? (
-                                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
-                                    Received
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
-                                    Pending
-                                  </span>
-                                )}
-                              </td>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const expectedCfs = getExpectedCashflowsByDate(selectedHolding.trades);
+                    const actualCfs = getActualCashflowsByDate(selectedHolding.trades);
+                    downloadCombinedCashflowPDF(selectedHolding, expectedCfs, actualCfs);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 rounded-lg text-white text-sm font-medium transition-colors"
+                  title="Download as PDF"
+                  data-testid="download-pdf-btn"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF
+                </button>
+                <button
+                  onClick={() => {
+                    const expectedCfs = getExpectedCashflowsByDate(selectedHolding.trades);
+                    const actualCfs = getActualCashflowsByDate(selectedHolding.trades);
+                    downloadCombinedCashflowExcel(selectedHolding, expectedCfs, actualCfs);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm font-medium transition-colors"
+                  title="Download as Excel (CSV)"
+                  data-testid="download-excel-btn"
+                >
+                  <Download className="h-4 w-4" />
+                  Excel
+                </button>
+                <button onClick={() => setShowCashflowModal(false)} className="p-2 hover:bg-white/50 rounded-full transition-colors" data-testid="close-modal-btn">
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Tabs: Summary + Individual Transactions */}
+            <div className="flex border-b border-gray-200 bg-gray-50 px-4 overflow-x-auto">
+              <button
+                onClick={() => setActiveTab("summary")}
+                className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
+                  activeTab === "summary" 
+                    ? 'border-teal-600 text-teal-700 bg-white' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                data-testid="tab-summary"
+              >
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>Summary</span>
+                </div>
+              </button>
+              
+              {/* Individual Transaction Tabs - Only show if multiple distinct investment dates */}
+              {(() => {
+                const uniqueDates = [...new Set(selectedHolding.trades.map(t => t.investment_date?.split('T')[0]))];
+                if (uniqueDates.length <= 1) return null;
+                
+                return selectedHolding.trades.map((trade, index) => (
+                  <button
+                    key={trade.trade_id}
+                    onClick={() => setActiveTab(index)}
+                    className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
+                      activeTab === index 
+                        ? 'border-teal-600 text-teal-700 bg-white' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    data-testid={`trade-tab-${index}`}
+                  >
+                    <span className="block">{format(new Date(trade.investment_date), "dd MMM yyyy")}</span>
+                    <span className="text-xs text-gray-400">{trade.units} units</span>
+                  </button>
+                ));
+              })()}
+            </div>
+            
+            {/* Tab Content */}
+            <div className="flex-1 overflow-auto">
+              {/* Summary Tab Content - Side by Side Layout */}
+              {activeTab === "summary" && (
+                <div className="p-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    
+                    {/* LEFT COLUMN - Expected Cashflow */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
+                        <h3 className="font-semibold text-white flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Expected Cashflow
+                        </h3>
+                      </div>
+                      
+                      <div className="flex-1 max-h-[300px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
+                            <tr>
+                              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {(() => {
+                              const expectedCashflows = getExpectedCashflowsByDate(selectedHolding.trades);
+                              return expectedCashflows.length > 0 ? expectedCashflows.map((cf, idx) => (
+                                cf.type === 'investment' ? (
+                                  <tr key={idx} className="bg-red-50">
+                                    <td className="py-3 px-4 font-mono text-sm text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                    <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-red-600">
+                                      -{formatAbsoluteINR(Math.abs(cf.investment_amount || cf.gross_amount || 0))}
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  <tr key={idx} className="bg-white hover:bg-gray-50">
+                                    <td className="py-3 px-4 font-mono text-sm text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                    <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-gray-900">
+                                      {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                    </td>
+                                  </tr>
+                                )
+                              )) : (
+                                <tr>
+                                  <td colSpan="2" className="py-8 text-center text-gray-500">
+                                    <p className="text-sm">No expected cashflows</p>
+                                  </td>
+                                </tr>
+                              );
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {/* Expected Summary Footer */}
+                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 mt-auto">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="text-sm text-gray-600">Profits:</span>
+                            <span className="font-mono font-bold ml-2 text-green-600">
+                              {(() => {
+                                const expectedCashflows = getExpectedCashflowsByDate(selectedHolding.trades);
+                                const profit = expectedCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
+                                  expectedCashflows.filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || 0), 0);
+                                return formatAbsoluteINR(profit);
+                              })()}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm text-gray-600">XIRR:</span>
+                            <span className="font-mono font-bold ml-2 text-blue-700">
+                              {selectedHolding.xirr !== null && selectedHolding.xirr !== undefined ? `${selectedHolding.xirr.toFixed(2)}%` : '-'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
+                    
+                    {/* RIGHT COLUMN - Actual Cashflow */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
+                      <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3">
+                        <h3 className="font-semibold text-white flex items-center gap-2">
+                          <Check className="h-4 w-4" />
+                          Actual Cashflow
+                        </h3>
+                      </div>
+                      
+                      <div className="flex-1 max-h-[300px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
+                            <tr>
+                              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {(() => {
+                              const actualCashflows = getActualCashflowsByDate(selectedHolding.trades);
+                              return actualCashflows.length > 0 ? actualCashflows.map((cf, idx) => (
+                                cf.type === 'investment' ? (
+                                  <tr key={idx} className="bg-red-50">
+                                    <td className="py-3 px-4 font-mono text-sm text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                    <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-red-600">
+                                      -{formatAbsoluteINR(Math.abs(cf.investment_amount || cf.gross_amount || 0))}
+                                    </td>
+                                  </tr>
+                                ) : cf.type === 'maturity' ? (
+                                  <tr key={idx} className={cf.is_repaid ? "bg-green-50" : "bg-yellow-50"}>
+                                    <td className={`py-3 px-4 font-mono text-sm ${cf.is_repaid ? "text-green-700" : "text-yellow-700"}`}>{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                    <td className={`py-3 px-4 text-right font-mono text-sm font-semibold ${cf.is_repaid ? "text-green-600" : "text-yellow-600"}`}>
+                                      {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  <tr key={idx} className={cf.is_repaid ? "bg-green-50" : "bg-yellow-50"}>
+                                    <td className={`py-3 px-4 font-mono text-sm ${cf.is_repaid ? "text-green-700" : "text-yellow-700"}`}>{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                    <td className={`py-3 px-4 text-right font-mono text-sm font-semibold ${cf.is_repaid ? "text-green-600" : "text-yellow-600"}`}>
+                                      {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                    </td>
+                                  </tr>
+                                )
+                              )) : (
+                                <tr>
+                                  <td colSpan="2" className="py-8 text-center text-gray-500">
+                                    <p className="text-sm">No actual cashflow yet</p>
+                                  </td>
+                                </tr>
+                              );
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {/* Actual Summary Footer */}
+                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 mt-auto">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="text-sm text-gray-600">Profits:</span>
+                            <span className="font-mono font-bold ml-2 text-green-600">
+                              {(() => {
+                                const actualCashflows = getActualCashflowsByDate(selectedHolding.trades);
+                                const profit = actualCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
+                                  actualCashflows.filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || 0), 0);
+                                return formatAbsoluteINR(profit);
+                              })()}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm text-gray-600">XIRR:</span>
+                            <span className="font-mono font-bold ml-2 text-green-700">
+                              {selectedHolding.actual_xirr !== null && selectedHolding.actual_xirr !== undefined ? `${selectedHolding.actual_xirr.toFixed(2)}%` : '-'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                  </div>
+                </div>
+              )}
+              
+              {/* Individual Trade Tab Content - Side by Side Layout per Trade */}
+              {typeof activeTab === 'number' && selectedHolding.trades[activeTab] && (
+                <div className="p-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    
+                    {/* Expected Cashflows for this trade */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
+                        <h3 className="font-semibold text-white text-sm">Expected Cashflow</h3>
+                      </div>
+                      <div className="flex-1 max-h-[300px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
+                            <tr>
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Date</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {(selectedHolding.trades[activeTab].expected_cashflows || []).map((cf, idx) => (
+                              <tr key={idx} className={cf.type === 'investment' ? 'bg-red-50' : 'bg-white hover:bg-gray-50'}>
+                                <td className={`py-2 px-3 font-mono text-sm ${cf.type === 'investment' ? 'text-red-700' : 'text-gray-900'}`}>
+                                  {format(new Date(cf.date), "dd MMM yyyy")}
+                                </td>
+                                <td className={`py-2 px-3 text-right font-mono text-sm font-semibold ${cf.type === 'investment' ? 'text-red-600' : 'text-gray-900'}`}>
+                                  {cf.type === 'investment' ? '-' : ''}{formatAbsoluteINR(cf.type === 'investment' ? Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0) : (cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0))))}
+                                </td>
+                              </tr>
+                            ))}
+                            {(!selectedHolding.trades[activeTab].expected_cashflows || selectedHolding.trades[activeTab].expected_cashflows.length === 0) && (
+                              <tr>
+                                <td colSpan="2" className="py-6 text-center text-gray-500 text-sm">No expected cashflows</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    
+                    {/* Actual Cashflow for this trade */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
+                      <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3">
+                        <h3 className="font-semibold text-white text-sm">Actual Cashflow</h3>
+                      </div>
+                      <div className="flex-1 max-h-[300px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
+                            <tr>
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Date</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {(selectedHolding.trades[activeTab].actual_cashflows || []).map((cf, idx) => (
+                              <tr key={idx} className={cf.type === 'investment' ? 'bg-red-50' : cf.is_repaid ? 'bg-green-50' : 'bg-yellow-50'}>
+                                <td className={`py-2 px-3 font-mono text-sm ${cf.type === 'investment' ? 'text-red-700' : cf.is_repaid ? 'text-green-700' : 'text-yellow-700'}`}>
+                                  {format(new Date(cf.date), "dd MMM yyyy")}
+                                </td>
+                                <td className={`py-2 px-3 text-right font-mono text-sm font-semibold ${cf.type === 'investment' ? 'text-red-600' : cf.is_repaid ? 'text-green-600' : 'text-yellow-600'}`}>
+                                  {cf.type === 'investment' ? '-' : ''}{formatAbsoluteINR(cf.type === 'investment' ? Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0) : (cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0))))}
+                                </td>
+                              </tr>
+                            ))}
+                            {(!selectedHolding.trades[activeTab].actual_cashflows || selectedHolding.trades[activeTab].actual_cashflows.length === 0) && (
+                              <tr>
+                                <td colSpan="2" className="py-6 text-center text-gray-500 text-sm">No actual cashflows yet</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    
+                  </div>
                 </div>
               )}
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
