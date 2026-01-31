@@ -1616,7 +1616,7 @@ export default function ReinvestmentTagging() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => openEditModal(entry)}>
+                                  <DropdownMenuItem onClick={() => editSplitEntry(entry, clientGroup)}>
                                     <Pencil className="h-3 w-3 mr-2" />
                                     Edit Tag
                                   </DropdownMenuItem>
