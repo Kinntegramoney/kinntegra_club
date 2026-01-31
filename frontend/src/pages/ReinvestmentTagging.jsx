@@ -748,7 +748,10 @@ export default function ReinvestmentTagging() {
         // For amounts < 1000, UCC is not required (will be auto-tagged as 'none')
         const isSmallAmount = (alloc.amount || 0) < 1000;
         
-        if (!isSmallAmount && !alloc.ucc) {
+        // Get the UCC value - if only one UCC available, use it even if not explicitly set
+        const effectiveUcc = alloc.ucc || (data.entry?.ucc_list?.length === 1 ? data.entry.ucc_list[0] : '');
+        
+        if (!isSmallAmount && !effectiveUcc) {
           errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: UCC is required for amounts >= ₹1,000`);
         }
         if (!isSmallAmount && !alloc.portfolio) {
