@@ -568,63 +568,73 @@ export default function ClientReinvestmentApprovals() {
                                       ₹{(alloc.round_down_amount || 0).toLocaleString('en-IN')}
                                     </td>
                                     
-                                    {/* Status */}
-                                    <td className="px-3 py-2 text-center border border-gray-200">
-                                      {isPending ? (
-                                        <Badge className="bg-amber-100 text-amber-700 text-xs">
-                                          <Clock className="h-3 w-3 mr-1 inline" />
-                                          Pending
-                                        </Badge>
-                                      ) : isApproved ? (
-                                        <Badge className="bg-green-100 text-green-700 text-xs">
-                                          <Check className="h-3 w-3 mr-1 inline" />
-                                          Approved
-                                        </Badge>
-                                      ) : isRejected ? (
-                                        <Badge className="bg-red-100 text-red-700 text-xs">
-                                          <X className="h-3 w-3 mr-1 inline" />
-                                          Rejected
-                                        </Badge>
-                                      ) : (
-                                        <Badge className="bg-gray-100 text-gray-600 text-xs">
-                                          {alloc.approval_status || '-'}
-                                        </Badge>
-                                      )}
-                                    </td>
+                                    {/* Status (merged with rowSpan for multi-allocation entries) */}
+                                    {isFirst && (
+                                      <td 
+                                        className="px-3 py-2 text-center border border-gray-200 align-middle"
+                                        rowSpan={hasMultiple ? rowCount : 1}
+                                      >
+                                        {isPending ? (
+                                          <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                            <Clock className="h-3 w-3 mr-1 inline" />
+                                            Pending
+                                          </Badge>
+                                        ) : isApproved ? (
+                                          <Badge className="bg-green-100 text-green-700 text-xs">
+                                            <Check className="h-3 w-3 mr-1 inline" />
+                                            Approved
+                                          </Badge>
+                                        ) : isRejected ? (
+                                          <Badge className="bg-red-100 text-red-700 text-xs">
+                                            <X className="h-3 w-3 mr-1 inline" />
+                                            Rejected
+                                          </Badge>
+                                        ) : (
+                                          <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                            {alloc.approval_status || '-'}
+                                          </Badge>
+                                        )}
+                                      </td>
+                                    )}
                                     
-                                    {/* Actions - Approve/Reject for pending */}
-                                    <td className="px-3 py-2 text-center border border-gray-200">
-                                      {isFirst && isPending && (
-                                        <div className="flex items-center justify-center gap-1">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                            onClick={() => setConfirmDialog({ open: true, type: 'approve', item: entry })}
-                                            disabled={processing === entry.id}
-                                            title="Approve"
-                                          >
-                                            {processing === entry.id ? (
-                                              <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                                            ) : (
-                                              <Check className="h-3 w-3 mr-1" />
-                                            )}
-                                            Approve
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                            onClick={() => setConfirmDialog({ open: true, type: 'reject', item: entry })}
-                                            disabled={processing === entry.id}
-                                            title="Reject"
-                                          >
-                                            <X className="h-3 w-3 mr-1" />
-                                            Reject
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </td>
+                                    {/* Actions - Approve/Reject for pending (merged with rowSpan) */}
+                                    {isFirst && (
+                                      <td 
+                                        className="px-3 py-2 text-center border border-gray-200 align-middle"
+                                        rowSpan={hasMultiple ? rowCount : 1}
+                                      >
+                                        {isPending && (
+                                          <div className="flex items-center justify-center gap-1">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                              onClick={() => setConfirmDialog({ open: true, type: 'approve', item: entry })}
+                                              disabled={processing === entry.id}
+                                              title="Approve"
+                                            >
+                                              {processing === entry.id ? (
+                                                <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                              ) : (
+                                                <Check className="h-3 w-3 mr-1" />
+                                              )}
+                                              Approve
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                              onClick={() => setConfirmDialog({ open: true, type: 'reject', item: entry })}
+                                              disabled={processing === entry.id}
+                                              title="Reject"
+                                            >
+                                              <X className="h-3 w-3 mr-1" />
+                                              Reject
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </td>
+                                    )}
                                   </tr>
                                 );
                               })}
