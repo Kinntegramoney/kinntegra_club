@@ -490,174 +490,128 @@ export default function ClientReinvestmentApprovals() {
                       <tbody>
                         {Object.values(entriesByBond).map((bondGroup, bondIdx) => {
                           const allocations = bondGroup.allocations;
-                          const hasMultiple = allocations.length > 1;
-                          const rowCount = allocations.length;
                           const entry = bondGroup.entry;
                           const isPending = activeTab === 'pending';
                           const isApproved = activeTab === 'approved';
                           const isRejected = activeTab === 'rejected';
                           
+                          // Use primary allocation (first one) for display - matches broker behavior
+                          const primaryAlloc = allocations[0] || {};
+                          const investmentDate = primaryAlloc.investment_date;
+                          
                           return (
-                            <React.Fragment key={bondIdx}>
-                              {allocations.map((alloc, allocIdx) => {
-                                const isFirst = allocIdx === 0;
-                                const isLast = allocIdx === allocations.length - 1;
-                                
-                                // Get investment date
-                                const investmentDate = alloc.investment_date;
-                                
-                                return (
-                                  <tr 
-                                    key={`${bondIdx}-${allocIdx}`}
-                                    className={`
-                                      ${hasMultiple ? (isFirst ? 'border-t-2 border-green-300' : '') : ''}
-                                      ${hasMultiple ? 'bg-green-50/30' : 'hover:bg-gray-50'}
-                                    `}
-                                  >
-                                    {/* REPAYMENT DETAILS - Date of Repayment (merged with rowSpan) */}
-                                    {isFirst && (
-                                      <td 
-                                        className={`px-3 py-2 border border-gray-200 align-middle ${hasMultiple ? 'border-l-4 border-l-green-400' : ''}`}
-                                        rowSpan={hasMultiple ? rowCount : 1}
-                                      >
-                                        <span className="whitespace-nowrap font-medium text-gray-800">
-                                          {formatDate(bondGroup.date)}
-                                        </span>
-                                      </td>
-                                    )}
-                                    
-                                    {/* REPAYMENT DETAILS - Bond Name (merged with rowSpan) */}
-                                    {isFirst && (
-                                      <td 
-                                        className="px-3 py-2 border border-gray-200 align-middle"
-                                        rowSpan={hasMultiple ? rowCount : 1}
-                                      >
-                                        <div>
-                                          <div className="font-medium text-gray-800">{bondGroup.bond_name}</div>
-                                          {bondGroup.bond_code && (
-                                            <div className="text-xs text-gray-500">({bondGroup.bond_code})</div>
-                                          )}
-                                        </div>
-                                      </td>
-                                    )}
-                                    
-                                    {/* REPAYMENT DETAILS - Net Amount (merged with rowSpan - shows total for bond) */}
-                                    {isFirst && (
-                                      <td 
-                                        className="px-3 py-2 text-right font-mono text-gray-800 border border-gray-200 align-middle"
-                                        rowSpan={hasMultiple ? rowCount : 1}
-                                      >
-                                        ₹{(bondGroup.total_net_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                                      </td>
-                                    )}
-                                    
-                                    {/* INVESTMENT DETAILS - Date of Investment */}
-                                    <td className="px-3 py-2 border border-gray-200">
-                                      <span className="whitespace-nowrap text-gray-700">
-                                        {investmentDate ? format(new Date(investmentDate), "dd MMM yyyy") : '-'}
-                                      </span>
-                                    </td>
-                                    
-                                    {/* INVESTMENT DETAILS - Portfolio */}
-                                    <td className="px-3 py-2 border border-gray-200">
-                                      <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
-                                        {alloc.portfolio || '-'}
-                                      </Badge>
-                                    </td>
-                                    
-                                    {/* INVESTMENT DETAILS - UCC */}
-                                    <td className="px-3 py-2 border border-gray-200">
-                                      <Badge variant="outline" className="text-xs font-mono">
-                                        {alloc.ucc || '-'}
-                                      </Badge>
-                                    </td>
-                                    
-                                    {/* INVESTMENT DETAILS - Amount (Round Down) */}
-                                    <td className="px-3 py-2 text-right font-mono text-green-700 font-semibold border border-gray-200">
-                                      ₹{(alloc.round_down_amount || 0).toLocaleString('en-IN')}
-                                    </td>
-                                    
-                                    {/* Status (merged with rowSpan for multi-allocation entries) */}
-                                    {isFirst && (
-                                      <td 
-                                        className="px-3 py-2 text-center border border-gray-200 align-middle"
-                                        rowSpan={hasMultiple ? rowCount : 1}
-                                      >
-                                        {isPending ? (
-                                          <Badge className="bg-amber-100 text-amber-700 text-xs">
-                                            <Clock className="h-3 w-3 mr-1 inline" />
-                                            Pending
-                                          </Badge>
-                                        ) : isApproved ? (
-                                          <Badge className="bg-green-100 text-green-700 text-xs">
-                                            <Check className="h-3 w-3 mr-1 inline" />
-                                            Approved
-                                          </Badge>
-                                        ) : isRejected ? (
-                                          <Badge className="bg-red-100 text-red-700 text-xs">
-                                            <X className="h-3 w-3 mr-1 inline" />
-                                            Rejected
-                                          </Badge>
-                                        ) : (
-                                          <Badge className="bg-gray-100 text-gray-600 text-xs">
-                                            {alloc.approval_status || '-'}
-                                          </Badge>
-                                        )}
-                                      </td>
-                                    )}
-                                    
-                                    {/* Actions - Approve/Reject for pending (merged with rowSpan) */}
-                                    {isFirst && (
-                                      <td 
-                                        className="px-3 py-2 text-center border border-gray-200 align-middle"
-                                        rowSpan={hasMultiple ? rowCount : 1}
-                                      >
-                                        {isPending && (
-                                          <div className="flex items-center justify-center gap-1">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                              onClick={() => setConfirmDialog({ open: true, type: 'approve', item: entry })}
-                                              disabled={processing === entry.id}
-                                              title="Approve"
-                                            >
-                                              {processing === entry.id ? (
-                                                <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                                              ) : (
-                                                <Check className="h-3 w-3 mr-1" />
-                                              )}
-                                              Approve
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                              onClick={() => setConfirmDialog({ open: true, type: 'reject', item: entry })}
-                                              disabled={processing === entry.id}
-                                              title="Reject"
-                                            >
-                                              <X className="h-3 w-3 mr-1" />
-                                              Reject
-                                            </Button>
-                                          </div>
-                                        )}
-                                      </td>
-                                    )}
-                                  </tr>
-                                );
-                              })}
+                            <tr 
+                              key={bondIdx}
+                              className="hover:bg-gray-50"
+                            >
+                              {/* REPAYMENT DETAILS - Date of Repayment */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                <span className="whitespace-nowrap font-medium text-gray-800">
+                                  {formatDate(bondGroup.date)}
+                                </span>
+                              </td>
                               
-                              {/* Total row for multiple allocations */}
-                              {hasMultiple && (
-                                <tr className="bg-green-100/70 border-b-2 border-green-400">
-                                  <td colSpan="2" className="px-3 py-2 text-right font-semibold text-gray-700 border border-gray-200">
-                                    Total for {bondGroup.bond_name}:
-                                  </td>
-                                  <td className="px-3 py-2 text-right font-mono font-bold text-gray-800 border border-gray-200">
-                                    ₹{bondGroup.total_net_amount.toLocaleString('en-IN')}
-                                  </td>
-                                  <td colSpan="3" className="border border-gray-200"></td>
+                              {/* REPAYMENT DETAILS - Bond Name */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                <div>
+                                  <div className="font-medium text-gray-800">{bondGroup.bond_name}</div>
+                                  {bondGroup.bond_code && (
+                                    <div className="text-xs text-gray-500">({bondGroup.bond_code})</div>
+                                  )}
+                                </div>
+                              </td>
+                              
+                              {/* REPAYMENT DETAILS - Net Amount */}
+                              <td className="px-3 py-2 text-right font-mono text-gray-800 border border-gray-200">
+                                ₹{(bondGroup.total_net_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                              </td>
+                              
+                              {/* INVESTMENT DETAILS - Date of Investment */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                <span className="whitespace-nowrap text-gray-700">
+                                  {investmentDate ? format(new Date(investmentDate), "dd MMM yyyy") : '-'}
+                                </span>
+                              </td>
+                              
+                              {/* INVESTMENT DETAILS - Portfolio */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
+                                  {primaryAlloc.portfolio || '-'}
+                                </Badge>
+                              </td>
+                              
+                              {/* INVESTMENT DETAILS - UCC */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                <Badge variant="outline" className="text-xs font-mono">
+                                  {primaryAlloc.ucc || '-'}
+                                </Badge>
+                              </td>
+                              
+                              {/* INVESTMENT DETAILS - Amount (Round Down Total) */}
+                              <td className="px-3 py-2 text-right font-mono text-green-700 font-semibold border border-gray-200">
+                                ₹{(bondGroup.total_round_down_amount || 0).toLocaleString('en-IN')}
+                              </td>
+                              
+                              {/* Status */}
+                              <td className="px-3 py-2 text-center border border-gray-200">
+                                {isPending ? (
+                                  <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                    <Clock className="h-3 w-3 mr-1 inline" />
+                                    Pending
+                                  </Badge>
+                                ) : isApproved ? (
+                                  <Badge className="bg-green-100 text-green-700 text-xs">
+                                    <Check className="h-3 w-3 mr-1 inline" />
+                                    Approved
+                                  </Badge>
+                                ) : isRejected ? (
+                                  <Badge className="bg-red-100 text-red-700 text-xs">
+                                    <X className="h-3 w-3 mr-1 inline" />
+                                    Rejected
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                    {primaryAlloc.approval_status || '-'}
+                                  </Badge>
+                                )}
+                              </td>
+                              
+                              {/* Actions - Approve/Reject for pending */}
+                              <td className="px-3 py-2 text-center border border-gray-200">
+                                {isPending && (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                      onClick={() => setConfirmDialog({ open: true, type: 'approve', item: entry })}
+                                      disabled={processing === entry.id}
+                                      title="Approve"
+                                    >
+                                      {processing === entry.id ? (
+                                        <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                      ) : (
+                                        <Check className="h-3 w-3 mr-1" />
+                                      )}
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      onClick={() => setConfirmDialog({ open: true, type: 'reject', item: entry })}
+                                      disabled={processing === entry.id}
+                                      title="Reject"
+                                    >
+                                      <X className="h-3 w-3 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                                   <td className="px-3 py-2 text-right font-mono font-bold text-green-700 border border-gray-200">
                                     ₹{bondGroup.total_round_down_amount.toLocaleString('en-IN')}
                                   </td>
