@@ -477,11 +477,12 @@ export default function ReinvestmentTagging() {
       const existing = localChanges[entry.id] || {};
       
       // Get the amount based on tag type selection
+      // Backend returns: principal_net, interest_net, net_amount
       let splitAmount = 0;
       if (tagType === 'principal') {
-        splitAmount = entry.principal_amount || 0;
+        splitAmount = entry.principal_net || entry.principal_amount || 0;
       } else if (tagType === 'interest') {
-        splitAmount = entry.interest_amount || 0;
+        splitAmount = entry.interest_net || entry.interest_amount || 0;
       } else if (tagType === 'both') {
         splitAmount = entry.net_amount || 0;
       }
@@ -490,9 +491,10 @@ export default function ReinvestmentTagging() {
       splitAmount = Math.floor(splitAmount);
       
       // Store all amounts for display (also floored)
+      // Use principal_net and interest_net from backend
       const amounts = {
-        principal: Math.floor(entry.principal_amount || 0),
-        interest: Math.floor(entry.interest_amount || 0),
+        principal: Math.floor(entry.principal_net || entry.principal_amount || 0),
+        interest: Math.floor(entry.interest_net || entry.interest_amount || 0),
         both: Math.floor(entry.net_amount || 0)
       };
       
