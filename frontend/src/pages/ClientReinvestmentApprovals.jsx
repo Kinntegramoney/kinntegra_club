@@ -559,35 +559,6 @@ export default function ClientReinvestmentApprovals() {
             </div>
           )}
         </div>
-                                    Reject
-                                  </Button>
-                                </>
-                              )}
-                              
-                              {activeTab === 'approved' && (
-                                <Badge className="bg-green-100 text-green-700 w-full justify-center py-2">
-                                  <Check className="h-4 w-4 mr-1" />
-                                  Trade Confirmed
-                                </Badge>
-                              )}
-                              
-                              {activeTab === 'rejected' && (
-                                <Badge className="bg-red-100 text-red-700 w-full justify-center py-2">
-                                  <X className="h-4 w-4 mr-1" />
-                                  Rejected
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Confirmation Dialog */}
