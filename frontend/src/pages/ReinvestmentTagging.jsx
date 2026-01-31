@@ -777,13 +777,16 @@ export default function ReinvestmentTagging() {
     Object.entries(multiRetagData).forEach(([entryId, data]) => {
       // Primary allocation goes to localChanges for display
       const primaryAlloc = data.allocations[0];
+      // Get effective UCC (use single UCC if not explicitly set)
+      const getEffectiveUcc = (alloc) => alloc.ucc || (data.entry?.ucc_list?.length === 1 ? data.entry.ucc_list[0] : '');
+      
       updates[entryId] = {
-        target_ucc: primaryAlloc.ucc,
+        target_ucc: getEffectiveUcc(primaryAlloc),
         portfolio_category: primaryAlloc.portfolio,
         reinvestment_tag: selectedTagType, // Use the tag selected BEFORE opening modal
         // Store all allocations for backend processing
         ucc_allocations: data.allocations.map(a => ({
-          ucc: a.ucc,
+          ucc: getEffectiveUcc(a),
           amount: a.amount,
           portfolio: a.portfolio,
           tag: selectedTagType, // Same tag for all allocations
