@@ -2154,59 +2154,69 @@ export default function ReinvestmentTagging() {
                               ₹{(alloc.round_down_amount || 0).toLocaleString('en-IN')}
                             </td>
                             
-                            {/* Status */}
-                            <td className="px-3 py-2 text-center border border-gray-200">
-                              {isAutoTagged ? (
-                                <Badge className="bg-gray-100 text-gray-600 text-xs">
-                                  Auto-Tagged
-                                </Badge>
-                              ) : isPending ? (
-                                <Badge className="bg-amber-100 text-amber-700 text-xs">
-                                  <Clock className="h-3 w-3 mr-1 inline" />
-                                  Pending
-                                </Badge>
-                              ) : alloc.approval_status === 'cancellation_pending' ? (
-                                <Badge className="bg-red-100 text-red-700 text-xs">
-                                  Cancel Pending
-                                </Badge>
-                              ) : alloc.approval_status === 'edit_pending' ? (
-                                <Badge className="bg-amber-100 text-amber-700 text-xs">
-                                  Edit Pending
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-gray-100 text-gray-600 text-xs">
-                                  {alloc.approval_status || 'N/A'}
-                                </Badge>
-                              )}
-                            </td>
+                            {/* Status (merged with rowSpan) */}
+                            {isFirst && (
+                              <td 
+                                className="px-3 py-2 text-center border border-gray-200 align-middle"
+                                rowSpan={hasMultiple ? rowCount : 1}
+                              >
+                                {isAutoTagged ? (
+                                  <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                    Auto-Tagged
+                                  </Badge>
+                                ) : isPending ? (
+                                  <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                    <Clock className="h-3 w-3 mr-1 inline" />
+                                    Pending
+                                  </Badge>
+                                ) : alloc.approval_status === 'cancellation_pending' ? (
+                                  <Badge className="bg-red-100 text-red-700 text-xs">
+                                    Cancel Pending
+                                  </Badge>
+                                ) : alloc.approval_status === 'edit_pending' ? (
+                                  <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                    Edit Pending
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                    {alloc.approval_status || 'N/A'}
+                                  </Badge>
+                                )}
+                              </td>
+                            )}
                             
-                            {/* Actions - Edit and Untag only for pending status */}
-                            <td className="px-3 py-2 text-center border border-gray-200">
-                              {isFirst && isPending && !isAutoTagged && canTag && (
-                                <div className="flex items-center justify-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                    onClick={() => editTaggedEntry(entry, clientGroup)}
-                                    title="Edit tag"
-                                  >
-                                    <Pencil className="h-3 w-3 mr-1" />
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    onClick={() => handleUntagEntry(entry)}
-                                    title="Untag and move back"
-                                  >
-                                    <X className="h-3 w-3 mr-1" />
-                                    Untag
-                                  </Button>
-                                </div>
-                              )}
-                            </td>
+                            {/* Actions - Edit and Untag (merged with rowSpan) */}
+                            {isFirst && (
+                              <td 
+                                className="px-3 py-2 text-center border border-gray-200 align-middle"
+                                rowSpan={hasMultiple ? rowCount : 1}
+                              >
+                                {isPending && !isAutoTagged && canTag && (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                      onClick={() => editTaggedEntry(entry, clientGroup)}
+                                      title="Edit tag"
+                                    >
+                                      <Pencil className="h-3 w-3 mr-1" />
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      onClick={() => handleUntagEntry(entry)}
+                                      title="Untag and move back"
+                                    >
+                                      <X className="h-3 w-3 mr-1" />
+                                      Untag
+                                    </Button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
