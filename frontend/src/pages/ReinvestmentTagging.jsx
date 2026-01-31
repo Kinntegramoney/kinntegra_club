@@ -580,6 +580,7 @@ export default function ReinvestmentTagging() {
       let newAmount = newAllocations[allocIndex].amount;
       let newPortfolio = newAllocations[allocIndex].portfolio;
       let newUcc = newAllocations[allocIndex].ucc;
+      let newInvestmentDate = newAllocations[allocIndex].investment_date;
       
       if (field === 'amount') {
         // Parse and floor to avoid decimal amounts
@@ -597,6 +598,10 @@ export default function ReinvestmentTagging() {
             newPortfolio = '';
           } else if (currentPortfolio === 'real_estate' && newAmount < 2500000) {
             newPortfolio = '';
+          }
+          // Auto-set UCC if there's only one and amount >= 1000
+          if (!newUcc && entry.entry?.ucc_list?.length === 1) {
+            newUcc = entry.entry.ucc_list[0];
           }
         }
       }
@@ -616,11 +621,17 @@ export default function ReinvestmentTagging() {
         newUcc = value;
       }
       
+      // If investment date is being changed
+      if (field === 'investment_date') {
+        newInvestmentDate = value;
+      }
+      
       newAllocations[allocIndex] = {
         ...newAllocations[allocIndex],
         amount: newAmount,
         portfolio: newPortfolio,
-        ucc: newUcc
+        ucc: newUcc,
+        investment_date: newInvestmentDate
       };
       
       return {
