@@ -653,6 +653,39 @@ export default function ReinvestmentTagging() {
         investment_date: newInvestmentDate
       };
       
+      // Auto-add allocation for remaining balance when editing the last allocation's amount
+      if (field === 'amount' && newAmount !== '' && newAmount > 0) {
+        const isLastAllocation = allocIndex === newAllocations.length - 1;
+        
+        if (isLastAllocation) {
+          const usedAmount = newAllocations.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+          const remainingAmount = Math.floor(entry.totalAmount - usedAmount);
+          
+          // Auto-add if there's remaining amount > 0
+          if (remainingAmount > 0) {
+            // Auto-select UCC if client has only one
+            const defaultUcc = (entry.entry?.ucc_list?.length === 1) ? entry.entry.ucc_list[0] : '';
+            
+            // Auto-set portfolio to 'none' if remaining amount < 1000
+            const defaultPortfolio = remainingAmount < 1000 ? 'none' : '';
+            
+            // Default investment date is T+1 of repayment date
+            const repaymentDate = entry.entry?.expected_date || entry.entry?.date;
+            const defaultInvestmentDate = repaymentDate 
+              ? format(addDays(new Date(repaymentDate), 1), 'yyyy-MM-dd')
+              : format(addDays(new Date(), 1), 'yyyy-MM-dd');
+            
+            newAllocations.push({
+              id: `${entryId}-alloc-${newAllocations.length}`,
+              ucc: defaultUcc,
+              amount: remainingAmount,
+              portfolio: defaultPortfolio,
+              investment_date: defaultInvestmentDate
+            });
+          }
+        }
+      }
+      
       return {
         ...prev,
         [entryId]: {
