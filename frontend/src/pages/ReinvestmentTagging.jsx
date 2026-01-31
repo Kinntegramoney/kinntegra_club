@@ -1950,8 +1950,8 @@ export default function ReinvestmentTagging() {
         ? format(addDays(new Date(repaymentDate), 1), 'yyyy-MM-dd')
         : null;
       
-      // Get allocation info
-      const allocation = {
+      // Get allocation info - base allocation
+      const baseAllocation = {
         entry_id: entry.id,
         ucc: entry.target_ucc || 'Default',
         portfolio: entry.portfolio_category || 'N/A',
@@ -1964,23 +1964,37 @@ export default function ReinvestmentTagging() {
         auto_tagged: entry.auto_tagged || false
       };
       
-      // If entry has split allocations, get the individual splits
-      if (hasSplitAllocations(entry.id)) {
-        const splits = splitAllocations[entry.id] || [];
+      // Check for split allocations in multiple sources:
+      // 1. localChanges (when user just tagged with splits)
+      // 2. splitAllocations state
+      // 3. entry.allocations from backend
+      const localSplits = localChanges[entry.id]?.ucc_allocations;
+      const stateSplits = splitAllocations[entry.id];
+      const entrySplits = entry.allocations;
+      
+      // Use splits from whichever source has them
+      const splits = (localSplits && localSplits.length > 0) ? localSplits :
+                     (stateSplits && stateSplits.length > 0) ? stateSplits :
+                     (entrySplits && entrySplits.length > 0) ? entrySplits : null;
+      
+      if (splits && splits.length > 0) {
+        // Multiple allocations - add each as a separate row
         splits.forEach(split => {
-          const splitRoundDown = roundToHundred(split.amount || 0);
+          const splitNetAmount = split.amount || split.net_amount || 0;
+          const splitRoundDown = roundToHundred(splitNetAmount);
           entriesByBond[bondKey].allocations.push({
-            ...allocation,
-            ucc: split.ucc,
-            portfolio: split.portfolio,
-            net_amount: split.amount,
+            ...baseAllocation,
+            ucc: split.ucc || baseAllocation.ucc,
+            portfolio: split.portfolio || split.portfolio_name || baseAllocation.portfolio,
+            net_amount: splitNetAmount,
             round_down_amount: splitRoundDown,
-            investment_date: split.investment_date || defaultInvestmentDate
+            investment_date: split.investment_date || split.mf_investment_date || defaultInvestmentDate
           });
           entriesByBond[bondKey].total_round_down_amount += splitRoundDown;
         });
       } else {
-        entriesByBond[bondKey].allocations.push(allocation);
+        // Single allocation
+        entriesByBond[bondKey].allocations.push(baseAllocation);
         entriesByBond[bondKey].total_round_down_amount += roundDownAmount;
       }
       
