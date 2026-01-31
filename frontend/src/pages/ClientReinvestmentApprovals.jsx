@@ -487,6 +487,7 @@ export default function ClientReinvestmentApprovals() {
                         {Object.values(entriesByBond).map((bondGroup, bondIdx) => {
                           const allocations = bondGroup.allocations;
                           const hasMultiple = allocations.length > 1;
+                          const rowCount = allocations.length;
                           const entry = bondGroup.entry;
                           const isPending = activeTab === 'pending';
                           const isApproved = activeTab === 'approved';
@@ -509,26 +510,32 @@ export default function ClientReinvestmentApprovals() {
                                       ${hasMultiple ? 'bg-green-50/30' : 'hover:bg-gray-50'}
                                     `}
                                   >
-                                    {/* REPAYMENT DETAILS - Date of Repayment */}
-                                    <td className={`px-3 py-2 border border-gray-200 ${hasMultiple && !isFirst ? 'border-l-4 border-l-green-400' : ''}`}>
-                                      {isFirst && (
+                                    {/* REPAYMENT DETAILS - Date of Repayment (merged with rowSpan) */}
+                                    {isFirst && (
+                                      <td 
+                                        className={`px-3 py-2 border border-gray-200 align-middle ${hasMultiple ? 'border-l-4 border-l-green-400' : ''}`}
+                                        rowSpan={hasMultiple ? rowCount : 1}
+                                      >
                                         <span className="whitespace-nowrap font-medium text-gray-800">
                                           {formatDate(bondGroup.date)}
                                         </span>
-                                      )}
-                                    </td>
+                                      </td>
+                                    )}
                                     
-                                    {/* REPAYMENT DETAILS - Bond Name */}
-                                    <td className="px-3 py-2 border border-gray-200">
-                                      {isFirst && (
+                                    {/* REPAYMENT DETAILS - Bond Name (merged with rowSpan) */}
+                                    {isFirst && (
+                                      <td 
+                                        className="px-3 py-2 border border-gray-200 align-middle"
+                                        rowSpan={hasMultiple ? rowCount : 1}
+                                      >
                                         <div>
                                           <div className="font-medium text-gray-800">{bondGroup.bond_name}</div>
                                           {bondGroup.bond_code && (
                                             <div className="text-xs text-gray-500">({bondGroup.bond_code})</div>
                                           )}
                                         </div>
-                                      )}
-                                    </td>
+                                      </td>
+                                    )}
                                     
                                     {/* REPAYMENT DETAILS - Net Amount */}
                                     <td className="px-3 py-2 text-right font-mono text-gray-800 border border-gray-200">
