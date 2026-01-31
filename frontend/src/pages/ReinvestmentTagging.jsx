@@ -1944,6 +1944,12 @@ export default function ReinvestmentTagging() {
       const netAmount = entry.net_amount || 0;
       const roundDownAmount = roundToHundred(netAmount);
       
+      // Get investment date - default to T+1 of repayment date
+      const repaymentDate = entry.expected_date || entry.date;
+      const defaultInvestmentDate = repaymentDate 
+        ? format(addDays(new Date(repaymentDate), 1), 'yyyy-MM-dd')
+        : null;
+      
       // Get allocation info
       const allocation = {
         entry_id: entry.id,
@@ -1952,6 +1958,7 @@ export default function ReinvestmentTagging() {
         tag: entry.reinvestment_tag || 'N/A',
         net_amount: netAmount,
         round_down_amount: roundDownAmount,
+        investment_date: entry.investment_date || entry.mf_investment_date || defaultInvestmentDate,
         approval_status: entry.approval_status || 'pending',
         client_approved: entry.client_approved || false,
         auto_tagged: entry.auto_tagged || false
@@ -1967,7 +1974,8 @@ export default function ReinvestmentTagging() {
             ucc: split.ucc,
             portfolio: split.portfolio,
             net_amount: split.amount,
-            round_down_amount: splitRoundDown
+            round_down_amount: splitRoundDown,
+            investment_date: split.investment_date || defaultInvestmentDate
           });
           entriesByBond[bondKey].total_round_down_amount += splitRoundDown;
         });
