@@ -225,6 +225,12 @@ export default function ClientReinvestmentApprovals() {
       const netAmount = item.reinvestment_amount || getAmount(item);
       const roundDownAmount = roundToHundred(netAmount);
       
+      // Calculate default investment date (T+1 of repayment)
+      const repaymentDate = item.date || item.expected_date;
+      const defaultInvestmentDate = repaymentDate 
+        ? format(addDays(new Date(repaymentDate), 1), 'yyyy-MM-dd')
+        : null;
+      
       // If item has allocations from the backend
       if (item.allocations && item.allocations.length > 0) {
         item.allocations.forEach(alloc => {
@@ -235,6 +241,7 @@ export default function ClientReinvestmentApprovals() {
             portfolio: alloc.portfolio_name || alloc.portfolio || item.portfolio_category || '-',
             net_amount: alloc.amount || 0,
             round_down_amount: allocRoundDown,
+            investment_date: alloc.investment_date || alloc.mf_investment_date || defaultInvestmentDate,
             approval_status: item.approval_status
           });
           entriesByBond[bondKey].total_round_down_amount += allocRoundDown;
@@ -247,6 +254,7 @@ export default function ClientReinvestmentApprovals() {
           portfolio: item.portfolio_category || '-',
           net_amount: netAmount,
           round_down_amount: roundDownAmount,
+          investment_date: item.investment_date || item.mf_investment_date || defaultInvestmentDate,
           approval_status: item.approval_status
         });
         entriesByBond[bondKey].total_round_down_amount += roundDownAmount;
