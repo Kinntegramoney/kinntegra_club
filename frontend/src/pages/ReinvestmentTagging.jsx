@@ -2478,6 +2478,7 @@ export default function ReinvestmentTagging() {
                                   </div>
                                 ) : (
                                   <Select 
+                                    key={`ucc-select-${entryId}-${allocIndex}`}
                                     value={alloc.ucc || ''} 
                                     onValueChange={(v) => updateAllocation(entryId, allocIndex, 'ucc', v)}
                                   >
