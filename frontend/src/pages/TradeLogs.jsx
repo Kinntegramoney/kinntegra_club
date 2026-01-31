@@ -38,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import React from "react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -46,6 +47,299 @@ const API = `${BACKEND_URL}/api`;
 const roundToHundred = (amount) => {
   if (!amount || amount <= 0) return 0;
   return Math.floor(amount / 100) * 100;
+};
+
+// Investment Logs Table - Matching Tagged (Pending) design with bifurcation
+const InvestmentLogsTable = ({ logs, onModify, onCancel, formatDate, formatCurrency }) => {
+  // Group logs by client, then by cashflow for bifurcation
+  const clientGroups = {};
+  
+  logs.forEach(log => {
+    const clientId = log.client_id || 'unknown';
+    if (!clientGroups[clientId]) {
+      clientGroups[clientId] = {
+        client_id: clientId,
+        client_name: log.client_name || 'Unknown',
+        entries: []
+      };
+    }
+    clientGroups[clientId].entries.push(log);
+  });
+
+  // Group entries by cashflow_id for bifurcation
+  const groupByCashflow = (entries) => {
+    const cashflowGroups = {};
+    entries.forEach(entry => {
+      const cfId = entry.cashflow_id || entry.id;
+      if (!cashflowGroups[cfId]) {
+        cashflowGroups[cfId] = {
+          cashflow_id: cfId,
+          bond_name: entry.bond_name,
+          bond_code: entry.bond_code,
+          date: entry.expected_date,
+          allocations: [],
+          total_net_amount: entry.total_cashflow_net_amount || 0,
+          total_round_down_amount: 0,
+          primary_entry: entry
+        };
+      }
+      const roundDownAmt = entry.amount || roundToHundred(entry.net_amount || 0);
+      cashflowGroups[cfId].allocations.push({
+        ...entry,
+        round_down_amount: roundDownAmt
+      });
+      cashflowGroups[cfId].total_round_down_amount += roundDownAmt;
+      if (!cashflowGroups[cfId].total_net_amount) {
+        cashflowGroups[cfId].total_net_amount += (entry.net_amount || 0);
+      }
+    });
+    // Sort allocations by index
+    Object.values(cashflowGroups).forEach(cf => {
+      cf.allocations.sort((a, b) => (a.allocation_index || 0) - (b.allocation_index || 0));
+    });
+    return cashflowGroups;
+  };
+
+  return (
+    <div className="space-y-4">
+      {Object.values(clientGroups).map(clientGroup => {
+        const cashflowGroups = groupByCashflow(clientGroup.entries);
+        const totalNet = Object.values(cashflowGroups).reduce((sum, cf) => sum + (cf.total_net_amount || 0), 0);
+        const totalRoundDown = Object.values(cashflowGroups).reduce((sum, cf) => sum + cf.total_round_down_amount, 0);
+        
+        return (
+          <div key={clientGroup.client_id} className="bg-white rounded-lg border border-green-200 overflow-hidden">
+            {/* Client Header */}
+            <div className="px-4 py-3 flex items-center justify-between bg-green-50/50 border-b border-green-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800">{clientGroup.client_name}</h3>
+                  <p className="text-sm text-gray-500">{Object.keys(cashflowGroups).length} approved investments</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Net Repayment</p>
+                  <p className="font-semibold text-gray-800">₹{formatCurrency(totalNet)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Investment Amt</p>
+                  <p className="font-semibold text-green-700">₹{formatCurrency(totalRoundDown)}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Table with two-level headers */}
+            <div className="p-4 overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th colSpan="3" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200 bg-blue-50">
+                      Repayment Details
+                    </th>
+                    <th colSpan="4" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200 bg-green-50">
+                      Investment Details
+                    </th>
+                    <th rowSpan="2" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200">
+                      Status
+                    </th>
+                    <th rowSpan="2" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200">
+                      Actions
+                    </th>
+                  </tr>
+                  <tr className="bg-gray-50">
+                    <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Date of Repayment</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Bond Name</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Net Amount</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Date of Investment</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Portfolio</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">UCC</th>
+                    <th className="text-right px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.values(cashflowGroups).map((cfGroup, cfIdx) => {
+                    const allocations = cfGroup.allocations;
+                    const hasMultiple = allocations.length > 1;
+                    const rowCount = allocations.length;
+                    const primaryEntry = cfGroup.primary_entry;
+                    
+                    return (
+                      <React.Fragment key={cfIdx}>
+                        {allocations.map((alloc, allocIdx) => {
+                          const isFirst = allocIdx === 0;
+                          const investmentDate = alloc.mf_investment_date || alloc.investment_date;
+                          const isNonePortfolio = (alloc.portfolio || '').toLowerCase() === 'none';
+                          
+                          return (
+                            <tr 
+                              key={`${cfIdx}-${allocIdx}`}
+                              className={`
+                                ${hasMultiple && isFirst ? 'border-t-2 border-t-green-400' : ''}
+                                ${hasMultiple ? 'bg-green-50/30' : 'hover:bg-gray-50'}
+                              `}
+                            >
+                              {/* Date of Repayment - merged */}
+                              {isFirst && (
+                                <td 
+                                  className={`px-3 py-2 border border-gray-200 align-middle ${hasMultiple ? 'border-l-4 border-l-green-400' : ''}`}
+                                  rowSpan={hasMultiple ? rowCount : 1}
+                                >
+                                  <span className="whitespace-nowrap font-medium text-gray-800">
+                                    {formatDate(cfGroup.date)}
+                                  </span>
+                                </td>
+                              )}
+                              
+                              {/* Bond Name - merged */}
+                              {isFirst && (
+                                <td 
+                                  className="px-3 py-2 border border-gray-200 align-middle"
+                                  rowSpan={hasMultiple ? rowCount : 1}
+                                >
+                                  <div className="font-medium text-gray-800">{cfGroup.bond_name}</div>
+                                  {cfGroup.bond_code && <div className="text-xs text-gray-500">({cfGroup.bond_code})</div>}
+                                </td>
+                              )}
+                              
+                              {/* Net Amount - per allocation */}
+                              <td className="px-3 py-2 text-right font-mono text-gray-800 border border-gray-200">
+                                ₹{formatCurrency(alloc.net_amount || 0)}
+                              </td>
+                              
+                              {/* Date of Investment */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                {investmentDate ? formatDate(investmentDate) : '-'}
+                              </td>
+                              
+                              {/* Portfolio */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                <Badge className={`text-xs capitalize ${isNonePortfolio ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-700'}`}>
+                                  {alloc.portfolio || '-'}
+                                </Badge>
+                              </td>
+                              
+                              {/* UCC */}
+                              <td className="px-3 py-2 border border-gray-200">
+                                <Badge variant="outline" className="text-xs font-mono">
+                                  {alloc.ucc || alloc.target_ucc || '-'}
+                                </Badge>
+                              </td>
+                              
+                              {/* Amount */}
+                              <td className="px-3 py-2 text-right font-mono text-green-700 font-semibold border border-gray-200">
+                                ₹{formatCurrency(alloc.round_down_amount || 0)}
+                              </td>
+                              
+                              {/* Status - merged */}
+                              {isFirst && (
+                                <td 
+                                  className="px-3 py-2 text-center border border-gray-200 align-middle"
+                                  rowSpan={hasMultiple ? rowCount : 1}
+                                >
+                                  {primaryEntry.approval_status === 'submitted' || primaryEntry.api_submitted ? (
+                                    <Badge className="bg-green-100 text-green-700 text-xs">
+                                      <CheckCircle className="h-3 w-3 mr-1 inline" />
+                                      Submitted
+                                    </Badge>
+                                  ) : primaryEntry.approval_status === 'cancellation_pending' ? (
+                                    <Badge className="bg-red-100 text-red-700 text-xs">
+                                      <Clock className="h-3 w-3 mr-1 inline" />
+                                      Cancel Pending
+                                    </Badge>
+                                  ) : primaryEntry.approval_status === 'edit_pending' ? (
+                                    <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                      <Pencil className="h-3 w-3 mr-1 inline" />
+                                      Edit Pending
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-teal-100 text-teal-700 text-xs">
+                                      <CheckCircle className="h-3 w-3 mr-1 inline" />
+                                      Approved
+                                    </Badge>
+                                  )}
+                                </td>
+                              )}
+                              
+                              {/* Actions - merged */}
+                              {isFirst && (
+                                <td 
+                                  className="px-3 py-2 text-center border border-gray-200 align-middle"
+                                  rowSpan={hasMultiple ? rowCount : 1}
+                                >
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => onModify(primaryEntry)}
+                                      className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    >
+                                      <Pencil className="h-3 w-3 mr-1" />
+                                      Modify
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => onCancel(primaryEntry)}
+                                      className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Ban className="h-3 w-3 mr-1" />
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                        
+                        {/* Total row for multi-allocation */}
+                        {hasMultiple && (
+                          <tr className="bg-green-100/50 border-b-2 border-b-green-400">
+                            <td colSpan="2" className="px-3 py-2 text-right font-semibold text-gray-700 border border-gray-200">
+                              Total for {cfGroup.bond_name}:
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono font-bold text-gray-800 border border-gray-200">
+                              ₹{formatCurrency(cfGroup.total_net_amount || 0)}
+                            </td>
+                            <td colSpan="3" className="border border-gray-200"></td>
+                            <td className="px-3 py-2 text-right font-mono font-bold text-green-700 border border-gray-200">
+                              ₹{formatCurrency(cfGroup.total_round_down_amount || 0)}
+                            </td>
+                            <td colSpan="2" className="border border-gray-200"></td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+              
+              {/* Client Total */}
+              <div className="mt-3 p-3 bg-green-100 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-green-800">Total for {clientGroup.client_name}</span>
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <p className="text-xs text-green-700">Net Repayment</p>
+                      <p className="font-bold text-green-800">₹{formatCurrency(totalNet)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-green-700">Investment Amount</p>
+                      <p className="font-bold text-green-800 text-lg">₹{formatCurrency(totalRoundDown)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 const STATUS_CONFIG = {
