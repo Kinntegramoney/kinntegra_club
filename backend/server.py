@@ -2694,8 +2694,13 @@ async def get_pending_approvals_workflow(current_user: dict = Depends(get_curren
     ).to_list(100)
     
     # Also get pending reinvestments from reinvestment_logs with pending_broker_approval status
-    # Get all sub-brokers under this broker
-    sub_brokers = await db.partners.find({"broker_id": current_user['id']}, {"_id": 0, "id": 1}).to_list(1000)
+    # Get all sub-brokers under this broker (check both broker_id and created_by fields)
+    sub_brokers = await db.partners.find({
+        "$or": [
+            {"broker_id": current_user['id']},
+            {"created_by": current_user['id']}
+        ]
+    }, {"_id": 0, "id": 1}).to_list(1000)
     sub_broker_ids = [sb['id'] for sb in sub_brokers]
     
     pending_reinvestments_logs = []
