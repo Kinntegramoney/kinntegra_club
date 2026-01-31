@@ -451,20 +451,36 @@ export default function ClientReinvestmentApprovals() {
                   </div>
                 </div>
                 
-                {/* Expanded Table - Matching Broker's Tagged (Pending) Table */}
+                {/* Expanded Table - Two-level header matching broker design */}
                 {expandedBonds['main'] !== false && (
-                  <div className="p-4">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 border-b">
-                        <tr>
-                          <th className="text-left px-3 py-2 font-medium text-gray-600">Date of Repayment</th>
-                          <th className="text-left px-3 py-2 font-medium text-gray-600">Bond Name (Deal ID)</th>
-                          <th className="text-right px-3 py-2 font-medium text-gray-600">Net Repayment</th>
-                          <th className="text-right px-3 py-2 font-medium text-gray-600">Round Down Inv. Amt</th>
-                          <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
-                          <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio</th>
-                          <th className="text-center px-3 py-2 font-medium text-gray-600">Status</th>
-                          <th className="text-center px-3 py-2 font-medium text-gray-600">Actions</th>
+                  <div className="p-4 overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      {/* Two-level header */}
+                      <thead>
+                        {/* Top level - Group headers */}
+                        <tr className="bg-gray-100">
+                          <th colSpan="3" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200 bg-blue-50">
+                            Repayment Details
+                          </th>
+                          <th colSpan="4" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200 bg-green-50">
+                            Investment Details
+                          </th>
+                          <th rowSpan="2" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200 bg-gray-50 align-middle">
+                            Status
+                          </th>
+                          <th rowSpan="2" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200 bg-gray-50 align-middle">
+                            Actions
+                          </th>
+                        </tr>
+                        {/* Second level - Individual column headers */}
+                        <tr className="bg-gray-50">
+                          <th className="text-left px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Date of Repayment</th>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Bond Name</th>
+                          <th className="text-right px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Net Amount</th>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Date of Investment</th>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Portfolio</th>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">UCC</th>
+                          <th className="text-right px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Amount</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -482,22 +498,173 @@ export default function ClientReinvestmentApprovals() {
                                 const isFirst = allocIdx === 0;
                                 const isLast = allocIdx === allocations.length - 1;
                                 
+                                // Get investment date
+                                const investmentDate = alloc.investment_date;
+                                
                                 return (
                                   <tr 
                                     key={`${bondIdx}-${allocIdx}`}
                                     className={`
-                                      ${hasMultiple ? (isFirst ? 'border-t-2 border-green-200' : '') : 'border-t'}
-                                      ${hasMultiple && isLast ? '' : 'border-b border-gray-100'}
+                                      ${hasMultiple ? (isFirst ? 'border-t-2 border-green-300' : '') : ''}
                                       ${hasMultiple ? 'bg-green-50/30' : 'hover:bg-gray-50'}
                                     `}
                                   >
-                                    {/* Date of Repayment - only show on first row */}
-                                    <td className={`px-3 py-2 ${hasMultiple && !isFirst ? 'border-l-4 border-green-300' : ''}`}>
+                                    {/* REPAYMENT DETAILS - Date of Repayment */}
+                                    <td className={`px-3 py-2 border border-gray-200 ${hasMultiple && !isFirst ? 'border-l-4 border-l-green-400' : ''}`}>
                                       {isFirst && (
-                                        <span className="whitespace-nowrap font-medium">
+                                        <span className="whitespace-nowrap font-medium text-gray-800">
                                           {formatDate(bondGroup.date)}
                                         </span>
                                       )}
+                                    </td>
+                                    
+                                    {/* REPAYMENT DETAILS - Bond Name */}
+                                    <td className="px-3 py-2 border border-gray-200">
+                                      {isFirst && (
+                                        <div>
+                                          <div className="font-medium text-gray-800">{bondGroup.bond_name}</div>
+                                          {bondGroup.bond_code && (
+                                            <div className="text-xs text-gray-500">({bondGroup.bond_code})</div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </td>
+                                    
+                                    {/* REPAYMENT DETAILS - Net Amount */}
+                                    <td className="px-3 py-2 text-right font-mono text-gray-800 border border-gray-200">
+                                      ₹{(alloc.net_amount || 0).toLocaleString('en-IN')}
+                                    </td>
+                                    
+                                    {/* INVESTMENT DETAILS - Date of Investment */}
+                                    <td className="px-3 py-2 border border-gray-200">
+                                      <span className="whitespace-nowrap text-gray-700">
+                                        {investmentDate ? format(new Date(investmentDate), "dd MMM yyyy") : '-'}
+                                      </span>
+                                    </td>
+                                    
+                                    {/* INVESTMENT DETAILS - Portfolio */}
+                                    <td className="px-3 py-2 border border-gray-200">
+                                      <Badge className="bg-blue-100 text-blue-700 text-xs capitalize">
+                                        {alloc.portfolio || '-'}
+                                      </Badge>
+                                    </td>
+                                    
+                                    {/* INVESTMENT DETAILS - UCC */}
+                                    <td className="px-3 py-2 border border-gray-200">
+                                      <Badge variant="outline" className="text-xs font-mono">
+                                        {alloc.ucc || '-'}
+                                      </Badge>
+                                    </td>
+                                    
+                                    {/* INVESTMENT DETAILS - Amount (Round Down) */}
+                                    <td className="px-3 py-2 text-right font-mono text-green-700 font-semibold border border-gray-200">
+                                      ₹{(alloc.round_down_amount || 0).toLocaleString('en-IN')}
+                                    </td>
+                                    
+                                    {/* Status */}
+                                    <td className="px-3 py-2 text-center border border-gray-200">
+                                      {isPending ? (
+                                        <Badge className="bg-amber-100 text-amber-700 text-xs">
+                                          <Clock className="h-3 w-3 mr-1 inline" />
+                                          Pending
+                                        </Badge>
+                                      ) : isApproved ? (
+                                        <Badge className="bg-green-100 text-green-700 text-xs">
+                                          <Check className="h-3 w-3 mr-1 inline" />
+                                          Approved
+                                        </Badge>
+                                      ) : isRejected ? (
+                                        <Badge className="bg-red-100 text-red-700 text-xs">
+                                          <X className="h-3 w-3 mr-1 inline" />
+                                          Rejected
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="bg-gray-100 text-gray-600 text-xs">
+                                          {alloc.approval_status || '-'}
+                                        </Badge>
+                                      )}
+                                    </td>
+                                    
+                                    {/* Actions - Approve/Reject for pending */}
+                                    <td className="px-3 py-2 text-center border border-gray-200">
+                                      {isFirst && isPending && (
+                                        <div className="flex items-center justify-center gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                            onClick={() => setConfirmDialog({ open: true, type: 'approve', item: entry })}
+                                            disabled={processing === entry.id}
+                                            title="Approve"
+                                          >
+                                            {processing === entry.id ? (
+                                              <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                            ) : (
+                                              <Check className="h-3 w-3 mr-1" />
+                                            )}
+                                            Approve
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                            onClick={() => setConfirmDialog({ open: true, type: 'reject', item: entry })}
+                                            disabled={processing === entry.id}
+                                            title="Reject"
+                                          >
+                                            <X className="h-3 w-3 mr-1" />
+                                            Reject
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                              
+                              {/* Total row for multiple allocations */}
+                              {hasMultiple && (
+                                <tr className="bg-green-100/70 border-b-2 border-green-400">
+                                  <td colSpan="2" className="px-3 py-2 text-right font-semibold text-gray-700 border border-gray-200">
+                                    Total for {bondGroup.bond_name}:
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono font-bold text-gray-800 border border-gray-200">
+                                    ₹{bondGroup.total_net_amount.toLocaleString('en-IN')}
+                                  </td>
+                                  <td colSpan="3" className="border border-gray-200"></td>
+                                  <td className="px-3 py-2 text-right font-mono font-bold text-green-700 border border-gray-200">
+                                    ₹{bondGroup.total_round_down_amount.toLocaleString('en-IN')}
+                                  </td>
+                                  <td colSpan="2" className="border border-gray-200"></td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    
+                    {/* Grand Total Footer */}
+                    <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
+                      <div className="text-sm text-gray-600">
+                        Total for {user?.name || 'Client'}:
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-sm">
+                          <span className="text-gray-500">Net Repayment:</span>
+                          <span className="font-semibold text-gray-800 ml-2">₹{totalNetAmount.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-gray-500">Investment Amount:</span>
+                          <span className="font-semibold text-green-700 ml-2">₹{totalRoundDownAmount.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
                                     </td>
                                     
                                     {/* Bond Name (Deal ID) - only show on first row */}
