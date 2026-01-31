@@ -164,62 +164,62 @@ export default function ClientApprovals() {
 
   // Client Approval Table Component - matches broker's Tagged (Pending) format exactly
   const ClientApprovalTable = ({ items, onApprove, onReject, processingId, formatCurrency, formatDate }) => {
-    // Group items by bond with allocations (matching broker's structure)
+    // Group items by bond with allocations (matching broker's structure with bifurcation)
     const groupItemsByBond = (entries) => {
       const bondGroups = {};
+      
+      // First, group by cashflow_id to get all allocations for each cashflow
+      const cashflowGroups = {};
       entries.forEach(entry => {
-        const bondKey = `${entry.bond_id || 'unknown'}_${entry.cashflow_id || entry.id}`;
-        if (!bondGroups[bondKey]) {
-          bondGroups[bondKey] = {
+        const cfId = entry.cashflow_id || entry.id;
+        if (!cashflowGroups[cfId]) {
+          cashflowGroups[cfId] = {
+            cashflow_id: cfId,
             bond_id: entry.bond_id,
             bond_name: entry.bond_name,
             bond_code: entry.bond_code || entry.deal_id || '',
             date: entry.expected_date || entry.date,
-            entry: entry,
             allocations: [],
-            total_net_amount: 0,
-            total_round_down_amount: 0
+            total_net_amount: entry.total_cashflow_net_amount || 0,
+            total_round_down_amount: 0,
+            primary_entry: entry
           };
         }
         
-        const netAmount = entry.net_amount || entry.amount || 0;
-        const roundDownAmount = entry.amount || roundToHundred(netAmount);
+        const roundDownAmount = entry.amount || roundToHundred(entry.net_amount || 0);
         
-        // If entry has allocations from the backend
-        if (entry.allocations && entry.allocations.length > 0) {
-          entry.allocations.forEach(alloc => {
-            const allocRoundDown = roundToHundred(alloc.amount || 0);
-            bondGroups[bondKey].allocations.push({
-              entry_id: entry.id,
-              entry: entry,
-              ucc: alloc.ucc || alloc.target_ucc || entry.ucc || entry.target_ucc || '-',
-              portfolio: alloc.portfolio || alloc.portfolio_name || entry.portfolio || entry.portfolio_category || '-',
-              net_amount: alloc.amount || 0,
-              round_down_amount: allocRoundDown,
-              investment_date: alloc.investment_date || alloc.mf_investment_date || entry.mf_investment_date || entry.investment_date,
-              tagged_by_name: entry.tagged_by_name || 'Broker',
-              is_sub_broker: entry.tagged_by_sub_broker
-            });
-            bondGroups[bondKey].total_round_down_amount += allocRoundDown;
-          });
-        } else {
-          // Single allocation
-          bondGroups[bondKey].allocations.push({
-            entry_id: entry.id,
-            entry: entry,
-            ucc: entry.ucc || entry.target_ucc || '-',
-            portfolio: entry.portfolio || entry.portfolio_category || '-',
-            net_amount: netAmount,
-            round_down_amount: roundDownAmount,
-            investment_date: entry.mf_investment_date || entry.investment_date,
-            tagged_by_name: entry.tagged_by_name || 'Broker',
-            is_sub_broker: entry.tagged_by_sub_broker
-          });
-          bondGroups[bondKey].total_round_down_amount += roundDownAmount;
-        }
-        
-        bondGroups[bondKey].total_net_amount += netAmount;
+        cashflowGroups[cfId].allocations.push({
+          entry_id: entry.id,
+          entry: entry,
+          allocation_index: entry.allocation_index || 0,
+          ucc: entry.ucc || entry.target_ucc || '-',
+          portfolio: entry.portfolio || entry.portfolio_category || '-',
+          net_amount: entry.net_amount || 0,
+          round_down_amount: roundDownAmount,
+          investment_date: entry.mf_investment_date || entry.investment_date,
+          tagged_by_name: entry.tagged_by_name || 'Broker',
+          is_sub_broker: entry.tagged_by_sub_broker
+        });
+        cashflowGroups[cfId].total_round_down_amount += roundDownAmount;
       });
+      
+      // Sort allocations by index and convert to bondGroups format
+      Object.values(cashflowGroups).forEach(cf => {
+        cf.allocations.sort((a, b) => (a.allocation_index || 0) - (b.allocation_index || 0));
+        
+        const bondKey = `${cf.bond_id}_${cf.cashflow_id}`;
+        bondGroups[bondKey] = {
+          bond_id: cf.bond_id,
+          bond_name: cf.bond_name,
+          bond_code: cf.bond_code,
+          date: cf.date,
+          entry: cf.primary_entry,
+          allocations: cf.allocations,
+          total_net_amount: cf.total_net_amount,
+          total_round_down_amount: cf.total_round_down_amount
+        };
+      });
+      
       return bondGroups;
     };
 
