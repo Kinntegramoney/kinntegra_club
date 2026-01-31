@@ -633,8 +633,9 @@ export default function ReinvestmentTagging() {
           const flooredAmount = Math.floor(newAmount);
           newAmount = roundToHundred(flooredAmount);
         }
-        // Preserve UCC - ensure it's not reset
-        // newUcc is already set from the existing allocation
+        // IMPORTANT: Explicitly preserve UCC - ensure it's not reset when portfolio changes
+        // Use the current UCC value from the allocation
+        newUcc = newAllocations[allocIndex].ucc || newUcc;
       }
       
       // If UCC is being changed
@@ -645,6 +646,11 @@ export default function ReinvestmentTagging() {
       // If investment date is being changed
       if (field === 'investment_date') {
         newInvestmentDate = value;
+      }
+      
+      // Ensure UCC is preserved (final fallback)
+      if (field !== 'ucc' && !newUcc) {
+        newUcc = newAllocations[allocIndex].ucc || '';
       }
       
       newAllocations[allocIndex] = {
