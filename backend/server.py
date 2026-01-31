@@ -12624,24 +12624,28 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         validated_allocations = []
         
         for alloc in update.ucc_allocations:
-            # For amounts < 1000, UCC is not required (portfolio must be 'none')
+            # Skip UCC validation for:
+            # 1. Small amounts (< 1000) - these are remainders
+            # 2. "None" portfolio - these won't be invested
             is_small_amount = alloc.amount < 1000
+            is_none_portfolio = alloc.portfolio and alloc.portfolio.lower() == 'none'
+            skip_ucc_validation = is_small_amount or is_none_portfolio
             
-            if is_small_amount:
+            if skip_ucc_validation:
                 # Force portfolio to 'none' for small amounts
-                if alloc.portfolio and alloc.portfolio != 'none':
+                if is_small_amount and alloc.portfolio and alloc.portfolio.lower() != 'none':
                     raise HTTPException(
                         status_code=400,
                         detail=f"Amount < ₹1,000 must use 'none' portfolio (got '{alloc.portfolio}')"
                     )
-                # Set empty UCC for small amounts (not needed)
-                alloc_ucc = ''
+                # Set empty UCC for small amounts or none portfolio (not needed)
+                alloc_ucc = alloc.ucc if alloc.ucc else ''
             else:
-                # Validate UCC belongs to client for regular amounts
+                # Validate UCC belongs to client for regular investment amounts
                 if not alloc.ucc:
                     raise HTTPException(
                         status_code=400,
-                        detail="UCC is required for amounts >= ₹1,000"
+                        detail="UCC is required for investment allocations"
                     )
                 if alloc.ucc.upper() not in client_ucc_list_upper:
                     raise HTTPException(
