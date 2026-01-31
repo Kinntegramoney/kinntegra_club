@@ -759,16 +759,20 @@ export default function ReinvestmentTagging() {
       }
       
       data.allocations.forEach((alloc, idx) => {
-        // For amounts < 1000, UCC is not required (will be auto-tagged as 'none')
+        // Skip validation for:
+        // 1. Small amounts (< 1000) - these are remainders
+        // 2. "None" portfolio - these won't be invested
         const isSmallAmount = (alloc.amount || 0) < 1000;
+        const isNonePortfolio = alloc.portfolio === 'none' || alloc.portfolio === 'None';
+        const skipValidation = isSmallAmount || isNonePortfolio;
         
         // Get the UCC value - if only one UCC available, use it even if not explicitly set
         const effectiveUcc = alloc.ucc || (data.entry?.ucc_list?.length === 1 ? data.entry.ucc_list[0] : '');
         
-        if (!isSmallAmount && !effectiveUcc) {
-          errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: UCC is required for amounts >= ₹1,000`);
+        if (!skipValidation && !effectiveUcc) {
+          errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: UCC is required for investment allocations`);
         }
-        if (!isSmallAmount && !alloc.portfolio) {
+        if (!skipValidation && !alloc.portfolio) {
           errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Portfolio is required`);
         }
         if (!alloc.amount || alloc.amount <= 0) errors.push(`${data.entry.bond_name} - Allocation ${idx + 1}: Amount must be greater than 0`);
