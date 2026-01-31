@@ -633,7 +633,7 @@ export default function ReinvestmentTagging() {
     });
   };
 
-  // Handle amount blur to round to nearest 100
+  // Handle amount blur to round to nearest 100 and auto-add allocation for remaining balance
   const handleAmountBlur = (entryId, allocIndex) => {
     setMultiRetagData(prev => {
       const entry = prev[entryId];
@@ -664,6 +664,26 @@ export default function ReinvestmentTagging() {
           amount: roundedAmount,
           portfolio: newPortfolio
         };
+        
+        // Auto-add allocation for remaining balance if there's a significant difference
+        const usedAmount = newAllocations.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+        const remainingAmount = Math.floor(entry.totalAmount - usedAmount);
+        
+        // Only auto-add if remaining is >= 100 (meaningful amount) and not editing the last allocation
+        if (remainingAmount >= 100 && allocIndex === newAllocations.length - 1) {
+          // Auto-select UCC if client has only one
+          const defaultUcc = (entry.entry?.ucc_list?.length === 1) ? entry.entry.ucc_list[0] : '';
+          
+          // Auto-set portfolio to 'none' if remaining amount < 1000
+          const defaultPortfolio = remainingAmount < 1000 ? 'none' : '';
+          
+          newAllocations.push({
+            id: `${entryId}-alloc-${newAllocations.length}`,
+            ucc: defaultUcc,
+            amount: remainingAmount,
+            portfolio: defaultPortfolio
+          });
+        }
       }
       
       return {
