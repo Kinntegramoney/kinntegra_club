@@ -707,11 +707,18 @@ export default function ReinvestmentTagging() {
           // Auto-set portfolio to 'none' if remaining amount < 1000
           const defaultPortfolio = remainingAmount < 1000 ? 'none' : '';
           
+          // Default investment date is T+1 of repayment date
+          const repaymentDate = entry.entry?.expected_date || entry.entry?.date;
+          const defaultInvestmentDate = repaymentDate 
+            ? format(addDays(new Date(repaymentDate), 1), 'yyyy-MM-dd')
+            : format(addDays(new Date(), 1), 'yyyy-MM-dd');
+          
           newAllocations.push({
             id: `${entryId}-alloc-${newAllocations.length}`,
             ucc: defaultUcc,
             amount: remainingAmount,
-            portfolio: defaultPortfolio
+            portfolio: defaultPortfolio,
+            investment_date: defaultInvestmentDate
           });
         }
       }
