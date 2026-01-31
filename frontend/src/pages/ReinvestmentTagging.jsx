@@ -2425,8 +2425,21 @@ export default function ReinvestmentTagging() {
                                   </SelectContent>
                                 </Select>
                                 {alloc.amount >= 1000 && alloc.amount < 1000000 && (
-                                  <p className="text-[10px] text-gray-400 mt-0.5">Bonds: ≥₹10L | Real Estate: ≥₹25L</p>
+                                  <p className="text-[10px] text-gray-400 mt-0.5">Bonds: ≥₹10L | RE: ≥₹25L</p>
                                 )}
+                              </div>
+                              
+                              {/* Date of Investment - T+1 default, editable */}
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Date of Investment</Label>
+                                <Input
+                                  type="date"
+                                  value={alloc.investment_date || ''}
+                                  onChange={(e) => updateAllocation(entryId, allocIndex, 'investment_date', e.target.value)}
+                                  className="h-8 text-xs"
+                                  disabled={alloc.amount !== '' && alloc.amount < 1000}
+                                />
+                                <p className="text-[10px] text-gray-400 mt-0.5">Default: T+1</p>
                               </div>
                             </div>
                             
