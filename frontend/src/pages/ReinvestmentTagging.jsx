@@ -1257,9 +1257,9 @@ export default function ReinvestmentTagging() {
           <div className="p-4">
             {monthSubTab === "untagged" ? (
               <>
-                {/* Mass Tagging Actions - Only show when entries are selected and tagging is allowed */}
+                {/* Mass Tagging Actions - Sticky bar when entries are selected */}
                 {canTag && selectedCount > 0 && (
-                  <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4 mb-4">
+                  <div className="sticky top-0 z-20 bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4 mb-4 shadow-md">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                       <div className="flex items-center gap-2">
                         <Badge className="bg-etihad-gold-600 text-white">{selectedCount} selected</Badge>
