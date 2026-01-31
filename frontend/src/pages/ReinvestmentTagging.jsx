@@ -2361,7 +2361,7 @@ export default function ReinvestmentTagging() {
                             </div>
                             
                             {/* Allocation Fields - 3 columns: UCC, Amount, Portfolio */}
-                            <div className="flex-1 grid grid-cols-3 gap-3">
+                            <div className="flex-1 grid grid-cols-4 gap-3">
                               {/* UCC - Show as N/A if amount < 1000, show as text if only one UCC, otherwise dropdown */}
                               <div>
                                 <Label className="text-[10px] text-gray-500 mb-1 block">UCC</Label>
