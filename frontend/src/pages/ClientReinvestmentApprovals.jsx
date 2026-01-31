@@ -537,10 +537,15 @@ export default function ClientReinvestmentApprovals() {
                                       </td>
                                     )}
                                     
-                                    {/* REPAYMENT DETAILS - Net Amount */}
-                                    <td className="px-3 py-2 text-right font-mono text-gray-800 border border-gray-200">
-                                      ₹{(alloc.net_amount || 0).toLocaleString('en-IN')}
-                                    </td>
+                                    {/* REPAYMENT DETAILS - Net Amount (merged with rowSpan - shows total for bond) */}
+                                    {isFirst && (
+                                      <td 
+                                        className="px-3 py-2 text-right font-mono text-gray-800 border border-gray-200 align-middle"
+                                        rowSpan={hasMultiple ? rowCount : 1}
+                                      >
+                                        ₹{(bondGroup.total_net_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                      </td>
+                                    )}
                                     
                                     {/* INVESTMENT DETAILS - Date of Investment */}
                                     <td className="px-3 py-2 border border-gray-200">
