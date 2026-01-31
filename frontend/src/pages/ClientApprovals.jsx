@@ -196,7 +196,7 @@ export default function ClientApprovals() {
               portfolio: alloc.portfolio || alloc.portfolio_name || entry.portfolio || entry.portfolio_category || '-',
               net_amount: alloc.amount || 0,
               round_down_amount: allocRoundDown,
-              investment_date: alloc.investment_date || alloc.mf_investment_date || entry.mf_investment_date,
+              investment_date: alloc.investment_date || alloc.mf_investment_date || entry.mf_investment_date || entry.investment_date,
               tagged_by_name: entry.tagged_by_name || 'Broker',
               is_sub_broker: entry.tagged_by_sub_broker
             });
