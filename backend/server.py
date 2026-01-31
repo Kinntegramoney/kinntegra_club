@@ -12783,7 +12783,7 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                 "bond_id": cashflow.get('bond_id'),
                 "bond_name": cashflow.get('bond_name', ''),
                 "expected_date": cashflow['date'],
-                "mf_investment_date": alloc.get('investment_date') or (datetime.strptime(cashflow['date'], '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d') if cashflow.get('date') else None,
+                "mf_investment_date": (alloc.get('investment_date') or (datetime.strptime(cashflow['date'], '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')) if cashflow.get('date') else None,
                 "allocation_index": idx,
                 "ucc": alloc['ucc'],
                 "amount": alloc['amount'],  # Round-down investment amount
