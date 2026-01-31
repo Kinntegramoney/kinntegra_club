@@ -504,6 +504,17 @@ export default function ReinvestmentTagging() {
         initialPortfolio = 'none';
       }
       
+      // Default investment date is T+1 of repayment date
+      const repaymentDate = entry.expected_date || entry.date;
+      const defaultInvestmentDate = repaymentDate 
+        ? format(addDays(new Date(repaymentDate), 1), 'yyyy-MM-dd')
+        : format(addDays(new Date(), 1), 'yyyy-MM-dd');
+      
+      // Auto-set UCC if there's only one
+      const defaultUcc = (entry.ucc_list?.length === 1) 
+        ? entry.ucc_list[0] 
+        : (existing.target_ucc || entry.target_ucc || '');
+      
       // Start with one allocation using existing values or defaults
       initialData[entry.id] = {
         entry: entry,
@@ -512,9 +523,10 @@ export default function ReinvestmentTagging() {
         allocations: [
           {
             id: `${entry.id}-alloc-0`,
-            ucc: existing.target_ucc || entry.target_ucc || entry.ucc_list?.[0] || '',
+            ucc: defaultUcc,
             amount: splitAmount,
-            portfolio: initialPortfolio
+            portfolio: initialPortfolio,
+            investment_date: defaultInvestmentDate
           }
         ]
       };
