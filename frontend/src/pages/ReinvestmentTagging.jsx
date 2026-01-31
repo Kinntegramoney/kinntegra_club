@@ -32,7 +32,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { format, addMonths, startOfMonth, endOfMonth, subDays, isBefore } from "date-fns";
+import { format, addMonths, startOfMonth, endOfMonth, subDays, addDays, isBefore } from "date-fns";
 import { 
   Tag, RefreshCw, ChevronDown, ChevronUp, Mail, Save, 
   Clock, CheckCircle, History, ArrowRight, Check, X, Plus, Minus, Pencil, Lock, Calendar, Eye, Ban, MoreVertical
