@@ -1,5 +1,38 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Feb 2, 2026)
+
+### Holdings Trades Tab Bifurcation (Feb 2, 2026) ✅
+
+**Issue:** The Trades section in Holdings page (for broker, sub-broker, client) showed individual entries in a flat table instead of grouped/clubbed entries with bifurcation.
+
+**Fix Applied:**
+- Created `BifurcatedTradesTable` component in `/app/frontend/src/pages/Holdings.jsx`
+- Groups reinvestment trades by `cashflow_id` for split allocation display
+- Shows two-level headers (Repayment Details / Investment Details)
+- Multiple rows per bond for split allocations with rowSpan
+- Total row per bond group showing sum of amounts
+- "Other Trades" section for non-reinvestment trades in flat table
+
+**Files Modified:**
+- `/app/frontend/src/pages/Holdings.jsx` - Added bifurcation component and updated data mapping
+
+### Trade Logs Bifurcation (Feb 2, 2026) ✅
+
+**Issue:** Trade Logs tab showed individual entries without grouping/bifurcation when sub-broker tags investments.
+
+**Fix Applied:**
+- Created `TradeLogsWithBifurcation` component in `/app/frontend/src/pages/TradeLogs.jsx`
+- Groups entries by `cashflow_id` for proper bifurcation display
+- Added `cashflow_id`, `allocation_index`, `mf_investment_date` to data mapping
+- Fixed backend query in `/api/approval-workflow/pending` to fetch ALL allocations for a cashflow
+
+**Files Modified:**
+- `/app/frontend/src/pages/TradeLogs.jsx` - Added bifurcation component
+- `/app/backend/server.py` - Fixed approval workflow query
+
+---
+
 ## Recent Changes (Jan 31, 2026)
 
 ### Split Both Amount Modal Bugs Fixed (Jan 31, 2026) ✅
