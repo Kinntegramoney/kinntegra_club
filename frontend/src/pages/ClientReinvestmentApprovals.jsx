@@ -239,34 +239,38 @@ export default function ClientReinvestmentApprovals() {
         item.allocations.forEach(alloc => {
           const allocRoundDown = roundToHundred(alloc.amount || 0);
           const allocUcc = alloc.ucc || item.ucc || '';
+          const allocPortfolio = alloc.portfolio_name || alloc.portfolio || item.portfolio_category || '';
           entriesByBond[bondKey].allocations.push({
             entry_id: item.id,
             ucc: allocUcc || '-',
-            portfolio: alloc.portfolio_name || alloc.portfolio || item.portfolio_category || '-',
+            portfolio: allocPortfolio || '-',
             allocation_amount: alloc.amount || 0,
             round_down_amount: allocRoundDown,
             investment_date: alloc.investment_date || alloc.mf_investment_date || defaultInvestmentDate,
             approval_status: item.approval_status
           });
-          // Only add to investment total if allocation has a UCC
-          if (allocUcc) {
+          // Only add to investment total if allocation has a valid portfolio (not "none")
+          const hasValidPortfolio = allocPortfolio && allocPortfolio.toLowerCase() !== 'none';
+          if (hasValidPortfolio) {
             entriesByBond[bondKey].total_round_down_amount += allocRoundDown;
           }
         });
       } else {
         // Single allocation
         const singleUcc = item.ucc || item.target_ucc || '';
+        const singlePortfolio = item.portfolio_category || '';
         entriesByBond[bondKey].allocations.push({
           entry_id: item.id,
           ucc: singleUcc || '-',
-          portfolio: item.portfolio_category || '-',
+          portfolio: singlePortfolio || '-',
           allocation_amount: investmentAmount,
           round_down_amount: roundDownAmount,
           investment_date: item.investment_date || item.mf_investment_date || defaultInvestmentDate,
           approval_status: item.approval_status
         });
-        // Only add to investment total if allocation has a UCC
-        if (singleUcc) {
+        // Only add to investment total if allocation has a valid portfolio (not "none")
+        const hasValidPortfolio = singlePortfolio && singlePortfolio.toLowerCase() !== 'none';
+        if (hasValidPortfolio) {
           entriesByBond[bondKey].total_round_down_amount += roundDownAmount;
         }
       }
