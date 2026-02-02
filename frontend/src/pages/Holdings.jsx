@@ -310,6 +310,159 @@ const BifurcatedTradesTable = ({ trades, selectedClient, formatINR }) => {
   );
 };
 
+// Trades Tab Content with Sub-tabs (Reinvestment Trades / Others)
+const TradesTabContent = ({ trades, selectedClient, formatINR }) => {
+  const [activeSubTab, setActiveSubTab] = React.useState("reinvestment");
+  
+  // Separate reinvestment trades and other trades
+  const reinvestmentTrades = trades.filter(t => t.is_reinvestment_log);
+  const otherTrades = trades.filter(t => !t.is_reinvestment_log);
+  
+  return (
+    <div className="space-y-4">
+      {/* Sub-tabs */}
+      <div className="flex gap-2 border-b border-gray-200 pb-2">
+        <button
+          onClick={() => setActiveSubTab("reinvestment")}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            activeSubTab === "reinvestment"
+              ? "bg-purple-100 text-purple-700 border-b-2 border-purple-600"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Reinvestment Trades
+            <span className="px-2 py-0.5 bg-purple-200 text-purple-800 text-xs rounded-full">
+              {reinvestmentTrades.length}
+            </span>
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveSubTab("others")}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            activeSubTab === "others"
+              ? "bg-blue-100 text-blue-700 border-b-2 border-blue-600"
+              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Others
+            <span className="px-2 py-0.5 bg-blue-200 text-blue-800 text-xs rounded-full">
+              {otherTrades.length}
+            </span>
+          </div>
+        </button>
+      </div>
+      
+      {/* Reinvestment Trades Sub-tab Content */}
+      {activeSubTab === "reinvestment" && (
+        <BifurcatedTradesTable 
+          trades={reinvestmentTrades}
+          selectedClient={selectedClient}
+          formatINR={formatINR}
+          showOnlyReinvestment={true}
+        />
+      )}
+      
+      {/* Others Sub-tab Content */}
+      {activeSubTab === "others" && (
+        <OtherTradesTable 
+          trades={otherTrades}
+          selectedClient={selectedClient}
+          formatINR={formatINR}
+        />
+      )}
+    </div>
+  );
+};
+
+// Other Trades Table (flat table for non-reinvestment trades)
+const OtherTradesTable = ({ trades, selectedClient, formatINR }) => {
+  const getStatusBadge = (status) => {
+    if (status === 'pending' || status === 'pending_broker_approval') {
+      return <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] rounded font-medium">Pending</span>;
+    } else if (status === 'approved' || status === 'submitted' || status === 'client_approved') {
+      return <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded font-medium">Approved</span>;
+    } else if (status === 'rejected') {
+      return <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded font-medium">Rejected</span>;
+    }
+    return <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-[10px] rounded font-medium">{status}</span>;
+  };
+
+  const getTradeTypeLabel = (trade) => {
+    const tag = trade.reinvestment_tag || '';
+    if (tag === 'principal') return 'Principal';
+    if (tag === 'interest') return 'Interest';
+    if (trade.is_historical) return 'Principal';
+    return trade.trade_type || 'Investment';
+  };
+
+  if (trades.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white rounded-lg border">
+        <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No other trades found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px]">
+          <thead>
+            <tr className="bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left">Client Name</th>
+              <th className="px-3 py-3 text-left">Bond/UCC</th>
+              <th className="px-3 py-3 text-left">Date</th>
+              <th className="px-3 py-3 text-left">Type</th>
+              <th className="px-3 py-3 text-right">Amount</th>
+              <th className="px-3 py-3 text-left">Portfolio</th>
+              <th className="px-3 py-3 text-left">Advisor</th>
+              <th className="px-3 py-3 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {trades.map((trade) => (
+              <tr key={trade.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-3 py-3 text-sm font-medium text-gray-800 whitespace-nowrap">
+                  {trade.client_name || selectedClient?.name}
+                </td>
+                <td className="px-3 py-3">
+                  <div className="text-sm font-medium text-gray-800">{trade.bond_name || 'N/A'}</div>
+                  <div className="text-xs font-mono text-gray-500">{trade.bond_code || '-'}</div>
+                </td>
+                <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">
+                  {trade.investment_date ? format(new Date(trade.investment_date), "dd MMM yyyy") : '-'}
+                </td>
+                <td className="px-3 py-3 whitespace-nowrap">
+                  <span className="text-xs font-medium text-blue-600">
+                    {getTradeTypeLabel(trade)}
+                  </span>
+                </td>
+                <td className="px-3 py-3 text-sm font-mono font-semibold text-gray-800 text-right whitespace-nowrap">
+                  {formatINR(trade.total_amount)}
+                </td>
+                <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">
+                  {trade.portfolio || 'Wealth'}
+                </td>
+                <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap max-w-[120px] truncate">
+                  {trade.created_by_name || '-'}
+                </td>
+                <td className="px-3 py-3 text-center whitespace-nowrap">
+                  {getStatusBadge(trade.status)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 export default function Holdings() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
