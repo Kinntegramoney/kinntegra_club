@@ -200,9 +200,10 @@ export default function ClientApprovals() {
           tagged_by_name: entry.tagged_by_name || 'Broker',
           is_sub_broker: entry.tagged_by_sub_broker
         });
-        // Only add to investment total if entry has a UCC
-        const hasUcc = entry.ucc || entry.target_ucc;
-        if (hasUcc) {
+        // Only add to investment total if entry has a valid UCC (not empty or "-")
+        const uccValue = entry.ucc || entry.target_ucc || '';
+        const hasValidUcc = uccValue && uccValue !== '-' && uccValue !== 'N/A';
+        if (hasValidUcc) {
           cashflowGroups[cfId].total_round_down_amount += roundDownAmount;
         }
       });
