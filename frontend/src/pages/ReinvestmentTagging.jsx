@@ -2173,10 +2173,12 @@ export default function ReinvestmentTagging() {
                               </Badge>
                             </td>
                             
-                            {/* INVESTMENT DETAILS - UCC */}
+                            {/* INVESTMENT DETAILS - UCC - show "-" if portfolio is "none" (residual amounts) */}
                             <td className="px-3 py-2 border border-gray-200">
                               <Badge variant="outline" className="text-xs font-mono">
-                                {alloc.ucc || '-'}
+                                {(alloc.portfolio && alloc.portfolio.toLowerCase() !== 'none') 
+                                  ? (alloc.ucc || '-') 
+                                  : '-'}
                               </Badge>
                             </td>
                             
