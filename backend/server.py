@@ -9972,12 +9972,26 @@ async def get_trades(status: Optional[str] = None, client_id: Optional[str] = No
     
     trades = await db.trades.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
-    # Fill in missing bond_code from bond definition
+    # Fill in missing bond_code and sub-broker info
     for trade in trades:
+        # Fill bond_code from bond definition if missing
         if not trade.get('bond_code') and trade.get('bond_id'):
             bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0, "bond_code": 1})
             if bond and bond.get('bond_code'):
                 trade['bond_code'] = bond['bond_code']
+        
+        # Add sub-broker info for the client
+        if trade.get('client_id'):
+            client = await db.clients.find_one({"id": trade['client_id']}, {"_id": 0, "linked_subbroker_id": 1})
+            if client and client.get('linked_subbroker_id'):
+                sub_broker = await db.partners.find_one({"id": client['linked_subbroker_id']}, {"_id": 0, "name": 1})
+                if sub_broker:
+                    trade['sub_broker_name'] = sub_broker.get('name', '')
+                    trade['advisor_name'] = sub_broker.get('name', '')
+            
+            # If no sub-broker, use the broker name as advisor
+            if not trade.get('advisor_name') and not trade.get('sub_broker_name'):
+                trade['advisor_name'] = 'Direct Client'
     
     return trades
 
