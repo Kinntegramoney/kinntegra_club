@@ -883,10 +883,18 @@ export default function TradeLogs() {
     setInvestmentLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API}/reinvestment/approved-logs`, {
+      
+      // Fetch reinvestment logs (approved)
+      const reinvestmentRes = await axios.get(`${API}/reinvestment/approved-logs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setInvestmentLogs(res.data || []);
+      setInvestmentLogs(reinvestmentRes.data || []);
+      
+      // Fetch blocked units (approved trades)
+      const tradesRes = await axios.get(`${API}/trades?status=approved`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBlockedUnitsLogs(tradesRes.data || []);
     } catch (error) {
       console.error("Error fetching investment logs:", error);
       toast.error("Failed to load investment logs");
