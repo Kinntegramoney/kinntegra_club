@@ -35,6 +35,7 @@ export default function ClientLogs() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("trade_logs"); // 'trade_logs' or 'investment'
+  const [tradeSubTab, setTradeSubTab] = useState("reinvestment"); // 'reinvestment' or 'others'
 
   useEffect(() => {
     document.title = "Kinntegraa | My Logs";
