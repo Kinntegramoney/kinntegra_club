@@ -451,12 +451,13 @@ export default function ClientLogs() {
   const fetchInvestmentLogs = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/client/reinvestment-logs?status=approved,submitted`, {
+      // Fetch blocked units / trades that have been approved by broker
+      const response = await axios.get(`${API}/client/trades`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Filter to only show approved/submitted entries
-      const approved = (response.data || []).filter(log => 
-        ['approved', 'submitted'].includes(log.approval_status)
+      // Filter to only show approved entries (blocked units approved by broker)
+      const approved = (response.data || []).filter(trade => 
+        trade.status === 'approved'
       );
       setInvestmentLogs(approved);
     } catch (error) {
