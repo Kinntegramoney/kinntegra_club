@@ -437,47 +437,12 @@ export default function ClientLogs() {
               </Button>
             </div>
           </div>
-          
-          {/* Tabs */}
-          <div className="px-6 flex gap-1 border-t">
-            <button
-              onClick={() => setActiveTab("trade_logs")}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors flex items-center gap-2 ${
-                activeTab === "trade_logs"
-                  ? "bg-teal-50 text-teal-700 border-teal-500"
-                  : "text-gray-600 border-transparent hover:bg-gray-50"
-              }`}
-              data-testid="trade-logs-tab"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Trade Logs
-              {tradeLogs.length > 0 && (
-                <Badge variant="secondary" className="bg-teal-100 text-teal-700">{tradeLogs.length}</Badge>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("investment")}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors flex items-center gap-2 ${
-                activeTab === "investment"
-                  ? "bg-green-50 text-green-700 border-green-500"
-                  : "text-gray-600 border-transparent hover:bg-gray-50"
-              }`}
-              data-testid="investment-tab"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Investment
-              {investmentLogs.length > 0 && (
-                <Badge variant="secondary" className="bg-green-100 text-green-700">{investmentLogs.length}</Badge>
-              )}
-            </button>
-          </div>
         </div>
 
-        {/* Trade Logs Tab with Sub-tabs */}
-        {activeTab === "trade_logs" && (
-          <>
-            {/* Sub-tabs and Filters */}
-            <div className="px-6 py-3 bg-white border-b">
+        {/* Trade Logs Content with Sub-tabs */}
+        <>
+          {/* Sub-tabs and Filters */}
+          <div className="px-6 py-3 bg-white border-b">
               <div className="flex items-center justify-between">
                 {/* Sub-tabs */}
                 <div className="flex gap-2">
