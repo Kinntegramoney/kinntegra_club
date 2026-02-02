@@ -129,10 +129,12 @@ const ReinvestmentTradesView = ({ logs, groupByCashflow, formatCurrency, getStat
                           </Badge>
                         </td>
                         
-                        {/* UCC */}
+                        {/* UCC - show "-" if portfolio is "none" (residual amounts) */}
                         <td className="px-3 py-2 border border-gray-200">
                           <Badge variant="outline" className="text-xs font-mono">
-                            {alloc.target_ucc || '-'}
+                            {(alloc.portfolio && alloc.portfolio.toLowerCase() !== 'none') 
+                              ? (alloc.target_ucc || alloc.ucc || '-') 
+                              : '-'}
                           </Badge>
                         </td>
                         
