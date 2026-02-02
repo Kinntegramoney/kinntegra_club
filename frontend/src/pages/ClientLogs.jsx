@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import React from "react";
 import { 
   CheckCircle, XCircle, Clock, RefreshCw, FileText,
   TrendingUp, Calendar, Filter, Server, AlertCircle
@@ -20,6 +21,240 @@ import {
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Reinvestment Trades View with Bifurcation
+const ReinvestmentTradesView = ({ logs, groupByCashflow, formatCurrency, getStatusBadge }) => {
+  if (logs.length === 0) {
+    return (
+      <div className="bg-white rounded-lg border p-8 text-center">
+        <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+        <p className="text-gray-500">No reinvestment trades found</p>
+      </div>
+    );
+  }
+
+  const cashflowGroups = groupByCashflow(logs);
+  
+  return (
+    <div className="bg-white rounded-lg border border-purple-200 overflow-hidden">
+      <div className="px-4 py-3 bg-purple-50/50 border-b border-purple-100">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-purple-600" />
+          <span className="font-medium text-gray-800">Reinvestment Trades</span>
+          <span className="text-xs text-gray-500">({logs.length} entries)</span>
+        </div>
+      </div>
+      
+      <div className="p-4 overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-100">
+              <th colSpan="3" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200 bg-blue-50">
+                Repayment Details
+              </th>
+              <th colSpan="4" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200 bg-purple-50">
+                Investment Details
+              </th>
+              <th rowSpan="2" className="text-center px-3 py-2 font-semibold text-gray-700 border border-gray-200">
+                Status
+              </th>
+            </tr>
+            <tr className="bg-gray-50">
+              <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Date</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Bond Name</th>
+              <th className="text-right px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Net Amount</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Inv. Date</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Portfolio</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">UCC</th>
+              <th className="text-right px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.values(cashflowGroups).map((cfGroup, cfIdx) => {
+              const allocations = cfGroup.allocations;
+              const hasMultiple = allocations.length > 1;
+              const rowCount = allocations.length;
+              
+              return (
+                <React.Fragment key={cfGroup.cashflow_id}>
+                  {allocations.map((alloc, allocIdx) => {
+                    const isFirst = allocIdx === 0;
+                    
+                    return (
+                      <tr 
+                        key={`${cfGroup.cashflow_id}-${allocIdx}`}
+                        className={`
+                          ${hasMultiple ? (isFirst ? 'border-t-2 border-t-purple-400' : '') : ''}
+                          ${hasMultiple ? 'bg-purple-50/30' : 'hover:bg-gray-50'}
+                        `}
+                      >
+                        {/* Date - merged */}
+                        {isFirst && (
+                          <td 
+                            className={`px-3 py-2 border border-gray-200 align-middle ${hasMultiple ? 'border-l-4 border-l-purple-400' : ''}`}
+                            rowSpan={hasMultiple ? rowCount : 1}
+                          >
+                            <span className="whitespace-nowrap font-medium text-gray-800">
+                              {cfGroup.date ? format(new Date(cfGroup.date), "dd MMM yyyy") : '-'}
+                            </span>
+                          </td>
+                        )}
+                        
+                        {/* Bond Name - merged */}
+                        {isFirst && (
+                          <td 
+                            className="px-3 py-2 border border-gray-200 align-middle"
+                            rowSpan={hasMultiple ? rowCount : 1}
+                          >
+                            <div className="font-medium text-gray-800">{cfGroup.bond_name || 'N/A'}</div>
+                          </td>
+                        )}
+                        
+                        {/* Net Amount - per allocation */}
+                        <td className="px-3 py-2 text-right font-mono text-gray-800 border border-gray-200">
+                          ₹{formatCurrency(alloc.net_amount || alloc.amount || 0)}
+                        </td>
+                        
+                        {/* Investment Date */}
+                        <td className="px-3 py-2 border border-gray-200">
+                          <span className="whitespace-nowrap text-gray-700">
+                            {alloc.mf_investment_date ? format(new Date(alloc.mf_investment_date), "dd MMM yyyy") : '-'}
+                          </span>
+                        </td>
+                        
+                        {/* Portfolio */}
+                        <td className="px-3 py-2 border border-gray-200">
+                          <Badge className="bg-purple-100 text-purple-700 text-xs capitalize">
+                            {alloc.portfolio_category || alloc.portfolio || '-'}
+                          </Badge>
+                        </td>
+                        
+                        {/* UCC */}
+                        <td className="px-3 py-2 border border-gray-200">
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {alloc.target_ucc || '-'}
+                          </Badge>
+                        </td>
+                        
+                        {/* Amount (Round Down) */}
+                        <td className="px-3 py-2 text-right font-mono text-purple-700 font-semibold border border-gray-200">
+                          ₹{formatCurrency(alloc.round_down_amount || alloc.amount || 0)}
+                        </td>
+                        
+                        {/* Status - merged */}
+                        {isFirst && (
+                          <td 
+                            className="px-3 py-2 text-center border border-gray-200 align-middle"
+                            rowSpan={hasMultiple ? rowCount : 1}
+                          >
+                            {getStatusBadge(alloc.approval_status || 'pending')}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                  
+                  {/* Total row for multi-allocation */}
+                  {hasMultiple && (
+                    <tr className="bg-purple-100/50 border-b-2 border-b-purple-400">
+                      <td colSpan="2" className="px-3 py-2 text-right font-semibold text-gray-700 border border-gray-200">
+                        Total for {cfGroup.bond_name}:
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-gray-800 border border-gray-200">
+                        ₹{formatCurrency(cfGroup.total_net_amount)}
+                      </td>
+                      <td colSpan="3" className="border border-gray-200"></td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-purple-700 border border-gray-200">
+                        ₹{formatCurrency(cfGroup.total_round_down_amount)}
+                      </td>
+                      <td className="border border-gray-200"></td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// Other Trades View (flat table)
+const OtherTradesView = ({ logs, formatCurrency, getTagLabel, getStatusBadge, formatDate }) => {
+  if (logs.length === 0) {
+    return (
+      <div className="bg-white rounded-lg border p-8 text-center">
+        <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+        <p className="text-gray-500">No other trades found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Bond</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Maturity Date</th>
+              <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
+              <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
+              <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Portfolio</th>
+              <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">UCC</th>
+              <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Tagged By</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {logs.map((log) => (
+              <tr key={log.id} className="hover:bg-gray-50">
+                <td className="py-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-teal-600" />
+                    <span className="font-medium text-gray-800 text-sm">{log.bond_name}</span>
+                  </div>
+                </td>
+                <td className="py-3 px-4 text-sm text-gray-600">
+                  {log.expected_date ? format(new Date(log.expected_date), "dd MMM yyyy") : 'N/A'}
+                </td>
+                <td className="py-3 px-4 text-right font-mono text-sm">
+                  ₹{formatCurrency(log.net_amount || log.amount)}
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <Badge variant="outline" className="text-xs capitalize">
+                    {getTagLabel(log.reinvestment_tag)}
+                  </Badge>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <span className="text-sm text-gray-600 capitalize">
+                    {log.portfolio_category?.replace('_', ' ') || '-'}
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <span className="text-sm text-gray-600 font-mono">
+                    {log.target_ucc || '-'}
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  {getStatusBadge(log.approval_status)}
+                </td>
+                <td className="py-3 px-4 text-sm text-gray-600">
+                  {log.tagged_by_name || '-'}
+                </td>
+                <td className="py-3 px-4 text-sm text-gray-500">
+                  {formatDate(log.created_at)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
 
 // Round down to nearest 100
 const roundToHundred = (amount) => {
