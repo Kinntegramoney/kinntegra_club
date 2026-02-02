@@ -186,7 +186,7 @@ const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyRein
                             {/* UCC */}
                             <td className="px-3 py-2 border border-gray-200">
                               <Badge variant="outline" className="text-xs font-mono">
-                                {alloc.target_ucc || alloc.bond_code || '-'}
+                                {alloc.ucc || alloc.target_ucc || alloc.bond_code || '-'}
                               </Badge>
                             </td>
                             
