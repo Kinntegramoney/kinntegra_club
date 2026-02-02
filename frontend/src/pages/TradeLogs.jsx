@@ -717,6 +717,8 @@ export default function TradeLogs() {
   const [investmentLogs, setInvestmentLogs] = useState([]);
   const [investmentLoading, setInvestmentLoading] = useState(false);
   const [investmentSearchQuery, setInvestmentSearchQuery] = useState("");
+  const [investmentSubTab, setInvestmentSubTab] = useState("blocked_units"); // 'blocked_units' or 'reinvestment'
+  const [blockedUnitsLogs, setBlockedUnitsLogs] = useState([]); // Blocked units trades
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showModifyModal, setShowModifyModal] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState(null);
