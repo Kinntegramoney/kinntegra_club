@@ -2002,20 +2002,27 @@ export default function ReinvestmentTagging() {
         splits.forEach(split => {
           const splitNetAmount = split.amount || split.net_amount || 0;
           const splitRoundDown = roundToHundred(splitNetAmount);
+          const splitUcc = split.ucc || baseAllocation.ucc;
           entriesByBond[bondKey].allocations.push({
             ...baseAllocation,
-            ucc: split.ucc || baseAllocation.ucc,
+            ucc: splitUcc,
             portfolio: split.portfolio || split.portfolio_name || baseAllocation.portfolio,
             net_amount: splitNetAmount,
             round_down_amount: splitRoundDown,
             investment_date: split.investment_date || split.mf_investment_date || defaultInvestmentDate
           });
-          entriesByBond[bondKey].total_round_down_amount += splitRoundDown;
+          // Only add to investment total if allocation has a UCC
+          if (splitUcc) {
+            entriesByBond[bondKey].total_round_down_amount += splitRoundDown;
+          }
         });
       } else {
         // Single allocation
         entriesByBond[bondKey].allocations.push(baseAllocation);
-        entriesByBond[bondKey].total_round_down_amount += roundDownAmount;
+        // Only add to investment total if allocation has a UCC
+        if (baseAllocation.ucc) {
+          entriesByBond[bondKey].total_round_down_amount += roundDownAmount;
+        }
       }
       
       entriesByBond[bondKey].total_net_amount += netAmount;
