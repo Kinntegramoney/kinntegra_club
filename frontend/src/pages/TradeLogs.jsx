@@ -661,118 +661,93 @@ const TradeLogsWithBifurcation = ({ logs, formatDate, formatCurrency, getStatusB
   );
 };
 
-// Blocked Units Table - Shows approved trades (blocked units) across clients
-const BlockedUnitsTable = ({ logs, formatDate, formatCurrency }) => {
+// Investment Table - Shows approved trades (blocked units) in a flat table sorted by date
+const InvestmentFlatTable = ({ logs, formatDate, formatCurrency }) => {
   if (logs.length === 0) {
     return (
       <div className="bg-white rounded-lg border p-8 text-center">
         <CheckCircle className="h-12 w-12 text-gray-300 mx-auto mb-3" />
         <p className="text-gray-500">No approved investments found</p>
-        <p className="text-gray-400 text-sm mt-1">Blocked unit investments will appear here after approval</p>
+        <p className="text-gray-400 text-sm mt-1">Investments will appear here after approval</p>
       </div>
     );
   }
 
-  // Group by client
-  const clientGroups = {};
-  logs.forEach(trade => {
-    const clientId = trade.client_id || 'unknown';
-    if (!clientGroups[clientId]) {
-      clientGroups[clientId] = {
-        client_id: clientId,
-        client_name: trade.client_name || 'Unknown',
-        trades: []
-      };
-    }
-    clientGroups[clientId].trades.push(trade);
-  });
+  // Sort logs by date (latest to oldest)
+  const sortedLogs = [...logs].sort((a, b) => 
+    new Date(b.investment_date || b.created_at) - new Date(a.investment_date || a.created_at)
+  );
+
+  // Calculate totals
+  const totalUnits = sortedLogs.reduce((sum, t) => sum + (t.units || 0), 0);
+  const totalAmount = sortedLogs.reduce((sum, t) => sum + (t.total_amount || 0), 0);
 
   return (
     <div className="space-y-4">
-      {Object.values(clientGroups).map(clientGroup => {
-        const totalUnits = clientGroup.trades.reduce((sum, t) => sum + (t.units || 0), 0);
-        const totalAmount = clientGroup.trades.reduce((sum, t) => sum + (t.total_amount || 0), 0);
+      <div className="bg-white rounded-lg border border-green-200 overflow-hidden">
+        {/* Header with totals */}
+        <div className="px-4 py-3 bg-green-50/50 border-b border-green-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-800">Investment (Blocked Units)</h4>
+              <p className="text-xs text-gray-500">{sortedLogs.length} investments</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Total Units</p>
+              <p className="font-semibold text-gray-800">{totalUnits}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Total Amount</p>
+              <p className="font-semibold text-green-700">₹{formatCurrency(totalAmount)}</p>
+            </div>
+          </div>
+        </div>
         
-        return (
-          <div key={clientGroup.client_id} className="bg-white rounded-lg border border-green-200 overflow-hidden">
-            {/* Client Header */}
-            <div className="px-4 py-3 bg-green-50/50 border-b border-green-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                  <Users className="h-4 w-4 text-green-600" />
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-800">{clientGroup.client_name}</h4>
-                  <p className="text-xs text-gray-500">{clientGroup.trades.length} investments</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">Total Units</p>
-                  <p className="font-semibold text-gray-800">{totalUnits}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">Total Amount</p>
-                  <p className="font-semibold text-green-700">₹{formatCurrency(totalAmount)}</p>
-                </div>
-              </div>
-            </div>
-            
-            {/* Trades Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Sr No</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Investment Date</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">UCC</th>
-                    <th className="text-center px-4 py-3 font-medium text-gray-600">Units</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">UTR Reference</th>
-                    <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clientGroup.trades.map((trade, idx) => (
-                    <tr key={trade.id || idx} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-600">{idx + 1}</td>
-                      <td className="px-4 py-3 font-medium text-gray-800">{trade.bond_name || 'N/A'}</td>
-                      <td className="px-4 py-3">{formatDate(trade.investment_date)}</td>
-                      <td className="px-4 py-3 font-mono text-gray-600">{trade.bond_code || trade.ucc || 'N/A'}</td>
-                      <td className="px-4 py-3 text-center font-mono">{trade.units || 0}</td>
-                      <td className="px-4 py-3 text-right font-mono font-semibold text-green-700">
-                        ₹{formatCurrency(trade.total_amount || 0)}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-gray-600">{trade.payment_reference || 'N/A'}</td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge className="bg-green-100 text-green-700 text-xs">Approved</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })}
-      
-      {/* Grand Total */}
-      <div className="bg-green-50 rounded-lg p-4 flex items-center justify-between">
-        <span className="font-medium text-green-800">
-          Grand Total ({logs.length} investments across {Object.keys(clientGroups).length} clients)
-        </span>
-        <div className="flex items-center gap-6">
-          <div className="text-right">
-            <p className="text-xs text-green-700">Total Units</p>
-            <p className="font-bold text-green-800">{logs.reduce((sum, t) => sum + (t.units || 0), 0)}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-green-700">Total Investment</p>
-            <p className="font-bold text-green-800 text-lg">
-              ₹{formatCurrency(logs.reduce((sum, t) => sum + (t.total_amount || 0), 0))}
-            </p>
-          </div>
+        {/* Flat Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Sr No</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Client Name</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Investment Date</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Deal ID</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Units</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Advisor</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">UTR Reference</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedLogs.map((trade, idx) => (
+                <tr key={trade.id || idx} className="border-b hover:bg-gray-50">
+                  <td className="px-4 py-3 text-gray-600">{idx + 1}</td>
+                  <td className="px-4 py-3 font-medium text-gray-800">{trade.client_name || 'N/A'}</td>
+                  <td className="px-4 py-3 text-gray-800">{trade.bond_name || 'N/A'}</td>
+                  <td className="px-4 py-3">{formatDate(trade.investment_date)}</td>
+                  <td className="px-4 py-3 font-mono text-gray-600">{trade.bond_code || trade.ucc || 'N/A'}</td>
+                  <td className="px-4 py-3 text-center font-mono">{trade.units || 0}</td>
+                  <td className="px-4 py-3 text-right font-mono font-semibold text-green-700">
+                    ₹{formatCurrency(trade.total_amount || 0)}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {trade.sub_broker_name || trade.advisor_name || trade.created_by_name || 'Direct'}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-gray-600 text-xs">{trade.payment_reference || 'N/A'}</td>
+                  <td className="px-4 py-3 text-center">
+                    <Badge className="bg-green-100 text-green-700 text-xs">Approved</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
