@@ -2724,11 +2724,12 @@ async def get_pending_approvals_workflow(current_user: dict = Depends(get_curren
         main_cashflow_ids = list(set(log.get('cashflow_id') for log in main_logs if log.get('cashflow_id')))
         
         # Now get ALL allocations for these cashflows (including 'none' portfolio for bifurcation)
+        # IMPORTANT: Don't filter by approval_status here - we need ALL allocations for the cashflow
+        # to display the full bifurcation/grouping correctly
         if main_cashflow_ids:
             all_logs = await db.reinvestment_logs.find(
                 {
-                    "cashflow_id": {"$in": main_cashflow_ids},
-                    "approval_status": "pending_broker_approval"
+                    "cashflow_id": {"$in": main_cashflow_ids}
                 },
                 {"_id": 0}
             ).sort([("cashflow_id", 1), ("allocation_index", 1)]).to_list(500)
