@@ -244,13 +244,13 @@ const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyRein
   );
 };
 
-// Trades Tab Content with Sub-tabs (Reinvestment Trades / Others)
+// Trades Tab Content with Sub-tabs (Reinvestment Trades / Investment)
 const TradesTabContent = ({ trades, selectedClient, formatINR }) => {
   const [activeSubTab, setActiveSubTab] = React.useState("reinvestment");
   
-  // Separate reinvestment trades and other trades
+  // Separate reinvestment trades (from reinvestment logs) and blocked unit trades
   const reinvestmentTrades = trades.filter(t => t.is_reinvestment_log);
-  const otherTrades = trades.filter(t => !t.is_reinvestment_log);
+  const blockedUnitTrades = trades.filter(t => !t.is_reinvestment_log);
   
   return (
     <div className="space-y-4">
@@ -273,18 +273,18 @@ const TradesTabContent = ({ trades, selectedClient, formatINR }) => {
           </div>
         </button>
         <button
-          onClick={() => setActiveSubTab("others")}
+          onClick={() => setActiveSubTab("investment")}
           className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeSubTab === "others"
-              ? "bg-blue-100 text-blue-700 border-b-2 border-blue-600"
+            activeSubTab === "investment"
+              ? "bg-green-100 text-green-700 border-b-2 border-green-600"
               : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
           }`}
         >
           <div className="flex items-center gap-2">
-            <ClipboardList className="h-4 w-4" />
-            Others
-            <span className="px-2 py-0.5 bg-blue-200 text-blue-800 text-xs rounded-full">
-              {otherTrades.length}
+            <CheckCircle className="h-4 w-4" />
+            Investment
+            <span className="px-2 py-0.5 bg-green-200 text-green-800 text-xs rounded-full">
+              {blockedUnitTrades.length}
             </span>
           </div>
         </button>
@@ -300,14 +300,95 @@ const TradesTabContent = ({ trades, selectedClient, formatINR }) => {
         />
       )}
       
-      {/* Others Sub-tab Content */}
-      {activeSubTab === "others" && (
-        <OtherTradesTable 
-          trades={otherTrades}
+      {/* Investment (Blocked Units) Sub-tab Content */}
+      {activeSubTab === "investment" && (
+        <InvestmentTradesTable 
+          trades={blockedUnitTrades}
           selectedClient={selectedClient}
           formatINR={formatINR}
         />
       )}
+    </div>
+  );
+};
+
+// Investment Trades Table (Blocked Units)
+const InvestmentTradesTable = ({ trades, selectedClient, formatINR }) => {
+  if (trades.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white rounded-lg border">
+        <CheckCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No blocked unit investments found</p>
+        <p className="text-gray-400 text-sm mt-1">Approved investments will appear here</p>
+      </div>
+    );
+  }
+
+  const totalUnits = trades.reduce((sum, t) => sum + (t.units || 0), 0);
+  const totalAmount = trades.reduce((sum, t) => sum + (t.total_amount || 0), 0);
+
+  return (
+    <div className="bg-white rounded-lg border border-green-200 overflow-hidden">
+      <div className="px-4 py-3 bg-green-50/50 border-b border-green-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CheckCircle className="h-5 w-5 text-green-600" />
+          <span className="font-medium text-green-800">Investment (Blocked Units)</span>
+          <Badge className="bg-green-100 text-green-700">{trades.length}</Badge>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Total Units</p>
+            <p className="font-semibold text-gray-800">{totalUnits}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Total Amount</p>
+            <p className="font-semibold text-green-700">₹{formatINR(totalAmount)}</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Sr No</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Investment Date</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">UCC</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Units</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">UTR Reference</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.map((trade, idx) => (
+              <tr key={trade.id || idx} className="border-b hover:bg-gray-50">
+                <td className="px-4 py-3 text-gray-600">{idx + 1}</td>
+                <td className="px-4 py-3 font-medium text-gray-800">{trade.bond_name || 'N/A'}</td>
+                <td className="px-4 py-3">
+                  {trade.investment_date ? format(new Date(trade.investment_date), "dd-MMM-yy") : 'NA'}
+                </td>
+                <td className="px-4 py-3 font-mono text-gray-600">{trade.bond_code || trade.ucc || 'N/A'}</td>
+                <td className="px-4 py-3 text-center font-mono">{trade.units || 0}</td>
+                <td className="px-4 py-3 text-right font-mono font-semibold text-green-700">
+                  ₹{formatINR(trade.total_amount || 0)}
+                </td>
+                <td className="px-4 py-3 font-mono text-gray-600">{trade.payment_reference || 'N/A'}</td>
+                <td className="px-4 py-3 text-center">
+                  {trade.status === 'approved' ? (
+                    <Badge className="bg-green-100 text-green-700 text-xs">Approved</Badge>
+                  ) : trade.status === 'pending' ? (
+                    <Badge className="bg-amber-100 text-amber-700 text-xs">Pending</Badge>
+                  ) : (
+                    <Badge className="bg-gray-100 text-gray-700 text-xs">{trade.status || 'N/A'}</Badge>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
