@@ -25,15 +25,14 @@ const roundToHundred = (amount) => {
 const formatCurrency = (amount) => amount?.toLocaleString('en-IN') || '0';
 
 // Bifurcated Trades Table Component - Groups trades by cashflow for split allocations
-const BifurcatedTradesTable = ({ trades, selectedClient, formatINR }) => {
+const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyReinvestment = false }) => {
   // Filter reinvestment logs that have cashflow_id for grouping
-  const reinvTrades = trades.filter(t => t.is_reinvestment_log && t.cashflow_id);
-  const otherTrades = trades.filter(t => !t.is_reinvestment_log || !t.cashflow_id);
+  const reinvTrades = trades.filter(t => t.is_reinvestment_log || t.cashflow_id);
   
   // Group reinvestment trades by cashflow_id for bifurcation
-  const groupByCashflow = (trades) => {
+  const groupByCashflow = (tradesToGroup) => {
     const cashflowGroups = {};
-    trades.forEach(trade => {
+    tradesToGroup.forEach(trade => {
       const cfId = trade.cashflow_id || trade.id;
       if (!cashflowGroups[cfId]) {
         cashflowGroups[cfId] = {
