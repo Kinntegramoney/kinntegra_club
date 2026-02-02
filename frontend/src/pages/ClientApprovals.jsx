@@ -200,7 +200,11 @@ export default function ClientApprovals() {
           tagged_by_name: entry.tagged_by_name || 'Broker',
           is_sub_broker: entry.tagged_by_sub_broker
         });
-        cashflowGroups[cfId].total_round_down_amount += roundDownAmount;
+        // Only add to investment total if entry has a UCC
+        const hasUcc = entry.ucc || entry.target_ucc;
+        if (hasUcc) {
+          cashflowGroups[cfId].total_round_down_amount += roundDownAmount;
+        }
       });
       
       // Sort allocations by index and convert to bondGroups format
