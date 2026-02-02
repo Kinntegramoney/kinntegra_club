@@ -233,76 +233,11 @@ const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyRein
         </div>
       )}
       
-      {/* Other trades (non-reinvestment) in flat table */}
-      {otherTrades.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b">
-            <div className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-gray-600" />
-              <span className="font-medium text-gray-800">Other Trades</span>
-              <span className="text-xs text-gray-500">({otherTrades.length} entries)</span>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
-              <thead>
-                <tr className="bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="px-3 py-3 text-left">Client Name</th>
-                  <th className="px-3 py-3 text-left">UCC</th>
-                  <th className="px-3 py-3 text-left">Date</th>
-                  <th className="px-3 py-3 text-left">Type</th>
-                  <th className="px-3 py-3 text-right">Amount</th>
-                  <th className="px-3 py-3 text-left">Portfolio</th>
-                  <th className="px-3 py-3 text-left">Advisor</th>
-                  <th className="px-3 py-3 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {otherTrades.map((trade) => (
-                  <tr key={trade.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-3 py-3 text-sm font-medium text-gray-800 whitespace-nowrap">
-                      {trade.client_name || selectedClient?.name}
-                    </td>
-                    <td className="px-3 py-3 text-xs font-mono text-gray-600 whitespace-nowrap">
-                      {trade.bond_code || '-'}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">
-                      {trade.investment_date ? format(new Date(trade.investment_date), "dd MMM yyyy") : '-'}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <span className={`text-xs font-medium ${
-                        getTradeTypeLabel(trade).startsWith('Reinv') ? 'text-purple-600' : 
-                        getTradeTypeLabel(trade) === 'Principal' ? 'text-blue-600' :
-                        'text-gray-600'
-                      }`}>
-                        {getTradeTypeLabel(trade)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-sm font-mono font-semibold text-gray-800 text-right whitespace-nowrap">
-                      {formatINR(trade.total_amount)}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">
-                      {trade.portfolio || 'Wealth'}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap max-w-[120px] truncate">
-                      {trade.created_by_name || '-'}
-                    </td>
-                    <td className="px-3 py-3 text-center whitespace-nowrap">
-                      {getStatusBadge(trade.status)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-      
-      {/* Empty state */}
-      {trades.length === 0 && (
-        <div className="text-center py-12">
-          <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No trades found for this client</p>
+      {/* Empty state for reinvestment trades */}
+      {reinvTrades.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-lg border">
+          <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500">No reinvestment trades found</p>
         </div>
       )}
     </div>
