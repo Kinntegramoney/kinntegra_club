@@ -278,6 +278,7 @@ const groupByCashflow = (logs) => {
       };
     }
     const roundDownAmt = log.amount || roundToHundred(log.net_amount || 0);
+    const hasUcc = log.ucc || log.target_ucc;
     cashflowGroups[cfId].allocations.push({
       ...log,
       round_down_amount: roundDownAmt
@@ -285,7 +286,10 @@ const groupByCashflow = (logs) => {
     if (!cashflowGroups[cfId].total_net_amount) {
       cashflowGroups[cfId].total_net_amount += (log.net_amount || log.amount || 0);
     }
-    cashflowGroups[cfId].total_round_down_amount += roundDownAmt;
+    // Only add to investment total if log has a UCC
+    if (hasUcc) {
+      cashflowGroups[cfId].total_round_down_amount += roundDownAmt;
+    }
   });
   // Sort allocations by index
   Object.values(cashflowGroups).forEach(cf => {
