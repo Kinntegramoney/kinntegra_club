@@ -321,6 +321,7 @@ const InvestmentLogsView = ({ logs, formatCurrency, getStatusBadge }) => {
               <th className="text-left px-4 py-3 font-medium text-gray-600 w-12">Sr No</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Investment Date</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">UCC</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Units</th>
               <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">UTR Reference</th>
@@ -336,6 +337,9 @@ const InvestmentLogsView = ({ logs, formatCurrency, getStatusBadge }) => {
                 </td>
                 <td className="px-4 py-3">
                   {trade.investment_date ? format(new Date(trade.investment_date), "dd-MMM-yy") : 'NA'}
+                </td>
+                <td className="px-4 py-3 font-mono text-gray-600">
+                  {trade.bond_code || trade.ucc || 'N/A'}
                 </td>
                 <td className="px-4 py-3 text-center font-mono">
                   {trade.units || 0}
