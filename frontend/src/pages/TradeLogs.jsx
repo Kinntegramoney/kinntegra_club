@@ -878,28 +878,12 @@ export default function TradeLogs() {
     try {
       const token = localStorage.getItem("token");
       
-      // Fetch trade logs, reinvestment approval logs, and new reinvestment tagging logs
-      const [tradesRes, reinvestmentRes, reinvestmentTaggingRes] = await Promise.all([
-        axios.get(`${API}/trades`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
+      // Fetch reinvestment approval logs and reinvestment tagging logs ONLY
+      // Regular trades are shown in Holdings page, not in Trade Logs
+      const [reinvestmentRes, reinvestmentTaggingRes] = await Promise.all([
         axios.get(`${API}/approval-logs?entity_type=reinvestment`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] })),
         axios.get(`${API}/reinvestment/logs`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }))
       ]);
-      
-      // Combine and format logs
-      const tradeLogs = (tradesRes.data || []).map(trade => ({
-        id: trade.id,
-        type: "trade",
-        client_name: trade.client_name || "N/A",
-        ucc: trade.ucc || trade.client_ucc || "-",
-        date: trade.investment_date || trade.created_at,
-        trade_type: trade.trade_type || "Buy",
-        amount: trade.total_amount || trade.amount || 0,
-        portfolio: trade.portfolio_category || "-",
-        advisor: trade.advisor_name || trade.sub_broker_name || "-",
-        status: trade.status || "pending",
-        bond_name: trade.bond_name,
-        units: trade.units,
-      }));
 
       const reinvestmentLogs = (reinvestmentRes.data || []).map(log => ({
         id: log.id,
@@ -932,7 +916,7 @@ export default function TradeLogs() {
           cashflow_id: log.cashflow_id,  // Critical for bifurcation grouping
           client_id: log.client_id,
           client_name: log.client_name || "N/A",
-          ucc: log.target_ucc || log.ucc || "-",
+          ucc: log.ucc || log.target_ucc || "-",
           date: log.expected_date || log.created_at,
           trade_type: typeLabel,
           amount: log.amount || log.net_amount || 0,
@@ -953,7 +937,7 @@ export default function TradeLogs() {
         };
       });
 
-      setLogs([...tradeLogs, ...reinvestmentLogs, ...taggingLogs].sort((a, b) => 
+      setLogs([...reinvestmentLogs, ...taggingLogs].sort((a, b) => 
         new Date(b.date) - new Date(a.date)
       ));
     } catch (error) {
