@@ -238,29 +238,37 @@ export default function ClientReinvestmentApprovals() {
       if (item.allocations && item.allocations.length > 0) {
         item.allocations.forEach(alloc => {
           const allocRoundDown = roundToHundred(alloc.amount || 0);
+          const allocUcc = alloc.ucc || item.ucc || '';
           entriesByBond[bondKey].allocations.push({
             entry_id: item.id,
-            ucc: alloc.ucc || item.ucc || '-',
+            ucc: allocUcc || '-',
             portfolio: alloc.portfolio_name || alloc.portfolio || item.portfolio_category || '-',
             allocation_amount: alloc.amount || 0,
             round_down_amount: allocRoundDown,
             investment_date: alloc.investment_date || alloc.mf_investment_date || defaultInvestmentDate,
             approval_status: item.approval_status
           });
-          entriesByBond[bondKey].total_round_down_amount += allocRoundDown;
+          // Only add to investment total if allocation has a UCC
+          if (allocUcc) {
+            entriesByBond[bondKey].total_round_down_amount += allocRoundDown;
+          }
         });
       } else {
         // Single allocation
+        const singleUcc = item.ucc || item.target_ucc || '';
         entriesByBond[bondKey].allocations.push({
           entry_id: item.id,
-          ucc: item.ucc || item.target_ucc || '-',
+          ucc: singleUcc || '-',
           portfolio: item.portfolio_category || '-',
           allocation_amount: investmentAmount,
           round_down_amount: roundDownAmount,
           investment_date: item.investment_date || item.mf_investment_date || defaultInvestmentDate,
           approval_status: item.approval_status
         });
-        entriesByBond[bondKey].total_round_down_amount += roundDownAmount;
+        // Only add to investment total if allocation has a UCC
+        if (singleUcc) {
+          entriesByBond[bondKey].total_round_down_amount += roundDownAmount;
+        }
       }
       
       // total_net_amount is the cashflow net amount (for display)
