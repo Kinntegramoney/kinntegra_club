@@ -593,13 +593,12 @@ export default function ClientLogs() {
                     />
                   )}
                   
-                  {/* Investment Sub-tab - Shows approved/submitted investments */}
+                  {/* Investment Sub-tab - Shows approved blocked units */}
                   {tradeSubTab === "investment" && (
                     <InvestmentLogsView 
                       logs={investmentLogs}
                       formatCurrency={formatCurrency}
                       getStatusBadge={getStatusBadge}
-                      roundToHundred={roundToHundred}
                     />
                   )}
                 </>
