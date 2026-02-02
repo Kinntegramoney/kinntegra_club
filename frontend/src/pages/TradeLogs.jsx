@@ -696,6 +696,9 @@ const InvestmentFlatTable = ({ logs, formatDate, formatCurrency }) => {
   const totalUnits = sortedLogs.reduce((sum, t) => sum + (t.units || 0), 0);
   const totalAmount = sortedLogs.reduce((sum, t) => sum + (t.total_amount || 0), 0);
 
+  // Format currency with rupee symbol
+  const formatWithRupee = (amount) => `₹${(amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-lg border border-green-200 overflow-hidden">
@@ -717,7 +720,7 @@ const InvestmentFlatTable = ({ logs, formatDate, formatCurrency }) => {
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">Total Amount</p>
-              <p className="font-semibold text-green-700">₹{formatCurrency(totalAmount)}</p>
+              <p className="font-semibold text-green-700">{formatWithRupee(totalAmount)}</p>
             </div>
           </div>
         </div>
@@ -749,7 +752,7 @@ const InvestmentFlatTable = ({ logs, formatDate, formatCurrency }) => {
                   <td className="px-4 py-3 font-mono text-gray-600">{trade.bond_code || trade.ucc || 'N/A'}</td>
                   <td className="px-4 py-3 text-center font-mono">{trade.units || 0}</td>
                   <td className="px-4 py-3 text-right font-mono font-semibold text-green-700">
-                    ₹{formatCurrency(trade.total_amount || 0)}
+                    {formatWithRupee(trade.total_amount)}
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {trade.sub_broker_name || trade.advisor_name || trade.created_by_name || 'Direct'}
