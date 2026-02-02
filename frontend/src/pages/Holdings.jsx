@@ -46,14 +46,15 @@ const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyRein
         };
       }
       const roundDownAmt = trade.total_amount || roundToHundred(trade.net_amount || 0);
-      const hasUcc = trade.ucc || trade.target_ucc;
+      const uccValue = trade.ucc || trade.target_ucc || '';
+      const hasValidUcc = uccValue && uccValue !== '-' && uccValue !== 'N/A';
       cashflowGroups[cfId].allocations.push({
         ...trade,
         round_down_amount: roundDownAmt
       });
       cashflowGroups[cfId].total_amount += (trade.net_amount || trade.total_amount || 0);
-      // Only add to investment total if trade has a UCC
-      if (hasUcc) {
+      // Only add to investment total if trade has a valid UCC (not empty or "-")
+      if (hasValidUcc) {
         cashflowGroups[cfId].total_round_down_amount += roundDownAmt;
       }
     });
