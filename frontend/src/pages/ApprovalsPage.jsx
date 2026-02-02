@@ -525,10 +525,10 @@ function ReinvestmentApprovalTable({ items, onApprove, onReject, processingId, f
         investment_date: entry.mf_investment_date || entry.investment_date,
         tagged_by_name: entry.tagged_by_name || entry.sub_broker_name || 'Sub-Broker'
       });
-      // Only add to investment total if entry has a valid UCC (not empty or "-")
-      const uccValue = entry.ucc || entry.target_ucc || '';
-      const hasValidUcc = uccValue && uccValue !== '-' && uccValue !== 'N/A';
-      if (hasValidUcc) {
+      // Only add to investment total if entry has a valid portfolio (not "none")
+      const portfolioValue = entry.portfolio || entry.portfolio_category || '';
+      const hasValidPortfolio = portfolioValue && portfolioValue.toLowerCase() !== 'none';
+      if (hasValidPortfolio) {
         cashflowGroups[cfId].total_round_down_amount += roundDownAmount;
       }
       if (!cashflowGroups[cfId].total_net_amount) {
