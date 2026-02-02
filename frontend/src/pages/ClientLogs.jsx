@@ -27,6 +27,38 @@ const roundToHundred = (amount) => {
   return Math.floor(amount / 100) * 100;
 };
 
+// Group logs by cashflow_id for bifurcation
+const groupByCashflow = (logs) => {
+  const cashflowGroups = {};
+  logs.forEach(log => {
+    const cfId = log.cashflow_id || log.id;
+    if (!cashflowGroups[cfId]) {
+      cashflowGroups[cfId] = {
+        cashflow_id: cfId,
+        bond_name: log.bond_name,
+        date: log.expected_date,
+        allocations: [],
+        total_net_amount: log.total_cashflow_net_amount || 0,
+        total_round_down_amount: 0
+      };
+    }
+    const roundDownAmt = log.amount || roundToHundred(log.net_amount || 0);
+    cashflowGroups[cfId].allocations.push({
+      ...log,
+      round_down_amount: roundDownAmt
+    });
+    if (!cashflowGroups[cfId].total_net_amount) {
+      cashflowGroups[cfId].total_net_amount += (log.net_amount || log.amount || 0);
+    }
+    cashflowGroups[cfId].total_round_down_amount += roundDownAmt;
+  });
+  // Sort allocations by index
+  Object.values(cashflowGroups).forEach(cf => {
+    cf.allocations.sort((a, b) => (a.allocation_index || 0) - (b.allocation_index || 0));
+  });
+  return cashflowGroups;
+};
+
 export default function ClientLogs() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
