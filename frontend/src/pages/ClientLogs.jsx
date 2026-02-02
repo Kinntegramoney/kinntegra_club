@@ -294,14 +294,14 @@ const groupByCashflow = (logs) => {
   return cashflowGroups;
 };
 
-// Investment Logs View - Shows approved/submitted investments
-const InvestmentLogsView = ({ logs, formatCurrency, getStatusBadge, roundToHundred }) => {
+// Investment Logs View - Shows approved blocked units / trades
+const InvestmentLogsView = ({ logs, formatCurrency, getStatusBadge }) => {
   if (logs.length === 0) {
     return (
       <div className="bg-white rounded-lg border p-8 text-center">
         <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-3" />
         <p className="text-gray-500">No approved investments found</p>
-        <p className="text-gray-400 text-sm mt-1">Your approved investments will appear here</p>
+        <p className="text-gray-400 text-sm mt-1">Your blocked unit investments will appear here after broker approval</p>
       </div>
     );
   }
@@ -310,7 +310,7 @@ const InvestmentLogsView = ({ logs, formatCurrency, getStatusBadge, roundToHundr
     <div className="bg-white rounded-lg border overflow-hidden">
       <div className="px-4 py-3 bg-green-50 border-b flex items-center gap-2">
         <TrendingUp className="h-5 w-5 text-green-600" />
-        <span className="font-medium text-green-800">Approved Investments</span>
+        <span className="font-medium text-green-800">Approved Investments (Blocked Units)</span>
         <Badge className="bg-green-100 text-green-700 ml-2">{logs.length}</Badge>
       </div>
       
@@ -319,81 +319,51 @@ const InvestmentLogsView = ({ logs, formatCurrency, getStatusBadge, roundToHundr
           <thead className="bg-gray-50 border-b">
             <tr>
               <th className="text-left px-4 py-3 font-medium text-gray-600 w-12">Sr No</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Date of Repayment</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Date of Reinvestment</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">UCC</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Portfolio Type</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-600">Round Down Amount</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Investment Date</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Units</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">UTR Reference</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
             </tr>
           </thead>
           <tbody>
-            {logs.map((log, idx) => {
-              const roundDownAmount = log.amount || roundToHundred(log.net_amount || 0);
-              const hasUCC = log.target_ucc || log.ucc;
-              const hasPortfolio = log.portfolio_category || log.portfolio;
-              const isIncomplete = !hasUCC || !hasPortfolio || hasPortfolio === 'none';
-              
-              // Calculate reinvestment date (repayment date + 1 month, 1st day)
-              let reinvestmentDate = 'NA';
-              if (log.expected_date && hasUCC && hasPortfolio && hasPortfolio !== 'none') {
-                const repaymentDate = new Date(log.expected_date);
-                const nextMonth = new Date(repaymentDate);
-                nextMonth.setMonth(nextMonth.getMonth() + 1);
-                nextMonth.setDate(1);
-                reinvestmentDate = format(nextMonth, "dd-MM-yyyy");
-              }
-              
-              return (
-                <tr key={log.id || idx} className={`border-b hover:bg-gray-50 ${isIncomplete ? 'bg-red-50' : ''}`}>
-                  <td className="px-4 py-3 text-gray-600">{idx + 1}</td>
-                  <td className={`px-4 py-3 font-medium ${isIncomplete ? 'text-red-600' : ''}`}>
-                    {log.expected_date ? format(new Date(log.expected_date), "dd-MMM-yy") : 'NA'}
-                  </td>
-                  <td className={`px-4 py-3 ${isIncomplete ? 'text-red-600' : ''}`}>
-                    {reinvestmentDate}
-                  </td>
-                  <td className={`px-4 py-3 font-mono ${!hasUCC ? 'text-red-600' : ''}`}>
-                    {hasUCC || 'NA'}
-                  </td>
-                  <td className={`px-4 py-3 capitalize ${!hasPortfolio || hasPortfolio === 'none' ? 'text-red-600' : ''}`}>
-                    {hasPortfolio && hasPortfolio !== 'none' ? hasPortfolio?.replace('_', ' ') : 'NA'}
-                  </td>
-                  <td className={`px-4 py-3 text-right font-mono font-semibold ${isIncomplete ? 'text-red-600' : 'text-green-700'}`}>
-                    {roundDownAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {log.approval_status === 'submitted' || log.api_submitted ? (
-                      <Badge className="bg-green-100 text-green-700 text-xs">
-                        Submitted
-                      </Badge>
-                    ) : log.approval_status === 'cancellation_pending' ? (
-                      <Badge className="bg-red-100 text-red-700 text-xs">
-                        Cancel Pending
-                      </Badge>
-                    ) : log.approval_status === 'edit_pending' ? (
-                      <Badge className="bg-amber-100 text-amber-700 text-xs">
-                        Edit Pending
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-teal-100 text-teal-700 text-xs">
-                        Approved
-                      </Badge>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+            {logs.map((trade, idx) => (
+              <tr key={trade.id || idx} className="border-b hover:bg-gray-50">
+                <td className="px-4 py-3 text-gray-600">{idx + 1}</td>
+                <td className="px-4 py-3 font-medium text-gray-800">
+                  {trade.bond_name || 'N/A'}
+                </td>
+                <td className="px-4 py-3">
+                  {trade.investment_date ? format(new Date(trade.investment_date), "dd-MMM-yy") : 'NA'}
+                </td>
+                <td className="px-4 py-3 text-center font-mono">
+                  {trade.units || 0}
+                </td>
+                <td className="px-4 py-3 text-right font-mono font-semibold text-green-700">
+                  ₹{formatCurrency(trade.total_amount || 0)}
+                </td>
+                <td className="px-4 py-3 font-mono text-gray-600">
+                  {trade.payment_reference || 'N/A'}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <Badge className="bg-green-100 text-green-700 text-xs">
+                    Approved
+                  </Badge>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
       
-      {/* Footer - Net Repayment Summary */}
-      <div className="px-4 py-3 bg-blue-50 border-t flex items-center justify-end">
+      {/* Footer - Total Investment Summary */}
+      <div className="px-4 py-3 bg-green-50 border-t flex items-center justify-between">
+        <span className="text-gray-600 font-medium">Total Units: {logs.reduce((sum, t) => sum + (t.units || 0), 0)}</span>
         <div className="flex items-center gap-4">
-          <span className="text-gray-600 font-medium">Net repayment</span>
-          <span className="text-lg font-bold text-blue-700">
-            {logs.reduce((sum, log) => sum + (log.net_amount || log.amount || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+          <span className="text-gray-600 font-medium">Total Investment</span>
+          <span className="text-lg font-bold text-green-700">
+            ₹{formatCurrency(logs.reduce((sum, t) => sum + (t.total_amount || 0), 0))}
           </span>
         </div>
       </div>
