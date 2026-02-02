@@ -1614,11 +1614,43 @@ export default function TradeLogs() {
         {/* Investment Logs Tab Content */}
         {activeTab === "investment" && (
           <>
-            {/* Investment Filters */}
+            {/* Investment Sub-tabs and Filters */}
             <div className="px-6 py-4 bg-white border-b">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-1 max-w-xs">
+                {/* Sub-tabs */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setInvestmentSubTab("blocked_units")}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                      investmentSubTab === "blocked_units"
+                        ? "bg-green-100 text-green-700"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Investment (Blocked Units)
+                    <Badge className={`${investmentSubTab === "blocked_units" ? "bg-green-200 text-green-800" : "bg-gray-200 text-gray-600"} text-xs`}>
+                      {blockedUnitsLogs.length}
+                    </Badge>
+                  </button>
+                  <button
+                    onClick={() => setInvestmentSubTab("reinvestment")}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                      investmentSubTab === "reinvestment"
+                        ? "bg-purple-100 text-purple-700"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    Reinvestment
+                    <Badge className={`${investmentSubTab === "reinvestment" ? "bg-purple-200 text-purple-800" : "bg-gray-200 text-gray-600"} text-xs`}>
+                      {investmentLogs.length}
+                    </Badge>
+                  </button>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <div className="relative max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       placeholder="Search by client, bond or UCC..."
@@ -1627,35 +1659,56 @@ export default function TradeLogs() {
                       className="pl-9 h-9 w-64"
                     />
                   </div>
+                  <Button variant="outline" size="sm" onClick={fetchInvestmentLogs}>
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Refresh
+                  </Button>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchInvestmentLogs}>
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Refresh
-                </Button>
               </div>
             </div>
 
-            {/* Investment Logs Content - Matching Tagged (Pending) design */}
+            {/* Investment Content */}
             <div className="p-6">
               {investmentLoading ? (
                 <div className="bg-white rounded-lg border p-8 text-center">
                   <RefreshCw className="h-8 w-8 animate-spin text-green-600 mx-auto mb-3" />
                   <p className="text-gray-500">Loading investment logs...</p>
                 </div>
-              ) : filteredInvestmentLogs.length === 0 ? (
-                <div className="bg-white rounded-lg border p-8 text-center">
-                  <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No client-approved investments found</p>
-                  <p className="text-gray-400 text-sm mt-1">Investments will appear here after client approval</p>
-                </div>
               ) : (
-                <InvestmentLogsTable 
-                  logs={filteredInvestmentLogs}
-                  onModify={openModifyModal}
-                  onCancel={openCancelModal}
-                  formatDate={(date) => date ? format(new Date(date), "dd MMM yyyy") : '-'}
-                  formatCurrency={(amount) => (amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                />
+                <>
+                  {/* Blocked Units Sub-tab */}
+                  {investmentSubTab === "blocked_units" && (
+                    <BlockedUnitsTable 
+                      logs={blockedUnitsLogs.filter(log => 
+                        !investmentSearchQuery || 
+                        log.client_name?.toLowerCase().includes(investmentSearchQuery.toLowerCase()) ||
+                        log.bond_name?.toLowerCase().includes(investmentSearchQuery.toLowerCase()) ||
+                        log.bond_code?.toLowerCase().includes(investmentSearchQuery.toLowerCase())
+                      )}
+                      formatDate={(date) => date ? format(new Date(date), "dd MMM yyyy") : '-'}
+                      formatCurrency={(amount) => (amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    />
+                  )}
+                  
+                  {/* Reinvestment Sub-tab */}
+                  {investmentSubTab === "reinvestment" && (
+                    filteredInvestmentLogs.length === 0 ? (
+                      <div className="bg-white rounded-lg border p-8 text-center">
+                        <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500">No client-approved reinvestments found</p>
+                        <p className="text-gray-400 text-sm mt-1">Investments will appear here after client approval</p>
+                      </div>
+                    ) : (
+                      <InvestmentLogsTable 
+                        logs={filteredInvestmentLogs}
+                        onModify={openModifyModal}
+                        onCancel={openCancelModal}
+                        formatDate={(date) => date ? format(new Date(date), "dd MMM yyyy") : '-'}
+                        formatCurrency={(amount) => (amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                      />
+                    )
+                  )}
+                </>
               )}
             </div>
           </>
