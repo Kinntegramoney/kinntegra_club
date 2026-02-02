@@ -2,6 +2,21 @@
 
 ## Recent Changes (Feb 2, 2026)
 
+### Holdings & Client Logs Sub-tabs Implementation (Feb 2, 2026) ✅
+
+**Issue:** Trades section in Holdings and Client Logs showed flat tables without separation between reinvestment trades and other trades.
+
+**Fix Applied:**
+- Added sub-tabs within the Trades section:
+  - **"Reinvestment Trades"** - Bifurcated view with grouped entries by cashflow
+  - **"Others"** - Flat table for non-reinvestment trades
+- Implemented for both broker Holdings page and Client Logs page
+- Sub-tabs show entry counts as badges
+
+**Files Modified:**
+- `/app/frontend/src/pages/Holdings.jsx` - Added `TradesTabContent`, `OtherTradesTable` components
+- `/app/frontend/src/pages/ClientLogs.jsx` - Added `ReinvestmentTradesView`, `OtherTradesView` components, `tradeSubTab` state
+
 ### Holdings Trades Tab Bifurcation (Feb 2, 2026) ✅
 
 **Issue:** The Trades section in Holdings page (for broker, sub-broker, client) showed individual entries in a flat table instead of grouped/clubbed entries with bifurcation.
