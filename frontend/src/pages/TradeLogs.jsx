@@ -1350,18 +1350,6 @@ export default function TradeLogs() {
                   Trade Logs
                 </button>
                 <button
-                  onClick={() => setActiveTab("investment")}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-1 ${
-                    activeTab === "investment"
-                      ? "border-green-600 text-green-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                  data-testid="investment-logs-tab"
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  Investment
-                </button>
-                <button
                   onClick={() => setActiveTab("activity")}
                   className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-1 ${
                     activeTab === "activity"
