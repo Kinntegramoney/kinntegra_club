@@ -384,11 +384,15 @@ const TradeLogsWithBifurcation = ({ logs, formatDate, formatCurrency, getStatusB
         };
       }
       const roundDownAmt = entry.amount || roundToHundred(entry.net_amount || 0);
+      const hasUcc = entry.ucc || entry.target_ucc;
       cashflowGroups[cfId].allocations.push({
         ...entry,
         round_down_amount: roundDownAmt
       });
-      cashflowGroups[cfId].total_round_down_amount += roundDownAmt;
+      // Only add to investment total if entry has a UCC
+      if (hasUcc) {
+        cashflowGroups[cfId].total_round_down_amount += roundDownAmt;
+      }
       if (!cashflowGroups[cfId].total_net_amount) {
         cashflowGroups[cfId].total_net_amount += (entry.net_amount || entry.amount || 0);
       }
