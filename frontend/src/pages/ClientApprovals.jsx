@@ -200,10 +200,10 @@ export default function ClientApprovals() {
           tagged_by_name: entry.tagged_by_name || 'Broker',
           is_sub_broker: entry.tagged_by_sub_broker
         });
-        // Only add to investment total if entry has a valid UCC (not empty or "-")
-        const uccValue = entry.ucc || entry.target_ucc || '';
-        const hasValidUcc = uccValue && uccValue !== '-' && uccValue !== 'N/A';
-        if (hasValidUcc) {
+        // Only add to investment total if entry has a valid portfolio (not "none")
+        const portfolioValue = entry.portfolio || entry.portfolio_category || '';
+        const hasValidPortfolio = portfolioValue && portfolioValue.toLowerCase() !== 'none';
+        if (hasValidPortfolio) {
           cashflowGroups[cfId].total_round_down_amount += roundDownAmount;
         }
       });
