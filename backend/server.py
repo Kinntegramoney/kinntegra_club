@@ -9971,6 +9971,14 @@ async def get_trades(status: Optional[str] = None, client_id: Optional[str] = No
         query["client_id"] = client_id
     
     trades = await db.trades.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    # Fill in missing bond_code from bond definition
+    for trade in trades:
+        if not trade.get('bond_code') and trade.get('bond_id'):
+            bond = await db.bonds.find_one({"id": trade['bond_id']}, {"_id": 0, "bond_code": 1})
+            if bond and bond.get('bond_code'):
+                trade['bond_code'] = bond['bond_code']
+    
     return trades
 
 
