@@ -331,20 +331,6 @@ export default function ClientLogs() {
             </div>
           </>
         )}
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-500">
-                              {formatDate(log.created_at)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
 
         {/* Investment Tab - Matching Broker's TradeLogs format exactly */}
         {activeTab === "investment" && (
