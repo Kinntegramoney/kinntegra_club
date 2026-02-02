@@ -1829,9 +1829,9 @@ export default function Holdings() {
                 </div>
               )}
               
-              {/* Trades Tab Content - Bifurcated Table */}
+              {/* Trades Tab Content - With Sub-tabs */}
               {mainTab === "trades" && (
-                <BifurcatedTradesTable 
+                <TradesTabContent 
                   trades={clientTrades}
                   selectedClient={selectedClient}
                   formatINR={formatINR}
