@@ -461,17 +461,17 @@ export default function ClientLogs() {
                     </Badge>
                   </button>
                   <button
-                    onClick={() => setTradeSubTab("others")}
+                    onClick={() => setTradeSubTab("investment")}
                     className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                      tradeSubTab === "others"
-                        ? "bg-blue-100 text-blue-700"
+                      tradeSubTab === "investment"
+                        ? "bg-green-100 text-green-700"
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
                   >
-                    <FileText className="h-4 w-4" />
-                    Others
-                    <Badge className={`${tradeSubTab === "others" ? "bg-blue-200 text-blue-800" : "bg-gray-200 text-gray-600"} text-xs`}>
-                      {filteredTradeLogs.filter(l => !l.cashflow_id).length}
+                    <CheckCircle className="h-4 w-4" />
+                    Investment
+                    <Badge className={`${tradeSubTab === "investment" ? "bg-green-200 text-green-800" : "bg-gray-200 text-gray-600"} text-xs`}>
+                      {investmentLogs.length}
                     </Badge>
                   </button>
                 </div>
@@ -516,8 +516,8 @@ export default function ClientLogs() {
                     />
                   )}
                   
-                  {/* Others Sub-tab - Flat Table */}
-                  {tradeSubTab === "others" && (
+                  {/* Investment Sub-tab - Shows approved/submitted investments */}
+                  {tradeSubTab === "investment" && (
                     <OtherTradesView 
                       logs={filteredTradeLogs.filter(l => !l.cashflow_id)}
                       formatCurrency={formatCurrency}
