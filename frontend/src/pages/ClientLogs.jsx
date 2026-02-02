@@ -238,106 +238,99 @@ export default function ClientLogs() {
           </div>
         </div>
 
-        {/* Trade Logs Tab */}
+        {/* Trade Logs Tab with Sub-tabs */}
         {activeTab === "trade_logs" && (
           <>
-            {/* Filters */}
+            {/* Sub-tabs and Filters */}
             <div className="px-6 py-3 bg-white border-b">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center justify-between">
+                {/* Sub-tabs */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setTradeSubTab("reinvestment")}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                      tradeSubTab === "reinvestment"
+                        ? "bg-purple-100 text-purple-700"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    Reinvestment Trades
+                    <Badge className={`${tradeSubTab === "reinvestment" ? "bg-purple-200 text-purple-800" : "bg-gray-200 text-gray-600"} text-xs`}>
+                      {filteredTradeLogs.filter(l => l.cashflow_id).length}
+                    </Badge>
+                  </button>
+                  <button
+                    onClick={() => setTradeSubTab("others")}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                      tradeSubTab === "others"
+                        ? "bg-blue-100 text-blue-700"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Others
+                    <Badge className={`${tradeSubTab === "others" ? "bg-blue-200 text-blue-800" : "bg-gray-200 text-gray-600"} text-xs`}>
+                      {filteredTradeLogs.filter(l => !l.cashflow_id).length}
+                    </Badge>
+                  </button>
+                </div>
+                
+                {/* Status Filter */}
                 <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">Filter:</span>
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-40 h-9">
-                    <SelectValue placeholder="All Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="pending_broker_approval">Pending Broker</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <div className="ml-auto text-sm text-gray-500">
-                  {filteredTradeLogs.length} records
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-40 h-9">
+                      <SelectValue placeholder="All Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="pending_broker_approval">Pending Broker</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
 
             {/* Content */}
             <div className="p-6">
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                {loading ? (
-                  <div className="text-center py-12">
-                    <RefreshCw className="h-8 w-8 animate-spin text-teal-600 mx-auto mb-3" />
-                    <p className="text-gray-500">Loading...</p>
-                  </div>
-                ) : filteredTradeLogs.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-gray-600 mb-1">No Logs Found</h3>
-                    <p className="text-gray-400 text-sm">
-                      {statusFilter !== 'all' 
-                        ? 'No logs match the selected filter' 
-                        : 'Your reinvestment history will appear here'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Bond</th>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Maturity Date</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Portfolio</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">UCC</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Tagged By</th>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredTradeLogs.map((log) => (
-                          <tr key={log.id} className="hover:bg-gray-50" data-testid={`log-${log.id}`}>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-teal-600" />
-                                <span className="font-medium text-gray-800 text-sm">{log.bond_name}</span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              {log.expected_date ? format(new Date(log.expected_date), "dd MMM yyyy") : 'N/A'}
-                            </td>
-                            <td className="py-3 px-4 text-right font-mono text-sm">
-                              ₹{formatCurrency(log.net_amount || log.amount)}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <Badge variant="outline" className="text-xs capitalize">
-                                {getTagLabel(log.reinvestment_tag)}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className="text-sm text-gray-600 capitalize">
-                                {log.portfolio_category?.replace('_', ' ') || '-'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className="text-sm text-gray-600 font-mono">
-                                {log.target_ucc || '-'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {getStatusBadge(log.approval_status)}
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              {log.tagged_by_name || '-'}
+              {loading ? (
+                <div className="bg-white rounded-lg border p-8 text-center">
+                  <RefreshCw className="h-8 w-8 animate-spin text-teal-600 mx-auto mb-3" />
+                  <p className="text-gray-500">Loading...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Reinvestment Trades Sub-tab - Bifurcated View */}
+                  {tradeSubTab === "reinvestment" && (
+                    <ReinvestmentTradesView 
+                      logs={filteredTradeLogs.filter(l => l.cashflow_id)}
+                      groupByCashflow={groupByCashflow}
+                      formatCurrency={formatCurrency}
+                      getStatusBadge={getStatusBadge}
+                    />
+                  )}
+                  
+                  {/* Others Sub-tab - Flat Table */}
+                  {tradeSubTab === "others" && (
+                    <OtherTradesView 
+                      logs={filteredTradeLogs.filter(l => !l.cashflow_id)}
+                      formatCurrency={formatCurrency}
+                      getTagLabel={getTagLabel}
+                      getStatusBadge={getStatusBadge}
+                      formatDate={formatDate}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          </>
+        )}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-500">
                               {formatDate(log.created_at)}
