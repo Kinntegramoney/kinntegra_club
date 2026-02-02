@@ -385,13 +385,14 @@ const TradeLogsWithBifurcation = ({ logs, formatDate, formatCurrency, getStatusB
         };
       }
       const roundDownAmt = entry.amount || roundToHundred(entry.net_amount || 0);
-      const hasUcc = entry.ucc || entry.target_ucc;
       cashflowGroups[cfId].allocations.push({
         ...entry,
         round_down_amount: roundDownAmt
       });
-      // Only add to investment total if entry has a UCC
-      if (hasUcc) {
+      // Only add to investment total if entry has a valid portfolio (not "none")
+      const portfolioValue = entry.portfolio || entry.portfolio_category || '';
+      const hasValidPortfolio = portfolioValue && portfolioValue.toLowerCase() !== 'none';
+      if (hasValidPortfolio) {
         cashflowGroups[cfId].total_round_down_amount += roundDownAmt;
       }
       if (!cashflowGroups[cfId].total_net_amount) {
