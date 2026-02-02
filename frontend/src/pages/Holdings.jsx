@@ -354,7 +354,7 @@ const InvestmentTradesTable = ({ trades, selectedClient, formatINR }) => {
               <th className="text-left px-4 py-3 font-medium text-gray-600">Sr No</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Investment Date</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">UCC</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Deal ID</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Units</th>
               <th className="text-right px-4 py-3 font-medium text-gray-600">Amount</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">UTR Reference</th>
