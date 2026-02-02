@@ -590,6 +590,7 @@ export default function Holdings() {
         bond_id: log.bond_id,
         bond_name: log.bond_name,
         bond_code: log.ucc || log.target_ucc || log.bond_code,
+        ucc: log.ucc,  // Preserve original ucc field
         target_ucc: log.ucc || log.target_ucc,
         units: log.units || 0,
         total_amount: log.net_amount || log.total_amount || 0,
