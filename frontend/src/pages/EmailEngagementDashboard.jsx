@@ -617,8 +617,8 @@ export default function EmailEngagementDashboard() {
                 )}
                 <p className="text-xs text-gray-500 mt-1">
                   {availableCashflows.length > 0 
-                    ? `${availableCashflows.length} investment date(s) found` 
-                    : 'No investment records found - enter date manually'}
+                    ? `${availableCashflows.length} investment date(s) found for this client` 
+                    : 'No matching investment records - enter date manually'}
                 </p>
               </div>
               
