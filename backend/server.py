@@ -21397,30 +21397,70 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     available_re = len([r for r in real_estate if r.get('status') not in ['fully_invested', 'closed']])
     invested_re = len([r for r in real_estate if r.get('status') in ['partially_invested', 'fully_invested']])
     
-    # Calculate Bond AUM Details
-    # Get all client allocations for detailed AUM breakdown
+    # ==================== BOND AUM CALCULATIONS ====================
+    # Total Invested: From reinvestment_logs (Investment tab) - approved/submitted entries
+    reinvestment_logs = await db.reinvestment_logs.find(
+        {"approval_status": {"$in": ["approved", "submitted"]}},
+        {"_id": 0}
+    ).to_list(10000)
+    
     bond_total_invested = 0
+    for log in reinvestment_logs:
+        # Sum up all allocations for each log
+        allocations = log.get('ucc_allocations', [])
+        if allocations:
+            for alloc in allocations:
+                bond_total_invested += alloc.get('amount', 0) or 0
+        else:
+            # Fallback to direct amount field
+            bond_total_invested += log.get('invested_amount', 0) or log.get('round_down_amount', 0) or 0
+    
+    # Total Repaid: From historical uploads (actual_repayments) + email reads (email_read_logs)
+    # Need to dedupe based on client_id + bond_id + date
+    repaid_entries = set()  # Track unique entries to avoid duplicates
     bond_total_repaid = 0
-    bond_total_pending = 0
-    bond_profits = 0
     
-    for client in clients:
-        allocations = client.get('bond_allocations', [])
-        for alloc in allocations:
-            invested = alloc.get('total_investment', 0) or alloc.get('invested_amount', 0) or 0
-            repaid = alloc.get('total_repaid', 0) or 0
-            
-            bond_total_invested += invested
-            bond_total_repaid += repaid
-            bond_total_pending += max(0, invested - repaid)
+    # Get from actual_repayments (historical uploads)
+    actual_repayments = await db.actual_repayments.find({}, {"_id": 0}).to_list(10000)
+    for rep in actual_repayments:
+        # Create unique key: client_id|bond_id|date
+        client_id = rep.get('client_id', '')
+        bond_id = rep.get('bond_id', '')
+        rep_date = str(rep.get('repayment_date', ''))[:10]
+        unique_key = f"{client_id}|{bond_id}|{rep_date}"
+        
+        if unique_key not in repaid_entries:
+            repaid_entries.add(unique_key)
+            bond_total_repaid += rep.get('gross_amount', 0) or rep.get('net_amount', 0) or 0
     
-    # Calculate profits from holding cashflows
-    cashflows = await db.holding_cashflows.find({}, {"_id": 0}).to_list(10000)
-    for cf in cashflows:
-        if cf.get('interest', 0) > 0:
-            bond_profits += cf.get('interest', 0)
+    # Get from email_read_logs where holding_updated is True
+    email_logs = await db.email_read_logs.find(
+        {"holding_updated": True},
+        {"_id": 0}
+    ).to_list(10000)
+    for log in email_logs:
+        client_id = log.get('client_id', '')
+        bond_id = log.get('bond_id', '')
+        rep_date = str(log.get('repayment_date', ''))[:10]
+        unique_key = f"{client_id}|{bond_id}|{rep_date}"
+        
+        if unique_key not in repaid_entries:
+            repaid_entries.add(unique_key)
+            bond_total_repaid += log.get('gross_amount', 0) or log.get('net_amount', 0) or 0
     
-    # Legacy bond AUM calculation
+    # Total Pending: All upcoming repayments from holding_cashflows where date > today
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    upcoming_cashflows = await db.holding_cashflows.find(
+        {"date": {"$gt": today}, "is_repaid": {"$ne": True}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    bond_total_pending = sum(cf.get('gross_amount', 0) or cf.get('net_amount', 0) or 0 for cf in upcoming_cashflows)
+    
+    # Profits = Total Pending + Total Repaid - Total Invested
+    bond_profits = bond_total_pending + bond_total_repaid - bond_total_invested
+    
+    # Legacy bond AUM calculation (for backward compatibility)
     bond_aum = sum(
         (b.get('units_sold', 0) * b.get('face_value', 0)) 
         for b in bonds
