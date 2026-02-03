@@ -21467,17 +21467,19 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     # Total deal size = sum of total_cost (which includes DLD and admin)
     re_total_deal_size = sum(r.get('total_cost', 0) for r in real_estate)
     
-    # Total paid by clients = sum of all investments
+    # Total paid by clients = sum of all payments from investors
     re_total_paid = 0
     for re_opp in real_estate:
-        # Check investors list
         investors = re_opp.get('investors', [])
         for inv in investors:
-            re_total_paid += inv.get('amount_paid', 0) or inv.get('invested_amount', 0) or 0
-        
-        # Also check invested_percentage as fallback
-        if not investors and re_opp.get('invested_percentage', 0) > 0:
-            re_total_paid += (re_opp.get('total_cost', 0) * re_opp.get('invested_percentage', 0) / 100)
+            # Sum up all payments made by each investor
+            payments = inv.get('payments', [])
+            if payments:
+                for payment in payments:
+                    re_total_paid += payment.get('amount', 0) or 0
+            else:
+                # Fallback to amount_paid field if no payments array
+                re_total_paid += inv.get('amount_paid', 0) or 0
     
     # Legacy real estate AUM calculation  
     real_estate_aum = sum(
