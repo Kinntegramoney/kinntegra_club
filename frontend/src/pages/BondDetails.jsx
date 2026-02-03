@@ -809,7 +809,7 @@ export default function BondDetails() {
             {approximateAmount && enhancedCalculation && enhancedCalculation.clean_price_per_unit > 0 && (
               <div className="mb-4 p-4 bg-white border border-blue-200 rounded-lg">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium text-blue-800">For approximate amount of ₹{parseInt(approximateAmount).toLocaleString('en-IN')}</p>
+                  <p className="text-sm font-medium text-blue-800">For approximate amount of ₹{approximateAmount ? parseInt(approximateAmount).toLocaleString('en-IN') : '0'}</p>
                   <div className="bg-emerald-100 px-3 py-1 rounded-full">
                     <p className="text-xs font-mono font-semibold text-emerald-700">Price/Unit: ₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</p>
                   </div>
