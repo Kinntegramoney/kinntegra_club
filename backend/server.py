@@ -21078,6 +21078,73 @@ async def get_untagged_email_logs(
     return {"logs": untagged_logs}
 
 
+@api_router.get("/email-engagement/client-investments")
+async def get_client_investment_dates(
+    client_name: Optional[str] = None,
+    bond_name: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get client's actual investment dates and amounts for the dropdown"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this data")
+    
+    investments = []
+    
+    # Get from trades (blocked units) - these have actual investment dates
+    query = {"status": {"$ne": "cancelled"}}
+    if client_name:
+        query["client_name"] = {"$regex": client_name, "$options": "i"}
+    
+    trades = await db.trades.find(query, {"_id": 0}).to_list(500)
+    
+    for trade in trades:
+        trade_date = trade.get('trade_date') or trade.get('created_at', '')
+        if trade_date:
+            investments.append({
+                "date": str(trade_date)[:10],
+                "amount": trade.get('amount', 0) or trade.get('total_amount', 0) or 0,
+                "type": "investment",
+                "source": "trade",
+                "bond_name": trade.get('bond_name', ''),
+                "client_name": trade.get('client_name', '')
+            })
+    
+    # Also get from holding_cashflows for historical investment entries
+    cf_query = {}
+    if client_name:
+        # Find client by name first
+        client = await db.clients.find_one({"name": {"$regex": client_name, "$options": "i"}}, {"_id": 0, "id": 1})
+        if client:
+            cf_query["client_id"] = client.get('id')
+    
+    cashflows = await db.holding_cashflows.find(
+        {**cf_query, "type": {"$in": ["investment", "purchase", "buy"]}},
+        {"_id": 0}
+    ).to_list(500)
+    
+    for cf in cashflows:
+        cf_date = cf.get('date', '')
+        if cf_date:
+            investments.append({
+                "date": str(cf_date)[:10],
+                "amount": cf.get('amount', 0) or cf.get('principal', 0) or 0,
+                "type": "investment",
+                "source": "cashflow",
+                "bond_name": cf.get('bond_name', ''),
+                "client_name": client_name or ''
+            })
+    
+    # Deduplicate by date
+    seen_dates = set()
+    unique_investments = []
+    for inv in sorted(investments, key=lambda x: x['date'], reverse=True):
+        if inv['date'] not in seen_dates:
+            seen_dates.add(inv['date'])
+            unique_investments.append(inv)
+    
+    return {"investments": unique_investments}
+
+
 class ProcessRepaymentRequest(BaseModel):
     email_log_id: str
     transaction_date: str
