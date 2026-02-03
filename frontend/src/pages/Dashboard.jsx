@@ -361,30 +361,30 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Opportunities - Bonds & Real Estate */}
+            {/* Opportunities - Bonds & Real Estate (Available Only) */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="opportunities-card">
               <div className="flex items-center gap-2 mb-4">
                 <div className="p-2 rounded-lg bg-emerald-500/10">
                   <TrendingUp className="h-5 w-5 text-emerald-500" />
                 </div>
-                <h3 className="font-semibold text-gray-800">Opportunities</h3>
+                <h3 className="font-semibold text-gray-800">Available Opportunities</h3>
               </div>
               
               <div className="grid grid-cols-2 gap-4 my-4">
-                {/* Bonds */}
+                {/* Bonds - Show Available Count */}
                 <div className="bg-etihad-gold-50 rounded-lg p-4 text-center border border-etihad-gold-200">
                   <Landmark className="h-8 w-8 text-etihad-gold-500 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-etihad-gold-700">{summary?.opportunities?.bonds?.total || 0}</p>
+                  <p className="text-3xl font-bold text-etihad-gold-700">{summary?.opportunities?.bonds?.available || 0}</p>
                   <p className="text-xs text-etihad-gold-600 mt-1">Bonds</p>
-                  <p className="text-xs text-gray-500">{summary?.opportunities?.bonds?.available || 0} available</p>
+                  <p className="text-xs text-gray-500">{summary?.opportunities?.bonds?.total || 0} total</p>
                 </div>
                 
-                {/* Real Estate */}
+                {/* Real Estate - Show Available Count */}
                 <div className="bg-slate-50 rounded-lg p-4 text-center border border-slate-200">
                   <Building2 className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-slate-700">{summary?.opportunities?.real_estate?.total || 0}</p>
+                  <p className="text-3xl font-bold text-slate-700">{summary?.opportunities?.real_estate?.available || 0}</p>
                   <p className="text-xs text-slate-600 mt-1">Real Estate</p>
-                  <p className="text-xs text-gray-500">{summary?.opportunities?.real_estate?.available || 0} available</p>
+                  <p className="text-xs text-gray-500">{summary?.opportunities?.real_estate?.total || 0} total</p>
                 </div>
               </div>
             </div>
