@@ -13190,7 +13190,126 @@ async def approve_reinvestment_tag(cashflow_id: str, approval: ReinvestmentAppro
     }
 
 
-# Client-specific endpoints for approvals and logs
+# Client-specific endpoints for dashboard, approvals and logs
+@api_router.get("/client/dashboard/summary")
+async def get_client_dashboard_summary(current_user: dict = Depends(get_current_user)):
+    """Get dashboard summary for client - opportunities, upcoming repayments, AUM"""
+    if current_user['role'] != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
+    
+    # Find client record
+    client = await db.clients.find_one({"user_id": current_user['id']}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    client_id = client.get('id')
+    
+    # Get available opportunities (not funded or closed)
+    available_bonds = await db.bonds.count_documents({
+        "status": {"$in": ["available", "open", "active", None]},
+        "$or": [
+            {"is_funded": {"$ne": True}},
+            {"is_funded": {"$exists": False}}
+        ]
+    })
+    available_re = await db.real_estate_opportunities.count_documents({
+        "status": {"$in": ["available", "open", "active", None]}
+    })
+    
+    # Get upcoming repayments for this client
+    today = datetime.now().strftime("%Y-%m-%d")
+    upcoming_repayments = await db.holding_cashflows.find({
+        "client_id": client_id,
+        "date": {"$gte": today},
+        "is_repaid": {"$ne": True}
+    }, {"_id": 0, "date": 1, "amount": 1, "type": 1, "bond_name": 1}).sort("date", 1).to_list(5)
+    
+    upcoming_repayments_count = await db.holding_cashflows.count_documents({
+        "client_id": client_id,
+        "date": {"$gte": today},
+        "is_repaid": {"$ne": True}
+    })
+    
+    # Calculate Bond AUM from client allocations
+    bonds = await db.bonds.find({}, {"_id": 0, "id": 1, "face_value": 1, "name": 1}).to_list(1000)
+    bond_dict = {b['id']: b for b in bonds}
+    
+    total_bond_invested = 0
+    total_bond_repaid = 0
+    
+    # Get trades for actual invested amount
+    trades = await db.trades.find({
+        "client_id": client_id,
+        "status": {"$in": ["approved", "completed"]}
+    }, {"_id": 0, "total_amount": 1}).to_list(100)
+    
+    for trade in trades:
+        total_bond_invested += trade.get('total_amount', 0) or 0
+    
+    # Calculate from allocations if no trades
+    allocations = client.get('bond_allocations', [])
+    total_bond_deal_size = 0
+    for alloc in allocations:
+        bond = bond_dict.get(alloc.get('bond_id'))
+        if bond:
+            units_paid = alloc.get('units_paid', 0)
+            total_bond_deal_size += units_paid * bond.get('face_value', 0)
+            
+            # Calculate repaid from cashflows
+            cashflows = alloc.get('cashflows', [])
+            for cf in cashflows:
+                if cf.get('type') == 'principal_repayment':
+                    total_bond_repaid += cf.get('amount', 0)
+    
+    if total_bond_invested == 0:
+        total_bond_invested = total_bond_deal_size
+    
+    total_bond_pending = total_bond_deal_size - total_bond_repaid
+    
+    # Calculate Real Estate AUM
+    real_estate_opps = await db.real_estate_opportunities.find(
+        {"investors.client_id": client_id},
+        {"_id": 0}
+    ).to_list(100)
+    
+    total_re_deal_size = 0
+    total_re_paid = 0
+    
+    for re in real_estate_opps:
+        investors = re.get('investors', [])
+        for inv in investors:
+            if inv.get('client_id') == client_id:
+                share_pct = inv.get('share_percentage', inv.get('percentage', 0))
+                total_cost = re.get('total_cost', 0)
+                total_re_deal_size += total_cost * share_pct / 100
+                
+                # Calculate paid amount
+                payments = inv.get('payments', [])
+                for payment in payments:
+                    total_re_paid += payment.get('amount', 0)
+    
+    return {
+        "opportunities": {
+            "bonds": {"available": available_bonds},
+            "real_estate": {"available": available_re}
+        },
+        "upcoming_repayments": {
+            "count": upcoming_repayments_count,
+            "items": upcoming_repayments
+        },
+        "bond_aum": {
+            "total_deal_size": total_bond_deal_size,
+            "total_invested": total_bond_invested,
+            "total_repaid": total_bond_repaid,
+            "total_pending": total_bond_pending
+        },
+        "real_estate_aum": {
+            "total_deal_size": total_re_deal_size,
+            "total_paid": total_re_paid
+        }
+    }
+
+
 @api_router.get("/client/pending-approvals/count")
 async def get_client_pending_approvals_count(current_user: dict = Depends(get_current_user)):
     """Get count of pending approvals for client"""
