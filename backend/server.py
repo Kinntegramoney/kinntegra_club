@@ -21098,49 +21098,26 @@ async def get_client_investment_dates(
     trades = await db.trades.find(query, {"_id": 0}).to_list(500)
     
     for trade in trades:
-        trade_date = trade.get('trade_date') or trade.get('created_at', '')
-        if trade_date:
+        # Use investment_date, trade_date, or created_at as fallback
+        inv_date = trade.get('investment_date') or trade.get('trade_date') or trade.get('created_at', '')
+        if inv_date:
             investments.append({
-                "date": str(trade_date)[:10],
-                "amount": trade.get('amount', 0) or trade.get('total_amount', 0) or 0,
+                "date": str(inv_date)[:10],
+                "amount": trade.get('total_amount', 0) or trade.get('amount', 0) or 0,
                 "type": "investment",
                 "source": "trade",
                 "bond_name": trade.get('bond_name', ''),
                 "client_name": trade.get('client_name', '')
             })
     
-    # Also get from holding_cashflows for historical investment entries
-    cf_query = {}
-    if client_name:
-        # Find client by name first
-        client = await db.clients.find_one({"name": {"$regex": client_name, "$options": "i"}}, {"_id": 0, "id": 1})
-        if client:
-            cf_query["client_id"] = client.get('id')
+    # Deduplicate by date and sort by amount descending
+    seen_dates = {}
+    for inv in investments:
+        date_key = inv['date']
+        if date_key not in seen_dates or inv['amount'] > seen_dates[date_key]['amount']:
+            seen_dates[date_key] = inv
     
-    cashflows = await db.holding_cashflows.find(
-        {**cf_query, "type": {"$in": ["investment", "purchase", "buy"]}},
-        {"_id": 0}
-    ).to_list(500)
-    
-    for cf in cashflows:
-        cf_date = cf.get('date', '')
-        if cf_date:
-            investments.append({
-                "date": str(cf_date)[:10],
-                "amount": cf.get('amount', 0) or cf.get('principal', 0) or 0,
-                "type": "investment",
-                "source": "cashflow",
-                "bond_name": cf.get('bond_name', ''),
-                "client_name": client_name or ''
-            })
-    
-    # Deduplicate by date
-    seen_dates = set()
-    unique_investments = []
-    for inv in sorted(investments, key=lambda x: x['date'], reverse=True):
-        if inv['date'] not in seen_dates:
-            seen_dates.add(inv['date'])
-            unique_investments.append(inv)
+    unique_investments = sorted(seen_dates.values(), key=lambda x: x['date'], reverse=True)
     
     return {"investments": unique_investments}
 
