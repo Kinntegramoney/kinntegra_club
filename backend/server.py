@@ -22220,11 +22220,47 @@ async def get_sub_broker_dashboard_summary(current_user: dict = Depends(get_curr
         elif has_re:
             re_clients += 1
     
-    # Calculate Bond AUM for linked clients
+    # Get available opportunities (not funded or closed)
+    available_bonds = await db.bonds.count_documents({
+        "status": {"$in": ["available", "open", "active", None]},
+        "$or": [
+            {"is_funded": {"$ne": True}},
+            {"is_funded": {"$exists": False}}
+        ]
+    })
+    available_re = await db.real_estate_opportunities.count_documents({
+        "status": {"$in": ["available", "open", "active", None]}
+    })
+    
+    # Get upcoming repayments for all linked clients
+    today = datetime.now().strftime("%Y-%m-%d")
+    upcoming_repayments = await db.holding_cashflows.find({
+        "client_id": {"$in": client_ids},
+        "date": {"$gte": today},
+        "is_repaid": {"$ne": True}
+    }, {"_id": 0, "date": 1, "amount": 1, "type": 1, "bond_name": 1, "client_name": 1}).sort("date", 1).to_list(10)
+    
+    upcoming_repayments_count = await db.holding_cashflows.count_documents({
+        "client_id": {"$in": client_ids},
+        "date": {"$gte": today},
+        "is_repaid": {"$ne": True}
+    })
+    
+    # Calculate Bond AUM for linked clients - using actual payments made
     bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
-    total_bond_invested = 0
+    total_bond_invested = 0  # From actual payments/trades
+    total_bond_deal_size = 0  # Face value
     total_bond_repaid = 0
     total_bond_pending = 0
+    
+    # Get trades for linked clients to calculate actual invested amount
+    trades = await db.trades.find({
+        "client_id": {"$in": client_ids},
+        "status": {"$in": ["approved", "completed"]}
+    }, {"_id": 0}).to_list(1000)
+    
+    for trade in trades:
+        total_bond_invested += trade.get('total_amount', 0) or 0
     
     for client in linked_clients:
         allocations = client.get('bond_allocations', [])
@@ -22233,7 +22269,7 @@ async def get_sub_broker_dashboard_summary(current_user: dict = Depends(get_curr
             if bond:
                 face_value = bond.get('face_value', 0)
                 units_paid = alloc.get('units_paid', 0)
-                total_bond_invested += units_paid * face_value
+                total_bond_deal_size += units_paid * face_value
                 
                 # Calculate repaid from cashflows
                 cashflows = alloc.get('cashflows', [])
@@ -22241,7 +22277,11 @@ async def get_sub_broker_dashboard_summary(current_user: dict = Depends(get_curr
                     if cf.get('type') == 'principal_repayment':
                         total_bond_repaid += cf.get('amount', 0)
     
-    total_bond_pending = total_bond_invested - total_bond_repaid
+    # If no trades found, fallback to deal size
+    if total_bond_invested == 0:
+        total_bond_invested = total_bond_deal_size
+    
+    total_bond_pending = total_bond_deal_size - total_bond_repaid
     
     # Calculate Real Estate AUM for linked clients
     real_estate_opps = await db.real_estate_opportunities.find({}, {"_id": 0}).to_list(1000)
@@ -22269,7 +22309,16 @@ async def get_sub_broker_dashboard_summary(current_user: dict = Depends(get_curr
             "real_estate_only": re_clients,
             "both_products": both_clients
         },
+        "opportunities": {
+            "bonds": {"available": available_bonds},
+            "real_estate": {"available": available_re}
+        },
+        "upcoming_repayments": {
+            "count": upcoming_repayments_count,
+            "items": upcoming_repayments
+        },
         "bond_aum": {
+            "total_deal_size": total_bond_deal_size,
             "total_invested": total_bond_invested,
             "total_repaid": total_bond_repaid,
             "total_pending": total_bond_pending
