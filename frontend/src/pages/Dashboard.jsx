@@ -12,7 +12,8 @@ import {
   Trash2,
   AlertTriangle,
   X,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Mail
 } from "lucide-react";
 import { toast } from "sonner";
 
