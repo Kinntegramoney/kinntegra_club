@@ -555,7 +555,7 @@ export default function EmailEngagementDashboard() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Tag className="h-5 w-5 text-etihad-gold-600" />
-              Manual Email Tagging
+              Process Repayment
             </DialogTitle>
           </DialogHeader>
           
@@ -563,70 +563,61 @@ export default function EmailEngagementDashboard() {
             <div className="space-y-4">
               {/* Email Info Card */}
               <div className="bg-gray-50 rounded-lg p-3 border">
-                <p className="text-xs text-gray-500 mb-1">Email Subject</p>
-                <p className="font-medium text-gray-800 text-sm truncate">{selectedEmailLog.email_subject || 'N/A'}</p>
-                <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
-                  <span>Read: {selectedEmailLog.email_read_at ? format(new Date(selectedEmailLog.email_read_at), "dd MMM yyyy") : 'N/A'}</span>
-                  <span className="font-semibold text-emerald-700">Gross: {formatINR(selectedEmailLog.gross_amount)}</span>
-                  <span className="font-semibold text-blue-700">Net: {formatINR(selectedEmailLog.net_amount)}</span>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium text-gray-800 text-sm">{selectedEmailLog.client_name || 'Unknown Client'}</p>
+                  <Badge variant="outline" className="text-xs">{selectedEmailLog.bond_name || 'N/A'}</Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <p className="text-gray-500">Repayment Date</p>
+                    <p className="font-semibold">{selectedEmailLog.repayment_date ? format(new Date(selectedEmailLog.repayment_date), "dd MMM yyyy") : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Gross Amount</p>
+                    <p className="font-semibold text-emerald-700">{formatINR(selectedEmailLog.gross_amount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Net Amount</p>
+                    <p className="font-semibold text-blue-700">{formatINR(selectedEmailLog.net_amount)}</p>
+                  </div>
                 </div>
               </div>
               
-              {/* Client Selection */}
+              {/* Transaction Date */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  Select Client <span className="text-red-500">*</span>
-                </label>
-                <Select 
-                  value={tagForm.client_id} 
-                  onValueChange={(val) => setTagForm(prev => ({ ...prev, client_id: val }))}
-                >
-                  <SelectTrigger data-testid="tag-client-select">
-                    <SelectValue placeholder="Choose a client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allClients.map(client => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name} {client.pan_number && `(${client.pan_number})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* Bond/Deal Selection */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  Select Bond/Deal <span className="text-red-500">*</span>
-                </label>
-                <Select 
-                  value={tagForm.bond_id} 
-                  onValueChange={(val) => setTagForm(prev => ({ ...prev, bond_id: val }))}
-                >
-                  <SelectTrigger data-testid="tag-bond-select">
-                    <SelectValue placeholder="Choose a bond" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allBonds.map(bond => (
-                      <SelectItem key={bond.id} value={bond.id}>
-                        {bond.name} {bond.bond_code && `(${bond.bond_code})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* Investment/Repayment Date */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  Investment/Repayment Date <span className="text-red-500">*</span>
+                  Transaction Date <span className="text-red-500">*</span>
                 </label>
                 <Input
                   type="date"
-                  value={tagForm.repayment_date}
-                  onChange={(e) => setTagForm(prev => ({ ...prev, repayment_date: e.target.value }))}
+                  value={tagForm.transaction_date}
+                  onChange={(e) => setTagForm(prev => ({ ...prev, transaction_date: e.target.value }))}
                   data-testid="tag-date-input"
                 />
+              </div>
+              
+              {/* Payment Type */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Payment Type <span className="text-red-500">*</span>
+                </label>
+                <Select 
+                  value={tagForm.payment_type} 
+                  onValueChange={(val) => setTagForm(prev => ({ ...prev, payment_type: val }))}
+                >
+                  <SelectTrigger data-testid="tag-payment-type-select">
+                    <SelectValue placeholder="Select payment type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Normal Repayment</SelectItem>
+                    <SelectItem value="prepayment">Prepayment</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {tagForm.payment_type === 'prepayment' 
+                    ? 'Prepayment will adjust XIRR and reduce final maturity payout' 
+                    : 'Normal scheduled repayment'}
+                </p>
               </div>
             </div>
           )}
@@ -641,19 +632,19 @@ export default function EmailEngagementDashboard() {
             </Button>
             <Button
               onClick={handleSubmitTag}
-              disabled={tagging || !tagForm.client_id || !tagForm.bond_id || !tagForm.repayment_date}
+              disabled={tagging || !tagForm.transaction_date || !tagForm.payment_type}
               className="bg-etihad-gold-600 hover:bg-etihad-gold-700"
               data-testid="submit-tag-btn"
             >
               {tagging ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Tagging...
+                  Processing...
                 </>
               ) : (
                 <>
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Tag Email
+                  Process Repayment
                 </>
               )}
             </Button>
