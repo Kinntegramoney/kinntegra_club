@@ -21413,10 +21413,10 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         allocations = log.get('ucc_allocations', [])
         if allocations:
             for alloc in allocations:
-                bond_total_invested += alloc.get('amount', 0) or 0
+                bond_total_invested += alloc.get('amount', 0) or alloc.get('invested_amount', 0) or 0
         else:
-            # Fallback to direct amount field
-            bond_total_invested += log.get('invested_amount', 0) or log.get('round_down_amount', 0) or 0
+            # Fallback to direct amount fields
+            bond_total_invested += log.get('net_amount', 0) or log.get('invested_amount', 0) or log.get('round_down_amount', 0) or 0
     
     # Total Repaid: From historical uploads (actual_repayments) + email reads (email_read_logs)
     # Need to dedupe based on client_id + bond_id + date
