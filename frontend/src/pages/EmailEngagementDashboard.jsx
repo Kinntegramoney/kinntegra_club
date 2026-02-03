@@ -181,12 +181,13 @@ export default function EmailEngagementDashboard() {
       payment_type: "normal"
     });
     
-    // Fetch available investment dates for this client
+    // Fetch available investment dates for this specific client + deal combination
     try {
       const token = localStorage.getItem("token");
       const params = new URLSearchParams();
       if (emailLog.client_name) params.append("client_name", emailLog.client_name);
-      if (emailLog.bond_name) params.append("bond_name", emailLog.bond_name);
+      if (emailLog.bond_code) params.append("bond_code", emailLog.bond_code);
+      else if (emailLog.bond_name) params.append("bond_name", emailLog.bond_name);
       
       const response = await axios.get(
         `${API}/email-engagement/client-investments?${params.toString()}`,
