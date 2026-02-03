@@ -21149,51 +21149,39 @@ async def get_email_engagement_summary(
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can access email engagement data")
     
-    # Get counts from actual_repayments (historical uploads + email reads)
-    # These represent the "emails read" / repayments processed
-    total_repayments = await db.actual_repayments.count_documents({})
+    # Get counts from email_read_logs (emails actually read from inbox)
+    total_emails = await db.email_read_logs.count_documents({})
+    holdings_updated = await db.email_read_logs.count_documents({"holding_updated": True})
+    holdings_pending = await db.email_read_logs.count_documents({"holding_updated": {"$ne": True}})
     
-    # Get counts from email_read_logs (if any exist)
-    email_logs_count = await db.email_read_logs.count_documents({})
-    
-    # Total "emails read" = actual_repayments + email_read_logs (deduplicated by checking both)
-    total_emails = total_repayments + email_logs_count
-    
-    # Holdings updated = repayments where matching cashflow is marked as repaid
-    holdings_updated = await db.holding_cashflows.count_documents({"is_repaid": True})
-    
-    # Holdings pending = repayments where matching cashflow is NOT repaid yet
-    # This is total repayments minus those already updated
-    holdings_pending = max(0, total_repayments - holdings_updated)
-    
-    # Get unique clients from actual_repayments
+    # Get unique clients from email_read_logs
     pipeline = [
         {"$match": {"client_id": {"$ne": None}}},
         {"$group": {"_id": "$client_id"}},
         {"$count": "total"}
     ]
-    client_result = await db.actual_repayments.aggregate(pipeline).to_list(1)
+    client_result = await db.email_read_logs.aggregate(pipeline).to_list(1)
     clients_identified = client_result[0]['total'] if client_result else 0
     
-    # Get amount totals from actual_repayments
+    # Get amount totals from email_read_logs
     amount_pipeline = [
         {
             "$group": {
                 "_id": None,
                 "total_gross": {"$sum": {"$ifNull": ["$gross_amount", 0]}},
                 "total_net": {"$sum": {"$ifNull": ["$net_amount", 0]}},
-                "total_tds": {"$sum": {"$ifNull": ["$tds", 0]}}
+                "total_tds": {"$sum": {"$ifNull": ["$tds_amount", 0]}}
             }
         }
     ]
-    amount_result = await db.actual_repayments.aggregate(amount_pipeline).to_list(1)
+    amount_result = await db.email_read_logs.aggregate(amount_pipeline).to_list(1)
     
     return {
         "total_emails_read": total_emails,
         "clients_identified": clients_identified,
         "holdings_updated": holdings_updated,
         "holdings_pending": holdings_pending,
-        "recent_emails_7d": 0,  # Would need timestamp tracking
+        "recent_emails_7d": 0,
         "total_gross_amount": amount_result[0]['total_gross'] if amount_result else 0,
         "total_net_amount": amount_result[0]['total_net'] if amount_result else 0,
         "total_tds": amount_result[0]['total_tds'] if amount_result else 0
