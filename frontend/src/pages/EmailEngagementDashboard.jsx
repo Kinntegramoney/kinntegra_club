@@ -586,17 +586,40 @@ export default function EmailEngagementDashboard() {
                 </div>
               </div>
               
-              {/* Transaction Date */}
+              {/* Transaction Date - Dropdown with Investment Dates */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1 block">
                   Transaction Date <span className="text-red-500">*</span>
                 </label>
-                <Input
-                  type="date"
-                  value={tagForm.transaction_date}
-                  onChange={(e) => setTagForm(prev => ({ ...prev, transaction_date: e.target.value }))}
-                  data-testid="tag-date-input"
-                />
+                {availableCashflows.length > 0 ? (
+                  <Select 
+                    value={tagForm.transaction_date} 
+                    onValueChange={(val) => setTagForm(prev => ({ ...prev, transaction_date: val }))}
+                  >
+                    <SelectTrigger data-testid="tag-date-select">
+                      <SelectValue placeholder="Select investment date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCashflows.map((inv, idx) => (
+                        <SelectItem key={idx} value={inv.date}>
+                          {format(new Date(inv.date), "dd MMM yyyy")} - {formatINR(inv.amount)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    type="date"
+                    value={tagForm.transaction_date}
+                    onChange={(e) => setTagForm(prev => ({ ...prev, transaction_date: e.target.value }))}
+                    data-testid="tag-date-input"
+                  />
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  {availableCashflows.length > 0 
+                    ? `${availableCashflows.length} investment date(s) found` 
+                    : 'No investment records found - enter date manually'}
+                </p>
               </div>
               
               {/* Payment Type */}
