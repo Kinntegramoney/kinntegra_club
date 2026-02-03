@@ -366,12 +366,12 @@ export default function EmailEngagementDashboard() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Client</label>
-              <Select value={selectedClient} onValueChange={setSelectedClient}>
+              <Select value={selectedClient} onValueChange={(val) => setSelectedClient(val === "all" ? "" : val)}>
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="All Clients" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Clients</SelectItem>
+                  <SelectItem value="all">All Clients</SelectItem>
                   {clients.map(client => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.name} ({client.email_count})
@@ -382,12 +382,12 @@ export default function EmailEngagementDashboard() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Holding Status</label>
-              <Select value={holdingStatus} onValueChange={setHoldingStatus}>
+              <Select value={holdingStatus} onValueChange={(val) => setHoldingStatus(val === "all" ? "" : val)}>
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="updated">Updated</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                 </SelectContent>
