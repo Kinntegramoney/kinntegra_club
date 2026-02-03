@@ -174,22 +174,34 @@ export default function EmailEngagementDashboard() {
   };
   
   // Open manual tag modal for an email log
-  const openTagModal = (emailLog) => {
+  const openTagModal = async (emailLog) => {
     setSelectedEmailLog(emailLog);
     setTagForm({
-      client_id: emailLog.client_id || "",
-      bond_id: emailLog.bond_id || "",
-      repayment_date: emailLog.repayment_date 
-        ? emailLog.repayment_date.split('T')[0] 
-        : ""
+      cashflow_id: "",
+      transaction_date: emailLog.repayment_date ? emailLog.repayment_date.split('T')[0] : "",
+      payment_type: "normal"
     });
+    
+    // Fetch available cashflows for this client/bond
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${API}/email-engagement/available-cashflows?client_id=${emailLog.client_id || ''}&bond_id=${emailLog.bond_id || ''}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setAvailableCashflows(response.data.cashflows || []);
+    } catch (error) {
+      console.error("Error fetching cashflows:", error);
+      setAvailableCashflows([]);
+    }
+    
     setShowTagModal(true);
   };
   
-  // Submit manual tag
+  // Submit manual tag - adds to actual repayment and adjusts XIRR
   const handleSubmitTag = async () => {
-    if (!tagForm.client_id || !tagForm.bond_id || !tagForm.repayment_date) {
-      toast.error("Please fill in all fields");
+    if (!tagForm.transaction_date || !tagForm.payment_type) {
+      toast.error("Please select transaction date and payment type");
       return;
     }
     
@@ -197,23 +209,29 @@ export default function EmailEngagementDashboard() {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.post(
-        `${API}/email-engagement/manual-tag`,
+        `${API}/email-engagement/process-repayment`,
         {
           email_log_id: selectedEmailLog.id,
-          client_id: tagForm.client_id,
-          bond_id: tagForm.bond_id,
-          repayment_date: tagForm.repayment_date
+          transaction_date: tagForm.transaction_date,
+          payment_type: tagForm.payment_type,
+          gross_amount: selectedEmailLog.gross_amount,
+          net_amount: selectedEmailLog.net_amount,
+          tds_amount: selectedEmailLog.tds_amount,
+          client_id: selectedEmailLog.client_id,
+          client_name: selectedEmailLog.client_name,
+          bond_id: selectedEmailLog.bond_id,
+          bond_name: selectedEmailLog.bond_name
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      toast.success(response.data.message || "Email tagged successfully");
+      toast.success(response.data.message || "Repayment processed successfully");
       setShowTagModal(false);
       setSelectedEmailLog(null);
       fetchDashboardData();
     } catch (error) {
-      console.error("Error tagging email:", error);
-      toast.error(error.response?.data?.detail || "Failed to tag email");
+      console.error("Error processing repayment:", error);
+      toast.error(error.response?.data?.detail || "Failed to process repayment");
     } finally {
       setTagging(false);
     }
