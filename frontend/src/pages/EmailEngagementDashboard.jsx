@@ -95,10 +95,11 @@ export default function EmailEngagementDashboard() {
   // Manual tagging modal state
   const [showTagModal, setShowTagModal] = useState(false);
   const [selectedEmailLog, setSelectedEmailLog] = useState(null);
+  const [availableCashflows, setAvailableCashflows] = useState([]);
   const [tagForm, setTagForm] = useState({
-    client_id: "",
-    bond_id: "",
-    repayment_date: ""
+    cashflow_id: "",
+    transaction_date: "",
+    payment_type: "normal" // "normal" or "prepayment"
   });
   const [tagging, setTagging] = useState(false);
 
