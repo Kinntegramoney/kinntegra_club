@@ -202,6 +202,33 @@ export default function EmailEngagementDashboard() {
     setShowTagModal(true);
   };
   
+  // Auto-tag all pending repayments
+  const [autoTagging, setAutoTagging] = useState(false);
+  
+  const handleAutoTag = async () => {
+    setAutoTagging(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/email-engagement/auto-tag`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.tagged_count > 0) {
+        toast.success(`Auto-tagged ${response.data.tagged_count} repayments successfully`);
+      } else {
+        toast.info(response.data.message || "No pending emails to tag");
+      }
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error auto-tagging:", error);
+      toast.error(error.response?.data?.detail || "Failed to auto-tag repayments");
+    } finally {
+      setAutoTagging(false);
+    }
+  };
+  
   // Submit manual tag - adds to actual repayment and adjusts XIRR
   const handleSubmitTag = async () => {
     if (!tagForm.transaction_date || !tagForm.payment_type) {
