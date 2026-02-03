@@ -379,10 +379,10 @@ export default function Dashboard() {
                 </div>
                 
                 {/* Real Estate */}
-                <div className="bg-pink-50 rounded-lg p-4 text-center border border-pink-200">
-                  <Building2 className="h-8 w-8 text-pink-500 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-pink-700">{summary?.opportunities?.real_estate?.total || 0}</p>
-                  <p className="text-xs text-pink-600 mt-1">Real Estate</p>
+                <div className="bg-slate-50 rounded-lg p-4 text-center border border-slate-200">
+                  <Building2 className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+                  <p className="text-3xl font-bold text-slate-700">{summary?.opportunities?.real_estate?.total || 0}</p>
+                  <p className="text-xs text-slate-600 mt-1">Real Estate</p>
                   <p className="text-xs text-gray-500">{summary?.opportunities?.real_estate?.available || 0} available</p>
                 </div>
               </div>
