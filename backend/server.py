@@ -21385,7 +21385,8 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     # Get bonds
     bonds = await db.bonds.find({}, {"_id": 0}).to_list(1000)
     total_bonds = len(bonds)
-    available_bonds = len([b for b in bonds if b.get('status') == 'available'])
+    # Available bonds = status is 'available' OR not explicitly funded/closed
+    available_bonds = len([b for b in bonds if b.get('status') in ['available', 'None', None] or b.get('status') not in ['funded', 'closed']])
     funded_bonds = len([b for b in bonds if b.get('status') == 'funded'])
     closed_bonds = len([b for b in bonds if b.get('status') == 'closed'])
     
