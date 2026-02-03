@@ -522,7 +522,7 @@ export default function EmailEngagementDashboard() {
                           : '-'}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {(!log.client_id || !log.holding_updated) && (
+                        {!log.holding_updated && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -534,9 +534,9 @@ export default function EmailEngagementDashboard() {
                             Tag
                           </Button>
                         )}
-                        {log.manually_tagged && (
-                          <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">
-                            Manual
+                        {log.holding_updated && (
+                          <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-300">
+                            Processed
                           </Badge>
                         )}
                       </td>
