@@ -21398,25 +21398,16 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     invested_re = len([r for r in real_estate if r.get('status') in ['partially_invested', 'fully_invested']])
     
     # ==================== BOND AUM CALCULATIONS ====================
-    # Total Invested: From reinvestment_logs (Investment tab) - approved/submitted entries with client approval
-    reinvestment_logs = await db.reinvestment_logs.find(
-        {
-            "approval_status": {"$in": ["approved", "submitted"]},
-            "client_approved": True
-        },
+    # Total Invested: From trades (blocked units) - actual money invested by clients
+    trades = await db.trades.find(
+        {"status": {"$ne": "cancelled"}},
         {"_id": 0}
     ).to_list(10000)
     
-    bond_total_invested = 0
-    for log in reinvestment_logs:
-        # Sum up all allocations for each log
-        allocations = log.get('ucc_allocations', [])
-        if allocations:
-            for alloc in allocations:
-                bond_total_invested += alloc.get('amount', 0) or alloc.get('invested_amount', 0) or 0
-        else:
-            # Fallback to direct amount fields
-            bond_total_invested += log.get('net_amount', 0) or log.get('invested_amount', 0) or log.get('round_down_amount', 0) or 0
+    bond_total_invested = sum(
+        t.get('amount', 0) or t.get('total_amount', 0) or 0 
+        for t in trades
+    )
     
     # Total Repaid: From historical uploads (actual_repayments) + email reads (email_read_logs)
     # Need to dedupe based on client_id + bond_id + date
