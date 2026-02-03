@@ -21249,11 +21249,22 @@ async def get_email_engagement_dashboard(
         query['holding_updated'] = {'$ne': True}
     
     # Get all email logs matching filters
-    email_logs = await db.email_read_logs.find(
+    all_email_logs = await db.email_read_logs.find(
         query, {"_id": 0}
     ).sort("email_read_at", -1).to_list(500)
     
-    # Calculate summary stats
+    # Deduplicate entries based on client_name + bond_name + repayment_date
+    seen_entries = set()
+    email_logs = []
+    for log in all_email_logs:
+        # Create unique key
+        unique_key = f"{log.get('client_name', '')}|{log.get('bond_name', '')}|{str(log.get('repayment_date', ''))[:10]}"
+        
+        if unique_key not in seen_entries:
+            seen_entries.add(unique_key)
+            email_logs.append(log)
+    
+    # Calculate summary stats from deduplicated logs
     total_emails_read = len(email_logs)
     clients_identified = len(set(log.get('client_id') for log in email_logs if log.get('client_id')))
     holdings_updated = sum(1 for log in email_logs if log.get('holding_updated'))
