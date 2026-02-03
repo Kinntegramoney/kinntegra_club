@@ -28,9 +28,9 @@ const COLORS = {
   danger: "#EF4444",
   info: "#3B82F6",
   venn: {
-    bonds: "#6366F1",      // Soft indigo for Bonds
-    realEstate: "#EC4899", // Soft pink for Real Estate  
-    both: "#8B5CF6"        // Soft purple for overlap
+    bonds: "#C8A456",      // Etihad Gold for Bonds
+    realEstate: "#1A365D", // Etihad Dark Navy for Real Estate  
+    both: "#8B6914"        // Etihad Bronze for overlap
   }
 };
 
