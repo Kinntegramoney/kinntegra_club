@@ -1,5 +1,47 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Feb 3, 2026)
+
+### Email Engagement & Holding Update Dashboard (Feb 3, 2026) ✅
+
+**Feature:** New dashboard to track email engagement and holding update status based on emails from `updates@kinntegraa.club`.
+
+**Implementation:**
+
+**Backend:**
+- Enhanced `email_reader.py` to log individual email reads to `email_read_logs` collection
+- Added client mapping from email content (client name matching)
+- Added tracking for holding updates (with timestamps)
+- New API endpoints:
+  - `GET /api/email-engagement/dashboard` - Full dashboard data with filters
+  - `GET /api/email-engagement/summary` - Quick summary stats
+  - `GET /api/email-engagement/clients` - List of clients for filtering
+
+**Frontend:**
+- New `EmailEngagementDashboard.jsx` page at `/broker/email-engagement`
+- Summary cards: Total Emails Read, Clients Identified, Holdings Updated, Holdings Pending
+- Amount summary: Total Gross, Total Net, Total TDS
+- Filters: Date range, Client, Holding Status
+- Detailed table with: Email Read Date, Client Name, Bond/Deal ID, Repayment Date, Amounts, Status
+- "Process Emails Now" button to trigger manual processing
+
+**Database Schema (`email_read_logs`):**
+- id, email_from, email_subject, email_date, email_read_at
+- client_id, client_name, client_pan
+- bond_id, bond_name, bond_code
+- repayment_date, gross_amount, net_amount, tds_amount
+- holding_updated (boolean), holding_updated_at, cashflows_updated_count
+- created_at, updated_at
+
+**Files Created/Modified:**
+- `/app/backend/email_reader.py` - Enhanced with email logging
+- `/app/backend/server.py` - New API endpoints
+- `/app/frontend/src/pages/EmailEngagementDashboard.jsx` - NEW
+- `/app/frontend/src/pages/Dashboard.jsx` - Added Email Tracker quick action
+- `/app/frontend/src/App.js` - Added route
+
+---
+
 ## Recent Changes (Feb 2, 2026)
 
 ### Holdings & Client Logs Sub-tabs Implementation (Feb 2, 2026) ✅
