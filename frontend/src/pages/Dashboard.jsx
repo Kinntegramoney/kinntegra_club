@@ -396,85 +396,85 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Opportunities, Bond AUM, Real Estate AUM - All in one row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Opportunities - Bonds & Real Estate (Available Only) */}
-              <div 
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all cursor-pointer" 
-                data-testid="opportunities-card"
-                onClick={() => navigate("/broker/opportunities")}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                    <TrendingUp className="h-4 w-4 text-emerald-500" />
-                  </div>
-                  <h3 className="font-semibold text-gray-800 text-sm">Available Opportunities</h3>
+          {/* Dashboard Cards - Row 2: Opportunities and AUM */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Opportunities - Bonds & Real Estate (Available Only) */}
+            <div 
+              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all cursor-pointer" 
+              data-testid="opportunities-card"
+              onClick={() => navigate("/broker/opportunities")}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-emerald-500/10">
+                  <TrendingUp className="h-5 w-5 text-emerald-500" />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-etihad-gold-50 rounded-lg p-3 text-center border border-etihad-gold-200">
-                    <Landmark className="h-6 w-6 text-etihad-gold-500 mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-etihad-gold-700">{summary?.opportunities?.bonds?.available || 0}</p>
-                    <p className="text-xs text-etihad-gold-600">Bonds</p>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-200">
-                    <Building2 className="h-6 w-6 text-slate-600 mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-slate-700">{summary?.opportunities?.real_estate?.available || 0}</p>
-                    <p className="text-xs text-slate-600">Real Estate</p>
-                  </div>
-                </div>
+                <h3 className="font-semibold text-gray-800">Available Opportunities</h3>
               </div>
               
-              {/* Bond AUM Details - Compact */}
-              <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all" data-testid="bond-aum-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-1.5 rounded-lg bg-etihad-gold-500/10">
-                    <Landmark className="h-4 w-4 text-etihad-gold-500" />
-                  </div>
-                  <h3 className="font-semibold text-gray-800 text-sm">Bond AUM</h3>
-                  <span className="text-xs bg-etihad-gold-100 text-etihad-gold-700 px-1.5 py-0.5 rounded ml-auto">INR</span>
+              <div className="grid grid-cols-2 gap-4 my-4">
+                <div className="bg-etihad-gold-50 rounded-lg p-4 text-center border border-etihad-gold-200">
+                  <Landmark className="h-8 w-8 text-etihad-gold-500 mx-auto mb-2" />
+                  <p className="text-3xl font-bold text-etihad-gold-700">{summary?.opportunities?.bonds?.available || 0}</p>
+                  <p className="text-xs text-etihad-gold-600 mt-1">Bonds</p>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
-                    <p className="text-xs text-blue-600 uppercase tracking-wide">Invested</p>
-                    <p className="text-sm font-bold text-blue-700">{formatINRCrores(summary?.bond_aum?.total_invested || 0)}</p>
-                  </div>
-                  <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-100">
-                    <p className="text-xs text-emerald-600 uppercase tracking-wide">Repaid</p>
-                    <p className="text-sm font-bold text-emerald-700">{formatINRCrores(summary?.bond_aum?.total_repaid || 0)}</p>
-                  </div>
-                  <div className="bg-orange-50 rounded-lg p-2 border border-orange-100">
-                    <p className="text-xs text-orange-600 uppercase tracking-wide">Pending</p>
-                    <p className="text-sm font-bold text-orange-700">{formatINRCrores(summary?.bond_aum?.total_pending || 0)}</p>
-                  </div>
-                  <div className="bg-purple-50 rounded-lg p-2 border border-purple-100">
-                    <p className="text-xs text-purple-600 uppercase tracking-wide">Profits</p>
-                    <p className="text-sm font-bold text-purple-700">{formatINRCrores(summary?.bond_aum?.profits || 0)}</p>
-                  </div>
+                <div className="bg-slate-50 rounded-lg p-4 text-center border border-slate-200">
+                  <Building2 className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+                  <p className="text-3xl font-bold text-slate-700">{summary?.opportunities?.real_estate?.available || 0}</p>
+                  <p className="text-xs text-slate-600 mt-1">Real Estate</p>
                 </div>
               </div>
-
-              {/* Real Estate AUM Details - Compact */}
-              <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all" data-testid="real-estate-aum-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-1.5 rounded-lg bg-slate-500/10">
-                    <Building2 className="h-4 w-4 text-slate-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-800 text-sm">Real Estate AUM</h3>
-                  <span className="text-xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded ml-auto">AED</span>
+            </div>
+            
+            {/* Bond AUM Details */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="bond-aum-card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-etihad-gold-500/10">
+                  <Landmark className="h-5 w-5 text-etihad-gold-500" />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
-                    <p className="text-xs text-slate-600 uppercase tracking-wide">Deal Size</p>
-                    <p className="text-sm font-bold text-slate-700">{formatAEDMillions(summary?.real_estate_aum?.total_deal_size || 0)}</p>
-                  </div>
-                  <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-100">
-                    <p className="text-xs text-emerald-600 uppercase tracking-wide">Paid</p>
-                    <p className="text-sm font-bold text-emerald-700">{formatAEDMillions(summary?.real_estate_aum?.total_paid || 0)}</p>
-                  </div>
+                <h3 className="font-semibold text-gray-800">Bond AUM</h3>
+                <span className="text-xs bg-etihad-gold-100 text-etihad-gold-700 px-2 py-0.5 rounded ml-auto">INR</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                  <p className="text-xs text-blue-600 uppercase tracking-wide">Invested</p>
+                  <p className="text-lg font-bold text-blue-700 mt-1">{formatINRCrores(summary?.bond_aum?.total_invested || 0)}</p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100">
+                  <p className="text-xs text-emerald-600 uppercase tracking-wide">Repaid</p>
+                  <p className="text-lg font-bold text-emerald-700 mt-1">{formatINRCrores(summary?.bond_aum?.total_repaid || 0)}</p>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+                  <p className="text-xs text-orange-600 uppercase tracking-wide">Pending</p>
+                  <p className="text-lg font-bold text-orange-700 mt-1">{formatINRCrores(summary?.bond_aum?.total_pending || 0)}</p>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                  <p className="text-xs text-purple-600 uppercase tracking-wide">Profits</p>
+                  <p className="text-lg font-bold text-purple-700 mt-1">{formatINRCrores(summary?.bond_aum?.profits || 0)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Real Estate AUM Details */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="real-estate-aum-card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-slate-500/10">
+                  <Building2 className="h-5 w-5 text-slate-600" />
+                </div>
+                <h3 className="font-semibold text-gray-800">Real Estate AUM</h3>
+                <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded ml-auto">AED</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <p className="text-xs text-slate-600 uppercase tracking-wide">Deal Size</p>
+                  <p className="text-lg font-bold text-slate-700 mt-1">{formatAEDMillions(summary?.real_estate_aum?.total_deal_size || 0)}</p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100">
+                  <p className="text-xs text-emerald-600 uppercase tracking-wide">Paid</p>
+                  <p className="text-lg font-bold text-emerald-700 mt-1">{formatAEDMillions(summary?.real_estate_aum?.total_paid || 0)}</p>
                 </div>
               </div>
             </div>
