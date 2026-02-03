@@ -21078,6 +21078,143 @@ async def get_untagged_email_logs(
     return {"logs": untagged_logs}
 
 
+class ProcessRepaymentRequest(BaseModel):
+    email_log_id: str
+    transaction_date: str
+    payment_type: str  # "normal" or "prepayment"
+    gross_amount: Optional[float] = 0
+    net_amount: Optional[float] = 0
+    tds_amount: Optional[float] = 0
+    client_id: Optional[str] = None
+    client_name: Optional[str] = None
+    bond_id: Optional[str] = None
+    bond_name: Optional[str] = None
+
+
+@api_router.post("/email-engagement/process-repayment")
+async def process_email_repayment(
+    request: ProcessRepaymentRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Process a repayment from email read logs.
+    - Adds to actual_repayments collection
+    - Updates holding_cashflows to mark as repaid
+    - For prepayments: adjusts XIRR and reduces final maturity payout
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can process repayments")
+    
+    # Get the email log
+    email_log = await db.email_read_logs.find_one({"id": request.email_log_id}, {"_id": 0})
+    if not email_log:
+        raise HTTPException(status_code=404, detail="Email log not found")
+    
+    # Create actual repayment record
+    repayment_id = str(uuid.uuid4())
+    repayment_record = {
+        "id": repayment_id,
+        "client_id": request.client_id or email_log.get('client_id'),
+        "client_name": request.client_name or email_log.get('client_name'),
+        "bond_id": request.bond_id or email_log.get('bond_id'),
+        "bond_name": request.bond_name or email_log.get('bond_name'),
+        "repayment_date": request.transaction_date,
+        "gross_amount": request.gross_amount or email_log.get('gross_amount', 0),
+        "net_amount": request.net_amount or email_log.get('net_amount', 0),
+        "tds": request.tds_amount or email_log.get('tds_amount', 0),
+        "payment_type": request.payment_type,
+        "is_prepayment": request.payment_type == "prepayment",
+        "email_log_id": request.email_log_id,
+        "created_by": current_user.get('id'),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "source": "email_read"
+    }
+    
+    # Insert into actual_repayments
+    await db.actual_repayments.insert_one(repayment_record)
+    
+    # Update the email_read_log to mark as processed
+    await db.email_read_logs.update_one(
+        {"id": request.email_log_id},
+        {
+            "$set": {
+                "holding_updated": True,
+                "holding_updated_at": datetime.now(timezone.utc).isoformat(),
+                "payment_type": request.payment_type,
+                "actual_repayment_id": repayment_id
+            }
+        }
+    )
+    
+    # Update matching holding_cashflows
+    client_id = request.client_id or email_log.get('client_id')
+    bond_id = request.bond_id or email_log.get('bond_id')
+    
+    if client_id and bond_id:
+        # Mark the cashflow as repaid
+        await db.holding_cashflows.update_many(
+            {
+                "client_id": client_id,
+                "bond_id": bond_id,
+                "date": {"$regex": f"^{request.transaction_date[:10]}"}
+            },
+            {
+                "$set": {
+                    "is_repaid": True,
+                    "repaid_date": request.transaction_date,
+                    "repaid_actual_amount": request.gross_amount,
+                    "repaid_net_amount": request.net_amount,
+                    "repaid_tds": request.tds_amount,
+                    "payment_type": request.payment_type,
+                    "email_processed": True,
+                    "email_processed_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # If prepayment, adjust future cashflows (reduce maturity payout)
+        if request.payment_type == "prepayment":
+            # Get the bond details to find maturity date
+            bond = await db.bonds.find_one({"id": bond_id}, {"_id": 0})
+            if bond:
+                maturity_date = bond.get('maturity_date', '')
+                
+                # Find the maturity cashflow and reduce it
+                maturity_cf = await db.holding_cashflows.find_one(
+                    {
+                        "client_id": client_id,
+                        "bond_id": bond_id,
+                        "type": {"$in": ["maturity", "principal", "final"]}
+                    },
+                    {"_id": 0}
+                )
+                
+                if maturity_cf:
+                    prepayment_amount = request.gross_amount or 0
+                    current_principal = maturity_cf.get('principal', 0) or maturity_cf.get('gross_amount', 0)
+                    new_principal = max(0, current_principal - prepayment_amount)
+                    
+                    await db.holding_cashflows.update_one(
+                        {"id": maturity_cf.get('id')},
+                        {
+                            "$set": {
+                                "original_principal": current_principal,
+                                "principal": new_principal,
+                                "gross_amount": new_principal,
+                                "prepayment_adjusted": True,
+                                "prepayment_amount": prepayment_amount,
+                                "prepayment_date": request.transaction_date
+                            }
+                        }
+                    )
+    
+    return {
+        "success": True,
+        "message": f"Repayment processed successfully as {request.payment_type}",
+        "repayment_id": repayment_id
+    }
+
+
 # ==================== EMAIL ENGAGEMENT DASHBOARD ====================
 
 @api_router.get("/email-engagement/dashboard")
