@@ -478,6 +478,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+          </div>
 
           {/* Quick Actions - Clean card style */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="quick-actions">
