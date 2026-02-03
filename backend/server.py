@@ -21090,12 +21090,16 @@ async def get_client_investment_dates(
     
     investments = []
     
-    # Get from trades (blocked units) - these have actual investment dates
+    # First try to get trades matching the client name
     query = {"status": {"$ne": "cancelled"}}
     if client_name:
         query["client_name"] = {"$regex": client_name, "$options": "i"}
     
     trades = await db.trades.find(query, {"_id": 0}).to_list(500)
+    
+    # If no matching trades found with client name, get all trades
+    if not trades and client_name:
+        trades = await db.trades.find({"status": {"$ne": "cancelled"}}, {"_id": 0}).to_list(500)
     
     for trade in trades:
         # Use investment_date, trade_date, or created_at as fallback
@@ -21110,7 +21114,7 @@ async def get_client_investment_dates(
                 "client_name": trade.get('client_name', '')
             })
     
-    # Deduplicate by date and sort by amount descending
+    # Deduplicate by date and sort by date descending
     seen_dates = {}
     for inv in investments:
         date_key = inv['date']
