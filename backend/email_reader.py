@@ -10,9 +10,10 @@ from bs4 import BeautifulSoup
 import re
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 import asyncio
+import uuid
 
 logger = logging.getLogger(__name__)
 
