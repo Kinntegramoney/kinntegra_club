@@ -1079,10 +1079,12 @@ export default function BondDetails() {
                             <span className="text-gray-500 text-xs">Investment Date</span>
                             <span className="font-mono text-sm">{bookingInvestmentDate || 'Not selected'}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500 text-xs">Reference Price/Unit</span>
-                            <span className="font-mono text-sm">₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</span>
-                          </div>
+                          {enhancedCalculation && enhancedCalculation.clean_price_per_unit > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500 text-xs">Reference Price/Unit</span>
+                              <span className="font-mono text-sm">₹{Math.ceil(enhancedCalculation.clean_price_per_unit).toLocaleString('en-IN')}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="pt-2">
                           <p className="text-gray-500 text-xs">Status</p>
