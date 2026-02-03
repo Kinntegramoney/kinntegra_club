@@ -257,6 +257,14 @@ function App() {
             } 
           />
           <Route 
+            path="/broker/email-engagement" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <EmailEngagementDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/broker/trade-tagging" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
