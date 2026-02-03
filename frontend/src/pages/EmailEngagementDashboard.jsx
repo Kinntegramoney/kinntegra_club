@@ -323,6 +323,16 @@ export default function EmailEngagementDashboard() {
                 Refresh
               </Button>
               <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAutoTag}
+                disabled={autoTagging || summary?.holdings_pending === 0}
+                className="border-purple-500 text-purple-700 hover:bg-purple-50"
+              >
+                <Tag className={`h-4 w-4 mr-1 ${autoTagging ? 'animate-spin' : ''}`} />
+                {autoTagging ? 'Auto Tagging...' : `Auto Tag (${summary?.holdings_pending || 0})`}
+              </Button>
+              <Button
                 size="sm"
                 onClick={handleTriggerEmailProcessing}
                 className="bg-etihad-gold-600 hover:bg-etihad-gold-700"
