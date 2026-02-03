@@ -20850,6 +20850,161 @@ async def trigger_email_processing_now(
         raise HTTPException(status_code=500, detail=f"Email processing failed: {str(e)}")
 
 
+# ==================== EMAIL ENGAGEMENT DASHBOARD ====================
+
+@api_router.get("/email-engagement/dashboard")
+async def get_email_engagement_dashboard(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    client_id: Optional[str] = None,
+    holding_status: Optional[str] = None,  # "updated" or "pending"
+    current_user: dict = Depends(get_current_user)
+):
+    """Get email engagement dashboard data with summary and detailed logs"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access email engagement data")
+    
+    # Build query filters
+    query = {}
+    
+    if date_from:
+        query['email_read_at'] = {'$gte': date_from}
+    if date_to:
+        if 'email_read_at' in query:
+            query['email_read_at']['$lte'] = date_to + 'T23:59:59'
+        else:
+            query['email_read_at'] = {'$lte': date_to + 'T23:59:59'}
+    
+    if client_id:
+        query['client_id'] = client_id
+    
+    if holding_status == 'updated':
+        query['holding_updated'] = True
+    elif holding_status == 'pending':
+        query['holding_updated'] = False
+    
+    # Get all email logs matching filters
+    email_logs = await db.email_read_logs.find(
+        query, {"_id": 0}
+    ).sort("email_read_at", -1).to_list(500)
+    
+    # Calculate summary stats
+    total_emails_read = len(email_logs)
+    clients_identified = len(set(log.get('client_id') for log in email_logs if log.get('client_id')))
+    holdings_updated = sum(1 for log in email_logs if log.get('holding_updated'))
+    holdings_pending = total_emails_read - holdings_updated
+    
+    # Get unique clients from logs
+    client_ids = list(set(log.get('client_id') for log in email_logs if log.get('client_id')))
+    
+    # Get total amount stats
+    total_gross_amount = sum(log.get('gross_amount', 0) or 0 for log in email_logs)
+    total_net_amount = sum(log.get('net_amount', 0) or 0 for log in email_logs)
+    total_tds = sum(log.get('tds_amount', 0) or 0 for log in email_logs)
+    
+    return {
+        "summary": {
+            "total_emails_read": total_emails_read,
+            "clients_identified": clients_identified,
+            "holdings_updated": holdings_updated,
+            "holdings_pending": holdings_pending,
+            "total_gross_amount": total_gross_amount,
+            "total_net_amount": total_net_amount,
+            "total_tds": total_tds
+        },
+        "logs": email_logs
+    }
+
+
+@api_router.get("/email-engagement/summary")
+async def get_email_engagement_summary(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get quick summary stats for email engagement widget"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access email engagement data")
+    
+    # Get counts from email_read_logs collection
+    total_emails = await db.email_read_logs.count_documents({})
+    holdings_updated = await db.email_read_logs.count_documents({"holding_updated": True})
+    holdings_pending = await db.email_read_logs.count_documents({"holding_updated": False})
+    
+    # Get unique clients
+    pipeline = [
+        {"$match": {"client_id": {"$ne": None}}},
+        {"$group": {"_id": "$client_id"}},
+        {"$count": "total"}
+    ]
+    client_result = await db.email_read_logs.aggregate(pipeline).to_list(1)
+    clients_identified = client_result[0]['total'] if client_result else 0
+    
+    # Get recent activity (last 7 days)
+    seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    recent_emails = await db.email_read_logs.count_documents({
+        "email_read_at": {"$gte": seven_days_ago}
+    })
+    
+    # Get amount totals
+    amount_pipeline = [
+        {
+            "$group": {
+                "_id": None,
+                "total_gross": {"$sum": {"$ifNull": ["$gross_amount", 0]}},
+                "total_net": {"$sum": {"$ifNull": ["$net_amount", 0]}},
+                "total_tds": {"$sum": {"$ifNull": ["$tds_amount", 0]}}
+            }
+        }
+    ]
+    amount_result = await db.email_read_logs.aggregate(amount_pipeline).to_list(1)
+    
+    return {
+        "total_emails_read": total_emails,
+        "clients_identified": clients_identified,
+        "holdings_updated": holdings_updated,
+        "holdings_pending": holdings_pending,
+        "recent_emails_7d": recent_emails,
+        "total_gross_amount": amount_result[0]['total_gross'] if amount_result else 0,
+        "total_net_amount": amount_result[0]['total_net'] if amount_result else 0,
+        "total_tds": amount_result[0]['total_tds'] if amount_result else 0
+    }
+
+
+@api_router.get("/email-engagement/clients")
+async def get_email_engagement_clients(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get list of clients from email engagement logs for filtering"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access email engagement data")
+    
+    pipeline = [
+        {"$match": {"client_id": {"$ne": None}}},
+        {
+            "$group": {
+                "_id": "$client_id",
+                "client_name": {"$first": "$client_name"},
+                "client_pan": {"$first": "$client_pan"},
+                "email_count": {"$sum": 1}
+            }
+        },
+        {"$sort": {"email_count": -1}}
+    ]
+    
+    clients = await db.email_read_logs.aggregate(pipeline).to_list(100)
+    
+    return {
+        "clients": [
+            {
+                "id": c['_id'],
+                "name": c['client_name'],
+                "pan": c['client_pan'],
+                "email_count": c['email_count']
+            }
+            for c in clients
+        ]
+    }
+
+
 # ==================== SCHEDULED EMAIL PROCESSING ====================
 
 async def scheduled_email_processing():
