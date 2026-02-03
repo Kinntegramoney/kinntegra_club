@@ -21531,7 +21531,7 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         },
         "real_estate_aum": {
             "total_deal_size": re_total_deal_size,
-            "total_paid": re_total_paid or real_estate_aum
+            "total_paid": re_total_paid
         },
         "trades_count": len(trades)
     }
