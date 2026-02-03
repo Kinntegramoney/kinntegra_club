@@ -125,6 +125,69 @@ export default function ClientOpportunities() {
           </div>
         </div>
 
+        {/* Dashboard Summary Cards */}
+        {dashboardSummary && (
+          <div className="px-4 md:px-8 pt-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              {/* Available Opportunities */}
+              <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                  </div>
+                  <span className="text-xs text-gray-600">Available</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="text-xl font-bold text-etihad-gold-600">{dashboardSummary?.opportunities?.bonds?.available || 0}</p>
+                    <p className="text-xs text-gray-500">Bonds</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-slate-600">{dashboardSummary?.opportunities?.real_estate?.available || 0}</p>
+                    <p className="text-xs text-gray-500">RE</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upcoming Repayments */}
+              <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-lg bg-amber-500/10">
+                    <Calendar className="h-4 w-4 text-amber-500" />
+                  </div>
+                  <span className="text-xs text-gray-600">Upcoming</span>
+                </div>
+                <p className="text-2xl font-bold text-amber-600">{dashboardSummary?.upcoming_repayments?.count || 0}</p>
+                <p className="text-xs text-gray-500">Repayments</p>
+              </div>
+
+              {/* Bond AUM */}
+              <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-lg bg-etihad-gold-500/10">
+                    <Landmark className="h-4 w-4 text-etihad-gold-500" />
+                  </div>
+                  <span className="text-xs text-gray-600">Bond AUM</span>
+                </div>
+                <p className="text-lg font-bold text-etihad-gold-700">{formatINRCrores(dashboardSummary?.bond_aum?.total_invested || 0)}</p>
+                <p className="text-xs text-gray-500">Invested</p>
+              </div>
+
+              {/* Real Estate AUM */}
+              <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-lg bg-slate-500/10">
+                    <Building2 className="h-4 w-4 text-slate-600" />
+                  </div>
+                  <span className="text-xs text-gray-600">RE AUM</span>
+                </div>
+                <p className="text-lg font-bold text-slate-700">{formatAEDMillions(dashboardSummary?.real_estate_aum?.total_paid || 0)}</p>
+                <p className="text-xs text-gray-500">Invested</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         <div className="p-4 md:p-8">
           {loading ? (
