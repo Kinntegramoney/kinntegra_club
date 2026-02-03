@@ -21398,9 +21398,12 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     invested_re = len([r for r in real_estate if r.get('status') in ['partially_invested', 'fully_invested']])
     
     # ==================== BOND AUM CALCULATIONS ====================
-    # Total Invested: From reinvestment_logs (Investment tab) - approved/submitted entries
+    # Total Invested: From reinvestment_logs (Investment tab) - approved/submitted entries with client approval
     reinvestment_logs = await db.reinvestment_logs.find(
-        {"approval_status": {"$in": ["approved", "submitted"]}},
+        {
+            "approval_status": {"$in": ["approved", "submitted"]},
+            "client_approved": True
+        },
         {"_id": 0}
     ).to_list(10000)
     
