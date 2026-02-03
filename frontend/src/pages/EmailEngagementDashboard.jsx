@@ -171,6 +171,52 @@ export default function EmailEngagementDashboard() {
     setHoldingStatus("");
     setSearchQuery("");
   };
+  
+  // Open manual tag modal for an email log
+  const openTagModal = (emailLog) => {
+    setSelectedEmailLog(emailLog);
+    setTagForm({
+      client_id: emailLog.client_id || "",
+      bond_id: emailLog.bond_id || "",
+      repayment_date: emailLog.repayment_date 
+        ? emailLog.repayment_date.split('T')[0] 
+        : ""
+    });
+    setShowTagModal(true);
+  };
+  
+  // Submit manual tag
+  const handleSubmitTag = async () => {
+    if (!tagForm.client_id || !tagForm.bond_id || !tagForm.repayment_date) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    
+    setTagging(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/email-engagement/manual-tag`,
+        {
+          email_log_id: selectedEmailLog.id,
+          client_id: tagForm.client_id,
+          bond_id: tagForm.bond_id,
+          repayment_date: tagForm.repayment_date
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success(response.data.message || "Email tagged successfully");
+      setShowTagModal(false);
+      setSelectedEmailLog(null);
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error tagging email:", error);
+      toast.error(error.response?.data?.detail || "Failed to tag email");
+    } finally {
+      setTagging(false);
+    }
+  };
 
   // Filter logs by search query
   const filteredLogs = logs.filter(log => {
