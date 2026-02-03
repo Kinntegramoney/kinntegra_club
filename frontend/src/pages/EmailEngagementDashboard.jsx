@@ -82,6 +82,8 @@ export default function EmailEngagementDashboard() {
   const [summary, setSummary] = useState(null);
   const [logs, setLogs] = useState([]);
   const [clients, setClients] = useState([]);
+  const [allClients, setAllClients] = useState([]);
+  const [allBonds, setAllBonds] = useState([]);
   
   // Filters
   const [dateFrom, setDateFrom] = useState("");
@@ -89,6 +91,16 @@ export default function EmailEngagementDashboard() {
   const [selectedClient, setSelectedClient] = useState("");
   const [holdingStatus, setHoldingStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Manual tagging modal state
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [selectedEmailLog, setSelectedEmailLog] = useState(null);
+  const [tagForm, setTagForm] = useState({
+    client_id: "",
+    bond_id: "",
+    repayment_date: ""
+  });
+  const [tagging, setTagging] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -102,14 +114,18 @@ export default function EmailEngagementDashboard() {
       if (selectedClient) params.append("client_id", selectedClient);
       if (holdingStatus) params.append("holding_status", holdingStatus);
 
-      const [dashboardRes, clientsRes] = await Promise.all([
+      const [dashboardRes, clientsRes, allClientsRes, bondsRes] = await Promise.all([
         axios.get(`${API}/email-engagement/dashboard?${params.toString()}`, { headers }),
-        axios.get(`${API}/email-engagement/clients`, { headers })
+        axios.get(`${API}/email-engagement/clients`, { headers }),
+        axios.get(`${API}/clients`, { headers }),
+        axios.get(`${API}/bonds`, { headers })
       ]);
 
       setSummary(dashboardRes.data.summary);
       setLogs(dashboardRes.data.logs);
       setClients(clientsRes.data.clients || []);
+      setAllClients(allClientsRes.data || []);
+      setAllBonds(bondsRes.data || []);
     } catch (error) {
       console.error("Error fetching email engagement data:", error);
       toast.error("Failed to load email engagement data");
