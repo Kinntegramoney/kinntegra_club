@@ -21353,17 +21353,18 @@ async def get_email_engagement_summary(
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can access email engagement data")
     
-    # Get all email logs and deduplicate by gross_amount
+    # Get all email logs and deduplicate by client_name + gross_amount
     all_logs = await db.email_read_logs.find({}, {"_id": 0}).to_list(1000)
     
-    # Deduplicate based on gross_amount
-    seen_amounts = set()
+    # Deduplicate based on client_name + gross_amount
+    seen_entries = set()
     unique_logs = []
     for log in all_logs:
+        client_name = log.get('client_name', '') or ''
         gross_amt = log.get('gross_amount', 0) or 0
-        unique_key = f"{gross_amt:.2f}"
-        if unique_key not in seen_amounts:
-            seen_amounts.add(unique_key)
+        unique_key = f"{client_name}|{gross_amt:.2f}"
+        if unique_key not in seen_entries:
+            seen_entries.add(unique_key)
             unique_logs.append(log)
     
     total_emails = len(unique_logs)
