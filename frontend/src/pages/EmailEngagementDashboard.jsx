@@ -38,7 +38,7 @@ import {
   DialogFooter,
 } from "../components/ui/dialog";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Format currency
 const formatINR = (value) => {
