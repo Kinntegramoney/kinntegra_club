@@ -21197,11 +21197,11 @@ async def get_email_engagement_clients(
         raise HTTPException(status_code=403, detail="Only brokers can access email engagement data")
     
     pipeline = [
-        {"$match": {"client_id": {"$ne": None}}},
+        {"$match": {"client_name": {"$ne": None}}},
         {
             "$group": {
-                "_id": "$client_id",
-                "client_name": {"$first": "$client_name"},
+                "_id": "$client_name",
+                "client_id": {"$first": "$client_id"},
                 "client_pan": {"$first": "$client_pan"},
                 "email_count": {"$sum": 1}
             }
@@ -21209,14 +21209,14 @@ async def get_email_engagement_clients(
         {"$sort": {"email_count": -1}}
     ]
     
-    # Use actual_repayments instead of email_read_logs
-    clients = await db.actual_repayments.aggregate(pipeline).to_list(100)
+    # Use email_read_logs for actual email data
+    clients = await db.email_read_logs.aggregate(pipeline).to_list(100)
     
     return {
         "clients": [
             {
-                "id": c['_id'],
-                "name": c['client_name'],
+                "id": c.get('client_id') or c['_id'],
+                "name": c['_id'],
                 "pan": c['client_pan'],
                 "email_count": c['email_count']
             }
