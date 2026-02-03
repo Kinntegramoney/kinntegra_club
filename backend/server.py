@@ -21258,7 +21258,8 @@ async def get_email_engagement_clients(
         {"$sort": {"email_count": -1}}
     ]
     
-    clients = await db.email_read_logs.aggregate(pipeline).to_list(100)
+    # Use actual_repayments instead of email_read_logs
+    clients = await db.actual_repayments.aggregate(pipeline).to_list(100)
     
     return {
         "clients": [
