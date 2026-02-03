@@ -21269,6 +21269,245 @@ async def process_email_repayment(
     }
 
 
+@api_router.post("/email-engagement/auto-tag")
+async def auto_tag_email_repayments(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Auto-tag pending email repayments to actual repayments.
+    Logic:
+    1. For each pending email read log, find matching trades (client + bond)
+    2. Calculate percentage: repayment_amount / total_investment_amount
+    3. Distribute repayment proportionally across investment dates
+    4. Create actual_repayment entries with correct tagging
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can auto-tag repayments")
+    
+    # Get all pending email logs (not yet tagged)
+    pending_logs = await db.email_read_logs.find(
+        {"holding_updated": {"$ne": True}},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    if not pending_logs:
+        return {"success": True, "message": "No pending emails to tag", "tagged_count": 0}
+    
+    tagged_count = 0
+    tagged_details = []
+    
+    # Group logs by bond_code to process each deal together
+    deal_logs = {}
+    for log in pending_logs:
+        bond_code = log.get('bond_code', '') or ''
+        if bond_code not in deal_logs:
+            deal_logs[bond_code] = []
+        deal_logs[bond_code].append(log)
+    
+    for bond_code, logs in deal_logs.items():
+        if not bond_code:
+            continue
+            
+        # Get all trades for this bond to calculate total investment per client
+        trades = await db.trades.find(
+            {"bond_code": bond_code, "status": {"$ne": "cancelled"}},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        if not trades:
+            continue
+        
+        # Group trades by client_name
+        client_investments = {}
+        for trade in trades:
+            client_name = trade.get('client_name', '')
+            if not client_name:
+                continue
+            if client_name not in client_investments:
+                client_investments[client_name] = {
+                    "total_amount": 0,
+                    "investments": []
+                }
+            
+            inv_amount = trade.get('total_amount', 0) or trade.get('amount', 0) or 0
+            inv_date = trade.get('investment_date') or trade.get('created_at', '')
+            
+            client_investments[client_name]["total_amount"] += inv_amount
+            client_investments[client_name]["investments"].append({
+                "date": str(inv_date)[:10] if inv_date else '',
+                "amount": inv_amount,
+                "trade_id": trade.get('id')
+            })
+        
+        # Calculate total investment for the entire deal
+        deal_total_investment = sum(ci["total_amount"] for ci in client_investments.values())
+        
+        # Now process each email log for this deal
+        for log in logs:
+            log_client_name = log.get('client_name', '')
+            log_gross_amount = log.get('gross_amount', 0) or 0
+            log_net_amount = log.get('net_amount', 0) or 0
+            
+            # Try to find matching client in trades
+            matched_client = None
+            for client_name in client_investments.keys():
+                # Fuzzy match - check if any part of names match
+                if (log_client_name and client_name and 
+                    (log_client_name.lower() in client_name.lower() or 
+                     client_name.lower() in log_client_name.lower() or
+                     log_client_name.split()[0].lower() == client_name.split()[0].lower())):
+                    matched_client = client_name
+                    break
+            
+            if matched_client and client_investments[matched_client]["investments"]:
+                # Found matching client - distribute repayment across their investment dates
+                client_data = client_investments[matched_client]
+                client_total = client_data["total_amount"]
+                
+                # Calculate percentage of this repayment vs total investment
+                repayment_percentage = log_gross_amount / client_total if client_total > 0 else 0
+                
+                # Distribute proportionally across investment dates
+                for inv in client_data["investments"]:
+                    inv_proportion = inv["amount"] / client_total if client_total > 0 else 0
+                    allocated_gross = log_gross_amount * inv_proportion
+                    allocated_net = log_net_amount * inv_proportion
+                    
+                    # Create actual repayment entry
+                    repayment_id = str(uuid.uuid4())
+                    repayment_record = {
+                        "id": repayment_id,
+                        "client_id": log.get('client_id'),
+                        "client_name": matched_client,
+                        "bond_id": log.get('bond_id'),
+                        "bond_name": log.get('bond_name'),
+                        "bond_code": bond_code,
+                        "repayment_date": log.get('repayment_date'),
+                        "investment_date": inv["date"],
+                        "gross_amount": allocated_gross,
+                        "net_amount": allocated_net,
+                        "tds": (log.get('tds_amount', 0) or 0) * inv_proportion,
+                        "payment_type": "prepayment",
+                        "is_prepayment": True,
+                        "repayment_percentage": repayment_percentage * 100,
+                        "investment_proportion": inv_proportion * 100,
+                        "email_log_id": log.get('id'),
+                        "trade_id": inv.get("trade_id"),
+                        "auto_tagged": True,
+                        "created_by": current_user.get('id'),
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "source": "auto_tag"
+                    }
+                    
+                    await db.actual_repayments.insert_one(repayment_record)
+                
+                # Mark email log as processed
+                await db.email_read_logs.update_one(
+                    {"id": log.get('id')},
+                    {
+                        "$set": {
+                            "holding_updated": True,
+                            "holding_updated_at": datetime.now(timezone.utc).isoformat(),
+                            "auto_tagged": True,
+                            "matched_client": matched_client,
+                            "repayment_percentage": repayment_percentage * 100
+                        }
+                    }
+                )
+                
+                tagged_count += 1
+                tagged_details.append({
+                    "email_client": log_client_name,
+                    "matched_client": matched_client,
+                    "gross_amount": log_gross_amount,
+                    "investment_dates": len(client_data["investments"]),
+                    "percentage": round(repayment_percentage * 100, 2)
+                })
+            else:
+                # No matching client found - try to match by percentage across all clients
+                # Calculate what percentage of total deal this repayment represents
+                if deal_total_investment > 0:
+                    deal_percentage = log_gross_amount / deal_total_investment
+                    
+                    # Find the client whose investment percentage is closest to this repayment percentage
+                    best_match = None
+                    best_diff = float('inf')
+                    
+                    for client_name, client_data in client_investments.items():
+                        client_percentage = client_data["total_amount"] / deal_total_investment
+                        diff = abs(deal_percentage - client_percentage)
+                        if diff < best_diff:
+                            best_diff = diff
+                            best_match = client_name
+                    
+                    if best_match and best_diff < 0.1:  # Within 10% match
+                        # Use this client's investment dates
+                        client_data = client_investments[best_match]
+                        client_total = client_data["total_amount"]
+                        
+                        for inv in client_data["investments"]:
+                            inv_proportion = inv["amount"] / client_total if client_total > 0 else 0
+                            allocated_gross = log_gross_amount * inv_proportion
+                            allocated_net = log_net_amount * inv_proportion
+                            
+                            repayment_id = str(uuid.uuid4())
+                            repayment_record = {
+                                "id": repayment_id,
+                                "client_id": log.get('client_id'),
+                                "client_name": best_match,
+                                "original_email_client": log_client_name,
+                                "bond_id": log.get('bond_id'),
+                                "bond_name": log.get('bond_name'),
+                                "bond_code": bond_code,
+                                "repayment_date": log.get('repayment_date'),
+                                "investment_date": inv["date"],
+                                "gross_amount": allocated_gross,
+                                "net_amount": allocated_net,
+                                "tds": (log.get('tds_amount', 0) or 0) * inv_proportion,
+                                "payment_type": "prepayment",
+                                "is_prepayment": True,
+                                "investment_proportion": inv_proportion * 100,
+                                "matched_by_percentage": True,
+                                "email_log_id": log.get('id'),
+                                "trade_id": inv.get("trade_id"),
+                                "auto_tagged": True,
+                                "created_by": current_user.get('id'),
+                                "created_at": datetime.now(timezone.utc).isoformat(),
+                                "source": "auto_tag_percentage"
+                            }
+                            
+                            await db.actual_repayments.insert_one(repayment_record)
+                        
+                        await db.email_read_logs.update_one(
+                            {"id": log.get('id')},
+                            {
+                                "$set": {
+                                    "holding_updated": True,
+                                    "holding_updated_at": datetime.now(timezone.utc).isoformat(),
+                                    "auto_tagged": True,
+                                    "matched_client": best_match,
+                                    "matched_by_percentage": True
+                                }
+                            }
+                        )
+                        
+                        tagged_count += 1
+                        tagged_details.append({
+                            "email_client": log_client_name,
+                            "matched_client": best_match,
+                            "gross_amount": log_gross_amount,
+                            "matched_by": "percentage",
+                            "investment_dates": len(client_data["investments"])
+                        })
+    
+    return {
+        "success": True,
+        "message": f"Auto-tagged {tagged_count} email repayments",
+        "tagged_count": tagged_count,
+        "details": tagged_details
+    }
+
+
 # ==================== EMAIL ENGAGEMENT DASHBOARD ====================
 
 @api_router.get("/email-engagement/dashboard")
