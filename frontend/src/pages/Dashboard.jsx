@@ -412,7 +412,6 @@ export default function Dashboard() {
                   <Landmark className="h-8 w-8 text-etihad-gold-500 mx-auto mb-2" />
                   <p className="text-3xl font-bold text-etihad-gold-700">{summary?.opportunities?.bonds?.available || 0}</p>
                   <p className="text-xs text-etihad-gold-600 mt-1">Bonds</p>
-                  <p className="text-xs text-gray-500">{summary?.opportunities?.bonds?.total || 0} total</p>
                 </div>
                 
                 {/* Real Estate - Show Available Count */}
@@ -420,7 +419,6 @@ export default function Dashboard() {
                   <Building2 className="h-8 w-8 text-slate-600 mx-auto mb-2" />
                   <p className="text-3xl font-bold text-slate-700">{summary?.opportunities?.real_estate?.available || 0}</p>
                   <p className="text-xs text-slate-600 mt-1">Real Estate</p>
-                  <p className="text-xs text-gray-500">{summary?.opportunities?.real_estate?.total || 0} total</p>
                 </div>
               </div>
             </div>
