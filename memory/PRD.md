@@ -2,6 +2,32 @@
 
 ## Recent Changes (Feb 3, 2026)
 
+### Manual Email Tagging UI & Dashboard Fixes (Feb 3, 2026) ✅
+
+**Feature 1: Manual Email Tagging UI**
+- Added "Actions" column to Email Read Logs table
+- "Tag" button appears for unmatched/pending emails (where `client_id` is null or `holding_updated` is false)
+- Clicking "Tag" opens a modal with:
+  - Email info card (subject, date, gross/net amounts)
+  - Client dropdown (populated from `/api/clients`)
+  - Bond/Deal dropdown (populated from `/api/bonds`)
+  - Investment/Repayment Date input
+- Form validation ensures all fields are required
+- Submits to `/api/email-engagement/manual-tag` endpoint
+- Emails manually tagged show "Manual" badge
+
+**Feature 2: Dashboard Opportunities Fix**
+- Fixed "Available Opportunities" count showing 0 when bonds have status `None` instead of `available`
+- Backend now counts bonds as available if status is NOT `funded` or `closed`
+- Removed "X total" text from Opportunities card (user requested clean display)
+
+**Files Modified:**
+- `/app/frontend/src/pages/EmailEngagementDashboard.jsx` - Added manual tagging modal and Tag button
+- `/app/frontend/src/pages/Dashboard.jsx` - Removed "total" text from Opportunities card
+- `/app/backend/server.py` - Fixed available bonds count logic
+
+---
+
 ### Email Engagement & Holding Update Dashboard (Feb 3, 2026) ✅
 
 **Feature:** New dashboard to track email engagement and holding update status based on emails from `updates@kinntegraa.club`.
