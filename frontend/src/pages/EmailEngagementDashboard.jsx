@@ -16,7 +16,9 @@ import {
   AlertCircle,
   ArrowLeft,
   Download,
-  DollarSign
+  DollarSign,
+  Tag,
+  X
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -28,6 +30,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../components/ui/dialog";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
