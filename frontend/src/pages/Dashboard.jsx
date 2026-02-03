@@ -483,6 +483,17 @@ export default function Dashboard() {
             </button>
             
             <button
+              onClick={() => navigate("/broker/email-engagement")}
+              className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all group"
+              data-testid="quick-action-email-engagement"
+            >
+              <div className="p-3 rounded-full bg-blue-50 group-hover:bg-blue-100 transition-colors">
+                <Mail className="h-5 w-5 text-blue-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-700">Email Tracker</span>
+            </button>
+            
+            <button
               onClick={() => setShowResetModal(true)}
               className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-red-300 hover:shadow-md transition-all group"
               data-testid="reset-database-btn"
