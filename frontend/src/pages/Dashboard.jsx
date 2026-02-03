@@ -398,7 +398,11 @@ export default function Dashboard() {
             </div>
 
             {/* Opportunities - Bonds & Real Estate (Available Only) */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="opportunities-card">
+            <div 
+              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all cursor-pointer" 
+              data-testid="opportunities-card"
+              onClick={() => navigate("/broker/opportunities")}
+            >
               <div className="flex items-center gap-2 mb-4">
                 <div className="p-2 rounded-lg bg-emerald-500/10">
                   <TrendingUp className="h-5 w-5 text-emerald-500" />
