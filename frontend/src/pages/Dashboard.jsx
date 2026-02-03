@@ -141,6 +141,7 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
+  const [emailSummary, setEmailSummary] = useState(null);
   const [aumDistribution, setAumDistribution] = useState({ by_asset_class: [], by_subbroker: [] });
   const [forexRate, setForexRate] = useState(22.5); // Default AED to INR rate
   const [currentTime, setCurrentTime] = useState(formatDateTime());
