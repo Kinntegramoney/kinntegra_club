@@ -336,9 +336,16 @@ export default function SubBrokerDashboard() {
               </div>
               
               <div className="space-y-3">
-                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                  <p className="text-xs text-blue-600 uppercase tracking-wide">Total Invested</p>
-                  <p className="text-xl font-bold text-blue-700 mt-1">{formatINRCrores(summary?.bond_aum?.total_invested || 0)}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <p className="text-xs text-gray-600 uppercase tracking-wide">Total Deal Size</p>
+                    <p className="text-lg font-bold text-gray-700 mt-1">{formatINRCrores(summary?.bond_aum?.total_deal_size || 0)}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                    <p className="text-xs text-blue-600 uppercase tracking-wide">Total Invested</p>
+                    <p className="text-lg font-bold text-blue-700 mt-1">{formatINRCrores(summary?.bond_aum?.total_invested || 0)}</p>
+                    <p className="text-xs text-gray-500">(Payments received)</p>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-100">
@@ -356,25 +363,26 @@ export default function SubBrokerDashboard() {
             {/* Real Estate AUM Details */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="real-estate-aum-card">
               <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-lg bg-pink-500/10">
-                  <Building2 className="h-5 w-5 text-pink-500" />
+                <div className="p-2 rounded-lg bg-slate-500/10">
+                  <Building2 className="h-5 w-5 text-slate-600" />
                 </div>
                 <h3 className="font-semibold text-gray-800">Real Estate AUM</h3>
-                <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded ml-auto">AED</span>
+                <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded ml-auto">AED</span>
               </div>
               
               <div className="space-y-3">
-                <div className="bg-pink-50 rounded-lg p-3 border border-pink-100">
-                  <p className="text-xs text-pink-600 uppercase tracking-wide">Total Deal Size</p>
-                  <p className="text-xl font-bold text-pink-700 mt-1">{formatAEDMillions(summary?.real_estate_aum?.total_deal_size || 0)}</p>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                  <p className="text-xs text-gray-600 uppercase tracking-wide">Total Deal Size</p>
+                  <p className="text-xl font-bold text-gray-700 mt-1">{formatAEDMillions(summary?.real_estate_aum?.total_deal_size || 0)}</p>
                   <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
                     <IndianRupee className="h-3 w-3" />
                     <span>≈ {formatINRCrores((summary?.real_estate_aum?.total_deal_size || 0) * forexRate)}</span>
                   </div>
                 </div>
                 <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100">
-                  <p className="text-xs text-emerald-600 uppercase tracking-wide">Total Paid by Clients</p>
+                  <p className="text-xs text-emerald-600 uppercase tracking-wide">Total Invested</p>
                   <p className="text-lg font-bold text-emerald-700 mt-1">{formatAEDMillions(summary?.real_estate_aum?.total_paid || 0)}</p>
+                  <p className="text-xs text-gray-500">(Payments received from clients)</p>
                   <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
                     <IndianRupee className="h-3 w-3" />
                     <span>≈ {formatINRCrores((summary?.real_estate_aum?.total_paid || 0) * forexRate)}</span>
