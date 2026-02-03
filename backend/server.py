@@ -21425,7 +21425,8 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         
         if unique_key not in repaid_entries:
             repaid_entries.add(unique_key)
-            bond_total_repaid += rep.get('gross_amount', 0) or rep.get('net_amount', 0) or 0
+            # Use gross_amount only
+            bond_total_repaid += rep.get('gross_amount', 0) or 0
     
     # Get from email_read_logs where holding_updated is True
     email_logs = await db.email_read_logs.find(
@@ -21440,7 +21441,8 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         
         if unique_key not in repaid_entries:
             repaid_entries.add(unique_key)
-            bond_total_repaid += log.get('gross_amount', 0) or log.get('net_amount', 0) or 0
+            # Use gross_amount only
+            bond_total_repaid += log.get('gross_amount', 0) or 0
     
     # Total Pending: All upcoming repayments from holding_cashflows where date > today
     today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
@@ -21449,7 +21451,8 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         {"_id": 0}
     ).to_list(10000)
     
-    bond_total_pending = sum(cf.get('gross_amount', 0) or cf.get('net_amount', 0) or 0 for cf in upcoming_cashflows)
+    # Use gross_amount only for pending
+    bond_total_pending = sum(cf.get('gross_amount', 0) or 0 for cf in upcoming_cashflows)
     
     # Profits = Total Pending + Total Repaid - Total Invested
     bond_profits = bond_total_pending + bond_total_repaid - bond_total_invested
