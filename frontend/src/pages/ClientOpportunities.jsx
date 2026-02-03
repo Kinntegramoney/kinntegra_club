@@ -2,21 +2,46 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import ClientSidebar from "@/components/ClientSidebar";
-import { TrendingUp, Calendar, DollarSign, Percent, ChevronRight, Building2 } from "lucide-react";
+import { TrendingUp, Calendar, DollarSign, Percent, ChevronRight, Building2, Landmark, Clock, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { logUserActivity } from "@/utils/activityLogger";
+import { Badge } from "@/components/ui/badge";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Format helpers
+const formatINRCrores = (amount) => {
+  if (!amount) return "₹0";
+  const crores = amount / 10000000;
+  if (crores >= 1) {
+    return `₹${crores.toFixed(2)} Cr`;
+  }
+  const lakhs = amount / 100000;
+  if (lakhs >= 1) {
+    return `₹${lakhs.toFixed(2)} L`;
+  }
+  return `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+};
+
+const formatAEDMillions = (amount) => {
+  if (!amount) return "AED 0";
+  if (amount >= 1000000) {
+    return `AED ${(amount / 1000000).toFixed(2)}M`;
+  }
+  return `AED ${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+};
 
 export default function ClientOpportunities() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [bonds, setBonds] = useState([]);
   const [realEstateOpportunities, setRealEstateOpportunities] = useState([]);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const forexRate = 22.5; // AED to INR
 
   // Log user activity
   useEffect(() => {
@@ -37,27 +62,29 @@ export default function ClientOpportunities() {
     }
     
     setUser(parsedUser);
-    fetchAllOpportunities();
+    fetchAllData();
   }, [navigate]);
 
-  const fetchAllOpportunities = async () => {
+  const fetchAllData = async () => {
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       
-      // Fetch both bonds and real estate in parallel
-      const [bondsRes, realEstateRes] = await Promise.all([
+      // Fetch dashboard summary, bonds and real estate in parallel
+      const [summaryRes, bondsRes, realEstateRes] = await Promise.all([
+        axios.get(`${API}/client/dashboard/summary`, { headers }).catch(() => ({ data: null })),
         axios.get(`${API}/client/opportunities`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API}/real-estate-opportunities`, { headers }).catch(() => ({ data: [] }))
       ]);
       
+      setDashboardSummary(summaryRes.data);
       setBonds(bondsRes.data || []);
       // Filter real estate for available ones
       const availableRE = (realEstateRes.data || []).filter(p => p.status === 'available' || !p.status);
       setRealEstateOpportunities(availableRE);
     } catch (error) {
-      console.error("Error fetching opportunities:", error);
-      toast.error("Failed to load opportunities");
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -68,6 +95,11 @@ export default function ClientOpportunities() {
   };
 
   if (!user) return null;
+
+  // Calculate total AUM in INR
+  const bondAum = dashboardSummary?.bond_aum?.total_invested || 0;
+  const reAumINR = (dashboardSummary?.real_estate_aum?.total_paid || 0) * forexRate;
+  const totalAum = bondAum + reAumINR;
 
   return (
     <div className="flex h-screen bg-gray-50">
