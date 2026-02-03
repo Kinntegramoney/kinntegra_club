@@ -177,21 +177,24 @@ export default function EmailEngagementDashboard() {
   const openTagModal = async (emailLog) => {
     setSelectedEmailLog(emailLog);
     setTagForm({
-      cashflow_id: "",
-      transaction_date: emailLog.repayment_date ? emailLog.repayment_date.split('T')[0] : "",
+      transaction_date: "",
       payment_type: "normal"
     });
     
-    // Fetch available cashflows for this client/bond
+    // Fetch available investment dates for this client
     try {
       const token = localStorage.getItem("token");
+      const params = new URLSearchParams();
+      if (emailLog.client_name) params.append("client_name", emailLog.client_name);
+      if (emailLog.bond_name) params.append("bond_name", emailLog.bond_name);
+      
       const response = await axios.get(
-        `${API}/email-engagement/available-cashflows?client_id=${emailLog.client_id || ''}&bond_id=${emailLog.bond_id || ''}`,
+        `${API}/email-engagement/client-investments?${params.toString()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setAvailableCashflows(response.data.cashflows || []);
+      setAvailableCashflows(response.data.investments || []);
     } catch (error) {
-      console.error("Error fetching cashflows:", error);
+      console.error("Error fetching investment dates:", error);
       setAvailableCashflows([]);
     }
     
