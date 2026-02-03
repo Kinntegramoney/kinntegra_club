@@ -247,6 +247,7 @@ async def process_repayment_emails(db, days_back: int = 7) -> Dict:
         'total_emails': 0,
         'processed': 0,
         'matched': 0,
+        'holdings_updated': 0,
         'errors': [],
         'details': []
     }
@@ -264,6 +265,7 @@ async def process_repayment_emails(db, days_back: int = 7) -> Dict:
                 # Find matching bond by opportunity_id
                 opportunity_id = email_data.get('opportunity_id')
                 company_name = email_data.get('company_name')
+                client_name = email_data.get('client_name')
                 
                 # Look up bond by opportunity_id (bond code) or company name
                 search_criteria = []
@@ -294,6 +296,27 @@ async def process_repayment_emails(db, days_back: int = 7) -> Dict:
                 bond_id = bond.get('id')
                 repayment_date = email_data.get('repayment_date')
                 
+                # Try to find client by name matching
+                client = None
+                client_id = None
+                if client_name:
+                    # Search for client by name (fuzzy match)
+                    name_parts = client_name.strip().split()
+                    if name_parts:
+                        name_pattern = '.*'.join(name_parts[:2])  # First two words
+                        client = await db.clients.find_one({
+                            'name': {'$regex': name_pattern, '$options': 'i'}
+                        }, {'_id': 0, 'id': 1, 'name': 1, 'pan_number': 1})
+                        if client:
+                            client_id = client.get('id')
+                
+                # Create email read log entry
+                email_log_id = str(uuid.uuid4())
+                email_read_at = datetime.now(timezone.utc)
+                holding_updated = False
+                holding_updated_at = None
+                cashflows_count = 0
+                
                 # Find matching cashflows by bond_id and date
                 if repayment_date:
                     # Update cashflows for this date
@@ -311,21 +334,54 @@ async def process_repayment_emails(db, days_back: int = 7) -> Dict:
                                 'repaid_tds': email_data.get('tds_amount'),  # Store TDS amount
                                 'email_processed': True,
                                 'email_processed_at': datetime.now().isoformat(),
-                                'email_data': email_data
+                                'email_data': email_data,
+                                'email_log_id': email_log_id
                             }
                         }
                     )
                     
                     if update_result.modified_count > 0:
                         results['matched'] += 1
+                        results['holdings_updated'] += update_result.modified_count
+                        holding_updated = True
+                        holding_updated_at = datetime.now(timezone.utc)
+                        cashflows_count = update_result.modified_count
+                        
                         results['details'].append({
                             'bond_name': bond.get('name'),
                             'bond_id': bond_id,
                             'repayment_date': repayment_date,
                             'gross_amount': email_data.get('gross_amount'),
                             'net_amount': email_data.get('net_amount'),
-                            'cashflows_updated': update_result.modified_count
+                            'cashflows_updated': update_result.modified_count,
+                            'client_name': client.get('name') if client else client_name,
+                            'client_id': client_id
                         })
+                
+                # Log individual email read entry
+                email_log_entry = {
+                    'id': email_log_id,
+                    'email_from': 'altGraaf',
+                    'email_subject': email_data.get('raw_subject', ''),
+                    'email_date': email_data.get('email_date'),
+                    'email_read_at': email_read_at.isoformat(),
+                    'client_id': client_id,
+                    'client_name': client.get('name') if client else client_name,
+                    'client_pan': client.get('pan_number') if client else None,
+                    'bond_id': bond_id,
+                    'bond_name': bond.get('name'),
+                    'bond_code': bond.get('bond_code') or opportunity_id,
+                    'repayment_date': repayment_date,
+                    'gross_amount': email_data.get('gross_amount'),
+                    'net_amount': email_data.get('net_amount'),
+                    'tds_amount': email_data.get('tds_amount'),
+                    'holding_updated': holding_updated,
+                    'holding_updated_at': holding_updated_at.isoformat() if holding_updated_at else None,
+                    'cashflows_updated_count': cashflows_count,
+                    'created_at': datetime.now(timezone.utc).isoformat(),
+                    'updated_at': datetime.now(timezone.utc).isoformat()
+                }
+                await db.email_read_logs.insert_one(email_log_entry)
                 
                 results['processed'] += 1
                 reader.mark_as_processed(email_data.get('email_id', ''))
