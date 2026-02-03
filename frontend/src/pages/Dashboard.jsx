@@ -233,13 +233,15 @@ export default function Dashboard() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       
-      const [summaryRes, aumRes] = await Promise.all([
+      const [summaryRes, aumRes, emailRes] = await Promise.all([
         axios.get(`${API}/dashboard/summary`, { headers }),
-        axios.get(`${API}/dashboard/aum-distribution`, { headers })
+        axios.get(`${API}/dashboard/aum-distribution`, { headers }),
+        axios.get(`${API}/email-engagement/summary`, { headers }).catch(() => ({ data: null }))
       ]);
 
       setSummary(summaryRes.data);
       setAumDistribution(aumRes.data);
+      setEmailSummary(emailRes.data);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
