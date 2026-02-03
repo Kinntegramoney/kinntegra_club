@@ -21393,7 +21393,8 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     # Get real estate opportunities
     real_estate = await db.real_estate_opportunities.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
     total_real_estate = len(real_estate)
-    available_re = len([r for r in real_estate if r.get('status') == 'available'])
+    # Available real estate = status is NOT fully_invested or closed
+    available_re = len([r for r in real_estate if r.get('status') not in ['fully_invested', 'closed']])
     invested_re = len([r for r in real_estate if r.get('status') in ['partially_invested', 'fully_invested']])
     
     # Calculate Bond AUM Details
