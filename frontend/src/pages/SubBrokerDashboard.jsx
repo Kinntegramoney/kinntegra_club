@@ -183,18 +183,82 @@ export default function SubBrokerDashboard() {
           </div>
 
           {/* Dashboard Cards - Row 1 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="kpi-cards">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="kpi-cards">
             
-            {/* My Clients - Index Style */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="clients-index-card">
-              <div className="flex items-center justify-between mb-4">
+            {/* My Clients */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="clients-card">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-indigo-500/10">
                     <Users className="h-5 w-5 text-etihad-maroon-500" />
                   </div>
                   <h3 className="font-semibold text-gray-800">My Clients</h3>
                 </div>
-                <p className="text-3xl font-bold text-etihad-maroon-600">{summary?.clients?.total || 0}</p>
+              </div>
+              <p className="text-4xl font-bold text-etihad-maroon-600">{summary?.clients?.total || 0}</p>
+              <p className="text-xs text-gray-500 mt-1">{summary?.clients?.active || 0} active clients</p>
+            </div>
+            
+            {/* Available Opportunities */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="opportunities-card">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-emerald-500/10">
+                    <TrendingUp className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <h3 className="font-semibold text-gray-800">Available Opportunities</h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-etihad-gold-600">{summary?.opportunities?.bonds?.available || 0}</p>
+                  <p className="text-xs text-gray-500">Bonds</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-slate-600">{summary?.opportunities?.real_estate?.available || 0}</p>
+                  <p className="text-xs text-gray-500">Real Estate</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Upcoming Repayments */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="repayments-card">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-amber-500/10">
+                    <Calendar className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <h3 className="font-semibold text-gray-800">Upcoming Repayments</h3>
+                </div>
+              </div>
+              <p className="text-4xl font-bold text-amber-600">{summary?.upcoming_repayments?.count || 0}</p>
+              <p className="text-xs text-gray-500 mt-1">For all clients</p>
+            </div>
+            
+            {/* Total AUM */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="total-aum-summary">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-purple-500/10">
+                    <Briefcase className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <h3 className="font-semibold text-gray-800">Total AUM</h3>
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-purple-600">{formatINRCrores(totalAumINR)}</p>
+              <p className="text-xs text-gray-500 mt-1">Combined value</p>
+            </div>
+          </div>
+
+          {/* Dashboard Cards - Row 2: Client Breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" data-testid="breakdown-cards">
+            {/* Client Breakdown */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="clients-index-card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-indigo-500/10">
+                  <Users className="h-5 w-5 text-etihad-maroon-500" />
+                </div>
+                <h3 className="font-semibold text-gray-800">Client Breakdown</h3>
               </div>
               
               {/* Client Index Breakdown */}
@@ -222,7 +286,7 @@ export default function SubBrokerDashboard() {
                 {/* Real Estate Only */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-pink-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-slate-500"></div>
                     <span className="text-sm text-gray-600">Real Estate Only</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -234,7 +298,7 @@ export default function SubBrokerDashboard() {
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div 
-                    className="bg-pink-500 h-2 rounded-full transition-all" 
+                    className="bg-slate-500 h-2 rounded-full transition-all" 
                     style={{ width: `${summary?.clients?.total > 0 ? (realEstateOnlyClients / summary.clients.total) * 100 : 0}%` }}
                   />
                 </div>
