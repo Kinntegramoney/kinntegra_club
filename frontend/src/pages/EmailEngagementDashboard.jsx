@@ -432,12 +432,13 @@ export default function EmailEngagementDashboard() {
                   <th className="text-right px-4 py-3 font-medium text-gray-600">Net Amount</th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600">Holding Status</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Last Updated</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center">
+                    <td colSpan={9} className="px-4 py-12 text-center">
                       <Mail className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500">No email logs found</p>
                       <p className="text-gray-400 text-xs mt-1">Try adjusting your filters or process new emails</p>
@@ -458,7 +459,7 @@ export default function EmailEngagementDashboard() {
                       </td>
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium text-gray-800">{log.client_name || 'Unknown'}</p>
+                          <p className="font-medium text-gray-800">{log.client_name || <span className="text-amber-600 italic">Unmatched</span>}</p>
                           {log.client_pan && (
                             <p className="text-xs text-gray-500 font-mono">{log.client_pan}</p>
                           )}
@@ -466,10 +467,12 @@ export default function EmailEngagementDashboard() {
                       </td>
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium text-gray-800">{log.bond_name || '-'}</p>
-                          <Badge variant="outline" className="text-xs font-mono">
-                            {log.bond_code || '-'}
-                          </Badge>
+                          <p className="font-medium text-gray-800">{log.bond_name || <span className="text-gray-400">-</span>}</p>
+                          {log.bond_code && (
+                            <Badge variant="outline" className="text-xs font-mono">
+                              {log.bond_code}
+                            </Badge>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -498,6 +501,25 @@ export default function EmailEngagementDashboard() {
                         {log.holding_updated_at 
                           ? format(new Date(log.holding_updated_at), "dd MMM yyyy, hh:mm a") 
                           : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {(!log.client_id || !log.holding_updated) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openTagModal(log)}
+                            className="h-7 px-2 text-xs border-etihad-gold-500 text-etihad-gold-700 hover:bg-etihad-gold-50"
+                            data-testid={`tag-btn-${log.id}`}
+                          >
+                            <Tag className="h-3 w-3 mr-1" />
+                            Tag
+                          </Button>
+                        )}
+                        {log.manually_tagged && (
+                          <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">
+                            Manual
+                          </Badge>
+                        )}
                       </td>
                     </tr>
                   ))
