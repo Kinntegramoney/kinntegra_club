@@ -425,18 +425,18 @@ export default function Dashboard() {
             {/* Real Estate AUM Details */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="real-estate-aum-card">
               <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-lg bg-pink-500/10">
-                  <Building2 className="h-5 w-5 text-pink-500" />
+                <div className="p-2 rounded-lg bg-slate-500/10">
+                  <Building2 className="h-5 w-5 text-slate-600" />
                 </div>
                 <h3 className="font-semibold text-gray-800">Real Estate AUM</h3>
-                <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded ml-auto">AED</span>
+                <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded ml-auto">AED</span>
               </div>
               
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-pink-50 rounded-lg p-3 border border-pink-100">
-                  <p className="text-xs text-pink-600 uppercase tracking-wide">Total Deal Size</p>
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <p className="text-xs text-slate-600 uppercase tracking-wide">Total Deal Size</p>
                   <p className="text-xs text-gray-500">(incl. DLD & Admin)</p>
-                  <p className="text-lg font-bold text-pink-700 mt-1">{formatAEDMillions(summary?.real_estate_aum?.total_deal_size || 0)}</p>
+                  <p className="text-lg font-bold text-slate-700 mt-1">{formatAEDMillions(summary?.real_estate_aum?.total_deal_size || 0)}</p>
                 </div>
                 <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100">
                   <p className="text-xs text-emerald-600 uppercase tracking-wide">Total Paid</p>
