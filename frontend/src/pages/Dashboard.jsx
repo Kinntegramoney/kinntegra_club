@@ -473,11 +473,11 @@ export default function Dashboard() {
             
             <button
               onClick={() => navigate("/broker/admin/sub-brokers")}
-              className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-violet-300 hover:shadow-md transition-all group"
+              className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:border-amber-300 hover:shadow-md transition-all group"
               data-testid="quick-action-subbrokers"
             >
-              <div className="p-3 rounded-full bg-violet-50 group-hover:bg-violet-100 transition-colors">
-                <Briefcase className="h-5 w-5 text-violet-600" />
+              <div className="p-3 rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors">
+                <Briefcase className="h-5 w-5 text-amber-600" />
               </div>
               <span className="text-sm font-medium text-gray-700">Sub-Brokers</span>
             </button>
