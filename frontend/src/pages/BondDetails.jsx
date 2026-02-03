@@ -273,7 +273,7 @@ export default function BondDetails() {
       return;
     }
 
-    const unitsToDownload = selectedUnits || enhancedCalculation.units_requested;
+    const unitsToDownload = selectedUnits || enhancedCalculation?.units_requested;
     if (!unitsToDownload || unitsToDownload <= 0) {
       toast.error("Please enter units");
       return;
