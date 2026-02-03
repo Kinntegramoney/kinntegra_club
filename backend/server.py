@@ -21297,32 +21297,29 @@ async def get_email_engagement_summary(
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can access email engagement data")
     
-    # Get counts from email_read_logs (emails actually read from inbox)
-    total_emails = await db.email_read_logs.count_documents({})
-    holdings_updated = await db.email_read_logs.count_documents({"holding_updated": True})
-    holdings_pending = await db.email_read_logs.count_documents({"holding_updated": {"$ne": True}})
+    # Get all email logs and deduplicate
+    all_logs = await db.email_read_logs.find({}, {"_id": 0}).to_list(1000)
     
-    # Get unique clients from email_read_logs
-    pipeline = [
-        {"$match": {"client_id": {"$ne": None}}},
-        {"$group": {"_id": "$client_id"}},
-        {"$count": "total"}
-    ]
-    client_result = await db.email_read_logs.aggregate(pipeline).to_list(1)
-    clients_identified = client_result[0]['total'] if client_result else 0
+    # Deduplicate based on client_name + bond_name + repayment_date
+    seen_entries = set()
+    unique_logs = []
+    for log in all_logs:
+        unique_key = f"{log.get('client_name', '')}|{log.get('bond_name', '')}|{str(log.get('repayment_date', ''))[:10]}"
+        if unique_key not in seen_entries:
+            seen_entries.add(unique_key)
+            unique_logs.append(log)
     
-    # Get amount totals from email_read_logs
-    amount_pipeline = [
-        {
-            "$group": {
-                "_id": None,
-                "total_gross": {"$sum": {"$ifNull": ["$gross_amount", 0]}},
-                "total_net": {"$sum": {"$ifNull": ["$net_amount", 0]}},
-                "total_tds": {"$sum": {"$ifNull": ["$tds_amount", 0]}}
-            }
-        }
-    ]
-    amount_result = await db.email_read_logs.aggregate(amount_pipeline).to_list(1)
+    total_emails = len(unique_logs)
+    holdings_updated = sum(1 for log in unique_logs if log.get('holding_updated'))
+    holdings_pending = total_emails - holdings_updated
+    
+    # Get unique clients
+    clients_identified = len(set(log.get('client_id') for log in unique_logs if log.get('client_id')))
+    
+    # Get amount totals
+    total_gross = sum(log.get('gross_amount', 0) or 0 for log in unique_logs)
+    total_net = sum(log.get('net_amount', 0) or 0 for log in unique_logs)
+    total_tds = sum(log.get('tds_amount', 0) or 0 for log in unique_logs)
     
     return {
         "total_emails_read": total_emails,
@@ -21330,9 +21327,9 @@ async def get_email_engagement_summary(
         "holdings_updated": holdings_updated,
         "holdings_pending": holdings_pending,
         "recent_emails_7d": 0,
-        "total_gross_amount": amount_result[0]['total_gross'] if amount_result else 0,
-        "total_net_amount": amount_result[0]['total_net'] if amount_result else 0,
-        "total_tds": amount_result[0]['total_tds'] if amount_result else 0
+        "total_gross_amount": total_gross,
+        "total_net_amount": total_net,
+        "total_tds": total_tds
     }
 
 
