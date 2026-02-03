@@ -364,6 +364,39 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Email Tracker Card */}
+            <div 
+              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all cursor-pointer" 
+              data-testid="email-tracker-card"
+              onClick={() => navigate("/broker/email-engagement")}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-blue-500/10">
+                  <Mail className="h-5 w-5 text-blue-500" />
+                </div>
+                <h3 className="font-semibold text-gray-800">Email Tracker</h3>
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded ml-auto">Repayments</span>
+              </div>
+              
+              <div className="flex items-center justify-center my-4">
+                <div className="text-center">
+                  <p className="text-4xl font-bold text-blue-600">{emailSummary?.total_emails_read || 0}</p>
+                  <p className="text-sm text-gray-500 mt-1">Emails Read</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-emerald-600">{emailSummary?.holdings_updated || 0}</p>
+                  <p className="text-xs text-gray-500">Holdings Updated</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-amber-600">{emailSummary?.holdings_pending || 0}</p>
+                  <p className="text-xs text-gray-500">Pending</p>
+                </div>
+              </div>
+            </div>
+
             {/* Opportunities - Bonds & Real Estate (Available Only) */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="opportunities-card">
               <div className="flex items-center gap-2 mb-4">
