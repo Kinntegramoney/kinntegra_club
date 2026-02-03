@@ -20969,6 +20969,115 @@ async def trigger_email_processing_now(
         raise HTTPException(status_code=500, detail=f"Email processing failed: {str(e)}")
 
 
+class ManualEmailTagRequest(BaseModel):
+    email_log_id: str
+    client_id: str
+    bond_id: str
+    repayment_date: str
+
+
+@api_router.post("/email-engagement/manual-tag")
+async def manual_tag_email_to_holding(
+    request: ManualEmailTagRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Manually tag an email to a client and update their holding cashflow"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can manually tag emails")
+    
+    # Get the email log
+    email_log = await db.email_read_logs.find_one({"id": request.email_log_id}, {"_id": 0})
+    if not email_log:
+        raise HTTPException(status_code=404, detail="Email log not found")
+    
+    # Get client details
+    client = await db.clients.find_one({"id": request.client_id}, {"_id": 0, "id": 1, "name": 1, "pan_number": 1})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    
+    # Get bond details
+    bond = await db.bonds.find_one({"id": request.bond_id}, {"_id": 0, "id": 1, "name": 1, "bond_code": 1})
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    # Update holding cashflows for this client, bond and date
+    update_result = await db.holding_cashflows.update_many(
+        {
+            "client_id": request.client_id,
+            "bond_id": request.bond_id,
+            "date": {"$regex": f"^{request.repayment_date}"}
+        },
+        {
+            "$set": {
+                "is_repaid": True,
+                "repaid_date": request.repayment_date,
+                "repaid_actual_amount": email_log.get('gross_amount'),
+                "repaid_net_amount": email_log.get('net_amount'),
+                "repaid_tds": email_log.get('tds_amount'),
+                "email_processed": True,
+                "email_processed_at": datetime.now().isoformat(),
+                "email_log_id": request.email_log_id,
+                "manually_tagged": True,
+                "manually_tagged_by": current_user['name'],
+                "manually_tagged_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    # Update the email log with client mapping
+    await db.email_read_logs.update_one(
+        {"id": request.email_log_id},
+        {
+            "$set": {
+                "client_id": client['id'],
+                "client_name": client['name'],
+                "client_pan": client.get('pan_number'),
+                "bond_id": bond['id'],
+                "bond_name": bond['name'],
+                "bond_code": bond.get('bond_code'),
+                "repayment_date": request.repayment_date,
+                "holding_updated": update_result.modified_count > 0,
+                "holding_updated_at": datetime.now(timezone.utc).isoformat() if update_result.modified_count > 0 else None,
+                "cashflows_updated_count": update_result.modified_count,
+                "manually_tagged": True,
+                "manually_tagged_by": current_user['name'],
+                "manually_tagged_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {
+        "status": "success",
+        "message": f"Email tagged to {client['name']} for {bond['name']}",
+        "cashflows_updated": update_result.modified_count
+    }
+
+
+@api_router.get("/email-engagement/untagged")
+async def get_untagged_email_logs(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get email logs that haven't been tagged to holdings (pending manual tagging)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access email engagement data")
+    
+    # Get logs where holding_updated is false or client_id is null
+    untagged_logs = await db.email_read_logs.find(
+        {
+            "$or": [
+                {"holding_updated": False},
+                {"holding_updated": {"$exists": False}},
+                {"client_id": None},
+                {"client_id": {"$exists": False}}
+            ]
+        },
+        {"_id": 0}
+    ).sort("email_read_at", -1).to_list(100)
+    
+    return {"logs": untagged_logs}
+
+
 # ==================== EMAIL ENGAGEMENT DASHBOARD ====================
 
 @api_router.get("/email-engagement/dashboard")
