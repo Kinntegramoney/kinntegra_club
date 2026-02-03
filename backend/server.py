@@ -21253,15 +21253,16 @@ async def get_email_engagement_dashboard(
         query, {"_id": 0}
     ).sort("email_read_at", -1).to_list(500)
     
-    # Deduplicate entries based on client_name + bond_name + repayment_date
-    seen_entries = set()
+    # Deduplicate entries based on gross_amount (unique transaction amounts)
+    seen_amounts = set()
     email_logs = []
     for log in all_email_logs:
-        # Create unique key
-        unique_key = f"{log.get('client_name', '')}|{log.get('bond_name', '')}|{str(log.get('repayment_date', ''))[:10]}"
+        # Create unique key based on gross_amount
+        gross_amt = log.get('gross_amount', 0) or 0
+        unique_key = f"{gross_amt:.2f}"
         
-        if unique_key not in seen_entries:
-            seen_entries.add(unique_key)
+        if unique_key not in seen_amounts:
+            seen_amounts.add(unique_key)
             email_logs.append(log)
     
     # Calculate summary stats from deduplicated logs
