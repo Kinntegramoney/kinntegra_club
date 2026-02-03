@@ -21082,24 +21082,29 @@ async def get_untagged_email_logs(
 async def get_client_investment_dates(
     client_name: Optional[str] = None,
     bond_name: Optional[str] = None,
+    bond_code: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get client's actual investment dates and amounts for the dropdown"""
+    """Get client's actual investment dates and amounts for the dropdown - filtered by Deal ID and Client Name"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can access this data")
     
     investments = []
     
-    # First try to get trades matching the client name
+    # Build query to match both client name AND bond/deal
     query = {"status": {"$ne": "cancelled"}}
+    
+    # Must match client name
     if client_name:
         query["client_name"] = {"$regex": client_name, "$options": "i"}
     
-    trades = await db.trades.find(query, {"_id": 0}).to_list(500)
+    # Must match bond/deal - try bond_code first, then bond_name
+    if bond_code:
+        query["bond_code"] = {"$regex": bond_code, "$options": "i"}
+    elif bond_name:
+        query["bond_name"] = {"$regex": bond_name, "$options": "i"}
     
-    # If no matching trades found with client name, get all trades
-    if not trades and client_name:
-        trades = await db.trades.find({"status": {"$ne": "cancelled"}}, {"_id": 0}).to_list(500)
+    trades = await db.trades.find(query, {"_id": 0}).to_list(500)
     
     for trade in trades:
         # Use investment_date, trade_date, or created_at as fallback
@@ -21111,6 +21116,7 @@ async def get_client_investment_dates(
                 "type": "investment",
                 "source": "trade",
                 "bond_name": trade.get('bond_name', ''),
+                "bond_code": trade.get('bond_code', ''),
                 "client_name": trade.get('client_name', '')
             })
     
