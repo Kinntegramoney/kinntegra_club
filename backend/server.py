@@ -21092,66 +21092,29 @@ async def get_email_engagement_dashboard(
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can access email engagement data")
     
-    # Build query filters for actual_repayments (historical uploads + email reads)
+    # Build query filters for email_read_logs (actual emails read from inbox)
     query = {}
     
     if date_from:
-        query['repayment_date'] = {'$gte': date_from}
+        query['email_read_at'] = {'$gte': date_from}
     if date_to:
-        if 'repayment_date' in query:
-            query['repayment_date']['$lte'] = date_to
+        if 'email_read_at' in query:
+            query['email_read_at']['$lte'] = date_to + 'T23:59:59'
         else:
-            query['repayment_date'] = {'$lte': date_to}
+            query['email_read_at'] = {'$lte': date_to + 'T23:59:59'}
     
     if client_id:
         query['client_id'] = client_id
     
-    # Get all repayment records matching filters
-    repayment_logs = await db.actual_repayments.find(
+    if holding_status == 'updated':
+        query['holding_updated'] = True
+    elif holding_status == 'pending':
+        query['holding_updated'] = {'$ne': True}
+    
+    # Get all email logs matching filters
+    email_logs = await db.email_read_logs.find(
         query, {"_id": 0}
-    ).sort("repayment_date", -1).to_list(500)
-    
-    # Get holding cashflows to check which are updated
-    cashflow_lookup = {}
-    cashflows = await db.holding_cashflows.find(
-        {"is_repaid": True},
-        {"_id": 0, "client_id": 1, "bond_id": 1, "date": 1}
-    ).to_list(10000)
-    for cf in cashflows:
-        key = f"{cf.get('client_id')}|{cf.get('bond_id')}|{str(cf.get('date', ''))[:10]}"
-        cashflow_lookup[key] = True
-    
-    # Transform repayment logs to match expected format and add holding_updated status
-    email_logs = []
-    for rep in repayment_logs:
-        # Check if this repayment has a matching updated cashflow
-        key = f"{rep.get('client_id')}|{rep.get('bond_id')}|{str(rep.get('repayment_date', ''))[:10]}"
-        holding_updated = key in cashflow_lookup
-        
-        # Filter by holding_status if specified
-        if holding_status == 'updated' and not holding_updated:
-            continue
-        elif holding_status == 'pending' and holding_updated:
-            continue
-        
-        log_entry = {
-            "id": rep.get('id'),
-            "email_read_at": rep.get('created_at'),
-            "client_id": rep.get('client_id'),
-            "client_name": rep.get('client_name'),
-            "client_pan": rep.get('client_pan'),
-            "bond_name": rep.get('bond_name'),
-            "bond_code": rep.get('bond_code'),
-            "bond_id": rep.get('bond_id'),
-            "repayment_date": rep.get('repayment_date'),
-            "gross_amount": rep.get('gross_amount', 0),
-            "net_amount": rep.get('net_amount', 0),
-            "tds_amount": rep.get('tds', 0),
-            "holding_updated": holding_updated,
-            "holding_updated_at": rep.get('created_at') if holding_updated else None,
-            "is_historical": rep.get('is_historical', False)
-        }
-        email_logs.append(log_entry)
+    ).sort("email_read_at", -1).to_list(500)
     
     # Calculate summary stats
     total_emails_read = len(email_logs)
