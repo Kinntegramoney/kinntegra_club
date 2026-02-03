@@ -335,15 +335,15 @@ export default function Dashboard() {
             {/* Sub-Brokers Count */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="subbrokers-card">
               <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-lg bg-violet-500/10">
-                  <Briefcase className="h-5 w-5 text-violet-500" />
+                <div className="p-2 rounded-lg bg-amber-500/10">
+                  <Briefcase className="h-5 w-5 text-amber-600" />
                 </div>
                 <h3 className="font-semibold text-gray-800">Sub-Brokers</h3>
               </div>
               
               <div className="flex items-center justify-center my-6">
                 <div className="text-center">
-                  <p className="text-5xl font-bold text-violet-600">{summary?.sub_brokers?.total || 0}</p>
+                  <p className="text-5xl font-bold text-amber-700">{summary?.sub_brokers?.total || 0}</p>
                   <p className="text-sm text-gray-500 mt-2">Total Partners</p>
                 </div>
               </div>
