@@ -21676,13 +21676,27 @@ async def auto_tag_email_repayments(
                 "maturity_adjusted": True
             })
     
+    # After all tagging is complete, recalculate maturity for ALL affected trades
+    # This ensures historical + new repayments are all considered
+    if tagged_count > 0:
+        # Get unique trade_ids that were tagged
+        affected_trade_ids = list(set(d.get('trade_id') for d in tagged_details if d.get('trade_id')))
+        
+        # Recalculate maturity for each affected trade
+        for trade_id in affected_trade_ids:
+            trade = await db.trades.find_one({"id": trade_id}, {"_id": 0})
+            if trade:
+                bond = await db.bonds.find_one({"bond_code": trade.get('bond_code')}, {"_id": 0})
+                await recalculate_maturity_for_trade(trade, bond or {}, db)
+    
     return {
         "success": True,
         "message": f"Auto-tagged {tagged_count} email repayments ({skipped_count} already tagged, {duplicate_count} duplicates)",
         "tagged_count": tagged_count,
         "skipped_count": skipped_count,
         "duplicate_count": duplicate_count,
-        "details": tagged_details
+        "details": tagged_details,
+        "maturity_recalculated": tagged_count > 0
     }
 
 
