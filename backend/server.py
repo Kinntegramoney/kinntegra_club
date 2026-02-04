@@ -21421,7 +21421,7 @@ async def auto_tag_email_repayments(
             
             await db.actual_repayments.insert_one(repayment_record)
             
-            # UPDATE FINAL MATURITY CASHFLOW: Reduce the final payout by prepayment amount
+            # UPDATE FINAL MATURITY CASHFLOW: Recalculate based on remaining principal
             trade_id = matched_trade.get('id')
             if trade_id:
                 # Find ALL cashflows for this trade, sorted by date descending to get the final one
@@ -21432,16 +21432,49 @@ async def auto_tag_email_repayments(
                 )
                 
                 if final_cashflow:
+                    # Get bond details for coupon rate
+                    bond = await db.bonds.find_one(
+                        {"id": matched_trade.get('bond_id')},
+                        {"_id": 0, "coupon_rate": 1, "end_date": 1}
+                    )
+                    coupon_rate = (bond.get('coupon_rate', 18.0) / 100) if bond else 0.18
+                    
+                    # Get maturity date from bond or cashflow
+                    maturity_date_str = bond.get('end_date') if bond else final_cashflow.get('date', '')
+                    try:
+                        maturity_date = datetime.strptime(maturity_date_str[:10], '%Y-%m-%d')
+                    except:
+                        maturity_date = datetime.now() + timedelta(days=365)
+                    
+                    # Prepayment date from email
+                    prepayment_date_str = log.get('repayment_date', '')
+                    try:
+                        prepayment_date = datetime.strptime(prepayment_date_str[:10], '%Y-%m-%d')
+                    except:
+                        prepayment_date = datetime.now()
+                    
+                    # Calculate days from prepayment to maturity
+                    days_to_maturity = max(0, (maturity_date - prepayment_date).days)
+                    
                     # Store original values if not already stored
                     original_gross = final_cashflow.get('original_gross_amount') or final_cashflow.get('gross_amount', 0)
                     original_net = final_cashflow.get('original_net_amount') or final_cashflow.get('net_amount', 0)
                     
-                    # Reduce the final payout by the prepayment gross amount
-                    current_gross = final_cashflow.get('gross_amount', 0)
-                    current_net = final_cashflow.get('net_amount', 0)
+                    # Get original principal (investment amount)
+                    original_principal = matched_trade.get('total_amount', 0) or matched_trade.get('amount', 0)
                     
-                    new_gross = max(0, current_gross - log_gross_amount)
-                    new_net = max(0, current_net - log_net_amount)
+                    # Calculate remaining principal after prepayment
+                    remaining_principal = original_principal - log_gross_amount
+                    
+                    # Calculate interest on remaining principal for days to maturity
+                    interest_on_remaining = remaining_principal * coupon_rate * days_to_maturity / 365
+                    
+                    # New final maturity = remaining principal + interest on remaining
+                    new_gross = remaining_principal + interest_on_remaining
+                    
+                    # TDS is 10% of interest
+                    tds_on_interest = interest_on_remaining * 0.10
+                    new_net = new_gross - tds_on_interest
                     
                     await db.holding_cashflows.update_one(
                         {"id": final_cashflow.get('id')},
@@ -21451,9 +21484,15 @@ async def auto_tag_email_repayments(
                                 "original_net_amount": original_net,
                                 "gross_amount": round(new_gross, 2),
                                 "net_amount": round(new_net, 2),
+                                "principal_component": round(remaining_principal, 2),
+                                "interest_component": round(interest_on_remaining, 2),
+                                "tds_amount": round(tds_on_interest, 2),
                                 "is_prepayment_adjusted": True,
                                 "prepayment_adjustment_date": datetime.now(timezone.utc).isoformat(),
                                 "prepaid_amount": log_gross_amount,
+                                "remaining_principal": round(remaining_principal, 2),
+                                "days_to_maturity": days_to_maturity,
+                                "coupon_rate_used": coupon_rate,
                                 "prepayment_source": "auto_tag"
                             }
                         }
