@@ -388,6 +388,14 @@ export default function Dashboard() {
                 <span>1 AED = ₹{forexRate.toFixed(2)}</span>
               </div>
               <button 
+                onClick={() => { setShowFixDataModal(true); }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                data-testid="fix-data-btn"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Fix Data
+              </button>
+              <button 
                 onClick={() => { fetchDashboardData(); fetchForexRate(); setCurrentTime(formatDateTime()); }}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 data-testid="refresh-dashboard-btn"
