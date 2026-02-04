@@ -300,6 +300,43 @@ export default function Dashboard() {
     }
   };
 
+  // Reset auto-tag data (delete all auto-tagged entries and reset email logs)
+  const handleResetAutoTag = async () => {
+    if (!selectedBondForFix) {
+      toast.error("Please select a bond");
+      return;
+    }
+    
+    if (!window.confirm(`This will DELETE all auto-tagged repayments for ${selectedBondForFix} and reset email logs. You will need to run auto-tag again. Continue?`)) {
+      return;
+    }
+    
+    setFixingData(true);
+    setFixDataResults(null);
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/admin/reset-auto-tag?bond_code=${selectedBondForFix}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        setFixDataResults(response.data.results);
+        toast.success(`Auto-tag data reset for ${selectedBondForFix}! You can now run auto-tag again from Email Engagement page.`);
+        fetchDashboardData();
+      }
+    } catch (error) {
+      console.error("Reset auto-tag error:", error);
+      toast.error(error.response?.data?.detail || "Failed to reset auto-tag data");
+    } finally {
+      setFixingData(false);
+    }
+  };
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
