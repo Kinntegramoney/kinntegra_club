@@ -21422,6 +21422,10 @@ async def auto_tag_email_repayments(
             await db.actual_repayments.insert_one(repayment_record)
             
             # UPDATE FINAL MATURITY CASHFLOW: Recalculate based on remaining principal
+            # For bonds with interest on maturity:
+            # Interest Part 1: Full principal × rate × days from investment to prepayment
+            # Interest Part 2: Remaining principal × rate × days from prepayment to maturity
+            # Final = Remaining Principal + Total Interest
             trade_id = matched_trade.get('id')
             if trade_id:
                 # Find ALL cashflows for this trade, sorted by date descending to get the final one
@@ -21453,8 +21457,16 @@ async def auto_tag_email_repayments(
                     except:
                         prepayment_date = datetime.now()
                     
-                    # Calculate days from prepayment to maturity
-                    days_to_maturity = max(0, (maturity_date - prepayment_date).days)
+                    # Investment date from trade
+                    inv_date_str = matched_trade.get('investment_date', '')
+                    try:
+                        inv_date = datetime.strptime(str(inv_date_str)[:10], '%Y-%m-%d')
+                    except:
+                        inv_date = prepayment_date - timedelta(days=270)
+                    
+                    # Calculate days
+                    days_inv_to_prepay = max(0, (prepayment_date - inv_date).days)
+                    days_prepay_to_maturity = max(0, (maturity_date - prepayment_date).days)
                     
                     # Store original values if not already stored
                     original_gross = final_cashflow.get('original_gross_amount') or final_cashflow.get('gross_amount', 0)
@@ -21466,14 +21478,20 @@ async def auto_tag_email_repayments(
                     # Calculate remaining principal after prepayment
                     remaining_principal = original_principal - log_gross_amount
                     
-                    # Calculate interest on remaining principal for days to maturity
-                    interest_on_remaining = remaining_principal * coupon_rate * days_to_maturity / 365
+                    # Interest Part 1: On FULL principal from investment to prepayment
+                    interest_part1 = original_principal * coupon_rate * days_inv_to_prepay / 365
                     
-                    # New final maturity = remaining principal + interest on remaining
-                    new_gross = remaining_principal + interest_on_remaining
+                    # Interest Part 2: On REMAINING principal from prepayment to maturity
+                    interest_part2 = remaining_principal * coupon_rate * days_prepay_to_maturity / 365
                     
-                    # TDS is 10% of interest
-                    tds_on_interest = interest_on_remaining * 0.10
+                    # Total interest
+                    total_interest = interest_part1 + interest_part2
+                    
+                    # Final maturity = remaining principal + total interest
+                    new_gross = remaining_principal + total_interest
+                    
+                    # TDS is 10% of total interest
+                    tds_on_interest = total_interest * 0.10
                     new_net = new_gross - tds_on_interest
                     
                     await db.holding_cashflows.update_one(
@@ -21485,7 +21503,9 @@ async def auto_tag_email_repayments(
                                 "gross_amount": round(new_gross, 2),
                                 "net_amount": round(new_net, 2),
                                 "principal_component": round(remaining_principal, 2),
-                                "interest_component": round(interest_on_remaining, 2),
+                                "interest_component": round(total_interest, 2),
+                                "interest_before_prepayment": round(interest_part1, 2),
+                                "interest_after_prepayment": round(interest_part2, 2),
                                 "tds_amount": round(tds_on_interest, 2),
                                 "is_prepayment_adjusted": True,
                                 "prepayment_adjustment_date": datetime.now(timezone.utc).isoformat(),
