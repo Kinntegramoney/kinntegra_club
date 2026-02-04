@@ -21276,19 +21276,11 @@ async def auto_tag_email_repayments(
     """
     Auto-tag pending email repayments to actual repayments.
     
-    NEW SIMPLIFIED LOGIC:
-    1. For each pending email, get the repayment amount (gross_amount)
-    2. Find all trades for that bond_code
-    3. For each trade, divide repayment amount by the trade's units
-    4. If the result is an INTEGER (no decimals), that's the matching transaction
-    5. Tag the repayment to that specific trade/investment_date
-    
-    Example:
-    - Repayment: ₹476,000
-    - Trade 1: 34 units -> 476000 / 34 = 14000 (INTEGER - MATCH!)
-    - Trade 2: 31 units -> 476000 / 31 = 15354.84 (decimal - no match)
-    - Trade 3: 135 units -> 476000 / 135 = 3525.93 (decimal - no match)
-    - Result: Tag ₹476,000 to the trade with 34 units
+    LOGIC:
+    1. Deduplicate emails by (client_name, gross_amount, repayment_date) - same repayment may have multiple emails
+    2. For each unique repayment, divide amount by each trade's units
+    3. If result is an INTEGER → Match found, tag to that transaction
+    4. After tagging, update the final maturity cashflow to reduce by prepayment amount
     """
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can auto-tag repayments")
@@ -21304,12 +21296,40 @@ async def auto_tag_email_repayments(
     
     tagged_count = 0
     skipped_count = 0
+    duplicate_count = 0
     tagged_details = []
     
-    # Group logs by bond_code to process each deal together
-    deal_logs = {}
+    # STEP 1: Deduplicate emails by (bond_code, client_name, gross_amount, repayment_date)
+    # Multiple emails for the same repayment should only create ONE actual_repayment entry
+    unique_repayments = {}
     for log in pending_logs:
-        bond_code = log.get('bond_code', '') or ''
+        key = (
+            log.get('bond_code', ''),
+            log.get('client_name', ''),
+            log.get('gross_amount', 0),
+            log.get('repayment_date', '')
+        )
+        if key not in unique_repayments:
+            unique_repayments[key] = log
+        else:
+            duplicate_count += 1
+            # Mark duplicate email as processed (linked to the main one)
+            await db.email_read_logs.update_one(
+                {"id": log.get('id')},
+                {
+                    "$set": {
+                        "holding_updated": True,
+                        "holding_updated_at": datetime.now(timezone.utc).isoformat(),
+                        "is_duplicate": True,
+                        "duplicate_of": unique_repayments[key].get('id')
+                    }
+                }
+            )
+    
+    # Group unique repayments by bond_code
+    deal_logs = {}
+    for key, log in unique_repayments.items():
+        bond_code = key[0]
         if bond_code not in deal_logs:
             deal_logs[bond_code] = []
         deal_logs[bond_code].append(log)
