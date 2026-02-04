@@ -21380,15 +21380,31 @@ async def auto_tag_email_repayments(
                         best_match_factor = factor
             
             if best_match:
+                # IDEMPOTENCY CHECK: Skip if this email_log_id already has repayments
+                existing_repayments = await db.actual_repayments.find_one({
+                    "email_log_id": log.get('id')
+                })
+                if existing_repayments:
+                    # Already processed - skip to avoid duplicates
+                    continue
+                
                 # Found a matching client based on repayment factor
                 client_data = client_investments[best_match]
                 client_total = client_data["total_amount"]
+                
+                # Track total prepayment amount for cashflow adjustment
+                total_prepayment_principal = 0
                 
                 # Distribute proportionally across investment dates
                 for inv in client_data["investments"]:
                     inv_proportion = inv["amount"] / client_total if client_total > 0 else 0
                     allocated_gross = log_gross_amount * inv_proportion
                     allocated_net = log_net_amount * inv_proportion
+                    
+                    # Calculate principal portion (gross - interest component)
+                    # For prepayments, typically 80-90% is principal
+                    allocated_principal = allocated_gross * 0.85  # Estimate principal portion
+                    total_prepayment_principal += allocated_principal
                     
                     repayment_id = str(uuid.uuid4())
                     repayment_record = {
@@ -21403,6 +21419,7 @@ async def auto_tag_email_repayments(
                         "investment_date": inv["date"],
                         "gross_amount": allocated_gross,
                         "net_amount": allocated_net,
+                        "principal_amount": allocated_principal,
                         "tds": (log.get('tds_amount', 0) or 0) * inv_proportion,
                         "payment_type": "prepayment",
                         "is_prepayment": True,
@@ -21418,6 +21435,50 @@ async def auto_tag_email_repayments(
                     }
                     
                     await db.actual_repayments.insert_one(repayment_record)
+                    
+                    # UPDATE FINAL MATURITY CASHFLOW: Reduce the final payout by prepaid principal
+                    if inv.get("trade_id"):
+                        # Find the final maturity cashflow for this trade
+                        final_cashflow = await db.holding_cashflows.find_one(
+                            {
+                                "trade_id": inv.get("trade_id"),
+                                "is_repaid": {"$ne": True}
+                            },
+                            {"_id": 0},
+                            sort=[("date", -1)]  # Get the latest (final) cashflow
+                        )
+                        
+                        if final_cashflow:
+                            # Store original values if not already stored
+                            original_principal = final_cashflow.get('original_principal_component') or final_cashflow.get('principal_component', 0)
+                            original_gross = final_cashflow.get('original_gross_amount') or final_cashflow.get('gross_amount', 0)
+                            original_net = final_cashflow.get('original_net_amount') or final_cashflow.get('net_amount', 0)
+                            
+                            # Calculate new values after prepayment deduction
+                            new_principal = max(0, final_cashflow.get('principal_component', 0) - allocated_principal)
+                            principal_reduction = final_cashflow.get('principal_component', 0) - new_principal
+                            
+                            # Adjust gross and net amounts proportionally
+                            new_gross = max(0, final_cashflow.get('gross_amount', 0) - principal_reduction)
+                            new_net = max(0, final_cashflow.get('net_amount', 0) - (principal_reduction * 0.9))  # Account for TDS
+                            
+                            await db.holding_cashflows.update_one(
+                                {"id": final_cashflow.get('id')},
+                                {
+                                    "$set": {
+                                        "original_principal_component": original_principal,
+                                        "original_gross_amount": original_gross,
+                                        "original_net_amount": original_net,
+                                        "principal_component": round(new_principal, 2),
+                                        "gross_amount": round(new_gross, 2),
+                                        "net_amount": round(new_net, 2),
+                                        "is_prepayment_adjusted": True,
+                                        "prepayment_adjustment_date": datetime.now(timezone.utc).isoformat(),
+                                        "total_prepaid_deducted": round(principal_reduction, 2),
+                                        "prepayment_source": "auto_tag"
+                                    }
+                                }
+                            )
                 
                 # Mark email log as processed
                 await db.email_read_logs.update_one(
@@ -21441,7 +21502,8 @@ async def auto_tag_email_repayments(
                     "gross_amount": log_gross_amount,
                     "repayment_factor": f"{best_match_factor * 100:.1f}%",
                     "match_confidence": f"{(1 - best_diff) * 100:.1f}%",
-                    "investment_dates": len(client_data["investments"])
+                    "investment_dates": len(client_data["investments"]),
+                    "cashflows_adjusted": True
                 })
     
     return {
