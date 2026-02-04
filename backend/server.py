@@ -21511,7 +21511,8 @@ async def auto_tag_email_repayments(
                                 "prepayment_adjustment_date": datetime.now(timezone.utc).isoformat(),
                                 "prepaid_amount": log_gross_amount,
                                 "remaining_principal": round(remaining_principal, 2),
-                                "days_to_maturity": days_to_maturity,
+                                "days_investment_to_prepayment": days_inv_to_prepay,
+                                "days_prepayment_to_maturity": days_prepay_to_maturity,
                                 "coupon_rate_used": coupon_rate,
                                 "prepayment_source": "auto_tag"
                             }
