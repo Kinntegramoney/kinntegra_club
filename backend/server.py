@@ -10797,6 +10797,9 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                     'tds_amount': 0,
                     'net_amount': 0,
                     'is_repaid': cf.get('is_repaid', False),
+                    'is_prepayment_adjusted': False,  # Track if any cashflow was prepayment-adjusted
+                    'total_prepaid': 0,
+                    'interest_breakdown': [],
                     'reinvestment_tag': cf.get('reinvestment_tag'),
                     'source': 'merged',
                     'merged_trade_ids': []
@@ -10813,6 +10816,13 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             # If ANY cashflow for this date is repaid, mark as repaid
             if cf.get('is_repaid'):
                 merged_cashflows_map[cf_date]['is_repaid'] = True
+            
+            # If ANY cashflow is prepayment-adjusted, preserve that info
+            if cf.get('is_prepayment_adjusted'):
+                merged_cashflows_map[cf_date]['is_prepayment_adjusted'] = True
+                merged_cashflows_map[cf_date]['total_prepaid'] += cf.get('total_prepaid', 0) or 0
+                if cf.get('interest_breakdown'):
+                    merged_cashflows_map[cf_date]['interest_breakdown'].extend(cf.get('interest_breakdown', []))
         
         # Convert to list and sort by date
         stored_cashflows = sorted(merged_cashflows_map.values(), key=lambda x: x.get('date', ''))
