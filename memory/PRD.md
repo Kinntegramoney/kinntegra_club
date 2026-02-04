@@ -1,5 +1,40 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Feb 4, 2026)
+
+### Auto-Tag Logic Rewrite - Units Division Method (Feb 4, 2026) ✅
+
+**Problem:** The previous auto-tagging logic used percentage-based matching which was inaccurate and created incorrect entries.
+
+**New Logic (Simplified):**
+When a prepayment email is received:
+1. Get the repayment amount (gross_amount)
+2. Find all trades for that bond_code
+3. For each trade, divide repayment amount by the trade's **units**
+4. If the result is an **INTEGER** (no decimals), that's the matching transaction
+5. Tag the repayment to that specific trade/investment_date
+
+**Example:**
+- Client: Fali Adi Unwalla has 3 transactions for CDNRE001:
+  - 30 April 2025 - 34 units
+  - 2 May 2025 - 31 units
+  - 7 May 2025 - 135 units
+- Prepayment email: ₹476,000
+  - 476000 ÷ 31 = 15354.84 (decimal - NO MATCH)
+  - 476000 ÷ 34 = 14000 (INTEGER - MATCH!)
+  - 476000 ÷ 135 = 3525.93 (decimal - NO MATCH)
+- Result: Tag ₹476,000 to the transaction dated 30 April 2025 (34 units)
+
+**Features:**
+- Idempotency: Won't create duplicates if run multiple times
+- Cleanup endpoint: `POST /api/email-engagement/cleanup-duplicates` to remove any existing duplicates
+- Each `actual_repayments` entry now stores: `units`, `per_unit_amount`, `match_method: "units_division"`
+
+**Files Modified:**
+- `/app/backend/server.py` - Rewrote `auto_tag_email_repayments` function (lines 21272-21400)
+
+---
+
 ## Recent Changes (Feb 3, 2026)
 
 ### Manual Email Tagging UI & Dashboard Fixes (Feb 3, 2026) ✅
