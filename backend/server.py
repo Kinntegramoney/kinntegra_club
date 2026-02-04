@@ -21421,11 +21421,10 @@ async def auto_tag_email_repayments(
             
             await db.actual_repayments.insert_one(repayment_record)
             
-            # UPDATE FINAL MATURITY CASHFLOW: Recalculate based on remaining principal
-            # For bonds with interest on maturity:
-            # Interest Part 1: Full principal × rate × days from investment to prepayment
-            # Interest Part 2: Remaining principal × rate × days from prepayment to maturity
-            # Final = Remaining Principal + Total Interest
+            # UPDATE FINAL MATURITY CASHFLOW: Recalculate based on ALL prepayments
+            # For bonds with interest on maturity, interest is calculated period by period:
+            # - Each period uses the balance principal at that time
+            # - Balance reduces after each prepayment
             trade_id = matched_trade.get('id')
             if trade_id:
                 # Find ALL cashflows for this trade, sorted by date descending to get the final one
@@ -21450,45 +21449,74 @@ async def auto_tag_email_repayments(
                     except:
                         maturity_date = datetime.now() + timedelta(days=365)
                     
-                    # Prepayment date from email
-                    prepayment_date_str = log.get('repayment_date', '')
-                    try:
-                        prepayment_date = datetime.strptime(prepayment_date_str[:10], '%Y-%m-%d')
-                    except:
-                        prepayment_date = datetime.now()
-                    
                     # Investment date from trade
                     inv_date_str = matched_trade.get('investment_date', '')
                     try:
                         inv_date = datetime.strptime(str(inv_date_str)[:10], '%Y-%m-%d')
                     except:
-                        inv_date = prepayment_date - timedelta(days=270)
+                        inv_date = datetime.now() - timedelta(days=270)
                     
-                    # Calculate days
-                    days_inv_to_prepay = max(0, (prepayment_date - inv_date).days)
-                    days_prepay_to_maturity = max(0, (maturity_date - prepayment_date).days)
+                    # Get ALL repayments for this trade, sorted by date
+                    all_repayments = await db.actual_repayments.find(
+                        {
+                            "trade_id": trade_id,
+                            "bond_code": bond_code
+                        },
+                        {"_id": 0}
+                    ).sort("repayment_date", 1).to_list(100)
                     
                     # Store original values if not already stored
                     original_gross = final_cashflow.get('original_gross_amount') or final_cashflow.get('gross_amount', 0)
                     original_net = final_cashflow.get('original_net_amount') or final_cashflow.get('net_amount', 0)
-                    
-                    # Get original principal (investment amount)
                     original_principal = matched_trade.get('total_amount', 0) or matched_trade.get('amount', 0)
                     
-                    # Calculate remaining principal after prepayment
-                    remaining_principal = original_principal - log_gross_amount
+                    # Calculate interest period by period
+                    total_interest = 0
+                    balance_principal = original_principal
+                    prev_date = inv_date
+                    interest_breakdown = []
                     
-                    # Interest Part 1: On FULL principal from investment to prepayment
-                    interest_part1 = original_principal * coupon_rate * days_inv_to_prepay / 365
+                    for rep in all_repayments:
+                        rep_date_str = rep.get('repayment_date', '')
+                        try:
+                            rep_date = datetime.strptime(rep_date_str[:10], '%Y-%m-%d')
+                        except:
+                            continue
+                        rep_amount = rep.get('gross_amount', 0)
+                        
+                        days = max(0, (rep_date - prev_date).days)
+                        interest = balance_principal * coupon_rate * days / 365
+                        total_interest += interest
+                        
+                        interest_breakdown.append({
+                            'from': prev_date.strftime('%Y-%m-%d'),
+                            'to': rep_date.strftime('%Y-%m-%d'),
+                            'days': days,
+                            'balance': round(balance_principal, 2),
+                            'interest': round(interest, 2),
+                            'prepayment': rep_amount
+                        })
+                        
+                        balance_principal -= rep_amount
+                        prev_date = rep_date
                     
-                    # Interest Part 2: On REMAINING principal from prepayment to maturity
-                    interest_part2 = remaining_principal * coupon_rate * days_prepay_to_maturity / 365
+                    # Final period: Last prepayment to maturity
+                    days_final = max(0, (maturity_date - prev_date).days)
+                    interest_final = balance_principal * coupon_rate * days_final / 365
+                    total_interest += interest_final
                     
-                    # Total interest
-                    total_interest = interest_part1 + interest_part2
+                    interest_breakdown.append({
+                        'from': prev_date.strftime('%Y-%m-%d'),
+                        'to': maturity_date.strftime('%Y-%m-%d'),
+                        'days': days_final,
+                        'balance': round(balance_principal, 2),
+                        'interest': round(interest_final, 2),
+                        'prepayment': 0
+                    })
                     
                     # Final maturity = remaining principal + total interest
-                    new_gross = remaining_principal + total_interest
+                    new_gross = balance_principal + total_interest
+                    total_prepaid = sum(r.get('gross_amount', 0) for r in all_repayments)
                     
                     # TDS is 10% of total interest
                     tds_on_interest = total_interest * 0.10
@@ -21502,17 +21530,15 @@ async def auto_tag_email_repayments(
                                 "original_net_amount": original_net,
                                 "gross_amount": round(new_gross, 2),
                                 "net_amount": round(new_net, 2),
-                                "principal_component": round(remaining_principal, 2),
+                                "principal_component": round(balance_principal, 2),
                                 "interest_component": round(total_interest, 2),
-                                "interest_before_prepayment": round(interest_part1, 2),
-                                "interest_after_prepayment": round(interest_part2, 2),
                                 "tds_amount": round(tds_on_interest, 2),
                                 "is_prepayment_adjusted": True,
                                 "prepayment_adjustment_date": datetime.now(timezone.utc).isoformat(),
-                                "prepaid_amount": log_gross_amount,
-                                "remaining_principal": round(remaining_principal, 2),
-                                "days_investment_to_prepayment": days_inv_to_prepay,
-                                "days_prepayment_to_maturity": days_prepay_to_maturity,
+                                "total_prepaid": round(total_prepaid, 2),
+                                "remaining_principal": round(balance_principal, 2),
+                                "prepayment_count": len(all_repayments),
+                                "interest_breakdown": interest_breakdown,
                                 "coupon_rate_used": coupon_rate,
                                 "prepayment_source": "auto_tag"
                             }
