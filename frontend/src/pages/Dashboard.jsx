@@ -204,6 +204,100 @@ export default function Dashboard() {
     }
   };
 
+  // Fetch available bonds for fix data
+  const fetchAvailableBonds = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/bonds`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data) {
+        setAvailableBonds(response.data.filter(b => b.bond_code));
+      }
+    } catch (error) {
+      console.error("Error fetching bonds:", error);
+    }
+  };
+
+  // Fix all data for a bond (cleanup duplicates + recalculate maturity)
+  const handleFixAllData = async () => {
+    if (!selectedBondForFix) {
+      toast.error("Please select a bond");
+      return;
+    }
+    
+    setFixingData(true);
+    setFixDataResults(null);
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/admin/fix-all-data?bond_code=${selectedBondForFix}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        setFixDataResults(response.data.results);
+        toast.success(`Data fixed for ${selectedBondForFix}! Duplicates removed: ${response.data.results.duplicate_repayments_removed + response.data.results.duplicate_emails_removed}, Trades recalculated: ${response.data.results.trades_recalculated}`);
+        // Refresh dashboard data
+        fetchDashboardData();
+      }
+    } catch (error) {
+      console.error("Fix data error:", error);
+      toast.error(error.response?.data?.detail || "Failed to fix data");
+    } finally {
+      setFixingData(false);
+    }
+  };
+
+  // Fix all bonds at once
+  const handleFixAllBonds = async () => {
+    setFixingData(true);
+    setFixDataResults(null);
+    
+    let totalResults = {
+      duplicate_repayments_removed: 0,
+      duplicate_emails_removed: 0,
+      trades_recalculated: 0,
+      bonds_processed: 0
+    };
+    
+    try {
+      const token = localStorage.getItem("token");
+      
+      for (const bond of availableBonds) {
+        if (!bond.bond_code) continue;
+        
+        const response = await axios.post(
+          `${API}/admin/fix-all-data?bond_code=${bond.bond_code}`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+        
+        if (response.data.success) {
+          totalResults.duplicate_repayments_removed += response.data.results.duplicate_repayments_removed || 0;
+          totalResults.duplicate_emails_removed += response.data.results.duplicate_emails_removed || 0;
+          totalResults.trades_recalculated += response.data.results.trades_recalculated || 0;
+          totalResults.bonds_processed += 1;
+        }
+      }
+      
+      setFixDataResults(totalResults);
+      toast.success(`All bonds fixed! ${totalResults.bonds_processed} bonds processed, ${totalResults.trades_recalculated} trades recalculated`);
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Fix all bonds error:", error);
+      toast.error(error.response?.data?.detail || "Failed to fix all bonds");
+    } finally {
+      setFixingData(false);
+    }
+  };
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
