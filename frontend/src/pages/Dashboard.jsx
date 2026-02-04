@@ -150,6 +150,13 @@ export default function Dashboard() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetting, setResetting] = useState(false);
+  
+  // Fix data state
+  const [showFixDataModal, setShowFixDataModal] = useState(false);
+  const [fixingData, setFixingData] = useState(false);
+  const [fixDataResults, setFixDataResults] = useState(null);
+  const [availableBonds, setAvailableBonds] = useState([]);
+  const [selectedBondForFix, setSelectedBondForFix] = useState("");
 
   // Set page title and update time
   useEffect(() => {
