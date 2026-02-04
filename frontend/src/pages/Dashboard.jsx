@@ -211,8 +211,10 @@ export default function Dashboard() {
       const response = await axios.get(`${API}/bonds`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (response.data) {
-        setAvailableBonds(response.data.filter(b => b.bond_code));
+      // API returns {data: [...], pagination: {...}}
+      const bondsData = response.data?.data || response.data || [];
+      if (Array.isArray(bondsData)) {
+        setAvailableBonds(bondsData.filter(b => b.bond_code));
       }
     } catch (error) {
       console.error("Error fetching bonds:", error);
