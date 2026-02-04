@@ -21437,10 +21437,36 @@ async def auto_tag_email_repayments(
                 # No match found - skip this log
                 continue
             
-            # Create the actual_repayment record
-            repayment_id = str(uuid.uuid4())
+            # Get investment date for this trade
             investment_date = matched_trade.get('investment_date') or matched_trade.get('created_at', '')
             investment_date_str = str(investment_date)[:10] if investment_date else ''
+            
+            # IDEMPOTENCY CHECK 2: Check if a repayment with same (client, amount, date, investment_date) already exists
+            # This catches cases where multiple email logs exist for the same repayment
+            existing_by_combo = await db.actual_repayments.find_one({
+                "client_name": matched_trade.get('client_name'),
+                "gross_amount": log_gross_amount,
+                "repayment_date": log_repayment_date,
+                "investment_date": investment_date_str
+            })
+            if existing_by_combo:
+                # Mark this email log as processed (it's a duplicate of an already-processed repayment)
+                await db.email_read_logs.update_one(
+                    {"id": log_id},
+                    {
+                        "$set": {
+                            "holding_updated": True,
+                            "holding_updated_at": datetime.now(timezone.utc).isoformat(),
+                            "is_duplicate_repayment": True,
+                            "linked_to_repayment_id": existing_by_combo.get('id')
+                        }
+                    }
+                )
+                duplicate_count += 1
+                continue
+            
+            # Create the actual_repayment record
+            repayment_id = str(uuid.uuid4())
             
             repayment_record = {
                 "id": repayment_id,
@@ -21450,7 +21476,7 @@ async def auto_tag_email_repayments(
                 "bond_id": matched_trade.get('bond_id'),
                 "bond_name": matched_trade.get('bond_name'),
                 "bond_code": bond_code,
-                "repayment_date": log.get('repayment_date'),
+                "repayment_date": log_repayment_date,
                 "investment_date": investment_date_str,
                 "gross_amount": log_gross_amount,
                 "net_amount": log_net_amount,
