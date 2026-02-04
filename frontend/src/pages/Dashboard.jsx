@@ -314,6 +314,7 @@ export default function Dashboard() {
     setUser(parsedUser);
     fetchDashboardData();
     fetchForexRate();
+    fetchAvailableBonds();
   }, [navigate]);
 
   const fetchForexRate = async () => {
