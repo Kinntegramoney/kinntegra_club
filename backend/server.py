@@ -21497,12 +21497,17 @@ async def auto_tag_email_repayments(
                     except:
                         maturity_date = datetime.now() + timedelta(days=365)
                     
-                    # Investment date from trade
-                    inv_date_str = matched_trade.get('investment_date', '')
+                    # Get BOND START DATE for interest calculation (not investment date)
+                    bond_start_date_str = bond.get('start_date', '') if bond else ''
                     try:
-                        inv_date = datetime.strptime(str(inv_date_str)[:10], '%Y-%m-%d')
+                        bond_start_date = datetime.strptime(str(bond_start_date_str)[:10], '%Y-%m-%d')
                     except:
-                        inv_date = datetime.now() - timedelta(days=270)
+                        # Fallback to investment date if bond start date not available
+                        inv_date_str = matched_trade.get('investment_date', '')
+                        try:
+                            bond_start_date = datetime.strptime(str(inv_date_str)[:10], '%Y-%m-%d')
+                        except:
+                            bond_start_date = datetime.now() - timedelta(days=365)
                     
                     # Get ALL repayments for this trade, sorted by date
                     all_repayments = await db.actual_repayments.find(
@@ -21523,10 +21528,10 @@ async def auto_tag_email_repayments(
                     face_value_per_unit = bond.get('face_value', 100000) if bond else 100000
                     original_principal = units * face_value_per_unit
                     
-                    # Calculate interest period by period
+                    # Calculate interest period by period from BOND START DATE
                     total_interest = 0
                     balance_principal = original_principal
-                    prev_date = inv_date
+                    prev_date = bond_start_date  # Interest starts from bond start date
                     interest_breakdown = []
                     
                     for rep in all_repayments:
