@@ -22019,23 +22019,42 @@ async def fix_all_data_for_bond(
     results = {
         "duplicate_repayments_removed": 0,
         "duplicate_emails_removed": 0,
-        "trades_recalculated": 0
+        "trades_recalculated": 0,
+        "details": []
     }
     
     # Step 1: Clean up duplicate actual_repayments
+    # Use normalized date strings for comparison
     all_repayments = await db.actual_repayments.find(
         {"bond_code": bond_code},
-        {"_id": 1, "client_name": 1, "gross_amount": 1, "repayment_date": 1, "investment_date": 1, "created_at": 1}
+        {"_id": 1, "id": 1, "client_name": 1, "gross_amount": 1, "repayment_date": 1, "investment_date": 1, "created_at": 1, "source": 1}
     ).to_list(10000)
     
     groups = defaultdict(list)
     for rep in all_repayments:
-        key = (rep.get('client_name'), rep.get('gross_amount'), rep.get('repayment_date'), rep.get('investment_date'))
+        # Normalize dates to YYYY-MM-DD format
+        rep_date = str(rep.get('repayment_date', ''))[:10]
+        inv_date = str(rep.get('investment_date', ''))[:10]
+        # Create a unique key with normalized values
+        key = (
+            str(rep.get('client_name', '')).strip().lower(),
+            float(rep.get('gross_amount', 0) or 0),
+            rep_date,
+            inv_date
+        )
         groups[key].append(rep)
     
     for key, records in groups.items():
         if len(records) > 1:
-            sorted_records = sorted(records, key=lambda x: x.get('created_at', ''))
+            # Sort by created_at, keep the oldest one (first entry)
+            sorted_records = sorted(records, key=lambda x: x.get('created_at', '') or '')
+            results["details"].append({
+                "type": "duplicate_repayment",
+                "key": f"{key[0]}|{key[1]}|{key[2]}|{key[3]}",
+                "count": len(records),
+                "kept": sorted_records[0].get('id'),
+                "removed": [r.get('id') for r in sorted_records[1:]]
+            })
             for rec in sorted_records[1:]:
                 await db.actual_repayments.delete_one({"_id": rec['_id']})
                 results["duplicate_repayments_removed"] += 1
@@ -22043,17 +22062,23 @@ async def fix_all_data_for_bond(
     # Step 2: Clean up duplicate email_read_logs
     all_logs = await db.email_read_logs.find(
         {"bond_code": bond_code},
-        {"_id": 1, "client_name": 1, "gross_amount": 1, "repayment_date": 1, "email_read_at": 1}
+        {"_id": 1, "id": 1, "client_name": 1, "gross_amount": 1, "repayment_date": 1, "email_read_at": 1}
     ).to_list(10000)
     
     log_groups = defaultdict(list)
     for log in all_logs:
-        key = (log.get('client_name'), log.get('gross_amount'), log.get('repayment_date'))
+        # Normalize date
+        rep_date = str(log.get('repayment_date', ''))[:10]
+        key = (
+            str(log.get('client_name', '')).strip().lower(),
+            float(log.get('gross_amount', 0) or 0),
+            rep_date
+        )
         log_groups[key].append(log)
     
     for key, records in log_groups.items():
         if len(records) > 1:
-            sorted_records = sorted(records, key=lambda x: x.get('email_read_at', ''))
+            sorted_records = sorted(records, key=lambda x: x.get('email_read_at', '') or '')
             for rec in sorted_records[1:]:
                 await db.email_read_logs.delete_one({"_id": rec['_id']})
                 results["duplicate_emails_removed"] += 1
@@ -22063,13 +22088,14 @@ async def fix_all_data_for_bond(
     bond = await db.bonds.find_one({"bond_code": bond_code}, {"_id": 0})
     
     for trade in trades:
+        inv_date_str = str(trade.get('investment_date', ''))[:10]
         repayment_count = await db.actual_repayments.count_documents({
             "$or": [
                 {"trade_id": trade.get('id')},
                 {
                     "client_name": trade.get('client_name'),
                     "bond_code": bond_code,
-                    "investment_date": str(trade.get('investment_date', ''))[:10]
+                    "investment_date": inv_date_str
                 }
             ]
         })
