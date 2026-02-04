@@ -21738,6 +21738,339 @@ async def cleanup_duplicate_repayments(
     }
 
 
+# ==================== MATURITY RECALCULATION ====================
+
+async def recalculate_maturity_for_trade(trade: dict, bond: dict, db_instance) -> dict:
+    """
+    Recalculate maturity amount for a single trade considering ALL prepayments.
+    
+    Logic:
+    1. Interest starts from BOND START DATE (not investment date)
+    2. Interest calculated period by period on REDUCING BALANCE
+    3. Include BOTH start and end dates (+1 day)
+    4. Principal = Face Value (units × face_value_per_unit), NOT investment amount
+    5. Consider ALL repayments (historical + auto-tagged)
+    """
+    from datetime import datetime, timedelta, timezone
+    from collections import defaultdict
+    
+    trade_id = trade.get('id')
+    client_name = trade.get('client_name')
+    bond_code = trade.get('bond_code')
+    units = trade.get('units', 0)
+    investment_date_str = str(trade.get('investment_date', ''))[:10]
+    
+    # Bond details
+    coupon_rate = (bond.get('coupon_rate', 18.73) / 100) if bond else 0.1873
+    face_value_per_unit = bond.get('face_value', 100000) if bond else 100000
+    
+    # Get bond start date
+    bond_start_date_str = bond.get('start_date', '') if bond else ''
+    try:
+        bond_start_date = datetime.strptime(str(bond_start_date_str)[:10], '%Y-%m-%d')
+    except:
+        bond_start_date = datetime(2024, 10, 8)  # Default fallback
+    
+    # Get maturity date
+    maturity_date_str = bond.get('end_date', '') if bond else ''
+    try:
+        maturity_date = datetime.strptime(str(maturity_date_str)[:10], '%Y-%m-%d')
+    except:
+        maturity_date = datetime(2026, 4, 8)  # Default fallback
+    
+    # Face value (principal)
+    original_principal = units * face_value_per_unit
+    
+    # Get ALL repayments for this trade
+    all_repayments = await db_instance.actual_repayments.find(
+        {
+            "$or": [
+                {"trade_id": trade_id},
+                {
+                    "client_name": client_name,
+                    "bond_code": bond_code,
+                    "investment_date": investment_date_str
+                }
+            ]
+        },
+        {"_id": 0}
+    ).sort("repayment_date", 1).to_list(100)
+    
+    # Deduplicate by (repayment_date, gross_amount)
+    seen = set()
+    unique_repayments = []
+    for rep in all_repayments:
+        key = (rep.get('repayment_date'), rep.get('gross_amount'))
+        if key not in seen:
+            seen.add(key)
+            unique_repayments.append(rep)
+    all_repayments = unique_repayments
+    
+    # Calculate interest period by period
+    balance_principal = original_principal
+    prev_date = bond_start_date
+    total_interest = 0
+    total_prepaid = 0
+    interest_breakdown = []
+    
+    for rep in all_repayments:
+        rep_date_str = rep.get('repayment_date', '')
+        try:
+            rep_date = datetime.strptime(rep_date_str[:10], '%Y-%m-%d')
+        except:
+            continue
+        rep_amount = rep.get('gross_amount', 0)
+        
+        # Include BOTH start and end dates (+1)
+        days = (rep_date - prev_date).days + 1
+        period_interest = balance_principal * coupon_rate * days / 365
+        total_interest += period_interest
+        total_prepaid += rep_amount
+        
+        interest_breakdown.append({
+            'from': prev_date.strftime('%Y-%m-%d'),
+            'to': rep_date.strftime('%Y-%m-%d'),
+            'days': days,
+            'balance': round(balance_principal, 2),
+            'interest': round(period_interest, 2),
+            'prepayment': rep_amount
+        })
+        
+        balance_principal -= rep_amount
+        prev_date = rep_date
+    
+    # Final period to maturity
+    days_final = (maturity_date - prev_date).days + 1
+    final_interest = balance_principal * coupon_rate * days_final / 365
+    total_interest += final_interest
+    
+    interest_breakdown.append({
+        'from': prev_date.strftime('%Y-%m-%d'),
+        'to': maturity_date.strftime('%Y-%m-%d'),
+        'days': days_final,
+        'balance': round(balance_principal, 2),
+        'interest': round(final_interest, 2),
+        'prepayment': 0
+    })
+    
+    # Final maturity = remaining principal + total interest
+    final_maturity = balance_principal + total_interest
+    
+    # TDS on interest (10%)
+    tds = total_interest * 0.10
+    net_maturity = final_maturity - tds
+    
+    # Update holding_cashflows
+    final_cf = await db_instance.holding_cashflows.find_one(
+        {"trade_id": trade_id},
+        {"_id": 1, "original_gross_amount": 1, "original_net_amount": 1, "gross_amount": 1, "net_amount": 1},
+        sort=[("date", -1)]
+    )
+    
+    if final_cf:
+        original_gross = final_cf.get('original_gross_amount') or final_cf.get('gross_amount', 0)
+        original_net = final_cf.get('original_net_amount') or final_cf.get('net_amount', 0)
+        
+        await db_instance.holding_cashflows.update_one(
+            {"_id": final_cf['_id']},
+            {
+                "$set": {
+                    "original_gross_amount": original_gross,
+                    "original_net_amount": original_net,
+                    "gross_amount": round(final_maturity, 2),
+                    "net_amount": round(net_maturity, 2),
+                    "principal_component": round(balance_principal, 2),
+                    "interest_component": round(total_interest, 2),
+                    "tds_amount": round(tds, 2),
+                    "is_prepayment_adjusted": True,
+                    "total_prepaid": round(total_prepaid, 2),
+                    "remaining_principal": round(balance_principal, 2),
+                    "original_face_value": original_principal,
+                    "interest_start_date": bond_start_date.strftime('%Y-%m-%d'),
+                    "day_count_convention": "inclusive_both",
+                    "interest_breakdown": interest_breakdown,
+                    "prepayment_count": len(all_repayments),
+                    "prepayment_adjustment_date": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+    
+    return {
+        "trade_id": trade_id,
+        "investment_date": investment_date_str,
+        "units": units,
+        "total_prepaid": round(total_prepaid, 2),
+        "remaining_principal": round(balance_principal, 2),
+        "total_interest": round(total_interest, 2),
+        "final_maturity": round(final_maturity, 2),
+        "repayment_count": len(all_repayments)
+    }
+
+
+@api_router.post("/admin/recalculate-maturity")
+async def recalculate_all_maturity(
+    bond_code: Optional[str] = None,
+    client_name: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Recalculate maturity amounts for all trades with prepayments.
+    This fixes any incorrect maturity calculations by re-running the complete calculation.
+    
+    Parameters:
+    - bond_code: Optional filter by bond
+    - client_name: Optional filter by client
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can recalculate maturity")
+    
+    # Build query for trades
+    trade_query = {}
+    if bond_code:
+        trade_query['bond_code'] = bond_code
+    if client_name:
+        trade_query['client_name'] = client_name
+    
+    # Get all relevant trades
+    trades = await db.trades.find(trade_query, {"_id": 0}).to_list(1000)
+    
+    if not trades:
+        return {"success": True, "message": "No trades found", "updated_count": 0}
+    
+    # Get unique bond_codes
+    bond_codes = list(set(t.get('bond_code') for t in trades if t.get('bond_code')))
+    
+    # Get bond details
+    bonds = {}
+    for bc in bond_codes:
+        bond = await db.bonds.find_one({"bond_code": bc}, {"_id": 0})
+        if bond:
+            bonds[bc] = bond
+    
+    # Recalculate for each trade
+    results = []
+    for trade in trades:
+        bc = trade.get('bond_code')
+        bond = bonds.get(bc, {})
+        
+        # Only recalculate if trade has repayments
+        repayment_count = await db.actual_repayments.count_documents({
+            "$or": [
+                {"trade_id": trade.get('id')},
+                {
+                    "client_name": trade.get('client_name'),
+                    "bond_code": bc,
+                    "investment_date": str(trade.get('investment_date', ''))[:10]
+                }
+            ]
+        })
+        
+        if repayment_count > 0:
+            result = await recalculate_maturity_for_trade(trade, bond, db)
+            results.append(result)
+    
+    # Calculate totals
+    total_prepaid = sum(r.get('total_prepaid', 0) for r in results)
+    total_maturity = sum(r.get('final_maturity', 0) for r in results)
+    
+    return {
+        "success": True,
+        "message": f"Recalculated maturity for {len(results)} trades",
+        "updated_count": len(results),
+        "total_prepaid": round(total_prepaid, 2),
+        "total_maturity": round(total_maturity, 2),
+        "grand_total": round(total_prepaid + total_maturity, 2),
+        "details": results
+    }
+
+
+@api_router.post("/admin/fix-all-data")
+async def fix_all_data_for_bond(
+    bond_code: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    One-click fix for all data issues for a bond:
+    1. Clean up duplicate actual_repayments
+    2. Clean up duplicate email_read_logs
+    3. Recalculate all maturity amounts
+    
+    Call this after deployment on live to fix all data.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can fix data")
+    
+    from collections import defaultdict
+    
+    results = {
+        "duplicate_repayments_removed": 0,
+        "duplicate_emails_removed": 0,
+        "trades_recalculated": 0
+    }
+    
+    # Step 1: Clean up duplicate actual_repayments
+    all_repayments = await db.actual_repayments.find(
+        {"bond_code": bond_code},
+        {"_id": 1, "client_name": 1, "gross_amount": 1, "repayment_date": 1, "investment_date": 1, "created_at": 1}
+    ).to_list(10000)
+    
+    groups = defaultdict(list)
+    for rep in all_repayments:
+        key = (rep.get('client_name'), rep.get('gross_amount'), rep.get('repayment_date'), rep.get('investment_date'))
+        groups[key].append(rep)
+    
+    for key, records in groups.items():
+        if len(records) > 1:
+            sorted_records = sorted(records, key=lambda x: x.get('created_at', ''))
+            for rec in sorted_records[1:]:
+                await db.actual_repayments.delete_one({"_id": rec['_id']})
+                results["duplicate_repayments_removed"] += 1
+    
+    # Step 2: Clean up duplicate email_read_logs
+    all_logs = await db.email_read_logs.find(
+        {"bond_code": bond_code},
+        {"_id": 1, "client_name": 1, "gross_amount": 1, "repayment_date": 1, "email_read_at": 1}
+    ).to_list(10000)
+    
+    log_groups = defaultdict(list)
+    for log in all_logs:
+        key = (log.get('client_name'), log.get('gross_amount'), log.get('repayment_date'))
+        log_groups[key].append(log)
+    
+    for key, records in log_groups.items():
+        if len(records) > 1:
+            sorted_records = sorted(records, key=lambda x: x.get('email_read_at', ''))
+            for rec in sorted_records[1:]:
+                await db.email_read_logs.delete_one({"_id": rec['_id']})
+                results["duplicate_emails_removed"] += 1
+    
+    # Step 3: Recalculate all maturity amounts
+    trades = await db.trades.find({"bond_code": bond_code}, {"_id": 0}).to_list(1000)
+    bond = await db.bonds.find_one({"bond_code": bond_code}, {"_id": 0})
+    
+    for trade in trades:
+        repayment_count = await db.actual_repayments.count_documents({
+            "$or": [
+                {"trade_id": trade.get('id')},
+                {
+                    "client_name": trade.get('client_name'),
+                    "bond_code": bond_code,
+                    "investment_date": str(trade.get('investment_date', ''))[:10]
+                }
+            ]
+        })
+        
+        if repayment_count > 0:
+            await recalculate_maturity_for_trade(trade, bond or {}, db)
+            results["trades_recalculated"] += 1
+    
+    return {
+        "success": True,
+        "message": f"Fixed all data for {bond_code}",
+        "results": results
+    }
+
+
 # ==================== ADMIN RESET ENDPOINTS ====================
 
 @api_router.post("/admin/reset/actual-repayments")
