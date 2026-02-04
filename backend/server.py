@@ -22111,6 +22111,96 @@ async def fix_all_data_for_bond(
     }
 
 
+@api_router.post("/admin/reset-auto-tag")
+async def reset_auto_tag_data(
+    bond_code: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Reset all auto-tagged data for a bond:
+    1. Delete ALL actual_repayments with source='auto_tag'
+    2. Reset email_read_logs holding_updated status
+    3. Reset holding_cashflows prepayment adjustments
+    
+    After this, user can run auto-tag fresh to re-tag all entries correctly.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can reset auto-tag data")
+    
+    results = {
+        "auto_tagged_repayments_deleted": 0,
+        "email_logs_reset": 0,
+        "cashflows_reset": 0
+    }
+    
+    # Step 1: Delete all auto-tagged actual_repayments
+    delete_result = await db.actual_repayments.delete_many({
+        "bond_code": bond_code,
+        "source": "auto_tag"
+    })
+    results["auto_tagged_repayments_deleted"] = delete_result.deleted_count
+    
+    # Step 2: Reset email_read_logs - clear holding_updated and auto_tagged flags
+    update_result = await db.email_read_logs.update_many(
+        {"bond_code": bond_code},
+        {
+            "$unset": {
+                "holding_updated": "",
+                "holding_updated_at": "",
+                "auto_tagged": "",
+                "matched_trade_id": "",
+                "matched_investment_date": "",
+                "matched_units": "",
+                "per_unit_amount": "",
+                "is_duplicate_repayment": "",
+                "linked_to_repayment_id": ""
+            }
+        }
+    )
+    results["email_logs_reset"] = update_result.modified_count
+    
+    # Step 3: Reset holding_cashflows - restore original values
+    trades = await db.trades.find({"bond_code": bond_code}, {"_id": 0, "id": 1}).to_list(1000)
+    trade_ids = [t.get('id') for t in trades]
+    
+    cashflows = await db.holding_cashflows.find(
+        {"trade_id": {"$in": trade_ids}, "is_prepayment_adjusted": True},
+        {"_id": 1, "original_gross_amount": 1, "original_net_amount": 1}
+    ).to_list(1000)
+    
+    for cf in cashflows:
+        original_gross = cf.get('original_gross_amount', 0)
+        original_net = cf.get('original_net_amount', 0)
+        
+        if original_gross > 0:
+            await db.holding_cashflows.update_one(
+                {"_id": cf['_id']},
+                {
+                    "$set": {
+                        "gross_amount": original_gross,
+                        "net_amount": original_net
+                    },
+                    "$unset": {
+                        "is_prepayment_adjusted": "",
+                        "prepayment_adjustment_date": "",
+                        "total_prepaid": "",
+                        "remaining_principal": "",
+                        "interest_breakdown": "",
+                        "prepayment_count": "",
+                        "principal_component": "",
+                        "interest_component": ""
+                    }
+                }
+            )
+            results["cashflows_reset"] += 1
+    
+    return {
+        "success": True,
+        "message": f"Reset all auto-tag data for {bond_code}. You can now run auto-tag again.",
+        "results": results
+    }
+
+
 # ==================== ADMIN RESET ENDPOINTS ====================
 
 @api_router.post("/admin/reset/actual-repayments")
