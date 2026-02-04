@@ -21514,6 +21514,58 @@ async def auto_tag_email_repayments(
     }
 
 
+@api_router.post("/email-engagement/cleanup-duplicates")
+async def cleanup_duplicate_repayments(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Clean up duplicate entries in actual_repayments collection.
+    Duplicates are identified by same email_log_id + investment_date combination.
+    Keeps the most recent entry and removes older duplicates.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can cleanup duplicates")
+    
+    # Get all actual_repayments with email_log_id
+    all_repayments = await db.actual_repayments.find(
+        {"email_log_id": {"$exists": True, "$ne": None}},
+        {"_id": 1, "id": 1, "email_log_id": 1, "investment_date": 1, "created_at": 1}
+    ).to_list(10000)
+    
+    # Group by email_log_id + investment_date
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for rep in all_repayments:
+        key = (rep.get('email_log_id'), rep.get('investment_date'))
+        groups[key].append(rep)
+    
+    # Find and remove duplicates (keep the most recent)
+    deleted_count = 0
+    deleted_ids = []
+    
+    for key, records in groups.items():
+        if len(records) > 1:
+            # Sort by created_at descending - keep the first (most recent)
+            sorted_records = sorted(
+                records, 
+                key=lambda x: x.get('created_at', ''), 
+                reverse=True
+            )
+            
+            # Delete all except the first (most recent)
+            for rec in sorted_records[1:]:
+                await db.actual_repayments.delete_one({"_id": rec['_id']})
+                deleted_count += 1
+                deleted_ids.append(rec.get('id', str(rec['_id'])))
+    
+    return {
+        "success": True,
+        "message": f"Cleaned up {deleted_count} duplicate repayment entries",
+        "deleted_count": deleted_count,
+        "deleted_ids": deleted_ids[:20]  # Return first 20 for reference
+    }
+
+
 # ==================== EMAIL ENGAGEMENT DASHBOARD ====================
 
 @api_router.get("/email-engagement/dashboard")
