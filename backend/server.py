@@ -21516,7 +21516,12 @@ async def auto_tag_email_repayments(
                     # Store original values if not already stored
                     original_gross = final_cashflow.get('original_gross_amount') or final_cashflow.get('gross_amount', 0)
                     original_net = final_cashflow.get('original_net_amount') or final_cashflow.get('net_amount', 0)
-                    original_principal = matched_trade.get('total_amount', 0) or matched_trade.get('amount', 0)
+                    
+                    # USE FACE VALUE for principal calculation, not investment amount
+                    # Face Value = Units × ₹1,00,000 (standard face value per unit)
+                    units = matched_trade.get('units', 0)
+                    face_value_per_unit = bond.get('face_value', 100000) if bond else 100000
+                    original_principal = units * face_value_per_unit
                     
                     # Calculate interest period by period
                     total_interest = 0
