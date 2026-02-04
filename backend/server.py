@@ -10581,7 +10581,7 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
     
     # 4. Add FUTURE scheduled cashflows that don't have actual repayments yet
     # This ensures XIRR is calculated using ALL future cashflows (not just uploaded actuals)
-    # IMPORTANT: Skip maturity date if we already added a calculated maturity entry above
+    # IMPORTANT: For cashflows with is_prepayment_adjusted=True, use the PRE-CALCULATED values from holding_cashflows
     if stored_cashflows:
         # Get dates that already have actual repayment entries
         actual_repayment_dates = set()
@@ -10594,6 +10594,44 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
         # (This prevents duplicate maturity entries when prepayments exist)
         maturity_date_short = maturity_date_str[:10] if maturity_date_str else ''
         
+        # Check if any stored cashflow has prepayment-adjusted values
+        # If so, we should USE THOSE instead of calculating dynamically
+        adjusted_maturity_cf = None
+        for cf in stored_cashflows:
+            cf_date_short = (cf.get('date', '') or '')[:10]
+            if cf.get('is_prepayment_adjusted') and cf_date_short == maturity_date_short:
+                adjusted_maturity_cf = cf
+                break
+        
+        # If we have a pre-adjusted maturity cashflow, use it instead of the calculated one
+        if adjusted_maturity_cf:
+            # Remove any calculated maturity entry we added above
+            actual_cashflows = [cf for cf in actual_cashflows if cf.get('type') != 'maturity']
+            
+            # Add the pre-calculated adjusted maturity
+            principal = adjusted_maturity_cf.get('principal_component', 0) or adjusted_maturity_cf.get('remaining_principal', 0) or 0
+            interest = adjusted_maturity_cf.get('interest_component', 0) or 0
+            tds = adjusted_maturity_cf.get('tds_amount', 0) or (interest * 0.1 if interest > 0 else 0)
+            gross = adjusted_maturity_cf.get('gross_amount', 0) or (principal + interest)
+            net = adjusted_maturity_cf.get('net_amount', 0) or (gross - tds)
+            
+            actual_cashflows.append({
+                'date': adjusted_maturity_cf.get('date', maturity_date_short),
+                'type': 'maturity',
+                'amount': gross,
+                'principal_component': round(principal, 2),
+                'interest_component': round(interest, 2),
+                'gross_amount': round(gross, 2),
+                'tds_amount': round(tds, 2),
+                'net_amount': round(net, 2),
+                'is_repaid': False,
+                'source': 'adjusted_holding_cashflow',
+                'is_prepayment_adjusted': True,
+                'total_prepaid': adjusted_maturity_cf.get('total_prepaid', 0),
+                'interest_breakdown': adjusted_maturity_cf.get('interest_breakdown', [])
+            })
+            has_maturity_entry = True
+        
         # Add scheduled cashflows for dates that don't have actual repayments
         for cf in stored_cashflows:
             cf_date = cf.get('date', '')
@@ -10603,8 +10641,8 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
             if cf_date_short in actual_repayment_dates:
                 continue
             
-            # Skip the maturity date if we've already added a calculated maturity entry
-            # (with prepayments, the maturity amount is recalculated, not the scheduled one)
+            # Skip the maturity date if we've already added a maturity entry
+            # (either calculated or from adjusted holding_cashflows)
             if has_maturity_entry and maturity_date_short and cf_date_short == maturity_date_short:
                 continue
             
