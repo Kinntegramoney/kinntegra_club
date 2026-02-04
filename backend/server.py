@@ -21694,6 +21694,314 @@ async def cleanup_duplicate_repayments(
     }
 
 
+# ==================== ADMIN RESET ENDPOINTS ====================
+
+@api_router.post("/admin/reset/actual-repayments")
+async def reset_actual_repayments(
+    bond_code: Optional[str] = None,
+    client_name: Optional[str] = None,
+    source: Optional[str] = None,  # "auto_tag", "manual", "historical"
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Reset/clear actual_repayments entries.
+    Can filter by bond_code, client_name, or source.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can reset data")
+    
+    query = {}
+    if bond_code:
+        query['bond_code'] = bond_code
+    if client_name:
+        query['client_name'] = client_name
+    if source:
+        query['source'] = source
+    
+    # Get count before delete
+    count_before = await db.actual_repayments.count_documents(query)
+    
+    # Delete matching records
+    result = await db.actual_repayments.delete_many(query)
+    
+    return {
+        "success": True,
+        "message": f"Deleted {result.deleted_count} actual_repayments entries",
+        "deleted_count": result.deleted_count,
+        "filters_used": {"bond_code": bond_code, "client_name": client_name, "source": source}
+    }
+
+
+@api_router.post("/admin/reset/email-logs")
+async def reset_email_logs(
+    bond_code: Optional[str] = None,
+    client_name: Optional[str] = None,
+    reset_status_only: bool = False,  # If True, just reset holding_updated status
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Reset email_read_logs entries.
+    Can filter by bond_code, client_name.
+    If reset_status_only=True, just resets the holding_updated flag without deleting.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can reset data")
+    
+    query = {}
+    if bond_code:
+        query['bond_code'] = bond_code
+    if client_name:
+        query['client_name'] = client_name
+    
+    if reset_status_only:
+        # Just reset the status flags
+        result = await db.email_read_logs.update_many(
+            query,
+            {
+                "$unset": {
+                    "holding_updated": "",
+                    "holding_updated_at": "",
+                    "auto_tagged": "",
+                    "matched_trade_id": "",
+                    "matched_investment_date": "",
+                    "matched_units": "",
+                    "per_unit_amount": "",
+                    "matched_client": "",
+                    "is_duplicate": "",
+                    "duplicate_of": ""
+                }
+            }
+        )
+        return {
+            "success": True,
+            "message": f"Reset status for {result.modified_count} email_read_logs entries",
+            "modified_count": result.modified_count,
+            "filters_used": {"bond_code": bond_code, "client_name": client_name}
+        }
+    else:
+        # Delete matching records
+        result = await db.email_read_logs.delete_many(query)
+        return {
+            "success": True,
+            "message": f"Deleted {result.deleted_count} email_read_logs entries",
+            "deleted_count": result.deleted_count,
+            "filters_used": {"bond_code": bond_code, "client_name": client_name}
+        }
+
+
+@api_router.post("/admin/reset/holding-cashflows")
+async def reset_holding_cashflows(
+    bond_code: Optional[str] = None,
+    client_id: Optional[str] = None,
+    trade_id: Optional[str] = None,
+    reset_prepayment_adjustments: bool = False,  # If True, just reset prepayment flags
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Reset holding_cashflows entries.
+    Can filter by bond_code, client_id, or trade_id.
+    If reset_prepayment_adjustments=True, just resets the prepayment adjustment fields.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can reset data")
+    
+    query = {}
+    if bond_code:
+        query['bond_code'] = bond_code
+    if client_id:
+        query['client_id'] = client_id
+    if trade_id:
+        query['trade_id'] = trade_id
+    
+    if reset_prepayment_adjustments:
+        # Reset prepayment adjustment fields, restore original amounts
+        cashflows = await db.holding_cashflows.find(
+            {**query, "is_prepayment_adjusted": True},
+            {"_id": 1, "original_gross_amount": 1, "original_net_amount": 1}
+        ).to_list(1000)
+        
+        reset_count = 0
+        for cf in cashflows:
+            original_gross = cf.get('original_gross_amount', 0)
+            original_net = cf.get('original_net_amount', 0)
+            
+            if original_gross > 0:
+                await db.holding_cashflows.update_one(
+                    {"_id": cf['_id']},
+                    {
+                        "$set": {
+                            "gross_amount": original_gross,
+                            "net_amount": original_net
+                        },
+                        "$unset": {
+                            "is_prepayment_adjusted": "",
+                            "prepayment_adjustment_date": "",
+                            "total_prepaid": "",
+                            "remaining_principal": "",
+                            "interest_breakdown": "",
+                            "prepayment_count": "",
+                            "original_face_value": "",
+                            "interest_start_date": "",
+                            "day_count_convention": ""
+                        }
+                    }
+                )
+                reset_count += 1
+        
+        return {
+            "success": True,
+            "message": f"Reset prepayment adjustments for {reset_count} holding_cashflows entries",
+            "reset_count": reset_count,
+            "filters_used": {"bond_code": bond_code, "client_id": client_id, "trade_id": trade_id}
+        }
+    else:
+        # Delete matching records
+        result = await db.holding_cashflows.delete_many(query)
+        return {
+            "success": True,
+            "message": f"Deleted {result.deleted_count} holding_cashflows entries",
+            "deleted_count": result.deleted_count,
+            "filters_used": {"bond_code": bond_code, "client_id": client_id, "trade_id": trade_id}
+        }
+
+
+@api_router.post("/admin/cleanup-all-duplicates")
+async def cleanup_all_duplicates(
+    bond_code: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Comprehensive duplicate cleanup across all collections for a bond.
+    Cleans: actual_repayments, email_read_logs
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can cleanup data")
+    
+    results = {
+        "actual_repayments": {"deleted": 0, "duplicates_found": []},
+        "email_read_logs": {"deleted": 0, "duplicates_found": []}
+    }
+    
+    # 1. Clean actual_repayments duplicates
+    query = {"bond_code": bond_code} if bond_code else {}
+    all_repayments = await db.actual_repayments.find(
+        query,
+        {"_id": 1, "id": 1, "client_name": 1, "gross_amount": 1, "repayment_date": 1, "investment_date": 1, "email_log_id": 1, "created_at": 1}
+    ).to_list(10000)
+    
+    # Group by unique key: (client_name, gross_amount, repayment_date, investment_date)
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for rep in all_repayments:
+        key = (
+            rep.get('client_name', ''),
+            rep.get('gross_amount', 0),
+            rep.get('repayment_date', ''),
+            rep.get('investment_date', '')
+        )
+        groups[key].append(rep)
+    
+    # Delete duplicates (keep most recent)
+    for key, records in groups.items():
+        if len(records) > 1:
+            results["actual_repayments"]["duplicates_found"].append({
+                "key": f"{key[0]}_{key[1]}_{key[2]}_{key[3]}",
+                "count": len(records)
+            })
+            sorted_records = sorted(records, key=lambda x: x.get('created_at', ''), reverse=True)
+            for rec in sorted_records[1:]:
+                await db.actual_repayments.delete_one({"_id": rec['_id']})
+                results["actual_repayments"]["deleted"] += 1
+    
+    # 2. Clean email_read_logs duplicates
+    query = {"bond_code": bond_code} if bond_code else {}
+    all_logs = await db.email_read_logs.find(
+        query,
+        {"_id": 1, "id": 1, "client_name": 1, "gross_amount": 1, "repayment_date": 1, "email_read_at": 1}
+    ).to_list(10000)
+    
+    # Group by unique key: (client_name, gross_amount, repayment_date)
+    log_groups = defaultdict(list)
+    for log in all_logs:
+        key = (
+            log.get('client_name', ''),
+            log.get('gross_amount', 0),
+            log.get('repayment_date', '')
+        )
+        log_groups[key].append(log)
+    
+    # Delete duplicates (keep most recent)
+    for key, records in log_groups.items():
+        if len(records) > 1:
+            results["email_read_logs"]["duplicates_found"].append({
+                "key": f"{key[0]}_{key[1]}_{key[2]}",
+                "count": len(records)
+            })
+            sorted_records = sorted(records, key=lambda x: x.get('email_read_at', ''), reverse=True)
+            for rec in sorted_records[1:]:
+                await db.email_read_logs.delete_one({"_id": rec['_id']})
+                results["email_read_logs"]["deleted"] += 1
+    
+    return {
+        "success": True,
+        "message": f"Cleanup complete. Deleted {results['actual_repayments']['deleted']} actual_repayments and {results['email_read_logs']['deleted']} email_read_logs duplicates",
+        "results": results
+    }
+
+
+@api_router.get("/admin/data-summary")
+async def get_data_summary(
+    bond_code: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get summary of data in collections for a bond.
+    Useful for debugging and verification.
+    """
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can view data summary")
+    
+    query = {"bond_code": bond_code} if bond_code else {}
+    
+    # Count records in each collection
+    actual_repayments_count = await db.actual_repayments.count_documents(query)
+    email_read_logs_count = await db.email_read_logs.count_documents(query)
+    
+    # For holding_cashflows, we need to match by bond_code in trades
+    if bond_code:
+        trades = await db.trades.find({"bond_code": bond_code}, {"_id": 0, "id": 1}).to_list(1000)
+        trade_ids = [t.get('id') for t in trades]
+        holding_cashflows_count = await db.holding_cashflows.count_documents({"trade_id": {"$in": trade_ids}})
+    else:
+        holding_cashflows_count = await db.holding_cashflows.count_documents({})
+    
+    # Get breakdown
+    auto_tagged = await db.actual_repayments.count_documents({**query, "source": "auto_tag"})
+    manual_tagged = await db.actual_repayments.count_documents({**query, "source": "manual"})
+    historical = await db.actual_repayments.count_documents({**query, "source": {"$nin": ["auto_tag", "manual"]}})
+    
+    email_updated = await db.email_read_logs.count_documents({**query, "holding_updated": True})
+    email_pending = await db.email_read_logs.count_documents({**query, "holding_updated": {"$ne": True}})
+    
+    return {
+        "bond_code": bond_code or "ALL",
+        "actual_repayments": {
+            "total": actual_repayments_count,
+            "auto_tagged": auto_tagged,
+            "manual": manual_tagged,
+            "historical": historical
+        },
+        "email_read_logs": {
+            "total": email_read_logs_count,
+            "updated": email_updated,
+            "pending": email_pending
+        },
+        "holding_cashflows": {
+            "total": holding_cashflows_count
+        }
+    }
+
+
 # ==================== EMAIL ENGAGEMENT DASHBOARD ====================
 
 @api_router.get("/email-engagement/dashboard")
