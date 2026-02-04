@@ -21402,15 +21402,16 @@ async def auto_tag_email_repayments(
             log_gross_amount = log.get('gross_amount', 0) or 0
             log_net_amount = log.get('net_amount', 0) or 0
             log_tds = log.get('tds_amount', 0) or 0
+            log_repayment_date = log.get('repayment_date', '')
             
             if log_gross_amount <= 0:
                 continue
             
-            # IDEMPOTENCY CHECK: Skip if this email_log_id already has repayments
-            existing_repayment = await db.actual_repayments.find_one({
+            # IDEMPOTENCY CHECK 1: Skip if this email_log_id already has repayments
+            existing_by_email = await db.actual_repayments.find_one({
                 "email_log_id": log_id
             })
-            if existing_repayment:
+            if existing_by_email:
                 skipped_count += 1
                 continue
             
