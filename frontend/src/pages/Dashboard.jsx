@@ -651,6 +651,90 @@ export default function Dashboard() {
       </div>
 
       {/* Reset Database Modal */}
+      {/* Fix Data Modal */}
+      {showFixDataModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-blue-100 rounded-full">
+                <RefreshCw className="h-6 w-6 text-blue-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800">Fix Data & Recalculate</h2>
+              <button 
+                onClick={() => { setShowFixDataModal(false); setFixDataResults(null); }}
+                className="ml-auto text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <p className="text-gray-600 mb-4">
+              This will clean up duplicate entries and recalculate maturity amounts for all trades with prepayments. Use this after importing new data or if you notice any discrepancies.
+            </p>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Bond (or fix all)
+              </label>
+              <select
+                value={selectedBondForFix}
+                onChange={(e) => setSelectedBondForFix(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="fix-data-bond-select"
+              >
+                <option value="">-- Select a Bond --</option>
+                {availableBonds.map((bond) => (
+                  <option key={bond.id || bond.bond_code} value={bond.bond_code}>
+                    {bond.name || bond.bond_code} ({bond.bond_code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {fixDataResults && (
+              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="font-semibold text-green-800 mb-2">Results:</h4>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li>Duplicate repayments removed: {fixDataResults.duplicate_repayments_removed}</li>
+                  <li>Duplicate emails removed: {fixDataResults.duplicate_emails_removed}</li>
+                  <li>Trades recalculated: {fixDataResults.trades_recalculated}</li>
+                  {fixDataResults.bonds_processed !== undefined && (
+                    <li>Bonds processed: {fixDataResults.bonds_processed}</li>
+                  )}
+                </ul>
+              </div>
+            )}
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowFixDataModal(false); setFixDataResults(null); }}
+                className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleFixAllData}
+                disabled={!selectedBondForFix || fixingData}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                data-testid="fix-selected-bond-btn"
+              >
+                {fixingData && <RefreshCw className="h-4 w-4 animate-spin" />}
+                Fix Selected Bond
+              </button>
+              <button
+                onClick={handleFixAllBonds}
+                disabled={fixingData || availableBonds.length === 0}
+                className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                data-testid="fix-all-bonds-btn"
+              >
+                {fixingData && <RefreshCw className="h-4 w-4 animate-spin" />}
+                Fix All Bonds
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showResetModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
