@@ -21275,12 +21275,20 @@ async def auto_tag_email_repayments(
 ):
     """
     Auto-tag pending email repayments to actual repayments.
-    Logic:
-    1. For each pending email read log, find matching trades by bond_code
-    2. Calculate what percentage of total deal investment this repayment represents
-    3. Find the client whose investment amount is closest to this percentage
-    4. Distribute repayment proportionally across that client's investment dates
-    5. Create actual_repayment entries with correct tagging
+    
+    NEW SIMPLIFIED LOGIC:
+    1. For each pending email, get the repayment amount (gross_amount)
+    2. Find all trades for that bond_code
+    3. For each trade, divide repayment amount by the trade's units
+    4. If the result is an INTEGER (no decimals), that's the matching transaction
+    5. Tag the repayment to that specific trade/investment_date
+    
+    Example:
+    - Repayment: ₹476,000
+    - Trade 1: 34 units -> 476000 / 34 = 14000 (INTEGER - MATCH!)
+    - Trade 2: 31 units -> 476000 / 31 = 15354.84 (decimal - no match)
+    - Trade 3: 135 units -> 476000 / 135 = 3525.93 (decimal - no match)
+    - Result: Tag ₹476,000 to the trade with 34 units
     """
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can auto-tag repayments")
@@ -21295,6 +21303,7 @@ async def auto_tag_email_repayments(
         return {"success": True, "message": "No pending emails to tag", "tagged_count": 0}
     
     tagged_count = 0
+    skipped_count = 0
     tagged_details = []
     
     # Group logs by bond_code to process each deal together
@@ -21308,8 +21317,8 @@ async def auto_tag_email_repayments(
     for bond_code, logs in deal_logs.items():
         if not bond_code:
             continue
-            
-        # Get all trades for this bond to calculate total investment per client
+        
+        # Get all trades for this bond with their units
         trades = await db.trades.find(
             {"bond_code": bond_code, "status": {"$ne": "cancelled"}},
             {"_id": 0}
@@ -21318,198 +21327,112 @@ async def auto_tag_email_repayments(
         if not trades:
             continue
         
-        # Group trades by client_name and calculate totals
-        client_investments = {}
-        for trade in trades:
-            client_name = trade.get('client_name', '')
-            if not client_name:
-                continue
-            if client_name not in client_investments:
-                client_investments[client_name] = {
-                    "total_amount": 0,
-                    "investments": []
-                }
-            
-            inv_amount = trade.get('total_amount', 0) or trade.get('amount', 0) or 0
-            inv_date = trade.get('investment_date') or trade.get('created_at', '')
-            
-            client_investments[client_name]["total_amount"] += inv_amount
-            client_investments[client_name]["investments"].append({
-                "date": str(inv_date)[:10] if inv_date else '',
-                "amount": inv_amount,
-                "trade_id": trade.get('id')
-            })
-        
-        # Calculate total investment for the entire deal
-        deal_total_investment = sum(ci["total_amount"] for ci in client_investments.values())
-        
-        if deal_total_investment == 0:
-            continue
-        
-        # Create a mapping of investment percentages for each client
-        client_percentages = {}
-        for client_name, data in client_investments.items():
-            client_percentages[client_name] = data["total_amount"] / deal_total_investment
-        
-        # Now process each email log for this deal
+        # Process each email log for this deal
         for log in logs:
+            log_id = log.get('id')
             log_client_name = log.get('client_name', '')
             log_gross_amount = log.get('gross_amount', 0) or 0
             log_net_amount = log.get('net_amount', 0) or 0
+            log_tds = log.get('tds_amount', 0) or 0
             
-            # Calculate what percentage of total deal this repayment represents
-            repayment_percentage = log_gross_amount / deal_total_investment
+            if log_gross_amount <= 0:
+                continue
             
-            # Find the client whose individual repayment amount best matches
-            # by checking if their total investment * some factor equals this repayment
-            best_match = None
-            best_match_factor = None
-            best_diff = float('inf')
+            # IDEMPOTENCY CHECK: Skip if this email_log_id already has repayments
+            existing_repayment = await db.actual_repayments.find_one({
+                "email_log_id": log_id
+            })
+            if existing_repayment:
+                skipped_count += 1
+                continue
             
-            for client_name, data in client_investments.items():
-                client_total = data["total_amount"]
-                
-                # Check various common repayment factors (monthly, quarterly, etc.)
-                for factor in [0.01, 0.02, 0.025, 0.03, 0.04, 0.05, 0.08, 0.1, 0.12, 0.15, 0.2, 0.25]:
-                    expected_repayment = client_total * factor
-                    diff = abs(log_gross_amount - expected_repayment) / log_gross_amount if log_gross_amount > 0 else 1
-                    
-                    if diff < best_diff and diff < 0.15:  # Within 15% tolerance
-                        best_diff = diff
-                        best_match = client_name
-                        best_match_factor = factor
+            # Find the matching trade by dividing repayment amount by units
+            matched_trade = None
+            per_unit_amount = None
             
-            if best_match:
-                # IDEMPOTENCY CHECK: Skip if this email_log_id already has repayments
-                existing_repayments = await db.actual_repayments.find_one({
-                    "email_log_id": log.get('id')
-                })
-                if existing_repayments:
-                    # Already processed - skip to avoid duplicates
+            for trade in trades:
+                units = trade.get('units', 0)
+                if units <= 0:
                     continue
                 
-                # Found a matching client based on repayment factor
-                client_data = client_investments[best_match]
-                client_total = client_data["total_amount"]
+                # Calculate per-unit amount
+                result = log_gross_amount / units
                 
-                # Track total prepayment amount for cashflow adjustment
-                total_prepayment_principal = 0
-                
-                # Distribute proportionally across investment dates
-                for inv in client_data["investments"]:
-                    inv_proportion = inv["amount"] / client_total if client_total > 0 else 0
-                    allocated_gross = log_gross_amount * inv_proportion
-                    allocated_net = log_net_amount * inv_proportion
-                    
-                    # Calculate principal portion (gross - interest component)
-                    # For prepayments, typically 80-90% is principal
-                    allocated_principal = allocated_gross * 0.85  # Estimate principal portion
-                    total_prepayment_principal += allocated_principal
-                    
-                    repayment_id = str(uuid.uuid4())
-                    repayment_record = {
-                        "id": repayment_id,
-                        "client_id": log.get('client_id'),
-                        "client_name": best_match,
-                        "original_email_client": log_client_name,
-                        "bond_id": log.get('bond_id'),
-                        "bond_name": log.get('bond_name'),
-                        "bond_code": bond_code,
-                        "repayment_date": log.get('repayment_date'),
-                        "investment_date": inv["date"],
-                        "gross_amount": allocated_gross,
-                        "net_amount": allocated_net,
-                        "principal_amount": allocated_principal,
-                        "tds": (log.get('tds_amount', 0) or 0) * inv_proportion,
-                        "payment_type": "prepayment",
-                        "is_prepayment": True,
-                        "repayment_factor": best_match_factor,
-                        "investment_proportion": inv_proportion * 100,
-                        "email_log_id": log.get('id'),
-                        "trade_id": inv.get("trade_id"),
+                # Check if result is an integer (allow small floating point tolerance)
+                if abs(result - round(result)) < 0.01:
+                    matched_trade = trade
+                    per_unit_amount = round(result)
+                    break
+            
+            if not matched_trade:
+                # No match found - skip this log
+                continue
+            
+            # Create the actual_repayment record
+            repayment_id = str(uuid.uuid4())
+            investment_date = matched_trade.get('investment_date') or matched_trade.get('created_at', '')
+            investment_date_str = str(investment_date)[:10] if investment_date else ''
+            
+            repayment_record = {
+                "id": repayment_id,
+                "client_id": matched_trade.get('client_id'),
+                "client_name": matched_trade.get('client_name'),
+                "original_email_client": log_client_name,
+                "bond_id": matched_trade.get('bond_id'),
+                "bond_name": matched_trade.get('bond_name'),
+                "bond_code": bond_code,
+                "repayment_date": log.get('repayment_date'),
+                "investment_date": investment_date_str,
+                "gross_amount": log_gross_amount,
+                "net_amount": log_net_amount,
+                "tds": log_tds,
+                "units": matched_trade.get('units'),
+                "per_unit_amount": per_unit_amount,
+                "payment_type": "prepayment",
+                "is_prepayment": True,
+                "email_log_id": log_id,
+                "trade_id": matched_trade.get('id'),
+                "auto_tagged": True,
+                "match_method": "units_division",
+                "created_by": current_user.get('id'),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "source": "auto_tag"
+            }
+            
+            await db.actual_repayments.insert_one(repayment_record)
+            
+            # Mark email log as processed
+            await db.email_read_logs.update_one(
+                {"id": log_id},
+                {
+                    "$set": {
+                        "holding_updated": True,
+                        "holding_updated_at": datetime.now(timezone.utc).isoformat(),
                         "auto_tagged": True,
-                        "match_confidence": round((1 - best_diff) * 100, 2),
-                        "created_by": current_user.get('id'),
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                        "source": "auto_tag"
+                        "matched_trade_id": matched_trade.get('id'),
+                        "matched_investment_date": investment_date_str,
+                        "matched_units": matched_trade.get('units'),
+                        "per_unit_amount": per_unit_amount
                     }
-                    
-                    await db.actual_repayments.insert_one(repayment_record)
-                    
-                    # UPDATE FINAL MATURITY CASHFLOW: Reduce the final payout by prepaid principal
-                    if inv.get("trade_id"):
-                        # Find the final maturity cashflow for this trade
-                        final_cashflow = await db.holding_cashflows.find_one(
-                            {
-                                "trade_id": inv.get("trade_id"),
-                                "is_repaid": {"$ne": True}
-                            },
-                            {"_id": 0},
-                            sort=[("date", -1)]  # Get the latest (final) cashflow
-                        )
-                        
-                        if final_cashflow:
-                            # Store original values if not already stored
-                            original_principal = final_cashflow.get('original_principal_component') or final_cashflow.get('principal_component', 0)
-                            original_gross = final_cashflow.get('original_gross_amount') or final_cashflow.get('gross_amount', 0)
-                            original_net = final_cashflow.get('original_net_amount') or final_cashflow.get('net_amount', 0)
-                            
-                            # Calculate new values after prepayment deduction
-                            new_principal = max(0, final_cashflow.get('principal_component', 0) - allocated_principal)
-                            principal_reduction = final_cashflow.get('principal_component', 0) - new_principal
-                            
-                            # Adjust gross and net amounts proportionally
-                            new_gross = max(0, final_cashflow.get('gross_amount', 0) - principal_reduction)
-                            new_net = max(0, final_cashflow.get('net_amount', 0) - (principal_reduction * 0.9))  # Account for TDS
-                            
-                            await db.holding_cashflows.update_one(
-                                {"id": final_cashflow.get('id')},
-                                {
-                                    "$set": {
-                                        "original_principal_component": original_principal,
-                                        "original_gross_amount": original_gross,
-                                        "original_net_amount": original_net,
-                                        "principal_component": round(new_principal, 2),
-                                        "gross_amount": round(new_gross, 2),
-                                        "net_amount": round(new_net, 2),
-                                        "is_prepayment_adjusted": True,
-                                        "prepayment_adjustment_date": datetime.now(timezone.utc).isoformat(),
-                                        "total_prepaid_deducted": round(principal_reduction, 2),
-                                        "prepayment_source": "auto_tag"
-                                    }
-                                }
-                            )
-                
-                # Mark email log as processed
-                await db.email_read_logs.update_one(
-                    {"id": log.get('id')},
-                    {
-                        "$set": {
-                            "holding_updated": True,
-                            "holding_updated_at": datetime.now(timezone.utc).isoformat(),
-                            "auto_tagged": True,
-                            "matched_client": best_match,
-                            "repayment_factor": best_match_factor,
-                            "match_confidence": round((1 - best_diff) * 100, 2)
-                        }
-                    }
-                )
-                
-                tagged_count += 1
-                tagged_details.append({
-                    "email_client": log_client_name,
-                    "matched_client": best_match,
-                    "gross_amount": log_gross_amount,
-                    "repayment_factor": f"{best_match_factor * 100:.1f}%",
-                    "match_confidence": f"{(1 - best_diff) * 100:.1f}%",
-                    "investment_dates": len(client_data["investments"]),
-                    "cashflows_adjusted": True
-                })
+                }
+            )
+            
+            tagged_count += 1
+            tagged_details.append({
+                "email_client": log_client_name,
+                "matched_client": matched_trade.get('client_name'),
+                "gross_amount": log_gross_amount,
+                "matched_units": matched_trade.get('units'),
+                "per_unit_amount": per_unit_amount,
+                "investment_date": investment_date_str,
+                "trade_id": matched_trade.get('id')
+            })
     
     return {
         "success": True,
-        "message": f"Auto-tagged {tagged_count} email repayments",
+        "message": f"Auto-tagged {tagged_count} email repayments ({skipped_count} already tagged)",
         "tagged_count": tagged_count,
+        "skipped_count": skipped_count,
         "details": tagged_details
     }
 
