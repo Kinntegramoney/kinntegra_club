@@ -21421,6 +21421,44 @@ async def auto_tag_email_repayments(
             
             await db.actual_repayments.insert_one(repayment_record)
             
+            # UPDATE FINAL MATURITY CASHFLOW: Reduce the final payout by prepayment amount
+            trade_id = matched_trade.get('id')
+            if trade_id:
+                # Find ALL cashflows for this trade, sorted by date descending to get the final one
+                final_cashflow = await db.holding_cashflows.find_one(
+                    {"trade_id": trade_id},
+                    {"_id": 0},
+                    sort=[("date", -1)]
+                )
+                
+                if final_cashflow:
+                    # Store original values if not already stored
+                    original_gross = final_cashflow.get('original_gross_amount') or final_cashflow.get('gross_amount', 0)
+                    original_net = final_cashflow.get('original_net_amount') or final_cashflow.get('net_amount', 0)
+                    
+                    # Reduce the final payout by the prepayment gross amount
+                    current_gross = final_cashflow.get('gross_amount', 0)
+                    current_net = final_cashflow.get('net_amount', 0)
+                    
+                    new_gross = max(0, current_gross - log_gross_amount)
+                    new_net = max(0, current_net - log_net_amount)
+                    
+                    await db.holding_cashflows.update_one(
+                        {"id": final_cashflow.get('id')},
+                        {
+                            "$set": {
+                                "original_gross_amount": original_gross,
+                                "original_net_amount": original_net,
+                                "gross_amount": round(new_gross, 2),
+                                "net_amount": round(new_net, 2),
+                                "is_prepayment_adjusted": True,
+                                "prepayment_adjustment_date": datetime.now(timezone.utc).isoformat(),
+                                "prepaid_amount": log_gross_amount,
+                                "prepayment_source": "auto_tag"
+                            }
+                        }
+                    )
+            
             # Mark email log as processed
             await db.email_read_logs.update_one(
                 {"id": log_id},
@@ -21445,14 +21483,16 @@ async def auto_tag_email_repayments(
                 "matched_units": matched_trade.get('units'),
                 "per_unit_amount": per_unit_amount,
                 "investment_date": investment_date_str,
-                "trade_id": matched_trade.get('id')
+                "trade_id": matched_trade.get('id'),
+                "maturity_adjusted": True
             })
     
     return {
         "success": True,
-        "message": f"Auto-tagged {tagged_count} email repayments ({skipped_count} already tagged)",
+        "message": f"Auto-tagged {tagged_count} email repayments ({skipped_count} already tagged, {duplicate_count} duplicates)",
         "tagged_count": tagged_count,
         "skipped_count": skipped_count,
+        "duplicate_count": duplicate_count,
         "details": tagged_details
     }
 
