@@ -758,7 +758,7 @@ export default function Dashboard() {
                 data-testid="fix-selected-bond-btn"
               >
                 {fixingData && <RefreshCw className="h-4 w-4 animate-spin" />}
-                Fix Selected Bond
+                Fix Selected
               </button>
               <button
                 onClick={handleFixAllBonds}
@@ -767,7 +767,22 @@ export default function Dashboard() {
                 data-testid="fix-all-bonds-btn"
               >
                 {fixingData && <RefreshCw className="h-4 w-4 animate-spin" />}
-                Fix All Bonds
+                Fix All
+              </button>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-500 mb-2">
+                If duplicates persist, use Reset Auto-Tag to clear all auto-tagged data and re-run auto-tag:
+              </p>
+              <button
+                onClick={handleResetAutoTag}
+                disabled={!selectedBondForFix || fixingData}
+                className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                data-testid="reset-auto-tag-btn"
+              >
+                {fixingData && <RefreshCw className="h-4 w-4 animate-spin" />}
+                Reset Auto-Tag Data
               </button>
             </div>
           </div>
