@@ -22728,53 +22728,39 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         for t in trades
     )
     
-    # Total Repaid: From historical uploads (actual_repayments) + email reads (email_read_logs)
-    # Need to dedupe based on client_id + bond_id + date
-    repaid_entries = set()  # Track unique entries to avoid duplicates
+    # Total Repaid: From actual_repayments ONLY (not email_read_logs to avoid double counting)
+    # actual_repayments contains both historical uploads AND auto-tagged from emails
+    # Dedupe based on (client_name, gross_amount, repayment_date, investment_date) to be safe
+    repaid_entries = set()
     bond_total_repaid = 0
     
-    # Get from actual_repayments (historical uploads)
     actual_repayments = await db.actual_repayments.find({}, {"_id": 0}).to_list(10000)
     for rep in actual_repayments:
-        # Create unique key: client_id|bond_id|date
-        client_id = rep.get('client_id', '')
-        bond_id = rep.get('bond_id', '')
+        # Create unique key: client_name|gross_amount|repayment_date|investment_date
+        client_name = rep.get('client_name', '')
+        gross_amount = rep.get('gross_amount', 0)
         rep_date = str(rep.get('repayment_date', ''))[:10]
-        unique_key = f"{client_id}|{bond_id}|{rep_date}"
+        inv_date = str(rep.get('investment_date', ''))[:10]
+        unique_key = f"{client_name}|{gross_amount}|{rep_date}|{inv_date}"
         
         if unique_key not in repaid_entries:
             repaid_entries.add(unique_key)
-            # Use gross_amount only
-            bond_total_repaid += rep.get('gross_amount', 0) or 0
+            bond_total_repaid += gross_amount or 0
     
-    # Get from email_read_logs where holding_updated is True
-    email_logs = await db.email_read_logs.find(
-        {"holding_updated": True},
-        {"_id": 0}
-    ).to_list(10000)
-    for log in email_logs:
-        client_id = log.get('client_id', '')
-        bond_id = log.get('bond_id', '')
-        rep_date = str(log.get('repayment_date', ''))[:10]
-        unique_key = f"{client_id}|{bond_id}|{rep_date}"
-        
-        if unique_key not in repaid_entries:
-            repaid_entries.add(unique_key)
-            # Use gross_amount only
-            bond_total_repaid += log.get('gross_amount', 0) or 0
-    
-    # Total Pending: All upcoming repayments from holding_cashflows where date > today
+    # Total Pending: From holding_cashflows where date > today
+    # These are the pre-calculated maturity amounts (already adjusted for prepayments)
     today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     upcoming_cashflows = await db.holding_cashflows.find(
         {"date": {"$gt": today}, "is_repaid": {"$ne": True}},
         {"_id": 0}
     ).to_list(10000)
     
-    # Use gross_amount only for pending
+    # Use gross_amount for pending (this already includes principal + interest)
     bond_total_pending = sum(cf.get('gross_amount', 0) or 0 for cf in upcoming_cashflows)
     
-    # Profits = Total Pending + Total Repaid - Total Invested
-    bond_profits = bond_total_pending + bond_total_repaid - bond_total_invested
+    # Profits = (Total Repaid + Total Pending) - Total Invested
+    # This represents: Total money received/to be received - Total money invested
+    bond_profits = (bond_total_repaid + bond_total_pending) - bond_total_invested
     
     # Legacy bond AUM calculation (for backward compatibility)
     bond_aum = sum(
