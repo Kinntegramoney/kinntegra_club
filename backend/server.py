@@ -21537,13 +21537,30 @@ async def auto_tag_email_repayments(
                             bond_start_date = datetime.now() - timedelta(days=365)
                     
                     # Get ALL repayments for this trade, sorted by date
+                    # Query by both trade_id AND investment_date to catch all repayments
                     all_repayments = await db.actual_repayments.find(
                         {
-                            "trade_id": trade_id,
-                            "bond_code": bond_code
+                            "$or": [
+                                {"trade_id": trade_id},
+                                {
+                                    "client_name": matched_trade.get('client_name'),
+                                    "bond_code": bond_code,
+                                    "investment_date": investment_date_str
+                                }
+                            ]
                         },
                         {"_id": 0}
                     ).sort("repayment_date", 1).to_list(100)
+                    
+                    # Deduplicate by (repayment_date, gross_amount) in case of overlap
+                    seen = set()
+                    unique_repayments = []
+                    for rep in all_repayments:
+                        key = (rep.get('repayment_date'), rep.get('gross_amount'))
+                        if key not in seen:
+                            seen.add(key)
+                            unique_repayments.append(rep)
+                    all_repayments = unique_repayments
                     
                     # Store original values if not already stored
                     original_gross = final_cashflow.get('original_gross_amount') or final_cashflow.get('gross_amount', 0)
