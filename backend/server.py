@@ -21542,7 +21542,8 @@ async def auto_tag_email_repayments(
                             continue
                         rep_amount = rep.get('gross_amount', 0)
                         
-                        days = max(0, (rep_date - prev_date).days)
+                        # Include BOTH start and end dates (+1)
+                        days = max(0, (rep_date - prev_date).days + 1)
                         interest = balance_principal * coupon_rate * days / 365
                         total_interest += interest
                         
@@ -21558,8 +21559,8 @@ async def auto_tag_email_repayments(
                         balance_principal -= rep_amount
                         prev_date = rep_date
                     
-                    # Final period: Last prepayment to maturity
-                    days_final = max(0, (maturity_date - prev_date).days)
+                    # Final period: Last prepayment to maturity (include both dates)
+                    days_final = max(0, (maturity_date - prev_date).days + 1)
                     interest_final = balance_principal * coupon_rate * days_final / 365
                     total_interest += interest_final
                     
