@@ -25927,6 +25927,8 @@ async def update_family_member(family_id: str, member_id: str, member: FamilyMem
                 "date_of_birth": member.date_of_birth,
                 "relation": member.relation if not m.get('is_primary') else "Primary",
                 "life_expectancy": member.life_expectancy,
+                "tax_regime": member.tax_regime,
+                "tax_status": member.tax_status,
                 "tax_slab": member.tax_slab
             })
             updated = True
