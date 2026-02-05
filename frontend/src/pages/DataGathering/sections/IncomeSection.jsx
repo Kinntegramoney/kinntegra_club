@@ -216,6 +216,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
       }
     });
     setExpandedCategories(expanded);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [family?.id, existingIncomes.length]);
 
   const toggleCategory = (category) => {
