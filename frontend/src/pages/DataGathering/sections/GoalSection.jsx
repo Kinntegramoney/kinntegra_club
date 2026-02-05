@@ -17,72 +17,23 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const GOAL_CATEGORIES = [
-  { value: "charity", label: "Charity", icon: Heart, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "child_birth", label: "Child Birth", icon: Baby, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "education", label: "Education", icon: GraduationCap, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "family_gifting", label: "Family Gifting", icon: Gift, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "gadgets", label: "Gadgets", icon: Laptop, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "home_renovation", label: "Renovation", icon: Home, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "jewellery", label: "Jewellery", icon: Gem, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "marriage", label: "Marriage", icon: Heart, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "new_car", label: "New Car", icon: Car, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "new_home", label: "New Home", icon: Home, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "post_graduation", label: "Post Grad", icon: GraduationCap, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "startup", label: "Startup", icon: Rocket, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]},
-  { value: "vacation", label: "Vacation", icon: Plane, fields: [
-    { key: "goal_amount", label: "Amount", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Target Year", type: "number" }
-  ]}
+  { value: "charity", label: "Charity", icon: Heart },
+  { value: "child_birth", label: "Child Birth Expense", icon: Baby },
+  { value: "education", label: "Education", icon: GraduationCap },
+  { value: "family_gifting", label: "Family Gifting", icon: Gift },
+  { value: "gadgets", label: "Gadgets", icon: Laptop },
+  { value: "home_renovation", label: "Home Renovation", icon: Home },
+  { value: "jewellery", label: "Jewellery", icon: Gem },
+  { value: "marriage", label: "Marriage", icon: Heart },
+  { value: "new_car", label: "New Car", icon: Car },
+  { value: "new_home", label: "New Home", icon: Home },
+  { value: "post_graduation", label: "Post Graduation", icon: GraduationCap },
+  { value: "startup", label: "Startup", icon: Rocket },
+  { value: "vacation", label: "Vacation", icon: Plane }
 ];
+
+// Generate year options
+const YEAR_OPTIONS = Array.from({ length: 61 }, (_, i) => (2020 + i).toString());
 
 export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh }) {
   const [savingCategory, setSavingCategory] = useState(null);
@@ -103,7 +54,11 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
         itemsByCategory[category].push({
           id: goal.id,
           memberId: goal.member_ids?.[0] || "",
-          details: { goal_amount: goal.goal_amount, inflation_percent: goal.inflation_percent, goal_year: goal.goal_year },
+          details: { 
+            amount_today: goal.goal_amount || goal.amount_today, 
+            inflation_percent: goal.inflation_percent, 
+            goal_year: goal.goal_year 
+          },
           isNew: false,
           isModified: false
         });
@@ -130,7 +85,7 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
       [category]: [...(prev[category] || []), {
         id: `new_${Date.now()}`,
         memberId: members[0]?.id || "",
-        details: { goal_amount: "", inflation_percent: 6, goal_year: currentYear + 5 },
+        details: { amount_today: "", inflation_percent: 6, goal_year: (currentYear + 5).toString() },
         isNew: true,
         isModified: false
       }]
@@ -170,7 +125,7 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
 
     for (const item of itemsToSave) {
       if (!item.memberId) { toast.error("Select a member"); return; }
-      if (!item.details.goal_amount) { toast.error("Enter goal amount"); return; }
+      if (!item.details.amount_today) { toast.error("Enter amount today"); return; }
     }
 
     setSavingCategory(category);
@@ -178,10 +133,12 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
       const token = localStorage.getItem("token");
       for (const item of itemsToSave) {
         const payload = {
-          family_id: family.id, member_ids: [item.memberId], category,
-          goal_amount: parseFloat(item.details.goal_amount),
+          family_id: family.id, 
+          member_ids: [item.memberId], 
+          category,
+          goal_amount: parseFloat(item.details.amount_today),
           inflation_percent: parseFloat(item.details.inflation_percent) || 6,
-          goal_year: parseInt(item.details.goal_year) || new Date().getFullYear() + 5
+          goal_year: parseInt(item.details.goal_year)
         };
         if (item.isNew) {
           await axios.post(`${API}/data-gathering/family/${family.id}/goal`, payload, { headers: { Authorization: `Bearer ${token}` } });
@@ -213,7 +170,7 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
-        <span>Click "Skip" to hide goals you don't need</span>
+        <span>Enter details for categories</span>
         <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
       </div>
 
@@ -255,28 +212,58 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
                     {items.length === 0 ? (
                       <div className="text-center py-3 text-gray-400 text-xs border-t">No entries. Click "Add" to create one.</div>
                     ) : (
-                      <div className="space-y-2 border-t pt-2">
+                      <div className="space-y-3 border-t pt-2">
                         {items.map((item) => (
-                          <div key={item.id} className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            <div className="flex items-end gap-2 flex-wrap">
-                              <div className="w-32">
-                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
+                          <div key={item.id} className={`p-3 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-dashed">
+                              <div className="flex items-center gap-2">
+                                <Label className="text-[10px] text-gray-400">Member:</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateGoalItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>
                                     {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
                               </div>
-                              {category.fields.map(field => (
-                                <div key={field.key} className="flex-1 min-w-[80px]">
-                                  <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
-                                  <Input type={field.type} value={item.details[field.key] || ""} onChange={(e) => updateGoalItem(category.value, item.id, field.key, e.target.value)} placeholder="0" className="h-8 text-xs" disabled={isReadOnly} />
-                                </div>
-                              ))}
-                              <Button variant="ghost" size="icon" onClick={() => removeGoalItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
+                              <Button variant="ghost" size="icon" onClick={() => removeGoalItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
+                            </div>
+                            
+                            {/* Fields */}
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Amount Today</Label>
+                                <Input
+                                  type="number"
+                                  value={item.details.amount_today || ""}
+                                  onChange={(e) => updateGoalItem(category.value, item.id, "amount_today", e.target.value)}
+                                  placeholder="0"
+                                  className="h-8 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Inflation %</Label>
+                                <Input
+                                  type="number"
+                                  value={item.details.inflation_percent || ""}
+                                  onChange={(e) => updateGoalItem(category.value, item.id, "inflation_percent", e.target.value)}
+                                  placeholder="6"
+                                  className="h-8 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Goal Year</Label>
+                                <Select value={item.details.goal_year?.toString() || ""} onValueChange={(v) => updateGoalItem(category.value, item.id, "goal_year", v)} disabled={isReadOnly}>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectContent>
+                                    {YEAR_OPTIONS.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -297,7 +284,7 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
 
       {hiddenCategoryList.length > 0 && (
         <div className="mt-4 pt-3 border-t border-dashed">
-          <div className="text-xs text-gray-400 mb-2 px-1">Skipped Goals (click to restore)</div>
+          <div className="text-xs text-gray-400 mb-2 px-1">Skipped (click to restore)</div>
           <div className="flex flex-wrap gap-1.5">
             {hiddenCategoryList.map(category => {
               const Icon = category.icon;
