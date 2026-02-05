@@ -25729,6 +25729,12 @@ class LiabilityCreate(BaseModel):
     goal_year: int
     amount_today: float
 
+class AssetDetailCreate(BaseModel):
+    family_id: str
+    member_ids: List[str]
+    category: str  # real_estate, gold_jewellery, fixed_deposit, etc.
+    details: dict  # Category-specific fields
+
 
 @api_router.get("/data-gathering/families")
 async def get_data_gathering_families(current_user: dict = Depends(get_current_user)):
