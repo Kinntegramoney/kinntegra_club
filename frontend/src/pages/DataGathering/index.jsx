@@ -162,7 +162,7 @@ export default function DataGathering() {
   const addMember = () => {
     const newId = Math.max(...members.map(m => m.id)) + 1;
     setMembers([...members, {
-      id: newId, name: "", dob: "", relation: "Spouse", life_expectancy: 85, tax_regime: "New Regime", tax_status: "Resident", tax_slab: "20%", isPrimary: false
+      id: newId, name: "", dob: "", relation: "", life_expectancy: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: false
     }]);
   };
 
