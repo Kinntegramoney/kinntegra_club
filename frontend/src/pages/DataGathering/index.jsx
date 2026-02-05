@@ -711,6 +711,64 @@ export default function DataGathering() {
           </div>
         </div>
       </main>
+
+      {/* Why Do This Exercise Modal */}
+      <Dialog open={showWhyModal} onOpenChange={setShowWhyModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 bg-amber-100 rounded-full">
+                <Lightbulb className="h-6 w-6 text-amber-600" />
+              </div>
+              Why do this exercise?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-gray-600 leading-relaxed">
+              Objectifying the purpose of investment.
+            </p>
+            
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                <p className="text-gray-700">
+                  Help our investors understand what is the minimum return they should earn on their entire portfolio to make sure that it at least lasts long till their life expectancy or meet their lifestyle inflation.
+                </p>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                <p className="text-gray-700">
+                  What is the real return each of their financial and physical assets have given them over years of investments.
+                </p>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                <p className="text-gray-700">
+                  How much risk one should take to achieve minimum return requirement and what asset class has the highest probability to achieve it.
+                </p>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                <p className="text-gray-700">
+                  On one single sheet you will be able to assess your current and future cash flows (both inflow and outflow).
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end pt-2">
+            <Button 
+              onClick={handleStartDataGathering}
+              className="bg-etihad-gold-600 hover:bg-etihad-gold-700 text-white px-8"
+            >
+              Start
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
