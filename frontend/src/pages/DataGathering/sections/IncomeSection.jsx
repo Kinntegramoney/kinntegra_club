@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Save, Briefcase, Building, Wallet, Landmark, PiggyBank, TrendingUp, 
-  DollarSign, Plus, Trash2, ChevronDown, ChevronRight, User
+  DollarSign, Plus, Trash2, ChevronDown, ChevronRight, User, EyeOff, Eye
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,35 +20,35 @@ const API = `${BACKEND_URL}/api`;
 const INCOME_CATEGORIES = [
   { 
     value: "salary", 
-    label: "Salary Income", 
+    label: "Salary", 
     icon: Briefcase,
     fields: [
       { key: "net_income_monthly", label: "Net Monthly Income", type: "number" },
       { key: "increment_month", label: "Increment Month", type: "select", options: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] },
-      { key: "avg_growth_rate", label: "Avg Growth Rate (%)", type: "number" },
+      { key: "avg_growth_rate", label: "Growth Rate (%)", type: "number" },
       { key: "retirement_age", label: "Retirement Age", type: "number" }
     ]
   },
   { 
     value: "business", 
-    label: "Business Income", 
+    label: "Business", 
     icon: Building,
     fields: [
       { key: "net_income_yearly", label: "Net Yearly Income", type: "number" },
-      { key: "avg_growth_rate", label: "Avg Growth Rate (%)", type: "number" },
+      { key: "avg_growth_rate", label: "Growth Rate (%)", type: "number" },
       { key: "retirement_age", label: "Retirement Age", type: "number" }
     ]
   },
   { 
     value: "rental", 
-    label: "Rental Income", 
+    label: "Rental", 
     icon: Building,
     fields: [
       { key: "property_type", label: "Property Type", type: "select", options: ["Residential", "Commercial", "Land"] },
       { key: "purchase_value", label: "Purchase Value", type: "number" },
       { key: "market_value", label: "Market Value", type: "number" },
       { key: "rental_monthly", label: "Monthly Rent", type: "number" },
-      { key: "rental_increment_percent", label: "Rental Increment (%)", type: "number" }
+      { key: "rental_increment_percent", label: "Increment (%)", type: "number" }
     ]
   },
   { 
@@ -83,10 +83,10 @@ const INCOME_CATEGORIES = [
     label: "Fixed Deposit", 
     icon: Landmark,
     fields: [
-      { key: "principal_amount", label: "Principal Amount", type: "number" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
+      { key: "principal_amount", label: "Principal", type: "number" },
+      { key: "interest_rate", label: "Rate (%)", type: "number" },
       { key: "start_date", label: "Start Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" }
+      { key: "maturity_date", label: "Maturity", type: "date" }
     ]
   },
   { 
@@ -94,21 +94,21 @@ const INCOME_CATEGORIES = [
     label: "RD / PIS", 
     icon: Landmark,
     fields: [
-      { key: "monthly_contribution", label: "Monthly Contribution", type: "number" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "end_date", label: "End Date", type: "date" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" }
+      { key: "monthly_contribution", label: "Monthly Amount", type: "number" },
+      { key: "start_date", label: "Start", type: "date" },
+      { key: "end_date", label: "End", type: "date" },
+      { key: "interest_rate", label: "Rate (%)", type: "number" }
     ]
   },
   { 
     value: "pension", 
-    label: "Pension Income", 
+    label: "Pension", 
     icon: Wallet,
     fields: [
       { key: "amount", label: "Amount", type: "number" },
-      { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "end_date", label: "End Date", type: "date" }
+      { key: "payable_cycle", label: "Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
+      { key: "start_date", label: "Start", type: "date" },
+      { key: "end_date", label: "End", type: "date" }
     ]
   },
   { 
@@ -116,9 +116,9 @@ const INCOME_CATEGORIES = [
     label: "Bond", 
     icon: Landmark,
     fields: [
-      { key: "principal_amount", label: "Principal Amount", type: "number" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" }
+      { key: "principal_amount", label: "Principal", type: "number" },
+      { key: "interest_rate", label: "Rate (%)", type: "number" },
+      { key: "maturity_date", label: "Maturity", type: "date" }
     ]
   },
   { 
@@ -127,7 +127,7 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     fields: [
       { key: "principal_amount", label: "Sum Assured", type: "number" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" }
+      { key: "maturity_date", label: "Maturity", type: "date" }
     ]
   },
   { 
@@ -135,13 +135,13 @@ const INCOME_CATEGORIES = [
     label: "Mutual Fund", 
     icon: TrendingUp,
     fields: [
-      { key: "market_value", label: "Current Market Value", type: "number" },
-      { key: "sip_amount", label: "SIP Amount (if any)", type: "number" }
+      { key: "market_value", label: "Market Value", type: "number" },
+      { key: "sip_amount", label: "SIP Amount", type: "number" }
     ]
   },
   { 
     value: "cash", 
-    label: "Cash in Hand", 
+    label: "Cash", 
     icon: Wallet,
     fields: [
       { key: "market_value", label: "Amount", type: "number" }
@@ -165,7 +165,7 @@ const INCOME_CATEGORIES = [
   },
   { 
     value: "other", 
-    label: "Other Income", 
+    label: "Other", 
     icon: DollarSign,
     fields: [
       { key: "description", label: "Description", type: "text" },
@@ -178,7 +178,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   const [loading, setLoading] = useState(false);
   const [savingCategory, setSavingCategory] = useState(null);
   const [expandedCategories, setExpandedCategories] = useState({});
-  // incomeItems: { [category]: [{ id, memberId, details: {...}, isNew?, isModified? }] }
+  const [hiddenCategories, setHiddenCategories] = useState([]);
   const [incomeItems, setIncomeItems] = useState({});
 
   const members = family?.members || [];
@@ -192,7 +192,6 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
       itemsByCategory[cat.value] = [];
     });
 
-    // Load existing incomes
     existingIncomes.forEach(inc => {
       const category = inc.category;
       if (itemsByCategory[category]) {
@@ -226,6 +225,15 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     }));
   };
 
+  const hideCategory = (category) => {
+    setHiddenCategories(prev => [...prev, category]);
+    setExpandedCategories(prev => ({ ...prev, [category]: false }));
+  };
+
+  const showCategory = (category) => {
+    setHiddenCategories(prev => prev.filter(c => c !== category));
+  };
+
   const addIncomeItem = (category) => {
     const newItem = {
       id: `new_${Date.now()}`,
@@ -240,23 +248,21 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
       [category]: [...(prev[category] || []), newItem]
     }));
     
-    // Auto-expand the category
     setExpandedCategories(prev => ({ ...prev, [category]: true }));
   };
 
   const removeIncomeItem = async (category, itemId, isNew) => {
     if (!isNew) {
-      // Delete from backend
       try {
         const token = localStorage.getItem("token");
         await axios.delete(
           `${API}/data-gathering/family/${family.id}/income/${itemId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        toast.success("Income entry deleted");
+        toast.success("Entry deleted");
         onRefresh();
       } catch (error) {
-        toast.error("Failed to delete income entry");
+        toast.error("Failed to delete");
         return;
       }
     }
@@ -296,16 +302,14 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
       return;
     }
 
-    // Validate
     for (const item of itemsToSave) {
       if (!item.memberId) {
-        toast.error("Please select a family member for all entries");
+        toast.error("Please select a family member");
         return;
       }
-      // Check if at least one detail field has value
       const hasData = Object.values(item.details).some(v => v !== "" && v !== null && v !== undefined);
       if (!hasData) {
-        toast.error("Please fill in at least one field for each entry");
+        toast.error("Please fill in at least one field");
         return;
       }
     }
@@ -337,7 +341,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
         }
       }
       
-      toast.success(`${INCOME_CATEGORIES.find(c => c.value === category)?.label} saved successfully`);
+      toast.success("Saved");
       onRefresh();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Failed to save");
@@ -354,7 +358,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
           onValueChange={(v) => updateIncomeItem(category, itemId, field.key, v)}
           disabled={isReadOnly}
         >
-          <SelectTrigger className="h-9">
+          <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
@@ -371,8 +375,8 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
         type={field.type}
         value={value || ""}
         onChange={(e) => updateIncomeItem(category, itemId, field.key, e.target.value)}
-        placeholder={field.type === "number" ? "0" : "Enter..."}
-        className="h-9"
+        placeholder={field.type === "number" ? "0" : ""}
+        className="h-8 text-xs"
         disabled={isReadOnly}
       />
     );
@@ -382,40 +386,31 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     return incomeItems[category]?.length || 0;
   };
 
-  const getMemberName = (memberId) => {
-    const member = members.find(m => m.id === memberId);
-    return member?.name || "Unknown";
-  };
-
   if (members.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-4">
-          <User className="h-8 w-8 text-amber-600" />
-        </div>
-        <h3 className="text-lg font-medium text-gray-700 mb-2">No Family Members</h3>
-        <p className="text-gray-500 text-center max-w-md">
-          Please add family members in the Introduction tab first before entering income details.
-        </p>
+      <div className="flex flex-col items-center justify-center py-12">
+        <User className="h-10 w-10 text-amber-500 mb-3" />
+        <h3 className="text-base font-medium text-gray-700 mb-1">No Family Members</h3>
+        <p className="text-gray-500 text-sm">Add members in Introduction tab first.</p>
       </div>
     );
   }
 
+  // Separate visible and hidden categories
+  const visibleCategories = INCOME_CATEGORIES.filter(c => !hiddenCategories.includes(c.value));
+  const hiddenCategoryList = INCOME_CATEGORIES.filter(c => hiddenCategories.includes(c.value));
+
   return (
-    <div className="space-y-4">
-      {/* Header info */}
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm text-gray-600">
-          Add multiple income sources for each category. Each entry can be assigned to a specific family member.
-        </p>
-        <Badge variant="outline" className="text-gray-600">
-          {members.length} member{members.length !== 1 ? 's' : ''}
-        </Badge>
+    <div className="space-y-2">
+      {/* Header */}
+      <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
+        <span>Click "Skip" to hide categories you don't need</span>
+        <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
       </div>
 
-      {/* Income Categories - Collapsible Accordions */}
-      <div className="space-y-3">
-        {INCOME_CATEGORIES.map(category => {
+      {/* Visible Categories */}
+      <div className="space-y-1.5">
+        {visibleCategories.map(category => {
           const Icon = category.icon;
           const itemCount = getCategoryItemCount(category.value);
           const isExpanded = expandedCategories[category.value];
@@ -423,117 +418,115 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
           const hasUnsavedChanges = items.some(item => item.isNew || item.isModified);
           
           return (
-            <Card key={category.value} className={`overflow-hidden ${itemCount > 0 ? 'ring-1 ring-blue-200' : ''}`}>
+            <Card key={category.value} className={`overflow-hidden ${itemCount > 0 ? 'border-blue-200 bg-blue-50/30' : ''}`}>
               <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category.value)}>
                 <CollapsibleTrigger asChild>
-                  <CardHeader className="py-3 px-4 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <CardHeader className="py-2 px-3 cursor-pointer hover:bg-gray-50/80">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4 text-gray-400" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-gray-400" />
-                        )}
-                        <Icon className={`h-5 w-5 ${itemCount > 0 ? 'text-blue-600' : 'text-gray-400'}`} />
-                        <CardTitle className="text-sm font-medium">{category.label}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                        <Icon className={`h-4 w-4 ${itemCount > 0 ? 'text-blue-600' : 'text-gray-400'}`} />
+                        <span className="text-sm font-medium">{category.label}</span>
                         {itemCount > 0 && (
-                          <Badge className="bg-blue-100 text-blue-700 text-xs">
-                            {itemCount} {itemCount === 1 ? 'entry' : 'entries'}
-                          </Badge>
+                          <Badge className="bg-blue-100 text-blue-700 text-xs h-5 px-1.5">{itemCount}</Badge>
                         )}
                         {hasUnsavedChanges && (
-                          <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">
-                            Unsaved
-                          </Badge>
+                          <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs h-5 px-1.5">•</Badge>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addIncomeItem(category.value);
-                        }}
-                        disabled={isReadOnly}
-                        className="gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); hideCategory(category.value); }}
+                          disabled={isReadOnly || itemCount > 0}
+                          className="h-7 px-2 text-xs text-gray-400 hover:text-gray-600"
+                        >
+                          <EyeOff className="h-3 w-3 mr-1" />
+                          Skip
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); addIncomeItem(category.value); }}
+                          disabled={isReadOnly}
+                          className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
                 
                 <CollapsibleContent>
-                  <CardContent className="pt-0 pb-4 px-4">
+                  <CardContent className="pt-0 pb-2 px-3">
                     {items.length === 0 ? (
-                      <div className="text-center py-6 text-gray-500 text-sm border-t">
-                        No {category.label.toLowerCase()} entries yet. Click "Add" to create one.
+                      <div className="text-center py-3 text-gray-400 text-xs border-t">
+                        No entries. Click "Add" to create one.
                       </div>
                     ) : (
-                      <div className="space-y-4 border-t pt-4">
-                        {items.map((item, index) => (
+                      <div className="space-y-2 border-t pt-2">
+                        {items.map((item) => (
                           <div 
                             key={item.id} 
-                            className={`p-4 rounded-lg border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-gray-50/50 border-gray-200'}`}
+                            className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}
                           >
-                            {/* All fields in one row including member dropdown */}
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
-                              {/* Member Dropdown - First Field */}
-                              <div>
-                                <Label className="text-xs text-gray-500 mb-1 block">Family Member</Label>
+                            <div className="flex items-end gap-2 flex-wrap">
+                              {/* Member Dropdown */}
+                              <div className="w-32">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
                                 <Select 
                                   value={item.memberId || ""} 
                                   onValueChange={(v) => updateIncomeItem(category.value, item.id, "memberId", v)}
                                   disabled={isReadOnly}
                                 >
-                                  <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Select Member" />
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Select" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {members.map(member => (
                                       <SelectItem key={member.id} value={member.id}>
-                                        {member.name}{member.is_primary ? ' (Primary)' : ''}
+                                        {member.name}{member.is_primary ? ' *' : ''}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
                               </div>
                               
-                              {/* Category-specific Fields */}
+                              {/* Category Fields */}
                               {category.fields.map(field => (
-                                <div key={field.key}>
-                                  <Label className="text-xs text-gray-500 mb-1 block">{field.label}</Label>
+                                <div key={field.key} className="flex-1 min-w-[100px]">
+                                  <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
                                   {renderField(category.value, item.id, field, item.details[field.key])}
                                 </div>
                               ))}
                               
                               {/* Delete Button */}
-                              <div className="flex items-end">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeIncomeItem(category.value, item.id, item.isNew)}
-                                  disabled={isReadOnly}
-                                  className="text-red-500 hover:text-red-600 hover:bg-red-50 h-9 w-9"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeIncomeItem(category.value, item.id, item.isNew)}
+                                disabled={isReadOnly}
+                                className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             </div>
                           </div>
                         ))}
                         
-                        {/* Save button for this category */}
-                        <div className="flex justify-end pt-2">
+                        {/* Save button */}
+                        <div className="flex justify-end pt-1">
                           <Button
                             onClick={() => saveCategory(category.value)}
                             disabled={savingCategory === category.value || isReadOnly || !hasUnsavedChanges}
-                            className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                            className="bg-blue-600 hover:bg-blue-700 text-white h-7 px-3 text-xs"
                             size="sm"
                           >
-                            <Save className="h-4 w-4" />
-                            {savingCategory === category.value ? "Saving..." : `Save ${category.label}`}
+                            <Save className="h-3 w-3 mr-1" />
+                            {savingCategory === category.value ? "..." : "Save"}
                           </Button>
                         </div>
                       </div>
@@ -545,6 +538,29 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
           );
         })}
       </div>
+
+      {/* Hidden/Skipped Categories Section */}
+      {hiddenCategoryList.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-dashed">
+          <div className="text-xs text-gray-400 mb-2 px-1">Skipped Categories (click to restore)</div>
+          <div className="flex flex-wrap gap-1.5">
+            {hiddenCategoryList.map(category => {
+              const Icon = category.icon;
+              return (
+                <button
+                  key={category.value}
+                  onClick={() => showCategory(category.value)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-dashed border-gray-300 text-xs text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  <Eye className="h-3 w-3" />
+                  <Icon className="h-3 w-3" />
+                  {category.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
