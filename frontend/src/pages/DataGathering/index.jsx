@@ -115,17 +115,20 @@ export default function DataGathering() {
   };
 
   const loadFamilyData = (family) => {
-    setSelectedAssociate(family.sub_broker_id || "");
+    setSelectedSubBroker(family.sub_broker_id || "");
     setFamilyName(family.family_name || "");
+    setProceedOption(family.proceed_option || "Data Gathering");
     const loadedMembers = family.members?.map((m, idx) => ({
       id: m.id || idx + 1,
       name: m.name || "",
       dob: m.date_of_birth || "",
       relation: m.relation === "Primary" ? "Self" : m.relation,
       life_expectancy: m.life_expectancy || 85,
+      tax_regime: m.tax_regime || "New Regime",
+      tax_status: m.tax_status || "Resident",
       tax_slab: m.tax_slab || "30%",
       isPrimary: m.is_primary || idx === 0
-    })) || [{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_slab: "30%", isPrimary: true }];
+    })) || [{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_regime: "New Regime", tax_status: "Resident", tax_slab: "30%", isPrimary: true }];
     setMembers(loadedMembers);
   };
 
