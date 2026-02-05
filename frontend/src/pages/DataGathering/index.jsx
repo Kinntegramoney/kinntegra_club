@@ -102,10 +102,10 @@ export default function DataGathering() {
       const token = localStorage.getItem("token");
       const [familiesRes, subBrokersRes] = await Promise.all([
         axios.get(`${API}/data-gathering/families`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API}/sub-brokers`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }))
+        axios.get(`${API}/data-gathering/lookup/sub-brokers`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { sub_brokers: [] } }))
       ]);
       setFamilies(familiesRes.data.families || []);
-      setSubBrokers(Array.isArray(subBrokersRes.data) ? subBrokersRes.data : subBrokersRes.data.sub_brokers || []);
+      setSubBrokers(subBrokersRes.data.sub_brokers || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load data");
