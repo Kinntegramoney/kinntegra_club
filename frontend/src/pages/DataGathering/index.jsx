@@ -239,9 +239,10 @@ export default function DataGathering() {
 
   const handleNewFamily = () => {
     setSelectedFamily(null);
-    setSelectedAssociate("");
+    setSelectedSubBroker("");
     setFamilyName("");
-    setMembers([{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_slab: "30%", isPrimary: true }]);
+    setProceedOption("Data Gathering");
+    setMembers([{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_regime: "New Regime", tax_status: "Resident", tax_slab: "30%", isPrimary: true }]);
     setActiveTab("introduction");
   };
 
