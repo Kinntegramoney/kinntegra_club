@@ -16,68 +16,149 @@ import { toast } from "sonner";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Asset categories - Face values of holdings (NOT salary/business income)
 const ASSET_CATEGORIES = [
-  { value: "real_estate", label: "Real Estate", icon: Home, fields: [
-    { key: "property_type", label: "Type", type: "select", options: ["Residential", "Commercial", "Land", "Plot"] },
-    { key: "purchase_value", label: "Purchase Value", type: "number" },
-    { key: "current_value", label: "Current Value", type: "number" },
-    { key: "purchase_year", label: "Purchase Year", type: "number" }
-  ]},
-  { value: "gold_jewellery", label: "Gold & Jewellery", icon: Gem, fields: [
-    { key: "weight_grams", label: "Weight (gms)", type: "number" },
-    { key: "current_value", label: "Current Value", type: "number" }
-  ]},
-  { value: "fixed_deposit", label: "Fixed Deposits", icon: Landmark, fields: [
-    { key: "principal", label: "Principal", type: "number" },
-    { key: "interest_rate", label: "Rate %", type: "number" },
-    { key: "maturity_date", label: "Maturity", type: "date" }
-  ]},
-  { value: "ppf", label: "PPF", icon: PiggyBank, fields: [
-    { key: "current_value", label: "Current Value", type: "number" },
-    { key: "yearly_contribution", label: "Yearly Contribution", type: "number" }
-  ]},
-  { value: "epf", label: "EPF / PF", icon: PiggyBank, fields: [
-    { key: "current_value", label: "Current Value", type: "number" },
-    { key: "monthly_contribution", label: "Monthly Contribution", type: "number" }
-  ]},
-  { value: "nps", label: "NPS", icon: PiggyBank, fields: [
-    { key: "current_value", label: "Current Value", type: "number" },
-    { key: "monthly_contribution", label: "Monthly Contribution", type: "number" }
-  ]},
-  { value: "mutual_funds", label: "Mutual Funds", icon: TrendingUp, fields: [
-    { key: "current_value", label: "Current Value", type: "number" },
-    { key: "sip_amount", label: "SIP Amount", type: "number" }
-  ]},
-  { value: "stocks", label: "Stocks / Equity", icon: TrendingUp, fields: [
-    { key: "current_value", label: "Current Value", type: "number" },
-    { key: "invested_amount", label: "Invested Amount", type: "number" }
-  ]},
-  { value: "bonds", label: "Bonds / Debentures", icon: Landmark, fields: [
-    { key: "face_value", label: "Face Value", type: "number" },
-    { key: "current_value", label: "Current Value", type: "number" },
-    { key: "maturity_date", label: "Maturity", type: "date" }
-  ]},
-  { value: "vehicle", label: "Vehicles", icon: Car, fields: [
-    { key: "vehicle_type", label: "Type", type: "select", options: ["Car", "Two Wheeler", "Commercial"] },
-    { key: "purchase_value", label: "Purchase Value", type: "number" },
-    { key: "current_value", label: "Current Value", type: "number" }
-  ]},
-  { value: "savings_account", label: "Savings Account", icon: Wallet, fields: [
-    { key: "bank_name", label: "Bank", type: "text" },
-    { key: "balance", label: "Balance", type: "number" }
-  ]},
-  { value: "cash", label: "Cash in Hand", icon: Coins, fields: [
-    { key: "amount", label: "Amount", type: "number" }
-  ]},
-  { value: "insurance_corpus", label: "Insurance Corpus", icon: Building, fields: [
-    { key: "policy_type", label: "Type", type: "select", options: ["Endowment", "ULIP", "Money Back", "Pension"] },
-    { key: "sum_assured", label: "Sum Assured", type: "number" },
-    { key: "current_value", label: "Current Value", type: "number" }
-  ]},
-  { value: "other", label: "Other Assets", icon: Wallet, fields: [
-    { key: "description", label: "Description", type: "text" },
-    { key: "current_value", label: "Current Value", type: "number" }
-  ]}
+  { 
+    value: "ppf", 
+    label: "PPF", 
+    icon: PiggyBank,
+    fields: [
+      { key: "amount", label: "Current Value", type: "number" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" }
+    ]
+  },
+  { 
+    value: "epf", 
+    label: "EPF", 
+    icon: PiggyBank,
+    fields: [
+      { key: "amount", label: "Current Value", type: "number" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" }
+    ]
+  },
+  { 
+    value: "gratuity", 
+    label: "Gratuity", 
+    icon: Wallet,
+    fields: [
+      { key: "amount", label: "Expected Amount", type: "number" },
+      { key: "maturity_date", label: "Expected Date", type: "date" }
+    ]
+  },
+  { 
+    value: "fd", 
+    label: "Fixed Deposits", 
+    icon: Landmark,
+    fields: [
+      { key: "description", label: "Description", type: "text" },
+      { key: "principal_amount", label: "Principal", type: "number" },
+      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
+      { key: "start_date", label: "Start Date", type: "date" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" },
+      { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly", "On Maturity"] }
+    ]
+  },
+  { 
+    value: "rd_pis", 
+    label: "RD / PIS", 
+    icon: Landmark,
+    fields: [
+      { key: "monthly_contribution", label: "Monthly Contribution", type: "number" },
+      { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
+      { key: "start_date", label: "Start Date", type: "date" },
+      { key: "end_date", label: "End Date", type: "date" },
+      { key: "num_installments", label: "No. of Installments", type: "number" },
+      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
+      { key: "maturity_amount", label: "Maturity Amount", type: "number" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" }
+    ]
+  },
+  { 
+    value: "bond", 
+    label: "Bonds", 
+    icon: Landmark,
+    fields: [
+      { key: "principal_amount", label: "Principal", type: "number" },
+      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
+      { key: "start_date", label: "Start Date", type: "date" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" },
+      { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"] }
+    ]
+  },
+  { 
+    value: "insurance_corpus", 
+    label: "Insurance", 
+    icon: Building,
+    fields: [
+      { key: "principal_amount", label: "Sum Assured", type: "number" },
+      { key: "interest_rate", label: "Expected Return (%)", type: "number" },
+      { key: "start_date", label: "Start Date", type: "date" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" },
+      { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Yearly", "On Maturity"] }
+    ]
+  },
+  { 
+    value: "mutual_fund", 
+    label: "Mutual Fund", 
+    icon: TrendingUp,
+    fields: [
+      { key: "market_value", label: "Market Value", type: "number" },
+      { key: "sip_amount", label: "SIP Amount", type: "number" }
+    ]
+  },
+  { 
+    value: "shares_pms", 
+    label: "Shares / PMS", 
+    icon: TrendingUp,
+    fields: [
+      { key: "market_value", label: "Market Value", type: "number" }
+    ]
+  },
+  { 
+    value: "gold", 
+    label: "Gold", 
+    icon: Gem,
+    fields: [
+      { key: "market_value", label: "Market Value", type: "number" }
+    ]
+  },
+  { 
+    value: "cash", 
+    label: "Cash in Hand", 
+    icon: Coins,
+    fields: [
+      { key: "amount", label: "Amount", type: "number" }
+    ]
+  },
+  { 
+    value: "real_estate", 
+    label: "Real Estate", 
+    icon: Home,
+    fields: [
+      { key: "property_type", label: "Property Type", type: "text" },
+      { key: "purchase_value", label: "Purchase Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" }
+    ]
+  },
+  { 
+    value: "vehicle", 
+    label: "Vehicles", 
+    icon: Car,
+    fields: [
+      { key: "vehicle_type", label: "Type", type: "text" },
+      { key: "purchase_value", label: "Purchase Value", type: "number" },
+      { key: "current_value", label: "Current Value", type: "number" }
+    ]
+  },
+  { 
+    value: "other", 
+    label: "Other Assets", 
+    icon: Wallet,
+    fields: [
+      { key: "description", label: "Description", type: "text" },
+      { key: "amount", label: "Value", type: "number" }
+    ]
+  }
 ];
 
 export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh }) {
@@ -171,12 +252,7 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
     try {
       const token = localStorage.getItem("token");
       for (const item of itemsToSave) {
-        const payload = {
-          family_id: family.id,
-          member_ids: [item.memberId],
-          category,
-          details: item.details
-        };
+        const payload = { family_id: family.id, member_ids: [item.memberId], category, details: item.details };
         if (item.isNew) {
           await axios.post(`${API}/data-gathering/family/${family.id}/asset`, payload, { headers: { Authorization: `Bearer ${token}` } });
         } else {
@@ -216,7 +292,7 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
   
   // Calculate total assets
   const totalAssets = Object.values(assetItems).flat().reduce((sum, a) => {
-    const val = parseFloat(a.details?.current_value) || parseFloat(a.details?.balance) || parseFloat(a.details?.amount) || 0;
+    const val = parseFloat(a.details?.market_value) || parseFloat(a.details?.amount) || parseFloat(a.details?.principal_amount) || parseFloat(a.details?.current_value) || 0;
     return sum + val;
   }, 0);
 
@@ -244,7 +320,7 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
-        <span>Click "Skip" to hide asset types you don't have</span>
+        <span>Record face value of all assets (excluding salary/business)</span>
         <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
       </div>
 

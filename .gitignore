@@ -145,3 +145,4 @@ electron-app/node_modules/electron/dist/electron
 # Environment files
 *.env
 *.env.*
+frontend/node_modules/.cache/default-development/9.pack_
