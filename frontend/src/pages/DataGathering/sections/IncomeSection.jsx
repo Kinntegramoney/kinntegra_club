@@ -477,58 +477,49 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                             key={item.id} 
                             className={`p-4 rounded-lg border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-gray-50/50 border-gray-200'}`}
                           >
-                            {/* Entry Header */}
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-medium text-gray-500">#{index + 1}</span>
-                                <div className="w-48">
-                                  <Select 
-                                    value={item.memberId || ""} 
-                                    onValueChange={(v) => updateIncomeItem(category.value, item.id, "memberId", v)}
-                                    disabled={isReadOnly}
-                                  >
-                                    <SelectTrigger className="h-8 text-sm">
-                                      <SelectValue placeholder="Select Member" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {members.map(member => (
-                                        <SelectItem key={member.id} value={member.id}>
-                                          <span className="flex items-center gap-2">
-                                            <User className="h-3 w-3" />
-                                            {member.name}
-                                            {member.is_primary && <Badge variant="secondary" className="text-xs ml-1">Primary</Badge>}
-                                          </span>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                {item.isNew && (
-                                  <Badge className="bg-green-100 text-green-700 text-xs">New</Badge>
-                                )}
-                                {item.isModified && !item.isNew && (
-                                  <Badge className="bg-amber-100 text-amber-700 text-xs">Modified</Badge>
-                                )}
+                            {/* All fields in one row including member dropdown */}
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+                              {/* Member Dropdown - First Field */}
+                              <div>
+                                <Label className="text-xs text-gray-500 mb-1 block">Family Member</Label>
+                                <Select 
+                                  value={item.memberId || ""} 
+                                  onValueChange={(v) => updateIncomeItem(category.value, item.id, "memberId", v)}
+                                  disabled={isReadOnly}
+                                >
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue placeholder="Select Member" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {members.map(member => (
+                                      <SelectItem key={member.id} value={member.id}>
+                                        {member.name}{member.is_primary ? ' (Primary)' : ''}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeIncomeItem(category.value, item.id, item.isNew)}
-                                disabled={isReadOnly}
-                                className="text-red-500 hover:text-red-600 hover:bg-red-50 h-7 w-7"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            
-                            {/* Entry Fields */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              
+                              {/* Category-specific Fields */}
                               {category.fields.map(field => (
                                 <div key={field.key}>
                                   <Label className="text-xs text-gray-500 mb-1 block">{field.label}</Label>
                                   {renderField(category.value, item.id, field, item.details[field.key])}
                                 </div>
                               ))}
+                              
+                              {/* Delete Button */}
+                              <div className="flex items-end">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeIncomeItem(category.value, item.id, item.isNew)}
+                                  disabled={isReadOnly}
+                                  className="text-red-500 hover:text-red-600 hover:bg-red-50 h-9 w-9"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         ))}
