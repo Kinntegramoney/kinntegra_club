@@ -66,6 +66,7 @@ export default function DataGathering() {
     { id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }
   ]);
   const [saving, setSaving] = useState(false);
+  const [showWhyModal, setShowWhyModal] = useState(false);
 
   useEffect(() => {
     document.title = "Kinntegraa | Data Gathering";
