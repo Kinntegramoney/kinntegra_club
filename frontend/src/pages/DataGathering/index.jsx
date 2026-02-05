@@ -344,18 +344,18 @@ export default function DataGathering() {
         );
       case "liability":
         return (
-          <InsuranceSection 
+          <LiabilitySection 
             family={selectedFamily} 
-            onUpdate={(data) => handleDataUpdate('insurance_premiums', data)}
+            onUpdate={(data) => handleDataUpdate('liabilities', data)}
             isReadOnly={isReadOnly}
             onRefresh={refreshSelectedFamily}
           />
         );
-      case "liability":
+      case "insurance":
         return (
-          <LiabilitySection 
+          <InsuranceSection 
             family={selectedFamily} 
-            onUpdate={(data) => handleDataUpdate('liabilities', data)}
+            onUpdate={(data) => handleDataUpdate('insurance_premiums', data)}
             isReadOnly={isReadOnly}
             onRefresh={refreshSelectedFamily}
           />
