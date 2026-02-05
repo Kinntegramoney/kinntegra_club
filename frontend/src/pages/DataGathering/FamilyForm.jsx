@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, Save, User, Users, HelpCircle, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, User, Users, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -13,29 +13,20 @@ import { Separator } from "@/components/ui/separator";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Dropdown options as per design document
-const GENDER_OPTIONS = [
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-  { value: "prefer_not_to_say", label: "Prefer not to say" }
-];
-
+// Relationship options
 const RELATIONSHIP_OPTIONS = [
   { value: "Primary", label: "Self (Primary Holder)" },
   { value: "Spouse", label: "Spouse" },
-  { value: "Partner", label: "Partner" },
   { value: "Son", label: "Son" },
   { value: "Daughter", label: "Daughter" },
   { value: "Father", label: "Father" },
   { value: "Mother", label: "Mother" },
   { value: "Brother", label: "Brother" },
   { value: "Sister", label: "Sister" },
-  { value: "Grandparent", label: "Grandparent" },
-  { value: "Grandchild", label: "Grandchild" },
   { value: "Other", label: "Other" }
 ];
 
+// Life Expectancy options
 const LIFE_EXPECTANCY_OPTIONS = [
   { value: 65, label: "65 years" },
   { value: 70, label: "70 years" },
@@ -47,15 +38,37 @@ const LIFE_EXPECTANCY_OPTIONS = [
   { value: 100, label: "100 years" }
 ];
 
-const TAX_SLAB_OPTIONS = [
-  { value: "0%", label: "0% (No Tax)" },
-  { value: "5%", label: "5%" },
-  { value: "10%", label: "10%" },
-  { value: "15%", label: "15%" },
-  { value: "20%", label: "20%" },
-  { value: "25%", label: "25%" },
-  { value: "30%", label: "30%" },
-  { value: "surcharge", label: "30% + Surcharge" }
+// Tax Regime options
+const TAX_REGIME_OPTIONS = [
+  { value: "old", label: "Old Tax Regime" },
+  { value: "new", label: "New Tax Regime" }
+];
+
+// Tax % options based on regime
+const TAX_PERCENT_OPTIONS = {
+  old: [
+    { value: "0", label: "0%" },
+    { value: "5", label: "5%" },
+    { value: "10", label: "10%" },
+    { value: "15", label: "15%" },
+    { value: "20", label: "20%" },
+    { value: "30", label: "30%" }
+  ],
+  new: [
+    { value: "0", label: "0%" },
+    { value: "5", label: "5%" },
+    { value: "10", label: "10%" },
+    { value: "15", label: "15%" },
+    { value: "20", label: "20%" },
+    { value: "25", label: "25%" },
+    { value: "30", label: "30%" }
+  ]
+};
+
+// Next step options
+const NEXT_STEP_OPTIONS = [
+  { value: "account_opening", label: "Proceed to Account Opening" },
+  { value: "data_gathering", label: "Continue with Data Gathering" }
 ];
 
 export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null }) {
@@ -63,45 +76,61 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
   const [errors, setErrors] = useState({});
 
   // Form state
-  const [brokerId, setBrokerId] = useState("");
   const [subBrokerId, setSubBrokerId] = useState("");
   const [subBrokers, setSubBrokers] = useState([]);
+  const [loadingSubBrokers, setLoadingSubBrokers] = useState(true);
 
+  // Primary holder state
   const [primaryHolder, setPrimaryHolder] = useState({
-    first_name: "",
-    last_name: "",
+    name_as_per_pan: "",
     date_of_birth: "",
-    gender: "male",
-    email: "",
-    phone: "",
     life_expectancy: 80,
-    tax_slab: "30%"
+    tax_regime: "new",
+    tax_percent: "30"
   });
 
+  // Family name (auto-generated)
+  const [familyName, setFamilyName] = useState("");
+
+  // Family members
   const [members, setMembers] = useState([]);
+
+  // Next step selection
+  const [nextStep, setNextStep] = useState("data_gathering");
 
   useEffect(() => {
     fetchSubBrokers();
     
-    // Set defaults based on user role
-    if (user?.role === 'broker') {
-      setBrokerId(user.id);
-    } else if (user?.role === 'sub_broker') {
+    // Set sub-broker if user is sub-broker
+    if (user?.role === 'sub_broker') {
       setSubBrokerId(user.id);
-      setBrokerId(user.broker_id || '');
     }
   }, [user]);
 
+  // Auto-generate family name when primary holder name changes
+  useEffect(() => {
+    if (primaryHolder.name_as_per_pan.trim()) {
+      setFamilyName(`${primaryHolder.name_as_per_pan.trim()} & Family`);
+    } else {
+      setFamilyName("");
+    }
+  }, [primaryHolder.name_as_per_pan]);
+
   const fetchSubBrokers = async () => {
+    setLoadingSubBrokers(true);
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(`${API}/sub-brokers`, { 
         headers: { Authorization: `Bearer ${token}` } 
-      }).catch(() => ({ data: [] }));
+      });
       
-      setSubBrokers(Array.isArray(response.data) ? response.data : response.data.sub_brokers || []);
+      const sbList = Array.isArray(response.data) ? response.data : response.data.sub_brokers || [];
+      setSubBrokers(sbList);
     } catch (error) {
       console.error("Error fetching sub-brokers:", error);
+      setSubBrokers([]);
+    } finally {
+      setLoadingSubBrokers(false);
     }
   };
 
@@ -109,16 +138,8 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
     const newErrors = {};
     
     // Primary holder validation
-    if (!primaryHolder.first_name.trim()) {
-      newErrors.first_name = "First name is required";
-    } else if (primaryHolder.first_name.length > 50) {
-      newErrors.first_name = "First name must be less than 50 characters";
-    }
-    
-    if (!primaryHolder.last_name.trim()) {
-      newErrors.last_name = "Last name is required";
-    } else if (primaryHolder.last_name.length > 50) {
-      newErrors.last_name = "Last name must be less than 50 characters";
+    if (!primaryHolder.name_as_per_pan.trim()) {
+      newErrors.name_as_per_pan = "Name as per PAN is required";
     }
     
     if (!primaryHolder.date_of_birth) {
@@ -130,14 +151,10 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
       }
     }
     
-    if (primaryHolder.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(primaryHolder.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-    
     // Validate family members
     members.forEach((member, index) => {
-      if (!member.first_name.trim()) {
-        newErrors[`member_${index}_first_name`] = "First name is required";
+      if (!member.name_as_per_pan.trim()) {
+        newErrors[`member_${index}_name`] = "Name is required";
       }
     });
     
@@ -150,19 +167,18 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
       ...members,
       {
         id: Date.now(),
-        first_name: "",
-        last_name: "",
+        name_as_per_pan: "",
         date_of_birth: "",
-        gender: "male",
         relation: "Spouse",
         life_expectancy: 80,
-        tax_slab: "30%"
+        tax_regime: "new",
+        tax_percent: "30"
       }
     ]);
   };
 
   const removeMember = (id) => {
-    if (window.confirm("Are you sure you want to remove this family member?")) {
+    if (window.confirm("Remove this family member?")) {
       setMembers(members.filter(m => m.id !== id));
     }
   };
@@ -171,13 +187,15 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
     setMembers(members.map(m => 
       m.id === id ? { ...m, [field]: value } : m
     ));
-    // Clear error for this field
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      const index = members.findIndex(m => m.id === id);
-      delete newErrors[`member_${index}_${field}`];
-      return newErrors;
-    });
+    // Clear error
+    const index = members.findIndex(m => m.id === id);
+    if (index !== -1) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`member_${index}_name`];
+        return newErrors;
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -192,33 +210,26 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
     try {
       const token = localStorage.getItem("token");
       
-      const fullName = `${primaryHolder.first_name} ${primaryHolder.last_name}`.trim();
-      
       const payload = {
-        broker_id: brokerId || user?.id,
+        broker_id: user?.role === 'broker' ? user.id : user?.broker_id,
         sub_broker_id: subBrokerId || null,
         primary_holder: {
-          name: fullName,
+          name: primaryHolder.name_as_per_pan,
           date_of_birth: primaryHolder.date_of_birth,
           relation: "Primary",
           life_expectancy: parseInt(primaryHolder.life_expectancy),
-          tax_slab: primaryHolder.tax_slab,
-          // Additional fields from design
-          first_name: primaryHolder.first_name,
-          last_name: primaryHolder.last_name,
-          gender: primaryHolder.gender,
-          email: primaryHolder.email,
-          phone: primaryHolder.phone
+          tax_slab: `${primaryHolder.tax_percent}%`,
+          tax_regime: primaryHolder.tax_regime,
+          name_as_per_pan: primaryHolder.name_as_per_pan
         },
         members: members.map(m => ({
-          name: `${m.first_name} ${m.last_name}`.trim() || m.first_name,
+          name: m.name_as_per_pan,
           date_of_birth: m.date_of_birth,
           relation: m.relation,
           life_expectancy: parseInt(m.life_expectancy),
-          tax_slab: m.tax_slab,
-          first_name: m.first_name,
-          last_name: m.last_name,
-          gender: m.gender
+          tax_slab: `${m.tax_percent}%`,
+          tax_regime: m.tax_regime,
+          name_as_per_pan: m.name_as_per_pan
         }))
       };
 
@@ -226,7 +237,17 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      onSubmit(response.data.family);
+      const createdFamily = response.data.family;
+      
+      // Navigate based on next step selection
+      if (nextStep === "account_opening") {
+        toast.success("Family created! Redirecting to account opening...");
+        // Could navigate to account opening page
+        onSubmit(createdFamily, "account_opening");
+      } else {
+        toast.success("Family created! Continue with data gathering...");
+        onSubmit(createdFamily, "data_gathering");
+      }
     } catch (error) {
       console.error("Error creating family:", error);
       toast.error(error.response?.data?.detail || "Failed to create family");
@@ -247,25 +268,6 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
     return age;
   };
 
-  const InputWithValidation = ({ label, error, required, helperText, children }) => (
-    <div className="space-y-1">
-      <Label className="flex items-center gap-1">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-        {helperText && (
-          <HelpCircle className="h-3 w-3 text-gray-400 ml-1" />
-        )}
-      </Label>
-      {children}
-      {error && (
-        <p className="text-xs text-red-500 flex items-center gap-1">
-          <AlertCircle className="h-3 w-3" />
-          {error}
-        </p>
-      )}
-    </div>
-  );
-
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* Header */}
@@ -276,20 +278,20 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
         </Button>
       </div>
 
-      {/* Form Title & Purpose */}
+      {/* Form Title */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Introduction & Family Creation</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Introduction</h1>
         <p className="text-gray-500 mt-2">
-          Help us get to know you and your family better. This information will be used to create a comprehensive financial plan tailored to your needs.
+          Create a new family profile for financial planning
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Introduction Section - Broker/Sub-broker */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Section 1: Introduction - Sub-broker Selection */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Introduction</CardTitle>
-            <CardDescription>Select the broker and sub-broker for this family profile</CardDescription>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">1. Introduction</CardTitle>
+            <CardDescription>Select the sub-broker managing this client</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -300,19 +302,20 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
                   disabled
                   className="bg-gray-50 mt-1"
                 />
-                <p className="text-xs text-gray-500 mt-1">Read-only field</p>
               </div>
               <div>
-                <Label>Sub-Broker (Optional)</Label>
+                <Label>Sub-Broker</Label>
                 {user?.role === 'broker' ? (
                   <Select value={subBrokerId} onValueChange={setSubBrokerId}>
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select sub-broker (optional)" />
+                      <SelectValue placeholder={loadingSubBrokers ? "Loading..." : "Select sub-broker"} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">None - Direct Client</SelectItem>
                       {subBrokers.map(sb => (
-                        <SelectItem key={sb.id} value={sb.id}>{sb.name}</SelectItem>
+                        <SelectItem key={sb.id} value={sb.id}>
+                          {sb.name} {sb.email ? `(${sb.email})` : ''}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -323,67 +326,76 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
                     className="bg-gray-50 mt-1"
                   />
                 )}
+                {user?.role === 'broker' && subBrokers.length === 0 && !loadingSubBrokers && (
+                  <p className="text-xs text-gray-500 mt-1">No sub-brokers available in the system</p>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Primary User Information Section */}
+        {/* Section 2: Family Name (Auto-populated) */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <User className="h-5 w-5 text-etihad-gold-600" />
-              Your Personal Information
-            </CardTitle>
-            <CardDescription>Primary account holder details</CardDescription>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">2. Family Name</CardTitle>
+            <CardDescription>Auto-generated based on primary holder's name</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* First Name */}
-              <InputWithValidation 
-                label="First Name" 
-                required 
-                error={errors.first_name}
-                helperText="Enter your given name"
-              >
-                <Input
-                  value={primaryHolder.first_name}
-                  onChange={(e) => {
-                    setPrimaryHolder({ ...primaryHolder, first_name: e.target.value });
-                    setErrors(prev => ({ ...prev, first_name: undefined }));
-                  }}
-                  placeholder="e.g., John"
-                  className={`mt-1 ${errors.first_name ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  maxLength={50}
-                />
-              </InputWithValidation>
+            <div>
+              <Label>Family Name</Label>
+              <Input
+                value={familyName}
+                onChange={(e) => setFamilyName(e.target.value)}
+                placeholder="Will be auto-generated after entering primary holder name"
+                className="mt-1"
+              />
+              {!familyName && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Enter primary holder's name below to auto-generate family name
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-              {/* Last Name */}
-              <InputWithValidation 
-                label="Last Name" 
-                required 
-                error={errors.last_name}
-                helperText="Enter your family name"
-              >
+        {/* Section 3: Primary Holder Details */}
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <User className="h-5 w-5 text-etihad-gold-600" />
+              3. Primary Holder Details
+            </CardTitle>
+            <CardDescription>Enter the primary account holder information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Name as per PAN */}
+              <div className="md:col-span-2 lg:col-span-1">
+                <Label>
+                  Name as per PAN <span className="text-red-500">*</span>
+                </Label>
                 <Input
-                  value={primaryHolder.last_name}
+                  value={primaryHolder.name_as_per_pan}
                   onChange={(e) => {
-                    setPrimaryHolder({ ...primaryHolder, last_name: e.target.value });
-                    setErrors(prev => ({ ...prev, last_name: undefined }));
+                    setPrimaryHolder({ ...primaryHolder, name_as_per_pan: e.target.value });
+                    setErrors(prev => ({ ...prev, name_as_per_pan: undefined }));
                   }}
-                  placeholder="e.g., Doe"
-                  className={`mt-1 ${errors.last_name ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  maxLength={50}
+                  placeholder="Enter name exactly as on PAN card"
+                  className={`mt-1 ${errors.name_as_per_pan ? 'border-red-500' : ''}`}
                 />
-              </InputWithValidation>
+                {errors.name_as_per_pan && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.name_as_per_pan}
+                  </p>
+                )}
+              </div>
 
               {/* Date of Birth */}
-              <InputWithValidation 
-                label="Date of Birth" 
-                required 
-                error={errors.date_of_birth}
-                helperText="Select your birth date"
-              >
+              <div>
+                <Label>
+                  Date of Birth <span className="text-red-500">*</span>
+                </Label>
                 <div className="relative">
                   <Input
                     type="date"
@@ -392,7 +404,7 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
                       setPrimaryHolder({ ...primaryHolder, date_of_birth: e.target.value });
                       setErrors(prev => ({ ...prev, date_of_birth: undefined }));
                     }}
-                    className={`mt-1 ${errors.date_of_birth ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    className={`mt-1 ${errors.date_of_birth ? 'border-red-500' : ''}`}
                     max={new Date().toISOString().split('T')[0]}
                   />
                   {primaryHolder.date_of_birth && (
@@ -401,60 +413,27 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
                     </Badge>
                   )}
                 </div>
-              </InputWithValidation>
+                {errors.date_of_birth && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.date_of_birth}
+                  </p>
+                )}
+              </div>
 
-              {/* Gender */}
-              <InputWithValidation label="Gender" required>
-                <Select 
-                  value={primaryHolder.gender} 
-                  onValueChange={(v) => setPrimaryHolder({ ...primaryHolder, gender: v })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GENDER_OPTIONS.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </InputWithValidation>
-
-              {/* Email Address */}
-              <InputWithValidation 
-                label="Email Address" 
-                error={errors.email}
-                helperText="Used for notifications"
-              >
+              {/* Relation (Fixed as Primary) */}
+              <div>
+                <Label>Relation</Label>
                 <Input
-                  type="email"
-                  value={primaryHolder.email}
-                  onChange={(e) => {
-                    setPrimaryHolder({ ...primaryHolder, email: e.target.value });
-                    setErrors(prev => ({ ...prev, email: undefined }));
-                  }}
-                  placeholder="john.doe@example.com"
-                  className={`mt-1 ${errors.email ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  value="Self (Primary Holder)"
+                  disabled
+                  className="mt-1 bg-gray-50"
                 />
-              </InputWithValidation>
-
-              {/* Phone Number */}
-              <InputWithValidation label="Phone Number" helperText="Optional contact number">
-                <Input
-                  type="tel"
-                  value={primaryHolder.phone}
-                  onChange={(e) => setPrimaryHolder({ ...primaryHolder, phone: e.target.value })}
-                  placeholder="+91 98765 43210"
-                  className="mt-1"
-                />
-              </InputWithValidation>
+              </div>
 
               {/* Life Expectancy */}
-              <InputWithValidation 
-                label="Life Expectancy" 
-                required
-                helperText="For financial planning calculations"
-              >
+              <div>
+                <Label>Life Expectancy</Label>
                 <Select 
                   value={String(primaryHolder.life_expectancy)} 
                   onValueChange={(v) => setPrimaryHolder({ ...primaryHolder, life_expectancy: parseInt(v) })}
@@ -468,98 +447,126 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
                     ))}
                   </SelectContent>
                 </Select>
-              </InputWithValidation>
+              </div>
 
-              {/* Tax Slab */}
-              <InputWithValidation 
-                label="Tax Slab" 
-                required
-                helperText="Your current income tax bracket"
-              >
+              {/* Tax Regime */}
+              <div>
+                <Label>Tax Regime</Label>
                 <Select 
-                  value={primaryHolder.tax_slab} 
-                  onValueChange={(v) => setPrimaryHolder({ ...primaryHolder, tax_slab: v })}
+                  value={primaryHolder.tax_regime} 
+                  onValueChange={(v) => setPrimaryHolder({ ...primaryHolder, tax_regime: v, tax_percent: "30" })}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {TAX_SLAB_OPTIONS.map(opt => (
+                    {TAX_REGIME_OPTIONS.map(opt => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </InputWithValidation>
+              </div>
+
+              {/* Tax % */}
+              <div>
+                <Label>Tax %</Label>
+                <Select 
+                  value={primaryHolder.tax_percent} 
+                  onValueChange={(v) => setPrimaryHolder({ ...primaryHolder, tax_percent: v })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TAX_PERCENT_OPTIONS[primaryHolder.tax_regime].map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Family Members Section */}
+        {/* Section 4: Family Members */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="h-5 w-5 text-etihad-gold-600" />
-                  Family Members
+                  4. Family Members
                 </CardTitle>
-                <CardDescription>
-                  Add information about your family members. Click the button to add each member.
-                </CardDescription>
+                <CardDescription>Add other family members (optional)</CardDescription>
               </div>
-              <Button type="button" variant="outline" onClick={addMember} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Family Member
+              <Button type="button" variant="outline" size="sm" onClick={addMember}>
+                + Add Member
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             {members.length === 0 ? (
-              <div className="text-center py-12 border-2 border-dashed rounded-lg bg-gray-50">
-                <Users className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-700 mb-2">No family members added</h3>
-                <p className="text-gray-500 mb-4">
-                  Click "Add Family Member" to include spouse, children, parents, or other family members.
-                </p>
-                <Button type="button" variant="outline" onClick={addMember} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Family Member
+              <div className="text-center py-8 border-2 border-dashed rounded-lg bg-gray-50">
+                <Users className="h-10 w-10 mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-500 mb-3">No family members added yet</p>
+                <Button type="button" variant="outline" size="sm" onClick={addMember}>
+                  + Add Family Member
                 </Button>
               </div>
             ) : (
-              <div className="space-y-6">
-                {/* Family Members Table Header */}
-                <div className="hidden md:grid md:grid-cols-7 gap-4 px-4 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-600">
-                  <span>Relationship</span>
-                  <span>First Name</span>
-                  <span>Last Name</span>
-                  <span>Date of Birth</span>
-                  <span>Gender</span>
+              <div className="space-y-4">
+                {/* Table Header */}
+                <div className="hidden lg:grid lg:grid-cols-7 gap-3 px-3 py-2 bg-gray-100 rounded-lg text-xs font-medium text-gray-600">
+                  <span>Name as per PAN</span>
+                  <span>DOB</span>
+                  <span>Relation</span>
                   <span>Life Exp.</span>
-                  <span>Actions</span>
+                  <span>Tax Regime</span>
+                  <span>Tax %</span>
+                  <span className="text-center">Action</span>
                 </div>
 
                 {members.map((member, index) => (
-                  <div key={member.id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-4 md:hidden">
-                      <Badge variant="outline" className="text-sm">
-                        Member {index + 1}
-                      </Badge>
+                  <div key={member.id} className="border rounded-lg p-4 bg-white">
+                    <div className="lg:hidden flex justify-between items-center mb-3">
+                      <Badge variant="outline">Member {index + 1}</Badge>
                       <Button 
                         type="button" 
                         variant="ghost" 
                         size="sm"
                         onClick={() => removeMember(member.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="text-red-600 hover:bg-red-50"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        Remove
                       </Button>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-7 gap-4 items-end">
-                      {/* Relationship */}
+                    <div className="grid grid-cols-1 lg:grid-cols-7 gap-3 items-end">
+                      {/* Name as per PAN */}
                       <div>
-                        <Label className="md:hidden text-xs text-gray-500">Relationship</Label>
+                        <Label className="lg:hidden text-xs">Name as per PAN *</Label>
+                        <Input
+                          value={member.name_as_per_pan}
+                          onChange={(e) => updateMember(member.id, 'name_as_per_pan', e.target.value)}
+                          placeholder="Name as per PAN"
+                          className={errors[`member_${index}_name`] ? 'border-red-500' : ''}
+                        />
+                      </div>
+
+                      {/* DOB */}
+                      <div>
+                        <Label className="lg:hidden text-xs">DOB</Label>
+                        <Input
+                          type="date"
+                          value={member.date_of_birth}
+                          onChange={(e) => updateMember(member.id, 'date_of_birth', e.target.value)}
+                          max={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+
+                      {/* Relation */}
+                      <div>
+                        <Label className="lg:hidden text-xs">Relation</Label>
                         <Select 
                           value={member.relation} 
                           onValueChange={(v) => updateMember(member.id, 'relation', v)}
@@ -575,64 +582,9 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
                         </Select>
                       </div>
 
-                      {/* First Name */}
-                      <div>
-                        <Label className="md:hidden text-xs text-gray-500">First Name *</Label>
-                        <Input
-                          value={member.first_name}
-                          onChange={(e) => updateMember(member.id, 'first_name', e.target.value)}
-                          placeholder="First name"
-                          className={errors[`member_${index}_first_name`] ? 'border-red-500' : ''}
-                          maxLength={50}
-                        />
-                        {errors[`member_${index}_first_name`] && (
-                          <p className="text-xs text-red-500 mt-1">{errors[`member_${index}_first_name`]}</p>
-                        )}
-                      </div>
-
-                      {/* Last Name */}
-                      <div>
-                        <Label className="md:hidden text-xs text-gray-500">Last Name</Label>
-                        <Input
-                          value={member.last_name}
-                          onChange={(e) => updateMember(member.id, 'last_name', e.target.value)}
-                          placeholder="Last name"
-                          maxLength={50}
-                        />
-                      </div>
-
-                      {/* Date of Birth */}
-                      <div>
-                        <Label className="md:hidden text-xs text-gray-500">Date of Birth</Label>
-                        <Input
-                          type="date"
-                          value={member.date_of_birth}
-                          onChange={(e) => updateMember(member.id, 'date_of_birth', e.target.value)}
-                          max={new Date().toISOString().split('T')[0]}
-                        />
-                      </div>
-
-                      {/* Gender */}
-                      <div>
-                        <Label className="md:hidden text-xs text-gray-500">Gender</Label>
-                        <Select 
-                          value={member.gender} 
-                          onValueChange={(v) => updateMember(member.id, 'gender', v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {GENDER_OPTIONS.map(opt => (
-                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
                       {/* Life Expectancy */}
                       <div>
-                        <Label className="md:hidden text-xs text-gray-500">Life Exp.</Label>
+                        <Label className="lg:hidden text-xs">Life Exp.</Label>
                         <Select 
                           value={String(member.life_expectancy)} 
                           onValueChange={(v) => updateMember(member.id, 'life_expectancy', parseInt(v))}
@@ -648,40 +600,106 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
                         </Select>
                       </div>
 
-                      {/* Actions */}
-                      <div className="hidden md:flex justify-center">
+                      {/* Tax Regime */}
+                      <div>
+                        <Label className="lg:hidden text-xs">Tax Regime</Label>
+                        <Select 
+                          value={member.tax_regime} 
+                          onValueChange={(v) => updateMember(member.id, 'tax_regime', v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TAX_REGIME_OPTIONS.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Tax % */}
+                      <div>
+                        <Label className="lg:hidden text-xs">Tax %</Label>
+                        <Select 
+                          value={member.tax_percent} 
+                          onValueChange={(v) => updateMember(member.id, 'tax_percent', v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TAX_PERCENT_OPTIONS[member.tax_regime].map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Remove Button (Desktop) */}
+                      <div className="hidden lg:flex justify-center">
                         <Button 
                           type="button" 
                           variant="ghost" 
-                          size="icon"
+                          size="sm"
                           onClick={() => removeMember(member.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:bg-red-50"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          Remove
                         </Button>
                       </div>
                     </div>
                   </div>
                 ))}
 
-                {/* Add More Button */}
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={addMember}
-                  className="w-full border-dashed gap-2"
+                  className="w-full border-dashed"
                 >
-                  <Plus className="h-4 w-4" />
-                  Add Another Family Member
+                  + Add Another Family Member
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Form Summary */}
-        {(primaryHolder.first_name || members.length > 0) && (
-          <Card className="bg-gray-50">
+        {/* Section 5: Next Step Selection */}
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ArrowRight className="h-5 w-5 text-etihad-gold-600" />
+              5. Next Step
+            </CardTitle>
+            <CardDescription>Choose how to proceed after creating the family</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div>
+              <Label>What would you like to do next?</Label>
+              <Select value={nextStep} onValueChange={setNextStep}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {NEXT_STEP_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-2">
+                {nextStep === "account_opening" 
+                  ? "You will be redirected to the account opening process"
+                  : "You will continue adding income, goals, expenses, and other financial details"
+                }
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Summary */}
+        {(primaryHolder.name_as_per_pan || members.length > 0) && (
+          <Card className="bg-gray-50 border-green-200">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle className="h-5 w-5 text-green-500" />
@@ -690,9 +708,7 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500">Family Name:</span>
-                  <p className="font-medium">
-                    {primaryHolder.first_name ? `${primaryHolder.first_name} ${primaryHolder.last_name} & Family` : '-'}
-                  </p>
+                  <p className="font-medium">{familyName || '-'}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Total Members:</span>
@@ -705,8 +721,10 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
                   </p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Status:</span>
-                  <Badge variant="secondary">Draft</Badge>
+                  <span className="text-gray-500">Next Step:</span>
+                  <Badge variant={nextStep === "account_opening" ? "default" : "secondary"}>
+                    {nextStep === "account_opening" ? "Account Opening" : "Data Gathering"}
+                  </Badge>
                 </div>
               </div>
             </CardContent>
@@ -721,14 +739,13 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
             type="button" 
             variant="outline" 
             onClick={onCancel}
-            className="sm:order-1"
           >
             Cancel
           </Button>
           <Button 
             type="submit" 
-            disabled={loading || !primaryHolder.first_name || !primaryHolder.date_of_birth}
-            className="bg-etihad-gold-600 hover:bg-etihad-gold-700 sm:order-2"
+            disabled={loading || !primaryHolder.name_as_per_pan || !primaryHolder.date_of_birth}
+            className="bg-etihad-gold-600 hover:bg-etihad-gold-700"
           >
             {loading ? (
               <>
@@ -738,7 +755,7 @@ export default function FamilyForm({ onCancel, onSubmit, user, editFamily = null
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                Create Family Profile
+                {nextStep === "account_opening" ? "Create & Open Account" : "Create & Continue"}
               </>
             )}
           </Button>
