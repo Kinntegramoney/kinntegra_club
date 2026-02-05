@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, User, CheckSquare, History, Settings, UserPlus, FileText } from "lucide-react";
+import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, User, CheckSquare, History, Settings, UserPlus, FileText, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import NotificationBell from "@/components/NotificationBell";
@@ -27,6 +27,8 @@ export default function Sidebar({ user }) {
                                 location.pathname.startsWith("/broker/admin/real-estate") ||
                                 location.pathname === "/broker/opportunities" ||
                                 location.pathname === "/sub-broker/opportunities";
+  const isDataGatheringActive = location.pathname.startsWith("/broker/data-gathering") || 
+                                location.pathname.startsWith("/sub-broker/data-gathering");
 
   const isBroker = user?.role === "broker";
   const isSubBroker = user?.role === "sub_broker";
@@ -39,6 +41,7 @@ export default function Sidebar({ user }) {
     ...(dashboardEnabled ? [{ path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid }] : []),
     { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
+    { path: "/broker/data-gathering", label: "Data Gathering", icon: ClipboardList, active: isDataGatheringActive },
     { path: "/broker/leads", label: "Lead Mgmt", icon: UserPlus },
     { path: "/broker/approvals", label: "Approve", icon: CheckSquare },
     { path: "/broker/logs", label: "Logs", icon: FileText },
@@ -56,6 +59,7 @@ export default function Sidebar({ user }) {
     ...(dashboardEnabled ? [{ path: "/sub-broker/dashboard", label: "Dashboard", icon: LayoutGrid }] : []),
     { path: "/sub-broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
     { path: "/sub-broker/holdings", label: "Holdings", icon: Wallet },
+    { path: "/sub-broker/data-gathering", label: "Data Gathering", icon: ClipboardList, active: isDataGatheringActive },
     { path: "/sub-broker/clients", label: "Clients", icon: UserCheck },
     { path: "/sub-broker/leads", label: "Lead Mgmt", icon: UserPlus },
     { path: "/sub-broker/reinvestment", label: "Reinv Tag", icon: Tag },
