@@ -449,44 +449,43 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                     {items.length === 0 ? (
                       <div className="text-center py-3 text-gray-400 text-xs border-t">No entries. Click "Add" to create one.</div>
                     ) : (
-                      <div className="space-y-3 border-t pt-2">
+                      <div className="space-y-2 border-t pt-2">
                         {items.map((item) => (
-                          <div key={item.id} className={`p-3 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            {/* Member Selection Row */}
-                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-dashed">
-                              <div className="flex items-center gap-2">
-                                <Label className="text-[10px] text-gray-400">Member:</Label>
-                                <Select value={item.memberId || ""} onValueChange={(v) => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder="Select Member" /></SelectTrigger>
-                                  <SelectContent>
-                                    {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <Button variant="ghost" size="icon" onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                            
-                            {/* Multi-row fields */}
-                            <div className="space-y-3">
+                          <div key={item.id} className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                            {/* All fields inline including member */}
+                            <div className="space-y-2">
                               {category.rows.map((row, rowIndex) => (
-                                <div key={rowIndex} className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div key={rowIndex} className="flex items-end gap-2 flex-wrap">
+                                  {/* Add member dropdown only on first row */}
+                                  {rowIndex === 0 && (
+                                    <div className="w-32">
+                                      <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
+                                      <Select value={item.memberId || ""} onValueChange={(v) => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                        <SelectContent>
+                                          {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
                                   {row.map(field => (
-                                    <div key={field.key}>
-                                      <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">{field.label}</Label>
+                                    <div key={field.key} className="flex-1 min-w-[90px]">
+                                      <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
                                       {renderField(category.value, item.id, field, item.details[field.key])}
                                     </div>
                                   ))}
+                                  {/* Add delete button only on first row */}
+                                  {rowIndex === 0 && (
+                                    <Button variant="ghost" size="icon" onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
                                 </div>
                               ))}
                             </div>
                           </div>
                         ))}
-                        <div className="flex justify-end gap-2 pt-2">
-                          <Button variant="outline" size="sm" onClick={() => addIncomeItem(category.value)} disabled={isReadOnly} className="h-7 px-3 text-xs">
-                            <Plus className="h-3 w-3 mr-1" />Add More
-                          </Button>
+                        <div className="flex justify-end pt-1">
                           <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly || !hasUnsavedChanges} className="bg-blue-600 hover:bg-blue-700 text-white h-7 px-3 text-xs" size="sm">
                             <Save className="h-3 w-3 mr-1" />{savingCategory === category.value ? "..." : "Save"}
                           </Button>
