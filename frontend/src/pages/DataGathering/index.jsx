@@ -337,40 +337,29 @@ export default function DataGathering() {
 
   const renderIntroductionTab = () => (
     <div className="space-y-6">
-      {/* Sub Broker & Family Name Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <Label className="text-sm text-gray-600 mb-2 block">Sub Broker</Label>
-          <Select value={selectedSubBroker} onValueChange={setSelectedSubBroker}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select Sub Broker" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None - Direct Client</SelectItem>
-              {subBrokers.map(sb => (
-                <SelectItem key={sb.id} value={sb.id}>
-                  {sb.name} {sb.employee_code ? `(${sb.employee_code})` : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-sm text-gray-600 mb-2 block">Family Name</Label>
-          <Input value={familyName} readOnly className="bg-gray-50" placeholder="Auto-generated" />
-        </div>
-        <div>
-          <Label className="text-sm text-gray-600 mb-2 block">Next Step</Label>
-          <Select value={proceedOption} onValueChange={setProceedOption}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select next step" />
-            </SelectTrigger>
-            <SelectContent>
-              {PROCEED_OPTIONS.map(opt => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Sub Broker & Family Name - Stacked */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div>
+            <Label className="text-sm text-gray-600 mb-2 block">Sub Broker</Label>
+            <Select value={selectedSubBroker} onValueChange={setSelectedSubBroker}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Sub Broker" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None - Direct Client</SelectItem>
+                {subBrokers.map(sb => (
+                  <SelectItem key={sb.id} value={sb.id}>
+                    {sb.name} {sb.employee_code ? `(${sb.employee_code})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-sm text-gray-600 mb-2 block">Family Name</Label>
+            <Input value={familyName} readOnly className="bg-gray-50" placeholder="Auto-generated from primary holder" />
+          </div>
         </div>
       </div>
 
@@ -512,8 +501,21 @@ export default function DataGathering() {
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end pt-4">
+      {/* Next Step & Save - At Bottom */}
+      <div className="flex items-center justify-between pt-4 border-t">
+        <div className="flex items-center gap-4">
+          <Label className="text-sm text-gray-600">Next Step:</Label>
+          <Select value={proceedOption} onValueChange={setProceedOption}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Select next step" />
+            </SelectTrigger>
+            <SelectContent>
+              {PROCEED_OPTIONS.map(opt => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Button onClick={handleSave} disabled={saving} className="bg-etihad-gold-600 hover:bg-etihad-gold-700 text-white px-8">
           {saving ? "Saving..." : (selectedFamily ? "Update & Next" : "Save & Next")}
         </Button>
