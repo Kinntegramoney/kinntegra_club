@@ -8,30 +8,34 @@
 
 **New Tab Order:**
 1. Introduction
-2. Income
+2. Income (cashflow tracking)
 3. Expenses
-4. **Assets** (NEW)
+4. **Assets** (face values of holdings)
 5. Liabilities
-6. Insurance Cover (renamed from "Insurance")
+6. Insurance Cover
 7. Goals
-8. Net Worth & Surplus (renamed from "Surplus")
+8. Net Worth & Surplus
 
-**Assets Tab Categories (14 types):**
-- Real Estate, Gold & Jewellery, Fixed Deposits, PPF, EPF/PF, NPS
-- Mutual Funds, Stocks/Equity, Bonds/Debentures, Vehicles
-- Savings Account, Cash in Hand, Insurance Corpus, Other Assets
+**Key Design Decision (Per User Clarification):**
+- **Income Section** = Tracks **cashflow** (money coming in each year) - salary, business, rental income, pension, interest/dividends
+- **Assets Section** = Records **face values** of holdings - PPF, EPF, Gratuity, FDs, Bonds, MFs, Shares, Gold, Cash, Real Estate
 
-**Files Created/Modified:**
-- `/app/frontend/src/pages/DataGathering/sections/AssetsSection.jsx` (NEW)
-- `/app/frontend/src/pages/DataGathering/index.jsx` (tab order & imports)
-- `/app/backend/server.py` (Asset CRUD APIs + AssetDetailCreate model)
+**Income Categories Updated (10 types):**
+Salary, Business, Rental, Pension, FD Interest, RD/PIS, Bond Interest, Insurance Maturity, Dividend Income, Other
 
-**Backend APIs Added:**
-- `POST /api/data-gathering/family/{family_id}/asset`
-- `PUT /api/data-gathering/family/{family_id}/asset/{asset_id}`
-- `DELETE /api/data-gathering/family/{family_id}/asset/{asset_id}`
+**Asset Categories Updated (14 types):**
+PPF, EPF, Gratuity, Fixed Deposits, RD/PIS, Bonds, Insurance Corpus, Mutual Fund, Shares/PMS, Gold, Cash in Hand, Real Estate, Vehicles, Other Assets
 
-**Testing:** ✅ Frontend compiled, backend running, UI verified
+**Fields Updated Per data_gathering_final.docx:**
+- FD: Added Description, Payment Cycle fields
+- RD/PIS: Added Payable Cycle, Num Installments, Maturity Amount fields
+- Pension: Added Payable To (Self/Spouse) field
+- Bond: Added Payment Cycle field
+- Insurance: Added Payment Cycle field
+
+**Files Modified:**
+- `/app/frontend/src/pages/DataGathering/sections/IncomeSection.jsx`
+- `/app/frontend/src/pages/DataGathering/sections/AssetsSection.jsx`
 
 ---
 
