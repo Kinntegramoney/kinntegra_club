@@ -130,9 +130,11 @@ const ASSET_CATEGORIES = [
     icon: Home,
     hasMaturity: false,
     fields: [
-      { key: "property_type", label: "Property Type", type: "text" },
+      { key: "property_details", label: "Property Details", type: "text" },
+      { key: "property_type", label: "Property Type", type: "select", options: ["Residential", "Commercial", "Land"] },
       { key: "purchase_value", label: "Purchase Value", type: "number" },
-      { key: "market_value", label: "Market Value", type: "number" }
+      { key: "market_value", label: "Market Value", type: "number" },
+      { key: "description", label: "Description", type: "text" }
     ]
   },
   { 
