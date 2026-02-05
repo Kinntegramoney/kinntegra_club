@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Save, Briefcase, Building, Wallet, Landmark, PiggyBank, TrendingUp, 
@@ -16,30 +17,29 @@ import { toast } from "sonner";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Income categories - Focus on CASHFLOW (money coming in each year)
-// Multi-row layout: fields grouped into rows for better UX
+// Income categories with multi-row field layout
 const INCOME_CATEGORIES = [
   { 
     value: "salary", 
-    label: "Salary", 
+    label: "Salary Income", 
     icon: Briefcase,
     rows: [
       [
-        { key: "net_income_monthly", label: "Net Monthly Income", type: "number" },
+        { key: "net_income_monthly", label: "Net Income (Monthly)", type: "number" },
         { key: "increment_month", label: "Increment Month", type: "select", options: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] },
-        { key: "avg_growth_rate", label: "Growth Rate (%)", type: "number" },
+        { key: "avg_growth_rate", label: "Average Growth Rate (%)", type: "number" },
         { key: "retirement_age", label: "Retirement Age", type: "number" }
       ]
     ]
   },
   { 
     value: "business", 
-    label: "Business", 
+    label: "Business Income", 
     icon: Building,
     rows: [
       [
-        { key: "net_income_yearly", label: "Net Yearly Income", type: "number" },
-        { key: "avg_growth_rate", label: "Growth Rate (%)", type: "number" },
+        { key: "net_income_yearly", label: "Net Income (Yearly)", type: "number" },
+        { key: "avg_growth_rate", label: "Average Growth Rate (%)", type: "number" },
         { key: "retirement_age", label: "Retirement Age", type: "number" }
       ]
     ]
@@ -52,42 +52,45 @@ const INCOME_CATEGORIES = [
       [
         { key: "property_details", label: "Property Details", type: "text" },
         { key: "property_type", label: "Property Type", type: "select", options: ["Residential", "Commercial", "Land"] },
-        { key: "purchase_value", label: "Purchase Value", type: "number" },
-        { key: "market_value", label: "Market Value", type: "number" }
+        { key: "purchase_value", label: "Property Purchase Value", type: "number" },
+        { key: "market_value", label: "Property Market Value", type: "number" }
       ],
       [
         { key: "description", label: "Description", type: "text" },
-        { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"] },
-        { key: "income_per_month", label: "Income/Month", type: "number" },
-        { key: "rental_increment_percent", label: "Increment (%)", type: "number" }
+        { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"] }
       ],
       [
+        { key: "rental_details", label: "Rental Details", type: "text" },
+        { key: "income_per_month", label: "Income - Per Month", type: "number" },
         { key: "start_date", label: "Start Date", type: "date" },
-        { key: "end_date", label: "End Date", type: "date" },
-        { key: "tenure_months", label: "Tenure (Months)", type: "number" },
+        { key: "end_date", label: "End Date", type: "date" }
+      ],
+      [
+        { key: "tenure_months", label: "Tenure (In Month)", type: "number", disabled: true },
         { key: "pay_date", label: "Pay Date", type: "select", options: ["1", "5", "10", "15", "20", "25", "Last Day"] },
-        { key: "auto_renew", label: "Auto Renew", type: "select", options: ["Yes", "No"] }
+        { key: "auto_renew", label: "Auto Renew", type: "select", options: ["Yes", "No"] },
+        { key: "rental_increment_percent", label: "Rental Increment %", type: "number" }
       ]
     ]
   },
   { 
     value: "ppf", 
-    label: "PPF", 
+    label: "PPF (Public Provident Fund)", 
     icon: PiggyBank,
     rows: [
       [
-        { key: "current_value", label: "Current Value", type: "number" },
+        { key: "amount", label: "Amount", type: "number" },
         { key: "maturity_date", label: "Maturity Date", type: "date" }
       ]
     ]
   },
   { 
     value: "epf", 
-    label: "EPF", 
+    label: "EPF (Employee Provident Fund)", 
     icon: PiggyBank,
     rows: [
       [
-        { key: "current_value", label: "Current Value", type: "number" },
+        { key: "amount", label: "Amount", type: "number" },
         { key: "maturity_date", label: "Maturity Date", type: "date" }
       ]
     ]
@@ -98,39 +101,31 @@ const INCOME_CATEGORIES = [
     icon: Wallet,
     rows: [
       [
-        { key: "expected_amount", label: "Expected Amount", type: "number" },
-        { key: "maturity_date", label: "Expected Date", type: "date" }
-      ]
-    ]
-  },
-  { 
-    value: "pension", 
-    label: "Pension", 
-    icon: Wallet,
-    rows: [
-      [
         { key: "amount", label: "Amount", type: "number" },
-        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
-        { key: "start_date", label: "Start Date", type: "date" },
-        { key: "end_date", label: "End Date", type: "date" },
-        { key: "payable_to", label: "Payable To", type: "select", options: ["Self", "Spouse"] }
+        { key: "maturity_date", label: "Maturity Date", type: "date" }
       ]
     ]
   },
   { 
-    value: "fd_interest", 
-    label: "FD Interest", 
+    value: "fd", 
+    label: "FD (Fixed Deposit)", 
     icon: Landmark,
     rows: [
       [
         { key: "description", label: "Description", type: "text" },
-        { key: "principal_amount", label: "Principal", type: "number" },
-        { key: "interest_rate", label: "Interest Rate (%)", type: "number" }
+        { key: "principal_amount", label: "Principal Amount", type: "number" },
+        { key: "maturity_amount", label: "Maturity Amount", type: "number" },
+        { key: "interest_rate", label: "Interest Rate", type: "number" }
       ],
       [
         { key: "start_date", label: "Start Date", type: "date" },
         { key: "maturity_date", label: "Maturity Date", type: "date" },
-        { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly", "On Maturity"] }
+        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"] }
+      ],
+      [
+        { key: "payment_principal", label: "Principal Amount", type: "number" },
+        { key: "payment_date", label: "Payment Date", type: "date" },
+        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number" }
       ]
     ]
   },
@@ -140,46 +135,87 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     rows: [
       [
-        { key: "monthly_contribution", label: "Monthly Contribution", type: "number" },
-        { key: "num_installments", label: "No. of Installments", type: "number" },
-        { key: "interest_rate", label: "Interest Rate (%)", type: "number" }
+        { key: "description", label: "Description", type: "text" },
+        { key: "principal_amount_monthly", label: "Principal Amount (Monthly)", type: "number" },
+        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
+        { key: "start_date", label: "Start Date", type: "date" },
+        { key: "end_date", label: "End Date", type: "date" }
+      ],
+      [
+        { key: "num_installments", label: "No of Installments", type: "number" },
+        { key: "principal_amount", label: "Principal Amount", type: "number" },
+        { key: "maturity_amount", label: "Maturity Amount", type: "number" },
+        { key: "interest_rate", label: "Interest Rate", type: "number" },
+        { key: "maturity_date", label: "Maturity Date", type: "date" }
+      ]
+    ]
+  },
+  { 
+    value: "pension", 
+    label: "Pension Income", 
+    icon: Wallet,
+    rows: [
+      [
+        { key: "description", label: "Description", type: "text" },
+        { key: "principal_amount", label: "Principal Amount", type: "number" },
+        { key: "maturity_amount", label: "Maturity Amount", type: "number" },
+        { key: "interest_rate", label: "Interest Rate", type: "number" }
       ],
       [
         { key: "start_date", label: "Start Date", type: "date" },
         { key: "maturity_date", label: "Maturity Date", type: "date" },
-        { key: "maturity_amount", label: "Maturity Amount", type: "number" }
+        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] }
+      ],
+      [
+        { key: "payment_principal", label: "Principal Amount", type: "number" },
+        { key: "payment_date", label: "Payment Date", type: "date" },
+        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number" }
       ]
     ]
   },
   { 
-    value: "bond_interest", 
-    label: "Bond Interest", 
+    value: "bond", 
+    label: "Bond", 
     icon: Landmark,
     rows: [
       [
-        { key: "principal_amount", label: "Principal", type: "number" },
-        { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-        { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"] }
+        { key: "description", label: "Description", type: "text" },
+        { key: "principal_amount", label: "Principal Amount", type: "number" },
+        { key: "maturity_amount", label: "Maturity Amount", type: "number" },
+        { key: "interest_rate", label: "Interest Rate", type: "number" }
       ],
       [
         { key: "start_date", label: "Start Date", type: "date" },
-        { key: "maturity_date", label: "Maturity Date", type: "date" }
+        { key: "maturity_date", label: "Maturity Date", type: "date" },
+        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"] }
+      ],
+      [
+        { key: "payment_principal", label: "Principal Amount", type: "number" },
+        { key: "payment_date", label: "Payment Date", type: "date" },
+        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number" }
       ]
     ]
   },
   { 
-    value: "insurance_maturity", 
-    label: "Insurance Maturity", 
+    value: "insurance", 
+    label: "Insurance", 
     icon: Landmark,
     rows: [
       [
-        { key: "sum_assured", label: "Sum Assured", type: "number" },
-        { key: "expected_return", label: "Expected Return (%)", type: "number" },
-        { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Yearly", "On Maturity"] }
+        { key: "description", label: "Description", type: "text" },
+        { key: "principal_amount", label: "Principal Amount", type: "number" },
+        { key: "maturity_amount", label: "Maturity Amount", type: "number" },
+        { key: "interest_rate", label: "Interest Rate", type: "number" }
       ],
       [
         { key: "start_date", label: "Start Date", type: "date" },
-        { key: "maturity_date", label: "Maturity Date", type: "date" }
+        { key: "maturity_date", label: "Maturity Date", type: "date" },
+        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly", "On Maturity"] }
+      ],
+      [
+        { key: "payment_principal", label: "Principal Amount", type: "number" },
+        { key: "payment_date", label: "Payment Date", type: "date" },
+        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number" }
       ]
     ]
   },
@@ -195,19 +231,19 @@ const INCOME_CATEGORIES = [
     ]
   },
   { 
-    value: "shares_pms", 
-    label: "Shares / PMS", 
-    icon: TrendingUp,
+    value: "cash", 
+    label: "Cash In Hand", 
+    icon: Wallet,
     rows: [
       [
-        { key: "market_value", label: "Market Value", type: "number" }
+        { key: "bank_balance", label: "Bank Balance", type: "number" }
       ]
     ]
   },
   { 
     value: "gold", 
     label: "Gold", 
-    icon: Wallet,
+    icon: DollarSign,
     rows: [
       [
         { key: "market_value", label: "Market Value", type: "number" }
@@ -215,36 +251,12 @@ const INCOME_CATEGORIES = [
     ]
   },
   { 
-    value: "cash", 
-    label: "Cash in Hand", 
-    icon: Wallet,
-    rows: [
-      [
-        { key: "amount", label: "Amount", type: "number" }
-      ]
-    ]
-  },
-  { 
-    value: "dividend", 
-    label: "Dividend Income", 
+    value: "shares_pms", 
+    label: "Shares / PMS", 
     icon: TrendingUp,
     rows: [
       [
-        { key: "source", label: "Source", type: "text" },
-        { key: "annual_amount", label: "Annual Amount", type: "number" },
-        { key: "growth_rate", label: "Growth Rate (%)", type: "number" }
-      ]
-    ]
-  },
-  { 
-    value: "other", 
-    label: "Other", 
-    icon: DollarSign,
-    rows: [
-      [
-        { key: "description", label: "Description", type: "text" },
-        { key: "amount", label: "Amount", type: "number" },
-        { key: "frequency", label: "Frequency", type: "select", options: ["One-time", "Monthly", "Yearly"] }
+        { key: "market_value", label: "Market Value", type: "number" }
       ]
     ]
   }
@@ -357,7 +369,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   const renderField = (category, itemId, field, value) => {
     if (field.type === "select") {
       return (
-        <Select value={value || ""} onValueChange={(v) => updateIncomeItem(category, itemId, field.key, v)} disabled={isReadOnly}>
+        <Select value={value || ""} onValueChange={(v) => updateIncomeItem(category, itemId, field.key, v)} disabled={isReadOnly || field.disabled}>
           <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
           <SelectContent>
             {field.options.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
@@ -372,7 +384,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
         onChange={(e) => updateIncomeItem(category, itemId, field.key, e.target.value)}
         placeholder={field.type === "number" ? "0" : ""}
         className="h-8 text-xs"
-        disabled={isReadOnly}
+        disabled={isReadOnly || field.disabled}
       />
     );
   };
@@ -395,7 +407,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
-        <span>Track cashflow from various income sources</span>
+        <span>Enter details for categories</span>
         <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
       </div>
 
@@ -441,7 +453,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                         {items.map((item) => (
                           <div key={item.id} className={`p-3 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
                             {/* Member Selection Row */}
-                            <div className="flex items-center justify-between mb-2 pb-2 border-b border-dashed">
+                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-dashed">
                               <div className="flex items-center gap-2">
                                 <Label className="text-[10px] text-gray-400">Member:</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
@@ -457,12 +469,12 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                             </div>
                             
                             {/* Multi-row fields */}
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               {category.rows.map((row, rowIndex) => (
-                                <div key={rowIndex} className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                                <div key={rowIndex} className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                   {row.map(field => (
                                     <div key={field.key}>
-                                      <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
+                                      <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">{field.label}</Label>
                                       {renderField(category.value, item.id, field, item.details[field.key])}
                                     </div>
                                   ))}
@@ -471,7 +483,10 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                             </div>
                           </div>
                         ))}
-                        <div className="flex justify-end pt-1">
+                        <div className="flex justify-end gap-2 pt-2">
+                          <Button variant="outline" size="sm" onClick={() => addIncomeItem(category.value)} disabled={isReadOnly} className="h-7 px-3 text-xs">
+                            <Plus className="h-3 w-3 mr-1" />Add More
+                          </Button>
                           <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly || !hasUnsavedChanges} className="bg-blue-600 hover:bg-blue-700 text-white h-7 px-3 text-xs" size="sm">
                             <Save className="h-3 w-3 mr-1" />{savingCategory === category.value ? "..." : "Save"}
                           </Button>
@@ -488,7 +503,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
 
       {hiddenCategoryList.length > 0 && (
         <div className="mt-4 pt-3 border-t border-dashed">
-          <div className="text-xs text-gray-400 mb-2 px-1">Skipped Income Types (click to restore)</div>
+          <div className="text-xs text-gray-400 mb-2 px-1">Skipped (click to restore)</div>
           <div className="flex flex-wrap gap-1.5">
             {hiddenCategoryList.map(category => {
               const Icon = category.icon;
