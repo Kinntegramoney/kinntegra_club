@@ -347,7 +347,6 @@ export default function DataGathering() {
                 <SelectValue placeholder="Select Sub Broker" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None - Direct Client</SelectItem>
                 {subBrokers.map(sb => (
                   <SelectItem key={sb.id} value={sb.id}>
                     {sb.name} {sb.employee_code ? `(${sb.employee_code})` : ''}
