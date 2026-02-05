@@ -346,7 +346,7 @@ export default function FamilyForm({ onCancel, onSubmit, user }) {
             <Button 
               type="button" 
               onClick={addMember}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-8"
+              className="bg-etihad-gold-600 hover:bg-etihad-gold-700 text-white px-8"
             >
               Add New Member
             </Button>
@@ -377,7 +377,7 @@ export default function FamilyForm({ onCancel, onSubmit, user }) {
           <Button 
             type="submit" 
             disabled={loading}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-12 py-3 text-base"
+            className="bg-etihad-gold-600 hover:bg-etihad-gold-700 text-white px-12 py-3 text-base"
           >
             {loading ? "Saving..." : "Save and Next"}
           </Button>
