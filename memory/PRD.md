@@ -2,7 +2,40 @@
 
 ## Recent Changes (Feb 5, 2026)
 
-### All Data Gathering Tabs Redesigned (Feb 5, 2026) ✅ NEW
+### New Assets Tab & Tab Reordering (Feb 5, 2026) ✅ NEW
+
+**Feature:** Created new Assets tab and reordered all Data Gathering tabs.
+
+**New Tab Order:**
+1. Introduction
+2. Income
+3. Expenses
+4. **Assets** (NEW)
+5. Liabilities
+6. Insurance Cover (renamed from "Insurance")
+7. Goals
+8. Net Worth & Surplus (renamed from "Surplus")
+
+**Assets Tab Categories (14 types):**
+- Real Estate, Gold & Jewellery, Fixed Deposits, PPF, EPF/PF, NPS
+- Mutual Funds, Stocks/Equity, Bonds/Debentures, Vehicles
+- Savings Account, Cash in Hand, Insurance Corpus, Other Assets
+
+**Files Created/Modified:**
+- `/app/frontend/src/pages/DataGathering/sections/AssetsSection.jsx` (NEW)
+- `/app/frontend/src/pages/DataGathering/index.jsx` (tab order & imports)
+- `/app/backend/server.py` (Asset CRUD APIs + AssetDetailCreate model)
+
+**Backend APIs Added:**
+- `POST /api/data-gathering/family/{family_id}/asset`
+- `PUT /api/data-gathering/family/{family_id}/asset/{asset_id}`
+- `DELETE /api/data-gathering/family/{family_id}/asset/{asset_id}`
+
+**Testing:** ✅ Frontend compiled, backend running, UI verified
+
+---
+
+### All Data Gathering Tabs Redesigned (Feb 5, 2026) ✅
 
 **Feature:** Complete UI redesign of all Data Gathering tabs to follow a consistent lean design pattern.
 
