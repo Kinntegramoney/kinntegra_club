@@ -21604,13 +21604,12 @@ async def auto_tag_email_repayments(
             investment_date = matched_trade.get('investment_date') or matched_trade.get('created_at', '')
             investment_date_str = str(investment_date)[:10] if investment_date else ''
             
-            # IDEMPOTENCY CHECK 2: Check if a repayment with same (client, amount, date, investment_date) already exists
-            # This catches cases where multiple email logs exist for the same repayment
+            # IDEMPOTENCY CHECK 2: Use (client_name, trade_id, gross_amount) as unique combination
+            # This allows entries with same amount for different trades of the same client
             existing_by_combo = await db.actual_repayments.find_one({
                 "client_name": matched_trade.get('client_name'),
-                "gross_amount": log_gross_amount,
-                "repayment_date": log_repayment_date,
-                "investment_date": investment_date_str
+                "trade_id": matched_trade.get('id'),
+                "gross_amount": log_gross_amount
             })
             if existing_by_combo:
                 # Mark this email log as processed (it's a duplicate of an already-processed repayment)
