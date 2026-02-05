@@ -60,8 +60,8 @@ export default function Login() {
   const handleStep2Submit = async (e) => {
     e.preventDefault();
     
-    if (!formData.pin || formData.pin.length !== 4) {
-      toast.error("Please enter 4-digit PIN");
+    if (!formData.pin || formData.pin.length < 4 || formData.pin.length > 6) {
+      toast.error("Please enter 4-6 digit PIN");
       return;
     }
 
