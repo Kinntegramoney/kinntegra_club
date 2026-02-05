@@ -160,7 +160,11 @@ export default function DataGathering() {
   };
 
   const updateMember = (id, field, value) => {
-    setMembers(members.map(m => m.id === id ? { ...m, [field]: value } : m));
+    setMembers(prev => prev.map(m => m.id === id ? { ...m, [field]: value } : m));
+  };
+
+  const updateMemberMultiple = (id, updates) => {
+    setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
   };
 
   const addMember = () => {
