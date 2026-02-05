@@ -234,6 +234,22 @@ function App() {
             } 
           />
           <Route 
+            path="/broker/data-gathering" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <DataGathering />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/data-gathering/:familyId" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <DataGathering />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/broker/leads" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
