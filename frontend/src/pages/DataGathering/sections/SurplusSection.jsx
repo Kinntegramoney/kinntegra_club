@@ -13,10 +13,6 @@ export default function SurplusSection({ family, isReadOnly }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("savings");
 
-  useEffect(() => {
-    fetchSurplus();
-  }, [family.id]);
-
   const fetchSurplus = async () => {
     setLoading(true);
     try {
@@ -32,6 +28,11 @@ export default function SurplusSection({ family, isReadOnly }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchSurplus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [family.id]);
 
   const formatAmount = (amount) => {
     if (amount === undefined || amount === null) return "-";
