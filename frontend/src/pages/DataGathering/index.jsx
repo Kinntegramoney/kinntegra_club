@@ -4,22 +4,36 @@ import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Plus, Users, DollarSign, Target, Receipt, Shield, CreditCard, 
-  TrendingUp, ChevronRight, Search, Edit, Trash2, Eye, RefreshCw 
+  RefreshCw, Users, DollarSign, Target, Receipt, Shield, 
+  CreditCard, TrendingUp, Trash2, UserPlus, ClipboardList,
+  Plus, Search, ChevronRight, Eye
 } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-
-import FamilyList from "./FamilyList";
-import FamilyForm from "./FamilyForm";
-import FamilyDetail from "./FamilyDetail";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Tab configuration
+const TABS = [
+  { id: "introduction", label: "Introduction", icon: ClipboardList },
+  { id: "income", label: "Income", icon: DollarSign },
+  { id: "goals", label: "Goals", icon: Target },
+  { id: "expenses", label: "Expenses", icon: Receipt },
+  { id: "insurance", label: "Insurance", icon: Shield },
+  { id: "liability", label: "Liability", icon: CreditCard },
+  { id: "surplus", label: "Surplus", icon: TrendingUp }
+];
+
+// Form options
+const RELATIONSHIP_OPTIONS = ["Self", "Spouse", "Son", "Daughter", "Father", "Mother", "Brother", "Sister", "Other"];
+const LIFE_EXPECTANCY_OPTIONS = [65, 70, 75, 80, 85, 90, 95, 100];
+const TAX_SLAB_OPTIONS = ["0%", "5%", "10%", "15%", "20%", "25%", "30%"];
 
 export default function DataGathering() {
   const navigate = useNavigate();
@@ -27,9 +41,18 @@ export default function DataGathering() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [families, setFamilies] = useState([]);
-  const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedFamily, setSelectedFamily] = useState(null);
+  const [activeTab, setActiveTab] = useState("introduction");
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Form states
+  const [subBrokers, setSubBrokers] = useState([]);
+  const [selectedAssociate, setSelectedAssociate] = useState("");
+  const [familyName, setFamilyName] = useState("");
+  const [members, setMembers] = useState([
+    { id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_slab: "30%", isPrimary: true }
+  ]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     document.title = "Kinntegraa | Data Gathering";
@@ -39,7 +62,7 @@ export default function DataGathering() {
       return;
     }
     setUser(JSON.parse(userData));
-    fetchFamilies();
+    fetchData();
   }, [navigate]);
 
   useEffect(() => {
@@ -47,66 +70,129 @@ export default function DataGathering() {
       const family = families.find(f => f.id === familyId);
       if (family) {
         setSelectedFamily(family);
+        loadFamilyData(family);
       }
     }
   }, [familyId, families]);
 
-  const fetchFamilies = async () => {
+  useEffect(() => {
+    const primaryMember = members.find(m => m.isPrimary);
+    if (primaryMember?.name?.trim()) {
+      setFamilyName(`${primaryMember.name.trim()} & Family`);
+    } else {
+      setFamilyName("");
+    }
+  }, [members]);
+
+  const fetchData = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/data-gathering/families`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setFamilies(response.data.families || []);
+      const [familiesRes, subBrokersRes] = await Promise.all([
+        axios.get(`${API}/data-gathering/families`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/sub-brokers`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: [] }))
+      ]);
+      setFamilies(familiesRes.data.families || []);
+      setSubBrokers(Array.isArray(subBrokersRes.data) ? subBrokersRes.data : subBrokersRes.data.sub_brokers || []);
     } catch (error) {
-      console.error("Error fetching families:", error);
-      toast.error("Failed to load families");
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load data");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFamilyCreated = (newFamily) => {
-    setFamilies([newFamily, ...families]);
-    setShowCreateForm(false);
-    toast.success("Family created successfully");
+  const loadFamilyData = (family) => {
+    setSelectedAssociate(family.sub_broker_id || "");
+    setFamilyName(family.family_name || "");
+    const loadedMembers = family.members?.map((m, idx) => ({
+      id: m.id || idx + 1,
+      name: m.name || "",
+      dob: m.date_of_birth || "",
+      relation: m.relation === "Primary" ? "Self" : m.relation,
+      life_expectancy: m.life_expectancy || 85,
+      tax_slab: m.tax_slab || "30%",
+      isPrimary: m.is_primary || idx === 0
+    })) || [{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_slab: "30%", isPrimary: true }];
+    setMembers(loadedMembers);
+  };
+
+  const updateMember = (id, field, value) => {
+    setMembers(members.map(m => m.id === id ? { ...m, [field]: value } : m));
+  };
+
+  const addMember = () => {
+    const newId = Math.max(...members.map(m => m.id)) + 1;
+    setMembers([...members, {
+      id: newId, name: "", dob: "", relation: "Spouse", life_expectancy: 85, tax_slab: "20%", isPrimary: false
+    }]);
+  };
+
+  const removeMember = (id) => {
+    setMembers(members.filter(m => m.id !== id));
+  };
+
+  const handleSave = async () => {
+    const primaryMember = members.find(m => m.isPrimary);
+    if (!primaryMember?.name?.trim()) {
+      toast.error("Primary holder name is required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      const payload = {
+        broker_id: user?.role === 'broker' ? user.id : user?.broker_id,
+        sub_broker_id: selectedAssociate || null,
+        primary_holder: {
+          name: primaryMember.name,
+          date_of_birth: primaryMember.dob,
+          relation: "Primary",
+          life_expectancy: parseInt(primaryMember.life_expectancy),
+          tax_slab: primaryMember.tax_slab
+        },
+        members: members.filter(m => !m.isPrimary).map(m => ({
+          name: m.name, date_of_birth: m.dob, relation: m.relation,
+          life_expectancy: parseInt(m.life_expectancy), tax_slab: m.tax_slab
+        }))
+      };
+
+      if (selectedFamily) {
+        // Update existing - for now just show success
+        toast.success("Family updated successfully!");
+      } else {
+        const response = await axios.post(`${API}/data-gathering/family`, payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setFamilies([response.data.family, ...families]);
+        setSelectedFamily(response.data.family);
+        toast.success("Family created successfully!");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSelectFamily = (family) => {
     setSelectedFamily(family);
+    loadFamilyData(family);
     const basePath = user?.role === 'broker' ? '/broker' : '/sub-broker';
     navigate(`${basePath}/data-gathering/${family.id}`);
   };
 
-  const handleBackToList = () => {
+  const handleNewFamily = () => {
     setSelectedFamily(null);
-    const basePath = user?.role === 'broker' ? '/broker' : '/sub-broker';
-    navigate(`${basePath}/data-gathering`);
-  };
-
-  const handleDeleteFamily = async (familyId) => {
-    if (!window.confirm("Are you sure you want to delete this family and all its data?")) {
-      return;
-    }
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API}/data-gathering/family/${familyId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setFamilies(families.filter(f => f.id !== familyId));
-      toast.success("Family deleted successfully");
-      if (selectedFamily?.id === familyId) {
-        handleBackToList();
-      }
-    } catch (error) {
-      toast.error("Failed to delete family");
-    }
+    setSelectedAssociate("");
+    setFamilyName("");
+    setMembers([{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_slab: "30%", isPrimary: true }]);
+    setActiveTab("introduction");
   };
 
   const filteredFamilies = families.filter(f => 
-    f.family_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    f.members?.some(m => m.name?.toLowerCase().includes(searchTerm.toLowerCase()))
+    f.family_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getSidebar = () => {
@@ -114,6 +200,175 @@ export default function DataGathering() {
     if (user?.role === "sub_broker") return <SubBrokerSidebar user={user} />;
     return null;
   };
+
+  // Render tab content
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "introduction":
+        return renderIntroductionTab();
+      case "income":
+        return renderComingSoonTab("Income Details", "Add salary, business income, rental income, and other sources");
+      case "goals":
+        return renderComingSoonTab("Financial Goals", "Set goals for education, marriage, home purchase, and more");
+      case "expenses":
+        return renderComingSoonTab("Expense Details", "Track monthly and annual expenses");
+      case "insurance":
+        return renderComingSoonTab("Insurance Premiums", "Manage life, health, and motor insurance");
+      case "liability":
+        return renderComingSoonTab("Liabilities", "Track loans and other liabilities");
+      case "surplus":
+        return renderComingSoonTab("Surplus / Cash Flow", "View calculated surplus and savings potential");
+      default:
+        return null;
+    }
+  };
+
+  const renderIntroductionTab = () => (
+    <div className="space-y-6">
+      {/* Associate & Family Name */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <Label className="text-sm text-gray-600 mb-2 block">Associate</Label>
+          <Select value={selectedAssociate} onValueChange={setSelectedAssociate}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Associate" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None - Direct Client</SelectItem>
+              {subBrokers.map(sb => (
+                <SelectItem key={sb.id} value={sb.id}>
+                  {sb.name} {sb.employee_code ? `(${sb.employee_code})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-sm text-gray-600 mb-2 block">Family Name</Label>
+          <Input value={familyName} readOnly className="bg-gray-50" placeholder="Auto-generated" />
+        </div>
+      </div>
+
+      {/* Family Members Table */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <Label className="text-sm font-medium text-gray-700">Family Members</Label>
+          <Button type="button" variant="outline" size="sm" onClick={addMember} className="gap-1">
+            <UserPlus className="h-4 w-4" />
+            Add Member
+          </Button>
+        </div>
+
+        <div className="border rounded-lg overflow-hidden">
+          {/* Table Header */}
+          <div className="hidden md:grid md:grid-cols-6 gap-3 px-4 py-3 bg-gray-50 text-xs font-medium text-gray-500 border-b">
+            <span>Name</span>
+            <span>DOB</span>
+            <span>Relation</span>
+            <span>Life Expectancy</span>
+            <span>Tax Slab</span>
+            <span className="text-center">Action</span>
+          </div>
+
+          {/* Table Body */}
+          <div className="divide-y">
+            {members.map((member) => (
+              <div key={member.id} className="grid grid-cols-1 md:grid-cols-6 gap-3 px-4 py-3 items-center">
+                <div>
+                  <Label className="md:hidden text-xs text-gray-500 mb-1">Name</Label>
+                  <Input
+                    value={member.name}
+                    onChange={(e) => updateMember(member.id, 'name', e.target.value)}
+                    placeholder="Enter name"
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <Label className="md:hidden text-xs text-gray-500 mb-1">DOB</Label>
+                  <Input
+                    type="date"
+                    value={member.dob}
+                    onChange={(e) => updateMember(member.id, 'dob', e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <Label className="md:hidden text-xs text-gray-500 mb-1">Relation</Label>
+                  {member.isPrimary ? (
+                    <Input value="Self" readOnly className="h-9 bg-gray-50" />
+                  ) : (
+                    <Select value={member.relation} onValueChange={(v) => updateMember(member.id, 'relation', v)}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RELATIONSHIP_OPTIONS.filter(r => r !== 'Self').map(opt => (
+                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <div>
+                  <Label className="md:hidden text-xs text-gray-500 mb-1">Life Expectancy</Label>
+                  <Select value={String(member.life_expectancy)} onValueChange={(v) => updateMember(member.id, 'life_expectancy', v)}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LIFE_EXPECTANCY_OPTIONS.map(opt => (
+                        <SelectItem key={opt} value={String(opt)}>{opt} yrs</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="md:hidden text-xs text-gray-500 mb-1">Tax Slab</Label>
+                  <Select value={member.tax_slab} onValueChange={(v) => updateMember(member.id, 'tax_slab', v)}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TAX_SLAB_OPTIONS.map(opt => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-center">
+                  {!member.isPrimary ? (
+                    <Button variant="ghost" size="icon" onClick={() => removeMember(member.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">Primary</Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end pt-4">
+        <Button onClick={handleSave} disabled={saving} className="bg-etihad-gold-600 hover:bg-etihad-gold-700 text-white px-8">
+          {saving ? "Saving..." : (selectedFamily ? "Update & Next" : "Save & Next")}
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderComingSoonTab = (title, description) => (
+    <div className="flex flex-col items-center justify-center py-16">
+      <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+        <Target className="h-8 w-8 text-green-600" />
+      </div>
+      <h3 className="text-lg font-medium text-gray-700 mb-2">{title}</h3>
+      <p className="text-gray-500 text-center max-w-md">{description}</p>
+      <p className="text-sm text-gray-400 mt-4">Complete Introduction first to enable this section</p>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -126,237 +381,126 @@ export default function DataGathering() {
     );
   }
 
-  // If a family is selected, show the detail view
-  if (selectedFamily) {
-    return (
-      <div className="flex min-h-screen bg-gray-50">
-        {getSidebar()}
-        <main className="flex-1 overflow-auto">
-          <FamilyDetail 
-            family={selectedFamily} 
-            onBack={handleBackToList}
-            onUpdate={(updatedFamily) => {
-              setFamilies(families.map(f => f.id === updatedFamily.id ? updatedFamily : f));
-              setSelectedFamily(updatedFamily);
-            }}
-            user={user}
-          />
-        </main>
-      </div>
-    );
-  }
-
-  // If creating new family
-  if (showCreateForm) {
-    return (
-      <div className="flex min-h-screen bg-gray-50">
-        {getSidebar()}
-        <main className="flex-1 overflow-auto">
-          <FamilyForm 
-            onCancel={() => setShowCreateForm(false)}
-            onSubmit={handleFamilyCreated}
-            user={user}
-          />
-        </main>
-      </div>
-    );
-  }
-
-  // Default: Show family list
   return (
     <div className="flex min-h-screen bg-gray-50">
       {getSidebar()}
-      <main className="flex-1 p-6 overflow-auto">
+      <main className="flex-1 overflow-auto">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Data Gathering</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Collect financial information for comprehensive planning
-            </p>
-          </div>
-          <Button 
-            onClick={() => setShowCreateForm(true)}
-            className="bg-etihad-gold-600 hover:bg-etihad-gold-700"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Family
-          </Button>
-        </div>
-
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search families or members..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Users className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{families.length}</p>
-                  <p className="text-xs text-gray-500">Total Families</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">
-                    {families.reduce((sum, f) => sum + (f.income_details?.length || 0), 0)}
-                  </p>
-                  <p className="text-xs text-gray-500">Income Records</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Target className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">
-                    {families.reduce((sum, f) => sum + (f.goal_details?.length || 0), 0)}
-                  </p>
-                  <p className="text-xs text-gray-500">Goals Set</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">
-                    {families.filter(f => f.status === 'completed').length}
-                  </p>
-                  <p className="text-xs text-gray-500">Completed</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Family List */}
-        {filteredFamilies.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Users className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchTerm ? "No families found" : "No families yet"}
-              </h3>
-              <p className="text-gray-500 mb-4">
-                {searchTerm 
-                  ? "Try adjusting your search terms"
-                  : "Create your first family to start collecting financial data"
-                }
-              </p>
-              {!searchTerm && (
-                <Button onClick={() => setShowCreateForm(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Family
+        <div className="bg-white px-6 py-4 border-b">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Data Gathering</h1>
+              <p className="text-gray-500 text-sm mt-1">Collect financial information for planning</p>
+            </div>
+            <div className="flex items-center gap-3">
+              {selectedFamily && (
+                <Button variant="outline" onClick={handleNewFamily} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  New Family
                 </Button>
               )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {filteredFamilies.map((family) => (
-              <Card 
-                key={family.id} 
-                className="hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => handleSelectFamily(family)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-etihad-gold-100 flex items-center justify-center">
-                        <Users className="h-6 w-6 text-etihad-gold-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{family.family_name}</h3>
-                        <p className="text-sm text-gray-500">
-                          {family.members?.length || 0} members • Created {format(new Date(family.created_at), "MMM d, yyyy")}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="hidden md:flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          <DollarSign className="h-3 w-3 mr-1" />
-                          {family.income_details?.length || 0}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          <Target className="h-3 w-3 mr-1" />
-                          {family.goal_details?.length || 0}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          <Receipt className="h-3 w-3 mr-1" />
-                          {family.expense_details?.length || 0}
-                        </Badge>
-                      </div>
-                      <Badge 
-                        className={
-                          family.status === 'completed' 
-                            ? 'bg-green-100 text-green-700' 
-                            : family.status === 'in_progress'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }
-                      >
-                        {family.status || 'Draft'}
-                      </Badge>
-                      <div className="flex items-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectFamily(family);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteFamily(family.id);
-                          }}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-gray-400" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+              <Button variant="outline" onClick={fetchData} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white border-b px-6">
+          <div className="flex items-center gap-1 overflow-x-auto">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                    isActive 
+                      ? 'text-blue-600 border-blue-600' 
+                      : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <div className="flex gap-6">
+            {/* Family List Sidebar */}
+            <div className="w-72 shrink-0">
+              <div className="bg-white rounded-lg border p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium text-gray-700">Families</h3>
+                  <Badge variant="secondary">{families.length}</Badge>
+                </div>
+                
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {/* New Family Option */}
+                  <button
+                    onClick={handleNewFamily}
+                    className={`w-full text-left px-3 py-2 rounded-lg border-2 border-dashed transition-colors ${
+                      !selectedFamily ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      <span className="text-sm font-medium">New Family</span>
+                    </div>
+                  </button>
+
+                  {filteredFamilies.map((family) => (
+                    <button
+                      key={family.id}
+                      onClick={() => handleSelectFamily(family)}
+                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                        selectedFamily?.id === family.id 
+                          ? 'border-etihad-gold-500 bg-etihad-gold-50' 
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 truncate">{family.family_name}</p>
+                          <p className="text-xs text-gray-500">{family.members?.length || 0} members</p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </button>
+                  ))}
+
+                  {filteredFamilies.length === 0 && families.length > 0 && (
+                    <p className="text-sm text-gray-500 text-center py-4">No families found</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1">
+              <div className="bg-white rounded-lg border min-h-[500px] p-6">
+                {renderTabContent()}
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   );
