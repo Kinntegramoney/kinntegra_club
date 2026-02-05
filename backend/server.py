@@ -25957,6 +25957,8 @@ async def add_family_member(family_id: str, member: FamilyMemberCreate, current_
         "date_of_birth": member.date_of_birth,
         "relation": member.relation,
         "life_expectancy": member.life_expectancy,
+        "tax_regime": member.tax_regime,
+        "tax_status": member.tax_status,
         "tax_slab": member.tax_slab,
         "is_primary": False
     }
