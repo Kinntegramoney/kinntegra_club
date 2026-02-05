@@ -462,25 +462,80 @@ export default function DataGathering() {
     <div className="flex min-h-screen bg-gray-50">
       {getSidebar()}
       <main className="flex-1 overflow-auto">
-        {/* Header */}
+        {/* Header with Family Selector */}
         <div className="bg-white px-6 py-4 border-b">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Data Gathering</h1>
-              <p className="text-gray-500 text-sm mt-1">Collect financial information for planning</p>
+            <div className="flex items-center gap-6">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Data Gathering</h1>
+                <p className="text-gray-500 text-sm mt-1">Collect financial information</p>
+              </div>
+              
+              {/* Family Selector - Inline with header */}
+              <div className="flex items-center gap-3 border-l pl-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search families..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 h-9 w-44"
+                  />
+                </div>
+                
+                <Select 
+                  value={selectedFamily?.id || "new"} 
+                  onValueChange={(value) => {
+                    if (value === "new") {
+                      handleNewFamily();
+                    } else {
+                      const family = families.find(f => f.id === value);
+                      if (family) handleSelectFamily(family);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-56 h-9">
+                    <SelectValue placeholder="Select family">
+                      {selectedFamily ? (
+                        <span className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          {selectedFamily.family_name?.length > 20 
+                            ? selectedFamily.family_name.substring(0, 20) + '...' 
+                            : selectedFamily.family_name}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2 text-blue-600">
+                          <Plus className="h-4 w-4" />
+                          New Family
+                        </span>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new" className="text-blue-600">
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Create New Family
+                      </span>
+                    </SelectItem>
+                    {filteredFamilies.map((family) => (
+                      <SelectItem key={family.id} value={family.id}>
+                        <span className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-gray-400" />
+                          {family.family_name}
+                          <Badge variant="secondary" className="ml-auto text-xs">{family.members?.length || 0}</Badge>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              {selectedFamily && (
-                <Button variant="outline" onClick={handleNewFamily} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  New Family
-                </Button>
-              )}
-              <Button variant="outline" onClick={fetchData} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </Button>
-            </div>
+            
+            <Button variant="outline" size="sm" onClick={fetchData} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
           </div>
         </div>
 
