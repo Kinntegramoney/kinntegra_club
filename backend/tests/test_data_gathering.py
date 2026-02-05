@@ -18,10 +18,10 @@ import uuid
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
-# Test credentials
+# Test credentials - updated to match current user credentials
 TEST_PAN = "ANVPB5297J"
-TEST_PASSWORD = "broker123"
-TEST_PIN = "1234"
+TEST_PASSWORD = "test123"
+TEST_PIN = "111111"
 
 
 class TestDataGatheringAuth:
