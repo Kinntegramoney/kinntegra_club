@@ -196,32 +196,46 @@ export default function DataGathering() {
           name: primaryMember.name,
           date_of_birth: primaryMember.dob,
           relation: "Primary",
-          life_expectancy: parseInt(primaryMember.life_expectancy),
+          life_expectancy: parseInt(primaryMember.life_expectancy) || 85,
           tax_regime: primaryMember.tax_regime,
           tax_status: primaryMember.tax_status,
           tax_slab: primaryMember.tax_slab
         },
         members: members.filter(m => !m.isPrimary).map(m => ({
           name: m.name, date_of_birth: m.dob, relation: m.relation,
-          life_expectancy: parseInt(m.life_expectancy), 
+          life_expectancy: parseInt(m.life_expectancy) || 85, 
           tax_regime: m.tax_regime, tax_status: m.tax_status, tax_slab: m.tax_slab
         }))
       };
 
+      let savedFamily;
       if (selectedFamily) {
         // Update existing family
-        await axios.put(`${API}/data-gathering/family/${selectedFamily.id}`, payload, {
+        const response = await axios.put(`${API}/data-gathering/family/${selectedFamily.id}`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        await refreshSelectedFamily();
+        savedFamily = response.data.family;
+        // Update family in the list
+        setFamilies(prev => prev.map(f => f.id === savedFamily.id ? savedFamily : f));
+        setSelectedFamily(savedFamily);
+        setFamilyName(savedFamily.family_name);
         toast.success("Family updated successfully!");
       } else {
         const response = await axios.post(`${API}/data-gathering/family`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setFamilies([response.data.family, ...families]);
-        setSelectedFamily(response.data.family);
+        savedFamily = response.data.family;
+        setFamilies(prev => [savedFamily, ...prev]);
+        setSelectedFamily(savedFamily);
+        setFamilyName(savedFamily.family_name);
         toast.success("Family created successfully!");
+      }
+      
+      // Move to next tab after successful save
+      const tabOrder = ["introduction", "income", "goals", "expenses", "insurance", "liability", "surplus"];
+      const currentIndex = tabOrder.indexOf(activeTab);
+      if (currentIndex < tabOrder.length - 1) {
+        setActiveTab(tabOrder[currentIndex + 1]);
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || "Failed to save");
