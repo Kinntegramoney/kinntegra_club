@@ -25499,12 +25499,12 @@ async def _auto_tag_pending_emails():
                 investment_date = matched_trade.get('investment_date') or matched_trade.get('created_at', '')
                 investment_date_str = str(investment_date)[:10] if investment_date else ''
                 
-                # Idempotency check 2: same combo exists?
+                # Idempotency check 2: Use (client_name, trade_id, gross_amount) as unique combination
+                # This allows entries with same amount for different trades of the same client
                 existing_by_combo = await db.actual_repayments.find_one({
                     "client_name": matched_trade.get('client_name'),
-                    "gross_amount": log_gross_amount,
-                    "repayment_date": log_repayment_date,
-                    "investment_date": investment_date_str
+                    "trade_id": matched_trade.get('id'),
+                    "gross_amount": log_gross_amount
                 })
                 if existing_by_combo:
                     await db.email_read_logs.update_one(
