@@ -25794,6 +25794,8 @@ async def create_family(request: FamilyCreate, current_user: dict = Depends(get_
         "date_of_birth": request.primary_holder.date_of_birth,
         "relation": "Primary",
         "life_expectancy": request.primary_holder.life_expectancy,
+        "tax_regime": request.primary_holder.tax_regime,
+        "tax_status": request.primary_holder.tax_status,
         "tax_slab": request.primary_holder.tax_slab,
         "is_primary": True
     }
@@ -25807,6 +25809,8 @@ async def create_family(request: FamilyCreate, current_user: dict = Depends(get_
             "date_of_birth": member.date_of_birth,
             "relation": member.relation,
             "life_expectancy": member.life_expectancy,
+            "tax_regime": member.tax_regime,
+            "tax_status": member.tax_status,
             "tax_slab": member.tax_slab,
             "is_primary": False
         })
@@ -25818,6 +25822,7 @@ async def create_family(request: FamilyCreate, current_user: dict = Depends(get_
         "family_name": family_name,
         "broker_id": request.broker_id,
         "sub_broker_id": request.sub_broker_id or (current_user['id'] if current_user['role'] == 'sub_broker' else None),
+        "proceed_option": request.proceed_option,
         "created_by": current_user['id'],
         "created_by_role": current_user['role'],
         "created_at": datetime.now(timezone.utc).isoformat(),
