@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { 
   RefreshCw, Users, DollarSign, Target, Receipt, Shield, 
   CreditCard, TrendingUp, Trash2, UserPlus, ClipboardList,
-  Plus, Search, ChevronRight, Eye, Lightbulb, CheckCircle2
+  Plus, Search, ChevronRight, Eye, Lightbulb, CheckCircle2, Landmark, PieChart
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -24,19 +24,21 @@ import ExpenseSection from "./sections/ExpenseSection";
 import InsuranceSection from "./sections/InsuranceSection";
 import LiabilitySection from "./sections/LiabilitySection";
 import SurplusSection from "./sections/SurplusSection";
+import AssetsSection from "./sections/AssetsSection";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Tab configuration
+// Tab configuration - New order: Income, Expenses, Assets, Liabilities, Insurance Cover, Goals, Net Worth & Surplus
 const TABS = [
   { id: "introduction", label: "Introduction", icon: ClipboardList },
   { id: "income", label: "Income", icon: DollarSign },
-  { id: "goals", label: "Goals", icon: Target },
   { id: "expenses", label: "Expenses", icon: Receipt },
-  { id: "insurance", label: "Insurance", icon: Shield },
-  { id: "liability", label: "Liability", icon: CreditCard },
-  { id: "surplus", label: "Surplus", icon: TrendingUp }
+  { id: "assets", label: "Assets", icon: Landmark },
+  { id: "liability", label: "Liabilities", icon: CreditCard },
+  { id: "insurance", label: "Insurance Cover", icon: Shield },
+  { id: "goals", label: "Goals", icon: Target },
+  { id: "surplus", label: "Net Worth & Surplus", icon: PieChart }
 ];
 
 // Form options
