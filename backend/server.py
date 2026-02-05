@@ -21862,6 +21862,98 @@ async def auto_tag_email_repayments(
     }
 
 
+@api_router.post("/email-engagement/reset-client-tags/{client_name}")
+async def reset_client_prepayment_tags(
+    client_name: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Reset prepayment tags for a specific client to allow retagging.
+    This removes actual_repayment entries and resets email_read_logs for the client.
+    """
+    import urllib.parse
+    client_name = urllib.parse.unquote(client_name)
+    
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can reset client tags")
+    
+    # Find and delete actual_repayments for this client (auto-tagged ones)
+    deleted_repayments = await db.actual_repayments.delete_many({
+        "$or": [
+            {"client_name": client_name},
+            {"original_email_client": client_name}
+        ],
+        "source": "auto_tag"
+    })
+    
+    # Reset email_read_logs for this client to allow retagging
+    reset_result = await db.email_read_logs.update_many(
+        {"client_name": client_name},
+        {
+            "$set": {
+                "holding_updated": False
+            },
+            "$unset": {
+                "holding_updated_at": "",
+                "is_duplicate": "",
+                "is_duplicate_repayment": "",
+                "linked_to_repayment_id": "",
+                "auto_tagged": "",
+                "matched_trade_id": "",
+                "matched_investment_date": "",
+                "matched_units": "",
+                "per_unit_amount": ""
+            }
+        }
+    )
+    
+    return {
+        "success": True,
+        "message": f"Reset tags for client: {client_name}",
+        "deleted_repayments": deleted_repayments.deleted_count,
+        "reset_email_logs": reset_result.modified_count
+    }
+
+
+@api_router.get("/email-engagement/pending-tags")
+async def get_pending_email_tags(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get list of pending email logs that haven't been auto-tagged yet.
+    Groups by client name for easier review.
+    """
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get pending email logs
+    pending_logs = await db.email_read_logs.find(
+        {"holding_updated": {"$ne": True}},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    # Group by client name
+    by_client = {}
+    for log in pending_logs:
+        client_name = log.get('client_name', 'Unknown')
+        if client_name not in by_client:
+            by_client[client_name] = []
+        by_client[client_name].append({
+            "id": log.get('id'),
+            "bond_code": log.get('bond_code'),
+            "gross_amount": log.get('gross_amount'),
+            "repayment_date": log.get('repayment_date'),
+            "net_amount": log.get('net_amount'),
+            "tds_amount": log.get('tds_amount')
+        })
+    
+    return {
+        "total_pending": len(pending_logs),
+        "by_client": by_client,
+        "client_count": len(by_client)
+    }
+
+
 @api_router.post("/email-engagement/cleanup-duplicates")
 async def cleanup_duplicate_repayments(
     current_user: dict = Depends(get_current_user)
