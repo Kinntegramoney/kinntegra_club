@@ -26495,6 +26495,107 @@ async def delete_insurance_premium(family_id: str, insurance_id: str, current_us
 
 
 # =====================================================
+# ASSET APIs
+# =====================================================
+
+@api_router.post("/data-gathering/family/{family_id}/asset")
+async def add_asset(family_id: str, asset: AssetDetailCreate, current_user: dict = Depends(get_current_user)):
+    """Add an asset entry to a family"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    asset_entry = {
+        "id": str(uuid.uuid4()),
+        "category": asset.category,
+        "member_ids": asset.member_ids,
+        "details": asset.details,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user['id']
+    }
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$push": {"asset_details": asset_entry},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Asset added", "asset": asset_entry}
+
+
+@api_router.put("/data-gathering/family/{family_id}/asset/{asset_id}")
+async def update_asset(family_id: str, asset_id: str, asset: AssetDetailCreate, current_user: dict = Depends(get_current_user)):
+    """Update an asset entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    asset_details = family.get('asset_details', [])
+    for i, a in enumerate(asset_details):
+        if a['id'] == asset_id:
+            asset_details[i].update({
+                "category": asset.category,
+                "member_ids": asset.member_ids,
+                "details": asset.details,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+            break
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$set": {
+                "asset_details": asset_details,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Asset updated"}
+
+
+@api_router.delete("/data-gathering/family/{family_id}/asset/{asset_id}")
+async def delete_asset(family_id: str, asset_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete an asset entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$pull": {"asset_details": {"id": asset_id}},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Asset deleted"}
+
+
+# =====================================================
 # LIABILITY APIs
 # =====================================================
 
