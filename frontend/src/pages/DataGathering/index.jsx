@@ -635,6 +635,11 @@ export default function DataGathering() {
                         </span>
                       </SelectItem>
                     ))}
+                    {filteredFamilies.length === 0 && searchTerm && (
+                      <div className="px-2 py-3 text-sm text-gray-500 text-center">
+                        No families matching "{searchTerm}"
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
