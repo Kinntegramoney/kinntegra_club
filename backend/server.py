@@ -25184,9 +25184,6 @@ async def debug_actual_repayments(client_id: str, current_user: dict = Depends(g
 
 
 
-# Include the router in the main app
-app.include_router(api_router)
-
 # Mount static files for uploads directory at /api/uploads
 # The /api prefix ensures routing through the backend (K8s ingress routes /api to backend)
 uploads_path = Path("/app/uploads")
