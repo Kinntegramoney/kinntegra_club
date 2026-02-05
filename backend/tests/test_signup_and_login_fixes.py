@@ -12,7 +12,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bond-aum-engine.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://auto-tag-debug.preview.emergentagent.com')
 
 # Test credentials
 BROKER_PAN = "ANVPB5297J"
