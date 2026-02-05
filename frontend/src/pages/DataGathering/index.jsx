@@ -415,7 +415,7 @@ export default function DataGathering() {
                   ) : (
                     <Select value={member.relation} onValueChange={(v) => updateMember(member.id, 'relation', v)}>
                       <SelectTrigger className="h-9">
-                        <SelectValue />
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
                         {RELATIONSHIP_OPTIONS.filter(r => r !== 'Self').map(opt => (
@@ -427,9 +427,9 @@ export default function DataGathering() {
                 </div>
                 <div>
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Life Expectancy</Label>
-                  <Select value={String(member.life_expectancy)} onValueChange={(v) => updateMember(member.id, 'life_expectancy', v)}>
+                  <Select value={member.life_expectancy} onValueChange={(v) => updateMember(member.id, 'life_expectancy', v)}>
                     <SelectTrigger className="h-9">
-                      <SelectValue />
+                      <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
                       {LIFE_EXPECTANCY_OPTIONS.map(opt => (
@@ -440,9 +440,9 @@ export default function DataGathering() {
                 </div>
                 <div>
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Regime</Label>
-                  <Select value={member.tax_regime || "New Regime"} onValueChange={(v) => updateMember(member.id, 'tax_regime', v)}>
+                  <Select value={member.tax_regime} onValueChange={(v) => updateMember(member.id, 'tax_regime', v)}>
                     <SelectTrigger className="h-9">
-                      <SelectValue />
+                      <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
                       {TAX_REGIME_OPTIONS.map(opt => (
@@ -453,9 +453,9 @@ export default function DataGathering() {
                 </div>
                 <div>
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Status</Label>
-                  <Select value={member.tax_status || "Resident"} onValueChange={(v) => updateMember(member.id, 'tax_status', v)}>
+                  <Select value={member.tax_status} onValueChange={(v) => updateMember(member.id, 'tax_status', v)}>
                     <SelectTrigger className="h-9">
-                      <SelectValue />
+                      <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
                       {TAX_STATUS_OPTIONS.map(opt => (
@@ -468,6 +468,7 @@ export default function DataGathering() {
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Slab</Label>
                   <Select value={member.tax_slab} onValueChange={(v) => updateMember(member.id, 'tax_slab', v)}>
                     <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select" />
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
