@@ -2,6 +2,38 @@
 
 ## Recent Changes (Feb 5, 2026)
 
+### Primary Member Edit with Auto-Update Family Name (Feb 5, 2026) ✅ NEW
+
+**Feature:** When editing the primary member of a family, if the name changes, the family_name field automatically updates to reflect the new name.
+
+**Example:**
+- Original: Primary member "John Doe" → Family name "John Doe & Family"
+- After edit: Primary member "Jane Smith" → Family name "Jane Smith & Family"
+
+**Implementation:**
+1. **Backend** (`server.py` lines 25889-25947):
+   - Modified `PUT /api/data-gathering/family/{family_id}/member/{member_id}` endpoint
+   - Detects when primary member's name changes
+   - Automatically updates `family_name` field in database
+   - Returns updated family data in response
+
+2. **Frontend** (`MembersSection.jsx`):
+   - Added notice when editing primary member: "Changing the primary member's name will automatically update the family name"
+   - Toast notification shows new family name after update
+
+**Testing:** ✅ 18 backend tests passed, feature verified via API and UI
+
+---
+
+### Login PIN Validation Fix (Feb 5, 2026) ✅
+
+**Fix:** Updated Login.jsx to accept 4-6 digit PINs instead of exactly 4 digits.
+- Changed validation from `pin.length !== 4` to `pin.length < 4 || pin.length > 6`
+- Updated maxLength from 4 to 6
+
+---
+
+
 ### Data Gathering Feature (Feb 5, 2026) ✅ NEW
 
 **Feature:** Comprehensive financial data collection system for client families.
