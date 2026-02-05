@@ -26915,6 +26915,28 @@ async def get_liability_category_options():
     }
 
 
+@api_router.get("/data-gathering/lookup/sub-brokers")
+async def get_sub_brokers_for_data_gathering(current_user: dict = Depends(get_current_user)):
+    """Get list of sub-brokers for the broker"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get broker_id - for sub-brokers, use their linked broker
+    broker_id = current_user['id'] if current_user['role'] == 'broker' else current_user.get('broker_id')
+    
+    if not broker_id:
+        return {"sub_brokers": []}
+    
+    # Fetch all sub-brokers linked to this broker
+    sub_brokers = await db.users.find(
+        {"role": "sub_broker", "broker_id": broker_id},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "employee_code": 1, "phone": 1}
+    ).to_list(None)
+    
+    return {"sub_brokers": sub_brokers}
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
