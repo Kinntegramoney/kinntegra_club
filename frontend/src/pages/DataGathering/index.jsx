@@ -447,17 +447,6 @@ export default function DataGathering() {
     </div>
   );
 
-  const renderComingSoonTab = (title, description) => (
-    <div className="flex flex-col items-center justify-center py-16">
-      <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
-        <Target className="h-8 w-8 text-green-600" />
-      </div>
-      <h3 className="text-lg font-medium text-gray-700 mb-2">{title}</h3>
-      <p className="text-gray-500 text-center max-w-md">{description}</p>
-      <p className="text-sm text-gray-400 mt-4">Complete Introduction first to enable this section</p>
-    </div>
-  );
-
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
