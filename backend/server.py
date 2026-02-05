@@ -25334,27 +25334,46 @@ async def start_email_scheduler():
 
 
 async def scheduled_email_processing_job():
-    """Background job to process emails automatically"""
+    """Background job to process emails automatically and auto-tag prepayments"""
     try:
         logger.info("=" * 50)
         logger.info("SCHEDULED EMAIL PROCESSING STARTED")
         logger.info(f"Time: {datetime.now(timezone.utc).isoformat()}")
         logger.info("=" * 50)
         
-        # Process emails from last 2 days to catch any missed ones
+        # Step 1: Process emails from last 2 days to catch any missed ones
         result = await process_repayment_emails(db, days_back=2)
         
-        # Log the result
-        log_entry = {
+        # Log email processing result
+        email_log_entry = {
             "id": str(uuid.uuid4()),
-            "type": "scheduled_processing",
+            "type": "scheduled_email_read",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "result": result,
             "status": "success" if result.get('status') == 'success' else "error"
         }
-        await db.email_scheduler_logs.insert_one(log_entry)
+        await db.email_scheduler_logs.insert_one(email_log_entry)
         
-        logger.info(f"Scheduled email processing completed: {result}")
+        logger.info(f"Email processing completed: {result}")
+        
+        # Step 2: AUTO-TAG prepayments immediately after reading emails
+        # This eliminates the need for manual auto-tag button clicks
+        logger.info("-" * 30)
+        logger.info("AUTO-TAGGING PREPAYMENTS...")
+        
+        auto_tag_result = await _auto_tag_pending_emails()
+        
+        # Log auto-tag result
+        auto_tag_log_entry = {
+            "id": str(uuid.uuid4()),
+            "type": "scheduled_auto_tag",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "result": auto_tag_result,
+            "status": "success" if auto_tag_result.get('success') else "error"
+        }
+        await db.email_scheduler_logs.insert_one(auto_tag_log_entry)
+        
+        logger.info(f"Auto-tag completed: {auto_tag_result}")
         logger.info("=" * 50)
     except Exception as e:
         logger.error(f"Scheduled email processing failed: {e}")
@@ -25370,6 +25389,196 @@ async def scheduled_email_processing_job():
             await db.email_scheduler_logs.insert_one(error_log)
         except:
             pass
+
+
+async def _auto_tag_pending_emails():
+    """
+    Internal function to auto-tag pending email repayments.
+    Called automatically after email processing.
+    
+    LOGIC:
+    1. Get pending email logs (not yet tagged)
+    2. Deduplicate by (client_name, gross_amount, repayment_date)
+    3. For each unique repayment, divide amount by trade units
+    4. If result is an INTEGER → Match found, create actual_repayment
+    5. Recalculate maturity cashflows
+    """
+    try:
+        # Get all pending email logs (not yet tagged)
+        pending_logs = await db.email_read_logs.find(
+            {"holding_updated": {"$ne": True}},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        if not pending_logs:
+            return {"success": True, "message": "No pending emails to tag", "tagged_count": 0, "auto": True}
+        
+        tagged_count = 0
+        skipped_count = 0
+        duplicate_count = 0
+        
+        # Deduplicate emails by (bond_code, client_name, gross_amount, repayment_date)
+        unique_repayments = {}
+        for log in pending_logs:
+            key = (
+                log.get('bond_code', ''),
+                log.get('client_name', ''),
+                log.get('gross_amount', 0),
+                log.get('repayment_date', '')
+            )
+            if key not in unique_repayments:
+                unique_repayments[key] = log
+            else:
+                duplicate_count += 1
+                # Mark duplicate as processed
+                await db.email_read_logs.update_one(
+                    {"id": log.get('id')},
+                    {
+                        "$set": {
+                            "holding_updated": True,
+                            "holding_updated_at": datetime.now(timezone.utc).isoformat(),
+                            "is_duplicate": True,
+                            "duplicate_of": unique_repayments[key].get('id')
+                        }
+                    }
+                )
+        
+        # Group by bond_code
+        deal_logs = {}
+        for key, log in unique_repayments.items():
+            bond_code = key[0]
+            if bond_code not in deal_logs:
+                deal_logs[bond_code] = []
+            deal_logs[bond_code].append(log)
+        
+        for bond_code, logs in deal_logs.items():
+            if not bond_code:
+                continue
+            
+            # Get all trades for this bond
+            trades = await db.trades.find(
+                {"bond_code": bond_code, "status": {"$ne": "cancelled"}},
+                {"_id": 0}
+            ).to_list(1000)
+            
+            if not trades:
+                continue
+            
+            for log in logs:
+                log_id = log.get('id')
+                log_gross_amount = log.get('gross_amount', 0)
+                log_repayment_date = log.get('repayment_date', '')
+                log_client_name = log.get('client_name', '')
+                log_net_amount = log.get('net_amount', log_gross_amount)
+                log_tds = log.get('tds_amount', 0)
+                
+                if not log_gross_amount or not log_repayment_date:
+                    continue
+                
+                # Idempotency check: already processed?
+                existing_by_email = await db.actual_repayments.find_one({"email_log_id": log_id})
+                if existing_by_email:
+                    skipped_count += 1
+                    continue
+                
+                # Find matching trade by units division
+                matched_trade = None
+                per_unit_amount = None
+                
+                for trade in trades:
+                    units = trade.get('units', 0)
+                    if units <= 0:
+                        continue
+                    
+                    result = log_gross_amount / units
+                    if abs(result - round(result)) < 0.01:
+                        matched_trade = trade
+                        per_unit_amount = round(result)
+                        break
+                
+                if not matched_trade:
+                    continue
+                
+                investment_date = matched_trade.get('investment_date') or matched_trade.get('created_at', '')
+                investment_date_str = str(investment_date)[:10] if investment_date else ''
+                
+                # Idempotency check 2: same combo exists?
+                existing_by_combo = await db.actual_repayments.find_one({
+                    "client_name": matched_trade.get('client_name'),
+                    "gross_amount": log_gross_amount,
+                    "repayment_date": log_repayment_date,
+                    "investment_date": investment_date_str
+                })
+                if existing_by_combo:
+                    await db.email_read_logs.update_one(
+                        {"id": log_id},
+                        {
+                            "$set": {
+                                "holding_updated": True,
+                                "holding_updated_at": datetime.now(timezone.utc).isoformat(),
+                                "is_duplicate_repayment": True,
+                                "linked_to_repayment_id": existing_by_combo.get('id')
+                            }
+                        }
+                    )
+                    duplicate_count += 1
+                    continue
+                
+                # Create the actual_repayment record
+                repayment_id = str(uuid.uuid4())
+                repayment_record = {
+                    "id": repayment_id,
+                    "client_id": matched_trade.get('client_id'),
+                    "client_name": matched_trade.get('client_name'),
+                    "original_email_client": log_client_name,
+                    "bond_id": matched_trade.get('bond_id'),
+                    "bond_name": matched_trade.get('bond_name'),
+                    "bond_code": bond_code,
+                    "repayment_date": log_repayment_date,
+                    "investment_date": investment_date_str,
+                    "gross_amount": log_gross_amount,
+                    "net_amount": log_net_amount,
+                    "tds": log_tds,
+                    "units": matched_trade.get('units'),
+                    "per_unit_amount": per_unit_amount,
+                    "payment_type": "prepayment",
+                    "is_prepayment": True,
+                    "email_log_id": log_id,
+                    "trade_id": matched_trade.get('id'),
+                    "auto_tagged": True,
+                    "match_method": "units_division",
+                    "created_by": "system_scheduler",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "source": "auto_tag"
+                }
+                
+                await db.actual_repayments.insert_one(repayment_record)
+                tagged_count += 1
+                
+                # Mark email log as processed
+                await db.email_read_logs.update_one(
+                    {"id": log_id},
+                    {
+                        "$set": {
+                            "holding_updated": True,
+                            "holding_updated_at": datetime.now(timezone.utc).isoformat(),
+                            "auto_tagged": True,
+                            "actual_repayment_id": repayment_id
+                        }
+                    }
+                )
+        
+        return {
+            "success": True,
+            "tagged_count": tagged_count,
+            "skipped_count": skipped_count,
+            "duplicate_count": duplicate_count,
+            "auto": True,
+            "message": f"Auto-tagged {tagged_count} prepayments"
+        }
+    except Exception as e:
+        logger.error(f"Auto-tag error: {e}")
+        return {"success": False, "error": str(e), "auto": True}
 
 
 @app.on_event("shutdown")
