@@ -15,9 +15,10 @@ import uuid
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials from review_request
+# Note: Backend accepts 6-digit PIN but frontend validates for 4 digits
 TEST_PAN = "ANVPB5297J"
 TEST_PASSWORD = "test123"
-TEST_PIN = "111111"
+TEST_PIN = "111111"  # This works with API, but frontend only allows 4 digits
 
 
 class TestPrimaryMemberEditAutoUpdatesFamilyName:
