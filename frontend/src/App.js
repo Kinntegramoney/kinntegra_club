@@ -44,6 +44,7 @@ import ApprovalsPage from "@/pages/ApprovalsPage";
 import TradeLogs from "@/pages/TradeLogs";
 import UntaggedTrades from "@/pages/UntaggedTrades";
 import EmailEngagementDashboard from "@/pages/EmailEngagementDashboard";
+import DataGathering from "@/pages/DataGathering";
 import { Toaster } from "@/components/ui/sonner";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import InstallPWA from "@/components/InstallPWA";
