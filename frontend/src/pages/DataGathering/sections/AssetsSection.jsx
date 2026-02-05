@@ -16,91 +16,82 @@ import { toast } from "sonner";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Asset categories - Face values of holdings (NOT salary/business income)
+// Asset categories - Face values only (NO maturity dates)
+// Items WITH maturity dates will also reflect in Income section for cashflow tracking
 const ASSET_CATEGORIES = [
   { 
     value: "ppf", 
     label: "PPF", 
     icon: PiggyBank,
+    hasMaturity: true, // Will also reflect in Income
     fields: [
-      { key: "amount", label: "Current Value", type: "number" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" }
+      { key: "current_value", label: "Current Value", type: "number" }
     ]
   },
   { 
     value: "epf", 
     label: "EPF", 
     icon: PiggyBank,
+    hasMaturity: true,
     fields: [
-      { key: "amount", label: "Current Value", type: "number" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" }
+      { key: "current_value", label: "Current Value", type: "number" }
     ]
   },
   { 
     value: "gratuity", 
     label: "Gratuity", 
     icon: Wallet,
+    hasMaturity: true,
     fields: [
-      { key: "amount", label: "Expected Amount", type: "number" },
-      { key: "maturity_date", label: "Expected Date", type: "date" }
+      { key: "expected_amount", label: "Expected Amount", type: "number" }
     ]
   },
   { 
     value: "fd", 
     label: "Fixed Deposits", 
     icon: Landmark,
+    hasMaturity: true,
     fields: [
       { key: "description", label: "Description", type: "text" },
       { key: "principal_amount", label: "Principal", type: "number" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly", "On Maturity"] }
+      { key: "interest_rate", label: "Interest Rate (%)", type: "number" }
     ]
   },
   { 
     value: "rd_pis", 
     label: "RD / PIS", 
     icon: Landmark,
+    hasMaturity: true,
     fields: [
-      { key: "monthly_contribution", label: "Monthly Contribution", type: "number" },
-      { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "end_date", label: "End Date", type: "date" },
-      { key: "num_installments", label: "No. of Installments", type: "number" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-      { key: "maturity_amount", label: "Maturity Amount", type: "number" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" }
+      { key: "current_value", label: "Current Value", type: "number" },
+      { key: "monthly_contribution", label: "Monthly Contribution", type: "number" }
     ]
   },
   { 
     value: "bond", 
     label: "Bonds", 
     icon: Landmark,
+    hasMaturity: true,
     fields: [
       { key: "principal_amount", label: "Principal", type: "number" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"] }
+      { key: "interest_rate", label: "Interest Rate (%)", type: "number" }
     ]
   },
   { 
     value: "insurance_corpus", 
     label: "Insurance", 
     icon: Building,
+    hasMaturity: true,
     fields: [
-      { key: "principal_amount", label: "Sum Assured", type: "number" },
-      { key: "interest_rate", label: "Expected Return (%)", type: "number" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Yearly", "On Maturity"] }
+      { key: "sum_assured", label: "Sum Assured", type: "number" },
+      { key: "current_value", label: "Current Value", type: "number" }
     ]
   },
   { 
     value: "mutual_fund", 
     label: "Mutual Fund", 
     icon: TrendingUp,
+    hasMaturity: false, // No maturity - won't reflect in Income
     fields: [
       { key: "market_value", label: "Market Value", type: "number" },
       { key: "sip_amount", label: "SIP Amount", type: "number" }
@@ -110,6 +101,7 @@ const ASSET_CATEGORIES = [
     value: "shares_pms", 
     label: "Shares / PMS", 
     icon: TrendingUp,
+    hasMaturity: false,
     fields: [
       { key: "market_value", label: "Market Value", type: "number" }
     ]
@@ -118,6 +110,7 @@ const ASSET_CATEGORIES = [
     value: "gold", 
     label: "Gold", 
     icon: Gem,
+    hasMaturity: false,
     fields: [
       { key: "market_value", label: "Market Value", type: "number" }
     ]
@@ -126,6 +119,7 @@ const ASSET_CATEGORIES = [
     value: "cash", 
     label: "Cash in Hand", 
     icon: Coins,
+    hasMaturity: false,
     fields: [
       { key: "amount", label: "Amount", type: "number" }
     ]
@@ -134,6 +128,7 @@ const ASSET_CATEGORIES = [
     value: "real_estate", 
     label: "Real Estate", 
     icon: Home,
+    hasMaturity: false,
     fields: [
       { key: "property_type", label: "Property Type", type: "text" },
       { key: "purchase_value", label: "Purchase Value", type: "number" },
@@ -144,9 +139,9 @@ const ASSET_CATEGORIES = [
     value: "vehicle", 
     label: "Vehicles", 
     icon: Car,
+    hasMaturity: false,
     fields: [
       { key: "vehicle_type", label: "Type", type: "text" },
-      { key: "purchase_value", label: "Purchase Value", type: "number" },
       { key: "current_value", label: "Current Value", type: "number" }
     ]
   },
@@ -154,9 +149,10 @@ const ASSET_CATEGORIES = [
     value: "other", 
     label: "Other Assets", 
     icon: Wallet,
+    hasMaturity: false,
     fields: [
       { key: "description", label: "Description", type: "text" },
-      { key: "amount", label: "Value", type: "number" }
+      { key: "value", label: "Value", type: "number" }
     ]
   }
 ];
@@ -292,7 +288,7 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
   
   // Calculate total assets
   const totalAssets = Object.values(assetItems).flat().reduce((sum, a) => {
-    const val = parseFloat(a.details?.market_value) || parseFloat(a.details?.amount) || parseFloat(a.details?.principal_amount) || parseFloat(a.details?.current_value) || 0;
+    const val = parseFloat(a.details?.market_value) || parseFloat(a.details?.current_value) || parseFloat(a.details?.amount) || parseFloat(a.details?.principal_amount) || parseFloat(a.details?.sum_assured) || parseFloat(a.details?.expected_amount) || parseFloat(a.details?.value) || 0;
     return sum + val;
   }, 0);
 
@@ -320,7 +316,7 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
-        <span>Record face value of all assets (excluding salary/business)</span>
+        <span>Record face values. Items with maturity will also reflect in Income.</span>
         <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
       </div>
 
@@ -342,6 +338,7 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
                         {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
                         <Icon className={`h-4 w-4 ${itemCount > 0 ? 'text-green-600' : 'text-gray-400'}`} />
                         <span className="text-sm font-medium">{category.label}</span>
+                        {category.hasMaturity && <Badge variant="outline" className="text-[10px] h-4 px-1 text-blue-500 border-blue-200">→ Income</Badge>}
                         {itemCount > 0 && <Badge className="bg-green-100 text-green-700 text-xs h-5 px-1.5">{itemCount}</Badge>}
                         {hasUnsavedChanges && <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs h-5 px-1.5">•</Badge>}
                       </div>
