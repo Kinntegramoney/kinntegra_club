@@ -482,6 +482,24 @@ function App() {
             } 
           />
           
+          {/* Sub-Broker Data Gathering Routes */}
+          <Route 
+            path="/sub-broker/data-gathering" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <DataGathering />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/sub-broker/data-gathering/:familyId" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <DataGathering />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Client Trade Approvals Route */}
           <Route 
             path="/client/trade-approvals" 
