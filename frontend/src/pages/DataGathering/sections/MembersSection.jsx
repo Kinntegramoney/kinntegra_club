@@ -64,12 +64,18 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
       
       if (editMember) {
         // Update existing member
-        await axios.put(
+        const response = await axios.put(
           `${API}/data-gathering/family/${family.id}/member/${editMember.id}`,
           formData,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        toast.success("Member updated");
+        
+        // If primary member name changed, show special message about family name update
+        if (editMember.is_primary && editMember.name !== formData.name) {
+          toast.success(`Primary member updated. Family name is now "${response.data.family?.family_name}"`);
+        } else {
+          toast.success("Member updated");
+        }
       } else {
         // Add new member
         await axios.put(
