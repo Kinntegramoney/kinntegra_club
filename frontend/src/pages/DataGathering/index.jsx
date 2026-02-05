@@ -234,21 +234,78 @@ export default function DataGathering() {
 
   // Render tab content
   const renderTabContent = () => {
+    const isReadOnly = user?.role === 'client';
+    
+    // For tabs other than introduction, require a selected family
+    if (activeTab !== "introduction" && !selectedFamily) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-4">
+            <ClipboardList className="h-8 w-8 text-amber-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-700 mb-2">No Family Selected</h3>
+          <p className="text-gray-500 text-center max-w-md">
+            Please select an existing family from the list or create a new one in the Introduction tab first.
+          </p>
+        </div>
+      );
+    }
+    
     switch (activeTab) {
       case "introduction":
         return renderIntroductionTab();
       case "income":
-        return renderComingSoonTab("Income Details", "Add salary, business income, rental income, and other sources");
+        return (
+          <IncomeSection 
+            family={selectedFamily} 
+            onUpdate={(data) => handleDataUpdate('income_details', data)}
+            isReadOnly={isReadOnly}
+            onRefresh={refreshSelectedFamily}
+          />
+        );
       case "goals":
-        return renderComingSoonTab("Financial Goals", "Set goals for education, marriage, home purchase, and more");
+        return (
+          <GoalSection 
+            family={selectedFamily} 
+            onUpdate={(data) => handleDataUpdate('goal_details', data)}
+            isReadOnly={isReadOnly}
+            onRefresh={refreshSelectedFamily}
+          />
+        );
       case "expenses":
-        return renderComingSoonTab("Expense Details", "Track monthly and annual expenses");
+        return (
+          <ExpenseSection 
+            family={selectedFamily} 
+            onUpdate={(data) => handleDataUpdate('expense_details', data)}
+            isReadOnly={isReadOnly}
+            onRefresh={refreshSelectedFamily}
+          />
+        );
       case "insurance":
-        return renderComingSoonTab("Insurance Premiums", "Manage life, health, and motor insurance");
+        return (
+          <InsuranceSection 
+            family={selectedFamily} 
+            onUpdate={(data) => handleDataUpdate('insurance_premiums', data)}
+            isReadOnly={isReadOnly}
+            onRefresh={refreshSelectedFamily}
+          />
+        );
       case "liability":
-        return renderComingSoonTab("Liabilities", "Track loans and other liabilities");
+        return (
+          <LiabilitySection 
+            family={selectedFamily} 
+            onUpdate={(data) => handleDataUpdate('liabilities', data)}
+            isReadOnly={isReadOnly}
+            onRefresh={refreshSelectedFamily}
+          />
+        );
       case "surplus":
-        return renderComingSoonTab("Surplus / Cash Flow", "View calculated surplus and savings potential");
+        return (
+          <SurplusSection 
+            family={selectedFamily}
+            isReadOnly={isReadOnly}
+          />
+        );
       default:
         return null;
     }
