@@ -25858,6 +25858,84 @@ async def create_family(request: FamilyCreate, current_user: dict = Depends(get_
     return {"message": "Family created successfully", "family": family_doc}
 
 
+@api_router.put("/data-gathering/family/{family_id}")
+async def update_family(family_id: str, request: FamilyCreate, current_user: dict = Depends(get_current_user)):
+    """Update an existing family's details including members"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can update families")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    # Access control
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Generate new family name if primary holder name changed
+    family_name = f"{request.primary_holder.name} & Family"
+    
+    # Find current primary member ID or create new one
+    current_primary_id = family.get('primary_holder_id')
+    primary_member_id = current_primary_id or str(uuid.uuid4())
+    
+    # Build primary member
+    primary_member = {
+        "id": primary_member_id,
+        "name": request.primary_holder.name,
+        "date_of_birth": request.primary_holder.date_of_birth,
+        "relation": "Primary",
+        "life_expectancy": request.primary_holder.life_expectancy,
+        "tax_regime": request.primary_holder.tax_regime,
+        "tax_status": request.primary_holder.tax_status,
+        "tax_slab": request.primary_holder.tax_slab,
+        "is_primary": True
+    }
+    
+    # Build other members (preserve existing IDs if possible, create new ones for new members)
+    other_members = []
+    existing_members = {m['id']: m for m in family.get('members', []) if not m.get('is_primary')}
+    
+    for member in request.members:
+        # Try to match by name to preserve ID
+        matching_id = None
+        for mid, m in existing_members.items():
+            if m.get('name') == member.name:
+                matching_id = mid
+                break
+        
+        other_members.append({
+            "id": matching_id or str(uuid.uuid4()),
+            "name": member.name,
+            "date_of_birth": member.date_of_birth,
+            "relation": member.relation,
+            "life_expectancy": member.life_expectancy,
+            "tax_regime": member.tax_regime,
+            "tax_status": member.tax_status,
+            "tax_slab": member.tax_slab,
+            "is_primary": False
+        })
+    
+    # Update the family document
+    update_data = {
+        "family_name": family_name,
+        "sub_broker_id": request.sub_broker_id,
+        "proceed_option": request.proceed_option,
+        "members": [primary_member] + other_members,
+        "primary_holder_id": primary_member_id,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {"$set": update_data}
+    )
+    
+    updated_family = await db.data_gathering_families.find_one({"id": family_id}, {"_id": 0})
+    return {"message": "Family updated successfully", "family": updated_family}
+
+
 @api_router.put("/data-gathering/family/{family_id}/member")
 async def add_family_member(family_id: str, member: FamilyMemberCreate, current_user: dict = Depends(get_current_user)):
     """Add a new member to an existing family"""
