@@ -207,7 +207,7 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
                     {/* Primary Member Name Change Notice */}
                     {editMember?.is_primary && (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
-                        <strong>Note:</strong> Changing the primary member's name will automatically update the family name (e.g., "John Doe & Family").
+                        <strong>Note:</strong> Changing the primary member&apos;s name will automatically update the family name (e.g., &quot;John Doe &amp; Family&quot;).
                       </div>
                     )}
                     <div>
