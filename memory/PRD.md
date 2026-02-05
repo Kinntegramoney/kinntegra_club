@@ -2,6 +2,50 @@
 
 ## Recent Changes (Feb 5, 2026)
 
+### Data Gathering Feature (Feb 5, 2026) ✅ NEW
+
+**Feature:** Comprehensive financial data collection system for client families.
+
+**Implemented:**
+1. **Sidebar Navigation** - "Data Gathering" menu item added for Broker and Sub-Broker roles
+2. **Family Management** - Create families with primary holder and additional members
+3. **8 Data Sections:**
+   - Members (with DOB, Life Expectancy, Tax Slab)
+   - Income Details (16 categories: Salary, Business, Rental, PPF, EPF, Gratuity, FD, RD/PIS, Pension, Bond, Insurance, Mutual Fund, Cash, Gold, Shares/PMS, Other)
+   - Goal Details (13 categories: Education, Marriage, Home, Car, etc.)
+   - Expense Details (15 types with inflation and post-retirement tracking)
+   - Insurance Premiums (Motor, Life, Health, Term)
+   - Liabilities (Home Loan, Vehicle Loan, Personal Loan, etc.)
+   - Surplus/Cash Flow (automated calculation from all sections)
+
+4. **Access Control:**
+   - Broker: Sees all families
+   - Sub-Broker: Sees only their created families
+   - Client: Read-only access to their own family data
+
+**API Endpoints (24 total):**
+- `/api/data-gathering/families` - List families
+- `/api/data-gathering/family` - Create family
+- `/api/data-gathering/family/{id}` - Get family details
+- `/api/data-gathering/family/{id}/member` - Add/Update member
+- `/api/data-gathering/family/{id}/income` - CRUD income
+- `/api/data-gathering/family/{id}/goal` - CRUD goals
+- `/api/data-gathering/family/{id}/expense` - CRUD expenses
+- `/api/data-gathering/family/{id}/insurance` - CRUD insurance
+- `/api/data-gathering/family/{id}/liability` - CRUD liabilities
+- `/api/data-gathering/family/{id}/surplus` - Calculate surplus
+- `/api/data-gathering/lookup/*` - Dropdown options
+
+**Database:** Single collection `data_gathering_families` with nested documents
+
+**Files Added:**
+- `/app/frontend/src/pages/DataGathering/` (6 component files)
+- `/app/backend/server.py` - Data Gathering APIs (lines 25585-26720)
+
+**Testing:** ✅ 100% (13/13 backend tests, frontend verified)
+
+---
+
 ### Prepayment Entries on Reinvestment Tagging Page (Feb 5, 2026) ✅
 
 **Problem:** Prepayment entries stored in `actual_repayments` collection were not appearing on the "Reinv Tag" (Reinvestment Tagging) page. This prevented brokers from tagging prepayment funds for reinvestment.
