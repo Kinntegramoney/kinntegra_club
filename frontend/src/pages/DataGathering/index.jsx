@@ -162,12 +162,20 @@ export default function DataGathering() {
   const addMember = () => {
     const newId = Math.max(...members.map(m => m.id)) + 1;
     setMembers([...members, {
-      id: newId, name: "", dob: "", relation: "Spouse", life_expectancy: 85, tax_slab: "20%", isPrimary: false
+      id: newId, name: "", dob: "", relation: "Spouse", life_expectancy: 85, tax_regime: "New Regime", tax_status: "Resident", tax_slab: "20%", isPrimary: false
     }]);
   };
 
   const removeMember = (id) => {
     setMembers(members.filter(m => m.id !== id));
+  };
+
+  const setPrimaryMember = (id) => {
+    setMembers(members.map(m => ({
+      ...m,
+      isPrimary: m.id === id,
+      relation: m.id === id ? "Self" : (m.relation === "Self" ? "Spouse" : m.relation)
+    })));
   };
 
   const handleSave = async () => {
@@ -182,7 +190,8 @@ export default function DataGathering() {
       const token = localStorage.getItem("token");
       const payload = {
         broker_id: user?.role === 'broker' ? user.id : user?.broker_id,
-        sub_broker_id: selectedAssociate || null,
+        sub_broker_id: selectedSubBroker || null,
+        proceed_option: proceedOption,
         primary_holder: {
           name: primaryMember.name,
           date_of_birth: primaryMember.dob,
