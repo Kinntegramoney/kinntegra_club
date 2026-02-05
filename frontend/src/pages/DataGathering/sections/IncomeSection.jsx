@@ -5,9 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, Briefcase, Building, Wallet, Landmark, PiggyBank, TrendingUp, DollarSign, Users } from "lucide-react";
+import { Save, Briefcase, Building, Wallet, Landmark, PiggyBank, TrendingUp, DollarSign, User, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -173,81 +172,89 @@ const INCOME_CATEGORIES = [
 
 export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh }) {
   const [loading, setLoading] = useState(false);
-  const [selectedMembers, setSelectedMembers] = useState([]);
-  const [incomeData, setIncomeData] = useState({});
+  const [selectedMemberId, setSelectedMemberId] = useState(null);
+  const [incomeDataByMember, setIncomeDataByMember] = useState({});
 
   const members = family?.members || [];
   const existingIncomes = family?.income_details || [];
 
-  // Initialize income data from existing records
+  // Initialize - select first member and load existing data
   useEffect(() => {
-    const initialData = {};
-    INCOME_CATEGORIES.forEach(cat => {
-      const existing = existingIncomes.find(inc => inc.category === cat.value);
-      if (existing) {
-        initialData[cat.value] = existing.details || {};
-      } else {
-        initialData[cat.value] = {};
-      }
-    });
-    setIncomeData(initialData);
-    
-    // Set selected members from existing records
-    const memberIds = new Set();
-    existingIncomes.forEach(inc => {
-      (inc.member_ids || []).forEach(id => memberIds.add(id));
-    });
-    if (memberIds.size > 0) {
-      setSelectedMembers(Array.from(memberIds));
-    } else if (members.length > 0) {
-      // Default select primary member
+    if (members.length > 0 && !selectedMemberId) {
       const primary = members.find(m => m.is_primary);
-      if (primary) setSelectedMembers([primary.id]);
+      setSelectedMemberId(primary?.id || members[0].id);
     }
-  }, [family?.id, existingIncomes, members]);
-
-  const toggleMember = (memberId) => {
-    setSelectedMembers(prev => 
-      prev.includes(memberId) 
-        ? prev.filter(id => id !== memberId)
-        : [...prev, memberId]
-    );
-  };
+    
+    // Load existing income data organized by member
+    const dataByMember = {};
+    members.forEach(member => {
+      dataByMember[member.id] = {};
+      INCOME_CATEGORIES.forEach(cat => {
+        // Find income for this member and category
+        const existing = existingIncomes.find(
+          inc => inc.category === cat.value && inc.member_ids?.includes(member.id)
+        );
+        dataByMember[member.id][cat.value] = existing?.details || {};
+      });
+    });
+    setIncomeDataByMember(dataByMember);
+  }, [family?.id]);
 
   const updateCategoryField = (category, field, value) => {
-    setIncomeData(prev => ({
+    if (!selectedMemberId) return;
+    
+    setIncomeDataByMember(prev => ({
       ...prev,
-      [category]: {
-        ...prev[category],
-        [field]: value
+      [selectedMemberId]: {
+        ...prev[selectedMemberId],
+        [category]: {
+          ...(prev[selectedMemberId]?.[category] || {}),
+          [field]: value
+        }
       }
     }));
   };
 
-  const hasDataInCategory = (category) => {
-    const data = incomeData[category] || {};
-    return Object.values(data).some(v => v !== "" && v !== null && v !== undefined);
+  const hasDataInCategory = (memberId, category) => {
+    const data = incomeDataByMember[memberId]?.[category] || {};
+    return Object.values(data).some(v => v !== "" && v !== null && v !== undefined && v !== "0");
   };
 
-  const handleSaveAll = async () => {
-    if (selectedMembers.length === 0) {
-      toast.error("Please select at least one family member");
+  const getMemberIncomeCount = (memberId) => {
+    let count = 0;
+    INCOME_CATEGORIES.forEach(cat => {
+      if (hasDataInCategory(memberId, cat.value)) count++;
+    });
+    return count;
+  };
+
+  const handleSaveForMember = async () => {
+    if (!selectedMemberId) {
+      toast.error("Please select a member");
       return;
     }
 
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
+      const memberData = incomeDataByMember[selectedMemberId] || {};
       
-      // Save each category that has data
+      // Save each category that has data for this member
       for (const cat of INCOME_CATEGORIES) {
-        if (hasDataInCategory(cat.value)) {
-          const existing = existingIncomes.find(inc => inc.category === cat.value);
+        const categoryData = memberData[cat.value] || {};
+        const hasData = Object.values(categoryData).some(v => v !== "" && v !== null && v !== undefined && v !== "0");
+        
+        if (hasData) {
+          // Find existing income for this member and category
+          const existing = existingIncomes.find(
+            inc => inc.category === cat.value && inc.member_ids?.includes(selectedMemberId)
+          );
+          
           const payload = {
             family_id: family.id,
             category: cat.value,
-            member_ids: selectedMembers,
-            details: incomeData[cat.value]
+            member_ids: [selectedMemberId],
+            details: categoryData
           };
 
           if (existing) {
@@ -266,7 +273,8 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
         }
       }
       
-      toast.success("Income details saved successfully");
+      const memberName = members.find(m => m.id === selectedMemberId)?.name || "Member";
+      toast.success(`Income details saved for ${memberName}`);
       onRefresh();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Failed to save income details");
@@ -276,7 +284,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   };
 
   const renderField = (category, field) => {
-    const value = incomeData[category]?.[field.key] || "";
+    const value = incomeDataByMember[selectedMemberId]?.[category]?.[field.key] || "";
     
     if (field.type === "select") {
       return (
@@ -309,36 +317,43 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     );
   };
 
+  const selectedMember = members.find(m => m.id === selectedMemberId);
+
   return (
     <div className="space-y-6">
-      {/* Member Selection */}
+      {/* Member Tabs */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-600" />
-            Select Family Members for Income Details
-          </CardTitle>
+          <CardTitle className="text-base">Select Member to Enter Income Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4">
-            {members.map(member => (
-              <label 
-                key={member.id} 
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
-                  selectedMembers.includes(member.id) 
-                    ? 'bg-blue-50 border-blue-300 text-blue-700' 
-                    : 'bg-white border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <Checkbox
-                  checked={selectedMembers.includes(member.id)}
-                  onCheckedChange={() => toggleMember(member.id)}
-                  disabled={isReadOnly}
-                />
-                <span className="font-medium">{member.name}</span>
-                {member.is_primary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
-              </label>
-            ))}
+          <div className="flex flex-wrap gap-2">
+            {members.map(member => {
+              const incomeCount = getMemberIncomeCount(member.id);
+              const isSelected = selectedMemberId === member.id;
+              
+              return (
+                <button
+                  key={member.id}
+                  onClick={() => setSelectedMemberId(member.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                    isSelected 
+                      ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm' 
+                      : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <User className={`h-4 w-4 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <span className="font-medium">{member.name}</span>
+                  {member.is_primary && (
+                    <Badge variant="secondary" className="text-xs">Primary</Badge>
+                  )}
+                  {incomeCount > 0 && (
+                    <Badge className="bg-green-100 text-green-700 text-xs">{incomeCount} sources</Badge>
+                  )}
+                  {isSelected && <ChevronRight className="h-4 w-4 ml-1" />}
+                </button>
+              );
+            })}
           </div>
           {members.length === 0 && (
             <p className="text-gray-500 text-sm">No family members found. Please add members in the Introduction tab.</p>
@@ -346,47 +361,67 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
         </CardContent>
       </Card>
 
-      {/* Income Categories Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {INCOME_CATEGORIES.map(category => {
-          const Icon = category.icon;
-          const hasData = hasDataInCategory(category.value);
-          
-          return (
-            <Card key={category.value} className={hasData ? "ring-1 ring-green-200" : ""}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Icon className={`h-4 w-4 ${hasData ? 'text-green-600' : 'text-gray-400'}`} />
-                  {category.label}
-                  {hasData && <Badge variant="outline" className="text-green-600 border-green-300 text-xs ml-auto">Has Data</Badge>}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-2 gap-3">
-                  {category.fields.map(field => (
-                    <div key={field.key} className={category.fields.length === 1 ? "col-span-2" : ""}>
-                      <Label className="text-xs text-gray-500 mb-1 block">{field.label}</Label>
-                      {renderField(category.value, field)}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      {/* Selected Member's Income Forms */}
+      {selectedMember && (
+        <>
+          <div className="flex items-center gap-2 px-1">
+            <User className="h-5 w-5 text-blue-600" />
+            <h3 className="font-semibold text-gray-800">
+              Income Details for {selectedMember.name}
+            </h3>
+            {selectedMember.is_primary && <Badge variant="outline">Primary Holder</Badge>}
+          </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end pt-4 border-t">
-        <Button 
-          onClick={handleSaveAll} 
-          disabled={loading || isReadOnly || selectedMembers.length === 0}
-          className="bg-etihad-gold-600 hover:bg-etihad-gold-700 text-white px-8 gap-2"
-        >
-          <Save className="h-4 w-4" />
-          {loading ? "Saving..." : "Save Income Details"}
-        </Button>
-      </div>
+          {/* Income Categories Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {INCOME_CATEGORIES.map(category => {
+              const Icon = category.icon;
+              const hasData = hasDataInCategory(selectedMemberId, category.value);
+              
+              return (
+                <Card key={category.value} className={hasData ? "ring-1 ring-green-200 bg-green-50/30" : ""}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Icon className={`h-4 w-4 ${hasData ? 'text-green-600' : 'text-gray-400'}`} />
+                      {category.label}
+                      {hasData && (
+                        <Badge variant="outline" className="text-green-600 border-green-300 text-xs ml-auto">
+                          Filled
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="grid grid-cols-2 gap-3">
+                      {category.fields.map(field => (
+                        <div key={field.key} className={category.fields.length === 1 ? "col-span-2" : ""}>
+                          <Label className="text-xs text-gray-500 mb-1 block">{field.label}</Label>
+                          {renderField(category.value, field)}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Save Button for Selected Member */}
+          <div className="flex justify-between items-center pt-4 border-t">
+            <p className="text-sm text-gray-500">
+              Saving income details for: <span className="font-medium text-gray-700">{selectedMember.name}</span>
+            </p>
+            <Button 
+              onClick={handleSaveForMember} 
+              disabled={loading || isReadOnly}
+              className="bg-etihad-gold-600 hover:bg-etihad-gold-700 text-white px-8 gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {loading ? "Saving..." : `Save ${selectedMember.name}'s Income`}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
