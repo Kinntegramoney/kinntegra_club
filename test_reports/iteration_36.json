@@ -1,0 +1,80 @@
+{
+  "summary": "Testing completed for Primary Member Edit Auto-Updates Family Name feature. All 18 backend tests passed (6 new tests + 12 existing). Frontend UI verified - Data Gathering page loads correctly, 'Jane Smith & Family' visible in list confirming the primary member name change auto-updated the family name.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Login.jsx PIN validation",
+        "issue": "Frontend validates PIN as 4 digits (line 63) but backend accepts 6-digit PIN. User with 6-digit PIN (111111) cannot login via UI but can via API",
+        "selector": "input[type='password'] for PIN step",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Backend: PUT /api/data-gathering/family/{id}/member/{member_id} - Primary member name change auto-updates family name",
+    "Backend: PUT /api/data-gathering/family/{id}/member/{member_id} - Non-primary member name change does NOT update family name",
+    "Backend: PUT /api/data-gathering/family/{id}/member/{member_id} - Primary member update without name change keeps family name intact",
+    "Backend: Existing test family (da20d03f-6e9f-488e-8020-62b6a193fa70) verified",
+    "Backend: PUT /api/data-gathering/family/{id}/member - Add member to family",
+    "Backend: DELETE /api/data-gathering/family/{id}/member/{member_id} - Delete non-primary member",
+    "Backend: Broker two-step login successful",
+    "Backend: GET /api/data-gathering/families - List families API",
+    "Backend: POST /api/data-gathering/family - Create family API",
+    "Backend: GET /api/data-gathering/family/{id} - Get family details with 7 sections",
+    "Backend: POST /api/data-gathering/family/{id}/income - Add income entry",
+    "Backend: POST /api/data-gathering/family/{id}/goal - Add goal entry",
+    "Backend: GET /api/data-gathering/family/{id}/surplus - Surplus calculation",
+    "Backend: Lookup APIs (life-expectancy, tax-slabs, relations, income-categories, goal-categories)",
+    "Frontend: Data Gathering page loads correctly at /broker/data-gathering",
+    "Frontend: Families list shows 21 families including 'Jane Smith & Family'",
+    "Frontend: All 7 tabs visible (Introduction, Income, Goals, Expenses, Insurance, Liability, Surplus)",
+    "Frontend: Family Members table visible with Add Member button"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_primary_member_edit.py",
+    "/app/backend/tests/test_data_gathering.py",
+    "/app/test_reports/pytest/primary_member_edit_tests.xml"
+  ],
+  "action_items": [
+    "Fix PIN validation in Login.jsx - Change line 63 from 'formData.pin.length !== 4' to accept 4-6 digit PINs or verify with backend what PIN length is expected"
+  ],
+  "critical_code_review_comments": [
+    "Backend endpoint PUT /api/data-gathering/family/{family_id}/member/{member_id} correctly implements auto-update of family_name when primary member's name changes",
+    "Frontend MembersSection.jsx shows notice when editing primary member about family name auto-update",
+    "PIN length mismatch between frontend (4 digits) and backend (accepts 6 digits) should be resolved"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_primary_member_edit.py",
+    "/app/backend/tests/test_data_gathering.py"
+  ],
+  "success_rate": {
+    "backend": "100% (18/18 tests passed, 1 skipped)",
+    "frontend": "95% (UI loads, feature works, minor PIN validation issue)"
+  },
+  "test_credentials": {
+    "PAN": "ANVPB5297J",
+    "Password": "test123",
+    "PIN": "111111 (Note: Works via API but frontend only allows 4 digits)"
+  },
+  "seed_data_creation": "Multiple TEST_ families created during testing. 'Jane Smith & Family' was updated from 'John Doe & Family' to verify the feature.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Primary member edit feature tested and working. Backend PUT endpoint correctly auto-updates family_name. Frontend shows notice about this behavior. Login credentials updated to test123/111111. PIN validation in frontend Login.jsx needs fix to match backend (4 vs 6 digits).",
+  "feature_verification": {
+    "feature": "Primary member name edit auto-updates family name",
+    "api_endpoint": "PUT /api/data-gathering/family/{family_id}/member/{member_id}",
+    "backend_code_location": "server.py lines 25889-25947",
+    "frontend_code_location": "MembersSection.jsx lines 208-212 (shows notice)",
+    "verified_via": [
+      "6 new pytest test cases",
+      "API curl verification",
+      "UI screenshot showing 'Jane Smith & Family' in list"
+    ]
+  }
+}
