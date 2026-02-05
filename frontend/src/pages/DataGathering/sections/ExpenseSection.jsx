@@ -1,409 +1,334 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import { Plus, Edit, Trash2, Receipt, Save, Home, Car, Heart, Zap, Phone, ShoppingBag, Utensils, User, GraduationCap, Users, CreditCard } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { 
+  Save, Plus, Trash2, ChevronDown, ChevronRight, User, EyeOff, Eye,
+  Receipt, Home, Car, Heart, Zap, Phone, ShoppingBag, Utensils, GraduationCap, Users, CreditCard
+} from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const EXPENSE_TYPES = [
-  { value: "rent_maintenance", label: "House Rent / Maintenance", icon: Home },
-  { value: "conveyance", label: "Conveyance & Fuel", icon: Car },
-  { value: "healthcare", label: "Healthcare", icon: Heart },
-  { value: "utilities", label: "Utilities (Electric/Water)", icon: Zap },
-  { value: "communication", label: "Communication", icon: Phone },
-  { value: "clothing", label: "Clothing & Accessories", icon: ShoppingBag },
-  { value: "shopping", label: "Shopping & Gadgets", icon: ShoppingBag },
-  { value: "entertainment", label: "Entertainment", icon: Utensils },
-  { value: "personal_care", label: "Personal Care", icon: User },
-  { value: "health_insurance", label: "Health Insurance", icon: Heart },
-  { value: "education", label: "Education Expenses", icon: GraduationCap },
-  { value: "family_support", label: "Family Support", icon: Users },
-  { value: "motor_insurance", label: "Motor Insurance", icon: Car },
-  { value: "life_insurance", label: "Life Insurance", icon: Heart },
-  { value: "emi", label: "EMI Expense", icon: CreditCard }
+const EXPENSE_CATEGORIES = [
+  { value: "rent_maintenance", label: "Rent/Maintenance", icon: Home, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "conveyance", label: "Conveyance", icon: Car, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "healthcare", label: "Healthcare", icon: Heart, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "utilities", label: "Utilities", icon: Zap, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "communication", label: "Communication", icon: Phone, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "clothing", label: "Clothing", icon: ShoppingBag, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "shopping", label: "Shopping", icon: ShoppingBag, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "entertainment", label: "Entertainment", icon: Utensils, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "personal_care", label: "Personal Care", icon: User, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "health_insurance", label: "Health Ins.", icon: Heart, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "education", label: "Education", icon: GraduationCap, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "family_support", label: "Family Support", icon: Users, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "motor_insurance", label: "Motor Ins.", icon: Car, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "life_insurance", label: "Life Ins.", icon: Heart, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]},
+  { value: "emi", label: "EMI", icon: CreditCard, fields: [
+    { key: "annual_amount", label: "Annual Amt", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "upto_year", label: "Upto Year", type: "number" }
+  ]}
 ];
 
 export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh }) {
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editItem, setEditItem] = useState(null);
-  const [loading, setLoading] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    expense_type: "rent_maintenance",
-    annual_amount: "",
-    upto_year: new Date().getFullYear() + 30,
-    inflation_percent: 6,
-    percent_of_current: 100
-  });
-  const [selectedMembers, setSelectedMembers] = useState([]);
-  const [postRetirement, setPostRetirement] = useState({ self: true, spouse: true });
+  const [savingCategory, setSavingCategory] = useState(null);
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [hiddenCategories, setHiddenCategories] = useState([]);
+  const [expenseItems, setExpenseItems] = useState({});
 
-  const members = family.members || [];
-  const expenseDetails = family.expense_details || [];
+  const members = family?.members || [];
+  const existingExpenses = family?.expense_details || [];
 
-  const resetForm = () => {
-    setFormData({
-      expense_type: "rent_maintenance",
-      annual_amount: "",
-      upto_year: new Date().getFullYear() + 30,
-      inflation_percent: 6,
-      percent_of_current: 100
-    });
-    setSelectedMembers([]);
-    setPostRetirement({ self: true, spouse: true });
-    setEditItem(null);
-  };
+  useEffect(() => {
+    const itemsByCategory = {};
+    EXPENSE_CATEGORIES.forEach(cat => { itemsByCategory[cat.value] = []; });
 
-  const handleSubmit = async () => {
-    if (selectedMembers.length === 0) {
-      toast.error("Please select at least one member");
-      return;
-    }
-    if (!formData.annual_amount) {
-      toast.error("Annual amount is required");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const payload = {
-        family_id: family.id,
-        member_ids: selectedMembers,
-        expense_type: formData.expense_type,
-        annual_amount: parseFloat(formData.annual_amount),
-        upto_year: parseInt(formData.upto_year),
-        inflation_percent: parseFloat(formData.inflation_percent),
-        consider_post_retirement: postRetirement,
-        percent_of_current: parseFloat(formData.percent_of_current)
-      };
-
-      if (editItem) {
-        await axios.put(
-          `${API}/data-gathering/family/${family.id}/expense/${editItem.id}`,
-          payload,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success("Expense updated");
-      } else {
-        await axios.post(
-          `${API}/data-gathering/family/${family.id}/expense`,
-          payload,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success("Expense added");
+    existingExpenses.forEach(exp => {
+      const category = exp.expense_type;
+      if (itemsByCategory[category]) {
+        itemsByCategory[category].push({
+          id: exp.id,
+          memberId: exp.member_ids?.[0] || "",
+          details: { annual_amount: exp.annual_amount, inflation_percent: exp.inflation_percent, upto_year: exp.upto_year },
+          isNew: false,
+          isModified: false
+        });
       }
-      
-      setShowAddDialog(false);
-      resetForm();
-      onRefresh();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to save expense");
-    } finally {
-      setLoading(false);
-    }
+    });
+
+    setExpenseItems(itemsByCategory);
+    const expanded = {};
+    EXPENSE_CATEGORIES.forEach(cat => {
+      if (itemsByCategory[cat.value]?.length > 0) expanded[cat.value] = true;
+    });
+    setExpandedCategories(expanded);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [family?.id, existingExpenses.length]);
+
+  const toggleCategory = (category) => setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+  const hideCategory = (category) => { setHiddenCategories(prev => [...prev, category]); setExpandedCategories(prev => ({ ...prev, [category]: false })); };
+  const showCategory = (category) => setHiddenCategories(prev => prev.filter(c => c !== category));
+
+  const addExpenseItem = (category) => {
+    const currentYear = new Date().getFullYear();
+    setExpenseItems(prev => ({
+      ...prev,
+      [category]: [...(prev[category] || []), {
+        id: `new_${Date.now()}`,
+        memberId: members[0]?.id || "",
+        details: { annual_amount: "", inflation_percent: 6, upto_year: currentYear + 30 },
+        isNew: true,
+        isModified: false
+      }]
+    }));
+    setExpandedCategories(prev => ({ ...prev, [category]: true }));
   };
 
-  const handleDelete = async (itemId) => {
-    if (!window.confirm("Delete this expense?")) return;
-    
+  const removeExpenseItem = async (category, itemId, isNew) => {
+    if (!isNew) {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.delete(`${API}/data-gathering/family/${family.id}/expense/${itemId}`, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success("Deleted");
+        onRefresh();
+      } catch { toast.error("Failed to delete"); return; }
+    }
+    setExpenseItems(prev => ({ ...prev, [category]: prev[category].filter(item => item.id !== itemId) }));
+  };
+
+  const updateExpenseItem = (category, itemId, field, value) => {
+    setExpenseItems(prev => ({
+      ...prev,
+      [category]: prev[category].map(item => {
+        if (item.id === itemId) {
+          if (field === "memberId") return { ...item, memberId: value, isModified: !item.isNew };
+          return { ...item, details: { ...item.details, [field]: value }, isModified: !item.isNew };
+        }
+        return item;
+      })
+    }));
+  };
+
+  const saveCategory = async (category) => {
+    const items = expenseItems[category] || [];
+    const itemsToSave = items.filter(item => item.isNew || item.isModified);
+    if (itemsToSave.length === 0) { toast.info("No changes"); return; }
+
+    for (const item of itemsToSave) {
+      if (!item.memberId) { toast.error("Select a member"); return; }
+      if (!item.details.annual_amount) { toast.error("Enter amount"); return; }
+    }
+
+    setSavingCategory(category);
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(
-        `${API}/data-gathering/family/${family.id}/expense/${itemId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success("Expense deleted");
+      for (const item of itemsToSave) {
+        const payload = {
+          family_id: family.id, member_ids: [item.memberId], expense_type: category,
+          annual_amount: parseFloat(item.details.annual_amount),
+          inflation_percent: parseFloat(item.details.inflation_percent) || 6,
+          upto_year: parseInt(item.details.upto_year) || new Date().getFullYear() + 30
+        };
+        if (item.isNew) {
+          await axios.post(`${API}/data-gathering/family/${family.id}/expense`, payload, { headers: { Authorization: `Bearer ${token}` } });
+        } else {
+          await axios.put(`${API}/data-gathering/family/${family.id}/expense/${item.id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+        }
+      }
+      toast.success("Saved");
       onRefresh();
-    } catch (error) {
-      toast.error("Failed to delete");
-    }
+    } catch (error) { toast.error(error.response?.data?.detail || "Failed"); }
+    finally { setSavingCategory(null); }
   };
 
-  const openEditDialog = (item) => {
-    setFormData({
-      expense_type: item.expense_type,
-      annual_amount: item.annual_amount,
-      upto_year: item.upto_year,
-      inflation_percent: item.inflation_percent,
-      percent_of_current: item.percent_of_current || 100
-    });
-    setSelectedMembers(item.member_ids || []);
-    setPostRetirement(item.consider_post_retirement || { self: true, spouse: true });
-    setEditItem(item);
-    setShowAddDialog(true);
-  };
+  const getCategoryItemCount = (category) => expenseItems[category]?.length || 0;
+  const totalAnnual = Object.values(expenseItems).flat().reduce((sum, e) => sum + (parseFloat(e.details?.annual_amount) || 0), 0);
 
-  const toggleMember = (memberId) => {
-    setSelectedMembers(prev => 
-      prev.includes(memberId) 
-        ? prev.filter(id => id !== memberId)
-        : [...prev, memberId]
+  if (members.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <User className="h-10 w-10 text-orange-500 mb-3" />
+        <h3 className="text-base font-medium text-gray-700 mb-1">No Family Members</h3>
+        <p className="text-gray-500 text-sm">Add members in Introduction tab first.</p>
+      </div>
     );
-  };
+  }
 
-  const getMemberNames = (memberIds) => {
-    return memberIds
-      ?.map(id => members.find(m => m.id === id)?.name)
-      .filter(Boolean)
-      .join(", ") || "Unknown";
-  };
-
-  const getExpenseInfo = (type) => EXPENSE_TYPES.find(e => e.value === type) || { label: type, icon: Receipt };
-
-  const formatAmount = (amount) => {
-    if (!amount) return "-";
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
-  };
-
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 60 }, (_, i) => currentYear + i);
-
-  // Calculate total annual expenses
-  const totalAnnualExpenses = expenseDetails.reduce((sum, e) => sum + (e.annual_amount || 0), 0);
+  const visibleCategories = EXPENSE_CATEGORIES.filter(c => !hiddenCategories.includes(c.value));
+  const hiddenCategoryList = EXPENSE_CATEGORIES.filter(c => hiddenCategories.includes(c.value));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Summary */}
-      <Card className="bg-orange-50 border-orange-200">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-orange-600">Total Annual Expenses</p>
-              <p className="text-2xl font-bold text-orange-700">{formatAmount(totalAnnualExpenses)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-orange-600">Monthly Average</p>
-              <p className="text-lg font-semibold text-orange-700">{formatAmount(totalAnnualExpenses / 12)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {totalAnnual > 0 && (
+        <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mb-2">
+          <span className="text-xs text-orange-600">Total Annual Expenses</span>
+          <span className="font-semibold text-orange-700">₹{totalAnnual.toLocaleString('en-IN')}</span>
+        </div>
+      )}
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-orange-600" />
-              Expense Details ({expenseDetails.length})
-            </CardTitle>
-            {!isReadOnly && (
-              <Dialog open={showAddDialog} onOpenChange={(open) => {
-                setShowAddDialog(open);
-                if (!open) resetForm();
-              }}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Expense
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>{editItem ? "Edit Expense" : "Add Expense"}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    {/* Expense Type */}
-                    <div>
-                      <Label>Expense Type</Label>
-                      <Select 
-                        value={formData.expense_type} 
-                        onValueChange={(v) => setFormData({ ...formData, expense_type: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {EXPENSE_TYPES.map(type => (
-                            <SelectItem key={type.value} value={type.value}>
-                              <div className="flex items-center gap-2">
-                                <type.icon className="h-4 w-4" />
-                                {type.label}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+      <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
+        <span>Click "Skip" to hide expenses you don't need</span>
+        <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
+      </div>
+
+      <div className="space-y-1.5">
+        {visibleCategories.map(category => {
+          const Icon = category.icon;
+          const itemCount = getCategoryItemCount(category.value);
+          const isExpanded = expandedCategories[category.value];
+          const items = expenseItems[category.value] || [];
+          const hasUnsavedChanges = items.some(item => item.isNew || item.isModified);
+          
+          return (
+            <Card key={category.value} className={`overflow-hidden ${itemCount > 0 ? 'border-orange-200 bg-orange-50/30' : ''}`}>
+              <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category.value)}>
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="py-2 px-3 cursor-pointer hover:bg-gray-50/80">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                        <Icon className={`h-4 w-4 ${itemCount > 0 ? 'text-orange-600' : 'text-gray-400'}`} />
+                        <span className="text-sm font-medium">{category.label}</span>
+                        {itemCount > 0 && <Badge className="bg-orange-100 text-orange-700 text-xs h-5 px-1.5">{itemCount}</Badge>}
+                        {hasUnsavedChanges && <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs h-5 px-1.5">•</Badge>}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); hideCategory(category.value); }} disabled={isReadOnly || itemCount > 0} className="h-7 px-2 text-xs text-gray-400 hover:text-gray-600">
+                          <EyeOff className="h-3 w-3 mr-1" />Skip
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); addExpenseItem(category.value); }} disabled={isReadOnly} className="h-7 px-2 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50">
+                          <Plus className="h-3 w-3 mr-1" />Add
+                        </Button>
+                      </div>
                     </div>
-
-                    {/* Member Selection */}
-                    <div>
-                      <Label>Select Members</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        {members.map(member => (
-                          <div 
-                            key={member.id}
-                            className={`flex items-center gap-2 p-2 border rounded cursor-pointer ${
-                              selectedMembers.includes(member.id) ? 'border-orange-500 bg-orange-50' : ''
-                            }`}
-                            onClick={() => toggleMember(member.id)}
-                          >
-                            <Checkbox 
-                              checked={selectedMembers.includes(member.id)}
-                              onCheckedChange={() => toggleMember(member.id)}
-                            />
-                            <span className="text-sm">{member.name}</span>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent>
+                  <CardContent className="pt-0 pb-2 px-3">
+                    {items.length === 0 ? (
+                      <div className="text-center py-3 text-gray-400 text-xs border-t">No entries. Click "Add" to create one.</div>
+                    ) : (
+                      <div className="space-y-2 border-t pt-2">
+                        {items.map((item) => (
+                          <div key={item.id} className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                            <div className="flex items-end gap-2 flex-wrap">
+                              <div className="w-32">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
+                                <Select value={item.memberId || ""} onValueChange={(v) => updateExpenseItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectContent>
+                                    {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              {category.fields.map(field => (
+                                <div key={field.key} className="flex-1 min-w-[80px]">
+                                  <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
+                                  <Input type={field.type} value={item.details[field.key] || ""} onChange={(e) => updateExpenseItem(category.value, item.id, field.key, e.target.value)} placeholder="0" className="h-8 text-xs" disabled={isReadOnly} />
+                                </div>
+                              ))}
+                              <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </div>
                         ))}
+                        <div className="flex justify-end pt-1">
+                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly || !hasUnsavedChanges} className="bg-orange-600 hover:bg-orange-700 text-white h-7 px-3 text-xs" size="sm">
+                            <Save className="h-3 w-3 mr-1" />{savingCategory === category.value ? "..." : "Save"}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+          );
+        })}
+      </div>
 
-                    {/* Annual Amount */}
-                    <div>
-                      <Label>Annual Amount</Label>
-                      <Input
-                        type="number"
-                        value={formData.annual_amount}
-                        onChange={(e) => setFormData({ ...formData, annual_amount: e.target.value })}
-                        placeholder="Enter annual amount"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Upto Year */}
-                      <div>
-                        <Label>Upto Year</Label>
-                        <Select 
-                          value={String(formData.upto_year)} 
-                          onValueChange={(v) => setFormData({ ...formData, upto_year: parseInt(v) })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {yearOptions.map(year => (
-                              <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Inflation */}
-                      <div>
-                        <Label>Inflation (%)</Label>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          value={formData.inflation_percent}
-                          onChange={(e) => setFormData({ ...formData, inflation_percent: e.target.value })}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Post Retirement */}
-                    <div className="border rounded-lg p-3 space-y-3">
-                      <Label className="text-sm font-medium">Consider Post Retirement</Label>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Self</span>
-                        <Switch 
-                          checked={postRetirement.self}
-                          onCheckedChange={(v) => setPostRetirement({ ...postRetirement, self: v })}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Spouse</span>
-                        <Switch 
-                          checked={postRetirement.spouse}
-                          onCheckedChange={(v) => setPostRetirement({ ...postRetirement, spouse: v })}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">% of Current Expense</Label>
-                        <Input
-                          type="number"
-                          value={formData.percent_of_current}
-                          onChange={(e) => setFormData({ ...formData, percent_of_current: e.target.value })}
-                          placeholder="100"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-4 border-t">
-                      <Button variant="outline" onClick={() => {
-                        setShowAddDialog(false);
-                        resetForm();
-                      }}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSubmit} disabled={loading}>
-                        {loading ? "Saving..." : (
-                          <>
-                            <Save className="h-4 w-4 mr-2" />
-                            {editItem ? "Update" : "Add"}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
+      {hiddenCategoryList.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-dashed">
+          <div className="text-xs text-gray-400 mb-2 px-1">Skipped Expenses (click to restore)</div>
+          <div className="flex flex-wrap gap-1.5">
+            {hiddenCategoryList.map(category => {
+              const Icon = category.icon;
+              return (
+                <button key={category.value} onClick={() => showCategory(category.value)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-dashed border-gray-300 text-xs text-gray-500 hover:border-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-colors">
+                  <Eye className="h-3 w-3" /><Icon className="h-3 w-3" />{category.label}
+                </button>
+              );
+            })}
           </div>
-        </CardHeader>
-        <CardContent>
-          {expenseDetails.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Receipt className="h-10 w-10 mx-auto text-gray-300 mb-3" />
-              <p>No expenses added yet</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {expenseDetails.map((expense) => {
-                const expInfo = getExpenseInfo(expense.expense_type);
-                return (
-                  <div 
-                    key={expense.id} 
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                        <expInfo.icon className="h-5 w-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">{expInfo.label}</h4>
-                        <p className="text-xs text-gray-500">
-                          {getMemberNames(expense.member_ids)} • Upto {expense.upto_year}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <span className="font-semibold text-orange-600">{formatAmount(expense.annual_amount)}</span>
-                        <p className="text-xs text-gray-500">/year @ {expense.inflation_percent}%</p>
-                      </div>
-                      {!isReadOnly && (
-                        <>
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(expense)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-red-600"
-                            onClick={() => handleDelete(expense.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   );
 }

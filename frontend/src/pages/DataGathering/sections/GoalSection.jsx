@@ -1,377 +1,315 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Edit, Trash2, Target, Save, GraduationCap, Heart, Home, Car, Gift, Baby, Gem, Laptop, Plane, Rocket } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { 
+  Save, Plus, Trash2, ChevronDown, ChevronRight, User, EyeOff, Eye,
+  Target, GraduationCap, Heart, Home, Car, Gift, Baby, Gem, Laptop, Plane, Rocket
+} from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const GOAL_CATEGORIES = [
-  { value: "charity", label: "Charity", icon: Heart },
-  { value: "child_birth", label: "Child Birth Expense", icon: Baby },
-  { value: "education", label: "Education", icon: GraduationCap },
-  { value: "family_gifting", label: "Family Gifting", icon: Gift },
-  { value: "gadgets", label: "Gadgets", icon: Laptop },
-  { value: "home_renovation", label: "Home Renovation", icon: Home },
-  { value: "jewellery", label: "Jewellery", icon: Gem },
-  { value: "marriage", label: "Marriage", icon: Heart },
-  { value: "new_car", label: "New Car", icon: Car },
-  { value: "new_home", label: "New Home", icon: Home },
-  { value: "post_graduation", label: "Post Graduation", icon: GraduationCap },
-  { value: "startup", label: "Startup", icon: Rocket },
-  { value: "vacation", label: "Vacation", icon: Plane }
+  { value: "charity", label: "Charity", icon: Heart, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "child_birth", label: "Child Birth", icon: Baby, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "education", label: "Education", icon: GraduationCap, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "family_gifting", label: "Family Gifting", icon: Gift, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "gadgets", label: "Gadgets", icon: Laptop, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "home_renovation", label: "Renovation", icon: Home, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "jewellery", label: "Jewellery", icon: Gem, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "marriage", label: "Marriage", icon: Heart, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "new_car", label: "New Car", icon: Car, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "new_home", label: "New Home", icon: Home, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "post_graduation", label: "Post Grad", icon: GraduationCap, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "startup", label: "Startup", icon: Rocket, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]},
+  { value: "vacation", label: "Vacation", icon: Plane, fields: [
+    { key: "goal_amount", label: "Amount", type: "number" },
+    { key: "inflation_percent", label: "Inflation %", type: "number" },
+    { key: "goal_year", label: "Target Year", type: "number" }
+  ]}
 ];
 
 export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh }) {
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editItem, setEditItem] = useState(null);
-  const [loading, setLoading] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    category: "education",
-    goal_amount: "",
-    inflation_percent: 6,
-    goal_year: new Date().getFullYear() + 5
-  });
-  const [selectedMembers, setSelectedMembers] = useState([]);
+  const [savingCategory, setSavingCategory] = useState(null);
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [hiddenCategories, setHiddenCategories] = useState([]);
+  const [goalItems, setGoalItems] = useState({});
 
-  const members = family.members || [];
-  const goalDetails = family.goal_details || [];
+  const members = family?.members || [];
+  const existingGoals = family?.goal_details || [];
 
-  const resetForm = () => {
-    setFormData({
-      category: "education",
-      goal_amount: "",
-      inflation_percent: 6,
-      goal_year: new Date().getFullYear() + 5
-    });
-    setSelectedMembers([]);
-    setEditItem(null);
-  };
+  useEffect(() => {
+    const itemsByCategory = {};
+    GOAL_CATEGORIES.forEach(cat => { itemsByCategory[cat.value] = []; });
 
-  const handleSubmit = async () => {
-    if (selectedMembers.length === 0) {
-      toast.error("Please select at least one member");
-      return;
-    }
-    if (!formData.goal_amount) {
-      toast.error("Goal amount is required");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const payload = {
-        family_id: family.id,
-        member_ids: selectedMembers,
-        category: formData.category,
-        goal_amount: parseFloat(formData.goal_amount),
-        inflation_percent: parseFloat(formData.inflation_percent),
-        goal_year: parseInt(formData.goal_year)
-      };
-
-      if (editItem) {
-        await axios.put(
-          `${API}/data-gathering/family/${family.id}/goal/${editItem.id}`,
-          payload,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success("Goal updated");
-      } else {
-        await axios.post(
-          `${API}/data-gathering/family/${family.id}/goal`,
-          payload,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success("Goal added");
+    existingGoals.forEach(goal => {
+      const category = goal.category;
+      if (itemsByCategory[category]) {
+        itemsByCategory[category].push({
+          id: goal.id,
+          memberId: goal.member_ids?.[0] || "",
+          details: { goal_amount: goal.goal_amount, inflation_percent: goal.inflation_percent, goal_year: goal.goal_year },
+          isNew: false,
+          isModified: false
+        });
       }
-      
-      setShowAddDialog(false);
-      resetForm();
-      onRefresh();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to save goal");
-    } finally {
-      setLoading(false);
-    }
+    });
+
+    setGoalItems(itemsByCategory);
+    const expanded = {};
+    GOAL_CATEGORIES.forEach(cat => {
+      if (itemsByCategory[cat.value]?.length > 0) expanded[cat.value] = true;
+    });
+    setExpandedCategories(expanded);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [family?.id, existingGoals.length]);
+
+  const toggleCategory = (category) => setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+  const hideCategory = (category) => { setHiddenCategories(prev => [...prev, category]); setExpandedCategories(prev => ({ ...prev, [category]: false })); };
+  const showCategory = (category) => setHiddenCategories(prev => prev.filter(c => c !== category));
+
+  const addGoalItem = (category) => {
+    const currentYear = new Date().getFullYear();
+    setGoalItems(prev => ({
+      ...prev,
+      [category]: [...(prev[category] || []), {
+        id: `new_${Date.now()}`,
+        memberId: members[0]?.id || "",
+        details: { goal_amount: "", inflation_percent: 6, goal_year: currentYear + 5 },
+        isNew: true,
+        isModified: false
+      }]
+    }));
+    setExpandedCategories(prev => ({ ...prev, [category]: true }));
   };
 
-  const handleDelete = async (itemId) => {
-    if (!window.confirm("Delete this goal?")) return;
-    
+  const removeGoalItem = async (category, itemId, isNew) => {
+    if (!isNew) {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.delete(`${API}/data-gathering/family/${family.id}/goal/${itemId}`, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success("Deleted");
+        onRefresh();
+      } catch { toast.error("Failed to delete"); return; }
+    }
+    setGoalItems(prev => ({ ...prev, [category]: prev[category].filter(item => item.id !== itemId) }));
+  };
+
+  const updateGoalItem = (category, itemId, field, value) => {
+    setGoalItems(prev => ({
+      ...prev,
+      [category]: prev[category].map(item => {
+        if (item.id === itemId) {
+          if (field === "memberId") return { ...item, memberId: value, isModified: !item.isNew };
+          return { ...item, details: { ...item.details, [field]: value }, isModified: !item.isNew };
+        }
+        return item;
+      })
+    }));
+  };
+
+  const saveCategory = async (category) => {
+    const items = goalItems[category] || [];
+    const itemsToSave = items.filter(item => item.isNew || item.isModified);
+    if (itemsToSave.length === 0) { toast.info("No changes"); return; }
+
+    for (const item of itemsToSave) {
+      if (!item.memberId) { toast.error("Select a member"); return; }
+      if (!item.details.goal_amount) { toast.error("Enter goal amount"); return; }
+    }
+
+    setSavingCategory(category);
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(
-        `${API}/data-gathering/family/${family.id}/goal/${itemId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success("Goal deleted");
+      for (const item of itemsToSave) {
+        const payload = {
+          family_id: family.id, member_ids: [item.memberId], category,
+          goal_amount: parseFloat(item.details.goal_amount),
+          inflation_percent: parseFloat(item.details.inflation_percent) || 6,
+          goal_year: parseInt(item.details.goal_year) || new Date().getFullYear() + 5
+        };
+        if (item.isNew) {
+          await axios.post(`${API}/data-gathering/family/${family.id}/goal`, payload, { headers: { Authorization: `Bearer ${token}` } });
+        } else {
+          await axios.put(`${API}/data-gathering/family/${family.id}/goal/${item.id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+        }
+      }
+      toast.success("Saved");
       onRefresh();
-    } catch (error) {
-      toast.error("Failed to delete");
-    }
+    } catch (error) { toast.error(error.response?.data?.detail || "Failed"); }
+    finally { setSavingCategory(null); }
   };
 
-  const openEditDialog = (item) => {
-    setFormData({
-      category: item.category,
-      goal_amount: item.goal_amount,
-      inflation_percent: item.inflation_percent,
-      goal_year: item.goal_year
-    });
-    setSelectedMembers(item.member_ids || []);
-    setEditItem(item);
-    setShowAddDialog(true);
-  };
+  const getCategoryItemCount = (category) => goalItems[category]?.length || 0;
 
-  const toggleMember = (memberId) => {
-    setSelectedMembers(prev => 
-      prev.includes(memberId) 
-        ? prev.filter(id => id !== memberId)
-        : [...prev, memberId]
+  if (members.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <User className="h-10 w-10 text-purple-500 mb-3" />
+        <h3 className="text-base font-medium text-gray-700 mb-1">No Family Members</h3>
+        <p className="text-gray-500 text-sm">Add members in Introduction tab first.</p>
+      </div>
     );
-  };
+  }
 
-  const getMemberNames = (memberIds) => {
-    return memberIds
-      ?.map(id => members.find(m => m.id === id)?.name)
-      .filter(Boolean)
-      .join(", ") || "Unknown";
-  };
-
-  const getCategoryInfo = (cat) => GOAL_CATEGORIES.find(c => c.value === cat) || { label: cat, icon: Target };
-
-  const formatAmount = (amount) => {
-    if (!amount) return "-";
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
-  };
-
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 50 }, (_, i) => currentYear + i);
+  const visibleCategories = GOAL_CATEGORIES.filter(c => !hiddenCategories.includes(c.value));
+  const hiddenCategoryList = GOAL_CATEGORIES.filter(c => hiddenCategories.includes(c.value));
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Target className="h-5 w-5 text-purple-600" />
-              Financial Goals ({goalDetails.length})
-            </CardTitle>
-            {!isReadOnly && (
-              <Dialog open={showAddDialog} onOpenChange={(open) => {
-                setShowAddDialog(open);
-                if (!open) resetForm();
-              }}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Goal
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>{editItem ? "Edit Goal" : "Add Financial Goal"}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    {/* Goal Category */}
-                    <div>
-                      <Label>Goal Category</Label>
-                      <Select 
-                        value={formData.category} 
-                        onValueChange={(v) => setFormData({ ...formData, category: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {GOAL_CATEGORIES.map(cat => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              <div className="flex items-center gap-2">
-                                <cat.icon className="h-4 w-4" />
-                                {cat.label}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
+        <span>Click "Skip" to hide goals you don't need</span>
+        <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
+      </div>
 
-                    {/* Member Selection */}
-                    <div>
-                      <Label>Select Members (For whom is this goal)</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        {members.map(member => (
-                          <div 
-                            key={member.id}
-                            className={`flex items-center gap-2 p-2 border rounded cursor-pointer ${
-                              selectedMembers.includes(member.id) ? 'border-purple-500 bg-purple-50' : ''
-                            }`}
-                            onClick={() => toggleMember(member.id)}
-                          >
-                            <Checkbox 
-                              checked={selectedMembers.includes(member.id)}
-                              onCheckedChange={() => toggleMember(member.id)}
-                            />
-                            <span className="text-sm">{member.name}</span>
+      <div className="space-y-1.5">
+        {visibleCategories.map(category => {
+          const Icon = category.icon;
+          const itemCount = getCategoryItemCount(category.value);
+          const isExpanded = expandedCategories[category.value];
+          const items = goalItems[category.value] || [];
+          const hasUnsavedChanges = items.some(item => item.isNew || item.isModified);
+          
+          return (
+            <Card key={category.value} className={`overflow-hidden ${itemCount > 0 ? 'border-purple-200 bg-purple-50/30' : ''}`}>
+              <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category.value)}>
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="py-2 px-3 cursor-pointer hover:bg-gray-50/80">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                        <Icon className={`h-4 w-4 ${itemCount > 0 ? 'text-purple-600' : 'text-gray-400'}`} />
+                        <span className="text-sm font-medium">{category.label}</span>
+                        {itemCount > 0 && <Badge className="bg-purple-100 text-purple-700 text-xs h-5 px-1.5">{itemCount}</Badge>}
+                        {hasUnsavedChanges && <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs h-5 px-1.5">•</Badge>}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); hideCategory(category.value); }} disabled={isReadOnly || itemCount > 0} className="h-7 px-2 text-xs text-gray-400 hover:text-gray-600">
+                          <EyeOff className="h-3 w-3 mr-1" />Skip
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); addGoalItem(category.value); }} disabled={isReadOnly} className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50">
+                          <Plus className="h-3 w-3 mr-1" />Add
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent>
+                  <CardContent className="pt-0 pb-2 px-3">
+                    {items.length === 0 ? (
+                      <div className="text-center py-3 text-gray-400 text-xs border-t">No entries. Click "Add" to create one.</div>
+                    ) : (
+                      <div className="space-y-2 border-t pt-2">
+                        {items.map((item) => (
+                          <div key={item.id} className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                            <div className="flex items-end gap-2 flex-wrap">
+                              <div className="w-32">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
+                                <Select value={item.memberId || ""} onValueChange={(v) => updateGoalItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectContent>
+                                    {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              {category.fields.map(field => (
+                                <div key={field.key} className="flex-1 min-w-[80px]">
+                                  <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
+                                  <Input type={field.type} value={item.details[field.key] || ""} onChange={(e) => updateGoalItem(category.value, item.id, field.key, e.target.value)} placeholder="0" className="h-8 text-xs" disabled={isReadOnly} />
+                                </div>
+                              ))}
+                              <Button variant="ghost" size="icon" onClick={() => removeGoalItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </div>
                         ))}
-                      </div>
-                    </div>
-
-                    {/* Goal Amount */}
-                    <div>
-                      <Label>Goal Amount (Today&apos;s Value)</Label>
-                      <Input
-                        type="number"
-                        value={formData.goal_amount}
-                        onChange={(e) => setFormData({ ...formData, goal_amount: e.target.value })}
-                        placeholder="Enter amount"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Inflation */}
-                      <div>
-                        <Label>Inflation Rate (%)</Label>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          value={formData.inflation_percent}
-                          onChange={(e) => setFormData({ ...formData, inflation_percent: e.target.value })}
-                        />
-                      </div>
-
-                      {/* Goal Year */}
-                      <div>
-                        <Label>Goal Year</Label>
-                        <Select 
-                          value={String(formData.goal_year)} 
-                          onValueChange={(v) => setFormData({ ...formData, goal_year: parseInt(v) })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {yearOptions.map(year => (
-                              <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Future Value Calculation */}
-                    {formData.goal_amount && formData.goal_year && (
-                      <div className="bg-purple-50 p-3 rounded-lg">
-                        <p className="text-sm text-gray-600">Future Value (approx.):</p>
-                        <p className="text-lg font-semibold text-purple-700">
-                          {formatAmount(
-                            formData.goal_amount * Math.pow(1 + (formData.inflation_percent / 100), formData.goal_year - currentYear)
-                          )}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          In {formData.goal_year - currentYear} years at {formData.inflation_percent}% inflation
-                        </p>
+                        <div className="flex justify-end pt-1">
+                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly || !hasUnsavedChanges} className="bg-purple-600 hover:bg-purple-700 text-white h-7 px-3 text-xs" size="sm">
+                            <Save className="h-3 w-3 mr-1" />{savingCategory === category.value ? "..." : "Save"}
+                          </Button>
+                        </div>
                       </div>
                     )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+          );
+        })}
+      </div>
 
-                    <div className="flex justify-end gap-2 pt-4 border-t">
-                      <Button variant="outline" onClick={() => {
-                        setShowAddDialog(false);
-                        resetForm();
-                      }}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSubmit} disabled={loading}>
-                        {loading ? "Saving..." : (
-                          <>
-                            <Save className="h-4 w-4 mr-2" />
-                            {editItem ? "Update" : "Add"}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
+      {hiddenCategoryList.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-dashed">
+          <div className="text-xs text-gray-400 mb-2 px-1">Skipped Goals (click to restore)</div>
+          <div className="flex flex-wrap gap-1.5">
+            {hiddenCategoryList.map(category => {
+              const Icon = category.icon;
+              return (
+                <button key={category.value} onClick={() => showCategory(category.value)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-dashed border-gray-300 text-xs text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50 transition-colors">
+                  <Eye className="h-3 w-3" /><Icon className="h-3 w-3" />{category.label}
+                </button>
+              );
+            })}
           </div>
-        </CardHeader>
-        <CardContent>
-          {goalDetails.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Target className="h-10 w-10 mx-auto text-gray-300 mb-3" />
-              <p>No financial goals added yet</p>
-            </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {goalDetails.map((goal) => {
-                const catInfo = getCategoryInfo(goal.category);
-                const yearsAway = goal.goal_year - currentYear;
-                const futureValue = goal.goal_amount * Math.pow(1 + (goal.inflation_percent / 100), yearsAway);
-                
-                return (
-                  <Card key={goal.id} className="border">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mt-1">
-                            <catInfo.icon className="h-5 w-5 text-purple-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium">{catInfo.label}</h4>
-                            <p className="text-xs text-gray-500">{getMemberNames(goal.member_ids)}</p>
-                            <div className="mt-2 space-y-1">
-                              <p className="text-sm">
-                                <span className="text-gray-500">Today:</span>{" "}
-                                <span className="font-medium">{formatAmount(goal.goal_amount)}</span>
-                              </p>
-                              <p className="text-sm">
-                                <span className="text-gray-500">Future ({goal.goal_year}):</span>{" "}
-                                <span className="font-medium text-purple-600">{formatAmount(futureValue)}</span>
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <Badge variant="outline">
-                            {yearsAway > 0 ? `${yearsAway} yrs` : 'This year'}
-                          </Badge>
-                          {!isReadOnly && (
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => openEditDialog(goal)}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-red-600"
-                                onClick={() => handleDelete(goal.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   );
 }
