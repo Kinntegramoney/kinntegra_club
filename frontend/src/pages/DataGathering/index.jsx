@@ -337,13 +337,13 @@ export default function DataGathering() {
 
   const renderIntroductionTab = () => (
     <div className="space-y-6">
-      {/* Associate & Family Name */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Sub Broker & Family Name Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
-          <Label className="text-sm text-gray-600 mb-2 block">Associate</Label>
-          <Select value={selectedAssociate} onValueChange={setSelectedAssociate}>
+          <Label className="text-sm text-gray-600 mb-2 block">Sub Broker</Label>
+          <Select value={selectedSubBroker} onValueChange={setSelectedSubBroker}>
             <SelectTrigger>
-              <SelectValue placeholder="Select Associate" />
+              <SelectValue placeholder="Select Sub Broker" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">None - Direct Client</SelectItem>
@@ -359,6 +359,19 @@ export default function DataGathering() {
           <Label className="text-sm text-gray-600 mb-2 block">Family Name</Label>
           <Input value={familyName} readOnly className="bg-gray-50" placeholder="Auto-generated" />
         </div>
+        <div>
+          <Label className="text-sm text-gray-600 mb-2 block">Next Step</Label>
+          <Select value={proceedOption} onValueChange={setProceedOption}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select next step" />
+            </SelectTrigger>
+            <SelectContent>
+              {PROCEED_OPTIONS.map(opt => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Family Members Table */}
@@ -373,21 +386,24 @@ export default function DataGathering() {
 
         <div className="border rounded-lg overflow-hidden">
           {/* Table Header */}
-          <div className="hidden md:grid md:grid-cols-6 gap-3 px-4 py-3 bg-gray-50 text-xs font-medium text-gray-500 border-b">
+          <div className="hidden lg:grid lg:grid-cols-9 gap-2 px-4 py-3 bg-gray-50 text-xs font-medium text-gray-500 border-b">
             <span>Name</span>
             <span>DOB</span>
             <span>Relation</span>
-            <span>Life Expectancy</span>
+            <span>Life Exp.</span>
+            <span>Tax Regime</span>
+            <span>Tax Status</span>
             <span>Tax Slab</span>
+            <span className="text-center">Primary</span>
             <span className="text-center">Action</span>
           </div>
 
           {/* Table Body */}
           <div className="divide-y">
             {members.map((member) => (
-              <div key={member.id} className="grid grid-cols-1 md:grid-cols-6 gap-3 px-4 py-3 items-center">
+              <div key={member.id} className="grid grid-cols-1 lg:grid-cols-9 gap-2 px-4 py-3 items-center">
                 <div>
-                  <Label className="md:hidden text-xs text-gray-500 mb-1">Name</Label>
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Name</Label>
                   <Input
                     value={member.name}
                     onChange={(e) => updateMember(member.id, 'name', e.target.value)}
@@ -396,7 +412,7 @@ export default function DataGathering() {
                   />
                 </div>
                 <div>
-                  <Label className="md:hidden text-xs text-gray-500 mb-1">DOB</Label>
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1">DOB</Label>
                   <Input
                     type="date"
                     value={member.dob}
@@ -405,7 +421,7 @@ export default function DataGathering() {
                   />
                 </div>
                 <div>
-                  <Label className="md:hidden text-xs text-gray-500 mb-1">Relation</Label>
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Relation</Label>
                   {member.isPrimary ? (
                     <Input value="Self" readOnly className="h-9 bg-gray-50" />
                   ) : (
@@ -422,7 +438,7 @@ export default function DataGathering() {
                   )}
                 </div>
                 <div>
-                  <Label className="md:hidden text-xs text-gray-500 mb-1">Life Expectancy</Label>
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Life Expectancy</Label>
                   <Select value={String(member.life_expectancy)} onValueChange={(v) => updateMember(member.id, 'life_expectancy', v)}>
                     <SelectTrigger className="h-9">
                       <SelectValue />
@@ -435,7 +451,33 @@ export default function DataGathering() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="md:hidden text-xs text-gray-500 mb-1">Tax Slab</Label>
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Regime</Label>
+                  <Select value={member.tax_regime || "New Regime"} onValueChange={(v) => updateMember(member.id, 'tax_regime', v)}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TAX_REGIME_OPTIONS.map(opt => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Status</Label>
+                  <Select value={member.tax_status || "Resident"} onValueChange={(v) => updateMember(member.id, 'tax_status', v)}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TAX_STATUS_OPTIONS.map(opt => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Slab</Label>
                   <Select value={member.tax_slab} onValueChange={(v) => updateMember(member.id, 'tax_slab', v)}>
                     <SelectTrigger className="h-9">
                       <SelectValue />
@@ -448,12 +490,20 @@ export default function DataGathering() {
                   </Select>
                 </div>
                 <div className="flex justify-center">
-                  {!member.isPrimary ? (
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1 mr-2">Primary</Label>
+                  <input
+                    type="radio"
+                    name="primaryMember"
+                    checked={member.isPrimary}
+                    onChange={() => setPrimaryMember(member.id)}
+                    className="h-4 w-4 text-etihad-gold-600 cursor-pointer"
+                  />
+                </div>
+                <div className="flex justify-center">
+                  {!member.isPrimary && (
                     <Button variant="ghost" size="icon" onClick={() => removeMember(member.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8">
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                  ) : (
-                    <Badge variant="secondary" className="text-xs">Primary</Badge>
                   )}
                 </div>
               </div>
