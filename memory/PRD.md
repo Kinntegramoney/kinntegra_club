@@ -1,5 +1,53 @@
 # Kinntegraa - Product Requirements Document
 
+## Recent Changes (Feb 5, 2026)
+
+### Prepayment Entries on Reinvestment Tagging Page (Feb 5, 2026) ✅
+
+**Problem:** Prepayment entries stored in `actual_repayments` collection were not appearing on the "Reinv Tag" (Reinvestment Tagging) page. This prevented brokers from tagging prepayment funds for reinvestment.
+
+**Solution:**
+1. **Backend Fix** - Modified `/api/reinvestment/upcoming` endpoint (server.py):
+   - Added query to fetch prepayment entries from `actual_repayments` collection
+   - Prepayment entries are included in the API response with:
+     - `cashflow_id` prefixed with `prepay_` for identification
+     - `is_prepayment_entry: true` flag
+     - Principal only (Interest = ₹0 for prepayments)
+   
+2. **Tagging Support** - Updated `PUT /api/reinvestment/tag/{cashflow_id}` endpoint:
+   - Detects prepayment entries by `prepay_` prefix
+   - Updates `actual_repayments` collection instead of `holding_cashflows`
+   - Auto-approves past-dated prepayment tags
+
+**Files Modified:**
+- `/app/backend/server.py` - Lines 12462-12688 (fetch prepayments), Lines 12775-12833 (tag prepayments)
+
+**Testing:** ✅ Verified 3 prepayment entries (Natureresidences Real Estate) now appear on Reinv Tag page with correct amounts.
+
+---
+
+### Automated Auto-Tagging After Email Processing (Feb 5, 2026) ✅
+
+**Problem:** The user asked why manual "Auto Tag" button clicks are needed when emails are already being read automatically. The workflow should be fully automated.
+
+**Solution:**
+- Enhanced `scheduled_email_processing_job()` function to automatically:
+  1. Process emails from inbox (existing functionality)
+  2. Immediately run auto-tagging logic on pending email logs (NEW)
+  3. Create `actual_repayments` records automatically
+  4. Log both email processing and auto-tagging results
+
+**Workflow Now:**
+- Daily scheduler runs at 12:00 PM IST
+- Step 1: Read and parse repayment emails
+- Step 2: AUTO-TAG prepayments using units division method
+- No manual intervention required
+
+**Files Modified:**
+- `/app/backend/server.py` - `scheduled_email_processing_job()` and new `_auto_tag_pending_emails()` helper
+
+---
+
 ## Recent Changes (Feb 4, 2026)
 
 ### Auto-Tag Logic Rewrite - Units Division Method (Feb 4, 2026) ✅
