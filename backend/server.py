@@ -12469,6 +12469,13 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
     # 2. All tagged cashflows (for the Tagged section)
     cashflows = await db.holding_cashflows.find({}, {"_id": 0}).to_list(10000)
     
+    # ALSO get actual_repayments (prepayments) that need reinvestment tagging
+    # These are prepayments from auto_tag that should appear on the Reinv Tag page
+    prepayment_repayments = await db.actual_repayments.find(
+        {"is_prepayment": True},  # All prepayments need reinvestment tagging
+        {"_id": 0}
+    ).to_list(10000)
+    
     # Filter by date and group by month
     # Include ALL untagged cashflows (past and future) plus tagged cashflows within 6 months
     # Auto-tag bonds before 30 April 2025 as "none"
