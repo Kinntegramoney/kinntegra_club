@@ -25888,7 +25888,7 @@ async def add_family_member(family_id: str, member: FamilyMemberCreate, current_
 
 @api_router.put("/data-gathering/family/{family_id}/member/{member_id}")
 async def update_family_member(family_id: str, member_id: str, member: FamilyMemberCreate, current_user: dict = Depends(get_current_user)):
-    """Update an existing family member"""
+    """Update an existing family member. If primary member's name changes, family_name is auto-updated."""
     
     if current_user['role'] not in ['broker', 'sub_broker']:
         raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can update members")
@@ -25903,9 +25903,17 @@ async def update_family_member(family_id: str, member_id: str, member: FamilyMem
     
     # Find and update the member
     updated = False
+    is_primary_name_changed = False
+    new_primary_name = None
     members = family.get('members', [])
+    
     for i, m in enumerate(members):
         if m['id'] == member_id:
+            # Check if this is the primary member and name is changing
+            if m.get('is_primary') and m.get('name') != member.name:
+                is_primary_name_changed = True
+                new_primary_name = member.name
+            
             members[i].update({
                 "name": member.name,
                 "date_of_birth": member.date_of_birth,
@@ -25919,17 +25927,24 @@ async def update_family_member(family_id: str, member_id: str, member: FamilyMem
     if not updated:
         raise HTTPException(status_code=404, detail="Member not found")
     
+    # Prepare update data
+    update_data = {
+        "members": members,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # If primary member's name changed, also update the family_name
+    if is_primary_name_changed and new_primary_name:
+        update_data["family_name"] = f"{new_primary_name} & Family"
+    
     await db.data_gathering_families.update_one(
         {"id": family_id},
-        {
-            "$set": {
-                "members": members,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-        }
+        {"$set": update_data}
     )
     
-    return {"message": "Member updated successfully"}
+    # Return updated family data
+    updated_family = await db.data_gathering_families.find_one({"id": family_id}, {"_id": 0})
+    return {"message": "Member updated successfully", "family": updated_family}
 
 
 @api_router.delete("/data-gathering/family/{family_id}/member/{member_id}")
