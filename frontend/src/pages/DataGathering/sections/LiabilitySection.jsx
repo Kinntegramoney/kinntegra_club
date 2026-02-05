@@ -17,42 +17,16 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const LIABILITY_CATEGORIES = [
-  { value: "home_loan", label: "Home Loan", icon: Home, fields: [
-    { key: "amount_today", label: "Outstanding", type: "number" },
-    { key: "inflation_percent", label: "Interest %", type: "number" },
-    { key: "goal_year", label: "End Year", type: "number" }
-  ]},
-  { value: "vehicle_loan", label: "Vehicle Loan", icon: Car, fields: [
-    { key: "amount_today", label: "Outstanding", type: "number" },
-    { key: "inflation_percent", label: "Interest %", type: "number" },
-    { key: "goal_year", label: "End Year", type: "number" }
-  ]},
-  { value: "personal_loan", label: "Personal Loan", icon: User, fields: [
-    { key: "amount_today", label: "Outstanding", type: "number" },
-    { key: "inflation_percent", label: "Interest %", type: "number" },
-    { key: "goal_year", label: "End Year", type: "number" }
-  ]},
-  { value: "consumer_durable", label: "Consumer Durable", icon: ShoppingCart, fields: [
-    { key: "amount_today", label: "Outstanding", type: "number" },
-    { key: "inflation_percent", label: "Interest %", type: "number" },
-    { key: "goal_year", label: "End Year", type: "number" }
-  ]},
-  { value: "education_loan", label: "Education Loan", icon: GraduationCap, fields: [
-    { key: "amount_today", label: "Outstanding", type: "number" },
-    { key: "inflation_percent", label: "Interest %", type: "number" },
-    { key: "goal_year", label: "End Year", type: "number" }
-  ]},
-  { value: "credit_card", label: "Credit Card", icon: CreditCard, fields: [
-    { key: "amount_today", label: "Outstanding", type: "number" },
-    { key: "inflation_percent", label: "Interest %", type: "number" },
-    { key: "goal_year", label: "End Year", type: "number" }
-  ]},
-  { value: "other", label: "Other Loan", icon: Wallet, fields: [
-    { key: "amount_today", label: "Outstanding", type: "number" },
-    { key: "inflation_percent", label: "Interest %", type: "number" },
-    { key: "goal_year", label: "End Year", type: "number" }
-  ]}
+  { value: "home_loan", label: "Home Loan", icon: Home },
+  { value: "vehicle_loan", label: "Vehicle Loan", icon: Car },
+  { value: "personal_loan", label: "Personal Loan", icon: User },
+  { value: "consumer_durable", label: "Consumer Durable", icon: ShoppingCart },
+  { value: "education_loan", label: "Education Loan", icon: GraduationCap },
+  { value: "credit_card", label: "Credit Card", icon: CreditCard },
+  { value: "other", label: "Other Loan", icon: Wallet }
 ];
+
+const YEAR_OPTIONS = Array.from({ length: 61 }, (_, i) => (2020 + i).toString());
 
 export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefresh }) {
   const [savingCategory, setSavingCategory] = useState(null);
@@ -73,7 +47,11 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
         itemsByCategory[category].push({
           id: lia.id,
           memberId: lia.member_ids?.[0] || "",
-          details: { amount_today: lia.amount_today, inflation_percent: lia.inflation_percent, goal_year: lia.goal_year },
+          details: { 
+            amount_today: lia.amount_today, 
+            inflation_percent: lia.inflation_percent, 
+            goal_year: lia.goal_year 
+          },
           isNew: false,
           isModified: false
         });
@@ -100,7 +78,7 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
       [category]: [...(prev[category] || []), {
         id: `new_${Date.now()}`,
         memberId: members[0]?.id || "",
-        details: { amount_today: "", inflation_percent: 0, goal_year: currentYear + 15 },
+        details: { amount_today: "", inflation_percent: 0, goal_year: (currentYear + 15).toString() },
         isNew: true,
         isModified: false
       }]
@@ -140,7 +118,7 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
 
     for (const item of itemsToSave) {
       if (!item.memberId) { toast.error("Select a member"); return; }
-      if (!item.details.amount_today) { toast.error("Enter outstanding amount"); return; }
+      if (!item.details.amount_today) { toast.error("Enter amount today"); return; }
     }
 
     setSavingCategory(category);
@@ -148,10 +126,12 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
       const token = localStorage.getItem("token");
       for (const item of itemsToSave) {
         const payload = {
-          family_id: family.id, member_ids: [item.memberId], category,
+          family_id: family.id, 
+          member_ids: [item.memberId], 
+          category,
           amount_today: parseFloat(item.details.amount_today),
           inflation_percent: parseFloat(item.details.inflation_percent) || 0,
-          goal_year: parseInt(item.details.goal_year) || new Date().getFullYear() + 15
+          goal_year: parseInt(item.details.goal_year)
         };
         if (item.isNew) {
           await axios.post(`${API}/data-gathering/family/${family.id}/liability`, payload, { headers: { Authorization: `Bearer ${token}` } });
@@ -183,7 +163,6 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
 
   return (
     <div className="space-y-2">
-      {/* Summary */}
       {totalLiabilities > 0 && (
         <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2">
           <span className="text-xs text-red-600">Total Outstanding Liabilities</span>
@@ -192,7 +171,7 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
-        <span>Click "Skip" to hide liabilities you don't have</span>
+        <span>Enter details for categories</span>
         <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
       </div>
 
@@ -234,28 +213,56 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
                     {items.length === 0 ? (
                       <div className="text-center py-3 text-gray-400 text-xs border-t">No entries. Click "Add" to create one.</div>
                     ) : (
-                      <div className="space-y-2 border-t pt-2">
+                      <div className="space-y-3 border-t pt-2">
                         {items.map((item) => (
-                          <div key={item.id} className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            <div className="flex items-end gap-2 flex-wrap">
-                              <div className="w-32">
-                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
+                          <div key={item.id} className={`p-3 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-dashed">
+                              <div className="flex items-center gap-2">
+                                <Label className="text-[10px] text-gray-400">Member:</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateLiabilityItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>
                                     {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
                               </div>
-                              {category.fields.map(field => (
-                                <div key={field.key} className="flex-1 min-w-[80px]">
-                                  <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
-                                  <Input type={field.type} value={item.details[field.key] || ""} onChange={(e) => updateLiabilityItem(category.value, item.id, field.key, e.target.value)} placeholder="0" className="h-8 text-xs" disabled={isReadOnly} />
-                                </div>
-                              ))}
-                              <Button variant="ghost" size="icon" onClick={() => removeLiabilityItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
+                              <Button variant="ghost" size="icon" onClick={() => removeLiabilityItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Amount Today</Label>
+                                <Input
+                                  type="number"
+                                  value={item.details.amount_today || ""}
+                                  onChange={(e) => updateLiabilityItem(category.value, item.id, "amount_today", e.target.value)}
+                                  placeholder="0"
+                                  className="h-8 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Inflation Percent</Label>
+                                <Input
+                                  type="number"
+                                  value={item.details.inflation_percent || ""}
+                                  onChange={(e) => updateLiabilityItem(category.value, item.id, "inflation_percent", e.target.value)}
+                                  placeholder="0"
+                                  className="h-8 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Goal Year</Label>
+                                <Select value={item.details.goal_year?.toString() || ""} onValueChange={(v) => updateLiabilityItem(category.value, item.id, "goal_year", v)} disabled={isReadOnly}>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectContent>
+                                    {YEAR_OPTIONS.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -276,7 +283,7 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
 
       {hiddenCategoryList.length > 0 && (
         <div className="mt-4 pt-3 border-t border-dashed">
-          <div className="text-xs text-gray-400 mb-2 px-1">Skipped Liabilities (click to restore)</div>
+          <div className="text-xs text-gray-400 mb-2 px-1">Skipped (click to restore)</div>
           <div className="flex flex-wrap gap-1.5">
             {hiddenCategoryList.map(category => {
               const Icon = category.icon;

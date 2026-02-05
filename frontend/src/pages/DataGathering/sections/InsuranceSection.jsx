@@ -17,27 +17,13 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const INSURANCE_CATEGORIES = [
-  { value: "motor", label: "Motor Insurance", icon: Car, fields: [
-    { key: "amount_today", label: "Annual Premium", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "life", label: "Life Insurance", icon: Heart, fields: [
-    { key: "amount_today", label: "Annual Premium", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "health", label: "Health Insurance", icon: Stethoscope, fields: [
-    { key: "amount_today", label: "Annual Premium", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "term", label: "Term Insurance", icon: FileCheck, fields: [
-    { key: "amount_today", label: "Annual Premium", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "goal_year", label: "Upto Year", type: "number" }
-  ]}
+  { value: "motor", label: "Motor Insurance", icon: Car },
+  { value: "life", label: "Life Insurance", icon: Heart },
+  { value: "health", label: "Health Insurance / Mediclaim", icon: Stethoscope },
+  { value: "term", label: "Term Insurance", icon: FileCheck }
 ];
+
+const YEAR_OPTIONS = Array.from({ length: 61 }, (_, i) => (2020 + i).toString());
 
 export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefresh }) {
   const [savingCategory, setSavingCategory] = useState(null);
@@ -58,7 +44,11 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
         itemsByCategory[category].push({
           id: ins.id,
           memberId: ins.member_ids?.[0] || "",
-          details: { amount_today: ins.amount_today, inflation_percent: ins.inflation_percent, goal_year: ins.goal_year },
+          details: { 
+            amount_today: ins.amount_today, 
+            inflation_percent: ins.inflation_percent, 
+            goal_year: ins.goal_year 
+          },
           isNew: false,
           isModified: false
         });
@@ -85,7 +75,7 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
       [category]: [...(prev[category] || []), {
         id: `new_${Date.now()}`,
         memberId: members[0]?.id || "",
-        details: { amount_today: "", inflation_percent: 5, goal_year: currentYear + 20 },
+        details: { amount_today: "", inflation_percent: 5, goal_year: (currentYear + 20).toString() },
         isNew: true,
         isModified: false
       }]
@@ -125,7 +115,7 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
 
     for (const item of itemsToSave) {
       if (!item.memberId) { toast.error("Select a member"); return; }
-      if (!item.details.amount_today) { toast.error("Enter premium amount"); return; }
+      if (!item.details.amount_today) { toast.error("Enter amount today"); return; }
     }
 
     setSavingCategory(category);
@@ -133,10 +123,12 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
       const token = localStorage.getItem("token");
       for (const item of itemsToSave) {
         const payload = {
-          family_id: family.id, member_ids: [item.memberId], category,
+          family_id: family.id, 
+          member_ids: [item.memberId], 
+          category,
           amount_today: parseFloat(item.details.amount_today),
           inflation_percent: parseFloat(item.details.inflation_percent) || 5,
-          goal_year: parseInt(item.details.goal_year) || new Date().getFullYear() + 20
+          goal_year: parseInt(item.details.goal_year)
         };
         if (item.isNew) {
           await axios.post(`${API}/data-gathering/family/${family.id}/insurance`, payload, { headers: { Authorization: `Bearer ${token}` } });
@@ -156,7 +148,7 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
   if (members.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <User className="h-10 w-10 text-blue-500 mb-3" />
+        <User className="h-10 w-10 text-teal-500 mb-3" />
         <h3 className="text-base font-medium text-gray-700 mb-1">No Family Members</h3>
         <p className="text-gray-500 text-sm">Add members in Introduction tab first.</p>
       </div>
@@ -168,16 +160,15 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
 
   return (
     <div className="space-y-2">
-      {/* Summary */}
       {totalPremiums > 0 && (
-        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-2">
-          <span className="text-xs text-blue-600">Total Annual Premiums</span>
-          <span className="font-semibold text-blue-700">₹{totalPremiums.toLocaleString('en-IN')}</span>
+        <div className="flex items-center justify-between bg-teal-50 border border-teal-200 rounded-lg px-3 py-2 mb-2">
+          <span className="text-xs text-teal-600">Total Annual Premiums</span>
+          <span className="font-semibold text-teal-700">₹{totalPremiums.toLocaleString('en-IN')}</span>
         </div>
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
-        <span>Click "Skip" to hide insurance types you don't have</span>
+        <span>Enter details for categories</span>
         <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
       </div>
 
@@ -190,23 +181,23 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
           const hasUnsavedChanges = items.some(item => item.isNew || item.isModified);
           
           return (
-            <Card key={category.value} className={`overflow-hidden ${itemCount > 0 ? 'border-blue-200 bg-blue-50/30' : ''}`}>
+            <Card key={category.value} className={`overflow-hidden ${itemCount > 0 ? 'border-teal-200 bg-teal-50/30' : ''}`}>
               <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category.value)}>
                 <CollapsibleTrigger asChild>
                   <CardHeader className="py-2 px-3 cursor-pointer hover:bg-gray-50/80">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
-                        <Icon className={`h-4 w-4 ${itemCount > 0 ? 'text-blue-600' : 'text-gray-400'}`} />
+                        <Icon className={`h-4 w-4 ${itemCount > 0 ? 'text-teal-600' : 'text-gray-400'}`} />
                         <span className="text-sm font-medium">{category.label}</span>
-                        {itemCount > 0 && <Badge className="bg-blue-100 text-blue-700 text-xs h-5 px-1.5">{itemCount}</Badge>}
+                        {itemCount > 0 && <Badge className="bg-teal-100 text-teal-700 text-xs h-5 px-1.5">{itemCount}</Badge>}
                         {hasUnsavedChanges && <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs h-5 px-1.5">•</Badge>}
                       </div>
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); hideCategory(category.value); }} disabled={isReadOnly || itemCount > 0} className="h-7 px-2 text-xs text-gray-400 hover:text-gray-600">
                           <EyeOff className="h-3 w-3 mr-1" />Skip
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); addInsuranceItem(category.value); }} disabled={isReadOnly} className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); addInsuranceItem(category.value); }} disabled={isReadOnly} className="h-7 px-2 text-xs text-teal-600 hover:text-teal-700 hover:bg-teal-50">
                           <Plus className="h-3 w-3 mr-1" />Add
                         </Button>
                       </div>
@@ -219,33 +210,61 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
                     {items.length === 0 ? (
                       <div className="text-center py-3 text-gray-400 text-xs border-t">No entries. Click "Add" to create one.</div>
                     ) : (
-                      <div className="space-y-2 border-t pt-2">
+                      <div className="space-y-3 border-t pt-2">
                         {items.map((item) => (
-                          <div key={item.id} className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            <div className="flex items-end gap-2 flex-wrap">
-                              <div className="w-32">
-                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
+                          <div key={item.id} className={`p-3 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-dashed">
+                              <div className="flex items-center gap-2">
+                                <Label className="text-[10px] text-gray-400">Member:</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateInsuranceItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>
                                     {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
                               </div>
-                              {category.fields.map(field => (
-                                <div key={field.key} className="flex-1 min-w-[80px]">
-                                  <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
-                                  <Input type={field.type} value={item.details[field.key] || ""} onChange={(e) => updateInsuranceItem(category.value, item.id, field.key, e.target.value)} placeholder="0" className="h-8 text-xs" disabled={isReadOnly} />
-                                </div>
-                              ))}
-                              <Button variant="ghost" size="icon" onClick={() => removeInsuranceItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
+                              <Button variant="ghost" size="icon" onClick={() => removeInsuranceItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Amount Today</Label>
+                                <Input
+                                  type="number"
+                                  value={item.details.amount_today || ""}
+                                  onChange={(e) => updateInsuranceItem(category.value, item.id, "amount_today", e.target.value)}
+                                  placeholder="0"
+                                  className="h-8 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Inflation Percent</Label>
+                                <Input
+                                  type="number"
+                                  value={item.details.inflation_percent || ""}
+                                  onChange={(e) => updateInsuranceItem(category.value, item.id, "inflation_percent", e.target.value)}
+                                  placeholder="5"
+                                  className="h-8 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Goal Year</Label>
+                                <Select value={item.details.goal_year?.toString() || ""} onValueChange={(v) => updateInsuranceItem(category.value, item.id, "goal_year", v)} disabled={isReadOnly}>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectContent>
+                                    {YEAR_OPTIONS.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
                           </div>
                         ))}
                         <div className="flex justify-end pt-1">
-                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly || !hasUnsavedChanges} className="bg-blue-600 hover:bg-blue-700 text-white h-7 px-3 text-xs" size="sm">
+                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly || !hasUnsavedChanges} className="bg-teal-600 hover:bg-teal-700 text-white h-7 px-3 text-xs" size="sm">
                             <Save className="h-3 w-3 mr-1" />{savingCategory === category.value ? "..." : "Save"}
                           </Button>
                         </div>
@@ -261,12 +280,12 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
 
       {hiddenCategoryList.length > 0 && (
         <div className="mt-4 pt-3 border-t border-dashed">
-          <div className="text-xs text-gray-400 mb-2 px-1">Skipped Insurance (click to restore)</div>
+          <div className="text-xs text-gray-400 mb-2 px-1">Skipped (click to restore)</div>
           <div className="flex flex-wrap gap-1.5">
             {hiddenCategoryList.map(category => {
               const Icon = category.icon;
               return (
-                <button key={category.value} onClick={() => showCategory(category.value)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-dashed border-gray-300 text-xs text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                <button key={category.value} onClick={() => showCategory(category.value)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-dashed border-gray-300 text-xs text-gray-500 hover:border-teal-400 hover:text-teal-600 hover:bg-teal-50 transition-colors">
                   <Eye className="h-3 w-3" /><Icon className="h-3 w-3" />{category.label}
                 </button>
               );
