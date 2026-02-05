@@ -485,10 +485,14 @@ export default function DataGathering() {
                   <Select 
                     value={member.tax_status} 
                     onValueChange={(v) => {
-                      updateMember(member.id, 'tax_status', v);
                       if (v === "Foreign Passport" || v === "NRI with Foreign Passport") {
-                        updateMember(member.id, 'tax_regime', 'NA');
-                        updateMember(member.id, 'tax_slab', '0%');
+                        updateMemberMultiple(member.id, { 
+                          tax_status: v, 
+                          tax_regime: 'NA', 
+                          tax_slab: '0%' 
+                        });
+                      } else {
+                        updateMember(member.id, 'tax_status', v);
                       }
                     }}
                   >
