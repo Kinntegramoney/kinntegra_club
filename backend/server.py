@@ -25581,6 +25581,1147 @@ async def _auto_tag_pending_emails():
         return {"success": False, "error": str(e), "auto": True}
 
 
+# =====================================================
+# DATA GATHERING APIs
+# =====================================================
+
+class FamilyMemberCreate(BaseModel):
+    name: str
+    date_of_birth: str
+    relation: str  # "Primary", "Spouse", "Child", "Parent", etc.
+    life_expectancy: int
+    tax_slab: str
+
+class FamilyCreate(BaseModel):
+    broker_id: str
+    sub_broker_id: Optional[str] = None
+    primary_holder: FamilyMemberCreate
+    members: Optional[List[FamilyMemberCreate]] = []
+
+class IncomeDetailCreate(BaseModel):
+    family_id: str
+    category: str  # salary, business, rental, etc.
+    member_ids: List[str]  # Individual or multiple members
+    details: dict  # Category-specific fields
+
+class GoalDetailCreate(BaseModel):
+    family_id: str
+    member_ids: List[str]
+    category: str
+    goal_amount: float
+    inflation_percent: float
+    goal_year: int
+
+class ExpenseDetailCreate(BaseModel):
+    family_id: str
+    member_ids: List[str]
+    expense_type: str
+    annual_amount: float
+    upto_year: int
+    inflation_percent: float
+    consider_post_retirement: dict  # {self: bool, spouse: bool}
+    percent_of_current: float
+
+class InsurancePremiumCreate(BaseModel):
+    family_id: str
+    member_ids: List[str]
+    category: str  # motor, life
+    inflation_percent: float
+    goal_year: int
+    amount_today: float
+
+class LiabilityCreate(BaseModel):
+    family_id: str
+    member_ids: List[str]
+    category: str  # home_loan, vehicle_loan, etc.
+    inflation_percent: float
+    goal_year: int
+    amount_today: float
+
+
+@api_router.get("/data-gathering/families")
+async def get_data_gathering_families(current_user: dict = Depends(get_current_user)):
+    """Get all families for data gathering based on user role"""
+    
+    query = {}
+    
+    if current_user['role'] == 'broker':
+        # Broker sees all families
+        pass
+    elif current_user['role'] == 'sub_broker':
+        # Sub-broker sees only their families
+        query["sub_broker_id"] = current_user['id']
+    elif current_user['role'] == 'client':
+        # Client sees only their own family
+        query["client_user_id"] = current_user['id']
+    else:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    families = await db.data_gathering_families.find(query, {"_id": 0}).to_list(1000)
+    return {"families": families}
+
+
+@api_router.get("/data-gathering/family/{family_id}")
+async def get_family_details(family_id: str, current_user: dict = Depends(get_current_user)):
+    """Get complete family details including all nested data"""
+    
+    family = await db.data_gathering_families.find_one({"id": family_id}, {"_id": 0})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    # Access control
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    elif current_user['role'] == 'client' and family.get('client_user_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return family
+
+
+@api_router.post("/data-gathering/family")
+async def create_family(request: FamilyCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new family for data gathering"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can create families")
+    
+    # Generate family name from primary holder
+    base_family_name = f"{request.primary_holder.name} & Family"
+    
+    # Check for existing family with same name and add suffix if needed
+    existing_count = await db.data_gathering_families.count_documents({
+        "family_name": {"$regex": f"^{base_family_name}"}
+    })
+    
+    family_name = base_family_name if existing_count == 0 else f"{base_family_name}{existing_count + 1}"
+    
+    # Create primary holder
+    primary_member_id = str(uuid.uuid4())
+    primary_member = {
+        "id": primary_member_id,
+        "name": request.primary_holder.name,
+        "date_of_birth": request.primary_holder.date_of_birth,
+        "relation": "Primary",
+        "life_expectancy": request.primary_holder.life_expectancy,
+        "tax_slab": request.primary_holder.tax_slab,
+        "is_primary": True
+    }
+    
+    # Create other members
+    other_members = []
+    for member in request.members:
+        other_members.append({
+            "id": str(uuid.uuid4()),
+            "name": member.name,
+            "date_of_birth": member.date_of_birth,
+            "relation": member.relation,
+            "life_expectancy": member.life_expectancy,
+            "tax_slab": member.tax_slab,
+            "is_primary": False
+        })
+    
+    family_id = str(uuid.uuid4())
+    
+    family_doc = {
+        "id": family_id,
+        "family_name": family_name,
+        "broker_id": request.broker_id,
+        "sub_broker_id": request.sub_broker_id or (current_user['id'] if current_user['role'] == 'sub_broker' else None),
+        "created_by": current_user['id'],
+        "created_by_role": current_user['role'],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        
+        # Family members (nested)
+        "members": [primary_member] + other_members,
+        "primary_holder_id": primary_member_id,
+        
+        # Data sections (nested - initially empty)
+        "income_details": [],
+        "goal_details": [],
+        "expense_details": [],
+        "insurance_premiums": [],
+        "liabilities": [],
+        
+        # Surplus calculations (computed)
+        "surplus": {
+            "savings": {},
+            "investments": {}
+        },
+        
+        # Status
+        "status": "draft",  # draft, in_progress, completed
+        "client_user_id": None  # Will be set when linked to a client user
+    }
+    
+    await db.data_gathering_families.insert_one(family_doc)
+    
+    # Remove _id before returning
+    family_doc.pop('_id', None)
+    
+    return {"message": "Family created successfully", "family": family_doc}
+
+
+@api_router.put("/data-gathering/family/{family_id}/member")
+async def add_family_member(family_id: str, member: FamilyMemberCreate, current_user: dict = Depends(get_current_user)):
+    """Add a new member to an existing family"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can add members")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    # Access control for sub-broker
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    new_member = {
+        "id": str(uuid.uuid4()),
+        "name": member.name,
+        "date_of_birth": member.date_of_birth,
+        "relation": member.relation,
+        "life_expectancy": member.life_expectancy,
+        "tax_slab": member.tax_slab,
+        "is_primary": False
+    }
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$push": {"members": new_member},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Member added successfully", "member": new_member}
+
+
+@api_router.put("/data-gathering/family/{family_id}/member/{member_id}")
+async def update_family_member(family_id: str, member_id: str, member: FamilyMemberCreate, current_user: dict = Depends(get_current_user)):
+    """Update an existing family member"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can update members")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    # Access control for sub-broker
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Find and update the member
+    updated = False
+    members = family.get('members', [])
+    for i, m in enumerate(members):
+        if m['id'] == member_id:
+            members[i].update({
+                "name": member.name,
+                "date_of_birth": member.date_of_birth,
+                "relation": member.relation if not m.get('is_primary') else "Primary",
+                "life_expectancy": member.life_expectancy,
+                "tax_slab": member.tax_slab
+            })
+            updated = True
+            break
+    
+    if not updated:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$set": {
+                "members": members,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Member updated successfully"}
+
+
+@api_router.delete("/data-gathering/family/{family_id}/member/{member_id}")
+async def delete_family_member(family_id: str, member_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a family member (cannot delete primary holder)"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can delete members")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    # Access control
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Cannot delete primary holder
+    if family.get('primary_holder_id') == member_id:
+        raise HTTPException(status_code=400, detail="Cannot delete primary holder")
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$pull": {"members": {"id": member_id}},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Member deleted successfully"}
+
+
+# =====================================================
+# INCOME DETAILS APIs
+# =====================================================
+
+@api_router.post("/data-gathering/family/{family_id}/income")
+async def add_income_detail(family_id: str, income: IncomeDetailCreate, current_user: dict = Depends(get_current_user)):
+    """Add an income detail entry to a family"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can add income details")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    # Access control
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    income_entry = {
+        "id": str(uuid.uuid4()),
+        "category": income.category,
+        "member_ids": income.member_ids,
+        "details": income.details,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user['id']
+    }
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$push": {"income_details": income_entry},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Income detail added", "income": income_entry}
+
+
+@api_router.put("/data-gathering/family/{family_id}/income/{income_id}")
+async def update_income_detail(family_id: str, income_id: str, income: IncomeDetailCreate, current_user: dict = Depends(get_current_user)):
+    """Update an income detail entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    income_details = family.get('income_details', [])
+    for i, inc in enumerate(income_details):
+        if inc['id'] == income_id:
+            income_details[i].update({
+                "category": income.category,
+                "member_ids": income.member_ids,
+                "details": income.details,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+            break
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$set": {
+                "income_details": income_details,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Income detail updated"}
+
+
+@api_router.delete("/data-gathering/family/{family_id}/income/{income_id}")
+async def delete_income_detail(family_id: str, income_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete an income detail entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$pull": {"income_details": {"id": income_id}},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Income detail deleted"}
+
+
+# =====================================================
+# GOAL DETAILS APIs
+# =====================================================
+
+@api_router.post("/data-gathering/family/{family_id}/goal")
+async def add_goal_detail(family_id: str, goal: GoalDetailCreate, current_user: dict = Depends(get_current_user)):
+    """Add a goal detail entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    goal_entry = {
+        "id": str(uuid.uuid4()),
+        "member_ids": goal.member_ids,
+        "category": goal.category,
+        "goal_amount": goal.goal_amount,
+        "inflation_percent": goal.inflation_percent,
+        "goal_year": goal.goal_year,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user['id']
+    }
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$push": {"goal_details": goal_entry},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Goal added", "goal": goal_entry}
+
+
+@api_router.put("/data-gathering/family/{family_id}/goal/{goal_id}")
+async def update_goal_detail(family_id: str, goal_id: str, goal: GoalDetailCreate, current_user: dict = Depends(get_current_user)):
+    """Update a goal detail entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    goal_details = family.get('goal_details', [])
+    for i, g in enumerate(goal_details):
+        if g['id'] == goal_id:
+            goal_details[i].update({
+                "member_ids": goal.member_ids,
+                "category": goal.category,
+                "goal_amount": goal.goal_amount,
+                "inflation_percent": goal.inflation_percent,
+                "goal_year": goal.goal_year,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+            break
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$set": {
+                "goal_details": goal_details,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Goal updated"}
+
+
+@api_router.delete("/data-gathering/family/{family_id}/goal/{goal_id}")
+async def delete_goal_detail(family_id: str, goal_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a goal detail entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$pull": {"goal_details": {"id": goal_id}},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Goal deleted"}
+
+
+# =====================================================
+# EXPENSE DETAILS APIs
+# =====================================================
+
+@api_router.post("/data-gathering/family/{family_id}/expense")
+async def add_expense_detail(family_id: str, expense: ExpenseDetailCreate, current_user: dict = Depends(get_current_user)):
+    """Add an expense detail entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    expense_entry = {
+        "id": str(uuid.uuid4()),
+        "member_ids": expense.member_ids,
+        "expense_type": expense.expense_type,
+        "annual_amount": expense.annual_amount,
+        "upto_year": expense.upto_year,
+        "inflation_percent": expense.inflation_percent,
+        "consider_post_retirement": expense.consider_post_retirement,
+        "percent_of_current": expense.percent_of_current,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user['id']
+    }
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$push": {"expense_details": expense_entry},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Expense added", "expense": expense_entry}
+
+
+@api_router.put("/data-gathering/family/{family_id}/expense/{expense_id}")
+async def update_expense_detail(family_id: str, expense_id: str, expense: ExpenseDetailCreate, current_user: dict = Depends(get_current_user)):
+    """Update an expense detail entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    expense_details = family.get('expense_details', [])
+    for i, e in enumerate(expense_details):
+        if e['id'] == expense_id:
+            expense_details[i].update({
+                "member_ids": expense.member_ids,
+                "expense_type": expense.expense_type,
+                "annual_amount": expense.annual_amount,
+                "upto_year": expense.upto_year,
+                "inflation_percent": expense.inflation_percent,
+                "consider_post_retirement": expense.consider_post_retirement,
+                "percent_of_current": expense.percent_of_current,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+            break
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$set": {
+                "expense_details": expense_details,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Expense updated"}
+
+
+@api_router.delete("/data-gathering/family/{family_id}/expense/{expense_id}")
+async def delete_expense_detail(family_id: str, expense_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete an expense detail entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$pull": {"expense_details": {"id": expense_id}},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Expense deleted"}
+
+
+# =====================================================
+# INSURANCE PREMIUM APIs
+# =====================================================
+
+@api_router.post("/data-gathering/family/{family_id}/insurance")
+async def add_insurance_premium(family_id: str, insurance: InsurancePremiumCreate, current_user: dict = Depends(get_current_user)):
+    """Add an insurance premium entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    insurance_entry = {
+        "id": str(uuid.uuid4()),
+        "member_ids": insurance.member_ids,
+        "category": insurance.category,
+        "inflation_percent": insurance.inflation_percent,
+        "goal_year": insurance.goal_year,
+        "amount_today": insurance.amount_today,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user['id']
+    }
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$push": {"insurance_premiums": insurance_entry},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Insurance premium added", "insurance": insurance_entry}
+
+
+@api_router.put("/data-gathering/family/{family_id}/insurance/{insurance_id}")
+async def update_insurance_premium(family_id: str, insurance_id: str, insurance: InsurancePremiumCreate, current_user: dict = Depends(get_current_user)):
+    """Update an insurance premium entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    insurance_premiums = family.get('insurance_premiums', [])
+    for i, ins in enumerate(insurance_premiums):
+        if ins['id'] == insurance_id:
+            insurance_premiums[i].update({
+                "member_ids": insurance.member_ids,
+                "category": insurance.category,
+                "inflation_percent": insurance.inflation_percent,
+                "goal_year": insurance.goal_year,
+                "amount_today": insurance.amount_today,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+            break
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$set": {
+                "insurance_premiums": insurance_premiums,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Insurance premium updated"}
+
+
+@api_router.delete("/data-gathering/family/{family_id}/insurance/{insurance_id}")
+async def delete_insurance_premium(family_id: str, insurance_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete an insurance premium entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$pull": {"insurance_premiums": {"id": insurance_id}},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Insurance premium deleted"}
+
+
+# =====================================================
+# LIABILITY APIs
+# =====================================================
+
+@api_router.post("/data-gathering/family/{family_id}/liability")
+async def add_liability(family_id: str, liability: LiabilityCreate, current_user: dict = Depends(get_current_user)):
+    """Add a liability entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    liability_entry = {
+        "id": str(uuid.uuid4()),
+        "member_ids": liability.member_ids,
+        "category": liability.category,
+        "inflation_percent": liability.inflation_percent,
+        "goal_year": liability.goal_year,
+        "amount_today": liability.amount_today,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user['id']
+    }
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$push": {"liabilities": liability_entry},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Liability added", "liability": liability_entry}
+
+
+@api_router.put("/data-gathering/family/{family_id}/liability/{liability_id}")
+async def update_liability(family_id: str, liability_id: str, liability: LiabilityCreate, current_user: dict = Depends(get_current_user)):
+    """Update a liability entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    liabilities = family.get('liabilities', [])
+    for i, l in enumerate(liabilities):
+        if l['id'] == liability_id:
+            liabilities[i].update({
+                "member_ids": liability.member_ids,
+                "category": liability.category,
+                "inflation_percent": liability.inflation_percent,
+                "goal_year": liability.goal_year,
+                "amount_today": liability.amount_today,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+            break
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$set": {
+                "liabilities": liabilities,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Liability updated"}
+
+
+@api_router.delete("/data-gathering/family/{family_id}/liability/{liability_id}")
+async def delete_liability(family_id: str, liability_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a liability entry"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$pull": {"liabilities": {"id": liability_id}},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Liability deleted"}
+
+
+# =====================================================
+# SURPLUS (CASH FLOW) APIs
+# =====================================================
+
+@api_router.get("/data-gathering/family/{family_id}/surplus")
+async def get_surplus_calculation(family_id: str, current_user: dict = Depends(get_current_user)):
+    """Calculate and return surplus (cash flow) summary"""
+    
+    family = await db.data_gathering_families.find_one({"id": family_id}, {"_id": 0})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    # Access control
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    elif current_user['role'] == 'client' and family.get('client_user_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    members = family.get('members', [])
+    income_details = family.get('income_details', [])
+    expense_details = family.get('expense_details', [])
+    insurance_premiums = family.get('insurance_premiums', [])
+    liabilities = family.get('liabilities', [])
+    
+    # Calculate member-wise totals
+    member_summary = {}
+    for member in members:
+        member_id = member['id']
+        member_summary[member_id] = {
+            "id": member_id,
+            "name": member['name'],
+            "total_income": 0,
+            "total_expense": 0,
+            "total_insurance": 0,
+            "total_liability": 0,
+            "savings": 0
+        }
+    
+    # Sum incomes
+    for income in income_details:
+        yearly_amount = 0
+        details = income.get('details', {})
+        
+        # Calculate yearly income based on category
+        if income['category'] == 'salary':
+            monthly = details.get('net_income_monthly', 0)
+            yearly_amount = monthly * 12
+        elif income['category'] in ['business', 'rental', 'pension']:
+            yearly_amount = details.get('annual_income', 0) or details.get('net_income_yearly', 0)
+        elif income['category'] in ['ppf', 'epf', 'gratuity', 'fd', 'bond', 'insurance', 'mutual_fund']:
+            yearly_amount = details.get('payment_amount_yearly', 0) or details.get('amount', 0)
+        elif income['category'] in ['cash', 'gold', 'shares_pms']:
+            yearly_amount = details.get('amount', 0) or details.get('market_value', 0)
+        else:
+            yearly_amount = details.get('amount', 0)
+        
+        # Distribute to members
+        member_ids = income.get('member_ids', [])
+        per_member = yearly_amount / len(member_ids) if member_ids else 0
+        
+        for mid in member_ids:
+            if mid in member_summary:
+                member_summary[mid]['total_income'] += per_member
+    
+    # Sum expenses
+    for expense in expense_details:
+        amount = expense.get('annual_amount', 0)
+        member_ids = expense.get('member_ids', [])
+        per_member = amount / len(member_ids) if member_ids else 0
+        
+        for mid in member_ids:
+            if mid in member_summary:
+                member_summary[mid]['total_expense'] += per_member
+    
+    # Sum insurance premiums
+    for ins in insurance_premiums:
+        amount = ins.get('amount_today', 0)
+        member_ids = ins.get('member_ids', [])
+        per_member = amount / len(member_ids) if member_ids else 0
+        
+        for mid in member_ids:
+            if mid in member_summary:
+                member_summary[mid]['total_insurance'] += per_member
+    
+    # Sum liabilities
+    for liab in liabilities:
+        amount = liab.get('amount_today', 0)
+        member_ids = liab.get('member_ids', [])
+        per_member = amount / len(member_ids) if member_ids else 0
+        
+        for mid in member_ids:
+            if mid in member_summary:
+                member_summary[mid]['total_liability'] += per_member
+    
+    # Calculate savings per member
+    total_income = 0
+    total_expense = 0
+    total_savings = 0
+    
+    for mid, summary in member_summary.items():
+        total_exp = summary['total_expense'] + summary['total_insurance'] + summary['total_liability']
+        summary['savings'] = summary['total_income'] - total_exp
+        
+        total_income += summary['total_income']
+        total_expense += total_exp
+        total_savings += summary['savings']
+    
+    return {
+        "family_id": family_id,
+        "family_name": family.get('family_name'),
+        "member_summary": list(member_summary.values()),
+        "totals": {
+            "total_income": total_income,
+            "total_expense": total_expense,
+            "total_savings": total_savings
+        }
+    }
+
+
+@api_router.put("/data-gathering/family/{family_id}/surplus")
+async def update_surplus_allocation(family_id: str, surplus_data: dict, current_user: dict = Depends(get_current_user)):
+    """Update surplus allocation (expense weightage and investment distribution)"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$set": {
+                "surplus": surplus_data,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Surplus allocation updated"}
+
+
+@api_router.delete("/data-gathering/family/{family_id}")
+async def delete_family(family_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a family and all its data"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.data_gathering_families.delete_one({"id": family_id})
+    
+    return {"message": "Family deleted successfully"}
+
+
+# =====================================================
+# LOOKUP DATA APIs (for dropdowns)
+# =====================================================
+
+@api_router.get("/data-gathering/lookup/life-expectancy")
+async def get_life_expectancy_options():
+    """Get predefined life expectancy options"""
+    return {
+        "options": [
+            {"value": 70, "label": "70 years"},
+            {"value": 75, "label": "75 years"},
+            {"value": 80, "label": "80 years"},
+            {"value": 85, "label": "85 years"},
+            {"value": 90, "label": "90 years"},
+            {"value": 95, "label": "95 years"},
+            {"value": 100, "label": "100 years"}
+        ]
+    }
+
+
+@api_router.get("/data-gathering/lookup/tax-slabs")
+async def get_tax_slab_options():
+    """Get predefined tax slab options"""
+    return {
+        "options": [
+            {"value": "0%", "label": "0% (No Tax)"},
+            {"value": "5%", "label": "5%"},
+            {"value": "10%", "label": "10%"},
+            {"value": "15%", "label": "15%"},
+            {"value": "20%", "label": "20%"},
+            {"value": "25%", "label": "25%"},
+            {"value": "30%", "label": "30%"},
+            {"value": "surcharge", "label": "30% + Surcharge"}
+        ]
+    }
+
+
+@api_router.get("/data-gathering/lookup/relations")
+async def get_relation_options():
+    """Get predefined relation options"""
+    return {
+        "options": [
+            {"value": "Primary", "label": "Primary Holder"},
+            {"value": "Spouse", "label": "Spouse"},
+            {"value": "Son", "label": "Son"},
+            {"value": "Daughter", "label": "Daughter"},
+            {"value": "Father", "label": "Father"},
+            {"value": "Mother", "label": "Mother"},
+            {"value": "Brother", "label": "Brother"},
+            {"value": "Sister", "label": "Sister"},
+            {"value": "Grandfather", "label": "Grandfather"},
+            {"value": "Grandmother", "label": "Grandmother"},
+            {"value": "Other", "label": "Other"}
+        ]
+    }
+
+
+@api_router.get("/data-gathering/lookup/income-categories")
+async def get_income_category_options():
+    """Get all income category options with their field definitions"""
+    return {
+        "categories": [
+            {"value": "salary", "label": "Salary Income", "fields": ["net_income_monthly", "increment_month", "avg_growth_rate", "retirement_age"]},
+            {"value": "business", "label": "Business Income", "fields": ["net_income_yearly", "avg_growth_rate", "retirement_age"]},
+            {"value": "rental", "label": "Rental Income", "fields": ["property_type", "purchase_value", "market_value", "rental_monthly", "start_date", "end_date", "rental_increment_percent"]},
+            {"value": "ppf", "label": "PPF", "fields": ["amount", "maturity_date"]},
+            {"value": "epf", "label": "EPF", "fields": ["amount", "maturity_date"]},
+            {"value": "gratuity", "label": "Gratuity", "fields": ["amount", "maturity_date"]},
+            {"value": "fd", "label": "Fixed Deposit", "fields": ["description", "principal_amount", "interest_rate", "start_date", "maturity_date", "payment_cycle"]},
+            {"value": "rd_pis", "label": "RD / PIS", "fields": ["monthly_contribution", "payable_cycle", "start_date", "end_date", "num_installments", "interest_rate", "maturity_amount", "maturity_date"]},
+            {"value": "pension", "label": "Pension Income", "fields": ["amount", "payable_cycle", "start_date", "end_date", "payable_to"]},
+            {"value": "bond", "label": "Bond", "fields": ["principal_amount", "interest_rate", "start_date", "maturity_date", "payment_cycle"]},
+            {"value": "insurance", "label": "Insurance", "fields": ["principal_amount", "interest_rate", "start_date", "maturity_date", "payment_cycle"]},
+            {"value": "mutual_fund", "label": "Mutual Fund", "fields": ["market_value", "sip_amount"]},
+            {"value": "cash", "label": "Cash in Hand", "fields": ["amount"]},
+            {"value": "gold", "label": "Gold", "fields": ["market_value"]},
+            {"value": "shares_pms", "label": "Shares / PMS", "fields": ["market_value"]},
+            {"value": "other", "label": "Other", "fields": ["description", "amount"]}
+        ]
+    }
+
+
+@api_router.get("/data-gathering/lookup/goal-categories")
+async def get_goal_category_options():
+    """Get all goal category options"""
+    return {
+        "categories": [
+            {"value": "charity", "label": "Charity"},
+            {"value": "child_birth", "label": "Child Birth Expense"},
+            {"value": "education", "label": "Education"},
+            {"value": "family_gifting", "label": "Family Gifting"},
+            {"value": "gadgets", "label": "Gadgets"},
+            {"value": "home_renovation", "label": "Home Renovation"},
+            {"value": "jewellery", "label": "Jewellery"},
+            {"value": "marriage", "label": "Marriage"},
+            {"value": "new_car", "label": "New Car"},
+            {"value": "new_home", "label": "New Home"},
+            {"value": "post_graduation", "label": "Post Graduation"},
+            {"value": "startup", "label": "Startup"},
+            {"value": "vacation", "label": "Vacation"}
+        ]
+    }
+
+
+@api_router.get("/data-gathering/lookup/expense-types")
+async def get_expense_type_options():
+    """Get all expense type options"""
+    return {
+        "types": [
+            {"value": "rent_maintenance", "label": "House Rent / Maintenance / Repair"},
+            {"value": "conveyance", "label": "Conveyance, Fuel and Maintenance"},
+            {"value": "healthcare", "label": "Medicines / Doctor / Healthcare"},
+            {"value": "utilities", "label": "Electricity / Water / Labour / AMC"},
+            {"value": "communication", "label": "Mobile / Telephone / Internet / Cable"},
+            {"value": "clothing", "label": "Clothes and Accessories"},
+            {"value": "shopping", "label": "Shopping, Gifts, Whitegoods, Gadgets"},
+            {"value": "entertainment", "label": "Dining / Movies / Sports"},
+            {"value": "personal_care", "label": "Personal Care / Others"},
+            {"value": "health_insurance", "label": "Mediclaim / PA / CI"},
+            {"value": "education", "label": "Children's Schooling / College Expenses"},
+            {"value": "family_support", "label": "Contribution to Parents / Siblings"},
+            {"value": "motor_insurance", "label": "Motor Insurance"},
+            {"value": "life_insurance", "label": "Life Insurance - Term Plan"},
+            {"value": "emi", "label": "EMI Expense"}
+        ]
+    }
+
+
+@api_router.get("/data-gathering/lookup/insurance-categories")
+async def get_insurance_category_options():
+    """Get insurance category options"""
+    return {
+        "categories": [
+            {"value": "motor", "label": "Motor Insurance"},
+            {"value": "life", "label": "Life Insurance"},
+            {"value": "health", "label": "Health Insurance"},
+            {"value": "term", "label": "Term Insurance"}
+        ]
+    }
+
+
+@api_router.get("/data-gathering/lookup/liability-categories")
+async def get_liability_category_options():
+    """Get liability category options"""
+    return {
+        "categories": [
+            {"value": "home_loan", "label": "Home Loan"},
+            {"value": "vehicle_loan", "label": "Vehicle Loan"},
+            {"value": "personal_loan", "label": "Personal Loan"},
+            {"value": "consumer_durable", "label": "Consumer Durable"},
+            {"value": "education_loan", "label": "Education Loan"},
+            {"value": "credit_card", "label": "Credit Card"},
+            {"value": "other", "label": "Other Loan"}
+        ]
+    }
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     global email_scheduler
