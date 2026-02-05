@@ -16,6 +16,14 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
+// Import section components
+import IncomeSection from "./sections/IncomeSection";
+import GoalSection from "./sections/GoalSection";
+import ExpenseSection from "./sections/ExpenseSection";
+import InsuranceSection from "./sections/InsuranceSection";
+import LiabilitySection from "./sections/LiabilitySection";
+import SurplusSection from "./sections/SurplusSection";
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
