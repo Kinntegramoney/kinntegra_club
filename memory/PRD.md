@@ -2,7 +2,48 @@
 
 ## Recent Changes (Feb 5, 2026)
 
-### Primary Member Edit with Auto-Update Family Name (Feb 5, 2026) ✅ NEW
+### Income Section Redesign (Feb 5, 2026) ✅ NEW
+
+**Feature:** Complete redesign of the Income Section in Data Gathering to support flexible data entry.
+
+**Requirements Addressed:**
+- User rejected per-member tabs approach
+- Needed ability to add multiple entries of same income category (e.g., two FDs for one person)
+- Each entry should be assignable to any family member
+
+**Implementation:**
+1. **Collapsible Categories:** 16 income categories shown as collapsible accordion sections
+2. **Add Button per Category:** Each category has an "Add" button to create multiple entries
+3. **Inline Fields:** Family Member dropdown is inline with other category-specific fields in one row
+4. **Delete Functionality:** Each entry has a delete button
+5. **Auto-save Indicators:** Shows "Unsaved" badge for modified entries
+
+**Categories:** Salary, Business, Rental, PPF, EPF, Gratuity, Fixed Deposit, RD/PIS, Pension, Bond, Insurance, Mutual Fund, Cash, Gold, Shares/PMS, Other
+
+**Files Modified:**
+- `/app/frontend/src/pages/DataGathering/sections/IncomeSection.jsx` - Complete rewrite
+
+**Testing:** ✅ 11/11 backend tests passed, UI verified
+
+---
+
+### Tax Status Conditional Logic (Feb 5, 2026) ✅ NEW
+
+**Feature:** When Tax Status is "Foreign Passport" or "NRI with Foreign Passport", Tax Regime and Tax Slab are automatically disabled and set to default values.
+
+**Implementation:**
+- Tax Regime auto-sets to "NA"
+- Tax Slab auto-sets to "0%"
+- Both fields are disabled in UI when these tax statuses are selected
+
+**Files Modified:**
+- `/app/frontend/src/pages/DataGathering/index.jsx` (lines 468-523)
+
+**Testing:** ✅ 3/3 backend tests passed
+
+---
+
+### Primary Member Edit with Auto-Update Family Name (Feb 5, 2026) ✅
 
 **Feature:** When editing the primary member of a family, if the name changes, the family_name field automatically updates to reflect the new name.
 
