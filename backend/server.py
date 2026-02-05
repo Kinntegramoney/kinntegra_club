@@ -12588,6 +12588,105 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         except (ValueError, TypeError):
             continue
     
+    # Process prepayments from actual_repayments collection
+    # These need to appear on the Reinv Tag page for reinvestment tagging
+    for prepay in prepayment_repayments:
+        try:
+            # Parse repayment date
+            rep_date_str = prepay.get('repayment_date', '')
+            if not rep_date_str:
+                continue
+            rep_date = datetime.fromisoformat(rep_date_str.split('T')[0]).date()
+            
+            # Get client details
+            client_id = prepay.get('client_id')
+            if not client_id:
+                continue
+            
+            client = await db.clients.find_one({"id": client_id}, {"_id": 0, "name": 1, "pan_number": 1, "email": 1, "ucc_list": 1, "ucc": 1, "linked_subbroker_id": 1})
+            
+            # Check access based on role
+            if current_user['role'] == 'broker':
+                if not client:
+                    continue
+            else:
+                # Sub-broker can only see their linked clients
+                if not client or client.get('linked_subbroker_id') != current_user['id']:
+                    continue
+            
+            # Get client's UCC list
+            client_ucc_list = client.get('ucc_list', []) if client else []
+            if not client_ucc_list and client and client.get('ucc'):
+                client_ucc_list = [client.get('ucc')]
+            
+            # Calculate net amount (use gross - tds if net not available)
+            gross = prepay.get('gross_amount', 0)
+            tds = prepay.get('tds', 0)
+            net = prepay.get('net_amount', gross - tds)
+            
+            # Create a unique ID for this prepayment entry (use prepay id with prefix)
+            prepay_cashflow_id = f"prepay_{prepay.get('id', '')}"
+            
+            # Check if this prepayment already has an entry in holding_cashflows (avoid duplicates)
+            existing_cf = await db.holding_cashflows.find_one({
+                "id": prepay_cashflow_id
+            })
+            if existing_cf:
+                continue  # Skip if already exists as a cashflow
+            
+            # Also check if there's a matching cashflow by date/amount
+            matching_cf = None
+            for cf in cashflows:
+                cf_date_str = cf.get('date', '').split('T')[0]
+                if cf_date_str == rep_date_str and cf.get('trade_id') == prepay.get('trade_id'):
+                    matching_cf = cf
+                    break
+            
+            if matching_cf:
+                continue  # Skip if already represented by a cashflow
+            
+            upcoming.append({
+                "cashflow_id": prepay_cashflow_id,
+                "client_id": client_id,
+                "client_name": prepay.get('client_name', client['name'] if client else 'Unknown'),
+                "client_pan": client.get('pan_number', '') if client else '',
+                "client_email": client.get('email', '') if client else '',
+                "client_ucc_list": client_ucc_list,
+                "bond_id": prepay.get('bond_id'),
+                "bond_name": prepay.get('bond_name', ''),
+                "bond_code": prepay.get('bond_code', ''),
+                "trade_id": prepay.get('trade_id'),
+                "amount_invested": 0,  # Not applicable for prepayments
+                "units": prepay.get('units', 0),
+                "expected_date": rep_date_str,
+                "principal_net": gross,  # Prepayment is principal return
+                "interest_net": 0,  # No interest in prepayment
+                "net_amount": net,
+                "reinvestment_tag": prepay.get('reinvestment_tag', 'not_tagged'),
+                "custom_amount": prepay.get('custom_amount'),
+                "portfolio_category": prepay.get('portfolio_category'),
+                "target_ucc": prepay.get('target_ucc'),
+                "approval_status": prepay.get('approval_status', 'not_sent'),
+                "client_approved": prepay.get('client_approved', False),
+                "tagged_at": prepay.get('tagged_at'),
+                "month": rep_date.strftime("%B %Y"),
+                "is_past_date": rep_date < today,
+                "auto_tagged": prepay.get('auto_tagged', False),
+                "allocations": [],
+                # Mark as prepayment entry
+                "is_prepayment_entry": True,
+                "prepayment_id": prepay.get('id'),
+                "source": prepay.get('source', 'auto_tag'),
+                "is_amended": False,
+                "prepayment_affected": False,
+                "reinvestment_tag_needs_update": False,
+                "original_net_amount": None,
+                "original_interest_component": None,
+                "amendment_reason": ""
+            })
+        except (ValueError, TypeError) as e:
+            continue
+    
     # Sort by date
     upcoming.sort(key=lambda x: x['expected_date'])
     
