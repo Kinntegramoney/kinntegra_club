@@ -379,8 +379,8 @@ export default function DataGathering() {
             <span>DOB</span>
             <span>Relation</span>
             <span>Life Exp.</span>
-            <span>Tax Regime</span>
             <span>Tax Status</span>
+            <span>Tax Regime</span>
             <span>Tax Slab</span>
             <span className="text-center">Primary</span>
             <span className="text-center">Action</span>
@@ -388,7 +388,9 @@ export default function DataGathering() {
 
           {/* Table Body */}
           <div className="divide-y">
-            {members.map((member) => (
+            {members.map((member) => {
+              const isForeignPassport = member.tax_status === "Foreign Passport" || member.tax_status === "NRI with Foreign Passport";
+              return (
               <div key={member.id} className="grid grid-cols-1 lg:grid-cols-9 gap-2 px-4 py-3 items-center">
                 <div>
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Name</Label>
@@ -427,33 +429,28 @@ export default function DataGathering() {
                 </div>
                 <div>
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Life Expectancy</Label>
-                  <Select value={member.life_expectancy} onValueChange={(v) => updateMember(member.id, 'life_expectancy', v)}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LIFE_EXPECTANCY_OPTIONS.map(opt => (
-                        <SelectItem key={opt} value={String(opt)}>{opt} yrs</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Regime</Label>
-                  <Select value={member.tax_regime} onValueChange={(v) => updateMember(member.id, 'tax_regime', v)}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TAX_REGIME_OPTIONS.map(opt => (
-                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    type="number"
+                    value={member.life_expectancy}
+                    onChange={(e) => updateMember(member.id, 'life_expectancy', e.target.value)}
+                    placeholder="Years"
+                    className="h-9"
+                    min="50"
+                    max="120"
+                  />
                 </div>
                 <div>
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Status</Label>
-                  <Select value={member.tax_status} onValueChange={(v) => updateMember(member.id, 'tax_status', v)}>
+                  <Select 
+                    value={member.tax_status} 
+                    onValueChange={(v) => {
+                      updateMember(member.id, 'tax_status', v);
+                      if (v === "Foreign Passport" || v === "NRI with Foreign Passport") {
+                        updateMember(member.id, 'tax_regime', 'NA');
+                        updateMember(member.id, 'tax_slab', '0%');
+                      }
+                    }}
+                  >
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
@@ -465,11 +462,31 @@ export default function DataGathering() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Slab</Label>
-                  <Select value={member.tax_slab} onValueChange={(v) => updateMember(member.id, 'tax_slab', v)}>
-                    <SelectTrigger className="h-9">
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Regime</Label>
+                  <Select 
+                    value={isForeignPassport ? "NA" : member.tax_regime} 
+                    onValueChange={(v) => updateMember(member.id, 'tax_regime', v)}
+                    disabled={isForeignPassport}
+                  >
+                    <SelectTrigger className={`h-9 ${isForeignPassport ? 'bg-gray-100' : ''}`}>
                       <SelectValue placeholder="Select" />
-                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TAX_REGIME_OPTIONS.map(opt => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Slab</Label>
+                  <Select 
+                    value={isForeignPassport ? "0%" : member.tax_slab} 
+                    onValueChange={(v) => updateMember(member.id, 'tax_slab', v)}
+                    disabled={isForeignPassport}
+                  >
+                    <SelectTrigger className={`h-9 ${isForeignPassport ? 'bg-gray-100' : ''}`}>
+                      <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
                       {TAX_SLAB_OPTIONS.map(opt => (
@@ -496,7 +513,8 @@ export default function DataGathering() {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
