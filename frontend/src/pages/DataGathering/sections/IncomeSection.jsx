@@ -41,13 +41,22 @@ const INCOME_CATEGORIES = [
   },
   { 
     value: "rental", 
-    label: "Rental", 
+    label: "Rental Income", 
     icon: Building,
     fields: [
-      { key: "property_type", label: "Property Type", type: "text" },
-      { key: "rental_monthly", label: "Monthly Rent", type: "number" },
+      { key: "property_details", label: "Property Details", type: "text" },
+      { key: "property_type", label: "Property Type", type: "select", options: ["Residential", "Commercial", "Land"] },
+      { key: "purchase_value", label: "Purchase Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
+      { key: "description", label: "Description", type: "text" },
+      { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"] },
+      { key: "rental_details", label: "Rental Details", type: "text" },
+      { key: "income_per_month", label: "Income/Month", type: "number" },
       { key: "start_date", label: "Start Date", type: "date" },
       { key: "end_date", label: "End Date", type: "date" },
+      { key: "tenure_months", label: "Tenure (Months)", type: "number" },
+      { key: "pay_date", label: "Pay Date", type: "select", options: ["1", "5", "10", "15", "20", "25", "Last Day"] },
+      { key: "auto_renew", label: "Auto Renew", type: "select", options: ["Yes", "No"] },
       { key: "rental_increment_percent", label: "Increment (%)", type: "number" }
     ]
   },
