@@ -125,6 +125,29 @@ export default function DataGathering() {
     setMembers(loadedMembers);
   };
 
+  const refreshSelectedFamily = async () => {
+    if (!selectedFamily?.id) return;
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/data-gathering/family/${selectedFamily.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSelectedFamily(response.data);
+      loadFamilyData(response.data);
+      // Update in families list
+      setFamilies(prev => prev.map(f => f.id === response.data.id ? response.data : f));
+    } catch (error) {
+      console.error("Error refreshing family:", error);
+    }
+  };
+
+  const handleDataUpdate = (section, data) => {
+    if (!selectedFamily) return;
+    const updatedFamily = { ...selectedFamily, [section]: data };
+    setSelectedFamily(updatedFamily);
+    setFamilies(prev => prev.map(f => f.id === updatedFamily.id ? updatedFamily : f));
+  };
+
   const updateMember = (id, field, value) => {
     setMembers(members.map(m => m.id === id ? { ...m, [field]: value } : m));
   };
