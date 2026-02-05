@@ -294,7 +294,7 @@ export default function Login() {
               <Button
                 data-testid="signin-button"
                 type="submit"
-                disabled={loading || formData.pin.length !== 4}
+                disabled={loading || formData.pin.length < 4 || formData.pin.length > 6}
                 className="w-full h-12 font-medium text-base"
                 style={{
                   background: '#78716C',
