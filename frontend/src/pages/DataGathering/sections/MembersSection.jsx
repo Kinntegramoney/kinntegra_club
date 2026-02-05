@@ -204,6 +204,12 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
                     <DialogTitle>{editMember ? "Edit Member" : "Add Family Member"}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
+                    {/* Primary Member Name Change Notice */}
+                    {editMember?.is_primary && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+                        <strong>Note:</strong> Changing the primary member's name will automatically update the family name (e.g., "John Doe & Family").
+                      </div>
+                    )}
                     <div>
                       <Label>Full Name *</Label>
                       <Input
