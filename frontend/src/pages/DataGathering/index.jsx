@@ -60,9 +60,9 @@ export default function DataGathering() {
   const [subBrokers, setSubBrokers] = useState([]);
   const [selectedSubBroker, setSelectedSubBroker] = useState("");
   const [familyName, setFamilyName] = useState("");
-  const [proceedOption, setProceedOption] = useState("Data Gathering");
+  const [proceedOption, setProceedOption] = useState("");
   const [members, setMembers] = useState([
-    { id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_regime: "New Regime", tax_status: "Resident", tax_slab: "30%", isPrimary: true }
+    { id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }
   ]);
   const [saving, setSaving] = useState(false);
 
