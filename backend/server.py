@@ -25678,11 +25678,14 @@ class FamilyMemberCreate(BaseModel):
     date_of_birth: str
     relation: str  # "Primary", "Spouse", "Child", "Parent", etc.
     life_expectancy: int
+    tax_regime: Optional[str] = "New Regime"  # "Old Regime", "New Regime", "NA"
+    tax_status: Optional[str] = "Resident"  # "Resident", "NRI with Indian Passport", "NRI with Foreign Passport", "Foreign Passport"
     tax_slab: str
 
 class FamilyCreate(BaseModel):
     broker_id: str
     sub_broker_id: Optional[str] = None
+    proceed_option: Optional[str] = "Data Gathering"  # "Data Gathering" or "Proceed to Account Opening"
     primary_holder: FamilyMemberCreate
     members: Optional[List[FamilyMemberCreate]] = []
 
