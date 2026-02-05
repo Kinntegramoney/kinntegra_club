@@ -1,0 +1,76 @@
+{
+  "summary": "Tested prepayment entries appearing on Reinvestment Tagging page. The fix is working correctly - prepayments from actual_repayments collection are now being fetched by /api/reinvestment/upcoming endpoint and displayed on the frontend.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Backend: /api/reinvestment/upcoming endpoint returns prepayment entries (3 found)",
+    "Backend: Prepayment entries have cashflow_id starting with 'prepay_' prefix",
+    "Backend: Prepayment entries have is_prepayment_entry=true flag",
+    "Backend: Prepayment entries show Principal only (Interest=₹0)",
+    "Backend: PUT /api/reinvestment/tag/{cashflow_id} handles prepay_ IDs correctly",
+    "Backend: Prepayment tagging auto-approves for past dates",
+    "Frontend: Reinvestment Tagging page loads at /broker/reinvestment",
+    "Frontend: Prepayment entry 'Natureresidences Real Estate' visible in Feb 2026 tab",
+    "Frontend: Principal shows ₹4,76,000 and Interest shows ₹0 for prepayment",
+    "Frontend: UCC and Portfolio dropdowns available for tagging prepayment entries"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_prepayment_reinvestment.py",
+    "/app/test_reports/pytest/prepayment_reinvestment_tests.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "The fix correctly adds prepayment entries from actual_repayments collection to /api/reinvestment/upcoming response (lines 12472-12688)",
+    "Prepayment IDs use 'prepay_' prefix for differentiation from regular cashflows",
+    "PUT /api/reinvestment/tag endpoint correctly handles prepay_ prefix to update actual_repayments collection instead of holding_cashflows (lines 12779-12833)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_prepayment_reinvestment.py"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 tests passed)",
+    "frontend": "100% (4/4 verifications passed)"
+  },
+  "test_credentials": {
+    "broker": {
+      "PAN": "ANVPB5297J",
+      "Password": "broker123",
+      "PIN": "1234"
+    }
+  },
+  "seed_data_creation": "None - used existing prepayment data from Natureresidences Real Estate bond",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Prepayment entries fix verified. Three prepayment entries for 'Natureresidences Real Estate' bond with amounts ₹434,000, ₹1,890,000, and ₹476,000 are correctly appearing on the Reinvestment Tagging page. The entries show Principal amount only (no interest) and can be tagged for reinvestment.",
+  "verification_details": {
+    "prepayment_entries_found": {
+      "count": 3,
+      "bond_name": "Natureresidences Real Estate",
+      "amounts": ["₹434,000", "₹1,890,000", "₹476,000"],
+      "source_collection": "actual_repayments"
+    },
+    "api_changes": {
+      "endpoint": "/api/reinvestment/upcoming",
+      "fix_location": "server.py lines 12472-12688",
+      "change": "Added query to fetch prepayments from actual_repayments collection and include in response"
+    },
+    "tag_endpoint_changes": {
+      "endpoint": "PUT /api/reinvestment/tag/{cashflow_id}",
+      "fix_location": "server.py lines 12779-12833",
+      "change": "Added handling for prepay_ prefixed IDs to update actual_repayments collection"
+    },
+    "frontend_verification": {
+      "page": "/broker/reinvestment",
+      "entry_visible": "Natureresidences Real Estate - ₹4,76,000 (Feb 2026 tab)",
+      "principal_shows": "₹4,76,000",
+      "interest_shows": "₹0 (correct for prepayment)"
+    }
+  }
+}
