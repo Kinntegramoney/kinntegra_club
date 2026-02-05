@@ -12776,6 +12776,63 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
 async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdate, current_user: dict = Depends(get_current_user)):
     """Update reinvestment tag for a cashflow. Supports split allocations across multiple UCCs/portfolios."""
     
+    # Check if this is a prepayment entry (starts with 'prepay_')
+    is_prepayment_entry = cashflow_id.startswith('prepay_')
+    
+    if is_prepayment_entry:
+        # Handle prepayment tagging - update actual_repayments collection
+        actual_repayment_id = cashflow_id.replace('prepay_', '')
+        prepayment = await db.actual_repayments.find_one({"id": actual_repayment_id})
+        if not prepayment:
+            raise HTTPException(status_code=404, detail="Prepayment not found")
+        
+        # Get client for validation
+        client = await db.clients.find_one({"id": prepayment['client_id']})
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+        
+        # Verify access
+        if current_user['role'] == 'client':
+            if client.get('user_id') != current_user['id']:
+                raise HTTPException(status_code=403, detail="Access denied")
+        elif current_user['role'] != 'broker':
+            if client.get('linked_subbroker_id') != current_user['id']:
+                raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Update prepayment with reinvestment tag data
+        update_data = {
+            "reinvestment_tag": update.reinvestment_tag,
+            "portfolio_category": update.portfolio_category,
+            "target_ucc": update.target_ucc,
+            "custom_amount": update.custom_amount,
+            "tagged_at": datetime.now(timezone.utc).isoformat(),
+            "tagged_by": current_user.get('id')
+        }
+        
+        # Check if past date - auto approve
+        today = datetime.now(timezone.utc).date()
+        rep_date = datetime.fromisoformat(prepayment.get('repayment_date', '').split('T')[0]).date()
+        is_past_date = rep_date < today
+        
+        if is_past_date:
+            update_data["approval_status"] = "auto_approved"
+            update_data["client_approved"] = True
+            update_data["auto_approved_at"] = datetime.now(timezone.utc).isoformat()
+        else:
+            update_data["approval_status"] = "pending"
+        
+        await db.actual_repayments.update_one(
+            {"id": actual_repayment_id},
+            {"$set": update_data}
+        )
+        
+        return {
+            "message": "Prepayment reinvestment tag updated",
+            "cashflow_id": cashflow_id,
+            "auto_approved": is_past_date
+        }
+    
+    # Regular cashflow handling below
     # Find the cashflow
     cashflow = await db.holding_cashflows.find_one({"id": cashflow_id})
     if not cashflow:
