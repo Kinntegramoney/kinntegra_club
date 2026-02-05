@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Save, Plus, Trash2, ChevronDown, ChevronRight, User, EyeOff, Eye,
-  Receipt, Home, Car, Heart, Zap, Phone, ShoppingBag, Utensils, GraduationCap, Users, CreditCard
+  Receipt, Home, Car, Heart, Zap, Phone, ShoppingBag, Utensils, GraduationCap, Users, CreditCard, Shirt, Tv, Scissors
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -17,82 +18,27 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const EXPENSE_CATEGORIES = [
-  { value: "rent_maintenance", label: "Rent/Maintenance", icon: Home, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "conveyance", label: "Conveyance", icon: Car, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "healthcare", label: "Healthcare", icon: Heart, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "utilities", label: "Utilities", icon: Zap, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "communication", label: "Communication", icon: Phone, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "clothing", label: "Clothing", icon: ShoppingBag, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "shopping", label: "Shopping", icon: ShoppingBag, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "entertainment", label: "Entertainment", icon: Utensils, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "personal_care", label: "Personal Care", icon: User, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "health_insurance", label: "Health Ins.", icon: Heart, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "education", label: "Education", icon: GraduationCap, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "family_support", label: "Family Support", icon: Users, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "motor_insurance", label: "Motor Ins.", icon: Car, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "life_insurance", label: "Life Ins.", icon: Heart, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]},
-  { value: "emi", label: "EMI", icon: CreditCard, fields: [
-    { key: "annual_amount", label: "Annual Amt", type: "number" },
-    { key: "inflation_percent", label: "Inflation %", type: "number" },
-    { key: "upto_year", label: "Upto Year", type: "number" }
-  ]}
+  { value: "food_grocery", label: "Food & Grocery", icon: Utensils },
+  { value: "house_rent", label: "House Rent/Maintenance/Repair", icon: Home },
+  { value: "conveyance", label: "Conveyance, Fuel And Maintenance", icon: Car },
+  { value: "healthcare", label: "Medicines / Doctor / Healthcare", icon: Heart },
+  { value: "utilities", label: "Electricity / Water / Labour / AMC", icon: Zap },
+  { value: "mobile", label: "Mobile", icon: Phone },
+  { value: "gasline_internet", label: "GasLine / Telephone / Internet / Cable", icon: Tv },
+  { value: "clothing", label: "Cloths and Accessories", icon: Shirt },
+  { value: "shopping", label: "Shopping, Gifts, Whitegoods, Gadgets", icon: ShoppingBag },
+  { value: "entertainment", label: "Dining / Movies / Sports", icon: Utensils },
+  { value: "personal_care", label: "Personal Care / Others", icon: Scissors },
+  { value: "mediclaim", label: "Mediclaim / PA / CI", icon: Heart },
+  { value: "children_education", label: "Children's Schooling/College Expenses", icon: GraduationCap },
+  { value: "family_support", label: "Contribution To Parents/Siblings", icon: Users },
+  { value: "motor_insurance", label: "Motor Insurance", icon: Car },
+  { value: "life_insurance", label: "Life Insurance - Term Plan", icon: Heart },
+  { value: "emi", label: "EMI", icon: CreditCard }
 ];
+
+// Generate year options from 2020 to 2080
+const YEAR_OPTIONS = Array.from({ length: 61 }, (_, i) => (2020 + i).toString());
 
 export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh }) {
   const [savingCategory, setSavingCategory] = useState(null);
@@ -113,7 +59,15 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
         itemsByCategory[category].push({
           id: exp.id,
           memberId: exp.member_ids?.[0] || "",
-          details: { annual_amount: exp.annual_amount, inflation_percent: exp.inflation_percent, upto_year: exp.upto_year },
+          details: {
+            annual_amount: exp.annual_amount,
+            upto_year: exp.upto_year,
+            inflation_percent: exp.inflation_percent,
+            consider_post_retirement: exp.consider_post_retirement || false,
+            percent_of_current: exp.percent_of_current || 100,
+            applies_to_self: exp.applies_to_self !== false,
+            applies_to_spouse: exp.applies_to_spouse || false
+          },
           isNew: false,
           isModified: false
         });
@@ -140,7 +94,15 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       [category]: [...(prev[category] || []), {
         id: `new_${Date.now()}`,
         memberId: members[0]?.id || "",
-        details: { annual_amount: "", inflation_percent: 6, upto_year: currentYear + 30 },
+        details: { 
+          annual_amount: "", 
+          upto_year: (currentYear + 30).toString(), 
+          inflation_percent: 6,
+          consider_post_retirement: false,
+          percent_of_current: 100,
+          applies_to_self: true,
+          applies_to_spouse: false
+        },
         isNew: true,
         isModified: false
       }]
@@ -180,7 +142,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
 
     for (const item of itemsToSave) {
       if (!item.memberId) { toast.error("Select a member"); return; }
-      if (!item.details.annual_amount) { toast.error("Enter amount"); return; }
+      if (!item.details.annual_amount) { toast.error("Enter annual amount"); return; }
     }
 
     setSavingCategory(category);
@@ -188,10 +150,16 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       const token = localStorage.getItem("token");
       for (const item of itemsToSave) {
         const payload = {
-          family_id: family.id, member_ids: [item.memberId], expense_type: category,
+          family_id: family.id, 
+          member_ids: [item.memberId], 
+          expense_type: category,
           annual_amount: parseFloat(item.details.annual_amount),
+          upto_year: parseInt(item.details.upto_year),
           inflation_percent: parseFloat(item.details.inflation_percent) || 6,
-          upto_year: parseInt(item.details.upto_year) || new Date().getFullYear() + 30
+          consider_post_retirement: item.details.consider_post_retirement,
+          percent_of_current: parseFloat(item.details.percent_of_current) || 100,
+          applies_to_self: item.details.applies_to_self,
+          applies_to_spouse: item.details.applies_to_spouse
         };
         if (item.isNew) {
           await axios.post(`${API}/data-gathering/family/${family.id}/expense`, payload, { headers: { Authorization: `Bearer ${token}` } });
@@ -223,7 +191,6 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
 
   return (
     <div className="space-y-2">
-      {/* Summary */}
       {totalAnnual > 0 && (
         <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mb-2">
           <span className="text-xs text-orange-600">Total Annual Expenses</span>
@@ -232,7 +199,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
-        <span>Click "Skip" to hide expenses you don't need</span>
+        <span>Enter details for categories</span>
         <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
       </div>
 
@@ -274,28 +241,99 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                     {items.length === 0 ? (
                       <div className="text-center py-3 text-gray-400 text-xs border-t">No entries. Click "Add" to create one.</div>
                     ) : (
-                      <div className="space-y-2 border-t pt-2">
+                      <div className="space-y-3 border-t pt-2">
                         {items.map((item) => (
-                          <div key={item.id} className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            <div className="flex items-end gap-2 flex-wrap">
-                              <div className="w-32">
-                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
+                          <div key={item.id} className={`p-3 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                            {/* Header with delete */}
+                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-dashed">
+                              <div className="flex items-center gap-2">
+                                <Label className="text-[10px] text-gray-400">Member:</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateExpenseItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>
                                     {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
                               </div>
-                              {category.fields.map(field => (
-                                <div key={field.key} className="flex-1 min-w-[80px]">
-                                  <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
-                                  <Input type={field.type} value={item.details[field.key] || ""} onChange={(e) => updateExpenseItem(category.value, item.id, field.key, e.target.value)} placeholder="0" className="h-8 text-xs" disabled={isReadOnly} />
-                                </div>
-                              ))}
-                              <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
+                              <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
+                            </div>
+                            
+                            {/* Fields - Row 1 */}
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Annual Amount</Label>
+                                <Input
+                                  type="number"
+                                  value={item.details.annual_amount || ""}
+                                  onChange={(e) => updateExpenseItem(category.value, item.id, "annual_amount", e.target.value)}
+                                  placeholder="0"
+                                  className="h-8 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Upto Year - Select</Label>
+                                <Select value={item.details.upto_year?.toString() || ""} onValueChange={(v) => updateExpenseItem(category.value, item.id, "upto_year", v)} disabled={isReadOnly}>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectContent>
+                                    {YEAR_OPTIONS.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Inflation</Label>
+                                <Input
+                                  type="number"
+                                  value={item.details.inflation_percent || ""}
+                                  onChange={(e) => updateExpenseItem(category.value, item.id, "inflation_percent", e.target.value)}
+                                  placeholder="6"
+                                  className="h-8 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Consider Post Retirement</Label>
+                                <div className="flex items-center h-8">
+                                  <Checkbox
+                                    checked={item.details.consider_post_retirement}
+                                    onCheckedChange={(checked) => updateExpenseItem(category.value, item.id, "consider_post_retirement", checked)}
+                                    disabled={isReadOnly}
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">% of Current Expense</Label>
+                                <Input
+                                  type="number"
+                                  value={item.details.percent_of_current || ""}
+                                  onChange={(e) => updateExpenseItem(category.value, item.id, "percent_of_current", e.target.value)}
+                                  placeholder="100"
+                                  className="h-8 text-xs"
+                                  disabled={isReadOnly}
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Fields - Row 2: Self/Spouse */}
+                            <div className="flex items-center gap-6">
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={item.details.applies_to_self}
+                                  onCheckedChange={(checked) => updateExpenseItem(category.value, item.id, "applies_to_self", checked)}
+                                  disabled={isReadOnly}
+                                />
+                                <Label className="text-xs text-gray-600">SELF</Label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={item.details.applies_to_spouse}
+                                  onCheckedChange={(checked) => updateExpenseItem(category.value, item.id, "applies_to_spouse", checked)}
+                                  disabled={isReadOnly}
+                                />
+                                <Label className="text-xs text-gray-600">SPOUSE</Label>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -316,7 +354,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
 
       {hiddenCategoryList.length > 0 && (
         <div className="mt-4 pt-3 border-t border-dashed">
-          <div className="text-xs text-gray-400 mb-2 px-1">Skipped Expenses (click to restore)</div>
+          <div className="text-xs text-gray-400 mb-2 px-1">Skipped (click to restore)</div>
           <div className="flex flex-wrap gap-1.5">
             {hiddenCategoryList.map(category => {
               const Icon = category.icon;
