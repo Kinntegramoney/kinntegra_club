@@ -230,7 +230,7 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
 
                     {/* Goal Amount */}
                     <div>
-                      <Label>Goal Amount (Today's Value)</Label>
+                      <Label>Goal Amount (Today&apos;s Value)</Label>
                       <Input
                         type="number"
                         value={formData.goal_amount}
