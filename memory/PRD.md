@@ -2,7 +2,37 @@
 
 ## Recent Changes (Feb 5, 2026)
 
-### Income Section Redesign (Feb 5, 2026) ✅ NEW
+### All Data Gathering Tabs Redesigned (Feb 5, 2026) ✅ NEW
+
+**Feature:** Complete UI redesign of all Data Gathering tabs to follow a consistent lean design pattern.
+
+**Tabs Updated:**
+1. **Income** - 16 categories (Salary, FD, PPF, etc.)
+2. **Goals** - 13 categories (Education, Marriage, New Car, etc.)
+3. **Expenses** - 15 categories (Rent, Healthcare, Utilities, etc.)
+4. **Insurance** - 4 categories (Motor, Life, Health, Term)
+5. **Liability** - 7 categories (Home Loan, Vehicle Loan, Credit Card, etc.)
+
+**Design Pattern (consistent across all tabs):**
+- **Collapsible Categories:** Each category is a collapsible card
+- **Skip Button:** Hide categories you don't need (moves to bottom as pill buttons)
+- **Add Button:** Add multiple entries per category
+- **Inline Fields:** Member dropdown + all fields in one compact row
+- **Color Coding:** Blue (Income/Insurance), Purple (Goals), Orange (Expenses), Red (Liability)
+- **Summary Totals:** Shows running totals where applicable
+
+**Files Modified:**
+- `/app/frontend/src/pages/DataGathering/sections/IncomeSection.jsx`
+- `/app/frontend/src/pages/DataGathering/sections/GoalSection.jsx`
+- `/app/frontend/src/pages/DataGathering/sections/ExpenseSection.jsx`
+- `/app/frontend/src/pages/DataGathering/sections/InsuranceSection.jsx`
+- `/app/frontend/src/pages/DataGathering/sections/LiabilitySection.jsx`
+
+**Testing:** ✅ UI verified, all tabs render correctly
+
+---
+
+### Income Section Redesign (Feb 5, 2026) ✅
 
 **Feature:** Complete redesign of the Income Section in Data Gathering to support flexible data entry.
 
