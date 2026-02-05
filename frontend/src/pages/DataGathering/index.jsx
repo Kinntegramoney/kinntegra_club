@@ -490,6 +490,19 @@ export default function DataGathering() {
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
+              // Get count for each tab from selected family
+              let count = null;
+              if (selectedFamily) {
+                switch (tab.id) {
+                  case "introduction": count = selectedFamily.members?.length || 0; break;
+                  case "income": count = selectedFamily.income_details?.length || 0; break;
+                  case "goals": count = selectedFamily.goal_details?.length || 0; break;
+                  case "expenses": count = selectedFamily.expense_details?.length || 0; break;
+                  case "insurance": count = selectedFamily.insurance_premiums?.length || 0; break;
+                  case "liability": count = selectedFamily.liabilities?.length || 0; break;
+                  default: count = null;
+                }
+              }
               return (
                 <button
                   key={tab.id}
@@ -502,6 +515,9 @@ export default function DataGathering() {
                 >
                   <Icon className="h-4 w-4" />
                   {tab.label}
+                  {count !== null && count > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 text-xs">{count}</Badge>
+                  )}
                 </button>
               );
             })}
