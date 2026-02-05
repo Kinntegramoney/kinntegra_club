@@ -197,16 +197,23 @@ export default function DataGathering() {
           date_of_birth: primaryMember.dob,
           relation: "Primary",
           life_expectancy: parseInt(primaryMember.life_expectancy),
+          tax_regime: primaryMember.tax_regime,
+          tax_status: primaryMember.tax_status,
           tax_slab: primaryMember.tax_slab
         },
         members: members.filter(m => !m.isPrimary).map(m => ({
           name: m.name, date_of_birth: m.dob, relation: m.relation,
-          life_expectancy: parseInt(m.life_expectancy), tax_slab: m.tax_slab
+          life_expectancy: parseInt(m.life_expectancy), 
+          tax_regime: m.tax_regime, tax_status: m.tax_status, tax_slab: m.tax_slab
         }))
       };
 
       if (selectedFamily) {
-        // Update existing - for now just show success
+        // Update existing family
+        await axios.put(`${API}/data-gathering/family/${selectedFamily.id}`, payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        await refreshSelectedFamily();
         toast.success("Family updated successfully!");
       } else {
         const response = await axios.post(`${API}/data-gathering/family`, payload, {
