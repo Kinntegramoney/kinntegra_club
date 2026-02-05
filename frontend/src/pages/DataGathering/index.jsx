@@ -233,17 +233,27 @@ export default function DataGathering() {
         toast.success("Family created successfully!");
       }
       
-      // Move to next tab after successful save
-      const tabOrder = ["introduction", "income", "goals", "expenses", "insurance", "liability", "surplus"];
-      const currentIndex = tabOrder.indexOf(activeTab);
-      if (currentIndex < tabOrder.length - 1) {
-        setActiveTab(tabOrder[currentIndex + 1]);
+      // Show "Why do this exercise" modal only on Introduction tab
+      if (activeTab === "introduction") {
+        setShowWhyModal(true);
+      } else {
+        // Move to next tab for other tabs
+        const tabOrder = ["introduction", "income", "goals", "expenses", "insurance", "liability", "surplus"];
+        const currentIndex = tabOrder.indexOf(activeTab);
+        if (currentIndex < tabOrder.length - 1) {
+          setActiveTab(tabOrder[currentIndex + 1]);
+        }
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || "Failed to save");
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleStartDataGathering = () => {
+    setShowWhyModal(false);
+    setActiveTab("income");
   };
 
   const handleSelectFamily = (family) => {
