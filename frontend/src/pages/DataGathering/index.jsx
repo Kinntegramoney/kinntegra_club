@@ -241,8 +241,8 @@ export default function DataGathering() {
     setSelectedFamily(null);
     setSelectedSubBroker("");
     setFamilyName("");
-    setProceedOption("Data Gathering");
-    setMembers([{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_regime: "New Regime", tax_status: "Resident", tax_slab: "30%", isPrimary: true }]);
+    setProceedOption("");
+    setMembers([{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }]);
     setActiveTab("introduction");
   };
 
