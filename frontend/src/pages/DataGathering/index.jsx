@@ -41,7 +41,10 @@ const TABS = [
 // Form options
 const RELATIONSHIP_OPTIONS = ["Self", "Spouse", "Son", "Daughter", "Father", "Mother", "Brother", "Sister", "Other"];
 const LIFE_EXPECTANCY_OPTIONS = [65, 70, 75, 80, 85, 90, 95, 100];
+const TAX_REGIME_OPTIONS = ["Old Regime", "New Regime", "NA"];
+const TAX_STATUS_OPTIONS = ["Resident", "NRI with Indian Passport", "NRI with Foreign Passport", "Foreign Passport"];
 const TAX_SLAB_OPTIONS = ["0%", "5%", "10%", "15%", "20%", "25%", "30%"];
+const PROCEED_OPTIONS = ["Data Gathering", "Proceed to Account Opening"];
 
 export default function DataGathering() {
   const navigate = useNavigate();
@@ -55,10 +58,11 @@ export default function DataGathering() {
   
   // Form states
   const [subBrokers, setSubBrokers] = useState([]);
-  const [selectedAssociate, setSelectedAssociate] = useState("");
+  const [selectedSubBroker, setSelectedSubBroker] = useState("");
   const [familyName, setFamilyName] = useState("");
+  const [proceedOption, setProceedOption] = useState("Data Gathering");
   const [members, setMembers] = useState([
-    { id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_slab: "30%", isPrimary: true }
+    { id: 1, name: "", dob: "", relation: "Self", life_expectancy: 85, tax_regime: "New Regime", tax_status: "Resident", tax_slab: "30%", isPrimary: true }
   ]);
   const [saving, setSaving] = useState(false);
 
