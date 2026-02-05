@@ -593,67 +593,72 @@ export default function DataGathering() {
               
               {/* Family Selector - Inline with header */}
               <div className="flex items-center gap-3 border-l pl-6">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search families..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 h-9 w-44"
-                  />
-                </div>
-                
+                {/* Family Selector Dropdown - Shows saved families */}
                 <Select 
-                  value={selectedFamily?.id || "new"} 
+                  value={selectedFamily?.id || ""} 
                   onValueChange={(value) => {
-                    if (value === "new") {
-                      handleNewFamily();
-                    } else {
-                      const family = families.find(f => f.id === value);
-                      if (family) handleSelectFamily(family);
-                    }
+                    const family = families.find(f => f.id === value);
+                    if (family) handleSelectFamily(family);
                   }}
                 >
-                  <SelectTrigger className="w-56 h-9">
-                    <SelectValue placeholder="Select family">
+                  <SelectTrigger className="w-64 h-9">
+                    <SelectValue placeholder="Select a family">
                       {selectedFamily ? (
                         <span className="flex items-center gap-2">
                           <Users className="h-4 w-4" />
-                          {selectedFamily.family_name?.length > 20 
-                            ? selectedFamily.family_name.substring(0, 20) + '...' 
+                          {selectedFamily.family_name?.length > 25 
+                            ? selectedFamily.family_name.substring(0, 25) + '...' 
                             : selectedFamily.family_name}
                         </span>
                       ) : (
-                        <span className="flex items-center gap-2 text-blue-600">
-                          <Plus className="h-4 w-4" />
-                          New Family
-                        </span>
+                        <span className="text-gray-500">Select a family</span>
                       )}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new" className="text-blue-600">
-                      <span className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Create New Family
-                      </span>
-                    </SelectItem>
-                    {filteredFamilies.map((family) => (
-                      <SelectItem key={family.id} value={family.id}>
-                        <span className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-gray-400" />
-                          {family.family_name}
-                          <Badge variant="secondary" className="ml-auto text-xs">{family.members?.length || 0}</Badge>
-                        </span>
-                      </SelectItem>
-                    ))}
-                    {filteredFamilies.length === 0 && searchTerm && (
-                      <div className="px-2 py-3 text-sm text-gray-500 text-center">
-                        No families matching &quot;{searchTerm}&quot;
+                    {/* Search inside dropdown */}
+                    <div className="p-2 border-b">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Search families..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-8 h-8 text-sm"
+                        />
                       </div>
-                    )}
+                    </div>
+                    {/* Family list */}
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {filteredFamilies.length > 0 ? (
+                        filteredFamilies.map((family) => (
+                          <SelectItem key={family.id} value={family.id}>
+                            <span className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-gray-400" />
+                              {family.family_name}
+                              <Badge variant="secondary" className="ml-auto text-xs">{family.members?.length || 0}</Badge>
+                            </span>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-4 text-sm text-gray-500 text-center">
+                          {searchTerm ? `No families matching "${searchTerm}"` : "No families yet"}
+                        </div>
+                      )}
+                    </div>
                   </SelectContent>
                 </Select>
+
+                {/* New Family Button - Separate */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleNewFamily}
+                  className="gap-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Family
+                </Button>
               </div>
             </div>
             
