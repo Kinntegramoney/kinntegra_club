@@ -579,74 +579,10 @@ export default function DataGathering() {
           </div>
         </div>
 
-        {/* Content */}
+        {/* Content - Full Width */}
         <div className="p-6">
-          <div className="flex gap-6">
-            {/* Family List Sidebar */}
-            <div className="w-72 shrink-0">
-              <div className="bg-white rounded-lg border p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-medium text-gray-700">Families</h3>
-                  <Badge variant="secondary">{families.length}</Badge>
-                </div>
-                
-                <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 h-9"
-                  />
-                </div>
-
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {/* New Family Option */}
-                  <button
-                    onClick={handleNewFamily}
-                    className={`w-full text-left px-3 py-2 rounded-lg border-2 border-dashed transition-colors ${
-                      !selectedFamily ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Plus className="h-4 w-4" />
-                      <span className="text-sm font-medium">New Family</span>
-                    </div>
-                  </button>
-
-                  {filteredFamilies.map((family) => (
-                    <button
-                      key={family.id}
-                      onClick={() => handleSelectFamily(family)}
-                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
-                        selectedFamily?.id === family.id 
-                          ? 'border-etihad-gold-500 bg-etihad-gold-50' 
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-700 truncate">{family.family_name}</p>
-                          <p className="text-xs text-gray-500">{family.members?.length || 0} members</p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-gray-400" />
-                      </div>
-                    </button>
-                  ))}
-
-                  {filteredFamilies.length === 0 && families.length > 0 && (
-                    <p className="text-sm text-gray-500 text-center py-4">No families found</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1">
-              <div className="bg-white rounded-lg border min-h-[500px] p-6">
-                {renderTabContent()}
-              </div>
-            </div>
+          <div className="bg-white rounded-lg border min-h-[500px] p-6">
+            {renderTabContent()}
           </div>
         </div>
       </main>
