@@ -5,175 +5,206 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Edit, Trash2, DollarSign, Save, Briefcase, Building, Wallet, Landmark, PiggyBank } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Save, Briefcase, Building, Wallet, Landmark, PiggyBank, TrendingUp, DollarSign, Users } from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Income categories with their fields
 const INCOME_CATEGORIES = [
-  { value: "salary", label: "Salary Income", icon: Briefcase },
-  { value: "business", label: "Business Income", icon: Building },
-  { value: "rental", label: "Rental Income", icon: Building },
-  { value: "ppf", label: "PPF", icon: PiggyBank },
-  { value: "epf", label: "EPF", icon: PiggyBank },
-  { value: "gratuity", label: "Gratuity", icon: Wallet },
-  { value: "fd", label: "Fixed Deposit", icon: Landmark },
-  { value: "rd_pis", label: "RD / PIS", icon: Landmark },
-  { value: "pension", label: "Pension Income", icon: Wallet },
-  { value: "bond", label: "Bond", icon: Landmark },
-  { value: "insurance", label: "Insurance", icon: Landmark },
-  { value: "mutual_fund", label: "Mutual Fund", icon: TrendingUp },
-  { value: "cash", label: "Cash in Hand", icon: Wallet },
-  { value: "gold", label: "Gold", icon: Wallet },
-  { value: "shares_pms", label: "Shares / PMS", icon: TrendingUp },
-  { value: "other", label: "Other", icon: DollarSign }
+  { 
+    value: "salary", 
+    label: "Salary Income", 
+    icon: Briefcase,
+    fields: [
+      { key: "net_income_monthly", label: "Net Monthly Income", type: "number" },
+      { key: "increment_month", label: "Increment Month", type: "select", options: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] },
+      { key: "avg_growth_rate", label: "Avg Growth Rate (%)", type: "number" },
+      { key: "retirement_age", label: "Retirement Age", type: "number" }
+    ]
+  },
+  { 
+    value: "business", 
+    label: "Business Income", 
+    icon: Building,
+    fields: [
+      { key: "net_income_yearly", label: "Net Yearly Income", type: "number" },
+      { key: "avg_growth_rate", label: "Avg Growth Rate (%)", type: "number" },
+      { key: "retirement_age", label: "Retirement Age", type: "number" }
+    ]
+  },
+  { 
+    value: "rental", 
+    label: "Rental Income", 
+    icon: Building,
+    fields: [
+      { key: "property_type", label: "Property Type", type: "select", options: ["Residential", "Commercial", "Land"] },
+      { key: "purchase_value", label: "Purchase Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
+      { key: "rental_monthly", label: "Monthly Rent", type: "number" },
+      { key: "rental_increment_percent", label: "Rental Increment (%)", type: "number" }
+    ]
+  },
+  { 
+    value: "ppf", 
+    label: "PPF", 
+    icon: PiggyBank,
+    fields: [
+      { key: "amount", label: "Current Value", type: "number" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" }
+    ]
+  },
+  { 
+    value: "epf", 
+    label: "EPF", 
+    icon: PiggyBank,
+    fields: [
+      { key: "amount", label: "Current Value", type: "number" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" }
+    ]
+  },
+  { 
+    value: "gratuity", 
+    label: "Gratuity", 
+    icon: Wallet,
+    fields: [
+      { key: "amount", label: "Expected Amount", type: "number" },
+      { key: "maturity_date", label: "Expected Date", type: "date" }
+    ]
+  },
+  { 
+    value: "fd", 
+    label: "Fixed Deposit", 
+    icon: Landmark,
+    fields: [
+      { key: "principal_amount", label: "Principal Amount", type: "number" },
+      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
+      { key: "start_date", label: "Start Date", type: "date" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" }
+    ]
+  },
+  { 
+    value: "rd_pis", 
+    label: "RD / PIS", 
+    icon: Landmark,
+    fields: [
+      { key: "monthly_contribution", label: "Monthly Contribution", type: "number" },
+      { key: "start_date", label: "Start Date", type: "date" },
+      { key: "end_date", label: "End Date", type: "date" },
+      { key: "interest_rate", label: "Interest Rate (%)", type: "number" }
+    ]
+  },
+  { 
+    value: "pension", 
+    label: "Pension Income", 
+    icon: Wallet,
+    fields: [
+      { key: "amount", label: "Amount", type: "number" },
+      { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
+      { key: "start_date", label: "Start Date", type: "date" },
+      { key: "end_date", label: "End Date", type: "date" }
+    ]
+  },
+  { 
+    value: "bond", 
+    label: "Bond", 
+    icon: Landmark,
+    fields: [
+      { key: "principal_amount", label: "Principal Amount", type: "number" },
+      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" }
+    ]
+  },
+  { 
+    value: "insurance", 
+    label: "Insurance", 
+    icon: Landmark,
+    fields: [
+      { key: "principal_amount", label: "Sum Assured", type: "number" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" }
+    ]
+  },
+  { 
+    value: "mutual_fund", 
+    label: "Mutual Fund", 
+    icon: TrendingUp,
+    fields: [
+      { key: "market_value", label: "Current Market Value", type: "number" },
+      { key: "sip_amount", label: "SIP Amount (if any)", type: "number" }
+    ]
+  },
+  { 
+    value: "cash", 
+    label: "Cash in Hand", 
+    icon: Wallet,
+    fields: [
+      { key: "market_value", label: "Amount", type: "number" }
+    ]
+  },
+  { 
+    value: "gold", 
+    label: "Gold", 
+    icon: Wallet,
+    fields: [
+      { key: "market_value", label: "Market Value", type: "number" }
+    ]
+  },
+  { 
+    value: "shares_pms", 
+    label: "Shares / PMS", 
+    icon: TrendingUp,
+    fields: [
+      { key: "market_value", label: "Market Value", type: "number" }
+    ]
+  },
+  { 
+    value: "other", 
+    label: "Other Income", 
+    icon: DollarSign,
+    fields: [
+      { key: "description", label: "Description", type: "text" },
+      { key: "amount", label: "Amount", type: "number" }
+    ]
+  }
 ];
 
-import { TrendingUp } from "lucide-react";
-
-const getCategoryFields = (category) => {
-  switch (category) {
-    case "salary":
-      return ["net_income_monthly", "increment_month", "avg_growth_rate", "retirement_age"];
-    case "business":
-      return ["net_income_yearly", "avg_growth_rate", "retirement_age"];
-    case "rental":
-      return ["property_type", "purchase_value", "market_value", "rental_monthly", "rental_increment_percent"];
-    case "ppf":
-    case "epf":
-    case "gratuity":
-      return ["amount", "maturity_date"];
-    case "fd":
-    case "bond":
-    case "insurance":
-      return ["principal_amount", "interest_rate", "start_date", "maturity_date", "payment_cycle"];
-    case "rd_pis":
-      return ["monthly_contribution", "start_date", "end_date", "interest_rate", "maturity_amount"];
-    case "pension":
-      return ["amount", "payable_cycle", "start_date", "end_date"];
-    case "mutual_fund":
-      return ["market_value", "sip_amount"];
-    case "cash":
-    case "gold":
-    case "shares_pms":
-      return ["market_value"];
-    default:
-      return ["description", "amount"];
-  }
-};
-
-const FIELD_LABELS = {
-  net_income_monthly: "Net Monthly Income",
-  net_income_yearly: "Net Yearly Income",
-  increment_month: "Increment Month",
-  avg_growth_rate: "Avg Growth Rate (%)",
-  retirement_age: "Retirement Age",
-  property_type: "Property Type",
-  purchase_value: "Purchase Value",
-  market_value: "Market Value",
-  rental_monthly: "Monthly Rent",
-  rental_increment_percent: "Rental Increment (%)",
-  amount: "Amount",
-  maturity_date: "Maturity Date",
-  principal_amount: "Principal Amount",
-  interest_rate: "Interest Rate (%)",
-  start_date: "Start Date",
-  end_date: "End Date",
-  payment_cycle: "Payment Cycle",
-  monthly_contribution: "Monthly Contribution",
-  maturity_amount: "Maturity Amount",
-  payable_cycle: "Payable Cycle",
-  sip_amount: "SIP Amount",
-  description: "Description"
-};
-
 export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh }) {
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editItem, setEditItem] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("salary");
   const [selectedMembers, setSelectedMembers] = useState([]);
-  const [details, setDetails] = useState({});
+  const [incomeData, setIncomeData] = useState({});
 
-  const members = family.members || [];
-  const incomeDetails = family.income_details || [];
+  const members = family?.members || [];
+  const existingIncomes = family?.income_details || [];
 
-  const resetForm = () => {
-    setSelectedCategory("salary");
-    setSelectedMembers([]);
-    setDetails({});
-    setEditItem(null);
-  };
-
-  const handleSubmit = async () => {
-    if (selectedMembers.length === 0) {
-      toast.error("Please select at least one member");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const payload = {
-        family_id: family.id,
-        category: selectedCategory,
-        member_ids: selectedMembers,
-        details: details
-      };
-
-      if (editItem) {
-        await axios.put(
-          `${API}/data-gathering/family/${family.id}/income/${editItem.id}`,
-          payload,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success("Income updated");
+  // Initialize income data from existing records
+  useEffect(() => {
+    const initialData = {};
+    INCOME_CATEGORIES.forEach(cat => {
+      const existing = existingIncomes.find(inc => inc.category === cat.value);
+      if (existing) {
+        initialData[cat.value] = existing.details || {};
       } else {
-        await axios.post(
-          `${API}/data-gathering/family/${family.id}/income`,
-          payload,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success("Income added");
+        initialData[cat.value] = {};
       }
-      
-      setShowAddDialog(false);
-      resetForm();
-      onRefresh();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to save income");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (itemId) => {
-    if (!window.confirm("Delete this income entry?")) return;
+    });
+    setIncomeData(initialData);
     
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(
-        `${API}/data-gathering/family/${family.id}/income/${itemId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success("Income deleted");
-      onRefresh();
-    } catch (error) {
-      toast.error("Failed to delete");
+    // Set selected members from existing records
+    const memberIds = new Set();
+    existingIncomes.forEach(inc => {
+      (inc.member_ids || []).forEach(id => memberIds.add(id));
+    });
+    if (memberIds.size > 0) {
+      setSelectedMembers(Array.from(memberIds));
+    } else if (members.length > 0) {
+      // Default select primary member
+      const primary = members.find(m => m.is_primary);
+      if (primary) setSelectedMembers([primary.id]);
     }
-  };
-
-  const openEditDialog = (item) => {
-    setSelectedCategory(item.category);
-    setSelectedMembers(item.member_ids || []);
-    setDetails(item.details || {});
-    setEditItem(item);
-    setShowAddDialog(true);
-  };
+  }, [family?.id, existingIncomes, members]);
 
   const toggleMember = (memberId) => {
     setSelectedMembers(prev => 
@@ -183,243 +214,179 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     );
   };
 
-  const getMemberNames = (memberIds) => {
-    return memberIds
-      ?.map(id => members.find(m => m.id === id)?.name)
-      .filter(Boolean)
-      .join(", ") || "Unknown";
+  const updateCategoryField = (category, field, value) => {
+    setIncomeData(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [field]: value
+      }
+    }));
   };
 
-  const getCategoryLabel = (cat) => INCOME_CATEGORIES.find(c => c.value === cat)?.label || cat;
-
-  const formatAmount = (amount) => {
-    if (!amount) return "-";
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  const hasDataInCategory = (category) => {
+    const data = incomeData[category] || {};
+    return Object.values(data).some(v => v !== "" && v !== null && v !== undefined);
   };
 
-  const getDisplayAmount = (income) => {
-    const d = income.details || {};
-    if (d.net_income_monthly) return formatAmount(d.net_income_monthly * 12) + "/yr";
-    if (d.net_income_yearly) return formatAmount(d.net_income_yearly) + "/yr";
-    if (d.rental_monthly) return formatAmount(d.rental_monthly * 12) + "/yr";
-    if (d.market_value) return formatAmount(d.market_value);
-    if (d.principal_amount) return formatAmount(d.principal_amount);
-    if (d.amount) return formatAmount(d.amount);
-    return "-";
+  const handleSaveAll = async () => {
+    if (selectedMembers.length === 0) {
+      toast.error("Please select at least one family member");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Save each category that has data
+      for (const cat of INCOME_CATEGORIES) {
+        if (hasDataInCategory(cat.value)) {
+          const existing = existingIncomes.find(inc => inc.category === cat.value);
+          const payload = {
+            family_id: family.id,
+            category: cat.value,
+            member_ids: selectedMembers,
+            details: incomeData[cat.value]
+          };
+
+          if (existing) {
+            await axios.put(
+              `${API}/data-gathering/family/${family.id}/income/${existing.id}`,
+              payload,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+          } else {
+            await axios.post(
+              `${API}/data-gathering/family/${family.id}/income`,
+              payload,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+          }
+        }
+      }
+      
+      toast.success("Income details saved successfully");
+      onRefresh();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to save income details");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderField = (category, field) => {
+    const value = incomeData[category]?.[field.key] || "";
+    
+    if (field.type === "select") {
+      return (
+        <Select 
+          value={value} 
+          onValueChange={(v) => updateCategoryField(category, field.key, v)}
+          disabled={isReadOnly}
+        >
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder="Select" />
+          </SelectTrigger>
+          <SelectContent>
+            {field.options.map(opt => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+    
+    return (
+      <Input
+        type={field.type}
+        value={value}
+        onChange={(e) => updateCategoryField(category, field.key, e.target.value)}
+        placeholder={field.type === "number" ? "0" : "Enter..."}
+        className="h-9"
+        disabled={isReadOnly}
+      />
+    );
   };
 
   return (
     <div className="space-y-6">
+      {/* Member Selection */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-600" />
-              Income Details ({incomeDetails.length})
-            </CardTitle>
-            {!isReadOnly && (
-              <Dialog open={showAddDialog} onOpenChange={(open) => {
-                setShowAddDialog(open);
-                if (!open) resetForm();
-              }}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Income
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>{editItem ? "Edit Income" : "Add Income Source"}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    {/* Category Selection */}
-                    <div>
-                      <Label>Income Category</Label>
-                      <Select value={selectedCategory} onValueChange={(v) => {
-                        setSelectedCategory(v);
-                        setDetails({});
-                      }}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {INCOME_CATEGORIES.map(cat => (
-                            <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Member Selection */}
-                    <div>
-                      <Label>Select Members</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        {members.map(member => (
-                          <div 
-                            key={member.id}
-                            className={`flex items-center gap-2 p-2 border rounded cursor-pointer ${
-                              selectedMembers.includes(member.id) ? 'border-etihad-gold-500 bg-etihad-gold-50' : ''
-                            }`}
-                            onClick={() => toggleMember(member.id)}
-                          >
-                            <Checkbox 
-                              checked={selectedMembers.includes(member.id)}
-                              onCheckedChange={() => toggleMember(member.id)}
-                            />
-                            <span className="text-sm">{member.name}</span>
-                            <Badge variant="outline" className="text-xs ml-auto">{member.relation}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Dynamic Fields based on Category */}
-                    <div className="border-t pt-4">
-                      <Label className="text-sm font-medium text-gray-700 mb-3 block">
-                        {getCategoryLabel(selectedCategory)} Details
-                      </Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        {getCategoryFields(selectedCategory).map(field => (
-                          <div key={field}>
-                            <Label className="text-xs">{FIELD_LABELS[field] || field}</Label>
-                            {field.includes('date') ? (
-                              <Input
-                                type="date"
-                                value={details[field] || ''}
-                                onChange={(e) => setDetails({ ...details, [field]: e.target.value })}
-                              />
-                            ) : field === 'payment_cycle' || field === 'payable_cycle' ? (
-                              <Select 
-                                value={details[field] || 'monthly'} 
-                                onValueChange={(v) => setDetails({ ...details, [field]: v })}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="monthly">Monthly</SelectItem>
-                                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                                  <SelectItem value="half_yearly">Half Yearly</SelectItem>
-                                  <SelectItem value="yearly">Yearly</SelectItem>
-                                  <SelectItem value="maturity">At Maturity</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : field === 'property_type' ? (
-                              <Select 
-                                value={details[field] || 'residential'} 
-                                onValueChange={(v) => setDetails({ ...details, [field]: v })}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="residential">Residential</SelectItem>
-                                  <SelectItem value="commercial">Commercial</SelectItem>
-                                  <SelectItem value="land">Land</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : field === 'increment_month' ? (
-                              <Select 
-                                value={details[field] || 'april'} 
-                                onValueChange={(v) => setDetails({ ...details, [field]: v })}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {['January', 'February', 'March', 'April', 'May', 'June', 
-                                    'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
-                                    <SelectItem key={m} value={m.toLowerCase()}>{m}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Input
-                                type={field.includes('rate') || field.includes('age') || field.includes('amount') || 
-                                      field.includes('value') || field.includes('contribution') || field.includes('income') ||
-                                      field.includes('rent') ? 'number' : 'text'}
-                                value={details[field] || ''}
-                                onChange={(e) => setDetails({ ...details, [field]: e.target.value })}
-                                placeholder={FIELD_LABELS[field]}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-4 border-t">
-                      <Button variant="outline" onClick={() => {
-                        setShowAddDialog(false);
-                        resetForm();
-                      }}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSubmit} disabled={loading}>
-                        {loading ? "Saving..." : (
-                          <>
-                            <Save className="h-4 w-4 mr-2" />
-                            {editItem ? "Update" : "Add"}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-5 w-5 text-blue-600" />
+            Select Family Members for Income Details
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {incomeDetails.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <DollarSign className="h-10 w-10 mx-auto text-gray-300 mb-3" />
-              <p>No income sources added yet</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {incomeDetails.map((income) => {
-                const CategoryIcon = INCOME_CATEGORIES.find(c => c.value === income.category)?.icon || DollarSign;
-                return (
-                  <div 
-                    key={income.id} 
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                        <CategoryIcon className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">{getCategoryLabel(income.category)}</h4>
-                        <p className="text-xs text-gray-500">{getMemberNames(income.member_ids)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold text-green-600">{getDisplayAmount(income)}</span>
-                      {!isReadOnly && (
-                        <>
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(income)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-red-600"
-                            onClick={() => handleDelete(income.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="flex flex-wrap gap-4">
+            {members.map(member => (
+              <label 
+                key={member.id} 
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
+                  selectedMembers.includes(member.id) 
+                    ? 'bg-blue-50 border-blue-300 text-blue-700' 
+                    : 'bg-white border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <Checkbox
+                  checked={selectedMembers.includes(member.id)}
+                  onCheckedChange={() => toggleMember(member.id)}
+                  disabled={isReadOnly}
+                />
+                <span className="font-medium">{member.name}</span>
+                {member.is_primary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
+              </label>
+            ))}
+          </div>
+          {members.length === 0 && (
+            <p className="text-gray-500 text-sm">No family members found. Please add members in the Introduction tab.</p>
           )}
         </CardContent>
       </Card>
+
+      {/* Income Categories Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {INCOME_CATEGORIES.map(category => {
+          const Icon = category.icon;
+          const hasData = hasDataInCategory(category.value);
+          
+          return (
+            <Card key={category.value} className={hasData ? "ring-1 ring-green-200" : ""}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Icon className={`h-4 w-4 ${hasData ? 'text-green-600' : 'text-gray-400'}`} />
+                  {category.label}
+                  {hasData && <Badge variant="outline" className="text-green-600 border-green-300 text-xs ml-auto">Has Data</Badge>}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-2 gap-3">
+                  {category.fields.map(field => (
+                    <div key={field.key} className={category.fields.length === 1 ? "col-span-2" : ""}>
+                      <Label className="text-xs text-gray-500 mb-1 block">{field.label}</Label>
+                      {renderField(category.value, field)}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end pt-4 border-t">
+        <Button 
+          onClick={handleSaveAll} 
+          disabled={loading || isReadOnly || selectedMembers.length === 0}
+          className="bg-etihad-gold-600 hover:bg-etihad-gold-700 text-white px-8 gap-2"
+        >
+          <Save className="h-4 w-4" />
+          {loading ? "Saving..." : "Save Income Details"}
+        </Button>
+      </div>
     </div>
   );
 }
