@@ -268,10 +268,10 @@ export default function Login() {
                     type={showPin ? "text" : "password"}
                     value={formData.pin}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 6);
                       setFormData({...formData, pin: value});
                     }}
-                    maxLength={4}
+                    maxLength={6}
                     className="h-12 pr-12 font-mono text-center text-xl tracking-widest"
                     style={{
                       borderColor: '#E5E7EB',
