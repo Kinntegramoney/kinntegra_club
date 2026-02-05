@@ -17,131 +17,235 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 // Income categories - Focus on CASHFLOW (money coming in each year)
+// Multi-row layout: fields grouped into rows for better UX
 const INCOME_CATEGORIES = [
   { 
     value: "salary", 
     label: "Salary", 
     icon: Briefcase,
-    fields: [
-      { key: "net_income_monthly", label: "Net Monthly Income", type: "number" },
-      { key: "increment_month", label: "Increment Month", type: "select", options: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] },
-      { key: "avg_growth_rate", label: "Growth Rate (%)", type: "number" },
-      { key: "retirement_age", label: "Retirement Age", type: "number" }
+    rows: [
+      [
+        { key: "net_income_monthly", label: "Net Monthly Income", type: "number" },
+        { key: "increment_month", label: "Increment Month", type: "select", options: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] },
+        { key: "avg_growth_rate", label: "Growth Rate (%)", type: "number" },
+        { key: "retirement_age", label: "Retirement Age", type: "number" }
+      ]
     ]
   },
   { 
     value: "business", 
     label: "Business", 
     icon: Building,
-    fields: [
-      { key: "net_income_yearly", label: "Net Yearly Income", type: "number" },
-      { key: "avg_growth_rate", label: "Growth Rate (%)", type: "number" },
-      { key: "retirement_age", label: "Retirement Age", type: "number" }
+    rows: [
+      [
+        { key: "net_income_yearly", label: "Net Yearly Income", type: "number" },
+        { key: "avg_growth_rate", label: "Growth Rate (%)", type: "number" },
+        { key: "retirement_age", label: "Retirement Age", type: "number" }
+      ]
     ]
   },
   { 
     value: "rental", 
     label: "Rental Income", 
     icon: Building,
-    fields: [
-      { key: "property_details", label: "Property Details", type: "text" },
-      { key: "property_type", label: "Property Type", type: "select", options: ["Residential", "Commercial", "Land"] },
-      { key: "purchase_value", label: "Purchase Value", type: "number" },
-      { key: "market_value", label: "Market Value", type: "number" },
-      { key: "description", label: "Description", type: "text" },
-      { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"] },
-      { key: "rental_details", label: "Rental Details", type: "text" },
-      { key: "income_per_month", label: "Income/Month", type: "number" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "end_date", label: "End Date", type: "date" },
-      { key: "tenure_months", label: "Tenure (Months)", type: "number" },
-      { key: "pay_date", label: "Pay Date", type: "select", options: ["1", "5", "10", "15", "20", "25", "Last Day"] },
-      { key: "auto_renew", label: "Auto Renew", type: "select", options: ["Yes", "No"] },
-      { key: "rental_increment_percent", label: "Increment (%)", type: "number" }
+    rows: [
+      [
+        { key: "property_details", label: "Property Details", type: "text" },
+        { key: "property_type", label: "Property Type", type: "select", options: ["Residential", "Commercial", "Land"] },
+        { key: "purchase_value", label: "Purchase Value", type: "number" },
+        { key: "market_value", label: "Market Value", type: "number" }
+      ],
+      [
+        { key: "description", label: "Description", type: "text" },
+        { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"] },
+        { key: "income_per_month", label: "Income/Month", type: "number" },
+        { key: "rental_increment_percent", label: "Increment (%)", type: "number" }
+      ],
+      [
+        { key: "start_date", label: "Start Date", type: "date" },
+        { key: "end_date", label: "End Date", type: "date" },
+        { key: "tenure_months", label: "Tenure (Months)", type: "number" },
+        { key: "pay_date", label: "Pay Date", type: "select", options: ["1", "5", "10", "15", "20", "25", "Last Day"] },
+        { key: "auto_renew", label: "Auto Renew", type: "select", options: ["Yes", "No"] }
+      ]
+    ]
+  },
+  { 
+    value: "ppf", 
+    label: "PPF", 
+    icon: PiggyBank,
+    rows: [
+      [
+        { key: "current_value", label: "Current Value", type: "number" },
+        { key: "maturity_date", label: "Maturity Date", type: "date" }
+      ]
+    ]
+  },
+  { 
+    value: "epf", 
+    label: "EPF", 
+    icon: PiggyBank,
+    rows: [
+      [
+        { key: "current_value", label: "Current Value", type: "number" },
+        { key: "maturity_date", label: "Maturity Date", type: "date" }
+      ]
+    ]
+  },
+  { 
+    value: "gratuity", 
+    label: "Gratuity", 
+    icon: Wallet,
+    rows: [
+      [
+        { key: "expected_amount", label: "Expected Amount", type: "number" },
+        { key: "maturity_date", label: "Expected Date", type: "date" }
+      ]
     ]
   },
   { 
     value: "pension", 
     label: "Pension", 
     icon: Wallet,
-    fields: [
-      { key: "amount", label: "Amount", type: "number" },
-      { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "end_date", label: "End Date", type: "date" },
-      { key: "payable_to", label: "Payable To", type: "select", options: ["Self", "Spouse"] }
+    rows: [
+      [
+        { key: "amount", label: "Amount", type: "number" },
+        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
+        { key: "start_date", label: "Start Date", type: "date" },
+        { key: "end_date", label: "End Date", type: "date" },
+        { key: "payable_to", label: "Payable To", type: "select", options: ["Self", "Spouse"] }
+      ]
     ]
   },
   { 
     value: "fd_interest", 
     label: "FD Interest", 
     icon: Landmark,
-    fields: [
-      { key: "description", label: "Description", type: "text" },
-      { key: "principal_amount", label: "Principal", type: "number" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly", "On Maturity"] }
+    rows: [
+      [
+        { key: "description", label: "Description", type: "text" },
+        { key: "principal_amount", label: "Principal", type: "number" },
+        { key: "interest_rate", label: "Interest Rate (%)", type: "number" }
+      ],
+      [
+        { key: "start_date", label: "Start Date", type: "date" },
+        { key: "maturity_date", label: "Maturity Date", type: "date" },
+        { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly", "On Maturity"] }
+      ]
     ]
   },
   { 
     value: "rd_pis", 
     label: "RD / PIS", 
     icon: Landmark,
-    fields: [
-      { key: "monthly_contribution", label: "Monthly Contribution", type: "number" },
-      { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "end_date", label: "End Date", type: "date" },
-      { key: "num_installments", label: "No. of Installments", type: "number" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-      { key: "maturity_amount", label: "Maturity Amount", type: "number" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" }
+    rows: [
+      [
+        { key: "monthly_contribution", label: "Monthly Contribution", type: "number" },
+        { key: "num_installments", label: "No. of Installments", type: "number" },
+        { key: "interest_rate", label: "Interest Rate (%)", type: "number" }
+      ],
+      [
+        { key: "start_date", label: "Start Date", type: "date" },
+        { key: "maturity_date", label: "Maturity Date", type: "date" },
+        { key: "maturity_amount", label: "Maturity Amount", type: "number" }
+      ]
     ]
   },
   { 
     value: "bond_interest", 
     label: "Bond Interest", 
     icon: Landmark,
-    fields: [
-      { key: "principal_amount", label: "Principal", type: "number" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"] }
+    rows: [
+      [
+        { key: "principal_amount", label: "Principal", type: "number" },
+        { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
+        { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"] }
+      ],
+      [
+        { key: "start_date", label: "Start Date", type: "date" },
+        { key: "maturity_date", label: "Maturity Date", type: "date" }
+      ]
     ]
   },
   { 
     value: "insurance_maturity", 
     label: "Insurance Maturity", 
     icon: Landmark,
-    fields: [
-      { key: "principal_amount", label: "Sum Assured", type: "number" },
-      { key: "interest_rate", label: "Expected Return (%)", type: "number" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Yearly", "On Maturity"] }
+    rows: [
+      [
+        { key: "sum_assured", label: "Sum Assured", type: "number" },
+        { key: "expected_return", label: "Expected Return (%)", type: "number" },
+        { key: "payment_cycle", label: "Payment Cycle", type: "select", options: ["Monthly", "Yearly", "On Maturity"] }
+      ],
+      [
+        { key: "start_date", label: "Start Date", type: "date" },
+        { key: "maturity_date", label: "Maturity Date", type: "date" }
+      ]
+    ]
+  },
+  { 
+    value: "mutual_fund", 
+    label: "Mutual Fund", 
+    icon: TrendingUp,
+    rows: [
+      [
+        { key: "market_value", label: "Market Value", type: "number" },
+        { key: "sip_amount", label: "SIP Amount", type: "number" }
+      ]
+    ]
+  },
+  { 
+    value: "shares_pms", 
+    label: "Shares / PMS", 
+    icon: TrendingUp,
+    rows: [
+      [
+        { key: "market_value", label: "Market Value", type: "number" }
+      ]
+    ]
+  },
+  { 
+    value: "gold", 
+    label: "Gold", 
+    icon: Wallet,
+    rows: [
+      [
+        { key: "market_value", label: "Market Value", type: "number" }
+      ]
+    ]
+  },
+  { 
+    value: "cash", 
+    label: "Cash in Hand", 
+    icon: Wallet,
+    rows: [
+      [
+        { key: "amount", label: "Amount", type: "number" }
+      ]
     ]
   },
   { 
     value: "dividend", 
     label: "Dividend Income", 
     icon: TrendingUp,
-    fields: [
-      { key: "source", label: "Source", type: "text" },
-      { key: "annual_amount", label: "Annual Amount", type: "number" },
-      { key: "growth_rate", label: "Growth Rate (%)", type: "number" }
+    rows: [
+      [
+        { key: "source", label: "Source", type: "text" },
+        { key: "annual_amount", label: "Annual Amount", type: "number" },
+        { key: "growth_rate", label: "Growth Rate (%)", type: "number" }
+      ]
     ]
   },
   { 
     value: "other", 
     label: "Other", 
     icon: DollarSign,
-    fields: [
-      { key: "description", label: "Description", type: "text" },
-      { key: "amount", label: "Amount", type: "number" },
-      { key: "frequency", label: "Frequency", type: "select", options: ["One-time", "Monthly", "Yearly"] }
+    rows: [
+      [
+        { key: "description", label: "Description", type: "text" },
+        { key: "amount", label: "Amount", type: "number" },
+        { key: "frequency", label: "Frequency", type: "select", options: ["One-time", "Monthly", "Yearly"] }
+      ]
     ]
   }
 ];
@@ -333,28 +437,37 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                     {items.length === 0 ? (
                       <div className="text-center py-3 text-gray-400 text-xs border-t">No entries. Click "Add" to create one.</div>
                     ) : (
-                      <div className="space-y-2 border-t pt-2">
+                      <div className="space-y-3 border-t pt-2">
                         {items.map((item) => (
-                          <div key={item.id} className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            <div className="flex items-end gap-2 flex-wrap">
-                              <div className="w-32">
-                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
+                          <div key={item.id} className={`p-3 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                            {/* Member Selection Row */}
+                            <div className="flex items-center justify-between mb-2 pb-2 border-b border-dashed">
+                              <div className="flex items-center gap-2">
+                                <Label className="text-[10px] text-gray-400">Member:</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder="Select Member" /></SelectTrigger>
                                   <SelectContent>
                                     {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
                               </div>
-                              {category.fields.map(field => (
-                                <div key={field.key} className="flex-1 min-w-[80px]">
-                                  <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
-                                  {renderField(category.value, item.id, field, item.details[field.key])}
-                                </div>
-                              ))}
-                              <Button variant="ghost" size="icon" onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
+                              <Button variant="ghost" size="icon" onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
+                            </div>
+                            
+                            {/* Multi-row fields */}
+                            <div className="space-y-2">
+                              {category.rows.map((row, rowIndex) => (
+                                <div key={rowIndex} className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                                  {row.map(field => (
+                                    <div key={field.key}>
+                                      <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
+                                      {renderField(category.value, item.id, field, item.details[field.key])}
+                                    </div>
+                                  ))}
+                                </div>
+                              ))}
                             </div>
                           </div>
                         ))}
