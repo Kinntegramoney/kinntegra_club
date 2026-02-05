@@ -333,7 +333,16 @@ export default function DataGathering() {
             onRefresh={refreshSelectedFamily}
           />
         );
-      case "insurance":
+      case "assets":
+        return (
+          <AssetsSection 
+            family={selectedFamily} 
+            onUpdate={(data) => handleDataUpdate('asset_details', data)}
+            isReadOnly={isReadOnly}
+            onRefresh={refreshSelectedFamily}
+          />
+        );
+      case "liability":
         return (
           <InsuranceSection 
             family={selectedFamily} 
