@@ -602,14 +602,6 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                             </div>
                           </div>
                         ))}
-
-                        {/* Save */}
-                        <div className="flex justify-end pt-1">
-                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly || !hasChanges} size="sm" className="h-7 px-3 text-xs bg-blue-600 hover:bg-blue-700">
-                            <Save className="h-3 w-3 mr-1" />
-                            {savingCategory === category.value ? "..." : "Save"}
-                          </Button>
-                        </div>
                       </div>
                     )}
                   </div>
