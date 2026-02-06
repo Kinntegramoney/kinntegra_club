@@ -212,25 +212,20 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
                     ) : (
                       <div className="space-y-3 border-t pt-2">
                         {items.map((item) => (
-                          <div key={item.id} className={`p-3 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-dashed">
-                              <div className="flex items-center gap-2">
-                                <Label className="text-[10px] text-gray-400">Member:</Label>
+                          <div key={item.id} className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                            <div className="flex items-end gap-2 flex-wrap">
+                              {/* Member Dropdown */}
+                              <div className="w-32">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateInsuranceItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>
                                     {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
                               </div>
-                              <Button variant="ghost" size="icon" onClick={() => removeInsuranceItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                            
-                            <div className="grid grid-cols-3 gap-3">
-                              <div>
-                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Amount Today</Label>
+                              <div className="flex-1 min-w-[100px]">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Amount Today</Label>
                                 <Input
                                   type="number"
                                   value={item.details.amount_today || ""}
@@ -240,19 +235,8 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
                                   disabled={isReadOnly}
                                 />
                               </div>
-                              <div>
-                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Inflation Percent</Label>
-                                <Input
-                                  type="number"
-                                  value={item.details.inflation_percent || ""}
-                                  onChange={(e) => updateInsuranceItem(category.value, item.id, "inflation_percent", e.target.value)}
-                                  placeholder="5"
-                                  className="h-8 text-xs"
-                                  disabled={isReadOnly}
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Goal Year</Label>
+                              <div className="w-28">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Goal Year</Label>
                                 <Select value={item.details.goal_year?.toString() || ""} onValueChange={(v) => updateInsuranceItem(category.value, item.id, "goal_year", v)} disabled={isReadOnly}>
                                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>
@@ -260,6 +244,9 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
                                   </SelectContent>
                                 </Select>
                               </div>
+                              <Button variant="ghost" size="icon" onClick={() => removeInsuranceItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             </div>
                           </div>
                         ))}
