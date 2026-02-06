@@ -63,6 +63,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
   const members = family?.members || [];
   const existingExpenses = family?.expense_details || [];
   const existingLiabilities = family?.liability_details || [];
+  const existingInsurance = family?.insurance_details || [];
   const currentYear = new Date().getFullYear();
 
   // Loan calculation helpers
@@ -116,6 +117,25 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       }
     });
 
+    // Load insurance items
+    existingInsurance.forEach(ins => {
+      const category = ins.category;
+      if (itemsByCategory[category] !== undefined) {
+        if (!added.includes(category)) added.push(category);
+        itemsByCategory[category].push({
+          id: ins.id,
+          memberId: ins.member_ids?.[0] || "",
+          details: {
+            yearly_premium: ins.yearly_premium || ins.amount_today || "",
+            upto_year: ins.upto_year || ins.goal_year || "",
+            coverage_amount: ins.coverage_amount || ""
+          },
+          isNew: false,
+          isModified: false
+        });
+      }
+    });
+
     setItems(itemsByCategory);
     setAddedCategories(added);
     
@@ -125,7 +145,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       setExpandedCategories(expanded);
       setInitialLoadDone(true);
     }
-  }, [family?.id, existingExpenses.length, existingLiabilities.length, initialLoadDone]);
+  }, [family?.id, existingExpenses.length, existingLiabilities.length, existingInsurance.length, initialLoadDone]);
 
   const getCategoryConfig = (val) => EXPENSE_CATEGORIES.find(c => c.value === val);
 
