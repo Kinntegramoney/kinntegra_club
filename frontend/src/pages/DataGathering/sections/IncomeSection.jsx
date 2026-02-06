@@ -400,9 +400,17 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             }
             
             // PPF/EPF/Gratuity calculations
-            if (["ppf", "epf", "gratuity"].includes(category) && field === "maturity_date") {
-              const maturityYear = new Date(value).getFullYear();
-              newDetails.year_to_mature = Math.max(0, maturityYear - new Date().getFullYear());
+            if (["ppf", "epf", "gratuity"].includes(category)) {
+              if (field === "maturity_date") {
+                const maturityYear = new Date(value).getFullYear();
+                newDetails.year_to_mature = Math.max(0, maturityYear - new Date().getFullYear());
+              }
+              if (field === "amount") {
+                // Investment Value = Amount entered
+                newDetails.investment_value = parseFloat(value) || 0;
+                // Market Value = Same as investment for now (can be updated from backend)
+                newDetails.market_value = parseFloat(value) || 0;
+              }
             }
             
             // FD/Bond calculations
@@ -411,6 +419,12 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 const principal = field === "principal_amount" ? value : newDetails.principal_amount;
                 const rate = field === "interest_rate" ? value : newDetails.interest_rate;
                 if (principal && rate) newDetails.payment_amount_yearly = Math.round((parseFloat(principal) * parseFloat(rate)) / 100);
+              }
+              if (field === "principal_amount") {
+                // Investment Value = Principal Amount
+                newDetails.investment_value = parseFloat(value) || 0;
+                // Market Value = Same as investment for now
+                newDetails.market_value = parseFloat(value) || 0;
               }
             }
             
@@ -424,11 +438,16 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                   newDetails.num_installments = Math.max(0, months);
                   if (newDetails.principal_amount_monthly) {
                     newDetails.principal_amount = parseFloat(newDetails.principal_amount_monthly) * newDetails.num_installments;
+                    // Update investment value when principal is calculated
+                    newDetails.investment_value = newDetails.principal_amount;
+                    newDetails.market_value = newDetails.principal_amount;
                   }
                 }
               }
               if (field === "principal_amount_monthly" && newDetails.num_installments) {
                 newDetails.principal_amount = parseFloat(value) * newDetails.num_installments;
+                newDetails.investment_value = newDetails.principal_amount;
+                newDetails.market_value = newDetails.principal_amount;
               }
             }
             
@@ -438,7 +457,12 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 const amount = field === "amount" ? value : newDetails.amount;
                 const type = field === "payable_type" ? value : (newDetails.payable_type || "Monthly");
                 const multipliers = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1 };
-                if (amount) newDetails.amount_yearly = Math.round(parseFloat(amount) * (multipliers[type] || 12));
+                if (amount) {
+                  newDetails.amount_yearly = Math.round(parseFloat(amount) * (multipliers[type] || 12));
+                  // Investment Value = Yearly Amount
+                  newDetails.investment_value = newDetails.amount_yearly;
+                  newDetails.market_value = newDetails.amount_yearly;
+                }
               }
               if (field === "upto_life" && value === "Yes") newDetails.end_date = "";
             }
@@ -449,7 +473,12 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 const premium = field === "principal_amount" ? value : newDetails.principal_amount;
                 const cycle = field === "payable_cycle" ? value : (newDetails.payable_cycle || "Monthly");
                 const multipliers = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1, "On Maturity": 1 };
-                if (premium) newDetails.payment_amount_yearly = Math.round(parseFloat(premium) * (multipliers[cycle] || 12));
+                if (premium) {
+                  newDetails.payment_amount_yearly = Math.round(parseFloat(premium) * (multipliers[cycle] || 12));
+                  // Investment Value = Yearly Payment
+                  newDetails.investment_value = newDetails.payment_amount_yearly;
+                  newDetails.market_value = newDetails.payment_amount_yearly;
+                }
               }
             }
           }
