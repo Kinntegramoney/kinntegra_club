@@ -377,19 +377,19 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                   <div className="flex items-center justify-between px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <div className={`w-1 h-6 rounded-full ${colorMap[cat.color] || 'bg-gray-500'}`} />
-                      <Icon className={`h-4 w-4 ${isLoan ? 'text-red-500' : 'text-gray-500'}`} />
+                      <Icon className={`h-4 w-4 ${iconClass}`} />
                       <span className="text-sm font-medium text-gray-700">{cat.label}</span>
-                      <Badge variant="secondary" className={`h-5 px-1.5 text-[10px] ${isLoan ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>{catItems.length}</Badge>
+                      <Badge variant="secondary" className={`h-5 px-1.5 text-[10px] ${badgeClass}`}>{catItems.length}</Badge>
                       {hasChanges && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
                     </div>
                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                       {hasChanges && (
-                        <Button onClick={() => saveCategory(cat.value)} disabled={savingCategory === cat.value || isReadOnly} size="sm" className={`h-7 px-3 text-xs ${isLoan ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+                        <Button onClick={() => saveCategory(cat.value)} disabled={savingCategory === cat.value || isReadOnly} size="sm" className={`h-7 px-3 text-xs ${saveClass}`}>
                           <Save className="h-3 w-3 mr-1" />{savingCategory === cat.value ? "..." : "Save"}
                         </Button>
                       )}
                       <button onClick={() => skipCategory(cat.value)} disabled={isReadOnly} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"><X className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => addItem(cat.value)} disabled={isReadOnly} className={`p-1.5 rounded ${isLoan ? 'text-red-500 hover:text-red-600 hover:bg-red-50' : 'text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50'}`}><Plus className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => addItem(cat.value)} disabled={isReadOnly} className={`p-1.5 rounded ${addClass}`}><Plus className="h-3.5 w-3.5" /></button>
                       <div className="p-1.5 text-gray-400">{isExp ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}</div>
                     </div>
                   </div>
@@ -400,7 +400,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                       <div className="space-y-2 mt-2">
                         {catItems.map((item, idx) => (
                           <div key={item.id} className={`rounded-md p-3 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/30 border border-gray-100'}`}>
-                            {isLoan ? (
+                            {type === "loan" ? (
                               // LOAN EMI FORM
                               <div className="flex flex-wrap gap-3 items-end">
                                 <div className="flex flex-col min-w-[140px] flex-1 max-w-[180px]">
