@@ -240,7 +240,7 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
                 <CollapsibleContent>
                   <div className="px-4 pb-4 border-t border-gray-100">
                     {items.length === 0 ? (
-                      <div className="text-center py-6 text-gray-400 text-sm">No entries. Click "+ Add".</div>
+                      <div className="text-center py-6 text-gray-400 text-sm">No entries. Click &quot;+ Add&quot;.</div>
                     ) : (
                       <div className="space-y-3 mt-4">
                         {items.map((item, idx) => (
