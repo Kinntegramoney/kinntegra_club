@@ -34,6 +34,7 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
   const [expandedCategories, setExpandedCategories] = useState({});
   const [addedCategories, setAddedCategories] = useState([]);
   const [goalItems, setGoalItems] = useState({});
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const members = family?.members || [];
   const existingGoals = family?.goal_details || [];
@@ -59,10 +60,14 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
 
     setGoalItems(itemsByCategory);
     setAddedCategories(added);
-    const expanded = {};
-    added.forEach(cat => { expanded[cat] = true; });
-    setExpandedCategories(expanded);
-  }, [family?.id, existingGoals.length]);
+    
+    if (!initialLoadDone) {
+      const expanded = {};
+      added.forEach(cat => { expanded[cat] = true; });
+      setExpandedCategories(expanded);
+      setInitialLoadDone(true);
+    }
+  }, [family?.id, existingGoals.length, initialLoadDone]);
 
   const addCategory = (categoryValue) => {
     if (!addedCategories.includes(categoryValue)) {
