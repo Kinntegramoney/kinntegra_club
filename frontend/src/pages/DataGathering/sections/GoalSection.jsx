@@ -379,27 +379,59 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
                                   
                                   {/* Year Picker Dropdown */}
                                   {yearPickerOpen[item.id] && (
-                                    <div className="absolute z-50 top-full left-0 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg">
-                                      <div className="p-2 grid grid-cols-4 gap-1">
-                                        {YEAR_OPTIONS.map(year => {
-                                          const isSelected = (item.details.goal_years || []).includes(year);
-                                          return (
+                                    <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg">
+                                      {/* Quick Pattern Options */}
+                                      <div className="p-2 border-b border-gray-100">
+                                        <p className="text-[10px] text-gray-400 uppercase mb-2">Quick Select</p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {YEAR_PATTERNS.map(pattern => (
                                             <button
-                                              key={year}
+                                              key={pattern.interval}
                                               type="button"
-                                              onClick={() => toggleYear(category.value, item.id, year)}
-                                              className={`px-2 py-1 text-xs rounded transition-colors ${
-                                                isSelected 
-                                                  ? 'bg-purple-500 text-white' 
-                                                  : 'bg-gray-50 text-gray-700 hover:bg-purple-100'
-                                              }`}
+                                              onClick={() => applyYearPattern(category.value, item.id, pattern.interval)}
+                                              className="px-2 py-1 text-[10px] bg-purple-50 text-purple-600 rounded hover:bg-purple-100 transition-colors"
                                             >
-                                              {year}
+                                              {pattern.label}
                                             </button>
-                                          );
-                                        })}
+                                          ))}
+                                          <button
+                                            type="button"
+                                            onClick={() => clearAllYears(category.value, item.id)}
+                                            className="px-2 py-1 text-[10px] bg-gray-50 text-gray-500 rounded hover:bg-gray-100 transition-colors"
+                                          >
+                                            Clear All
+                                          </button>
+                                        </div>
                                       </div>
-                                      <div className="p-2 border-t border-gray-100 flex justify-end">
+                                      
+                                      {/* Year Grid */}
+                                      <div className="p-2 max-h-40 overflow-y-auto">
+                                        <p className="text-[10px] text-gray-400 uppercase mb-2">Or Select Individual Years</p>
+                                        <div className="grid grid-cols-5 gap-1">
+                                          {YEAR_OPTIONS.map(year => {
+                                            const isSelected = (item.details.goal_years || []).includes(year);
+                                            return (
+                                              <button
+                                                key={year}
+                                                type="button"
+                                                onClick={() => toggleYear(category.value, item.id, year)}
+                                                className={`px-2 py-1 text-xs rounded transition-colors ${
+                                                  isSelected 
+                                                    ? 'bg-purple-500 text-white' 
+                                                    : 'bg-gray-50 text-gray-700 hover:bg-purple-100'
+                                                }`}
+                                              >
+                                                {year}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="p-2 border-t border-gray-100 flex justify-between items-center">
+                                        <span className="text-[10px] text-gray-400">
+                                          {(item.details.goal_years || []).length} year(s) selected
+                                        </span>
                                         <button 
                                           type="button"
                                           onClick={() => toggleYearPicker(item.id)}
