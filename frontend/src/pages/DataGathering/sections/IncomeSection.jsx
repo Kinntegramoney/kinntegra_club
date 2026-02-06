@@ -69,6 +69,8 @@ const INCOME_CATEGORIES = [
     icon: PiggyBank,
     color: "green",
     fields: [
+      { key: "investment_value", label: "Investment Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "amount", label: "Amount", type: "number" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
       { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
@@ -80,6 +82,8 @@ const INCOME_CATEGORIES = [
     icon: PiggyBank,
     color: "emerald",
     fields: [
+      { key: "investment_value", label: "Investment Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "amount", label: "Amount", type: "number" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
       { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
@@ -91,6 +95,8 @@ const INCOME_CATEGORIES = [
     icon: Wallet,
     color: "amber",
     fields: [
+      { key: "investment_value", label: "Investment Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "amount", label: "Amount", type: "number" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
       { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
@@ -102,6 +108,8 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     color: "indigo",
     fields: [
+      { key: "investment_value", label: "Investment Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "description", label: "Description", type: "text" },
       { key: "principal_amount", label: "Principal", type: "number" },
       { key: "interest_rate", label: "Interest %", type: "number" },
@@ -116,6 +124,8 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     color: "cyan",
     fields: [
+      { key: "investment_value", label: "Investment Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "principal_amount_monthly", label: "Monthly Amt", type: "number" },
       { key: "start_date", label: "Start", type: "date" },
       { key: "end_date", label: "End", type: "date" },
@@ -131,6 +141,8 @@ const INCOME_CATEGORIES = [
     icon: Wallet,
     color: "rose",
     fields: [
+      { key: "investment_value", label: "Investment Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "amount", label: "Amount", type: "number" },
       { key: "payable_type", label: "Payable", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Monthly" },
       { key: "amount_yearly", label: "Yearly Amt", type: "number", readOnly: true, calculated: true },
@@ -146,6 +158,8 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     color: "violet",
     fields: [
+      { key: "investment_value", label: "Investment Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "description", label: "Description", type: "text" },
       { key: "principal_amount", label: "Principal", type: "number" },
       { key: "interest_rate", label: "Interest %", type: "number" },
@@ -160,6 +174,8 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     color: "pink",
     fields: [
+      { key: "investment_value", label: "Investment Value", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "description", label: "Description", type: "text" },
       { key: "principal_amount", label: "Premium", type: "number" },
       { key: "payable_cycle", label: "Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
