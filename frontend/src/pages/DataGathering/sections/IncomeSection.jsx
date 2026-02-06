@@ -548,19 +548,22 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                       <div className="space-y-2">
                         {items.map((item, idx) => (
                           <div key={item.id} className={`rounded-md p-2.5 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
-                            <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-end gap-2 flex-wrap">
                               {/* Index */}
-                              <span className={`w-5 h-5 rounded text-[10px] flex items-center justify-center text-white ${colorMap[category.color]}`}>{idx + 1}</span>
+                              <span className={`w-5 h-5 mb-1 rounded text-[10px] flex items-center justify-center text-white ${colorMap[category.color]}`}>{idx + 1}</span>
                               
                               {/* Member */}
-                              <Select value={item.memberId || ""} onValueChange={v => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                <SelectTrigger className="h-7 w-28 text-xs bg-white border-gray-200">
-                                  <SelectValue placeholder="Member" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
+                              <div className="flex flex-col">
+                                <span className="text-[9px] text-gray-400 mb-0.5">Member</span>
+                                <Select value={item.memberId || ""} onValueChange={v => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                  <SelectTrigger className="h-7 w-28 text-xs bg-white border-gray-200">
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
 
                               {/* Fields */}
                               {category.fields.map(field => {
@@ -596,7 +599,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                               })}
 
                               {/* Delete */}
-                              <button onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="ml-auto p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                              <button onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="ml-auto p-1.5 mb-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </div>
