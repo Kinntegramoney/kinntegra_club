@@ -192,14 +192,19 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
 
   const removeItem = async (cat, itemId, isNew) => {
     const config = getCategoryConfig(cat);
-    const isLoan = config?.type === "loan";
+    const type = config?.type;
     
     if (!isNew) {
       try {
         const token = localStorage.getItem("token");
-        const endpoint = isLoan 
-          ? `${API}/data-gathering/family/${family.id}/liability/${itemId}`
-          : `${API}/data-gathering/family/${family.id}/expense/${itemId}`;
+        let endpoint;
+        if (type === "loan") {
+          endpoint = `${API}/data-gathering/family/${family.id}/liability/${itemId}`;
+        } else if (type === "insurance") {
+          endpoint = `${API}/data-gathering/family/${family.id}/insurance/${itemId}`;
+        } else {
+          endpoint = `${API}/data-gathering/family/${family.id}/expense/${itemId}`;
+        }
         await axios.delete(endpoint, { headers: { Authorization: `Bearer ${token}` } });
         toast.success("Deleted");
         onRefresh();
