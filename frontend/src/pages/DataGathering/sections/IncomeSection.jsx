@@ -52,9 +52,9 @@ const INCOME_CATEGORIES = [
       { key: "property_type", label: "Type", type: "select", options: ["Residential", "Commercial", "Land"] },
       { key: "purchase_value", label: "Purchase Value", type: "number" },
       { key: "market_value", label: "Market Value", type: "number" },
-      { key: "is_on_rent", label: "On Rent", type: "select", options: ["Yes", "No"] },
+      { key: "is_on_rent", label: "On Rent", type: "select", options: ["Yes", "No"], defaultValue: "No" },
       { key: "income_per_month", label: "Income/Month", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "annual_income", label: "Annual Income", type: "number", readOnly: true, calculated: true },
+      { key: "annual_income", label: "Annual Income", type: "number", readOnly: true, calculated: true, dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "rental_increment_percent", label: "Increment %", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" }
     ]
   },
