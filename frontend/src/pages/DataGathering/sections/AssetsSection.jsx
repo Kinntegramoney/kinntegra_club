@@ -164,11 +164,6 @@ export default function AssetsSection({ family }) {
                       <span className={`text-sm ${hasValues ? 'font-medium text-gray-800' : 'text-gray-500'}`}>
                         {category.label}
                       </span>
-                      {category.hasMaturity && (
-                        <Badge variant="outline" className="text-[9px] h-4 px-1 text-blue-500 border-blue-200">
-                          → Income
-                        </Badge>
-                      )}
                     </div>
                   </td>
                   {members.map((member, idx) => {
