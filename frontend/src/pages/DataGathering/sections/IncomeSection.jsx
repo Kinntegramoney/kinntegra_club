@@ -580,8 +580,11 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                           
                           const renderField = (field) => {
                             const isSmallField = ['growth_rate_percent', 'retirement_age', 'inflation_percent', 'rental_increment_percent', 'interest_rate', 'pay_date', 'auto_renew'].includes(field.key);
+                            const isLargeTextField = ['property_details', 'rental_details', 'description'].includes(field.key);
                             const fieldStyle = isSmallField 
                               ? { minWidth: '70px', maxWidth: '100px', flex: '0.5' }
+                              : isLargeTextField
+                              ? { minWidth: '200px', maxWidth: '300px', flex: '2' }
                               : { minWidth: '100px', maxWidth: '180px', flex: '1' };
                             
                             return (
