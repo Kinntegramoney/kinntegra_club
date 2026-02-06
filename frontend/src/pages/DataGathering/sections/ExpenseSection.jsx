@@ -257,6 +257,11 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                       {hasChanges && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
                     </div>
                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      {hasChanges && (
+                        <Button onClick={() => saveCategory(cat.value)} disabled={savingCategory === cat.value || isReadOnly} size="sm" className="h-7 px-3 text-xs bg-orange-600 hover:bg-orange-700">
+                          <Save className="h-3 w-3 mr-1" />{savingCategory === cat.value ? "..." : "Save"}
+                        </Button>
+                      )}
                       <button onClick={() => skipCategory(cat.value)} disabled={isReadOnly} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"><X className="h-3.5 w-3.5" /></button>
                       <button onClick={() => addExpenseItem(cat.value)} disabled={isReadOnly} className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded"><Plus className="h-3.5 w-3.5" /></button>
                       <div className="p-1.5 text-gray-400">{isExp ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}</div>
