@@ -345,58 +345,150 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
   const hiddenCategoryList = ASSET_CATEGORIES.filter(c => hiddenCategories.includes(c.value));
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {/* Summary */}
       {totalAssets > 0 && (
-        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-2">
+        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
           <span className="text-xs text-green-600">Total Assets Value</span>
           <span className="font-semibold text-green-700">₹{totalAssets.toLocaleString('en-IN')}</span>
         </div>
       )}
 
-      <div className="flex items-center justify-between text-xs text-gray-500 px-1 mb-1">
+      <div className="flex items-center justify-between text-xs text-gray-500 px-1">
         <span>Record face values. Items with maturity will also reflect in Income.</span>
         <Badge variant="outline" className="text-xs">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
       </div>
 
-      <div className="space-y-1.5">
-        {visibleCategories.map(category => {
-          const Icon = category.icon;
-          const itemCount = getCategoryItemCount(category.value);
-          const isExpanded = expandedCategories[category.value];
-          const items = assetItems[category.value] || [];
-          const hasUnsavedChanges = items.some(item => item.isNew || item.isModified);
-          
-          return (
-            <Card key={category.value} className={`overflow-hidden ${itemCount > 0 ? 'border-green-200 bg-green-50/30' : ''}`}>
-              <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category.value)}>
-                <CollapsibleTrigger asChild>
-                  <CardHeader className="py-2 px-3 cursor-pointer hover:bg-gray-50/80">
-                    <div className="flex items-center justify-between">
+      {/* Assets Summary Table */}
+      <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left text-xs font-medium text-gray-600 px-4 py-3">Particulars</th>
+              <th className="text-right text-xs font-medium text-gray-600 px-4 py-3">Investment Value</th>
+              <th className="text-right text-xs font-medium text-gray-600 px-4 py-3">Market Value</th>
+              <th className="text-center text-xs font-medium text-gray-600 px-4 py-3 w-24">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {visibleCategories.map(category => {
+              const Icon = category.icon;
+              const items = assetItems[category.value] || [];
+              const itemCount = items.length;
+              const hasUnsavedChanges = items.some(item => item.isNew || item.isModified);
+              const isExpanded = expandedCategories[category.value];
+              
+              // Calculate totals for this category
+              const investmentTotal = items.reduce((sum, item) => {
+                return sum + (parseFloat(item.details?.principal_amount) || parseFloat(item.details?.current_value) || parseFloat(item.details?.amount) || parseFloat(item.details?.sum_assured) || parseFloat(item.details?.expected_amount) || 0);
+              }, 0);
+              
+              const marketTotal = items.reduce((sum, item) => {
+                return sum + (parseFloat(item.details?.market_value) || parseFloat(item.details?.current_value) || parseFloat(item.details?.amount) || parseFloat(item.details?.principal_amount) || 0);
+              }, 0);
+              
+              return (
+                <React.Fragment key={category.value}>
+                  <tr className={`hover:bg-gray-50 cursor-pointer ${isExpanded ? 'bg-green-50/50' : ''}`} onClick={() => toggleCategory(category.value)}>
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-gray-400" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
                         <Icon className={`h-4 w-4 ${itemCount > 0 ? 'text-green-600' : 'text-gray-400'}`} />
-                        <span className="text-sm font-medium">{category.label}</span>
+                        <span className="text-sm font-medium text-gray-800">{category.label}</span>
                         {category.hasMaturity && <Badge variant="outline" className="text-[10px] h-4 px-1 text-blue-500 border-blue-200">→ Income</Badge>}
-                        {itemCount > 0 && <Badge className="bg-green-100 text-green-700 text-xs h-5 px-1.5">{itemCount}</Badge>}
-                        {hasUnsavedChanges && <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs h-5 px-1.5">•</Badge>}
+                        {itemCount > 0 && <Badge className="bg-green-100 text-green-700 text-[10px] h-4 px-1.5">{itemCount}</Badge>}
+                        {hasUnsavedChanges && <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>}
                       </div>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={`text-sm ${investmentTotal > 0 ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
+                        {investmentTotal > 0 ? `₹${investmentTotal.toLocaleString('en-IN')}` : '-'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={`text-sm ${marketTotal > 0 ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
+                        {marketTotal > 0 ? `₹${marketTotal.toLocaleString('en-IN')}` : '-'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-center gap-1">
                         {hasUnsavedChanges && (
-                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly} size="sm" className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700">
-                            <Save className="h-3 w-3 mr-1" />{savingCategory === category.value ? "..." : "Save"}
+                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly} size="sm" className="h-6 px-2 text-[10px] bg-green-600 hover:bg-green-700">
+                            <Save className="h-3 w-3" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => hideCategory(category.value)} disabled={isReadOnly || itemCount > 0} className="h-7 px-2 text-xs text-gray-400 hover:text-gray-600">
-                          <EyeOff className="h-3 w-3 mr-1" />Skip
+                        <Button variant="ghost" size="sm" onClick={() => addAssetItem(category.value)} disabled={isReadOnly} className="h-6 px-2 text-[10px] text-green-600 hover:text-green-700 hover:bg-green-50">
+                          <Plus className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => addAssetItem(category.value)} disabled={isReadOnly} className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50">
-                          <Plus className="h-3 w-3 mr-1" />Add
+                        <Button variant="ghost" size="sm" onClick={() => hideCategory(category.value)} disabled={isReadOnly || itemCount > 0} className="h-6 px-1 text-[10px] text-gray-400 hover:text-gray-600">
+                          <EyeOff className="h-3 w-3" />
                         </Button>
                       </div>
-                    </div>
-                  </CardHeader>
-                </CollapsibleTrigger>
+                    </td>
+                  </tr>
+                  
+                  {/* Expanded Content - Show items */}
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3 bg-gray-50/50">
+                        {items.length === 0 ? (
+                          <div className="text-center py-2 text-gray-400 text-xs">No entries. Click + to add.</div>
+                        ) : (
+                          <div className="space-y-2">
+                            {items.map((item, idx) => (
+                              <div key={item.id} className={`p-3 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                                <div className="flex flex-wrap gap-3 items-end">
+                                  <div className="flex flex-col min-w-[120px] flex-1 max-w-[180px]">
+                                    <Label className="text-[10px] text-gray-400 mb-1 block">Member</Label>
+                                    <Select value={item.memberId || ""} onValueChange={(v) => updateAssetItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                      <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Select" /></SelectTrigger>
+                                      <SelectContent>
+                                        {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  {category.fields.map(field => (
+                                    <div key={field.key} className="flex flex-col min-w-[100px] flex-1 max-w-[180px]">
+                                      <Label className="text-[10px] text-gray-400 mb-1 block">{field.label}</Label>
+                                      {renderField(category.value, item.id, field, item.details[field.key])}
+                                    </div>
+                                  ))}
+                                  {idx > 0 && (
+                                    <div className="flex flex-col justify-end">
+                                      <button onClick={() => removeAssetItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex items-center">
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+            
+            {/* Total Row */}
+            <tr className="bg-green-50 font-medium">
+              <td className="px-4 py-3 text-sm text-green-800">Total</td>
+              <td className="px-4 py-3 text-right text-sm text-green-800">
+                ₹{visibleCategories.reduce((sum, cat) => {
+                  const items = assetItems[cat.value] || [];
+                  return sum + items.reduce((s, item) => s + (parseFloat(item.details?.principal_amount) || parseFloat(item.details?.current_value) || parseFloat(item.details?.amount) || parseFloat(item.details?.sum_assured) || parseFloat(item.details?.expected_amount) || 0), 0);
+                }, 0).toLocaleString('en-IN')}
+              </td>
+              <td className="px-4 py-3 text-right text-sm text-green-800">
+                ₹{totalAssets.toLocaleString('en-IN')}
+              </td>
+              <td className="px-4 py-3"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
                 
                 <CollapsibleContent>
                   <CardContent className="pt-0 pb-2 px-3">
