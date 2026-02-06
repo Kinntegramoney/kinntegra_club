@@ -226,28 +226,31 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
                       <div className="text-center py-6 text-gray-400 text-sm">No entries. Click "+ Add".</div>
                     ) : (
                       <div className="space-y-3 mt-4">
-                        {items.map((item) => (
+                        {items.map((item, idx) => (
                           <div key={item.id} className={`p-4 rounded-lg ${item.isNew ? 'bg-green-50 border border-green-200' : item.isModified ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'}`}>
-                            <div className="flex items-end gap-3 flex-wrap">
-                              <div className="w-36">
-                                <Label className="text-xs text-gray-500 mb-1 block">Member</Label>
+                            <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-end">
+                              <div className="flex flex-col">
+                                <span className="text-[10px] mb-1 invisible">-</span>
+                                <span className="w-6 h-8 rounded text-xs flex items-center justify-center text-white bg-teal-500">{idx + 1}</span>
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Member</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateInsuranceItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-10 text-sm bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
-                                  <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}</SelectContent>
+                                  <SelectTrigger className="h-8 text-xs bg-white w-full"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}</SelectContent>
                                 </Select>
                               </div>
-                              <div className="flex-1 min-w-[140px]">
-                                <Label className="text-xs text-gray-500 mb-1 block">Amount Today</Label>
-                                <Input type="number" value={item.details.amount_today || ""} onChange={(e) => updateInsuranceItem(category.value, item.id, "amount_today", e.target.value)} placeholder="0" className="h-10 text-sm bg-white" disabled={isReadOnly} />
+                              <div className="flex flex-col min-w-0">
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Amount Today</Label>
+                                <Input type="number" value={item.details.amount_today || ""} onChange={(e) => updateInsuranceItem(category.value, item.id, "amount_today", e.target.value)} placeholder="0" className="h-8 text-xs bg-white w-full" disabled={isReadOnly} />
                               </div>
-                              <div className="w-32">
-                                <Label className="text-xs text-gray-500 mb-1 block">Goal Year</Label>
+                              <div className="flex flex-col min-w-0">
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Goal Year</Label>
                                 <Select value={item.details.goal_year?.toString() || ""} onValueChange={(v) => updateInsuranceItem(category.value, item.id, "goal_year", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-10 text-sm bg-white"><SelectValue /></SelectTrigger>
-                                  <SelectContent>{YEAR_OPTIONS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+                                  <SelectTrigger className="h-8 text-xs bg-white w-full"><SelectValue /></SelectTrigger>
+                                  <SelectContent>{YEAR_OPTIONS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}</SelectContent>
                                 </Select>
                               </div>
-                              <Button variant="ghost" size="icon" onClick={() => removeInsuranceItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-10 w-10 shrink-0"><Trash2 className="h-4 w-4" /></Button>
                             </div>
                           </div>
                         ))}
