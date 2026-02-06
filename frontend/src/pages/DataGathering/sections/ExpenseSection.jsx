@@ -172,13 +172,42 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
     const items = expenseItems[cat] || [];
     const toSave = items.filter(i => i.isNew || i.isModified);
     if (toSave.length === 0) { toast.info("No changes"); return; }
-    for (const item of toSave) { if (!item.memberId || !item.details.annual_amount) { toast.error("Fill required fields"); return; } }
+    
+    // Validate required fields
+    for (const item of toSave) { 
+      if (!item.memberId || !item.details.monthly_amount) { 
+        toast.error("Fill required fields (Member and Monthly Amount)"); 
+        return; 
+      }
+      // Validate post-retirement fields if checkbox is checked
+      if (item.details.consider_post_retirement) {
+        if (!item.details.post_retirement_member) {
+          toast.error("Select Post-Retirement Applicable Member");
+          return;
+        }
+        if (item.details.post_retirement_percent < 0 || item.details.post_retirement_percent > 100) {
+          toast.error("% of Current Annual Expense must be between 0 and 100");
+          return;
+        }
+      }
+    }
 
     setSavingCategory(cat);
     try {
       const token = localStorage.getItem("token");
       for (const item of toSave) {
-        const payload = { family_id: family.id, member_ids: [item.memberId], expense_type: cat, annual_amount: parseFloat(item.details.annual_amount), upto_year: parseInt(item.details.upto_year), inflation_percent: parseFloat(item.details.inflation_percent) || 6, applicable_to: item.details.applicable_to || "Self" };
+        const payload = { 
+          family_id: family.id, 
+          member_ids: [item.memberId], 
+          expense_type: cat, 
+          monthly_amount: parseFloat(item.details.monthly_amount),
+          annual_amount: parseFloat(item.details.monthly_amount) * 12,
+          upto_year: parseInt(item.details.upto_year), 
+          inflation_percent: parseFloat(item.details.inflation_percent) || 5,
+          consider_post_retirement: item.details.consider_post_retirement || false,
+          post_retirement_member: item.details.consider_post_retirement ? item.details.post_retirement_member : null,
+          post_retirement_percent: item.details.consider_post_retirement ? parseFloat(item.details.post_retirement_percent) : null
+        };
         if (item.isNew) await axios.post(`${API}/data-gathering/family/${family.id}/expense`, payload, { headers: { Authorization: `Bearer ${token}` } });
         else await axios.put(`${API}/data-gathering/family/${family.id}/expense/${item.id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
       }
