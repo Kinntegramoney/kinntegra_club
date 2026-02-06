@@ -32,6 +32,7 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
   const [expandedCategories, setExpandedCategories] = useState({});
   const [addedCategories, setAddedCategories] = useState([]);
   const [liabilityItems, setLiabilityItems] = useState({});
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const members = family?.members || [];
   const existingLiabilities = family?.liability_details || [];
@@ -57,10 +58,14 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
 
     setLiabilityItems(itemsByCategory);
     setAddedCategories(added);
-    const expanded = {};
-    added.forEach(cat => { expanded[cat] = true; });
-    setExpandedCategories(expanded);
-  }, [family?.id, existingLiabilities.length]);
+    
+    if (!initialLoadDone) {
+      const expanded = {};
+      added.forEach(cat => { expanded[cat] = true; });
+      setExpandedCategories(expanded);
+      setInitialLoadDone(true);
+    }
+  }, [family?.id, existingLiabilities.length, initialLoadDone]);
 
   const addCategory = (categoryValue) => {
     if (!addedCategories.includes(categoryValue)) {
