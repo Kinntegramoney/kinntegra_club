@@ -300,7 +300,17 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [family?.id, existingIncomes.length]);
 
-  const toggleCategory = (category) => setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+  const toggleCategory = (category) => {
+    const isCurrentlyExpanded = expandedCategories[category];
+    const items = incomeItems[category] || [];
+    
+    // If expanding and no items exist, auto-add one
+    if (!isCurrentlyExpanded && items.length === 0) {
+      addIncomeItem(category);
+    } else {
+      setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+    }
+  };
   const hideCategory = (category) => { setHiddenCategories(prev => [...prev, category]); setExpandedCategories(prev => ({ ...prev, [category]: false })); };
   const showCategory = (category) => setHiddenCategories(prev => prev.filter(c => c !== category));
 
