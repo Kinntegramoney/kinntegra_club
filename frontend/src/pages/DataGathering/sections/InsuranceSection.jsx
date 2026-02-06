@@ -32,6 +32,7 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
   const [expandedCategories, setExpandedCategories] = useState({});
   const [addedCategories, setAddedCategories] = useState([]);
   const [insuranceItems, setInsuranceItems] = useState({});
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const members = family?.members || [];
   const existingInsurance = family?.insurance_details || [];
@@ -57,10 +58,14 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
 
     setInsuranceItems(itemsByCategory);
     setAddedCategories(added);
-    const expanded = {};
-    added.forEach(cat => { expanded[cat] = true; });
-    setExpandedCategories(expanded);
-  }, [family?.id, existingInsurance.length]);
+    
+    if (!initialLoadDone) {
+      const expanded = {};
+      added.forEach(cat => { expanded[cat] = true; });
+      setExpandedCategories(expanded);
+      setInitialLoadDone(true);
+    }
+  }, [family?.id, existingInsurance.length, initialLoadDone]);
 
   const addCategory = (categoryValue) => {
     if (!addedCategories.includes(categoryValue)) {
