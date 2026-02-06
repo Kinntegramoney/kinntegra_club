@@ -154,10 +154,11 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
           annual_amount: parseFloat(item.details.annual_amount),
           upto_year: parseInt(item.details.upto_year),
           inflation_percent: parseFloat(item.details.inflation_percent) || 6,
-          consider_post_retirement: item.details.consider_post_retirement,
+          consider_post_retirement: item.details.consider_post_retirement === "Yes",
           percent_of_current: parseFloat(item.details.percent_of_current) || 100,
-          applies_to_self: item.details.applies_to_self,
-          applies_to_spouse: item.details.applies_to_spouse
+          applicable_to: item.details.applicable_to || "Self",
+          applies_to_self: item.details.applicable_to === "Self" || item.details.applicable_to === "Both",
+          applies_to_spouse: item.details.applicable_to === "Spouse" || item.details.applicable_to === "Both"
         };
         if (item.isNew) {
           await axios.post(`${API}/data-gathering/family/${family.id}/expense`, payload, { headers: { Authorization: `Bearer ${token}` } });
