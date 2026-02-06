@@ -278,7 +278,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                           
                           return (
                             <div key={item.id} className={`rounded-md p-4 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
-                              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto_1fr_1fr] gap-3 items-end">
+                              <div className="grid grid-cols-[1.5fr_1fr_1fr_0.8fr_0.6fr_auto_1fr_0.6fr] gap-3 items-end">
                                 <div className="flex flex-col min-w-0">
                                   <span className="text-[10px] text-gray-400 mb-1">Member *</span>
                                   <Select value={item.memberId || ""} onValueChange={v => updateExpenseItem(cat.value, item.id, "memberId", v)} disabled={isReadOnly}>
