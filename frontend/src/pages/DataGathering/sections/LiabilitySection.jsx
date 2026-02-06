@@ -142,6 +142,7 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
     for (const item of itemsToSave) {
       if (!item.memberId) { toast.error("Select a member"); return; }
       if (!item.details.amount_today) { toast.error("Enter amount"); return; }
+      if (!item.details.goal_year) { toast.error("Select goal year"); return; }
     }
 
     setSavingCategory(category);
@@ -149,8 +150,11 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
       const token = localStorage.getItem("token");
       for (const item of itemsToSave) {
         const payload = {
-          family_id: family.id, member_ids: [item.memberId], category,
+          family_id: family.id, 
+          member_ids: [item.memberId], 
+          category,
           amount_today: parseFloat(item.details.amount_today),
+          inflation_percent: item.details.inflation_percent ? parseFloat(item.details.inflation_percent) : null,
           goal_year: parseInt(item.details.goal_year)
         };
         if (item.isNew) {
