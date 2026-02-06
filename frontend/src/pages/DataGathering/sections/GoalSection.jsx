@@ -213,7 +213,7 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
     if (itemsToSave.length === 0) { toast.info("No changes"); return; }
 
     for (const item of itemsToSave) {
-      if (!item.memberId) { toast.error("Select a member"); return; }
+      if (!item.memberId) { toast.error("Select a member or family"); return; }
       if (!item.details.amount_today) { toast.error("Enter amount"); return; }
       if (!item.details.goal_years || item.details.goal_years.length === 0) { toast.error("Select at least one year"); return; }
     }
@@ -222,9 +222,15 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
     try {
       const token = localStorage.getItem("token");
       for (const item of itemsToSave) {
+        // If "family" is selected, include all member IDs
+        const memberIds = item.memberId === "family" 
+          ? members.map(m => m.id) 
+          : [item.memberId];
+        
         const payload = {
           family_id: family.id, 
-          member_ids: [item.memberId], 
+          member_ids: memberIds,
+          is_family_goal: item.memberId === "family",
           category,
           goal_amount: parseFloat(item.details.amount_today),
           inflation_percent: parseFloat(item.details.inflation_percent) || 6,
