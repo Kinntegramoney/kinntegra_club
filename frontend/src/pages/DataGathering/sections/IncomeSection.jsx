@@ -173,6 +173,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
 
   const members = family?.members || [];
   const existingIncomes = family?.income_details || [];
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   useEffect(() => {
     const itemsByCategory = {};
@@ -197,11 +198,14 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     setIncomeItems(itemsByCategory);
     setAddedCategories(added);
     
-    // Expand categories that have data
-    const expanded = {};
-    added.forEach(cat => { expanded[cat] = true; });
-    setExpandedCategories(expanded);
-  }, [family?.id, existingIncomes.length]);
+    // Only expand categories on initial load, not on refresh
+    if (!initialLoadDone) {
+      const expanded = {};
+      added.forEach(cat => { expanded[cat] = true; });
+      setExpandedCategories(expanded);
+      setInitialLoadDone(true);
+    }
+  }, [family?.id, existingIncomes.length, initialLoadDone]);
 
   const addCategory = (categoryValue) => {
     if (!addedCategories.includes(categoryValue)) {
