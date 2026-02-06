@@ -83,7 +83,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       setExpandedCategories(expanded);
       setInitialLoadDone(true);
     }
-  }, [family?.id, existingExpenses.length]);
+  }, [family?.id, existingExpenses.length, initialLoadDone]);
 
   const addCategory = (categoryValue) => {
     if (!addedCategories.includes(categoryValue)) {
