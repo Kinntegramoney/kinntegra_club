@@ -228,11 +228,7 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
                       <div className="space-y-3 mt-4">
                         {items.map((item, idx) => (
                           <div key={item.id} className={`p-4 rounded-lg ${item.isNew ? 'bg-green-50 border border-green-200' : item.isModified ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'}`}>
-                            <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-end">
-                              <div className="flex flex-col">
-                                <span className="text-[10px] mb-1 invisible">-</span>
-                                <span className="w-6 h-8 rounded text-xs flex items-center justify-center text-white bg-teal-500">{idx + 1}</span>
-                              </div>
+                            <div className="grid grid-cols-3 gap-4 items-end">
                               <div className="flex flex-col min-w-0">
                                 <Label className="text-[10px] text-gray-500 mb-1 block">Member</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateInsuranceItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
