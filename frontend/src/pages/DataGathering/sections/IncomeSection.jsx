@@ -659,6 +659,19 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                   </Select>
                                 </div>
                                 {row1Fields.map(field => renderField(field))}
+                                
+                                {/* Delete button for additional items (idx > 0) */}
+                                {idx > 0 && (
+                                  <div className="flex flex-col justify-end">
+                                    <button 
+                                      onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} 
+                                      disabled={isReadOnly} 
+                                      className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex items-center"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                               
                               {/* Row 2 - Only for rental with Is On Rent = Yes */}
