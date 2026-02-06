@@ -551,26 +551,26 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                       <p className="text-center py-4 text-xs text-gray-400">Click + to add entry</p>
                     ) : (
                       <div className="space-y-2">
-                        {items.map((item, idx) => (
-                          <div key={item.id} className={`rounded-md p-4 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
-                            <div className={`grid gap-4 items-end`} style={{ gridTemplateColumns: `repeat(${category.fields.length + 1}, 1fr)` }}>
-                              {/* Member */}
-                              <div className="flex flex-col min-w-0">
-                                <span className="text-[10px] text-gray-400 mb-1">Member</span>
-                                <Select value={item.memberId || ""} onValueChange={v => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200">
-                                    <SelectValue placeholder="Select" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                        {items.map((item, idx) => {
+                          const visibleFields = category.fields.filter(f => shouldShowField(f, item.details));
+                          return (
+                            <div key={item.id} className={`rounded-md p-4 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
+                              <div className={`grid gap-4 items-end`} style={{ gridTemplateColumns: `repeat(${visibleFields.length + 1}, 1fr)` }}>
+                                {/* Member */}
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[10px] text-gray-400 mb-1">Member</span>
+                                  <Select value={item.memberId || ""} onValueChange={v => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                    <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200">
+                                      <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
 
-                              {/* Fields */}
-                              {category.fields.map(field => {
-                                if (!shouldShowField(field, item.details)) return null;
-                                return (
+                                {/* Fields */}
+                                {visibleFields.map(field => (
                                   <div key={field.key} className="flex flex-col min-w-0">
                                     <span className={`text-[10px] mb-1 truncate ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>
                                     {field.type === "select" ? (
@@ -597,7 +597,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                       />
                                     )}
                                   </div>
-                                );
+                                ))}
                               })}
                             </div>
                           </div>
