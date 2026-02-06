@@ -63,10 +63,9 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
             annual_amount: exp.annual_amount,
             upto_year: exp.upto_year,
             inflation_percent: exp.inflation_percent,
-            consider_post_retirement: exp.consider_post_retirement || false,
+            consider_post_retirement: exp.consider_post_retirement ? "Yes" : "No",
             percent_of_current: exp.percent_of_current || 100,
-            applies_to_self: exp.applies_to_self !== false,
-            applies_to_spouse: exp.applies_to_spouse || false
+            applicable_to: exp.applicable_to || (exp.applies_to_self && exp.applies_to_spouse ? "Both" : exp.applies_to_spouse ? "Spouse" : "Self")
           },
           isNew: false,
           isModified: false
