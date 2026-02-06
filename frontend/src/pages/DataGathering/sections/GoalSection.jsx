@@ -31,6 +31,14 @@ const GOAL_CATEGORIES = [
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 31 }, (_, i) => (currentYear + i).toString());
 
+// Quick select options for recurring goals
+const YEAR_PATTERNS = [
+  { label: "Every Year", interval: 1 },
+  { label: "Every 2 Years", interval: 2 },
+  { label: "Every 3 Years", interval: 3 },
+  { label: "Every 5 Years", interval: 5 }
+];
+
 export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh }) {
   const [savingCategory, setSavingCategory] = useState(null);
   const [expandedCategories, setExpandedCategories] = useState({});
