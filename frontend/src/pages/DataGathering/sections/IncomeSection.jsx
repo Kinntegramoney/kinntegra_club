@@ -477,18 +477,32 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
       }
       toast.success("Saved");
       
-      // Collapse current category and open next one
+      // Collapse current category and open next one with auto-add
       const visibleCategories = INCOME_CATEGORIES.filter(c => !hiddenCategories.includes(c.value));
       const currentIndex = visibleCategories.findIndex(c => c.value === category);
       const nextCategory = visibleCategories[currentIndex + 1];
       
-      setExpandedCategories(prev => {
-        const newState = { ...prev, [category]: false };
-        if (nextCategory) {
-          newState[nextCategory.value] = true;
+      // Close current category
+      setExpandedCategories(prev => ({ ...prev, [category]: false }));
+      
+      // If next category exists and has no items, auto-add an entry
+      if (nextCategory) {
+        const nextItems = incomeItems[nextCategory.value] || [];
+        if (nextItems.length === 0) {
+          // Add new item to next category
+          setIncomeItems(prev => ({
+            ...prev,
+            [nextCategory.value]: [...(prev[nextCategory.value] || []), {
+              id: `new_${Date.now()}`,
+              memberId: members[0]?.id || "",
+              details: {},
+              isNew: true,
+              isModified: false
+            }]
+          }));
         }
-        return newState;
-      });
+        setExpandedCategories(prev => ({ ...prev, [nextCategory.value]: true }));
+      }
       
       onRefresh();
     } catch (error) { toast.error(error.response?.data?.detail || "Failed"); }
