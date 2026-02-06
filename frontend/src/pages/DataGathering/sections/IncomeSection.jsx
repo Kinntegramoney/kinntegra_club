@@ -526,6 +526,11 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                       {hasChanges && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
                     </div>
                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      {hasChanges && (
+                        <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly} size="sm" className="h-7 px-3 text-xs bg-blue-600 hover:bg-blue-700">
+                          <Save className="h-3 w-3 mr-1" />{savingCategory === category.value ? "..." : "Save"}
+                        </Button>
+                      )}
                       <button onClick={() => skipCategory(category.value)} disabled={isReadOnly} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
                         <X className="h-3.5 w-3.5" />
                       </button>
