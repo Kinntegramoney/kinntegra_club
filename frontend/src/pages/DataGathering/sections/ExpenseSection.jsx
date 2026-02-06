@@ -56,9 +56,16 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
   const [addedCategories, setAddedCategories] = useState([]);
   const [expenseItems, setExpenseItems] = useState({});
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  
+  // Loan state
+  const [addedLoanCategories, setAddedLoanCategories] = useState([]);
+  const [loanItems, setLoanItems] = useState({});
+  const [expandedLoanCategories, setExpandedLoanCategories] = useState({});
 
   const members = family?.members || [];
   const existingExpenses = family?.expense_details || [];
+  const existingLiabilities = family?.liability_details || [];
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     const itemsByCategory = {};
