@@ -254,13 +254,61 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     }
   };
 
+  // Helper function to get member's birth year
+  const getMemberBirthYear = (memberId) => {
+    const member = members.find(m => m.id === memberId);
+    if (member?.date_of_birth) {
+      return new Date(member.date_of_birth).getFullYear();
+    }
+    return null;
+  };
+
+  // Calculate Year of Retirement = Birth Year + Retirement Age
+  const calculateYearOfRetirement = (memberId, retirementAge) => {
+    const birthYear = getMemberBirthYear(memberId);
+    if (birthYear && retirementAge) {
+      return birthYear + parseInt(retirementAge);
+    }
+    return null;
+  };
+
+  // Calculate Net Income Yearly = Monthly × 12
+  const calculateNetIncomeYearly = (monthlyIncome) => {
+    if (monthlyIncome) {
+      return parseFloat(monthlyIncome) * 12;
+    }
+    return null;
+  };
+
   const updateIncomeItem = (category, itemId, field, value) => {
     setIncomeItems(prev => ({
       ...prev,
       [category]: prev[category].map(item => {
         if (item.id === itemId) {
-          if (field === "memberId") return { ...item, memberId: value, isModified: !item.isNew };
-          return { ...item, details: { ...item.details, [field]: value }, isModified: !item.isNew };
+          let newDetails = { ...item.details };
+          let newMemberId = item.memberId;
+          
+          if (field === "memberId") {
+            newMemberId = value;
+            // Recalculate Year of Retirement when member changes
+            if (category === "salary" && newDetails.retirement_age) {
+              newDetails.year_of_retirement = calculateYearOfRetirement(value, newDetails.retirement_age);
+            }
+          } else {
+            newDetails[field] = value;
+            
+            // Auto-calculate Net Income (Yearly) when Monthly changes
+            if (field === "net_income_monthly" && category === "salary") {
+              newDetails.net_income_yearly = calculateNetIncomeYearly(value);
+            }
+            
+            // Auto-calculate Year of Retirement when Retirement Age changes
+            if (field === "retirement_age" && category === "salary") {
+              newDetails.year_of_retirement = calculateYearOfRetirement(item.memberId, value);
+            }
+          }
+          
+          return { ...item, memberId: newMemberId, details: newDetails, isModified: !item.isNew };
         }
         return item;
       })
