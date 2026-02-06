@@ -96,7 +96,11 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
       [category]: [...(prev[category] || []), {
         id: `new_${Date.now()}`,
         memberId: members[0]?.id || "",
-        details: { amount_today: "", goal_year: (currentYear + 15).toString() },
+        details: { 
+          amount_today: "", 
+          inflation_percent: "",
+          goal_year: (currentYear + 15).toString() 
+        },
         isNew: true,
         isModified: false
       }]
