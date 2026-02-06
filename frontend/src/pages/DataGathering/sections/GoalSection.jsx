@@ -61,9 +61,12 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
         if (!added.includes(category)) added.push(category);
         // Handle goal_years as array or single year
         const years = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
+        // Check if it's a family goal (all members) or individual
+        const memberId = goal.is_family_goal ? "family" : (goal.member_ids?.[0] || "");
+        
         itemsByCategory[category].push({
           id: goal.id,
-          memberId: goal.member_ids?.[0] || "",
+          memberId: memberId,
           details: { 
             amount_today: goal.goal_amount, 
             inflation_percent: goal.inflation_percent, 
