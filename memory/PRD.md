@@ -1,5 +1,56 @@
 # Kinntegraa - Product Requirements Document
 
+
+## Recent Changes (Feb 6, 2026)
+
+### Expense Section Update (Feb 6, 2026) ✅ NEW
+
+**Feature:** Updated the Expense Section based on the new `Expense_Category_NEW.docx` requirements.
+
+**Categories Updated (17 total):**
+1. Food & Grocery
+2. House Rent / Maintenance / Repair
+3. Conveyance, Fuel & Maintenance
+4. Medicines / Doctor / Healthcare
+5. Electricity / Water / Labour / AMC
+6. Mobile
+7. Gas Line / Telephone / Internet / Cable
+8. Clothes and Accessories
+9. Shopping, Gifts, White Goods, Gadgets
+10. Dining / Movies / Sports
+11. Personal Care / Others
+12. Mediclaim / PA / CI
+13. Children's Schooling / College Expenses
+14. Contribution To Parents / Siblings
+15. Motor Insurance
+16. Life Insurance – Term Plan
+17. EMI
+
+**Field Changes:**
+- **Monthly Amount** - New primary input field (user enters monthly expense)
+- **Annual Amount** - Auto-calculated read-only field (Monthly × 12)
+- **Upto Year** - Dropdown (2020-2080)
+- **Inflation %** - Default 5%
+- **Consider Post Retirement** - Checkbox (NEW)
+- **Post-Retirement Applicable Member** - Dropdown, enabled only when checkbox is checked
+- **% of Current Annual Expense** - Number input (0-100%), enabled only when checkbox is checked
+
+**Conditional Logic:**
+- When "Consider Post Retirement" is unchecked, the post-retirement fields are disabled and greyed out
+- When checkbox is checked, post-retirement member becomes required
+
+**Backend Updated:**
+- `ExpenseDetailCreate` model updated with new fields: `monthly_amount`, `consider_post_retirement`, `post_retirement_member`, `post_retirement_percent`
+- POST/PUT endpoints for `/api/data-gathering/family/{family_id}/expense` updated
+
+**Files Modified:**
+- `/app/frontend/src/pages/DataGathering/sections/ExpenseSection.jsx`
+- `/app/backend/server.py` (ExpenseDetailCreate model, add/update expense endpoints)
+
+**Testing:** Linting passed, code compiles without errors
+
+---
+
 ## Recent Changes (Feb 5, 2026)
 
 ### New Assets Tab & Tab Reordering (Feb 5, 2026) ✅ NEW
