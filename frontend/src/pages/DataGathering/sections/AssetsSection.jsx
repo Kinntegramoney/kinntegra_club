@@ -399,27 +399,28 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
                       <div className="text-center py-3 text-gray-400 text-xs border-t">No entries. Click "Add" to create one.</div>
                     ) : (
                       <div className="space-y-2 border-t pt-2">
-                        {items.map((item) => (
-                          <div key={item.id} className={`p-2 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            <div className="flex items-end gap-2 flex-wrap">
-                              <div className="w-32">
-                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
+                        {items.map((item, idx) => (
+                          <div key={item.id} className={`p-4 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
+                            <div className={`grid gap-4 items-end`} style={{ gridTemplateColumns: `auto repeat(${category.fields.length + 1}, 1fr)` }}>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] mb-1 invisible">-</span>
+                                <span className="w-6 h-8 rounded text-xs flex items-center justify-center text-white bg-green-500">{idx + 1}</span>
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <Label className="text-[10px] text-gray-400 mb-1 block">Member</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateAssetItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>
-                                    {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
+                                    {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
                               </div>
                               {category.fields.map(field => (
-                                <div key={field.key} className="flex-1 min-w-[80px]">
-                                  <Label className="text-[10px] text-gray-400 mb-0.5 block">{field.label}</Label>
+                                <div key={field.key} className="flex flex-col min-w-0">
+                                  <Label className="text-[10px] text-gray-400 mb-1 block">{field.label}</Label>
                                   {renderField(category.value, item.id, field, item.details[field.key])}
                                 </div>
                               ))}
-                              <Button variant="ghost" size="icon" onClick={() => removeAssetItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
                             </div>
                           </div>
                         ))}
