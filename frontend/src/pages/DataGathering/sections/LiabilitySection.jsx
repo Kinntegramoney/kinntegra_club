@@ -17,11 +17,11 @@ const API = `${BACKEND_URL}/api`;
 
 const LIABILITY_CATEGORIES = [
   { value: "home_loan", label: "Home Loan", icon: Home },
-  { value: "car_loan", label: "Car Loan", icon: Car },
+  { value: "vehicle_loan", label: "Vehicle Loan", icon: Car },
   { value: "personal_loan", label: "Personal Loan", icon: CreditCard },
+  { value: "consumer_durable", label: "Consumer Durable", icon: Building },
   { value: "education_loan", label: "Education Loan", icon: GraduationCap },
-  { value: "business_loan", label: "Business Loan", icon: Building },
-  { value: "credit_card", label: "Credit Card Outstanding", icon: CreditCard },
+  { value: "credit_card", label: "Credit Card", icon: CreditCard },
   { value: "other_loan", label: "Other Loan", icon: Coins }
 ];
 
