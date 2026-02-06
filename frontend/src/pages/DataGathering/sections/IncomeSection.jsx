@@ -615,6 +615,23 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                       <div className="h-8 px-3 w-full flex items-center text-xs bg-gray-100 border border-gray-200 rounded-md text-gray-600 font-medium">
                                         {formatValue(item.details[field.key], field.key)}
                                       </div>
+                                    ) : (field.key.includes('amount') || field.key.includes('income') || field.key.includes('value') || field.key.includes('payment') || field.key.includes('principal') || field.key.includes('balance')) ? (
+                                      <div className="relative">
+                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">₹</span>
+                                        <Input
+                                          type="text"
+                                          value={item.details[field.key] ? parseFloat(item.details[field.key]).toLocaleString('en-IN') : ""}
+                                          onChange={e => {
+                                            const rawValue = e.target.value.replace(/,/g, '');
+                                            if (rawValue === '' || !isNaN(rawValue)) {
+                                              updateIncomeItem(category.value, item.id, field.key, rawValue);
+                                            }
+                                          }}
+                                          placeholder="0"
+                                          className="h-8 w-full text-xs bg-white border-gray-200 pl-5"
+                                          disabled={isReadOnly}
+                                        />
+                                      </div>
                                     ) : (
                                       <Input
                                         type={field.type}
