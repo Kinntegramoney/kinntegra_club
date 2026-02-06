@@ -371,6 +371,19 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                     max="100"
                                   />
                                 </div>
+                                
+                                {/* Delete button for additional items (idx > 0) */}
+                                {idx > 0 && (
+                                  <div className="flex flex-col justify-end">
+                                    <button 
+                                      onClick={() => removeExpenseItem(cat.value, item.id, item.isNew)} 
+                                      disabled={isReadOnly} 
+                                      className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex items-center"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           );
