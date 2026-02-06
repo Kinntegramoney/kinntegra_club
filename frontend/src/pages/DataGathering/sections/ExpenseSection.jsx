@@ -6,13 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Save, Plus, Trash2, ChevronDown, ChevronRight, User, X, Home, Car, Heart, Zap, Phone, ShoppingBag, Utensils, GraduationCap, Users, CreditCard, Shirt, Tv, Scissors, Shield, FileText, Building, Coins } from "lucide-react";
+import { Save, Plus, Trash2, ChevronDown, ChevronRight, User, X, Home, Car, Heart, Zap, Phone, ShoppingBag, Utensils, GraduationCap, Users, CreditCard, Shirt, Tv, Scissors, Shield, FileText, Building, Coins, Umbrella, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const EXPENSE_CATEGORIES = [
+  // Regular expenses
   { value: "food_grocery", label: "Food & Grocery", icon: Utensils, color: "orange", type: "expense" },
   { value: "house_rent", label: "House Rent / Maintenance / Repair", icon: Home, color: "blue", type: "expense" },
   { value: "conveyance", label: "Conveyance, Fuel & Maintenance", icon: Car, color: "slate", type: "expense" },
@@ -24,11 +25,16 @@ const EXPENSE_CATEGORIES = [
   { value: "shopping", label: "Shopping, Gifts, White Goods, Gadgets", icon: ShoppingBag, color: "teal", type: "expense" },
   { value: "entertainment", label: "Dining / Movies / Sports", icon: Utensils, color: "indigo", type: "expense" },
   { value: "personal_care", label: "Personal Care / Others", icon: Scissors, color: "rose", type: "expense" },
-  { value: "mediclaim", label: "Mediclaim / PA / CI", icon: Shield, color: "emerald", type: "expense" },
   { value: "children_education", label: "Children's Schooling / College Expenses", icon: GraduationCap, color: "cyan", type: "expense" },
   { value: "family_support", label: "Contribution To Parents / Siblings", icon: Users, color: "amber", type: "expense" },
-  { value: "motor_insurance", label: "Motor Insurance", icon: Car, color: "gray", type: "expense" },
-  { value: "life_insurance", label: "Life Insurance – Term Plan", icon: FileText, color: "violet", type: "expense" },
+  // Insurance Premium categories
+  { value: "term_life", label: "Term Life Insurance Premium", icon: Shield, color: "teal", type: "insurance" },
+  { value: "health", label: "Health Insurance Premium", icon: Heart, color: "teal", type: "insurance" },
+  { value: "critical_illness", label: "Critical Illness Premium", icon: Heart, color: "teal", type: "insurance" },
+  { value: "personal_accident", label: "Personal Accident Premium", icon: Umbrella, color: "teal", type: "insurance" },
+  { value: "motor", label: "Motor Insurance Premium", icon: Car, color: "teal", type: "insurance" },
+  { value: "home_insurance", label: "Home Insurance Premium", icon: Home, color: "teal", type: "insurance" },
+  { value: "professional", label: "Professional Indemnity Premium", icon: Briefcase, color: "teal", type: "insurance" },
   // Loan EMI categories
   { value: "home_loan", label: "Home Loan EMI", icon: Home, color: "red", type: "loan" },
   { value: "vehicle_loan", label: "Vehicle Loan EMI", icon: Car, color: "red", type: "loan" },
