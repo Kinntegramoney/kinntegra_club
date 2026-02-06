@@ -25707,11 +25707,13 @@ class ExpenseDetailCreate(BaseModel):
     family_id: str
     member_ids: List[str]
     expense_type: str
+    monthly_amount: Optional[float] = None
     annual_amount: float
     upto_year: int
     inflation_percent: float
-    consider_post_retirement: dict  # {self: bool, spouse: bool}
-    percent_of_current: float
+    consider_post_retirement: Optional[bool] = False
+    post_retirement_member: Optional[str] = None
+    post_retirement_percent: Optional[float] = 100
 
 class InsurancePremiumCreate(BaseModel):
     family_id: str
