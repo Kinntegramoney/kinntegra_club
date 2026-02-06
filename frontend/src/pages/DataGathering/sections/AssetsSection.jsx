@@ -1,23 +1,22 @@
-import React, { useState, useEffect } from "react";
-import { Badge } from "@/components/ui/badge";
+import React from "react";
 import { User, Landmark, Home, Car, Gem, Wallet, TrendingUp, Building, PiggyBank, Coins } from "lucide-react";
 
 // Asset categories for display
 const ASSET_CATEGORIES = [
-  { value: "ppf", label: "PPF", icon: PiggyBank, hasMaturity: true },
-  { value: "epf", label: "EPF", icon: PiggyBank, hasMaturity: true },
-  { value: "gratuity", label: "Gratuity", icon: Wallet, hasMaturity: true },
-  { value: "fd", label: "Fixed Deposits", icon: Landmark, hasMaturity: true },
-  { value: "rd_pis", label: "RD / PIS", icon: Landmark, hasMaturity: true },
-  { value: "bond", label: "Bonds", icon: Landmark, hasMaturity: true },
-  { value: "insurance_corpus", label: "Insurance", icon: Building, hasMaturity: true },
-  { value: "mutual_fund", label: "Mutual Fund", icon: TrendingUp, hasMaturity: false },
-  { value: "shares_pms", label: "Shares / PMS", icon: TrendingUp, hasMaturity: false },
-  { value: "gold", label: "Gold", icon: Gem, hasMaturity: false },
-  { value: "cash", label: "Cash in Hand", icon: Coins, hasMaturity: false },
-  { value: "real_estate", label: "Real Estate", icon: Home, hasMaturity: false },
-  { value: "vehicle", label: "Vehicles", icon: Car, hasMaturity: false },
-  { value: "other", label: "Other Assets", icon: Wallet, hasMaturity: false }
+  { value: "ppf", label: "PPF", icon: PiggyBank },
+  { value: "epf", label: "EPF", icon: PiggyBank },
+  { value: "gratuity", label: "Gratuity", icon: Wallet },
+  { value: "fd", label: "Fixed Deposits", icon: Landmark },
+  { value: "rd_pis", label: "RD / PIS", icon: Landmark },
+  { value: "bond", label: "Bonds", icon: Landmark },
+  { value: "insurance_corpus", label: "Insurance", icon: Building },
+  { value: "mutual_fund", label: "Mutual Fund", icon: TrendingUp },
+  { value: "shares_pms", label: "Shares / PMS", icon: TrendingUp },
+  { value: "gold", label: "Gold", icon: Gem },
+  { value: "cash", label: "Cash in Hand", icon: Coins },
+  { value: "real_estate", label: "Real Estate", icon: Home },
+  { value: "vehicle", label: "Vehicles", icon: Car },
+  { value: "other", label: "Other Assets", icon: Wallet }
 ];
 
 export default function AssetsSection({ family }) {
