@@ -68,15 +68,7 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
   }, [family?.id, existingLiabilities.length]);
 
   const toggleCategory = (category) => {
-    const isCurrentlyExpanded = expandedCategories[category];
-    const items = liabilityItems[category] || [];
-    
-    // If expanding and no items exist, auto-add one
-    if (!isCurrentlyExpanded && items.length === 0) {
-      addLiabilityItem(category);
-    } else {
-      setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
-    }
+    setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
   };
   const hideCategory = (category) => { setHiddenCategories(prev => [...prev, category]); setExpandedCategories(prev => ({ ...prev, [category]: false })); };
   const showCategory = (category) => setHiddenCategories(prev => prev.filter(c => c !== category));
