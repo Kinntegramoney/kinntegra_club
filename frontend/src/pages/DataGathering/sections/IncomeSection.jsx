@@ -548,7 +548,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                       <div className="space-y-2">
                         {items.map((item, idx) => (
                           <div key={item.id} className={`rounded-md p-2.5 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
-                            <div className="flex items-end gap-2 flex-wrap">
+                            <div className="flex items-end gap-4 flex-wrap">
                               {/* Index */}
                               <div className="flex flex-col">
                                 <span className="text-[9px] mb-0.5 invisible">-</span>
