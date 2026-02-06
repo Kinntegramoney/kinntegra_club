@@ -437,6 +437,41 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   <button onClick={() => removeItem(cat.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><Trash2 className="h-4 w-4" /></button>
                                 )}
                               </div>
+                            ) : type === "insurance" ? (
+                              // INSURANCE PREMIUM FORM
+                              <div className="flex flex-wrap gap-3 items-end">
+                                <div className="flex flex-col min-w-[140px] flex-1 max-w-[180px]">
+                                  <span className="text-[10px] text-gray-400 mb-1">Member *</span>
+                                  <Select value={item.memberId || ""} onValueChange={v => updateItem(cat.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                    <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}</SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex flex-col min-w-[130px] max-w-[150px]">
+                                  <span className="text-[10px] text-gray-400 mb-1">Yearly Premium *</span>
+                                  <div className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                    <Input type="number" value={item.details.yearly_premium || ""} onChange={e => updateItem(cat.value, item.id, "yearly_premium", e.target.value)} className="h-8 w-full text-xs bg-white border-gray-200 pl-5" disabled={isReadOnly} />
+                                  </div>
+                                </div>
+                                <div className="flex flex-col min-w-[100px] max-w-[120px]">
+                                  <span className="text-[10px] text-gray-400 mb-1">Upto Year *</span>
+                                  <Select value={item.details.upto_year?.toString() || ""} onValueChange={v => updateItem(cat.value, item.id, "upto_year", v)} disabled={isReadOnly}>
+                                    <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue /></SelectTrigger>
+                                    <SelectContent>{YEAR_OPTIONS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}</SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex flex-col min-w-[130px] max-w-[150px]">
+                                  <span className="text-[10px] text-gray-400 mb-1">Coverage Amount *</span>
+                                  <div className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                    <Input type="number" value={item.details.coverage_amount || ""} onChange={e => updateItem(cat.value, item.id, "coverage_amount", e.target.value)} className="h-8 w-full text-xs bg-white border-gray-200 pl-5" disabled={isReadOnly} />
+                                  </div>
+                                </div>
+                                {idx > 0 && (
+                                  <button onClick={() => removeItem(cat.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><Trash2 className="h-4 w-4" /></button>
+                                )}
+                              </div>
                             ) : (
                               // REGULAR EXPENSE FORM
                               <div className="space-y-3">
