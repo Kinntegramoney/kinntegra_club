@@ -215,6 +215,11 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
                       {hasUnsavedChanges && <Circle className="h-2 w-2 fill-amber-500 text-amber-500" />}
                     </div>
                     <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                      {hasUnsavedChanges && (
+                        <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly} size="sm" className="h-7 px-3 text-xs bg-red-600 hover:bg-red-700">
+                          <Save className="h-3 w-3 mr-1" />{savingCategory === category.value ? "..." : "Save"}
+                        </Button>
+                      )}
                       <button onClick={() => skipCategory(category.value)} disabled={isReadOnly} className="flex items-center gap-1 text-gray-400 hover:text-gray-600 text-sm"><SkipForward className="h-3.5 w-3.5" />Skip</button>
                       <button onClick={() => addLiabilityItem(category.value)} disabled={isReadOnly} className="flex items-center gap-1 text-red-600 hover:text-red-700 text-sm font-medium"><Plus className="h-3.5 w-3.5" />Add</button>
                     </div>
