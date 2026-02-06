@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Save, Plus, Trash2, ChevronDown, ChevronRight, User, X, Home, Car, Heart, Zap, Phone, ShoppingBag, Utensils, GraduationCap, Users, CreditCard, Shirt, Tv, Scissors } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Save, Plus, Trash2, ChevronDown, ChevronRight, User, X, Home, Car, Heart, Zap, Phone, ShoppingBag, Utensils, GraduationCap, Users, CreditCard, Shirt, Tv, Scissors, Shield, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -13,21 +14,21 @@ const API = `${BACKEND_URL}/api`;
 
 const EXPENSE_CATEGORIES = [
   { value: "food_grocery", label: "Food & Grocery", icon: Utensils, color: "orange" },
-  { value: "house_rent", label: "House Rent", icon: Home, color: "blue" },
-  { value: "conveyance", label: "Conveyance", icon: Car, color: "slate" },
-  { value: "healthcare", label: "Healthcare", icon: Heart, color: "red" },
-  { value: "utilities", label: "Utilities", icon: Zap, color: "yellow" },
+  { value: "house_rent", label: "House Rent / Maintenance / Repair", icon: Home, color: "blue" },
+  { value: "conveyance", label: "Conveyance, Fuel & Maintenance", icon: Car, color: "slate" },
+  { value: "healthcare", label: "Medicines / Doctor / Healthcare", icon: Heart, color: "red" },
+  { value: "utilities", label: "Electricity / Water / Labour / AMC", icon: Zap, color: "yellow" },
   { value: "mobile", label: "Mobile", icon: Phone, color: "green" },
-  { value: "gasline_internet", label: "Internet", icon: Tv, color: "purple" },
-  { value: "clothing", label: "Clothing", icon: Shirt, color: "pink" },
-  { value: "shopping", label: "Shopping", icon: ShoppingBag, color: "teal" },
-  { value: "entertainment", label: "Entertainment", icon: Utensils, color: "indigo" },
-  { value: "personal_care", label: "Personal Care", icon: Scissors, color: "rose" },
-  { value: "mediclaim", label: "Mediclaim", icon: Heart, color: "emerald" },
-  { value: "children_education", label: "Education", icon: GraduationCap, color: "cyan" },
-  { value: "family_support", label: "Family Support", icon: Users, color: "amber" },
+  { value: "gasline_internet", label: "Gas Line / Telephone / Internet / Cable", icon: Tv, color: "purple" },
+  { value: "clothing", label: "Clothes and Accessories", icon: Shirt, color: "pink" },
+  { value: "shopping", label: "Shopping, Gifts, White Goods, Gadgets", icon: ShoppingBag, color: "teal" },
+  { value: "entertainment", label: "Dining / Movies / Sports", icon: Utensils, color: "indigo" },
+  { value: "personal_care", label: "Personal Care / Others", icon: Scissors, color: "rose" },
+  { value: "mediclaim", label: "Mediclaim / PA / CI", icon: Shield, color: "emerald" },
+  { value: "children_education", label: "Children's Schooling / College Expenses", icon: GraduationCap, color: "cyan" },
+  { value: "family_support", label: "Contribution To Parents / Siblings", icon: Users, color: "amber" },
   { value: "motor_insurance", label: "Motor Insurance", icon: Car, color: "gray" },
-  { value: "life_insurance", label: "Life Insurance", icon: Heart, color: "violet" },
+  { value: "life_insurance", label: "Life Insurance – Term Plan", icon: FileText, color: "violet" },
   { value: "emi", label: "EMI", icon: CreditCard, color: "red" }
 ];
 
