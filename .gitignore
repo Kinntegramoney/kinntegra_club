@@ -146,3 +146,4 @@ electron-app/node_modules/electron/dist/electron
 *.env
 *.env.*
 frontend/node_modules/.cache/default-development/9.pack_
+frontend/node_modules/.cache/default-development/10.pack_
