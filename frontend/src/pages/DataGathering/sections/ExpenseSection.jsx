@@ -45,6 +45,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
 
   const members = family?.members || [];
   const existingExpenses = family?.expense_details || [];
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   useEffect(() => {
     const itemsByCategory = {};
@@ -75,9 +76,13 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
 
     setExpenseItems(itemsByCategory);
     setAddedCategories(added);
-    const expanded = {};
-    added.forEach(cat => { expanded[cat] = true; });
-    setExpandedCategories(expanded);
+    
+    if (!initialLoadDone) {
+      const expanded = {};
+      added.forEach(cat => { expanded[cat] = true; });
+      setExpandedCategories(expanded);
+      setInitialLoadDone(true);
+    }
   }, [family?.id, existingExpenses.length]);
 
   const addCategory = (categoryValue) => {
