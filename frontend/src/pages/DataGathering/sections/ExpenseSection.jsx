@@ -266,6 +266,116 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
     finally { setSavingCategory(null); }
   };
 
+  // ============ LOAN/LIABILITY FUNCTIONS ============
+  
+  const calculateOutstanding = (emi, installments) => {
+    return (parseFloat(emi) || 0) * (parseFloat(installments) || 0);
+  };
+  
+  const calculateCompletionYear = (installments) => {
+    const yearsToAdd = Math.ceil((parseFloat(installments) || 0) / 12);
+    return currentYear + yearsToAdd;
+  };
+  
+  const addLoanCategory = (val) => {
+    if (!addedLoanCategories.includes(val)) {
+      setAddedLoanCategories(prev => [...prev, val]);
+      setExpandedLoanCategories(prev => ({ ...prev, [val]: true }));
+      addLoanItem(val);
+    }
+  };
+  
+  const skipLoanCategory = (val) => {
+    setAddedLoanCategories(prev => prev.filter(c => c !== val));
+    setExpandedLoanCategories(prev => ({ ...prev, [val]: false }));
+    setLoanItems(prev => ({ ...prev, [val]: [] }));
+  };
+  
+  const toggleLoanCategory = (cat) => setExpandedLoanCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
+  
+  const addLoanItem = (cat) => {
+    setLoanItems(prev => ({
+      ...prev,
+      [cat]: [...(prev[cat] || []), {
+        id: `new_${Date.now()}`,
+        memberId: members[0]?.id || "",
+        details: { monthly_emi: "", num_installments: "" },
+        isNew: true,
+        isModified: false
+      }]
+    }));
+  };
+  
+  const removeLoanItem = async (cat, itemId, isNew) => {
+    if (!isNew) {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.delete(`${API}/data-gathering/family/${family.id}/liability/${itemId}`, { headers: { Authorization: `Bearer ${token}` } });
+        toast.success("Deleted");
+        onRefresh();
+      } catch { toast.error("Failed"); return; }
+    }
+    const updated = loanItems[cat].filter(i => i.id !== itemId);
+    setLoanItems(prev => ({ ...prev, [cat]: updated }));
+    if (updated.length === 0) setAddedLoanCategories(prev => prev.filter(c => c !== cat));
+  };
+  
+  const updateLoanItem = (cat, itemId, field, value) => {
+    setLoanItems(prev => ({
+      ...prev,
+      [cat]: prev[cat].map(item => {
+        if (item.id !== itemId) return item;
+        if (field === "memberId") return { ...item, memberId: value, isModified: !item.isNew };
+        return { ...item, details: { ...item.details, [field]: value }, isModified: !item.isNew };
+      })
+    }));
+  };
+  
+  const saveLoanCategory = async (cat) => {
+    const items = loanItems[cat] || [];
+    const toSave = items.filter(i => i.isNew || i.isModified);
+    if (toSave.length === 0) { toast.info("No changes"); return; }
+    
+    for (const item of toSave) {
+      if (!item.memberId) { toast.error("Select a member"); return; }
+      if (!item.details.monthly_emi) { toast.error("Enter Monthly EMI"); return; }
+      if (!item.details.num_installments) { toast.error("Enter No. of Installments"); return; }
+    }
+    
+    setSavingCategory(cat);
+    try {
+      const token = localStorage.getItem("token");
+      for (const item of toSave) {
+        const outstanding = calculateOutstanding(item.details.monthly_emi, item.details.num_installments);
+        const completionYear = calculateCompletionYear(item.details.num_installments);
+        
+        const payload = {
+          family_id: family.id,
+          member_ids: [item.memberId],
+          category: cat,
+          monthly_emi: parseFloat(item.details.monthly_emi),
+          num_installments: parseInt(item.details.num_installments),
+          amount_today: outstanding,
+          goal_year: completionYear
+        };
+        if (item.isNew) {
+          await axios.post(`${API}/data-gathering/family/${family.id}/liability`, payload, { headers: { Authorization: `Bearer ${token}` } });
+        } else {
+          await axios.put(`${API}/data-gathering/family/${family.id}/liability/${item.id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+        }
+      }
+      toast.success("Saved");
+      setExpandedLoanCategories(prev => ({ ...prev, [cat]: false }));
+      onRefresh();
+    } catch (e) { toast.error(e.response?.data?.detail || "Failed"); }
+    finally { setSavingCategory(null); }
+  };
+  
+  const formatCurrency = (value) => {
+    if (!value || value === 0) return "₹0";
+    return `₹${parseFloat(value).toLocaleString('en-IN')}`;
+  };
+
   if (members.length === 0) return <div className="flex flex-col items-center py-10"><User className="h-8 w-8 text-gray-400 mb-2" /><p className="text-gray-500 text-sm">Add members first</p></div>;
 
   const available = EXPENSE_CATEGORIES.filter(c => !addedCategories.includes(c.value));
