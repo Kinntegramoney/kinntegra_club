@@ -52,10 +52,15 @@ const INCOME_CATEGORIES = [
       { key: "property_type", label: "Type", type: "select", options: ["Residential", "Commercial", "Land"] },
       { key: "purchase_value", label: "Purchase Value", type: "number" },
       { key: "market_value", label: "Market Value", type: "number" },
-      { key: "is_on_rent", label: "On Rent", type: "select", options: ["Yes", "No"], defaultValue: "No" },
-      { key: "income_per_month", label: "Income/Month", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
+      { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"], defaultValue: "No" },
+      { key: "rental_details", label: "Rental Details", type: "text", dependsOn: "is_on_rent", showWhen: "Yes" },
+      { key: "income_per_month", label: "Income – Per Month", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "annual_income", label: "Annual Income", type: "number", readOnly: true, calculated: true, dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "rental_increment_percent", label: "Increment %", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" }
+      { key: "start_date", label: "Start Date", type: "date", dependsOn: "is_on_rent", showWhen: "Yes" },
+      { key: "end_date", label: "End Date", type: "date", dependsOn: "is_on_rent", showWhen: "Yes" },
+      { key: "pay_date", label: "Pay Date", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
+      { key: "auto_renew", label: "Auto Renew", type: "select", options: ["Yes", "No"], dependsOn: "is_on_rent", showWhen: "Yes" },
+      { key: "rental_increment_percent", label: "Rental Increment %", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" }
     ]
   },
   { 
