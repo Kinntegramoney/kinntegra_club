@@ -169,39 +169,8 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       }
       toast.success("Saved");
       
-      // Collapse current category and open next one with auto-add
-      const visibleCategories = EXPENSE_CATEGORIES.filter(c => !hiddenCategories.includes(c.value));
-      const currentIndex = visibleCategories.findIndex(c => c.value === category);
-      const nextCategory = visibleCategories[currentIndex + 1];
-      
-      // Close current category
+      // Just close the current category
       setExpandedCategories(prev => ({ ...prev, [category]: false }));
-      
-      // If next category exists and has no items, auto-add an entry
-      if (nextCategory) {
-        const nextItems = expenseItems[nextCategory.value] || [];
-        if (nextItems.length === 0) {
-          const currentYear = new Date().getFullYear();
-          setExpenseItems(prev => ({
-            ...prev,
-            [nextCategory.value]: [...(prev[nextCategory.value] || []), {
-              id: `new_${Date.now()}`,
-              memberId: members[0]?.id || "",
-              details: { 
-                annual_amount: "", 
-                upto_year: (currentYear + 30).toString(), 
-                inflation_percent: 6,
-                consider_post_retirement: "No",
-                percent_of_current: 100,
-                applicable_to: "Self"
-              },
-              isNew: true,
-              isModified: false
-            }]
-          }));
-        }
-        setExpandedCategories(prev => ({ ...prev, [nextCategory.value]: true }));
-      }
       
       onRefresh();
     } catch (error) { toast.error(error.response?.data?.detail || "Failed"); }
