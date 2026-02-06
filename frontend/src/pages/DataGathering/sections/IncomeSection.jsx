@@ -565,10 +565,35 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                     {items.length === 0 ? (
                       <p className="text-center py-4 text-xs text-gray-400">Click + to add entry</p>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-1">
+                        {/* Common Header Row - shown when multiple items */}
+                        {items.length > 1 && (
+                          <div className="flex flex-wrap gap-3 items-end px-2 py-1 bg-gray-50 rounded-t border-b border-gray-200">
+                            <div style={{ minWidth: '150px', maxWidth: '200px', flex: '1.5' }}>
+                              <span className="text-[10px] text-gray-500 font-medium">Member</span>
+                            </div>
+                            {category.fields.filter(f => shouldShowField(f, items[0]?.details || {})).map(field => {
+                              const isSmallField = ['growth_rate_percent', 'retirement_age', 'inflation_percent', 'rental_increment_percent', 'interest_rate', 'pay_date', 'auto_renew'].includes(field.key);
+                              const isLargeTextField = ['property_details', 'rental_details', 'description'].includes(field.key);
+                              const fieldStyle = isSmallField 
+                                ? { minWidth: '70px', maxWidth: '100px', flex: '0.5' }
+                                : isLargeTextField
+                                ? { minWidth: '200px', maxWidth: '300px', flex: '2' }
+                                : { minWidth: '100px', maxWidth: '180px', flex: '1' };
+                              return (
+                                <div key={field.key} style={fieldStyle}>
+                                  <span className={`text-[10px] font-medium truncate ${field.calculated ? 'text-blue-500' : 'text-gray-500'}`}>{field.label}</span>
+                                </div>
+                              );
+                            })}
+                            <div style={{ width: '40px' }}></div>
+                          </div>
+                        )}
+                        
                         {items.map((item, idx) => {
                           const visibleFields = category.fields.filter(f => shouldShowField(f, item.details));
                           const isRentalWithRent = category.value === 'rental' && item.details.is_on_rent === 'Yes';
+                          const showLabels = items.length === 1; // Only show labels if single item
                           
                           // For rental with rent, split into two rows
                           const row1Fields = isRentalWithRent 
@@ -578,7 +603,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                             ? visibleFields.filter(f => ['rental_details', 'income_per_month', 'annual_income', 'start_date', 'end_date', 'pay_date', 'auto_renew', 'rental_increment_percent'].includes(f.key))
                             : [];
                           
-                          const renderField = (field) => {
+                          const renderField = (field, withLabel = true) => {
                             const isSmallField = ['growth_rate_percent', 'retirement_age', 'inflation_percent', 'rental_increment_percent', 'interest_rate', 'pay_date', 'auto_renew'].includes(field.key);
                             const isLargeTextField = ['property_details', 'rental_details', 'description'].includes(field.key);
                             const fieldStyle = isSmallField 
@@ -589,7 +614,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                             
                             return (
                               <div key={field.key} className="flex flex-col" style={fieldStyle}>
-                                <span className={`text-[10px] mb-1 truncate ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>
+                                {withLabel && <span className={`text-[10px] mb-1 truncate ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>}
                                 {field.type === "select" ? (
                                   <Select value={item.details[field.key] || field.defaultValue || ""} onValueChange={v => updateIncomeItem(category.value, item.id, field.key, v)} disabled={isReadOnly || field.readOnly}>
                                     <SelectTrigger className={`h-8 w-full text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}>
@@ -618,6 +643,71 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                       type="text"
                                       value={item.details[field.key] ? parseFloat(item.details[field.key]).toLocaleString('en-IN') : ""}
                                       onChange={e => {
+                                        const rawValue = e.target.value.replace(/,/g, '');
+                                        if (rawValue === '' || !isNaN(rawValue)) {
+                                          updateIncomeItem(category.value, item.id, field.key, rawValue);
+                                        }
+                                      }}
+                                      placeholder="0"
+                                      className="h-8 w-full text-xs bg-white border-gray-200 pl-5"
+                                      disabled={isReadOnly}
+                                    />
+                                  </div>
+                                ) : (
+                                  <Input
+                                    type={field.type}
+                                    value={item.details[field.key] || ""}
+                                    onChange={e => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
+                                    placeholder="0"
+                                    className="h-8 w-full text-xs bg-white border-gray-200"
+                                    disabled={isReadOnly}
+                                  />
+                                )}
+                              </div>
+                            );
+                          };
+                          
+                          return (
+                            <div key={item.id} className={`rounded-md p-3 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/30 border border-gray-100'}`}>
+                              {/* Row 1 */}
+                              <div className="flex flex-wrap gap-3 items-end">
+                                {/* Member */}
+                                <div className="flex flex-col" style={{ minWidth: '150px', maxWidth: '200px', flex: '1.5' }}>
+                                  {showLabels && <span className="text-[10px] text-gray-400 mb-1">Member</span>}
+                                  <Select value={item.memberId || ""} onValueChange={v => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                    <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200">
+                                      <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                {row1Fields.map(field => renderField(field, showLabels))}
+                                
+                                {/* Delete button for additional items (idx > 0) */}
+                                {idx > 0 && (
+                                  <div className="flex flex-col justify-end">
+                                    <button 
+                                      onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} 
+                                      disabled={isReadOnly} 
+                                      className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex items-center"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Row 2 - Only for rental with Is On Rent = Yes */}
+                              {row2Fields.length > 0 && (
+                                <div className="flex flex-wrap gap-3 items-end mt-3 pt-3 border-t border-gray-200">
+                                  {row2Fields.map(field => renderField(field, true))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                                         const rawValue = e.target.value.replace(/,/g, '');
                                         if (rawValue === '' || !isNaN(rawValue)) {
                                           updateIncomeItem(category.value, item.id, field.key, rawValue);
