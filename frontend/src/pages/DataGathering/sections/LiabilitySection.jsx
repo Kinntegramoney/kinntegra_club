@@ -246,19 +246,26 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
                         {items.map((item, idx) => (
                           <div key={item.id} className={`p-4 rounded-lg ${item.isNew ? 'bg-green-50 border border-green-200' : item.isModified ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'}`}>
                             <div className="flex flex-wrap gap-3 items-end">
-                              <div className="flex flex-col min-w-[120px] flex-1 max-w-[180px]">
-                                <Label className="text-[10px] text-gray-500 mb-1 block">Member</Label>
+                              <div className="flex flex-col min-w-[140px] flex-1 max-w-[180px]">
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Member <span className="text-red-500">*</span></Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateLiabilityItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
                                   <SelectTrigger className="h-8 text-xs bg-white w-full"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}</SelectContent>
                                 </Select>
                               </div>
-                              <div className="flex flex-col min-w-[120px] flex-1 max-w-[180px]">
-                                <Label className="text-[10px] text-gray-500 mb-1 block">Amount Today</Label>
-                                <Input type="number" value={item.details.amount_today || ""} onChange={(e) => updateLiabilityItem(category.value, item.id, "amount_today", e.target.value)} placeholder="0" className="h-8 text-xs bg-white w-full" disabled={isReadOnly} />
+                              <div className="flex flex-col min-w-[130px] flex-1 max-w-[160px]">
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Amount Today <span className="text-red-500">*</span></Label>
+                                <div className="relative">
+                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                  <Input type="number" value={item.details.amount_today || ""} onChange={(e) => updateLiabilityItem(category.value, item.id, "amount_today", e.target.value)} placeholder="0" className="h-8 text-xs bg-white w-full pl-5" disabled={isReadOnly} />
+                                </div>
                               </div>
-                              <div className="flex flex-col min-w-[100px] flex-1 max-w-[120px]">
-                                <Label className="text-[10px] text-gray-500 mb-1 block">Goal Year</Label>
+                              <div className="flex flex-col min-w-[90px] max-w-[100px]">
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Inflation %</Label>
+                                <Input type="number" value={item.details.inflation_percent || ""} onChange={(e) => updateLiabilityItem(category.value, item.id, "inflation_percent", e.target.value)} placeholder="0" className="h-8 text-xs bg-white w-full" disabled={isReadOnly} />
+                              </div>
+                              <div className="flex flex-col min-w-[100px] max-w-[120px]">
+                                <Label className="text-[10px] text-gray-500 mb-1 block">Goal Year <span className="text-red-500">*</span></Label>
                                 <Select value={item.details.goal_year?.toString() || ""} onValueChange={(v) => updateLiabilityItem(category.value, item.id, "goal_year", v)} disabled={isReadOnly}>
                                   <SelectTrigger className="h-8 text-xs bg-white w-full"><SelectValue /></SelectTrigger>
                                   <SelectContent>{YEAR_OPTIONS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}</SelectContent>
