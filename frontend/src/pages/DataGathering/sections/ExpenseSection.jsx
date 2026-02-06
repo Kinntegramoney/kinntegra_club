@@ -96,13 +96,44 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
 
     setExpenseItems(itemsByCategory);
     setAddedCategories(added);
+    
+    // Load loan/liability data
+    const loansByCategory = {};
+    const addedLoans = [];
+    LOAN_CATEGORIES.forEach(cat => { loansByCategory[cat.value] = []; });
+    
+    existingLiabilities.forEach(lib => {
+      const category = lib.category;
+      if (loansByCategory[category]) {
+        if (!addedLoans.includes(category)) addedLoans.push(category);
+        loansByCategory[category].push({
+          id: lib.id,
+          memberId: lib.member_ids?.[0] || "",
+          details: {
+            monthly_emi: lib.monthly_emi || "",
+            num_installments: lib.num_installments || ""
+          },
+          isNew: false,
+          isModified: false
+        });
+      }
+    });
+    
+    setLoanItems(loansByCategory);
+    setAddedLoanCategories(addedLoans);
+    
     if (!initialLoadDone) {
       const expanded = {};
       added.forEach(cat => { expanded[cat] = true; });
       setExpandedCategories(expanded);
+      
+      const expandedLoans = {};
+      addedLoans.forEach(cat => { expandedLoans[cat] = true; });
+      setExpandedLoanCategories(expandedLoans);
+      
       setInitialLoadDone(true);
     }
-  }, [family?.id, existingExpenses.length, initialLoadDone]);
+  }, [family?.id, existingExpenses.length, existingLiabilities.length, initialLoadDone]);
 
   const addCategory = (val) => {
     if (!addedCategories.includes(val)) {
