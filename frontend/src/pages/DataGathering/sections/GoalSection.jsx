@@ -177,6 +177,36 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
     setYearPickerOpen(prev => ({ ...prev, [itemId]: !prev[itemId] }));
   };
 
+  // Apply year pattern (every year, every 2 years, etc.)
+  const applyYearPattern = (category, itemId, interval, startYear = currentYear) => {
+    const years = [];
+    for (let year = startYear; year <= currentYear + 30; year += interval) {
+      years.push(year.toString());
+    }
+    setGoalItems(prev => ({
+      ...prev,
+      [category]: prev[category].map(item => {
+        if (item.id === itemId) {
+          return { ...item, details: { ...item.details, goal_years: years }, isModified: !item.isNew };
+        }
+        return item;
+      })
+    }));
+  };
+
+  // Clear all selected years
+  const clearAllYears = (category, itemId) => {
+    setGoalItems(prev => ({
+      ...prev,
+      [category]: prev[category].map(item => {
+        if (item.id === itemId) {
+          return { ...item, details: { ...item.details, goal_years: [] }, isModified: !item.isNew };
+        }
+        return item;
+      })
+    }));
+  };
+
   const saveCategory = async (category) => {
     const items = goalItems[category] || [];
     const itemsToSave = items.filter(item => item.isNew || item.isModified);
