@@ -476,13 +476,16 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
 
                               {/* Dynamic Fields */}
                               {category.fields.map(field => (
-                                <div key={field.key} className="flex-1 min-w-[140px]">
-                                  <Label className="text-xs text-gray-500 mb-1 block">{field.label}</Label>
+                                <div key={field.key} className={`flex-1 min-w-[140px] ${field.readOnly ? 'min-w-[120px]' : ''}`}>
+                                  <Label className={`text-xs mb-1 block ${field.calculated ? 'text-blue-600' : 'text-gray-500'}`}>
+                                    {field.label}
+                                    {field.calculated && <span className="ml-1 text-[10px]">(Auto)</span>}
+                                  </Label>
                                   {field.type === "select" ? (
                                     <Select 
                                       value={item.details[field.key] || ""} 
                                       onValueChange={(v) => updateIncomeItem(category.value, item.id, field.key, v)} 
-                                      disabled={isReadOnly}
+                                      disabled={isReadOnly || field.readOnly}
                                     >
                                       <SelectTrigger className="h-10 text-sm bg-white">
                                         <SelectValue placeholder="Select" />
@@ -493,6 +496,13 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                         ))}
                                       </SelectContent>
                                     </Select>
+                                  ) : field.readOnly ? (
+                                    <div className="h-10 px-3 flex items-center text-sm bg-gray-100 border border-gray-200 rounded-md text-gray-700 font-medium">
+                                      {field.key === "net_income_yearly" && item.details[field.key] 
+                                        ? `₹${parseFloat(item.details[field.key]).toLocaleString('en-IN')}`
+                                        : item.details[field.key] || "-"
+                                      }
+                                    </div>
                                   ) : (
                                     <Input
                                       type={field.type}
