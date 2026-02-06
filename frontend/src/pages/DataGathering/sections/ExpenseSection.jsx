@@ -576,6 +576,151 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
         })}
       </div>
       {active.length === 0 && available.length > 0 && <p className="text-center py-6 text-xs text-gray-400">Select a category above to begin</p>}
+      
+      {/* ============ LOAN/EMI SECTION ============ */}
+      <div className="mt-8 pt-6 border-t border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+          <CreditCard className="h-4 w-4 text-red-500" />
+          Loan EMI Payments
+        </h3>
+        
+        {availableLoans.length > 0 && (
+          <div className="bg-red-50/30 rounded-lg p-4 mb-4">
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-3">Click to add loan EMI</p>
+            <div className="flex flex-wrap gap-1.5">
+              {availableLoans.map(cat => {
+                const Icon = cat.icon;
+                return (
+                  <button 
+                    key={cat.value} 
+                    onClick={() => addLoanCategory(cat.value)} 
+                    disabled={isReadOnly} 
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-red-200 rounded-md text-xs text-gray-600 hover:border-red-400 hover:text-red-600 hover:bg-red-50/50 transition-all"
+                  >
+                    <Plus className="h-3 w-3" />
+                    <Icon className="h-3 w-3" />
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        
+        <div className="space-y-2">
+          {activeLoans.map(cat => {
+            const Icon = cat.icon;
+            const items = loanItems[cat.value] || [];
+            const isExp = expandedLoanCategories[cat.value];
+            const hasChanges = items.some(i => i.isNew || i.isModified);
+            
+            return (
+              <Collapsible key={cat.value} open={isExp} onOpenChange={() => toggleLoanCategory(cat.value)}>
+                <div className={`bg-white rounded-lg border transition-all ${hasChanges ? 'border-amber-300' : 'border-red-200'}`}>
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-6 rounded-full bg-red-500" />
+                        <Icon className="h-4 w-4 text-red-500" />
+                        <span className="text-sm font-medium text-gray-700">{cat.label}</span>
+                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-red-100 text-red-700">{items.length}</Badge>
+                        {hasChanges && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
+                      </div>
+                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                        {hasChanges && (
+                          <Button onClick={() => saveLoanCategory(cat.value)} disabled={savingCategory === cat.value || isReadOnly} size="sm" className="h-7 px-3 text-xs bg-red-600 hover:bg-red-700">
+                            <Save className="h-3 w-3 mr-1" />{savingCategory === cat.value ? "..." : "Save"}
+                          </Button>
+                        )}
+                        <button onClick={() => skipLoanCategory(cat.value)} disabled={isReadOnly} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"><X className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => addLoanItem(cat.value)} disabled={isReadOnly} className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded"><Plus className="h-3.5 w-3.5" /></button>
+                        <div className="p-1.5 text-gray-400">{isExp ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}</div>
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="px-3 pb-3 pt-1 border-t border-gray-100">
+                      {items.length === 0 ? <p className="text-center py-4 text-xs text-gray-400">Click + to add</p> : (
+                        <div className="space-y-2 mt-2">
+                          {items.map((item, idx) => {
+                            const outstanding = calculateOutstanding(item.details.monthly_emi, item.details.num_installments);
+                            const completionYear = calculateCompletionYear(item.details.num_installments);
+                            
+                            return (
+                              <div key={item.id} className={`rounded-md p-3 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/30 border border-gray-100'}`}>
+                                <div className="flex flex-wrap gap-3 items-end">
+                                  <div className="flex flex-col min-w-[140px] flex-1 max-w-[180px]">
+                                    <span className="text-[10px] text-gray-400 mb-1">Member *</span>
+                                    <Select value={item.memberId || ""} onValueChange={v => updateLoanItem(cat.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                      <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
+                                      <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                  </div>
+                                  
+                                  <div className="flex flex-col min-w-[120px] max-w-[140px]">
+                                    <span className="text-[10px] text-gray-400 mb-1">Monthly EMI *</span>
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                      <Input 
+                                        type="number" 
+                                        value={item.details.monthly_emi || ""} 
+                                        onChange={e => updateLoanItem(cat.value, item.id, "monthly_emi", e.target.value)} 
+                                        className="h-8 w-full text-xs bg-white border-gray-200 pl-5" 
+                                        disabled={isReadOnly}
+                                      />
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex flex-col min-w-[100px] max-w-[120px]">
+                                    <span className="text-[10px] text-gray-400 mb-1">Installments *</span>
+                                    <Input 
+                                      type="number" 
+                                      value={item.details.num_installments || ""} 
+                                      onChange={e => updateLoanItem(cat.value, item.id, "num_installments", e.target.value)} 
+                                      className="h-8 w-full text-xs bg-white border-gray-200" 
+                                      disabled={isReadOnly}
+                                    />
+                                  </div>
+                                  
+                                  <div className="flex flex-col min-w-[120px] max-w-[140px]">
+                                    <span className="text-[10px] text-gray-400 mb-1">Outstanding</span>
+                                    <div className="h-8 px-3 flex items-center bg-gray-100 border border-gray-200 rounded-md text-xs text-gray-700 font-medium">
+                                      {formatCurrency(outstanding)}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex flex-col min-w-[90px] max-w-[100px]">
+                                    <span className="text-[10px] text-gray-400 mb-1">Ends</span>
+                                    <div className="h-8 px-3 flex items-center bg-gray-100 border border-gray-200 rounded-md text-xs text-gray-700 font-medium">
+                                      {item.details.num_installments ? completionYear : '-'}
+                                    </div>
+                                  </div>
+                                  
+                                  {idx > 0 && (
+                                    <div className="flex flex-col justify-end">
+                                      <button onClick={() => removeLoanItem(cat.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex items-center">
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            );
+          })}
+        </div>
+        
+        {activeLoans.length === 0 && availableLoans.length > 0 && (
+          <p className="text-center py-4 text-xs text-gray-400">Add loan EMI categories above</p>
+        )}
+      </div>
     </div>
   );
 }
