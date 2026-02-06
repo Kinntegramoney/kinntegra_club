@@ -489,50 +489,6 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
           </tbody>
         </table>
       </div>
-                
-                <CollapsibleContent>
-                  <CardContent className="pt-0 pb-2 px-3">
-                    {items.length === 0 ? (
-                      <div className="text-center py-3 text-gray-400 text-xs border-t">No entries. Click "Add" to create one.</div>
-                    ) : (
-                      <div className="space-y-2 border-t pt-2">
-                        {items.map((item, idx) => (
-                          <div key={item.id} className={`p-4 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            <div className="flex flex-wrap gap-3 items-end">
-                              <div className="flex flex-col min-w-[120px] flex-1 max-w-[180px]">
-                                <Label className="text-[10px] text-gray-400 mb-1 block">Member</Label>
-                                <Select value={item.memberId || ""} onValueChange={(v) => updateAssetItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Select" /></SelectTrigger>
-                                  <SelectContent>
-                                    {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              {category.fields.map(field => (
-                                <div key={field.key} className="flex flex-col min-w-[100px] flex-1 max-w-[180px]">
-                                  <Label className="text-[10px] text-gray-400 mb-1 block">{field.label}</Label>
-                                  {renderField(category.value, item.id, field, item.details[field.key])}
-                                </div>
-                              ))}
-                              {idx > 0 && (
-                                <div className="flex flex-col justify-end">
-                                  <button onClick={() => removeAssetItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex items-center">
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </CollapsibleContent>
-              </Collapsible>
-            </Card>
-          );
-        })}
-      </div>
 
       {hiddenCategoryList.length > 0 && (
         <div className="mt-4 pt-3 border-t border-dashed">
