@@ -272,70 +272,69 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                           const calculatedAnnual = (parseFloat(item.details.monthly_amount) || 0) * 12;
                           
                           return (
-                            <div key={item.id} className={`rounded-md p-3 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
+                            <div key={item.id} className={`rounded-md p-4 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
                               {/* Row 1: Member, Monthly Amount, Annual Amount (read-only), Upto Year, Inflation */}
-                              <div className="flex items-end gap-2 flex-wrap mb-3">
-                                <span className={`w-5 h-5 rounded text-[10px] flex items-center justify-center text-white ${colorMap[cat.color]}`}>{idx + 1}</span>
-                                
+                              <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-4 items-end mb-3">
                                 <div className="flex flex-col">
-                                  <span className="text-[9px] text-gray-400 mb-0.5">Member *</span>
+                                  <span className="text-[10px] mb-1 invisible">-</span>
+                                  <span className={`w-6 h-8 rounded text-xs flex items-center justify-center text-white ${colorMap[cat.color]}`}>{idx + 1}</span>
+                                </div>
+                                
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[10px] text-gray-400 mb-1">Member *</span>
                                   <Select value={item.memberId || ""} onValueChange={v => updateExpenseItem(cat.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                    <SelectTrigger className="h-7 w-32 text-xs bg-white border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
                                     <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}</SelectContent>
                                   </Select>
                                 </div>
                                 
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] text-gray-400 mb-0.5">Monthly Amt *</span>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[10px] text-gray-400 mb-1">Monthly Amt *</span>
                                   <Input 
                                     type="number" 
                                     value={item.details.monthly_amount || ""} 
                                     onChange={e => updateExpenseItem(cat.value, item.id, "monthly_amount", e.target.value)} 
-                                    className="h-7 w-24 text-xs bg-white border-gray-200" 
+                                    className="h-8 w-full text-xs bg-white border-gray-200" 
                                     disabled={isReadOnly}
                                     min="0"
                                   />
                                 </div>
                                 
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] text-gray-400 mb-0.5">Annual Amt</span>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[10px] text-blue-500 mb-1">Annual Amt</span>
                                   <Input 
                                     type="number" 
                                     value={calculatedAnnual || ""} 
-                                    className="h-7 w-24 text-xs bg-gray-100 border-gray-200 text-gray-600" 
+                                    className="h-8 w-full text-xs bg-gray-100 border-gray-200 text-gray-600" 
                                     disabled={true}
                                     readOnly
                                   />
                                 </div>
                                 
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] text-gray-400 mb-0.5">Upto Year *</span>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[10px] text-gray-400 mb-1">Upto Year *</span>
                                   <Select value={item.details.upto_year?.toString() || ""} onValueChange={v => updateExpenseItem(cat.value, item.id, "upto_year", v)} disabled={isReadOnly}>
-                                    <SelectTrigger className="h-7 w-20 text-xs bg-white border-gray-200"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue /></SelectTrigger>
                                     <SelectContent>{YEAR_OPTIONS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}</SelectContent>
                                   </Select>
                                 </div>
                                 
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] text-gray-400 mb-0.5">Inflation %</span>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[10px] text-gray-400 mb-1">Inflation %</span>
                                   <Input 
                                     type="number" 
                                     value={item.details.inflation_percent ?? ""} 
                                     onChange={e => updateExpenseItem(cat.value, item.id, "inflation_percent", e.target.value)} 
-                                    className="h-7 w-16 text-xs bg-white border-gray-200" 
+                                    className="h-8 w-full text-xs bg-white border-gray-200" 
                                     disabled={isReadOnly}
                                     min="0"
                                   />
                                 </div>
-                                
-                                <button onClick={() => removeExpenseItem(cat.value, item.id, item.isNew)} disabled={isReadOnly} className="ml-auto p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
                               </div>
                               
                               {/* Row 2: Post Retirement Section */}
-                              <div className="flex items-end gap-2 flex-wrap pt-2 border-t border-gray-200/50">
-                                <div className="flex items-center gap-2">
+                              <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-end pt-3 border-t border-gray-200/50">
+                                <div className="flex items-center gap-2 col-span-1">
                                   <Checkbox 
                                     id={`post-retirement-${item.id}`}
                                     checked={item.details.consider_post_retirement || false}
@@ -343,19 +342,19 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                     disabled={isReadOnly}
                                     className="h-4 w-4"
                                   />
-                                  <label htmlFor={`post-retirement-${item.id}`} className="text-[10px] text-gray-600 cursor-pointer">
+                                  <label htmlFor={`post-retirement-${item.id}`} className="text-[10px] text-gray-600 cursor-pointer whitespace-nowrap">
                                     Consider Post Retirement
                                   </label>
                                 </div>
                                 
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] text-gray-400 mb-0.5">Post-Ret. Member {isPostRetirementEnabled && '*'}</span>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[10px] text-gray-400 mb-1">Post-Ret. Member {isPostRetirementEnabled && '*'}</span>
                                   <Select 
                                     value={item.details.post_retirement_member || ""} 
                                     onValueChange={v => updateExpenseItem(cat.value, item.id, "post_retirement_member", v)} 
                                     disabled={isReadOnly || !isPostRetirementEnabled}
                                   >
-                                    <SelectTrigger className={`h-7 w-32 text-xs border-gray-200 ${!isPostRetirementEnabled ? 'bg-gray-100 text-gray-400' : 'bg-white'}`}>
+                                    <SelectTrigger className={`h-8 w-full text-xs border-gray-200 ${!isPostRetirementEnabled ? 'bg-gray-100 text-gray-400' : 'bg-white'}`}>
                                       <SelectValue placeholder="Select" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -364,18 +363,19 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   </Select>
                                 </div>
                                 
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] text-gray-400 mb-0.5">% of Annual Exp {isPostRetirementEnabled && '*'}</span>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[10px] text-gray-400 mb-1">% of Annual Exp {isPostRetirementEnabled && '*'}</span>
                                   <Input 
                                     type="number" 
                                     value={item.details.post_retirement_percent ?? 100} 
                                     onChange={e => updateExpenseItem(cat.value, item.id, "post_retirement_percent", e.target.value)} 
-                                    className={`h-7 w-20 text-xs border-gray-200 ${!isPostRetirementEnabled ? 'bg-gray-100 text-gray-400' : 'bg-white'}`}
+                                    className={`h-8 w-full text-xs border-gray-200 ${!isPostRetirementEnabled ? 'bg-gray-100 text-gray-400' : 'bg-white'}`}
                                     disabled={isReadOnly || !isPostRetirementEnabled}
                                     min="0"
                                     max="100"
                                   />
                                 </div>
+                                <div></div>
                               </div>
                             </div>
                           );
