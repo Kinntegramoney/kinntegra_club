@@ -60,9 +60,19 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       if (itemsByCategory[category]) {
         if (!added.includes(category)) added.push(category);
         itemsByCategory[category].push({
-          id: exp.id, memberId: exp.member_ids?.[0] || "",
-          details: { annual_amount: exp.annual_amount, upto_year: exp.upto_year, inflation_percent: exp.inflation_percent, applicable_to: exp.applicable_to || "Self" },
-          isNew: false, isModified: false
+          id: exp.id, 
+          memberId: exp.member_ids?.[0] || "",
+          details: { 
+            monthly_amount: exp.monthly_amount || (exp.annual_amount ? Math.round(exp.annual_amount / 12) : ""),
+            annual_amount: exp.annual_amount || "",
+            upto_year: exp.upto_year, 
+            inflation_percent: exp.inflation_percent ?? 5,
+            consider_post_retirement: exp.consider_post_retirement || false,
+            post_retirement_member: exp.post_retirement_member || "",
+            post_retirement_percent: exp.post_retirement_percent ?? 100
+          },
+          isNew: false, 
+          isModified: false
         });
       }
     });
