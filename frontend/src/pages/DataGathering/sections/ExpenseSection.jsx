@@ -232,14 +232,17 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
     if (toSave.length === 0) { toast.info("No changes"); return; }
 
     const config = getCategoryConfig(cat);
-    const isLoan = config?.type === "loan";
+    const type = config?.type;
 
     // Validation
     for (const item of toSave) {
       if (!item.memberId) { toast.error("Select a member"); return; }
-      if (isLoan) {
+      if (type === "loan") {
         if (!item.details.monthly_emi) { toast.error("Enter Monthly EMI"); return; }
         if (!item.details.num_installments) { toast.error("Enter No. of Installments"); return; }
+      } else if (type === "insurance") {
+        if (!item.details.yearly_premium) { toast.error("Enter Yearly Premium"); return; }
+        if (!item.details.coverage_amount) { toast.error("Enter Coverage Amount"); return; }
       } else {
         if (!item.details.monthly_amount) { toast.error("Enter Monthly Amount"); return; }
         if (item.details.consider_post_retirement && !item.details.post_retirement_member) {
@@ -252,7 +255,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
     try {
       const token = localStorage.getItem("token");
       for (const item of toSave) {
-        if (isLoan) {
+        if (type === "loan") {
           const outstanding = calculateOutstanding(item.details.monthly_emi, item.details.num_installments);
           const completionYear = calculateCompletionYear(item.details.num_installments);
           const payload = {
@@ -268,6 +271,22 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
             await axios.post(`${API}/data-gathering/family/${family.id}/liability`, payload, { headers: { Authorization: `Bearer ${token}` } });
           } else {
             await axios.put(`${API}/data-gathering/family/${family.id}/liability/${item.id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+          }
+        } else if (type === "insurance") {
+          const payload = {
+            family_id: family.id,
+            member_ids: [item.memberId],
+            category: cat,
+            yearly_premium: parseFloat(item.details.yearly_premium),
+            amount_today: parseFloat(item.details.yearly_premium),
+            upto_year: parseInt(item.details.upto_year),
+            goal_year: parseInt(item.details.upto_year),
+            coverage_amount: parseFloat(item.details.coverage_amount)
+          };
+          if (item.isNew) {
+            await axios.post(`${API}/data-gathering/family/${family.id}/insurance`, payload, { headers: { Authorization: `Bearer ${token}` } });
+          } else {
+            await axios.put(`${API}/data-gathering/family/${family.id}/insurance/${item.id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
           }
         } else {
           const payload = {
