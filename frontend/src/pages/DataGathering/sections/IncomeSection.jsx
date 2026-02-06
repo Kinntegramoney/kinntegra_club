@@ -568,8 +568,80 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                       <div className="space-y-2">
                         {items.map((item, idx) => {
                           const visibleFields = category.fields.filter(f => shouldShowField(f, item.details));
+                          const isRentalWithRent = category.value === 'rental' && item.details.is_on_rent === 'Yes';
+                          
+                          // For rental with rent, split into two rows
+                          const row1Fields = isRentalWithRent 
+                            ? visibleFields.filter(f => ['property_details', 'property_type', 'purchase_value', 'market_value', 'is_on_rent'].includes(f.key))
+                            : visibleFields;
+                          const row2Fields = isRentalWithRent 
+                            ? visibleFields.filter(f => ['rental_details', 'income_per_month', 'annual_income', 'start_date', 'end_date', 'pay_date', 'auto_renew', 'rental_increment_percent'].includes(f.key))
+                            : [];
+                          
+                          const renderField = (field) => {
+                            const isSmallField = ['growth_rate_percent', 'retirement_age', 'inflation_percent', 'rental_increment_percent', 'interest_rate', 'pay_date', 'auto_renew'].includes(field.key);
+                            const fieldStyle = isSmallField 
+                              ? { minWidth: '70px', maxWidth: '100px', flex: '0.5' }
+                              : { minWidth: '100px', maxWidth: '180px', flex: '1' };
+                            
+                            return (
+                              <div key={field.key} className="flex flex-col" style={fieldStyle}>
+                                <span className={`text-[10px] mb-1 truncate ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>
+                                {field.type === "select" ? (
+                                  <Select value={item.details[field.key] || field.defaultValue || ""} onValueChange={v => updateIncomeItem(category.value, item.id, field.key, v)} disabled={isReadOnly || field.readOnly}>
+                                    <SelectTrigger className={`h-8 w-full text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}>
+                                      <SelectValue placeholder="-" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {field.options.map(opt => <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                ) : field.type === "date" ? (
+                                  <Input
+                                    type="date"
+                                    value={item.details[field.key] || ""}
+                                    onChange={e => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
+                                    className={`h-8 w-full text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}
+                                    disabled={isReadOnly || field.readOnly}
+                                  />
+                                ) : field.readOnly ? (
+                                  <div className="h-8 px-3 w-full flex items-center text-xs bg-gray-100 border border-gray-200 rounded-md text-gray-600 font-medium">
+                                    {formatValue(item.details[field.key], field.key)}
+                                  </div>
+                                ) : (field.key.includes('amount') || field.key.includes('income') || field.key.includes('value') || field.key.includes('payment') || field.key.includes('principal') || field.key.includes('balance')) ? (
+                                  <div className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">₹</span>
+                                    <Input
+                                      type="text"
+                                      value={item.details[field.key] ? parseFloat(item.details[field.key]).toLocaleString('en-IN') : ""}
+                                      onChange={e => {
+                                        const rawValue = e.target.value.replace(/,/g, '');
+                                        if (rawValue === '' || !isNaN(rawValue)) {
+                                          updateIncomeItem(category.value, item.id, field.key, rawValue);
+                                        }
+                                      }}
+                                      placeholder="0"
+                                      className="h-8 w-full text-xs bg-white border-gray-200 pl-5"
+                                      disabled={isReadOnly}
+                                    />
+                                  </div>
+                                ) : (
+                                  <Input
+                                    type={field.type}
+                                    value={item.details[field.key] || ""}
+                                    onChange={e => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
+                                    placeholder="0"
+                                    className="h-8 w-full text-xs bg-white border-gray-200"
+                                    disabled={isReadOnly}
+                                  />
+                                )}
+                              </div>
+                            );
+                          };
+                          
                           return (
                             <div key={item.id} className={`rounded-md p-4 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
+                              {/* Row 1 */}
                               <div className="flex flex-wrap gap-3 items-end">
                                 {/* Member */}
                                 <div className="flex flex-col" style={{ minWidth: '150px', maxWidth: '200px', flex: '1.5' }}>
@@ -583,66 +655,18 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                     </SelectContent>
                                   </Select>
                                 </div>
-
-                                {/* Fields */}
-                                {visibleFields.map(field => {
-                                  const isSmallField = ['growth_rate_percent', 'retirement_age', 'inflation_percent', 'rental_increment_percent', 'interest_rate', 'pay_date'].includes(field.key);
-                                  const fieldStyle = isSmallField 
-                                    ? { minWidth: '70px', maxWidth: '100px', flex: '0.5' }
-                                    : { minWidth: '100px', maxWidth: '180px', flex: '1' };
-                                  
-                                  return (
-                                    <div key={field.key} className="flex flex-col" style={fieldStyle}>
-                                      <span className={`text-[10px] mb-1 truncate ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>
-                                      {field.type === "select" ? (
-                                      <Select value={item.details[field.key] || field.defaultValue || ""} onValueChange={v => updateIncomeItem(category.value, item.id, field.key, v)} disabled={isReadOnly || field.readOnly}>
-                                        <SelectTrigger className={`h-8 w-full text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}>
-                                          <SelectValue placeholder="-" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {field.options.map(opt => <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>)}
-                                        </SelectContent>
-                                      </Select>
-                                    ) : field.type === "date" ? (
-                                      <Input
-                                        type="date"
-                                        value={item.details[field.key] || ""}
-                                        onChange={e => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
-                                        className={`h-8 w-full text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}
-                                        disabled={isReadOnly || field.readOnly}
-                                      />
-                                    ) : field.readOnly ? (
-                                      <div className="h-8 px-3 w-full flex items-center text-xs bg-gray-100 border border-gray-200 rounded-md text-gray-600 font-medium">
-                                        {formatValue(item.details[field.key], field.key)}
-                                      </div>
-                                    ) : (field.key.includes('amount') || field.key.includes('income') || field.key.includes('value') || field.key.includes('payment') || field.key.includes('principal') || field.key.includes('balance')) ? (
-                                      <div className="relative">
-                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">₹</span>
-                                        <Input
-                                          type="text"
-                                          value={item.details[field.key] ? parseFloat(item.details[field.key]).toLocaleString('en-IN') : ""}
-                                          onChange={e => {
-                                            const rawValue = e.target.value.replace(/,/g, '');
-                                            if (rawValue === '' || !isNaN(rawValue)) {
-                                              updateIncomeItem(category.value, item.id, field.key, rawValue);
-                                            }
-                                          }}
-                                          placeholder="0"
-                                          className="h-8 w-full text-xs bg-white border-gray-200 pl-5"
-                                          disabled={isReadOnly}
-                                        />
-                                      </div>
-                                    ) : (
-                                      <Input
-                                        type={field.type}
-                                        value={item.details[field.key] || ""}
-                                        onChange={e => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
-                                        placeholder="0"
-                                        className="h-8 w-full text-xs bg-white border-gray-200"
-                                        disabled={isReadOnly}
-                                      />
-                                      )}
-                                    </div>
+                                {row1Fields.map(field => renderField(field))}
+                              </div>
+                              
+                              {/* Row 2 - Only for rental with Is On Rent = Yes */}
+                              {row2Fields.length > 0 && (
+                                <div className="flex flex-wrap gap-3 items-end mt-3 pt-3 border-t border-gray-200">
+                                  {row2Fields.map(field => renderField(field))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                                   );
                                 })}
                               </div>
