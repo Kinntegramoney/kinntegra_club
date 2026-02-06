@@ -236,23 +236,23 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
                       <div className="space-y-3 mt-4">
                         {items.map((item, idx) => (
                           <div key={item.id} className={`p-4 rounded-lg ${item.isNew ? 'bg-green-50 border border-green-200' : item.isModified ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'}`}>
-                            <div className="grid grid-cols-4 gap-4 items-end">
-                              <div className="flex flex-col min-w-0">
+                            <div className="flex flex-wrap gap-3 items-end">
+                              <div className="flex flex-col min-w-[120px] flex-1 max-w-[180px]">
                                 <Label className="text-[10px] text-gray-500 mb-1 block">Member</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateGoalItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
                                   <SelectTrigger className="h-8 text-xs bg-white w-full"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}</SelectContent>
                                 </Select>
                               </div>
-                              <div className="flex flex-col min-w-0">
+                              <div className="flex flex-col min-w-[120px] flex-1 max-w-[180px]">
                                 <Label className="text-[10px] text-gray-500 mb-1 block">Amount Today</Label>
                                 <Input type="number" value={item.details.amount_today || ""} onChange={(e) => updateGoalItem(category.value, item.id, "amount_today", e.target.value)} placeholder="0" className="h-8 text-xs bg-white w-full" disabled={isReadOnly} />
                               </div>
-                              <div className="flex flex-col min-w-0">
+                              <div className="flex flex-col min-w-[100px] flex-1 max-w-[120px]">
                                 <Label className="text-[10px] text-gray-500 mb-1 block">Inflation %</Label>
                                 <Input type="number" value={item.details.inflation_percent || ""} onChange={(e) => updateGoalItem(category.value, item.id, "inflation_percent", e.target.value)} placeholder="6" className="h-8 text-xs bg-white w-full" disabled={isReadOnly} />
                               </div>
-                              <div className="flex flex-col min-w-0">
+                              <div className="flex flex-col min-w-[100px] flex-1 max-w-[120px]">
                                 <Label className="text-[10px] text-gray-500 mb-1 block">Goal Year</Label>
                                 <Select value={item.details.goal_year?.toString() || ""} onValueChange={(v) => updateGoalItem(category.value, item.id, "goal_year", v)} disabled={isReadOnly}>
                                   <SelectTrigger className="h-8 text-xs bg-white w-full"><SelectValue /></SelectTrigger>
