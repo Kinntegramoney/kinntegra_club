@@ -167,16 +167,23 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
 
   const addItem = (cat) => {
     const config = getCategoryConfig(cat);
-    const isLoan = config?.type === "loan";
+    const type = config?.type;
+    
+    let details;
+    if (type === "loan") {
+      details = { monthly_emi: "", num_installments: "" };
+    } else if (type === "insurance") {
+      details = { yearly_premium: "", upto_year: (currentYear + 20).toString(), coverage_amount: "" };
+    } else {
+      details = { monthly_amount: "", annual_amount: "", upto_year: (currentYear + 30).toString(), inflation_percent: 5, consider_post_retirement: false, post_retirement_member: "", post_retirement_percent: 100 };
+    }
     
     setItems(prev => ({
       ...prev,
       [cat]: [...(prev[cat] || []), {
         id: `new_${Date.now()}`,
         memberId: members[0]?.id || "",
-        details: isLoan 
-          ? { monthly_emi: "", num_installments: "" }
-          : { monthly_amount: "", annual_amount: "", upto_year: (currentYear + 30).toString(), inflation_percent: 5, consider_post_retirement: false, post_retirement_member: "", post_retirement_percent: 100 },
+        details,
         isNew: true,
         isModified: false
       }]
