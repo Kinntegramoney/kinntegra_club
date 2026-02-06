@@ -97,7 +97,7 @@ export default function AssetsSection({ family }) {
       )}
 
       <div className="text-xs text-gray-500 px-1">
-        Summary of face values. Items with maturity will also reflect in Income.
+        Summary of asset face values by family member.
       </div>
 
       {/* Assets Summary Table with Member Columns */}
