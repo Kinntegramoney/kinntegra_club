@@ -570,9 +570,9 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                           const visibleFields = category.fields.filter(f => shouldShowField(f, item.details));
                           return (
                             <div key={item.id} className={`rounded-md p-4 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
-                              <div className={`grid gap-4 items-end`} style={{ gridTemplateColumns: `repeat(${visibleFields.length + 1}, 1fr)` }}>
+                              <div className="flex flex-wrap gap-3 items-end">
                                 {/* Member */}
-                                <div className="flex flex-col min-w-0">
+                                <div className="flex flex-col min-w-[120px]">
                                   <span className="text-[10px] text-gray-400 mb-1">Member</span>
                                   <Select value={item.memberId || ""} onValueChange={v => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
                                     <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200">
@@ -586,7 +586,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
 
                                 {/* Fields */}
                                 {visibleFields.map(field => (
-                                  <div key={field.key} className="flex flex-col min-w-0">
+                                  <div key={field.key} className="flex flex-col min-w-[100px] flex-1 max-w-[180px]">
                                     <span className={`text-[10px] mb-1 truncate ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>
                                     {field.type === "select" ? (
                                       <Select value={item.details[field.key] || field.defaultValue || ""} onValueChange={v => updateIncomeItem(category.value, item.id, field.key, v)} disabled={isReadOnly || field.readOnly}>
@@ -597,6 +597,14 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                           {field.options.map(opt => <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>)}
                                         </SelectContent>
                                       </Select>
+                                    ) : field.type === "date" ? (
+                                      <Input
+                                        type="date"
+                                        value={item.details[field.key] || ""}
+                                        onChange={e => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
+                                        className={`h-8 w-full text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}
+                                        disabled={isReadOnly || field.readOnly}
+                                      />
                                     ) : field.readOnly ? (
                                       <div className="h-8 px-3 w-full flex items-center text-xs bg-gray-100 border border-gray-200 rounded-md text-gray-600 font-medium">
                                         {formatValue(item.details[field.key], field.key)}
