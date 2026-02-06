@@ -667,11 +667,6 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                             </div>
                           );
                         })}
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
                         })}
                       </div>
                     )}
