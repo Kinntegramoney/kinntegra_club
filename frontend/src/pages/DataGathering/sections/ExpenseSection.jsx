@@ -166,6 +166,20 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
         }
       }
       toast.success("Saved");
+      
+      // Collapse current category and open next one
+      const visibleCategories = EXPENSE_CATEGORIES.filter(c => !hiddenCategories.includes(c.value));
+      const currentIndex = visibleCategories.findIndex(c => c.value === category);
+      const nextCategory = visibleCategories[currentIndex + 1];
+      
+      setExpandedCategories(prev => {
+        const newState = { ...prev, [category]: false };
+        if (nextCategory) {
+          newState[nextCategory.value] = true;
+        }
+        return newState;
+      });
+      
       onRefresh();
     } catch (error) { toast.error(error.response?.data?.detail || "Failed"); }
     finally { setSavingCategory(null); }
