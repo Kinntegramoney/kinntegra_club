@@ -148,18 +148,32 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
       }
       toast.success("Saved");
       
-      // Collapse current category and open next one
+      // Collapse current category and open next one with auto-add
       const visibleCategories = INSURANCE_CATEGORIES.filter(c => !hiddenCategories.includes(c.value));
       const currentIndex = visibleCategories.findIndex(c => c.value === category);
       const nextCategory = visibleCategories[currentIndex + 1];
       
-      setExpandedCategories(prev => {
-        const newState = { ...prev, [category]: false };
-        if (nextCategory) {
-          newState[nextCategory.value] = true;
+      // Close current category
+      setExpandedCategories(prev => ({ ...prev, [category]: false }));
+      
+      // If next category exists and has no items, auto-add an entry
+      if (nextCategory) {
+        const nextItems = insuranceItems[nextCategory.value] || [];
+        if (nextItems.length === 0) {
+          const currentYear = new Date().getFullYear();
+          setInsuranceItems(prev => ({
+            ...prev,
+            [nextCategory.value]: [...(prev[nextCategory.value] || []), {
+              id: `new_${Date.now()}`,
+              memberId: members[0]?.id || "",
+              details: { amount_today: "", inflation_percent: 5, goal_year: (currentYear + 20).toString() },
+              isNew: true,
+              isModified: false
+            }]
+          }));
         }
-        return newState;
-      });
+        setExpandedCategories(prev => ({ ...prev, [nextCategory.value]: true }));
+      }
       
       onRefresh();
     } catch (error) { toast.error(error.response?.data?.detail || "Failed"); }
