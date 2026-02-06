@@ -375,7 +375,6 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                             </div>
                           );
                         })}
-                        <div className="flex justify-end pt-1"><Button onClick={() => saveCategory(cat.value)} disabled={savingCategory === cat.value || isReadOnly || !hasChanges} size="sm" className="h-7 px-3 text-xs bg-orange-600 hover:bg-orange-700"><Save className="h-3 w-3 mr-1" />{savingCategory === cat.value ? "..." : "Save"}</Button></div>
                       </div>
                     )}
                   </div>
