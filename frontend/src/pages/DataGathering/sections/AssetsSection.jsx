@@ -406,8 +406,8 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
                       <div className="space-y-2 border-t pt-2">
                         {items.map((item, idx) => (
                           <div key={item.id} className={`p-4 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            <div className={`grid gap-4 items-end`} style={{ gridTemplateColumns: `repeat(${category.fields.length + 1}, 1fr)` }}>
-                              <div className="flex flex-col min-w-0">
+                            <div className="flex flex-wrap gap-3 items-end">
+                              <div className="flex flex-col min-w-[120px] flex-1 max-w-[180px]">
                                 <Label className="text-[10px] text-gray-400 mb-1 block">Member</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateAssetItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
                                   <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Select" /></SelectTrigger>
@@ -417,7 +417,7 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
                                 </Select>
                               </div>
                               {category.fields.map(field => (
-                                <div key={field.key} className="flex flex-col min-w-0">
+                                <div key={field.key} className="flex flex-col min-w-[100px] flex-1 max-w-[180px]">
                                   <Label className="text-[10px] text-gray-400 mb-1 block">{field.label}</Label>
                                   {renderField(category.value, item.id, field, item.details[field.key])}
                                 </div>
