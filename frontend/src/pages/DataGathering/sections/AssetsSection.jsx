@@ -195,7 +195,15 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
   }, [family?.id, existingAssets.length]);
 
   const toggleCategory = (category) => {
-    setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+    const isCurrentlyExpanded = expandedCategories[category];
+    const items = assetItems[category] || [];
+    
+    // If expanding and no items exist, auto-add one
+    if (!isCurrentlyExpanded && items.length === 0) {
+      addAssetItem(category);
+    } else {
+      setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+    }
   };
   const hideCategory = (category) => { setHiddenCategories(prev => [...prev, category]); setExpandedCategories(prev => ({ ...prev, [category]: false })); };
   const showCategory = (category) => setHiddenCategories(prev => prev.filter(c => c !== category));
@@ -261,8 +269,31 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
       }
       toast.success("Saved");
       
-      // Just close the current category
+      // Collapse current category and open next one with auto-add
+      const visibleCategories = ASSET_CATEGORIES.filter(c => !hiddenCategories.includes(c.value));
+      const currentIndex = visibleCategories.findIndex(c => c.value === category);
+      const nextCategory = visibleCategories[currentIndex + 1];
+      
+      // Close current category
       setExpandedCategories(prev => ({ ...prev, [category]: false }));
+      
+      // If next category exists and has no items, auto-add an entry
+      if (nextCategory) {
+        const nextItems = assetItems[nextCategory.value] || [];
+        if (nextItems.length === 0) {
+          setAssetItems(prev => ({
+            ...prev,
+            [nextCategory.value]: [...(prev[nextCategory.value] || []), {
+              id: `new_${Date.now()}`,
+              memberId: members[0]?.id || "",
+              details: {},
+              isNew: true,
+              isModified: false
+            }]
+          }));
+        }
+        setExpandedCategories(prev => ({ ...prev, [nextCategory.value]: true }));
+      }
       
       onRefresh();
     } catch (error) { toast.error(error.response?.data?.detail || "Failed"); }
