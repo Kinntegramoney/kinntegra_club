@@ -380,6 +380,8 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
 
   const available = EXPENSE_CATEGORIES.filter(c => !addedCategories.includes(c.value));
   const active = EXPENSE_CATEGORIES.filter(c => addedCategories.includes(c.value));
+  const availableLoans = LOAN_CATEGORIES.filter(c => !addedLoanCategories.includes(c.value));
+  const activeLoans = LOAN_CATEGORIES.filter(c => addedLoanCategories.includes(c.value));
 
   return (
     <div className="space-y-4">
