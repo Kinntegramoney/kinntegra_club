@@ -49,7 +49,11 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
         itemsByCategory[category].push({
           id: lib.id,
           memberId: lib.member_ids?.[0] || "",
-          details: { amount_today: lib.amount_today, goal_year: lib.goal_year },
+          details: { 
+            amount_today: lib.amount_today, 
+            inflation_percent: lib.inflation_percent || "",
+            goal_year: lib.goal_year 
+          },
           isNew: false,
           isModified: false
         });
