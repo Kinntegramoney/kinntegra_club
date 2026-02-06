@@ -25,8 +25,6 @@ const LIABILITY_CATEGORIES = [
   { value: "other_loan", label: "Other Loan", icon: Coins }
 ];
 
-const YEAR_OPTIONS = Array.from({ length: 61 }, (_, i) => (2020 + i).toString());
-
 export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefresh }) {
   const [savingCategory, setSavingCategory] = useState(null);
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -36,6 +34,21 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
 
   const members = family?.members || [];
   const existingLiabilities = family?.liability_details || [];
+  const currentYear = new Date().getFullYear();
+
+  // Calculate outstanding amount = EMI × Installments
+  const calculateOutstanding = (emi, installments) => {
+    const emiVal = parseFloat(emi) || 0;
+    const instVal = parseFloat(installments) || 0;
+    return emiVal * instVal;
+  };
+
+  // Calculate completion year = Current Year + (Installments / 12)
+  const calculateCompletionYear = (installments) => {
+    const instVal = parseFloat(installments) || 0;
+    const yearsToAdd = Math.ceil(instVal / 12);
+    return currentYear + yearsToAdd;
+  };
 
   useEffect(() => {
     const itemsByCategory = {};
@@ -50,9 +63,8 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
           id: lib.id,
           memberId: lib.member_ids?.[0] || "",
           details: { 
-            amount_today: lib.amount_today, 
-            inflation_percent: lib.inflation_percent || "",
-            goal_year: lib.goal_year 
+            monthly_emi: lib.monthly_emi || lib.amount_today || "",
+            num_installments: lib.num_installments || ""
           },
           isNew: false,
           isModified: false
@@ -90,16 +102,14 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
   };
 
   const addLiabilityItem = (category) => {
-    const currentYear = new Date().getFullYear();
     setLiabilityItems(prev => ({
       ...prev,
       [category]: [...(prev[category] || []), {
         id: `new_${Date.now()}`,
         memberId: members[0]?.id || "",
         details: { 
-          amount_today: "", 
-          inflation_percent: "",
-          goal_year: (currentYear + 15).toString() 
+          monthly_emi: "",
+          num_installments: ""
         },
         isNew: true,
         isModified: false
@@ -141,21 +151,25 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
 
     for (const item of itemsToSave) {
       if (!item.memberId) { toast.error("Select a member"); return; }
-      if (!item.details.amount_today) { toast.error("Enter amount"); return; }
-      if (!item.details.goal_year) { toast.error("Select goal year"); return; }
+      if (!item.details.monthly_emi) { toast.error("Enter Monthly EMI Amount"); return; }
+      if (!item.details.num_installments) { toast.error("Enter No. of Installments"); return; }
     }
 
     setSavingCategory(category);
     try {
       const token = localStorage.getItem("token");
       for (const item of itemsToSave) {
+        const outstanding = calculateOutstanding(item.details.monthly_emi, item.details.num_installments);
+        const completionYear = calculateCompletionYear(item.details.num_installments);
+        
         const payload = {
           family_id: family.id, 
           member_ids: [item.memberId], 
           category,
-          amount_today: parseFloat(item.details.amount_today),
-          inflation_percent: item.details.inflation_percent ? parseFloat(item.details.inflation_percent) : null,
-          goal_year: parseInt(item.details.goal_year)
+          monthly_emi: parseFloat(item.details.monthly_emi),
+          num_installments: parseInt(item.details.num_installments),
+          amount_today: outstanding, // Store calculated outstanding as amount_today for compatibility
+          goal_year: completionYear  // Store calculated completion year
         };
         if (item.isNew) {
           await axios.post(`${API}/data-gathering/family/${family.id}/liability`, payload, { headers: { Authorization: `Bearer ${token}` } });
@@ -168,6 +182,12 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
       onRefresh();
     } catch (error) { toast.error(error.response?.data?.detail || "Failed"); }
     finally { setSavingCategory(null); }
+  };
+
+  // Format currency for display
+  const formatCurrency = (value) => {
+    if (!value || value === 0) return "₹0";
+    return `₹${parseFloat(value).toLocaleString('en-IN')}`;
   };
 
   if (members.length === 0) {
@@ -186,13 +206,13 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
   return (
     <div className="border border-dashed border-gray-300 rounded-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <p className="text-gray-600">Enter details for categories</p>
+        <p className="text-gray-600">Enter loan details for each category</p>
         <Badge variant="outline" className="text-sm">{members.length} members</Badge>
       </div>
 
       {availableCategories.length > 0 && (
         <div className="mb-6">
-          <p className="text-gray-400 text-sm mb-3">Click To add</p>
+          <p className="text-gray-400 text-sm mb-3">Click to add</p>
           <div className="flex flex-wrap gap-2">
             {availableCategories.map(category => {
               const Icon = category.icon;
@@ -243,44 +263,79 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
                       <div className="text-center py-6 text-gray-400 text-sm">No entries. Click &quot;+ Add&quot;.</div>
                     ) : (
                       <div className="space-y-3 mt-4">
-                        {items.map((item, idx) => (
-                          <div key={item.id} className={`p-4 rounded-lg ${item.isNew ? 'bg-green-50 border border-green-200' : item.isModified ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'}`}>
-                            <div className="flex flex-wrap gap-3 items-end">
-                              <div className="flex flex-col min-w-[140px] flex-1 max-w-[180px]">
-                                <Label className="text-[10px] text-gray-500 mb-1 block">Member <span className="text-red-500">*</span></Label>
-                                <Select value={item.memberId || ""} onValueChange={(v) => updateLiabilityItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-8 text-xs bg-white w-full"><SelectValue placeholder="Select" /></SelectTrigger>
-                                  <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}</SelectContent>
-                                </Select>
-                              </div>
-                              <div className="flex flex-col min-w-[130px] flex-1 max-w-[160px]">
-                                <Label className="text-[10px] text-gray-500 mb-1 block">Amount Today <span className="text-red-500">*</span></Label>
-                                <div className="relative">
-                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
-                                  <Input type="number" value={item.details.amount_today || ""} onChange={(e) => updateLiabilityItem(category.value, item.id, "amount_today", e.target.value)} placeholder="0" className="h-8 text-xs bg-white w-full pl-5" disabled={isReadOnly} />
+                        {items.map((item, idx) => {
+                          const outstanding = calculateOutstanding(item.details.monthly_emi, item.details.num_installments);
+                          const completionYear = calculateCompletionYear(item.details.num_installments);
+                          
+                          return (
+                            <div key={item.id} className={`p-4 rounded-lg ${item.isNew ? 'bg-green-50 border border-green-200' : item.isModified ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'}`}>
+                              <div className="flex flex-wrap gap-3 items-end">
+                                {/* Member */}
+                                <div className="flex flex-col min-w-[140px] flex-1 max-w-[180px]">
+                                  <Label className="text-[10px] text-gray-500 mb-1 block">Member <span className="text-red-500">*</span></Label>
+                                  <Select value={item.memberId || ""} onValueChange={(v) => updateLiabilityItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                    <SelectTrigger className="h-8 text-xs bg-white w-full"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}</SelectContent>
+                                  </Select>
                                 </div>
-                              </div>
-                              <div className="flex flex-col min-w-[90px] max-w-[100px]">
-                                <Label className="text-[10px] text-gray-500 mb-1 block">Inflation %</Label>
-                                <Input type="number" value={item.details.inflation_percent || ""} onChange={(e) => updateLiabilityItem(category.value, item.id, "inflation_percent", e.target.value)} placeholder="0" className="h-8 text-xs bg-white w-full" disabled={isReadOnly} />
-                              </div>
-                              <div className="flex flex-col min-w-[100px] max-w-[120px]">
-                                <Label className="text-[10px] text-gray-500 mb-1 block">Goal Year <span className="text-red-500">*</span></Label>
-                                <Select value={item.details.goal_year?.toString() || ""} onValueChange={(v) => updateLiabilityItem(category.value, item.id, "goal_year", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-8 text-xs bg-white w-full"><SelectValue /></SelectTrigger>
-                                  <SelectContent>{YEAR_OPTIONS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}</SelectContent>
-                                </Select>
-                              </div>
-                              {idx > 0 && (
-                                <div className="flex flex-col justify-end">
-                                  <button onClick={() => removeLiabilityItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex items-center">
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
+                                
+                                {/* Monthly EMI Amount */}
+                                <div className="flex flex-col min-w-[130px] max-w-[150px]">
+                                  <Label className="text-[10px] text-gray-500 mb-1 block">Monthly EMI <span className="text-red-500">*</span></Label>
+                                  <div className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                    <Input 
+                                      type="number" 
+                                      value={item.details.monthly_emi || ""} 
+                                      onChange={(e) => updateLiabilityItem(category.value, item.id, "monthly_emi", e.target.value)} 
+                                      placeholder="0" 
+                                      className="h-8 text-xs bg-white w-full pl-5" 
+                                      disabled={isReadOnly} 
+                                    />
+                                  </div>
                                 </div>
-                              )}
+                                
+                                {/* No. of Installments */}
+                                <div className="flex flex-col min-w-[100px] max-w-[120px]">
+                                  <Label className="text-[10px] text-gray-500 mb-1 block">No. of Installments <span className="text-red-500">*</span></Label>
+                                  <Input 
+                                    type="number" 
+                                    value={item.details.num_installments || ""} 
+                                    onChange={(e) => updateLiabilityItem(category.value, item.id, "num_installments", e.target.value)} 
+                                    placeholder="0" 
+                                    className="h-8 text-xs bg-white w-full" 
+                                    disabled={isReadOnly} 
+                                  />
+                                </div>
+                                
+                                {/* Outstanding Amount (Auto-calculated) */}
+                                <div className="flex flex-col min-w-[130px] max-w-[150px]">
+                                  <Label className="text-[10px] text-gray-500 mb-1 block">Outstanding Amount</Label>
+                                  <div className="h-8 px-3 flex items-center bg-gray-100 border border-gray-200 rounded-md text-xs text-gray-700 font-medium">
+                                    {formatCurrency(outstanding)}
+                                  </div>
+                                </div>
+                                
+                                {/* Loan Completion Year (Auto-calculated) */}
+                                <div className="flex flex-col min-w-[100px] max-w-[120px]">
+                                  <Label className="text-[10px] text-gray-500 mb-1 block">Completion Year</Label>
+                                  <div className="h-8 px-3 flex items-center bg-gray-100 border border-gray-200 rounded-md text-xs text-gray-700 font-medium">
+                                    {item.details.num_installments ? completionYear : '-'}
+                                  </div>
+                                </div>
+                                
+                                {/* Delete Button */}
+                                {idx > 0 && (
+                                  <div className="flex flex-col justify-end">
+                                    <button onClick={() => removeLiabilityItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex items-center">
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
