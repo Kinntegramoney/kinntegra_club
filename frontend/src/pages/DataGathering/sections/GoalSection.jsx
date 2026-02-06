@@ -324,7 +324,13 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
                                 <Label className="text-[10px] text-gray-500 mb-1 block">Member *</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateGoalItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
                                   <SelectTrigger className="h-8 text-xs bg-white w-full"><SelectValue placeholder="Select" /></SelectTrigger>
-                                  <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}</SelectContent>
+                                  <SelectContent>
+                                    <SelectItem value="family" className="text-xs font-medium text-purple-600">
+                                      <span className="flex items-center gap-1">👨‍👩‍👧‍👦 Family (All Members)</span>
+                                    </SelectItem>
+                                    <div className="border-t border-gray-100 my-1"></div>
+                                    {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
+                                  </SelectContent>
                                 </Select>
                               </div>
                               <div className="flex flex-col min-w-[120px] flex-1 max-w-[150px]">
