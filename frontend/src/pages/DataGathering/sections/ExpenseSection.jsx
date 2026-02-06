@@ -243,26 +243,20 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                       <div className="space-y-3 border-t pt-2">
                         {items.map((item) => (
                           <div key={item.id} className={`p-3 rounded border ${item.isNew ? 'bg-green-50/50 border-green-200' : item.isModified ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-100'}`}>
-                            {/* Header with delete */}
-                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-dashed">
-                              <div className="flex items-center gap-2">
-                                <Label className="text-[10px] text-gray-400">Member:</Label>
+                            {/* Fields - Row 1 */}
+                            <div className="flex items-end gap-2 flex-wrap">
+                              {/* Member Dropdown */}
+                              <div className="w-32">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Member</Label>
                                 <Select value={item.memberId || ""} onValueChange={(v) => updateExpenseItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>
                                     {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
                                   </SelectContent>
                                 </Select>
                               </div>
-                              <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                            
-                            {/* Fields - Row 1 */}
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
-                              <div>
-                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Annual Amount</Label>
+                              <div className="flex-1 min-w-[100px]">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Annual Amount</Label>
                                 <Input
                                   type="number"
                                   value={item.details.annual_amount || ""}
@@ -272,8 +266,8 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   disabled={isReadOnly}
                                 />
                               </div>
-                              <div>
-                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Upto Year - Select</Label>
+                              <div className="w-28">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Upto Year</Label>
                                 <Select value={item.details.upto_year?.toString() || ""} onValueChange={(v) => updateExpenseItem(category.value, item.id, "upto_year", v)} disabled={isReadOnly}>
                                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                                   <SelectContent>
@@ -281,8 +275,8 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   </SelectContent>
                                 </Select>
                               </div>
-                              <div>
-                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Inflation</Label>
+                              <div className="w-20">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Inflation %</Label>
                                 <Input
                                   type="number"
                                   value={item.details.inflation_percent || ""}
@@ -292,18 +286,29 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   disabled={isReadOnly}
                                 />
                               </div>
-                              <div>
-                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">Consider Post Retirement</Label>
-                                <div className="flex items-center h-8">
-                                  <Checkbox
-                                    checked={item.details.consider_post_retirement}
-                                    onCheckedChange={(checked) => updateExpenseItem(category.value, item.id, "consider_post_retirement", checked)}
-                                    disabled={isReadOnly}
-                                  />
-                                </div>
+                              <div className="w-32">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Post Retirement</Label>
+                                <Select value={item.details.consider_post_retirement || "No"} onValueChange={(v) => updateExpenseItem(category.value, item.id, "consider_post_retirement", v)} disabled={isReadOnly}>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Yes">Yes</SelectItem>
+                                    <SelectItem value="No">No</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
-                              <div>
-                                <Label className="text-[10px] text-gray-500 mb-1 block font-medium uppercase">% of Current Expense</Label>
+                              <div className="w-24">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">Applicable To</Label>
+                                <Select value={item.details.applicable_to || "Self"} onValueChange={(v) => updateExpenseItem(category.value, item.id, "applicable_to", v)} disabled={isReadOnly}>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Self">Self</SelectItem>
+                                    <SelectItem value="Spouse">Spouse</SelectItem>
+                                    <SelectItem value="Both">Both</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="w-20">
+                                <Label className="text-[10px] text-gray-400 mb-0.5 block">% of Current</Label>
                                 <Input
                                   type="number"
                                   value={item.details.percent_of_current || ""}
@@ -313,26 +318,9 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   disabled={isReadOnly}
                                 />
                               </div>
-                            </div>
-                            
-                            {/* Fields - Row 2: Self/Spouse */}
-                            <div className="flex items-center gap-6">
-                              <div className="flex items-center gap-2">
-                                <Checkbox
-                                  checked={item.details.applies_to_self}
-                                  onCheckedChange={(checked) => updateExpenseItem(category.value, item.id, "applies_to_self", checked)}
-                                  disabled={isReadOnly}
-                                />
-                                <Label className="text-xs text-gray-600">SELF</Label>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox
-                                  checked={item.details.applies_to_spouse}
-                                  onCheckedChange={(checked) => updateExpenseItem(category.value, item.id, "applies_to_spouse", checked)}
-                                  disabled={isReadOnly}
-                                />
-                                <Label className="text-xs text-gray-600">SPOUSE</Label>
-                              </div>
+                              <Button variant="ghost" size="icon" onClick={() => removeExpenseItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 shrink-0">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             </div>
                           </div>
                         ))}
