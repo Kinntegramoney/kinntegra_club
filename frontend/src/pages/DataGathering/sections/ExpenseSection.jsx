@@ -13,33 +13,30 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const EXPENSE_CATEGORIES = [
-  { value: "food_grocery", label: "Food & Grocery", icon: Utensils, color: "orange" },
-  { value: "house_rent", label: "House Rent / Maintenance / Repair", icon: Home, color: "blue" },
-  { value: "conveyance", label: "Conveyance, Fuel & Maintenance", icon: Car, color: "slate" },
-  { value: "healthcare", label: "Medicines / Doctor / Healthcare", icon: Heart, color: "red" },
-  { value: "utilities", label: "Electricity / Water / Labour / AMC", icon: Zap, color: "yellow" },
-  { value: "mobile", label: "Mobile", icon: Phone, color: "green" },
-  { value: "gasline_internet", label: "Gas Line / Telephone / Internet / Cable", icon: Tv, color: "purple" },
-  { value: "clothing", label: "Clothes and Accessories", icon: Shirt, color: "pink" },
-  { value: "shopping", label: "Shopping, Gifts, White Goods, Gadgets", icon: ShoppingBag, color: "teal" },
-  { value: "entertainment", label: "Dining / Movies / Sports", icon: Utensils, color: "indigo" },
-  { value: "personal_care", label: "Personal Care / Others", icon: Scissors, color: "rose" },
-  { value: "mediclaim", label: "Mediclaim / PA / CI", icon: Shield, color: "emerald" },
-  { value: "children_education", label: "Children's Schooling / College Expenses", icon: GraduationCap, color: "cyan" },
-  { value: "family_support", label: "Contribution To Parents / Siblings", icon: Users, color: "amber" },
-  { value: "motor_insurance", label: "Motor Insurance", icon: Car, color: "gray" },
-  { value: "life_insurance", label: "Life Insurance – Term Plan", icon: FileText, color: "violet" }
-];
-
-// Loan/Liability categories (EMI-based)
-const LOAN_CATEGORIES = [
-  { value: "home_loan", label: "Home Loan EMI", icon: Home, color: "red" },
-  { value: "vehicle_loan", label: "Vehicle Loan EMI", icon: Car, color: "red" },
-  { value: "personal_loan", label: "Personal Loan EMI", icon: CreditCard, color: "red" },
-  { value: "consumer_durable", label: "Consumer Durable EMI", icon: Building, color: "red" },
-  { value: "education_loan", label: "Education Loan EMI", icon: GraduationCap, color: "red" },
-  { value: "credit_card", label: "Credit Card EMI", icon: CreditCard, color: "red" },
-  { value: "other_loan", label: "Other Loan EMI", icon: Coins, color: "red" }
+  { value: "food_grocery", label: "Food & Grocery", icon: Utensils, color: "orange", type: "expense" },
+  { value: "house_rent", label: "House Rent / Maintenance / Repair", icon: Home, color: "blue", type: "expense" },
+  { value: "conveyance", label: "Conveyance, Fuel & Maintenance", icon: Car, color: "slate", type: "expense" },
+  { value: "healthcare", label: "Medicines / Doctor / Healthcare", icon: Heart, color: "red", type: "expense" },
+  { value: "utilities", label: "Electricity / Water / Labour / AMC", icon: Zap, color: "yellow", type: "expense" },
+  { value: "mobile", label: "Mobile", icon: Phone, color: "green", type: "expense" },
+  { value: "gasline_internet", label: "Gas Line / Telephone / Internet / Cable", icon: Tv, color: "purple", type: "expense" },
+  { value: "clothing", label: "Clothes and Accessories", icon: Shirt, color: "pink", type: "expense" },
+  { value: "shopping", label: "Shopping, Gifts, White Goods, Gadgets", icon: ShoppingBag, color: "teal", type: "expense" },
+  { value: "entertainment", label: "Dining / Movies / Sports", icon: Utensils, color: "indigo", type: "expense" },
+  { value: "personal_care", label: "Personal Care / Others", icon: Scissors, color: "rose", type: "expense" },
+  { value: "mediclaim", label: "Mediclaim / PA / CI", icon: Shield, color: "emerald", type: "expense" },
+  { value: "children_education", label: "Children's Schooling / College Expenses", icon: GraduationCap, color: "cyan", type: "expense" },
+  { value: "family_support", label: "Contribution To Parents / Siblings", icon: Users, color: "amber", type: "expense" },
+  { value: "motor_insurance", label: "Motor Insurance", icon: Car, color: "gray", type: "expense" },
+  { value: "life_insurance", label: "Life Insurance – Term Plan", icon: FileText, color: "violet", type: "expense" },
+  // Loan EMI categories
+  { value: "home_loan", label: "Home Loan EMI", icon: Home, color: "red", type: "loan" },
+  { value: "vehicle_loan", label: "Vehicle Loan EMI", icon: Car, color: "red", type: "loan" },
+  { value: "personal_loan", label: "Personal Loan EMI", icon: CreditCard, color: "red", type: "loan" },
+  { value: "consumer_durable", label: "Consumer Durable EMI", icon: Building, color: "red", type: "loan" },
+  { value: "education_loan", label: "Education Loan EMI", icon: GraduationCap, color: "red", type: "loan" },
+  { value: "credit_card", label: "Credit Card EMI", icon: CreditCard, color: "red", type: "loan" },
+  { value: "other_loan", label: "Other Loan EMI", icon: Coins, color: "red", type: "loan" }
 ];
 
 const YEAR_OPTIONS = Array.from({ length: 61 }, (_, i) => (2020 + i).toString());
