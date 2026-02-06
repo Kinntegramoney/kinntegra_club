@@ -2,13 +2,12 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Save, Briefcase, Building, Wallet, Landmark, PiggyBank, TrendingUp, 
-  DollarSign, Plus, Trash2, ChevronDown, ChevronRight, User, SkipForward, Circle
+  DollarSign, Plus, Trash2, ChevronDown, ChevronRight, User, X
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,11 +20,12 @@ const INCOME_CATEGORIES = [
     value: "salary", 
     label: "Salary Income", 
     icon: Briefcase,
+    color: "blue",
     fields: [
       { key: "net_income_monthly", label: "Net Income (Monthly)", type: "number" },
       { key: "net_income_yearly", label: "Net Income (Yearly)", type: "number", readOnly: true, calculated: true },
       { key: "increment_month", label: "Increment Month", type: "select", options: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] },
-      { key: "avg_growth_rate", label: "Average Growth Rate (%)", type: "number" },
+      { key: "avg_growth_rate", label: "Growth Rate %", type: "number" },
       { key: "retirement_age", label: "Retirement Age", type: "number" },
       { key: "year_of_retirement", label: "Year of Retirement", type: "number", readOnly: true, calculated: true }
     ]
@@ -34,9 +34,10 @@ const INCOME_CATEGORIES = [
     value: "business", 
     label: "Business Income", 
     icon: Building,
+    color: "purple",
     fields: [
       { key: "net_income_yearly", label: "Net Income (Yearly)", type: "number" },
-      { key: "avg_growth_rate", label: "Average Growth Rate (%)", type: "number" },
+      { key: "avg_growth_rate", label: "Growth Rate %", type: "number" },
       { key: "retirement_age", label: "Retirement Age", type: "number" },
       { key: "year_of_retirement", label: "Year of Retirement", type: "number", readOnly: true, calculated: true }
     ]
@@ -45,132 +46,127 @@ const INCOME_CATEGORIES = [
     value: "rental", 
     label: "Rental Income", 
     icon: Building,
+    color: "teal",
     fields: [
       { key: "property_details", label: "Property Details", type: "text" },
-      { key: "property_type", label: "Property Type", type: "select", options: ["Residential", "Commercial", "Land"] },
+      { key: "property_type", label: "Type", type: "select", options: ["Residential", "Commercial", "Land"] },
       { key: "purchase_value", label: "Purchase Value", type: "number" },
       { key: "market_value", label: "Market Value", type: "number" },
-      { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"] },
-      { key: "rental_details", label: "Rental Details", type: "text", dependsOn: "is_on_rent", showWhen: "Yes" },
+      { key: "is_on_rent", label: "On Rent", type: "select", options: ["Yes", "No"] },
       { key: "income_per_month", label: "Income/Month", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "annual_income", label: "Annual Income", type: "number", readOnly: true, calculated: true },
-      { key: "start_date", label: "Start Date", type: "date", dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "end_date", label: "End Date", type: "date", dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "pay_date", label: "Pay Date", type: "select", options: ["1", "5", "10", "15", "20", "25", "Last Day"], dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "auto_renew", label: "Auto Renew", type: "select", options: ["Yes", "No"], dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "rental_increment_percent", label: "Rental Increment %", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" }
+      { key: "rental_increment_percent", label: "Increment %", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" }
     ]
   },
   { 
     value: "ppf", 
-    label: "PPF (Public Provident Fund)", 
+    label: "PPF", 
     icon: PiggyBank,
+    color: "green",
     fields: [
       { key: "amount", label: "Amount", type: "number" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "year_to_mature", label: "Year to Mature", type: "number", readOnly: true, calculated: true }
+      { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
     value: "epf", 
-    label: "EPF (Employee Provident Fund)", 
+    label: "EPF", 
     icon: PiggyBank,
+    color: "emerald",
     fields: [
       { key: "amount", label: "Amount", type: "number" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "year_to_mature", label: "Year to Mature", type: "number", readOnly: true, calculated: true }
+      { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
     value: "gratuity", 
     label: "Gratuity", 
     icon: Wallet,
+    color: "amber",
     fields: [
       { key: "amount", label: "Amount", type: "number" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "year_to_mature", label: "Year to Mature", type: "number", readOnly: true, calculated: true }
+      { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
     value: "fd", 
-    label: "FD (Fixed Deposit)", 
+    label: "Fixed Deposit", 
     icon: Landmark,
+    color: "indigo",
     fields: [
       { key: "description", label: "Description", type: "text" },
-      { key: "principal_amount", label: "Principal Amount", type: "number" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-      { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "payment_date", label: "Payment Date", type: "date" },
-      { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number", readOnly: true, calculated: true }
+      { key: "principal_amount", label: "Principal", type: "number" },
+      { key: "interest_rate", label: "Interest %", type: "number" },
+      { key: "payable_cycle", label: "Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
+      { key: "maturity_date", label: "Maturity", type: "date" },
+      { key: "payment_amount_yearly", label: "Yearly Payment", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
     value: "rd_pis", 
     label: "RD / PIS", 
     icon: Landmark,
+    color: "cyan",
     fields: [
-      { key: "description", label: "Description", type: "text" },
-      { key: "principal_amount_monthly", label: "Principal Amount (Monthly)", type: "number" },
-      { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"], defaultValue: "Monthly" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "end_date", label: "End Date", type: "date" },
-      { key: "num_installments", label: "No of Installments", type: "number", readOnly: true, calculated: true },
-      { key: "principal_amount", label: "Principal Amount (Total)", type: "number", readOnly: true, calculated: true },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-      { key: "maturity_amount", label: "Maturity Amount", type: "number" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" }
+      { key: "principal_amount_monthly", label: "Monthly Amt", type: "number" },
+      { key: "start_date", label: "Start", type: "date" },
+      { key: "end_date", label: "End", type: "date" },
+      { key: "num_installments", label: "Installments", type: "number", readOnly: true, calculated: true },
+      { key: "principal_amount", label: "Total Principal", type: "number", readOnly: true, calculated: true },
+      { key: "interest_rate", label: "Interest %", type: "number" },
+      { key: "maturity_amount", label: "Maturity Amt", type: "number" }
     ]
   },
   { 
     value: "pension", 
-    label: "Pension Income", 
+    label: "Pension", 
     icon: Wallet,
+    color: "rose",
     fields: [
-      { key: "description", label: "Description", type: "text" },
       { key: "amount", label: "Amount", type: "number" },
       { key: "payable_type", label: "Payable", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Monthly" },
-      { key: "amount_yearly", label: "Amount (Yearly)", type: "number", readOnly: true, calculated: true },
-      { key: "start_date", label: "Start Date", type: "date" },
+      { key: "amount_yearly", label: "Yearly Amt", type: "number", readOnly: true, calculated: true },
+      { key: "start_date", label: "Start", type: "date" },
       { key: "upto_life", label: "Upto Life", type: "select", options: ["Yes", "No"] },
-      { key: "end_date", label: "End Date", type: "date", dependsOn: "upto_life", showWhen: "No" },
-      { key: "payable_to_relation", label: "Payable To Relation", type: "select", options: ["Self", "Spouse"] }
+      { key: "end_date", label: "End", type: "date", dependsOn: "upto_life", showWhen: "No" },
+      { key: "payable_to_relation", label: "Payable To", type: "select", options: ["Self", "Spouse"] }
     ]
   },
   { 
     value: "bond", 
     label: "Bond", 
     icon: Landmark,
+    color: "violet",
     fields: [
       { key: "description", label: "Description", type: "text" },
-      { key: "principal_amount", label: "Principal Amount", type: "number" },
-      { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
-      { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Monthly" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "payment_date", label: "Payment Date", type: "date" },
-      { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number", readOnly: true, calculated: true }
+      { key: "principal_amount", label: "Principal", type: "number" },
+      { key: "interest_rate", label: "Interest %", type: "number" },
+      { key: "payable_cycle", label: "Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Monthly" },
+      { key: "maturity_date", label: "Maturity", type: "date" },
+      { key: "payment_amount_yearly", label: "Yearly Payment", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
     value: "insurance_income", 
     label: "Insurance", 
     icon: Landmark,
+    color: "pink",
     fields: [
       { key: "description", label: "Description", type: "text" },
-      { key: "principal_amount", label: "Premium Amount", type: "number" },
-      { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
-      { key: "start_date", label: "Start Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "payment_date", label: "Payment Date", type: "date" },
-      { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number", readOnly: true, calculated: true }
+      { key: "principal_amount", label: "Premium", type: "number" },
+      { key: "payable_cycle", label: "Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
+      { key: "maturity_date", label: "Maturity", type: "date" },
+      { key: "payment_amount_yearly", label: "Yearly Payment", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
     value: "mutual_fund", 
     label: "Mutual Fund", 
     icon: TrendingUp,
+    color: "sky",
     fields: [
       { key: "market_value", label: "Market Value", type: "number" },
       { key: "sip_amount", label: "SIP Amount", type: "number" }
@@ -180,6 +176,7 @@ const INCOME_CATEGORIES = [
     value: "cash", 
     label: "Cash In Hand", 
     icon: Wallet,
+    color: "slate",
     fields: [
       { key: "bank_balance", label: "Bank Balance", type: "number" }
     ]
@@ -188,6 +185,7 @@ const INCOME_CATEGORIES = [
     value: "gold", 
     label: "Gold", 
     icon: DollarSign,
+    color: "yellow",
     fields: [
       { key: "market_value", label: "Market Value", type: "number" }
     ]
@@ -196,6 +194,7 @@ const INCOME_CATEGORIES = [
     value: "shares_pms", 
     label: "Shares / PMS", 
     icon: TrendingUp,
+    color: "orange",
     fields: [
       { key: "market_value", label: "Market Value", type: "number" }
     ]
@@ -204,12 +203,32 @@ const INCOME_CATEGORIES = [
     value: "other", 
     label: "Other", 
     icon: DollarSign,
+    color: "gray",
     fields: [
       { key: "description", label: "Description", type: "text" },
-      { key: "market_value", label: "Market Value", type: "number" }
+      { key: "market_value", label: "Value", type: "number" }
     ]
   }
 ];
+
+const colorMap = {
+  blue: "bg-blue-500",
+  purple: "bg-purple-500",
+  teal: "bg-teal-500",
+  green: "bg-green-500",
+  emerald: "bg-emerald-500",
+  amber: "bg-amber-500",
+  indigo: "bg-indigo-500",
+  cyan: "bg-cyan-500",
+  rose: "bg-rose-500",
+  violet: "bg-violet-500",
+  pink: "bg-pink-500",
+  sky: "bg-sky-500",
+  slate: "bg-slate-500",
+  yellow: "bg-yellow-500",
+  orange: "bg-orange-500",
+  gray: "bg-gray-500"
+};
 
 export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh }) {
   const [savingCategory, setSavingCategory] = useState(null);
@@ -224,7 +243,6 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   useEffect(() => {
     const itemsByCategory = {};
     const added = [];
-    
     INCOME_CATEGORIES.forEach(cat => { itemsByCategory[cat.value] = []; });
 
     existingIncomes.forEach(inc => {
@@ -271,13 +289,10 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   };
 
   const addIncomeItem = (category) => {
-    // Get default values for the category
     const categoryConfig = INCOME_CATEGORIES.find(c => c.value === category);
     const defaultDetails = {};
     categoryConfig?.fields?.forEach(field => {
-      if (field.defaultValue) {
-        defaultDetails[field.key] = field.defaultValue;
-      }
+      if (field.defaultValue) defaultDetails[field.key] = field.defaultValue;
     });
 
     setIncomeItems(prev => ({
@@ -299,89 +314,16 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
         await axios.delete(`${API}/data-gathering/family/${family.id}/income/${itemId}`, { headers: { Authorization: `Bearer ${token}` } });
         toast.success("Deleted");
         onRefresh();
-      } catch { toast.error("Failed to delete"); return; }
+      } catch { toast.error("Failed"); return; }
     }
-    
     const updatedItems = incomeItems[category].filter(item => item.id !== itemId);
     setIncomeItems(prev => ({ ...prev, [category]: updatedItems }));
-    
-    if (updatedItems.length === 0) {
-      setAddedCategories(prev => prev.filter(c => c !== category));
-    }
+    if (updatedItems.length === 0) setAddedCategories(prev => prev.filter(c => c !== category));
   };
 
-  // Helper function to get member's birth year
   const getMemberBirthYear = (memberId) => {
     const member = members.find(m => m.id === memberId);
-    if (member?.date_of_birth) {
-      return new Date(member.date_of_birth).getFullYear();
-    }
-    return null;
-  };
-
-  // Calculate Year of Retirement = Birth Year + Retirement Age
-  const calculateYearOfRetirement = (memberId, retirementAge) => {
-    const birthYear = getMemberBirthYear(memberId);
-    if (birthYear && retirementAge) {
-      return birthYear + parseInt(retirementAge);
-    }
-    return null;
-  };
-
-  // Calculate Net Income Yearly = Monthly × 12
-  const calculateNetIncomeYearly = (monthlyIncome) => {
-    if (monthlyIncome) {
-      return parseFloat(monthlyIncome) * 12;
-    }
-    return null;
-  };
-
-  // Calculate Year to Mature = Maturity Year - Current Year
-  const calculateYearToMature = (maturityDate) => {
-    if (maturityDate) {
-      const maturityYear = new Date(maturityDate).getFullYear();
-      const currentYear = new Date().getFullYear();
-      return Math.max(0, maturityYear - currentYear);
-    }
-    return null;
-  };
-
-  // Calculate Payment Amount Yearly based on principal, rate, and cycle
-  const calculatePaymentYearly = (principal, interestRate, payableCycle) => {
-    if (principal && interestRate) {
-      const yearlyInterest = (parseFloat(principal) * parseFloat(interestRate)) / 100;
-      return Math.round(yearlyInterest);
-    }
-    return null;
-  };
-
-  // Calculate Insurance/Premium yearly payment
-  const calculatePremiumYearly = (premium, payableCycle) => {
-    if (premium) {
-      const multipliers = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1, "On Maturity": 1 };
-      return Math.round(parseFloat(premium) * (multipliers[payableCycle] || 12));
-    }
-    return null;
-  };
-
-  // Calculate Pension Amount Yearly
-  const calculatePensionYearly = (amount, payableType) => {
-    if (amount) {
-      const multipliers = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1 };
-      return Math.round(parseFloat(amount) * (multipliers[payableType] || 12));
-    }
-    return null;
-  };
-
-  // Calculate number of installments between dates
-  const calculateInstallments = (startDate, endDate) => {
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-      return Math.max(0, months);
-    }
-    return null;
+    return member?.date_of_birth ? new Date(member.date_of_birth).getFullYear() : null;
   };
 
   const updateIncomeItem = (category, itemId, field, value) => {
@@ -394,112 +336,89 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
           
           if (field === "memberId") {
             newMemberId = value;
-            // Recalculate Year of Retirement when member changes
             if ((category === "salary" || category === "business") && newDetails.retirement_age) {
-              newDetails.year_of_retirement = calculateYearOfRetirement(value, newDetails.retirement_age);
+              const birthYear = getMemberBirthYear(value);
+              if (birthYear) newDetails.year_of_retirement = birthYear + parseInt(newDetails.retirement_age);
             }
           } else {
             newDetails[field] = value;
             
-            // === SALARY INCOME ===
+            // Salary calculations
             if (category === "salary") {
-              if (field === "net_income_monthly") {
-                newDetails.net_income_yearly = calculateNetIncomeYearly(value);
-              }
+              if (field === "net_income_monthly") newDetails.net_income_yearly = parseFloat(value || 0) * 12;
               if (field === "retirement_age") {
-                newDetails.year_of_retirement = calculateYearOfRetirement(item.memberId, value);
+                const birthYear = getMemberBirthYear(item.memberId);
+                if (birthYear) newDetails.year_of_retirement = birthYear + parseInt(value);
               }
             }
             
-            // === BUSINESS INCOME ===
-            if (category === "business") {
-              if (field === "retirement_age") {
-                newDetails.year_of_retirement = calculateYearOfRetirement(item.memberId, value);
-              }
+            // Business calculations
+            if (category === "business" && field === "retirement_age") {
+              const birthYear = getMemberBirthYear(item.memberId);
+              if (birthYear) newDetails.year_of_retirement = birthYear + parseInt(value);
             }
             
-            // === RENTAL INCOME ===
+            // Rental calculations
             if (category === "rental") {
-              if (field === "income_per_month") {
-                newDetails.annual_income = calculateNetIncomeYearly(value);
-              }
+              if (field === "income_per_month") newDetails.annual_income = parseFloat(value || 0) * 12;
               if (field === "is_on_rent" && value === "No") {
-                // Clear rental-related fields when not on rent
-                newDetails.rental_details = "";
                 newDetails.income_per_month = "";
                 newDetails.annual_income = 0;
-                newDetails.start_date = "";
-                newDetails.end_date = "";
-                newDetails.pay_date = "";
-                newDetails.auto_renew = "";
                 newDetails.rental_increment_percent = "";
               }
             }
             
-            // === PPF, EPF, GRATUITY ===
-            if (["ppf", "epf", "gratuity"].includes(category)) {
-              if (field === "maturity_date") {
-                newDetails.year_to_mature = calculateYearToMature(value);
-              }
+            // PPF/EPF/Gratuity calculations
+            if (["ppf", "epf", "gratuity"].includes(category) && field === "maturity_date") {
+              const maturityYear = new Date(value).getFullYear();
+              newDetails.year_to_mature = Math.max(0, maturityYear - new Date().getFullYear());
             }
             
-            // === FD ===
-            if (category === "fd") {
-              if (field === "principal_amount" || field === "interest_rate" || field === "payable_cycle") {
+            // FD/Bond calculations
+            if (["fd", "bond"].includes(category)) {
+              if (["principal_amount", "interest_rate"].includes(field)) {
                 const principal = field === "principal_amount" ? value : newDetails.principal_amount;
                 const rate = field === "interest_rate" ? value : newDetails.interest_rate;
-                newDetails.payment_amount_yearly = calculatePaymentYearly(principal, rate);
+                if (principal && rate) newDetails.payment_amount_yearly = Math.round((parseFloat(principal) * parseFloat(rate)) / 100);
               }
             }
             
-            // === RD / PIS ===
+            // RD/PIS calculations
             if (category === "rd_pis") {
-              if (field === "start_date" || field === "end_date") {
-                const startDate = field === "start_date" ? value : newDetails.start_date;
-                const endDate = field === "end_date" ? value : newDetails.end_date;
-                newDetails.num_installments = calculateInstallments(startDate, endDate);
-                // Recalculate total principal
-                if (newDetails.principal_amount_monthly && newDetails.num_installments) {
-                  newDetails.principal_amount = parseFloat(newDetails.principal_amount_monthly) * newDetails.num_installments;
+              if (["start_date", "end_date"].includes(field)) {
+                const start = new Date(field === "start_date" ? value : newDetails.start_date);
+                const end = new Date(field === "end_date" ? value : newDetails.end_date);
+                if (start && end) {
+                  const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+                  newDetails.num_installments = Math.max(0, months);
+                  if (newDetails.principal_amount_monthly) {
+                    newDetails.principal_amount = parseFloat(newDetails.principal_amount_monthly) * newDetails.num_installments;
+                  }
                 }
               }
-              if (field === "principal_amount_monthly" || field === "num_installments") {
-                const monthly = field === "principal_amount_monthly" ? value : newDetails.principal_amount_monthly;
-                const installments = field === "num_installments" ? value : newDetails.num_installments;
-                if (monthly && installments) {
-                  newDetails.principal_amount = parseFloat(monthly) * parseInt(installments);
-                }
+              if (field === "principal_amount_monthly" && newDetails.num_installments) {
+                newDetails.principal_amount = parseFloat(value) * newDetails.num_installments;
               }
             }
             
-            // === PENSION ===
+            // Pension calculations
             if (category === "pension") {
-              if (field === "amount" || field === "payable_type") {
+              if (["amount", "payable_type"].includes(field)) {
                 const amount = field === "amount" ? value : newDetails.amount;
-                const payableType = field === "payable_type" ? value : (newDetails.payable_type || "Monthly");
-                newDetails.amount_yearly = calculatePensionYearly(amount, payableType);
+                const type = field === "payable_type" ? value : (newDetails.payable_type || "Monthly");
+                const multipliers = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1 };
+                if (amount) newDetails.amount_yearly = Math.round(parseFloat(amount) * (multipliers[type] || 12));
               }
-              // Disable end_date when upto_life is Yes
-              if (field === "upto_life" && value === "Yes") {
-                newDetails.end_date = "";
-              }
+              if (field === "upto_life" && value === "Yes") newDetails.end_date = "";
             }
             
-            // === BOND ===
-            if (category === "bond") {
-              if (field === "principal_amount" || field === "interest_rate" || field === "payable_cycle") {
-                const principal = field === "principal_amount" ? value : newDetails.principal_amount;
-                const rate = field === "interest_rate" ? value : newDetails.interest_rate;
-                newDetails.payment_amount_yearly = calculatePaymentYearly(principal, rate);
-              }
-            }
-            
-            // === INSURANCE ===
+            // Insurance calculations
             if (category === "insurance_income") {
-              if (field === "principal_amount" || field === "payable_cycle") {
+              if (["principal_amount", "payable_cycle"].includes(field)) {
                 const premium = field === "principal_amount" ? value : newDetails.principal_amount;
                 const cycle = field === "payable_cycle" ? value : (newDetails.payable_cycle || "Monthly");
-                newDetails.payment_amount_yearly = calculatePremiumYearly(premium, cycle);
+                const multipliers = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1, "On Maturity": 1 };
+                if (premium) newDetails.payment_amount_yearly = Math.round(parseFloat(premium) * (multipliers[cycle] || 12));
               }
             }
           }
@@ -515,9 +434,8 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     const items = incomeItems[category] || [];
     const itemsToSave = items.filter(item => item.isNew || item.isModified);
     if (itemsToSave.length === 0) { toast.info("No changes"); return; }
-
     for (const item of itemsToSave) {
-      if (!item.memberId) { toast.error("Select a member"); return; }
+      if (!item.memberId) { toast.error("Select member"); return; }
     }
 
     setSavingCategory(category);
@@ -525,11 +443,8 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
       const token = localStorage.getItem("token");
       for (const item of itemsToSave) {
         const payload = { family_id: family.id, category, member_ids: [item.memberId], details: item.details };
-        if (item.isNew) {
-          await axios.post(`${API}/data-gathering/family/${family.id}/income`, payload, { headers: { Authorization: `Bearer ${token}` } });
-        } else {
-          await axios.put(`${API}/data-gathering/family/${family.id}/income/${item.id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
-        }
+        if (item.isNew) await axios.post(`${API}/data-gathering/family/${family.id}/income`, payload, { headers: { Authorization: `Bearer ${token}` } });
+        else await axios.put(`${API}/data-gathering/family/${family.id}/income/${item.id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
       }
       toast.success("Saved");
       setExpandedCategories(prev => ({ ...prev, [category]: false }));
@@ -538,58 +453,50 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     finally { setSavingCategory(null); }
   };
 
-  // Check if a field should be shown based on dependency
   const shouldShowField = (field, details) => {
     if (!field.dependsOn) return true;
     return details[field.dependsOn] === field.showWhen;
   };
 
-  // Format currency
-  const formatCurrency = (value) => {
+  const formatValue = (value, key) => {
     if (!value) return "-";
-    return `₹${parseFloat(value).toLocaleString('en-IN')}`;
+    if (key.includes("amount") || key.includes("income") || key.includes("payment") || key.includes("value") || key.includes("balance") || key.includes("principal")) {
+      return `₹${parseFloat(value).toLocaleString('en-IN')}`;
+    }
+    return value;
   };
 
   if (members.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <User className="h-10 w-10 text-blue-500 mb-3" />
-        <h3 className="text-base font-medium text-gray-700 mb-1">No Family Members</h3>
-        <p className="text-gray-500 text-sm">Add members in Introduction tab first.</p>
+      <div className="flex flex-col items-center justify-center py-10">
+        <User className="h-8 w-8 text-gray-400 mb-2" />
+        <p className="text-gray-500 text-sm">Add members in Introduction tab first</p>
       </div>
     );
   }
 
-  // Categories not yet added
   const availableCategories = INCOME_CATEGORIES.filter(c => !addedCategories.includes(c.value));
-  // Categories that have been added
   const activeCategories = INCOME_CATEGORIES.filter(c => addedCategories.includes(c.value));
 
   return (
-    <div className="border border-dashed border-gray-300 rounded-lg p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-gray-600">Enter details for categories</p>
-        <Badge variant="outline" className="text-sm">{members.length} members</Badge>
-      </div>
-
-      {/* Available Categories - Click to Add */}
+    <div className="space-y-4">
+      {/* Available Categories */}
       {availableCategories.length > 0 && (
-        <div className="mb-6">
-          <p className="text-gray-400 text-sm mb-3">Click To add</p>
-          <div className="flex flex-wrap gap-2">
-            {availableCategories.map(category => {
-              const Icon = category.icon;
+        <div className="bg-gray-50/50 rounded-lg p-4">
+          <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-3">Click to add</p>
+          <div className="flex flex-wrap gap-1.5">
+            {availableCategories.map(cat => {
+              const Icon = cat.icon;
               return (
                 <button
-                  key={category.value}
-                  onClick={() => addCategory(category.value)}
+                  key={cat.value}
+                  onClick={() => addCategory(cat.value)}
                   disabled={isReadOnly}
-                  className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-full text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-all duration-150"
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{category.label}</span>
+                  <Plus className="h-3 w-3" />
+                  <Icon className="h-3 w-3" />
+                  <span>{cat.label}</span>
                 </button>
               );
             })}
@@ -597,133 +504,90 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
         </div>
       )}
 
-      {/* Added Categories */}
-      <div className="space-y-4">
+      {/* Active Categories */}
+      <div className="space-y-2">
         {activeCategories.map(category => {
           const Icon = category.icon;
           const items = incomeItems[category.value] || [];
           const isExpanded = expandedCategories[category.value];
-          const hasUnsavedChanges = items.some(item => item.isNew || item.isModified);
+          const hasChanges = items.some(item => item.isNew || item.isModified);
 
           return (
-            <Collapsible 
-              key={category.value} 
-              open={isExpanded} 
-              onOpenChange={() => toggleCategory(category.value)}
-            >
-              <div className={`border rounded-lg ${hasUnsavedChanges ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200 bg-white'}`}>
-                {/* Category Header */}
+            <Collapsible key={category.value} open={isExpanded} onOpenChange={() => toggleCategory(category.value)}>
+              <div className={`bg-white rounded-lg border transition-all duration-150 ${hasChanges ? 'border-amber-300' : 'border-gray-200'}`}>
+                {/* Header */}
                 <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <button className="text-gray-400 hover:text-gray-600">
-                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      </button>
-                      <Icon className="h-5 w-5 text-gray-600" />
-                      <span className="font-medium text-gray-800">{category.label}</span>
-                      <Badge className="bg-blue-100 text-blue-700 text-xs">{items.length}</Badge>
-                      {hasUnsavedChanges && <Circle className="h-2 w-2 fill-amber-500 text-amber-500" />}
+                  <div className="flex items-center justify-between px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-1 h-6 rounded-full ${colorMap[category.color]}`} />
+                      <Icon className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">{category.label}</span>
+                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-gray-100">{items.length}</Badge>
+                      {hasChanges && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
                     </div>
-                    <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => skipCategory(category.value)}
-                        disabled={isReadOnly}
-                        className="flex items-center gap-1 text-gray-400 hover:text-gray-600 text-sm"
-                      >
-                        <SkipForward className="h-3.5 w-3.5" />
-                        Skip
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => skipCategory(category.value)} disabled={isReadOnly} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
+                        <X className="h-3.5 w-3.5" />
                       </button>
-                      <button
-                        onClick={() => addIncomeItem(category.value)}
-                        disabled={isReadOnly}
-                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium"
-                      >
+                      <button onClick={() => addIncomeItem(category.value)} disabled={isReadOnly} className="p-1.5 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors">
                         <Plus className="h-3.5 w-3.5" />
-                        Add
                       </button>
+                      <div className="p-1.5 text-gray-400">
+                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                      </div>
                     </div>
                   </div>
                 </CollapsibleTrigger>
 
-                {/* Category Content */}
+                {/* Content */}
                 <CollapsibleContent>
-                  <div className="px-4 pb-4 border-t border-gray-100">
+                  <div className="px-3 pb-3 pt-1 border-t border-gray-100">
                     {items.length === 0 ? (
-                      <div className="text-center py-6 text-gray-400 text-sm">
-                        No entries. Click "+ Add" to create one.
-                      </div>
+                      <p className="text-center py-4 text-xs text-gray-400">Click + to add entry</p>
                     ) : (
-                      <div className="space-y-3 mt-4">
-                        {items.map((item, index) => (
-                          <div 
-                            key={item.id} 
-                            className={`p-4 rounded-lg ${item.isNew ? 'bg-green-50 border border-green-200' : item.isModified ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'}`}
-                          >
-                            {/* Entry Fields - All in one row */}
-                            <div className="flex items-end gap-3 flex-wrap">
-                              {/* Member Dropdown */}
-                              <div className="w-36">
-                                <Label className="text-xs text-gray-500 mb-1 block">Member</Label>
-                                <Select 
-                                  value={item.memberId || ""} 
-                                  onValueChange={(v) => updateIncomeItem(category.value, item.id, "memberId", v)} 
-                                  disabled={isReadOnly}
-                                >
-                                  <SelectTrigger className="h-10 text-sm bg-white">
-                                    <SelectValue placeholder="Select" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {members.map(m => (
-                                      <SelectItem key={m.id} value={m.id}>
-                                        {m.name}{m.is_primary ? ' *' : ''}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                      <div className="space-y-2">
+                        {items.map((item, idx) => (
+                          <div key={item.id} className={`rounded-md p-2.5 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* Index */}
+                              <span className={`w-5 h-5 rounded text-[10px] flex items-center justify-center text-white ${colorMap[category.color]}`}>{idx + 1}</span>
+                              
+                              {/* Member */}
+                              <Select value={item.memberId || ""} onValueChange={v => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
+                                <SelectTrigger className="h-7 w-28 text-xs bg-white border-gray-200">
+                                  <SelectValue placeholder="Member" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
 
-                              {/* Dynamic Fields */}
+                              {/* Fields */}
                               {category.fields.map(field => {
-                                // Check if field should be shown based on dependency
                                 if (!shouldShowField(field, item.details)) return null;
-
                                 return (
-                                  <div key={field.key} className={`flex-1 min-w-[120px] ${field.readOnly ? '' : ''}`}>
-                                    <Label className={`text-xs mb-1 block ${field.calculated ? 'text-blue-600' : 'text-gray-500'}`}>
-                                      {field.label}
-                                      {field.calculated && <span className="ml-1 text-[10px]">(Auto)</span>}
-                                    </Label>
+                                  <div key={field.key} className="flex flex-col">
+                                    <span className={`text-[9px] mb-0.5 ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>
                                     {field.type === "select" ? (
-                                      <Select 
-                                        value={item.details[field.key] || field.defaultValue || ""} 
-                                        onValueChange={(v) => updateIncomeItem(category.value, item.id, field.key, v)} 
-                                        disabled={isReadOnly || field.readOnly}
-                                      >
-                                        <SelectTrigger className={`h-10 text-sm ${field.readOnly ? 'bg-gray-100' : 'bg-white'}`}>
-                                          <SelectValue placeholder="Select" />
+                                      <Select value={item.details[field.key] || field.defaultValue || ""} onValueChange={v => updateIncomeItem(category.value, item.id, field.key, v)} disabled={isReadOnly || field.readOnly}>
+                                        <SelectTrigger className={`h-7 w-24 text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}>
+                                          <SelectValue placeholder="-" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          {field.options.map(opt => (
-                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                          ))}
+                                          {field.options.map(opt => <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>)}
                                         </SelectContent>
                                       </Select>
                                     ) : field.readOnly ? (
-                                      <div className="h-10 px-3 flex items-center text-sm bg-gray-100 border border-gray-200 rounded-md text-gray-700 font-medium">
-                                        {field.type === "number" && item.details[field.key] 
-                                          ? (field.key.includes("amount") || field.key.includes("income") || field.key.includes("payment")
-                                            ? formatCurrency(item.details[field.key])
-                                            : item.details[field.key])
-                                          : item.details[field.key] || "-"
-                                        }
+                                      <div className="h-7 px-2 min-w-[80px] flex items-center text-xs bg-gray-100 border border-gray-200 rounded-md text-gray-600 font-medium">
+                                        {formatValue(item.details[field.key], field.key)}
                                       </div>
                                     ) : (
                                       <Input
                                         type={field.type}
                                         value={item.details[field.key] || ""}
-                                        onChange={(e) => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
-                                        placeholder={field.type === "number" ? "0" : ""}
-                                        className="h-10 text-sm bg-white"
+                                        onChange={e => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
+                                        placeholder="0"
+                                        className="h-7 w-24 text-xs bg-white border-gray-200"
                                         disabled={isReadOnly}
                                       />
                                     )}
@@ -731,30 +595,19 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                 );
                               })}
 
-                              {/* Delete Button */}
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} 
-                                disabled={isReadOnly} 
-                                className="text-red-400 hover:text-red-600 hover:bg-red-50 h-10 w-10 shrink-0"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              {/* Delete */}
+                              <button onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="ml-auto p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             </div>
                           </div>
                         ))}
 
-                        {/* Save Button */}
-                        <div className="flex justify-end pt-2">
-                          <Button 
-                            onClick={() => saveCategory(category.value)} 
-                            disabled={savingCategory === category.value || isReadOnly || !hasUnsavedChanges} 
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            size="sm"
-                          >
-                            <Save className="h-4 w-4 mr-1" />
-                            {savingCategory === category.value ? "Saving..." : "Save"}
+                        {/* Save */}
+                        <div className="flex justify-end pt-1">
+                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly || !hasChanges} size="sm" className="h-7 px-3 text-xs bg-blue-600 hover:bg-blue-700">
+                            <Save className="h-3 w-3 mr-1" />
+                            {savingCategory === category.value ? "..." : "Save"}
                           </Button>
                         </div>
                       </div>
@@ -768,10 +621,8 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
       </div>
 
       {/* Empty State */}
-      {activeCategories.length === 0 && (
-        <div className="text-center py-8 text-gray-400">
-          <p>Click on a category above to start adding income details</p>
-        </div>
+      {activeCategories.length === 0 && availableCategories.length > 0 && (
+        <p className="text-center py-6 text-xs text-gray-400">Select a category above to begin</p>
       )}
     </div>
   );
