@@ -330,13 +330,115 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     setIncomeItems(prev => ({ ...prev, [category]: prev[category].filter(item => item.id !== itemId) }));
   };
 
+  // Helper function to get member's birth year
+  const getMemberBirthYear = (memberId) => {
+    const member = members.find(m => m.id === memberId);
+    if (member?.date_of_birth) {
+      const dob = new Date(member.date_of_birth);
+      return dob.getFullYear();
+    }
+    return null;
+  };
+
+  // Helper function to calculate year to mature from maturity date
+  const calculateYearToMature = (maturityDate) => {
+    if (!maturityDate) return null;
+    const maturity = new Date(maturityDate);
+    const now = new Date();
+    const years = maturity.getFullYear() - now.getFullYear();
+    return years > 0 ? years : 0;
+  };
+
+  // Helper function to calculate yearly payment amount
+  const calculatePaymentYearly = (principal, interestRate, payableCycle) => {
+    if (!principal || !interestRate) return null;
+    const yearlyInterest = (parseFloat(principal) * parseFloat(interestRate)) / 100;
+    return Math.round(yearlyInterest);
+  };
+
+  // Helper function to calculate pension yearly amount
+  const calculatePensionYearly = (amount, payableType) => {
+    if (!amount) return null;
+    const multipliers = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1 };
+    return Math.round(parseFloat(amount) * (multipliers[payableType] || 12));
+  };
+
   const updateIncomeItem = (category, itemId, field, value) => {
     setIncomeItems(prev => ({
       ...prev,
       [category]: prev[category].map(item => {
         if (item.id === itemId) {
-          if (field === "memberId") return { ...item, memberId: value, isModified: !item.isNew };
-          return { ...item, details: { ...item.details, [field]: value }, isModified: !item.isNew };
+          let newDetails = { ...item.details };
+          let newMemberId = item.memberId;
+          
+          if (field === "memberId") {
+            newMemberId = value;
+            // Recalculate year_of_retirement when member changes
+            if (newDetails.retirement_age) {
+              const birthYear = getMemberBirthYear(value);
+              if (birthYear) {
+                newDetails.year_of_retirement = birthYear + parseInt(newDetails.retirement_age);
+              }
+            }
+          } else {
+            newDetails[field] = value;
+            
+            // Auto-calculate Net Income (Yearly) = Monthly × 12
+            if (field === "net_income_monthly") {
+              const monthly = parseFloat(value) || 0;
+              newDetails.net_income_yearly = monthly * 12;
+            }
+            
+            // Auto-calculate Year of Retirement = Birth Year + Retirement Age
+            if (field === "retirement_age") {
+              const birthYear = getMemberBirthYear(item.memberId);
+              if (birthYear && value) {
+                newDetails.year_of_retirement = birthYear + parseInt(value);
+              }
+            }
+            
+            // Auto-calculate Annual Income for Rental = Monthly × 12
+            if (field === "income_per_month") {
+              const monthly = parseFloat(value) || 0;
+              newDetails.annual_income = monthly * 12;
+            }
+            
+            // Auto-calculate Year to Mature for PPF/EPF/Gratuity
+            if (field === "maturity_date" && ["ppf", "epf", "gratuity"].includes(category)) {
+              newDetails.year_to_mature = calculateYearToMature(value);
+            }
+            
+            // Auto-calculate Payment Amount (Yearly) for FD/Bond/Insurance
+            if (["fd", "bond", "insurance_income"].includes(category)) {
+              if (field === "principal_amount" || field === "interest_rate" || field === "payable_cycle") {
+                const principal = field === "principal_amount" ? value : newDetails.principal_amount;
+                const rate = field === "interest_rate" ? value : newDetails.interest_rate;
+                newDetails.payment_amount_yearly = calculatePaymentYearly(principal, rate);
+              }
+            }
+            
+            // Auto-calculate Amount (Yearly) for Pension
+            if (category === "pension") {
+              if (field === "amount" || field === "payable_type") {
+                const amount = field === "amount" ? value : newDetails.amount;
+                const payableType = field === "payable_type" ? value : (newDetails.payable_type || "Monthly");
+                newDetails.amount_yearly = calculatePensionYearly(amount, payableType);
+              }
+            }
+            
+            // Auto-calculate Principal Amount (Total) for RD/PIS
+            if (category === "rd_pis") {
+              if (field === "principal_amount_monthly" || field === "num_installments") {
+                const monthly = field === "principal_amount_monthly" ? value : newDetails.principal_amount_monthly;
+                const installments = field === "num_installments" ? value : newDetails.num_installments;
+                if (monthly && installments) {
+                  newDetails.principal_amount = parseFloat(monthly) * parseInt(installments);
+                }
+              }
+            }
+          }
+          
+          return { ...item, memberId: newMemberId, details: newDetails, isModified: !item.isNew };
         }
         return item;
       })
