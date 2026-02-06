@@ -23,9 +23,11 @@ const INCOME_CATEGORIES = [
     icon: Briefcase,
     fields: [
       { key: "net_income_monthly", label: "Net Income (Monthly)", type: "number" },
+      { key: "net_income_yearly", label: "Net Income (Yearly)", type: "number", readOnly: true, calculated: true },
       { key: "increment_month", label: "Increment Month", type: "select", options: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] },
       { key: "avg_growth_rate", label: "Average Growth Rate (%)", type: "number" },
-      { key: "retirement_age", label: "Retirement Age", type: "number" }
+      { key: "retirement_age", label: "Retirement Age", type: "number" },
+      { key: "year_of_retirement", label: "Year of Retirement", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
