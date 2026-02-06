@@ -602,7 +602,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                               })}
 
                               {/* Delete - wrapped in flex-col with empty label space for alignment */}
-                              <div className="flex flex-col ml-auto">
+                              <div className="flex flex-col">
                                 <span className="text-[9px] mb-0.5 invisible">-</span>
                                 <button onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="p-1.5 h-7 flex items-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
                                   <Trash2 className="h-3.5 w-3.5" />
