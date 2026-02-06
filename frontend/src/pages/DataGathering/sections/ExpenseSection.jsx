@@ -107,7 +107,21 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
     const year = new Date().getFullYear();
     setExpenseItems(prev => ({
       ...prev,
-      [cat]: [...(prev[cat] || []), { id: `new_${Date.now()}`, memberId: members[0]?.id || "", details: { annual_amount: "", upto_year: (year + 30).toString(), inflation_percent: 6, applicable_to: "Self" }, isNew: true, isModified: false }]
+      [cat]: [...(prev[cat] || []), { 
+        id: `new_${Date.now()}`, 
+        memberId: members[0]?.id || "", 
+        details: { 
+          monthly_amount: "",
+          annual_amount: "",
+          upto_year: (year + 30).toString(), 
+          inflation_percent: 5,
+          consider_post_retirement: false,
+          post_retirement_member: "",
+          post_retirement_percent: 100
+        }, 
+        isNew: true, 
+        isModified: false 
+      }]
     }));
   };
 
