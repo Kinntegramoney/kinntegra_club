@@ -273,13 +273,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                           
                           return (
                             <div key={item.id} className={`rounded-md p-4 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
-                              {/* Row 1: Member, Monthly Amount, Annual Amount (read-only), Upto Year, Inflation */}
-                              <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-4 items-end mb-3">
-                                <div className="flex flex-col">
-                                  <span className="text-[10px] mb-1 invisible">-</span>
-                                  <span className={`w-6 h-8 rounded text-xs flex items-center justify-center text-white ${colorMap[cat.color]}`}>{idx + 1}</span>
-                                </div>
-                                
+                              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto_1fr_1fr] gap-3 items-end">
                                 <div className="flex flex-col min-w-0">
                                   <span className="text-[10px] text-gray-400 mb-1">Member *</span>
                                   <Select value={item.memberId || ""} onValueChange={v => updateExpenseItem(cat.value, item.id, "memberId", v)} disabled={isReadOnly}>
@@ -330,11 +324,8 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                     min="0"
                                   />
                                 </div>
-                              </div>
-                              
-                              {/* Row 2: Post Retirement Section */}
-                              <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4 items-end pt-3 border-t border-gray-200/50">
-                                <div className="flex items-center gap-2 col-span-1">
+                                
+                                <div className="flex items-center h-8">
                                   <Checkbox 
                                     id={`post-retirement-${item.id}`}
                                     checked={item.details.consider_post_retirement || false}
@@ -342,13 +333,13 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                     disabled={isReadOnly}
                                     className="h-4 w-4"
                                   />
-                                  <label htmlFor={`post-retirement-${item.id}`} className="text-[10px] text-gray-600 cursor-pointer whitespace-nowrap">
-                                    Consider Post Retirement
+                                  <label htmlFor={`post-retirement-${item.id}`} className="text-[9px] text-gray-600 cursor-pointer ml-1 whitespace-nowrap">
+                                    Post Ret.
                                   </label>
                                 </div>
                                 
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] text-gray-400 mb-1">Post-Ret. Member {isPostRetirementEnabled && '*'}</span>
+                                  <span className="text-[10px] text-gray-400 mb-1">Post-Ret. Member</span>
                                   <Select 
                                     value={item.details.post_retirement_member || ""} 
                                     onValueChange={v => updateExpenseItem(cat.value, item.id, "post_retirement_member", v)} 
@@ -364,7 +355,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                 </div>
                                 
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] text-gray-400 mb-1">% of Annual Exp {isPostRetirementEnabled && '*'}</span>
+                                  <span className="text-[10px] text-gray-400 mb-1">% of Exp</span>
                                   <Input 
                                     type="number" 
                                     value={item.details.post_retirement_percent ?? 100} 
@@ -375,7 +366,6 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                     max="100"
                                   />
                                 </div>
-                                <div></div>
                               </div>
                             </div>
                           );
