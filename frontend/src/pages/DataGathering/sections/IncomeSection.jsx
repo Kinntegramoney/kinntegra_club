@@ -17,7 +17,7 @@ import { toast } from "sonner";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Income categories with multi-row field layout
+// Income categories with multi-row field layout based on documentation
 const INCOME_CATEGORIES = [
   { 
     value: "salary", 
@@ -26,9 +26,13 @@ const INCOME_CATEGORIES = [
     rows: [
       [
         { key: "net_income_monthly", label: "Net Income (Monthly)", type: "number" },
+        { key: "net_income_yearly", label: "Net Income (Yearly)", type: "number", disabled: true, calculated: true },
         { key: "increment_month", label: "Increment Month", type: "select", options: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] },
-        { key: "avg_growth_rate", label: "Average Growth Rate (%)", type: "number" },
-        { key: "retirement_age", label: "Retirement Age", type: "number" }
+        { key: "avg_growth_rate", label: "Average Growth Rate (%)", type: "number" }
+      ],
+      [
+        { key: "retirement_age", label: "Retirement Age", type: "number" },
+        { key: "year_of_retirement", label: "Year of Retirement", type: "number", disabled: true, calculated: true }
       ]
     ]
   },
@@ -40,7 +44,8 @@ const INCOME_CATEGORIES = [
       [
         { key: "net_income_yearly", label: "Net Income (Yearly)", type: "number" },
         { key: "avg_growth_rate", label: "Average Growth Rate (%)", type: "number" },
-        { key: "retirement_age", label: "Retirement Age", type: "number" }
+        { key: "retirement_age", label: "Retirement Age", type: "number" },
+        { key: "year_of_retirement", label: "Year of Retirement", type: "number", disabled: true, calculated: true }
       ]
     ]
   },
@@ -62,11 +67,11 @@ const INCOME_CATEGORIES = [
       [
         { key: "rental_details", label: "Rental Details", type: "text" },
         { key: "income_per_month", label: "Income - Per Month", type: "number" },
-        { key: "start_date", label: "Start Date", type: "date" },
-        { key: "end_date", label: "End Date", type: "date" }
+        { key: "annual_income", label: "Annual Income", type: "number", disabled: true, calculated: true },
+        { key: "start_date", label: "Start Date", type: "date" }
       ],
       [
-        { key: "tenure_months", label: "Tenure (In Month)", type: "number", disabled: true },
+        { key: "end_date", label: "End Date", type: "date" },
         { key: "pay_date", label: "Pay Date", type: "select", options: ["1", "5", "10", "15", "20", "25", "Last Day"] },
         { key: "auto_renew", label: "Auto Renew", type: "select", options: ["Yes", "No"] },
         { key: "rental_increment_percent", label: "Rental Increment %", type: "number" }
@@ -80,7 +85,8 @@ const INCOME_CATEGORIES = [
     rows: [
       [
         { key: "amount", label: "Amount", type: "number" },
-        { key: "maturity_date", label: "Maturity Date", type: "date" }
+        { key: "maturity_date", label: "Maturity Date", type: "date" },
+        { key: "year_to_mature", label: "Year to Mature", type: "number", disabled: true, calculated: true }
       ]
     ]
   },
@@ -91,7 +97,8 @@ const INCOME_CATEGORIES = [
     rows: [
       [
         { key: "amount", label: "Amount", type: "number" },
-        { key: "maturity_date", label: "Maturity Date", type: "date" }
+        { key: "maturity_date", label: "Maturity Date", type: "date" },
+        { key: "year_to_mature", label: "Year to Mature", type: "number", disabled: true, calculated: true }
       ]
     ]
   },
@@ -102,7 +109,8 @@ const INCOME_CATEGORIES = [
     rows: [
       [
         { key: "amount", label: "Amount", type: "number" },
-        { key: "maturity_date", label: "Maturity Date", type: "date" }
+        { key: "maturity_date", label: "Maturity Date", type: "date" },
+        { key: "year_to_mature", label: "Year to Mature", type: "number", disabled: true, calculated: true }
       ]
     ]
   },
@@ -114,18 +122,14 @@ const INCOME_CATEGORIES = [
       [
         { key: "description", label: "Description", type: "text" },
         { key: "principal_amount", label: "Principal Amount", type: "number" },
-        { key: "maturity_amount", label: "Maturity Amount", type: "number" },
-        { key: "interest_rate", label: "Interest Rate", type: "number" }
+        { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
+        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"] }
       ],
       [
         { key: "start_date", label: "Start Date", type: "date" },
         { key: "maturity_date", label: "Maturity Date", type: "date" },
-        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"] }
-      ],
-      [
-        { key: "payment_principal", label: "Principal Amount", type: "number" },
         { key: "payment_date", label: "Payment Date", type: "date" },
-        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number" }
+        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number", disabled: true, calculated: true }
       ]
     ]
   },
@@ -138,14 +142,16 @@ const INCOME_CATEGORIES = [
         { key: "description", label: "Description", type: "text" },
         { key: "principal_amount_monthly", label: "Principal Amount (Monthly)", type: "number" },
         { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] },
-        { key: "start_date", label: "Start Date", type: "date" },
-        { key: "end_date", label: "End Date", type: "date" }
+        { key: "start_date", label: "Start Date", type: "date" }
       ],
       [
-        { key: "num_installments", label: "No of Installments", type: "number" },
-        { key: "principal_amount", label: "Principal Amount", type: "number" },
+        { key: "end_date", label: "End Date", type: "date" },
+        { key: "num_installments", label: "No of Installments", type: "number", calculated: true },
+        { key: "principal_amount", label: "Principal Amount (Total)", type: "number", disabled: true, calculated: true },
+        { key: "interest_rate", label: "Interest Rate (%)", type: "number" }
+      ],
+      [
         { key: "maturity_amount", label: "Maturity Amount", type: "number" },
-        { key: "interest_rate", label: "Interest Rate", type: "number" },
         { key: "maturity_date", label: "Maturity Date", type: "date" }
       ]
     ]
@@ -156,20 +162,15 @@ const INCOME_CATEGORIES = [
     icon: Wallet,
     rows: [
       [
-        { key: "description", label: "Description", type: "text" },
-        { key: "principal_amount", label: "Principal Amount", type: "number" },
-        { key: "maturity_amount", label: "Maturity Amount", type: "number" },
-        { key: "interest_rate", label: "Interest Rate", type: "number" }
+        { key: "amount", label: "Amount", type: "number" },
+        { key: "payable_type", label: "Payable Type", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"] },
+        { key: "amount_yearly", label: "Amount (Yearly)", type: "number", disabled: true, calculated: true },
+        { key: "start_date", label: "Start Date", type: "date" }
       ],
       [
-        { key: "start_date", label: "Start Date", type: "date" },
-        { key: "maturity_date", label: "Maturity Date", type: "date" },
-        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly"] }
-      ],
-      [
-        { key: "payment_principal", label: "Principal Amount", type: "number" },
-        { key: "payment_date", label: "Payment Date", type: "date" },
-        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number" }
+        { key: "upto_life", label: "Upto Life", type: "select", options: ["Yes", "No"] },
+        { key: "end_date", label: "End Date", type: "date" },
+        { key: "payable_to_relation", label: "Payable To Relation", type: "select", options: ["Self", "Spouse"] }
       ]
     ]
   },
@@ -181,41 +182,32 @@ const INCOME_CATEGORIES = [
       [
         { key: "description", label: "Description", type: "text" },
         { key: "principal_amount", label: "Principal Amount", type: "number" },
-        { key: "maturity_amount", label: "Maturity Amount", type: "number" },
-        { key: "interest_rate", label: "Interest Rate", type: "number" }
+        { key: "interest_rate", label: "Interest Rate (%)", type: "number" },
+        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"] }
       ],
       [
         { key: "start_date", label: "Start Date", type: "date" },
         { key: "maturity_date", label: "Maturity Date", type: "date" },
-        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"] }
-      ],
-      [
-        { key: "payment_principal", label: "Principal Amount", type: "number" },
         { key: "payment_date", label: "Payment Date", type: "date" },
-        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number" }
+        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number", disabled: true, calculated: true }
       ]
     ]
   },
   { 
-    value: "insurance", 
-    label: "Insurance", 
+    value: "insurance_income", 
+    label: "Insurance (Income)", 
     icon: Landmark,
     rows: [
       [
         { key: "description", label: "Description", type: "text" },
-        { key: "principal_amount", label: "Principal Amount", type: "number" },
-        { key: "maturity_amount", label: "Maturity Amount", type: "number" },
-        { key: "interest_rate", label: "Interest Rate", type: "number" }
+        { key: "principal_amount", label: "Premium Amount", type: "number" },
+        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"] }
       ],
       [
         { key: "start_date", label: "Start Date", type: "date" },
         { key: "maturity_date", label: "Maturity Date", type: "date" },
-        { key: "payable_cycle", label: "Payable Cycle", type: "select", options: ["Monthly", "Quarterly", "Yearly", "On Maturity"] }
-      ],
-      [
-        { key: "payment_principal", label: "Principal Amount", type: "number" },
         { key: "payment_date", label: "Payment Date", type: "date" },
-        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number" }
+        { key: "payment_amount_yearly", label: "Payment Amount (Yearly)", type: "number", disabled: true, calculated: true }
       ]
     ]
   },
@@ -256,6 +248,17 @@ const INCOME_CATEGORIES = [
     icon: TrendingUp,
     rows: [
       [
+        { key: "market_value", label: "Market Value", type: "number" }
+      ]
+    ]
+  },
+  { 
+    value: "other", 
+    label: "Other Income", 
+    icon: DollarSign,
+    rows: [
+      [
+        { key: "description", label: "Description", type: "text" },
         { key: "market_value", label: "Market Value", type: "number" }
       ]
     ]
