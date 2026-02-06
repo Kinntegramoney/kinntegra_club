@@ -549,8 +549,11 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                         {items.map((item, idx) => (
                           <div key={item.id} className={`rounded-md p-2.5 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
                             <div className="flex items-end gap-2 flex-wrap">
-                              {/* Index */}
-                              <span className={`w-5 h-5 mb-1 rounded text-[10px] flex items-center justify-center text-white ${colorMap[category.color]}`}>{idx + 1}</span>
+                              {/* Index - wrapped in flex-col with empty label space for alignment */}
+                              <div className="flex flex-col">
+                                <span className="text-[9px] mb-0.5 invisible">-</span>
+                                <span className={`w-5 h-7 rounded text-[10px] flex items-center justify-center text-white ${colorMap[category.color]}`}>{idx + 1}</span>
+                              </div>
                               
                               {/* Member */}
                               <div className="flex flex-col">
@@ -598,10 +601,13 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                 );
                               })}
 
-                              {/* Delete */}
-                              <button onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="ml-auto p-1.5 mb-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
+                              {/* Delete - wrapped in flex-col with empty label space for alignment */}
+                              <div className="flex flex-col ml-auto">
+                                <span className="text-[9px] mb-0.5 invisible">-</span>
+                                <button onClick={() => removeIncomeItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="p-1.5 h-7 flex items-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
