@@ -26304,11 +26304,13 @@ async def add_expense_detail(family_id: str, expense: ExpenseDetailCreate, curre
         "id": str(uuid.uuid4()),
         "member_ids": expense.member_ids,
         "expense_type": expense.expense_type,
+        "monthly_amount": expense.monthly_amount,
         "annual_amount": expense.annual_amount,
         "upto_year": expense.upto_year,
         "inflation_percent": expense.inflation_percent,
         "consider_post_retirement": expense.consider_post_retirement,
-        "percent_of_current": expense.percent_of_current,
+        "post_retirement_member": expense.post_retirement_member,
+        "post_retirement_percent": expense.post_retirement_percent,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": current_user['id']
     }
@@ -26344,11 +26346,13 @@ async def update_expense_detail(family_id: str, expense_id: str, expense: Expens
             expense_details[i].update({
                 "member_ids": expense.member_ids,
                 "expense_type": expense.expense_type,
+                "monthly_amount": expense.monthly_amount,
                 "annual_amount": expense.annual_amount,
                 "upto_year": expense.upto_year,
                 "inflation_percent": expense.inflation_percent,
                 "consider_post_retirement": expense.consider_post_retirement,
-                "percent_of_current": expense.percent_of_current,
+                "post_retirement_member": expense.post_retirement_member,
+                "post_retirement_percent": expense.post_retirement_percent,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             })
             break
