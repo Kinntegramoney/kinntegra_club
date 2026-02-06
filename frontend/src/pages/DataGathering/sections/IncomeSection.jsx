@@ -624,9 +624,10 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                         className="h-8 w-full text-xs bg-white border-gray-200"
                                         disabled={isReadOnly}
                                       />
-                                    )}
-                                  </div>
-                                ))}
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           );
