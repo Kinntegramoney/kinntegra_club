@@ -142,7 +142,29 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
   const updateExpenseItem = (cat, itemId, field, value) => {
     setExpenseItems(prev => ({
       ...prev,
-      [cat]: prev[cat].map(item => item.id === itemId ? (field === "memberId" ? { ...item, memberId: value, isModified: !item.isNew } : { ...item, details: { ...item.details, [field]: value }, isModified: !item.isNew }) : item)
+      [cat]: prev[cat].map(item => {
+        if (item.id !== itemId) return item;
+        
+        if (field === "memberId") {
+          return { ...item, memberId: value, isModified: !item.isNew };
+        }
+        
+        let newDetails = { ...item.details, [field]: value };
+        
+        // Auto-calculate annual amount when monthly amount changes
+        if (field === "monthly_amount") {
+          const monthly = parseFloat(value) || 0;
+          newDetails.annual_amount = monthly * 12;
+        }
+        
+        // Reset post-retirement fields when checkbox is unchecked
+        if (field === "consider_post_retirement" && !value) {
+          newDetails.post_retirement_member = "";
+          newDetails.post_retirement_percent = 100;
+        }
+        
+        return { ...item, details: newDetails, isModified: !item.isNew };
+      })
     }));
   };
 
