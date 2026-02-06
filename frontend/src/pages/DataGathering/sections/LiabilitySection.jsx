@@ -255,11 +255,6 @@ export default function LiabilitySection({ family, onUpdate, isReadOnly, onRefre
                             </div>
                           </div>
                         ))}
-                        <div className="flex justify-end pt-2">
-                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly || !hasUnsavedChanges} className="bg-red-600 hover:bg-red-700 text-white" size="sm">
-                            <Save className="h-4 w-4 mr-1" />{savingCategory === category.value ? "Saving..." : "Save"}
-                          </Button>
-                        </div>
                       </div>
                     )}
                   </div>
