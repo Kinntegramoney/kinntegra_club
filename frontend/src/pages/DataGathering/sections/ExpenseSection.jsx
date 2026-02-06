@@ -98,10 +98,9 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
           annual_amount: "", 
           upto_year: (currentYear + 30).toString(), 
           inflation_percent: 6,
-          consider_post_retirement: false,
+          consider_post_retirement: "No",
           percent_of_current: 100,
-          applies_to_self: true,
-          applies_to_spouse: false
+          applicable_to: "Self"
         },
         isNew: true,
         isModified: false
