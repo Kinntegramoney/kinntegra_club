@@ -65,15 +65,7 @@ export default function InsuranceSection({ family, onUpdate, isReadOnly, onRefre
   }, [family?.id, existingInsurance.length]);
 
   const toggleCategory = (category) => {
-    const isCurrentlyExpanded = expandedCategories[category];
-    const items = insuranceItems[category] || [];
-    
-    // If expanding and no items exist, auto-add one
-    if (!isCurrentlyExpanded && items.length === 0) {
-      addInsuranceItem(category);
-    } else {
-      setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
-    }
+    setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
   };
   const hideCategory = (category) => { setHiddenCategories(prev => [...prev, category]); setExpandedCategories(prev => ({ ...prev, [category]: false })); };
   const showCategory = (category) => setHiddenCategories(prev => prev.filter(c => c !== category));
