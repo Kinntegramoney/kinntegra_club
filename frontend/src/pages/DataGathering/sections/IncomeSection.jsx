@@ -572,7 +572,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                             <div key={item.id} className={`rounded-md p-4 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
                               <div className="flex flex-wrap gap-3 items-end">
                                 {/* Member */}
-                                <div className="flex flex-col min-w-[120px]">
+                                <div className="flex flex-col" style={{ minWidth: '150px', maxWidth: '200px', flex: '1.5' }}>
                                   <span className="text-[10px] text-gray-400 mb-1">Member</span>
                                   <Select value={item.memberId || ""} onValueChange={v => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
                                     <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200">
@@ -585,10 +585,16 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                 </div>
 
                                 {/* Fields */}
-                                {visibleFields.map(field => (
-                                  <div key={field.key} className="flex flex-col min-w-[100px] flex-1 max-w-[180px]">
-                                    <span className={`text-[10px] mb-1 truncate ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>
-                                    {field.type === "select" ? (
+                                {visibleFields.map(field => {
+                                  const isSmallField = ['growth_rate_percent', 'retirement_age', 'inflation_percent', 'rental_increment_percent', 'interest_rate', 'pay_date'].includes(field.key);
+                                  const fieldStyle = isSmallField 
+                                    ? { minWidth: '70px', maxWidth: '100px', flex: '0.5' }
+                                    : { minWidth: '100px', maxWidth: '180px', flex: '1' };
+                                  
+                                  return (
+                                    <div key={field.key} className="flex flex-col" style={fieldStyle}>
+                                      <span className={`text-[10px] mb-1 truncate ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>
+                                      {field.type === "select" ? (
                                       <Select value={item.details[field.key] || field.defaultValue || ""} onValueChange={v => updateIncomeItem(category.value, item.id, field.key, v)} disabled={isReadOnly || field.readOnly}>
                                         <SelectTrigger className={`h-8 w-full text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}>
                                           <SelectValue placeholder="-" />
