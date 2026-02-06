@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Save, Plus, Trash2, ChevronDown, ChevronRight, User, X, Home, Car, Heart, Zap, Phone, ShoppingBag, Utensils, GraduationCap, Users, CreditCard, Shirt, Tv, Scissors, Shield, FileText } from "lucide-react";
+import { Save, Plus, Trash2, ChevronDown, ChevronRight, User, X, Home, Car, Heart, Zap, Phone, ShoppingBag, Utensils, GraduationCap, Users, CreditCard, Shirt, Tv, Scissors, Shield, FileText, Building, Coins } from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -28,8 +28,18 @@ const EXPENSE_CATEGORIES = [
   { value: "children_education", label: "Children's Schooling / College Expenses", icon: GraduationCap, color: "cyan" },
   { value: "family_support", label: "Contribution To Parents / Siblings", icon: Users, color: "amber" },
   { value: "motor_insurance", label: "Motor Insurance", icon: Car, color: "gray" },
-  { value: "life_insurance", label: "Life Insurance – Term Plan", icon: FileText, color: "violet" },
-  { value: "emi", label: "EMI", icon: CreditCard, color: "red" }
+  { value: "life_insurance", label: "Life Insurance – Term Plan", icon: FileText, color: "violet" }
+];
+
+// Loan/Liability categories (EMI-based)
+const LOAN_CATEGORIES = [
+  { value: "home_loan", label: "Home Loan EMI", icon: Home, color: "red" },
+  { value: "vehicle_loan", label: "Vehicle Loan EMI", icon: Car, color: "red" },
+  { value: "personal_loan", label: "Personal Loan EMI", icon: CreditCard, color: "red" },
+  { value: "consumer_durable", label: "Consumer Durable EMI", icon: Building, color: "red" },
+  { value: "education_loan", label: "Education Loan EMI", icon: GraduationCap, color: "red" },
+  { value: "credit_card", label: "Credit Card EMI", icon: CreditCard, color: "red" },
+  { value: "other_loan", label: "Other Loan EMI", icon: Coins, color: "red" }
 ];
 
 const YEAR_OPTIONS = Array.from({ length: 61 }, (_, i) => (2020 + i).toString());
