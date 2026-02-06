@@ -271,16 +271,32 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                 <CollapsibleContent>
                   <div className="px-3 pb-3 pt-1 border-t border-gray-100">
                     {items.length === 0 ? <p className="text-center py-4 text-xs text-gray-400">Click + to add</p> : (
-                      <div className="space-y-3">
+                      <div className="space-y-1">
+                        {/* Common Header Row - shown when multiple items */}
+                        {items.length > 1 && (
+                          <div className="grid grid-cols-[1.5fr_1fr_1fr_0.8fr_0.6fr_auto_1.5fr_0.6fr_auto] gap-3 items-end px-2 py-1 bg-gray-50 rounded-t border-b border-gray-200">
+                            <span className="text-[10px] text-gray-500 font-medium">Member *</span>
+                            <span className="text-[10px] text-gray-500 font-medium">Monthly Amt *</span>
+                            <span className="text-[10px] text-blue-500 font-medium">Annual Amt</span>
+                            <span className="text-[10px] text-gray-500 font-medium">Upto Year *</span>
+                            <span className="text-[10px] text-gray-500 font-medium">Inflation %</span>
+                            <span className="text-[10px] text-gray-500 font-medium">Post Ret.</span>
+                            <span className="text-[10px] text-gray-500 font-medium">Post-Ret. Member</span>
+                            <span className="text-[10px] text-gray-500 font-medium">% of Exp</span>
+                            <span style={{ width: '40px' }}></span>
+                          </div>
+                        )}
+                        
                         {items.map((item, idx) => {
                           const isPostRetirementEnabled = item.details.consider_post_retirement;
                           const calculatedAnnual = (parseFloat(item.details.monthly_amount) || 0) * 12;
+                          const showLabels = items.length === 1;
                           
                           return (
-                            <div key={item.id} className={`rounded-md p-4 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
-                              <div className="grid grid-cols-[1.5fr_1fr_1fr_0.8fr_0.6fr_auto_1.5fr_0.6fr] gap-3 items-end">
+                            <div key={item.id} className={`rounded-md p-3 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/30 border border-gray-100'}`}>
+                              <div className="grid grid-cols-[1.5fr_1fr_1fr_0.8fr_0.6fr_auto_1.5fr_0.6fr_auto] gap-3 items-end">
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] text-gray-400 mb-1">Member *</span>
+                                  {showLabels && <span className="text-[10px] text-gray-400 mb-1">Member *</span>}
                                   <Select value={item.memberId || ""} onValueChange={v => updateExpenseItem(cat.value, item.id, "memberId", v)} disabled={isReadOnly}>
                                     <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
                                     <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}</SelectContent>
@@ -288,7 +304,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                 </div>
                                 
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] text-gray-400 mb-1">Monthly Amt *</span>
+                                  {showLabels && <span className="text-[10px] text-gray-400 mb-1">Monthly Amt *</span>}
                                   <Input 
                                     type="number" 
                                     value={item.details.monthly_amount || ""} 
@@ -300,7 +316,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                 </div>
                                 
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] text-blue-500 mb-1">Annual Amt</span>
+                                  {showLabels && <span className="text-[10px] text-blue-500 mb-1">Annual Amt</span>}
                                   <Input 
                                     type="number" 
                                     value={calculatedAnnual || ""} 
@@ -311,7 +327,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                 </div>
                                 
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] text-gray-400 mb-1">Upto Year *</span>
+                                  {showLabels && <span className="text-[10px] text-gray-400 mb-1">Upto Year *</span>}
                                   <Select value={item.details.upto_year?.toString() || ""} onValueChange={v => updateExpenseItem(cat.value, item.id, "upto_year", v)} disabled={isReadOnly}>
                                     <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue /></SelectTrigger>
                                     <SelectContent>{YEAR_OPTIONS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}</SelectContent>
@@ -319,7 +335,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                 </div>
                                 
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] text-gray-400 mb-1">Inflation %</span>
+                                  {showLabels && <span className="text-[10px] text-gray-400 mb-1">Inflation %</span>}
                                   <Input 
                                     type="number" 
                                     value={item.details.inflation_percent ?? ""} 
@@ -338,13 +354,15 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                     disabled={isReadOnly}
                                     className="h-4 w-4"
                                   />
-                                  <label htmlFor={`post-retirement-${item.id}`} className="text-[9px] text-gray-600 cursor-pointer ml-1 whitespace-nowrap">
-                                    Post Ret.
-                                  </label>
+                                  {showLabels && (
+                                    <label htmlFor={`post-retirement-${item.id}`} className="text-[9px] text-gray-600 cursor-pointer ml-1 whitespace-nowrap">
+                                      Post Ret.
+                                    </label>
+                                  )}
                                 </div>
                                 
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] text-gray-400 mb-1">Post-Ret. Member</span>
+                                  {showLabels && <span className="text-[10px] text-gray-400 mb-1">Post-Ret. Member</span>}
                                   <Select 
                                     value={item.details.post_retirement_member || ""} 
                                     onValueChange={v => updateExpenseItem(cat.value, item.id, "post_retirement_member", v)} 
@@ -360,7 +378,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                 </div>
                                 
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] text-gray-400 mb-1">% of Exp</span>
+                                  {showLabels && <span className="text-[10px] text-gray-400 mb-1">% of Exp</span>}
                                   <Input 
                                     type="number" 
                                     value={item.details.post_retirement_percent ?? 100} 
@@ -373,7 +391,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                 </div>
                                 
                                 {/* Delete button for additional items (idx > 0) */}
-                                {idx > 0 && (
+                                {idx > 0 ? (
                                   <div className="flex flex-col justify-end">
                                     <button 
                                       onClick={() => removeExpenseItem(cat.value, item.id, item.isNew)} 
@@ -383,7 +401,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                       <Trash2 className="h-4 w-4" />
                                     </button>
                                   </div>
-                                )}
+                                ) : <div style={{ width: '40px' }}></div>}
                               </div>
                             </div>
                           );
