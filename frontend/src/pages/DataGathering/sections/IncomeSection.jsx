@@ -547,19 +547,19 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                     ) : (
                       <div className="space-y-2">
                         {items.map((item, idx) => (
-                          <div key={item.id} className={`rounded-md p-2.5 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
-                            <div className="flex items-end justify-between flex-wrap gap-y-3">
+                          <div key={item.id} className={`rounded-md p-4 ${item.isNew ? 'bg-green-50/50 border border-green-200' : item.isModified ? 'bg-amber-50/50 border border-amber-200' : 'bg-gray-50/50 border border-gray-100'}`}>
+                            <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-end">
                               {/* Index */}
                               <div className="flex flex-col">
-                                <span className="text-[9px] mb-0.5 invisible">-</span>
-                                <span className={`w-5 h-7 rounded text-[10px] flex items-center justify-center text-white ${colorMap[category.color]}`}>{idx + 1}</span>
+                                <span className="text-[10px] mb-1 invisible">-</span>
+                                <span className={`w-6 h-8 rounded text-xs flex items-center justify-center text-white ${colorMap[category.color]}`}>{idx + 1}</span>
                               </div>
                               
                               {/* Member */}
-                              <div className="flex flex-col">
-                                <span className="text-[9px] text-gray-400 mb-0.5">Member</span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[10px] text-gray-400 mb-1">Member</span>
                                 <Select value={item.memberId || ""} onValueChange={v => updateIncomeItem(category.value, item.id, "memberId", v)} disabled={isReadOnly}>
-                                  <SelectTrigger className="h-7 w-28 text-xs bg-white border-gray-200">
+                                  <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200">
                                     <SelectValue placeholder="Select" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -572,11 +572,11 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                               {category.fields.map(field => {
                                 if (!shouldShowField(field, item.details)) return null;
                                 return (
-                                  <div key={field.key} className="flex flex-col">
-                                    <span className={`text-[9px] mb-0.5 ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>
+                                  <div key={field.key} className="flex flex-col min-w-0">
+                                    <span className={`text-[10px] mb-1 truncate ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>
                                     {field.type === "select" ? (
                                       <Select value={item.details[field.key] || field.defaultValue || ""} onValueChange={v => updateIncomeItem(category.value, item.id, field.key, v)} disabled={isReadOnly || field.readOnly}>
-                                        <SelectTrigger className={`h-7 w-24 text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}>
+                                        <SelectTrigger className={`h-8 w-full text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}>
                                           <SelectValue placeholder="-" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -584,7 +584,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                         </SelectContent>
                                       </Select>
                                     ) : field.readOnly ? (
-                                      <div className="h-7 px-2 min-w-[80px] flex items-center text-xs bg-gray-100 border border-gray-200 rounded-md text-gray-600 font-medium">
+                                      <div className="h-8 px-3 w-full flex items-center text-xs bg-gray-100 border border-gray-200 rounded-md text-gray-600 font-medium">
                                         {formatValue(item.details[field.key], field.key)}
                                       </div>
                                     ) : (
@@ -593,7 +593,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                         value={item.details[field.key] || ""}
                                         onChange={e => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
                                         placeholder="0"
-                                        className="h-7 w-24 text-xs bg-white border-gray-200"
+                                        className="h-8 w-full text-xs bg-white border-gray-200"
                                         disabled={isReadOnly}
                                       />
                                     )}
