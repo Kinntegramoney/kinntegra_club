@@ -381,11 +381,16 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
                         {itemCount > 0 && <Badge className="bg-green-100 text-green-700 text-xs h-5 px-1.5">{itemCount}</Badge>}
                         {hasUnsavedChanges && <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs h-5 px-1.5">•</Badge>}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); hideCategory(category.value); }} disabled={isReadOnly || itemCount > 0} className="h-7 px-2 text-xs text-gray-400 hover:text-gray-600">
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {hasUnsavedChanges && (
+                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly} size="sm" className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700">
+                            <Save className="h-3 w-3 mr-1" />{savingCategory === category.value ? "..." : "Save"}
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => hideCategory(category.value)} disabled={isReadOnly || itemCount > 0} className="h-7 px-2 text-xs text-gray-400 hover:text-gray-600">
                           <EyeOff className="h-3 w-3 mr-1" />Skip
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); addAssetItem(category.value); }} disabled={isReadOnly} className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50">
+                        <Button variant="ghost" size="sm" onClick={() => addAssetItem(category.value)} disabled={isReadOnly} className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50">
                           <Plus className="h-3 w-3 mr-1" />Add
                         </Button>
                       </div>
@@ -420,11 +425,6 @@ export default function AssetsSection({ family, onUpdate, isReadOnly, onRefresh 
                             </div>
                           </div>
                         ))}
-                        <div className="flex justify-end pt-1">
-                          <Button onClick={() => saveCategory(category.value)} disabled={savingCategory === category.value || isReadOnly || !hasUnsavedChanges} className="bg-green-600 hover:bg-green-700 text-white h-7 px-3 text-xs" size="sm">
-                            <Save className="h-3 w-3 mr-1" />{savingCategory === category.value ? "..." : "Save"}
-                          </Button>
-                        </div>
                       </div>
                     )}
                   </CardContent>
