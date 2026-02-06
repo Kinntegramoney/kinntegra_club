@@ -333,13 +333,16 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
           <div className="flex flex-wrap gap-1.5">
             {available.map(cat => {
               const Icon = cat.icon;
-              const isLoan = cat.type === "loan";
+              const type = cat.type;
+              const borderClass = type === "loan" ? 'border-red-200 hover:border-red-400 hover:text-red-600' 
+                : type === "insurance" ? 'border-teal-200 hover:border-teal-400 hover:text-teal-600'
+                : 'border-gray-200 hover:border-gray-400';
               return (
                 <button 
                   key={cat.value} 
                   onClick={() => addCategory(cat.value)} 
                   disabled={isReadOnly} 
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white border rounded-md text-xs text-gray-600 hover:bg-gray-50 transition-all ${isLoan ? 'border-red-200 hover:border-red-400 hover:text-red-600' : 'border-gray-200 hover:border-gray-400'}`}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white border rounded-md text-xs text-gray-600 hover:bg-gray-50 transition-all ${borderClass}`}
                 >
                   <Plus className="h-3 w-3" />
                   <Icon className="h-3 w-3" />
@@ -357,11 +360,19 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
           const catItems = items[cat.value] || [];
           const isExp = expandedCategories[cat.value];
           const hasChanges = catItems.some(i => i.isNew || i.isModified);
-          const isLoan = cat.type === "loan";
+          const type = cat.type;
+          const borderClass = hasChanges ? 'border-amber-300' 
+            : type === "loan" ? 'border-red-200' 
+            : type === "insurance" ? 'border-teal-200'
+            : 'border-gray-200';
+          const iconClass = type === "loan" ? 'text-red-500' : type === "insurance" ? 'text-teal-500' : 'text-gray-500';
+          const badgeClass = type === "loan" ? 'bg-red-100 text-red-700' : type === "insurance" ? 'bg-teal-100 text-teal-700' : 'bg-gray-100 text-gray-600';
+          const saveClass = type === "loan" ? 'bg-red-600 hover:bg-red-700' : type === "insurance" ? 'bg-teal-600 hover:bg-teal-700' : 'bg-emerald-600 hover:bg-emerald-700';
+          const addClass = type === "loan" ? 'text-red-500 hover:text-red-600 hover:bg-red-50' : type === "insurance" ? 'text-teal-500 hover:text-teal-600 hover:bg-teal-50' : 'text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50';
 
           return (
             <Collapsible key={cat.value} open={isExp} onOpenChange={() => toggleCategory(cat.value)}>
-              <div className={`bg-white rounded-lg border transition-all ${hasChanges ? 'border-amber-300' : isLoan ? 'border-red-200' : 'border-gray-200'}`}>
+              <div className={`bg-white rounded-lg border transition-all ${borderClass}`}>
                 <CollapsibleTrigger className="w-full">
                   <div className="flex items-center justify-between px-3 py-2.5">
                     <div className="flex items-center gap-2">
