@@ -259,6 +259,13 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
                                   <SelectContent>{YEAR_OPTIONS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}</SelectContent>
                                 </Select>
                               </div>
+                              {idx > 0 && (
+                                <div className="flex flex-col justify-end">
+                                  <button onClick={() => removeGoalItem(category.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex items-center">
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}
