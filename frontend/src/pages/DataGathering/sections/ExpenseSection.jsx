@@ -511,24 +511,24 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                     <button onClick={() => removeItem(cat.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><Trash2 className="h-4 w-4" /></button>
                                   )}
                                 </div>
-                                {/* Post-retirement fields */}
-                                <div className="flex flex-wrap gap-3 items-center pt-2 border-t border-gray-100">
-                                  <div className="flex items-center gap-2">
+                                {/* Post-retirement fields - single line */}
+                                <div className="flex items-center gap-4 pt-2 border-t border-gray-100 overflow-x-auto">
+                                  <div className="flex items-center gap-2 flex-shrink-0">
                                     <Checkbox id={`pr-${item.id}`} checked={item.details.consider_post_retirement || false} onCheckedChange={v => updateItem(cat.value, item.id, "consider_post_retirement", v)} disabled={isReadOnly} />
-                                    <label htmlFor={`pr-${item.id}`} className="text-xs text-gray-500">Consider Post Retirement</label>
+                                    <label htmlFor={`pr-${item.id}`} className="text-xs text-gray-500 whitespace-nowrap">Consider Post Retirement</label>
                                   </div>
                                   {item.details.consider_post_retirement && (
                                     <>
-                                      <div className="flex flex-col min-w-[140px]">
-                                        <span className="text-[10px] text-gray-400 mb-1">Post-Ret Member</span>
+                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                        <span className="text-[10px] text-gray-400 whitespace-nowrap">Member:</span>
                                         <Select value={item.details.post_retirement_member || ""} onValueChange={v => updateItem(cat.value, item.id, "post_retirement_member", v)} disabled={isReadOnly}>
-                                          <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
+                                          <SelectTrigger className="h-7 w-[120px] text-xs bg-white border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
                                           <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}</SelectContent>
                                         </Select>
                                       </div>
-                                      <div className="flex flex-col min-w-[80px] max-w-[100px]">
-                                        <span className="text-[10px] text-gray-400 mb-1">% of Current</span>
-                                        <Input type="number" value={item.details.post_retirement_percent ?? 100} onChange={e => updateItem(cat.value, item.id, "post_retirement_percent", e.target.value)} className="h-8 w-full text-xs bg-white border-gray-200" disabled={isReadOnly} min={0} max={100} />
+                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                        <span className="text-[10px] text-gray-400 whitespace-nowrap">% of Current:</span>
+                                        <Input type="number" value={item.details.post_retirement_percent ?? 100} onChange={e => updateItem(cat.value, item.id, "post_retirement_percent", e.target.value)} className="h-7 w-[70px] text-xs bg-white border-gray-200" disabled={isReadOnly} min={0} max={100} />
                                       </div>
                                     </>
                                   )}
