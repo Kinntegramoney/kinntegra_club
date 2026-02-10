@@ -1732,7 +1732,7 @@ function AllocationSimulator({
               {/* Family Result Row */}
               {familyAllocation.result && (
                 <tr className="border-b border-gray-200">
-                  <td colSpan={7} className="py-2 px-4">
+                  <td colSpan={6} className="py-2 px-4">
                     <div className={`text-sm ${familyAllocation.result.success ? 'text-green-700' : ''}`}>
                       {!familyAllocation.result.success ? (
                         <>
@@ -1746,6 +1746,17 @@ function AllocationSimulator({
                       )}
                     </div>
                   </td>
+                  <td className="py-2 px-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => exportEntityCashFlow('family')}
+                      className="text-xs gap-1"
+                    >
+                      <Download className="h-3 w-3" />
+                      Excel
+                    </Button>
+                  </td>
                 </tr>
               )}
 
@@ -1753,19 +1764,32 @@ function AllocationSimulator({
               {familyAllocation.includeAssets && (
                 <tr className="border-b border-gray-200 bg-gray-50/50">
                   <td colSpan={7} className="py-3 px-4">
-                    <div className="text-xs font-medium text-gray-600 mb-2">Select Family Assets:</div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="text-xs font-medium text-gray-600 mb-2">Select Family Assets & Start Year:</div>
+                    <div className="space-y-2">
                       {getAssetsForEntity('family').map(asset => (
-                        <label key={asset.id} className="flex items-center gap-1.5 px-2 py-1 bg-white border rounded text-xs cursor-pointer hover:bg-blue-50">
+                        <div key={asset.id} className="flex items-center gap-3 p-2 bg-white border rounded">
                           <input
                             type="checkbox"
                             checked={familyAllocation.selectedAssets[asset.id] !== false}
                             onChange={() => toggleAsset('family', asset.id)}
-                            className="h-3 w-3 rounded border-gray-300 text-blue-600"
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600"
                           />
-                          <span>{asset.label}</span>
-                          <span className="text-green-600 font-medium">₹{formatLargeNumber(asset.value)}</span>
-                        </label>
+                          <span className="text-sm text-gray-700 flex-1">{asset.label}</span>
+                          <span className="text-sm font-medium text-green-600">₹{formatLargeNumber(asset.value)}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-500">From:</span>
+                            <select
+                              value={familyAllocation.assetStartYears[asset.id] || currentYear}
+                              onChange={(e) => updateAssetStartYear('family', asset.id, parseInt(e.target.value))}
+                              disabled={familyAllocation.selectedAssets[asset.id] === false}
+                              className="h-7 text-xs border border-gray-200 rounded px-1 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                            >
+                              {yearOptions.map(y => (
+                                <option key={y} value={y}>{y}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </td>
