@@ -247,12 +247,21 @@ export default function SurplusSection({ family, isReadOnly }) {
     return years;
   }, [currentYear, endYear]);
 
-  // Handle year selection change
+  // Handle year selection change (exclude index 0 which is base year)
   const handleYearChange = (index, newYear) => {
+    if (index === 0) return; // Don't allow changing base year
     const newYears = [...displayYears];
     newYears[index] = newYear;
-    newYears.sort((a, b) => parseInt(a) - parseInt(b));
-    setDisplayYears(newYears);
+    // Sort years but keep base year first
+    const baseYear = newYears[0];
+    const otherYears = newYears.slice(1).sort((a, b) => parseInt(a) - parseInt(b));
+    setDisplayYears([baseYear, ...otherYears]);
+  };
+
+  // Get available years for dropdown (exclude already selected years)
+  const getAvailableYears = (currentIndex) => {
+    const selectedYears = displayYears.filter((_, idx) => idx !== currentIndex);
+    return yearOptions.filter(y => !selectedYears.includes(y));
   };
 
   // Format currency
