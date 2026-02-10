@@ -341,6 +341,15 @@ export default function DataGathering() {
             onRefresh={refreshSelectedFamily}
           />
         );
+      case "investments":
+        return (
+          <InvestmentSection 
+            family={selectedFamily} 
+            onUpdate={(data) => handleDataUpdate('investment_details', data)}
+            isReadOnly={isReadOnly}
+            onRefresh={refreshSelectedFamily}
+          />
+        );
       case "assets":
         return (
           <AssetsSection 
