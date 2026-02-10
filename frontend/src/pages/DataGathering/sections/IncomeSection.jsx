@@ -298,6 +298,36 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     }
   }, [family?.id, existingIncomes.length, initialLoadDone]);
 
+  // Commodity prices state
+  const [commodityPrices, setCommodityPrices] = useState({ Gold: 0, Silver: 0 });
+  
+  // Fetch commodity prices from free API
+  useEffect(() => {
+    const fetchCommodityPrices = async () => {
+      try {
+        // Using Metal Price API (free tier) - prices in INR per gram
+        const response = await axios.get('https://api.metalpriceapi.com/v1/latest?api_key=demo&base=INR&currencies=XAU,XAG');
+        if (response.data && response.data.rates) {
+          // Convert to price per kg (API returns price per gram)
+          const goldPricePerGram = 1 / response.data.rates.XAU;
+          const silverPricePerGram = 1 / response.data.rates.XAG;
+          setCommodityPrices({
+            Gold: Math.round(goldPricePerGram * 1000), // per kg
+            Silver: Math.round(silverPricePerGram * 1000) // per kg
+          });
+        }
+      } catch (error) {
+        // Fallback to approximate values if API fails
+        console.log('Using fallback commodity prices');
+        setCommodityPrices({
+          Gold: 7500000, // ~75 lakh per kg
+          Silver: 90000  // ~90k per kg
+        });
+      }
+    };
+    fetchCommodityPrices();
+  }, []);
+
   const addCategory = (categoryValue) => {
     if (!addedCategories.includes(categoryValue)) {
       setAddedCategories(prev => [...prev, categoryValue]);
