@@ -2822,6 +2822,10 @@ class GapSheetGenerator:
         loss_font = Font(color="9C0006")
         
         for entry in sold_entries:
+            # Skip entries with zero units sold (couldn't match to a purchase)
+            if entry['units_sold'] <= 0:
+                continue
+                
             ws.cell(row=row, column=1, value=entry['folio'])
             ws.cell(row=row, column=2, value=entry['scheme'][:50] if entry['scheme'] else '')
             ws.cell(row=row, column=3, value=entry['isin'])
