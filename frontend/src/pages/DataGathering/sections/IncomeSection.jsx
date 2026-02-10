@@ -657,7 +657,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                             ? visibleFields.filter(f => ['property_type', 'property_details', 'investment_amount', 'investment_date', 'market_value', 'market_value_date', 'is_on_rent'].includes(f.key))
                             : visibleFields;
                           const row2Fields = isRentalWithRent 
-                            ? visibleFields.filter(f => ['rental_details', 'rent_per_month', 'annual_rent', 'start_date', 'end_date', 'maintenance', 'property_tax', 'absolute_return', 'pay_date', 'auto_renew', 'rental_increment_percent'].includes(f.key))
+                            ? visibleFields.filter(f => ['rental_details', 'rent_per_month', 'annual_rent', 'start_date', 'end_date', 'maintenance', 'property_tax', 'absolute_return', 'auto_renew', 'rental_increment_percent'].includes(f.key))
                             : [];
                           
                           const renderField = (field, withLabel = true) => {
