@@ -303,8 +303,63 @@ class CASParser:
                 if not is_date_pattern and not is_pdf_header and has_fund_keywords:
                     pending_scheme_line = line
             
-            # Detect ISIN
+            # Detect ISIN - can be on same line or next line after "ISIN:"
             isin_match = re.search(r'ISIN:\s*([A-Z0-9]{12})', line)
+            
+            # Also check if line ends with "ISIN:" and actual ISIN is on next line
+            # Format: "...Fund - Direct Plan - Growth (Non-Demat) - ISIN:" followed by "INF109K015K4(Advisor: DIRECT)"
+            if not isin_match and line.strip().endswith('ISIN:') and i + 1 < len(lines):
+                next_line = lines[i + 1].strip()
+                # Check if next line starts with ISIN code (12 alphanumeric chars)
+                next_isin_match = re.match(r'^([A-Z0-9]{12})', next_line)
+                if next_isin_match:
+                    current_isin = next_isin_match.group(1)
+                    # Check for advisor on the ISIN line
+                    advisor_match = re.search(r'\(Advisor:\s*([A-Z0-9\-]+)\)', next_line)
+                    if advisor_match:
+                        current_advisor = advisor_match.group(1)
+                    
+                    # Build full line for scheme extraction (combine pending scheme + current line)
+                    full_line = line
+                    if pending_scheme_line and 'ISIN' not in pending_scheme_line:
+                        full_line = pending_scheme_line + ' ' + line
+                    
+                    # Extract scheme name - everything between scheme code and " - ISIN:"
+                    scheme_match = re.match(r'^([A-Z0-9]+)-(.+?)\s*-\s*ISIN:', full_line)
+                    if scheme_match:
+                        scheme_code = scheme_match.group(1)
+                        scheme_name = scheme_match.group(2).strip()
+                        scheme_name = re.sub(r'\s*-\s*Reinvest.*$', '', scheme_name)
+                        current_scheme_full = f"{scheme_code}-{scheme_name}"
+                        current_scheme = scheme_name
+                        logger.info(f"Parsed scheme (ISIN on next line): {scheme_name[:50]} ISIN: {current_isin}")
+                    
+                    # Update current_key for this new scheme/ISIN
+                    if current_folio and current_isin:
+                        new_key = f"{current_folio}_{current_isin}"
+                        if new_key != current_key:
+                            current_key = new_key
+                            if current_key not in self.folios:
+                                self.folios[current_key] = {
+                                    'folio': current_folio,
+                                    'scheme': current_scheme,
+                                    'scheme_code': current_scheme_full,
+                                    'isin': current_isin,
+                                    'pan': current_pan,
+                                    'amc': current_amc,
+                                    'advisor': current_advisor,
+                                    'transactions': [],
+                                    'closing_balance': 0,
+                                    'cost_value': 0,
+                                    'current_nav': 0,
+                                    'market_value': 0,
+                                    'opening_balance': 0
+                                }
+                    
+                    pending_scheme_line = None
+                    i += 1  # Skip the next line since we've processed it
+                    continue
+            
             if isin_match:
                 current_isin = isin_match.group(1)
                 
