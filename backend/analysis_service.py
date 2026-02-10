@@ -101,6 +101,11 @@ class CASParser:
             self._parse_nft(full_text)
             self._parse_tds(full_text)
             
+            # Log parsing summary for debugging
+            logger.info(f"Parsed {len(self.folios)} unique folio/ISIN combinations")
+            for folio_key, folio_data in self.folios.items():
+                logger.debug(f"Folio: {folio_key} -> Scheme: {folio_data.get('scheme', 'Unknown')[:50]}")
+            
             return {
                 "investor_info": self.investor_info,
                 "portfolio_summary": self.portfolio_summary,
