@@ -30,16 +30,16 @@ import NetworthSection from "./sections/NetworthSection";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Tab configuration - Order: Members, Income, Expenses, Goals, Surplus, Liabilities, Assets, Insurance, Networth
+// Tab configuration - Order: Members, Income, Expenses, Goals, Surplus, Insurance, Assets, Liabilities, Networth
 const TABS = [
   { id: "introduction", label: "Members", icon: Users },
   { id: "income", label: "Income", icon: DollarSign },
   { id: "expenses", label: "Expenses", icon: Receipt },
   { id: "goals", label: "Goals", icon: Target },
   { id: "surplus", label: "Surplus", icon: TrendingUp },
-  { id: "liability", label: "Liabilities", icon: CreditCard },
-  { id: "assets", label: "Assets", icon: Landmark },
   { id: "insurance", label: "Insurance", icon: Shield },
+  { id: "assets", label: "Assets", icon: Landmark },
+  { id: "liability", label: "Liabilities", icon: CreditCard },
   { id: "networth", label: "Networth", icon: PieChart }
 ];
 
