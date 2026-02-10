@@ -1499,11 +1499,6 @@ function AllocationSimulator({
         });
       }
       
-      // Add assets starting from selected year if 'from_year' mode
-      if (assetSelectionMode === 'from_year' && year === assetStartYear && includeAssets) {
-        corpus += getCurrentAssetsForFromYear();
-      }
-      
       // Calculate total income for this year
       const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
       
