@@ -26425,6 +26425,9 @@ async def add_insurance_premium(family_id: str, insurance: InsurancePremiumCreat
         "inflation_percent": insurance.inflation_percent,
         "goal_year": insurance.goal_year,
         "amount_today": insurance.amount_today,
+        "yearly_premium": insurance.yearly_premium,
+        "upto_year": insurance.upto_year,
+        "coverage_amount": insurance.coverage_amount,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": current_user['id']
     }
