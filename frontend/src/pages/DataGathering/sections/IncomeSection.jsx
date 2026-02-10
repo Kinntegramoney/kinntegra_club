@@ -102,14 +102,13 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     color: "indigo",
     fields: [
-      { key: "investment_value", label: "Investment Value", type: "number", readOnly: true, calculated: true },
-      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true },
       { key: "description", label: "Description", type: "text" },
-      { key: "principal_amount", label: "Principal", type: "number" },
+      { key: "investment_value", label: "Investment Value", type: "number" },
       { key: "interest_rate", label: "Interest %", type: "number" },
       { key: "payable_cycle", label: "Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
       { key: "maturity_date", label: "Maturity", type: "date" },
-      { key: "payment_amount_yearly", label: "Yearly Payment", type: "number", readOnly: true, calculated: true }
+      { key: "payment_amount_yearly", label: "Yearly Payment", type: "number", readOnly: true, calculated: true },
+      { key: "maturity_value", label: "Maturity Value", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
@@ -118,15 +117,13 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     color: "cyan",
     fields: [
-      { key: "investment_value", label: "Investment Value", type: "number", readOnly: true, calculated: true },
-      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true },
-      { key: "principal_amount_monthly", label: "Monthly Amt", type: "number" },
+      { key: "investment_value_monthly", label: "Monthly Amt", type: "number" },
       { key: "start_date", label: "Start", type: "date" },
       { key: "end_date", label: "End", type: "date" },
       { key: "num_installments", label: "Installments", type: "number", readOnly: true, calculated: true },
-      { key: "principal_amount", label: "Total Principal", type: "number", readOnly: true, calculated: true },
+      { key: "investment_value", label: "Investment Value", type: "number", readOnly: true, calculated: true },
       { key: "interest_rate", label: "Interest %", type: "number" },
-      { key: "maturity_amount", label: "Maturity Amt", type: "number" }
+      { key: "maturity_value", label: "Maturity Value", type: "number" }
     ]
   },
   { 
