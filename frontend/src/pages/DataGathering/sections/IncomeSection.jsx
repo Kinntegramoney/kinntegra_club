@@ -380,6 +380,39 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
               if (field === "rent_per_month") {
                 newDetails.annual_rent = Math.round(parseFloat(value || 0) * 12);
               }
+              
+              // Calculate XIRR Return % when relevant fields change
+              if (["investment_amount", "investment_date", "market_value", "market_value_date"].includes(field)) {
+                const investmentAmount = field === "investment_amount" ? parseFloat(value || 0) : (parseFloat(newDetails.investment_amount) || 0);
+                const marketValue = field === "market_value" ? parseFloat(value || 0) : (parseFloat(newDetails.market_value) || 0);
+                const investmentDateStr = field === "investment_date" ? value : newDetails.investment_date;
+                const marketValueDateStr = field === "market_value_date" ? value : newDetails.market_value_date;
+                
+                if (investmentAmount > 0 && marketValue > 0 && investmentDateStr && marketValueDateStr) {
+                  // Parse MM/YY format to date
+                  const parseMMYY = (mmyy) => {
+                    const [month, year] = mmyy.split('/');
+                    const fullYear = parseInt(year) > 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
+                    return new Date(fullYear, parseInt(month) - 1, 1);
+                  };
+                  
+                  const investDate = parseMMYY(investmentDateStr);
+                  const marketDate = parseMMYY(marketValueDateStr);
+                  const days = Math.max(1, (marketDate - investDate) / (1000 * 60 * 60 * 24));
+                  const years = days / 365;
+                  
+                  if (years > 0) {
+                    // XIRR = ((Final Value / Initial Value) ^ (1/years)) - 1
+                    const xirr = (Math.pow(marketValue / investmentAmount, 1 / years) - 1) * 100;
+                    newDetails.xirr_return = Math.round(xirr * 100) / 100; // Round to 2 decimals
+                  } else {
+                    newDetails.xirr_return = 0;
+                  }
+                } else {
+                  newDetails.xirr_return = 0;
+                }
+              }
+              
               // Calculate Absolute Return when any relevant field changes
               if (["rent_per_month", "maintenance", "property_tax", "investment_amount"].includes(field)) {
                 const annualRent = field === "rent_per_month" 
