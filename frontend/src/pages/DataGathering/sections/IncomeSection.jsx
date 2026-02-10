@@ -633,7 +633,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                           
                           // For rental with rent, split into two rows
                           const row1Fields = isRentalWithRent 
-                            ? visibleFields.filter(f => ['property_type', 'property_details', 'investment_amount', 'investment_date', 'market_value', 'is_on_rent'].includes(f.key))
+                            ? visibleFields.filter(f => ['property_type', 'property_details', 'investment_amount', 'investment_date', 'market_value', 'market_value_date', 'is_on_rent'].includes(f.key))
                             : visibleFields;
                           const row2Fields = isRentalWithRent 
                             ? visibleFields.filter(f => ['rental_details', 'income_per_month', 'annual_income', 'start_date', 'end_date', 'pay_date', 'auto_renew', 'rental_increment_percent'].includes(f.key))
