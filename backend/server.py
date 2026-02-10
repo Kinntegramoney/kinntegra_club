@@ -26248,7 +26248,9 @@ async def update_goal_detail(family_id: str, goal_id: str, goal: GoalDetailCreat
                 "category": goal.category,
                 "goal_amount": goal.goal_amount,
                 "inflation_percent": goal.inflation_percent,
-                "goal_year": goal.goal_year,
+                "goal_year": goal.goal_year if goal.goal_year else (int(goal.goal_years[0]) if goal.goal_years else g.get('goal_year', 2050)),
+                "goal_years": goal.goal_years or ([str(goal.goal_year)] if goal.goal_year else g.get('goal_years', [])),
+                "is_family_goal": goal.is_family_goal,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             })
             break
