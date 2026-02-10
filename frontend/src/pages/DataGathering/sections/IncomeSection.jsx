@@ -125,14 +125,14 @@ const INCOME_CATEGORIES = [
     color: "cyan",
     fields: [
       { key: "investment_value_monthly", label: "Monthly Amt", type: "number" },
+      { key: "interest_rate", label: "Stated Interest %", type: "number" },
       { key: "start_date", label: "Start Date", type: "date" },
       { key: "end_date", label: "End Date", type: "date" },
       { key: "num_installments", label: "Installments", type: "number", readOnly: true, calculated: true },
       { key: "investment_value", label: "Total Investment", type: "number", readOnly: true, calculated: true },
+      { key: "expected_maturity", label: "Expected Maturity", type: "number", readOnly: true, calculated: true },
       { key: "maturity_value", label: "Maturity Value", type: "number" },
-      { key: "gross_xirr", label: "Gross XIRR %", type: "number", readOnly: true, calculated: true },
-      { key: "interest_rate", label: "Stated Interest %", type: "number" },
-      { key: "expected_maturity", label: "Expected Maturity", type: "number", readOnly: true, calculated: true }
+      { key: "gross_xirr", label: "Gross XIRR %", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
