@@ -456,12 +456,35 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             
             // FD calculations
             if (category === "fd") {
-              if (["investment_value", "interest_rate"].includes(field)) {
-                const investmentVal = field === "investment_value" ? value : newDetails.investment_value;
-                const rate = field === "interest_rate" ? value : newDetails.interest_rate;
-                if (investmentVal && rate) {
-                  newDetails.interest_amount = Math.round((parseFloat(investmentVal) * parseFloat(rate)) / 100);
-                  newDetails.maturity_value = Math.round(parseFloat(investmentVal) + newDetails.interest_amount);
+              // Calculate Gross XIRR when relevant fields change
+              if (["investment_value", "investment_date", "maturity_amount", "maturity_date", "payable_cycle"].includes(field)) {
+                const investmentVal = field === "investment_value" ? parseFloat(value || 0) : (parseFloat(newDetails.investment_value) || 0);
+                const maturityAmt = field === "maturity_amount" ? parseFloat(value || 0) : (parseFloat(newDetails.maturity_amount) || 0);
+                const investmentDateStr = field === "investment_date" ? value : newDetails.investment_date;
+                const maturityDateStr = field === "maturity_date" ? value : newDetails.maturity_date;
+                
+                if (investmentVal > 0 && maturityAmt > 0 && investmentDateStr && maturityDateStr) {
+                  // Parse MM/YY format to date
+                  const parseMMYY = (mmyy) => {
+                    const [month, year] = mmyy.split('/');
+                    const fullYear = parseInt(year) > 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
+                    return new Date(fullYear, parseInt(month) - 1, 1);
+                  };
+                  
+                  const investDate = parseMMYY(investmentDateStr);
+                  const maturityDate = parseMMYY(maturityDateStr);
+                  const days = Math.max(1, (maturityDate - investDate) / (1000 * 60 * 60 * 24));
+                  const years = days / 365;
+                  
+                  if (years > 0) {
+                    // XIRR = ((Maturity Amount / Investment Value) ^ (1/years)) - 1
+                    const xirr = (Math.pow(maturityAmt / investmentVal, 1 / years) - 1) * 100;
+                    newDetails.gross_xirr = Math.round(xirr * 100) / 100; // Round to 2 decimals
+                  } else {
+                    newDetails.gross_xirr = 0;
+                  }
+                } else {
+                  newDetails.gross_xirr = 0;
                 }
               }
             }
