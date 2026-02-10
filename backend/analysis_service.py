@@ -408,6 +408,7 @@ class CASParser:
                         current_key = new_key
                         # Create new folio entry if it doesn't exist
                         if current_key not in self.folios:
+                            logger.info(f"Creating folio entry: key={current_key[:50]}, scheme={current_scheme[:40] if current_scheme else 'None'}")
                             self.folios[current_key] = {
                                 'folio': current_folio,
                                 'scheme': current_scheme,
