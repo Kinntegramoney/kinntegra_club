@@ -314,12 +314,9 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
           });
         }
       } catch (error) {
-        // Fallback to approximate values if API fails
-        console.log('Using fallback commodity prices');
-        setCommodityPrices({
-          Gold: 7500000, // ~75 lakh per kg
-          Silver: 90000  // ~90k per kg
-        });
+        // If API fails, leave prices as 0 (don't show values)
+        console.log('Commodity API unavailable');
+        setCommodityPrices({ Gold: 0, Silver: 0 });
       }
     };
     fetchCommodityPrices();
