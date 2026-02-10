@@ -295,12 +295,48 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     }
   }, [family?.id, existingIncomes.length, initialLoadDone]);
 
-  // Commodity prices state with date (using current Indian market prices)
-  const [commodityPrices, setCommodityPrices] = useState({ 
-    Gold: 15800000,  // ₹1.58 Cr per kg
-    Silver: 290000,   // ₹2.90 L per kg
-    date: new Date().toISOString().split('T')[0]
-  });
+  // Commodity prices state with date
+  const [commodityPrices, setCommodityPrices] = useState({ Gold: 0, Silver: 0, date: null });
+  
+  // Fetch commodity prices from goldprice.org API (reliable India INR prices)
+  useEffect(() => {
+    const fetchCommodityPrices = async () => {
+      try {
+        const response = await axios.get('https://data-asg.goldprice.org/dbXRates/INR');
+        
+        if (response.data && response.data.items && response.data.items.length > 0) {
+          const data = response.data.items[0];
+          const priceDate = response.data.date;
+          
+          // API returns price per troy ounce in INR
+          // 1 troy ounce = 31.1035 grams
+          // Convert to per kg: (price per oz / 31.1035) * 1000
+          const goldPricePerOz = data.xauPrice || 0;
+          const silverPricePerOz = data.xagPrice || 0;
+          
+          const goldPricePerKg = Math.round((goldPricePerOz / 31.1035) * 1000);
+          const silverPricePerKg = Math.round((silverPricePerOz / 31.1035) * 1000);
+          
+          setCommodityPrices({
+            Gold: goldPricePerKg,
+            Silver: silverPricePerKg,
+            date: priceDate
+          });
+          return;
+        }
+      } catch (error) {
+        console.log('Gold price API unavailable:', error.message);
+      }
+      
+      // Fallback to current market prices if API fails
+      setCommodityPrices({ 
+        Gold: 15800000,
+        Silver: 290000,
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      });
+    };
+    fetchCommodityPrices();
+  }, []);
   
   // Update commodity items when prices are fetched
   useEffect(() => {
