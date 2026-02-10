@@ -459,7 +459,8 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 const investmentVal = field === "investment_value" ? value : newDetails.investment_value;
                 const rate = field === "interest_rate" ? value : newDetails.interest_rate;
                 if (investmentVal && rate) {
-                  newDetails.payment_amount_yearly = Math.round((parseFloat(investmentVal) * parseFloat(rate)) / 100);
+                  newDetails.interest_amount = Math.round((parseFloat(investmentVal) * parseFloat(rate)) / 100);
+                  newDetails.maturity_value = Math.round(parseFloat(investmentVal) + newDetails.interest_amount);
                 }
               }
             }
