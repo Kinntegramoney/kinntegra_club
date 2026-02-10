@@ -1722,12 +1722,9 @@ function AllocationSimulator({
     </Card>
   );
 }
-                            </span>
-                          </div>
-                          <span className="text-xs font-semibold text-green-700">
-                            Total: ₹{formatLargeNumber(group.total)}
-                          </span>
-                        </div>
+
+
+// Main SurplusSection export
                         
                         <div className="space-y-2">
                           {group.assets.map(asset => (
