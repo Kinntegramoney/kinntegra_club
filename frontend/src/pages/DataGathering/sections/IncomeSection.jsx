@@ -798,7 +798,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                   </div>
                                 ) : (
                                   <Input
-                                    type={field.type}
+                                    type="number"
                                     value={item.details[field.key] || ""}
                                     onChange={e => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
                                     placeholder="0"
