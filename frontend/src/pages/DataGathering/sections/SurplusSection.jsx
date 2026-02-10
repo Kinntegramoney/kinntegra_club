@@ -2028,39 +2028,69 @@ function AllocationSimulator({
                 const allocation = getEntityAllocation(assetModalEntity);
                 const isSelected = allocation.selectedAssets?.[asset.id] !== false;
                 const startYear = allocation.assetStartYears?.[asset.id] || currentYear;
+                const customAmount = allocation.assetAmounts?.[asset.id];
+                const displayAmount = customAmount !== undefined ? customAmount : asset.value;
+                const isCustom = customAmount !== undefined;
                 
                 return (
                   <div 
                     key={asset.id} 
-                    className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                    className={`p-3 rounded-lg border-2 transition-all ${
                       isSelected ? 'border-blue-200 bg-blue-50/30' : 'border-gray-100 bg-gray-50/30'
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleAsset(assetModalEntity, asset.id)}
-                      className="h-5 w-5 rounded border-gray-300 text-blue-600 cursor-pointer"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-800 text-sm">{asset.label}</div>
-                      <div className="text-xs text-gray-500">Market Value</div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleAsset(assetModalEntity, asset.id)}
+                        className="h-5 w-5 rounded border-gray-300 text-blue-600 cursor-pointer"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-800 text-sm">{asset.label}</div>
+                        <div className="text-[10px] text-gray-400">Original: ₹{formatLargeNumber(asset.value)}</div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-green-600">₹{formatLargeNumber(asset.value)}</div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-[10px] text-gray-500 font-medium">Include from</span>
-                      <select
-                        value={startYear}
-                        onChange={(e) => updateAssetStartYear(assetModalEntity, asset.id, parseInt(e.target.value))}
-                        disabled={!isSelected}
-                        className="h-8 text-sm border border-gray-200 rounded px-2 bg-white disabled:bg-gray-100 disabled:text-gray-400 min-w-[90px]"
-                      >
-                        {yearOptions.map(y => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
+                    
+                    {/* Amount and Year Row */}
+                    <div className="flex items-center gap-3 mt-3 ml-8">
+                      <div className="flex-1">
+                        <label className="text-[10px] text-gray-500 font-medium block mb-1">Amount to Include</label>
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-400 text-sm">₹</span>
+                          <input
+                            type="number"
+                            value={displayAmount}
+                            onChange={(e) => updateAssetAmount(assetModalEntity, asset.id, e.target.value)}
+                            disabled={!isSelected}
+                            className={`w-full h-8 text-sm border rounded px-2 text-right disabled:bg-gray-100 disabled:text-gray-400 ${
+                              isCustom ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'
+                            }`}
+                          />
+                          {isCustom && (
+                            <button
+                              onClick={() => resetAssetAmount(assetModalEntity, asset.id)}
+                              className="text-[10px] text-blue-600 hover:text-blue-700 whitespace-nowrap"
+                              title="Reset to original"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-medium block mb-1">Include from Year</label>
+                        <select
+                          value={startYear}
+                          onChange={(e) => updateAssetStartYear(assetModalEntity, asset.id, parseInt(e.target.value))}
+                          disabled={!isSelected}
+                          className="h-8 text-sm border border-gray-200 rounded px-2 bg-white disabled:bg-gray-100 disabled:text-gray-400 min-w-[90px]"
+                        >
+                          {yearOptions.map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 );
@@ -2081,7 +2111,11 @@ function AllocationSimulator({
                     ₹{assetModalEntity && formatLargeNumber(
                       getAssetsForEntity(assetModalEntity)
                         .filter(a => getEntityAllocation(assetModalEntity).selectedAssets?.[a.id] !== false)
-                        .reduce((sum, a) => sum + a.value, 0)
+                        .reduce((sum, a) => {
+                          const allocation = getEntityAllocation(assetModalEntity);
+                          const customAmount = allocation.assetAmounts?.[a.id];
+                          return sum + (customAmount !== undefined ? customAmount : a.value);
+                        }, 0)
                     )}
                   </span>
                 </div>
