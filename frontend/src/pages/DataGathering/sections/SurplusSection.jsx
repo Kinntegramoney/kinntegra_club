@@ -317,13 +317,13 @@ export default function SurplusSection({ family, isReadOnly }) {
                     className={`text-center px-1 py-1 ${idx < displayYears.length - 1 ? 'border-r border-gray-200' : ''}`}
                   >
                     {isBaseYear ? (
-                      <div className="h-6 flex items-center justify-center text-[10px] font-semibold text-blue-700">
+                      <div className="h-6 flex items-center justify-center text-[11px] font-semibold text-blue-700">
                         {year} (Base)
                       </div>
                     ) : (
                       <Select value={year} onValueChange={(v) => handleYearChange(idx, v)}>
-                        <SelectTrigger className="h-6 text-[10px] w-full border-0 bg-transparent shadow-none justify-center font-semibold text-blue-700">
-                          <SelectValue />
+                        <SelectTrigger className="h-6 text-[11px] w-full border-0 bg-transparent shadow-none justify-center font-semibold text-blue-700">
+                          {year} {yearInt === earliestRetirement && '(R)'} {hasGoals && '🎯'}
                         </SelectTrigger>
                         <SelectContent>
                           {getAvailableYears(idx).map(y => {
@@ -338,7 +338,7 @@ export default function SurplusSection({ family, isReadOnly }) {
                         </SelectContent>
                       </Select>
                     )}
-                    {hasGoals && <span className="text-[8px] text-purple-600">Goal</span>}
+                    {hasGoals && isBaseYear && <span className="text-[8px] text-purple-600">Goal</span>}
                   </th>
                 );
               })}
