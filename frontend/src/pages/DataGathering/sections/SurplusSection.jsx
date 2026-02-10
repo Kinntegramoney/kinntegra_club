@@ -1682,7 +1682,7 @@ function AllocationSimulator({
                     onChange={() => setAssetSelectionMode('all')}
                     className="h-4 w-4 text-blue-600"
                   />
-                  <span className="text-sm text-gray-600">Include all assets</span>
+                  <span className="text-sm text-gray-600">Include all assets (from current year)</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -1693,47 +1693,73 @@ function AllocationSimulator({
                     onChange={() => setAssetSelectionMode('select')}
                     className="h-4 w-4 text-blue-600"
                   />
-                  <span className="text-sm text-gray-600">Select specific assets</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="assetMode"
-                    value="from_year"
-                    checked={assetSelectionMode === 'from_year'}
-                    onChange={() => setAssetSelectionMode('from_year')}
-                    className="h-4 w-4 text-blue-600"
-                  />
-                  <span className="text-sm text-gray-600">Include from specific year</span>
+                  <span className="text-sm text-gray-600">Select specific assets & years</span>
                 </label>
               </div>
 
-              {/* Asset Selection List */}
+              {/* Asset Selection List - Grouped by Member */}
               {assetSelectionMode === 'select' && (
                 <div className="border rounded-lg p-3 bg-white">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-gray-600">Select assets to include:</span>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-medium text-gray-600">Select assets and choose when to include them:</span>
                     <div className="flex gap-2">
                       <button onClick={selectAllAssets} className="text-xs text-blue-600 hover:underline">Select All</button>
                       <button onClick={deselectAllAssets} className="text-xs text-red-600 hover:underline">Deselect All</button>
                     </div>
                   </div>
-                  <div className="max-h-[200px] overflow-y-auto space-y-1">
-                    {assetsList.map(asset => (
-                      <label key={asset.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedAssets[asset.id] || false}
-                          onChange={() => toggleAssetSelection(asset.id)}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                        />
-                        <span className="text-sm text-gray-700 flex-1">{asset.label}</span>
-                        <span className="text-xs text-gray-500">{asset.member}</span>
-                        <span className="text-sm font-medium text-green-600">₹{formatLargeNumber(asset.value)}</span>
-                      </label>
+                  
+                  <div className="max-h-[350px] overflow-y-auto space-y-4">
+                    {assetsGroupedByMember.map(group => (
+                      <div key={group.memberId} className="border border-gray-200 rounded-lg p-3 bg-gray-50/50">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-gray-800">
+                              {group.memberName}
+                              {group.isPrimary && <span className="text-blue-500 ml-1">*</span>}
+                            </span>
+                          </div>
+                          <span className="text-xs font-semibold text-green-700">
+                            Total: ₹{formatLargeNumber(group.total)}
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {group.assets.map(asset => (
+                            <div key={asset.id} className="flex items-center gap-2 p-2 bg-white rounded border border-gray-100">
+                              <input
+                                type="checkbox"
+                                checked={selectedAssets[asset.id] || false}
+                                onChange={() => toggleAssetSelection(asset.id)}
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                              />
+                              <span className="text-sm text-gray-700 flex-1">{asset.label}</span>
+                              <span className="text-sm font-medium text-green-600 min-w-[80px] text-right">
+                                ₹{formatLargeNumber(asset.value)}
+                              </span>
+                              <div className="flex items-center gap-1 ml-2">
+                                <span className="text-[10px] text-gray-400">From:</span>
+                                <select
+                                  value={assetStartYear[asset.id] || currentYear}
+                                  onChange={(e) => updateAssetStartYear(asset.id, parseInt(e.target.value))}
+                                  disabled={!selectedAssets[asset.id]}
+                                  className="h-7 text-xs border border-gray-200 rounded px-1 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                                >
+                                  {yearOptions.map(y => (
+                                    <option key={y} value={y}>
+                                      {y} {y === retirementYear ? '(R)' : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
-                  <div className="mt-2 pt-2 border-t flex justify-between">
+                  
+                  <div className="mt-3 pt-3 border-t flex justify-between items-center">
                     <span className="text-xs text-gray-500">Selected Assets:</span>
                     <span className="text-sm font-semibold text-green-700">
                       ₹{formatLargeNumber(Object.entries(selectedAssets)
@@ -1742,26 +1768,6 @@ function AllocationSimulator({
                       )}
                     </span>
                   </div>
-                </div>
-              )}
-
-              {/* Year Selection */}
-              {assetSelectionMode === 'from_year' && (
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600">Include assets from year:</span>
-                  <Select value={assetStartYear.toString()} onValueChange={(v) => setAssetStartYear(parseInt(v))}>
-                    <SelectTrigger className="w-32 h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {yearOptions.map(y => (
-                        <SelectItem key={y} value={y.toString()}>
-                          {y} {y === retirementYear && '(R)'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-xs text-gray-500">(Assets will be added to corpus in this year)</span>
                 </div>
               )}
             </div>
