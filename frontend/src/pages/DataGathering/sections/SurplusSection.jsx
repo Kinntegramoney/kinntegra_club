@@ -2,7 +2,9 @@ import React, { useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { User, TrendingUp, TrendingDown, PiggyBank, Landmark, Target, Info, Download } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { User, TrendingUp, TrendingDown, PiggyBank, Landmark, Target, Info, Download, Calculator, AlertTriangle, CheckCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
@@ -18,6 +20,11 @@ export default function SurplusSection({ family, isReadOnly }) {
   // Generate default years to show (base year fixed + 5 more)
   const defaultYears = [currentYear, currentYear + 1, currentYear + 2, currentYear + 3, currentYear + 4, currentYear + 5];
   const [displayYears, setDisplayYears] = useState(defaultYears.map(String));
+
+  // Allocation Simulator State
+  const [allocations, setAllocations] = useState({});
+  const [simulationResults, setSimulationResults] = useState({});
+  const [calculating, setCalculating] = useState({});
 
   // Get primary member
   const primaryMember = members.find(m => m.is_primary) || members[0];
