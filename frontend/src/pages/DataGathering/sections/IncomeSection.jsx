@@ -58,10 +58,11 @@ const INCOME_CATEGORIES = [
       { key: "rental_details", label: "Rental Details", type: "text", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "rent_per_month", label: "Rent Per Month", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "annual_rent", label: "Annual Rent", type: "number", readOnly: true, calculated: true, dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "maintenance", label: "Maintenance (Yearly)", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "property_tax", label: "Property Tax (Yearly)", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "start_date", label: "Start Date", type: "date", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "end_date", label: "End Date", type: "date", dependsOn: "is_on_rent", showWhen: "Yes" },
+      { key: "maintenance", label: "Maintenance (Yearly)", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
+      { key: "property_tax", label: "Property Tax (Yearly)", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
+      { key: "absolute_return", label: "Absolute Return %", type: "number", readOnly: true, calculated: true, dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "pay_date", label: "Pay Date", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "auto_renew", label: "Auto Renew", type: "select", options: ["Yes", "No"], dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "rental_increment_percent", label: "Rental Increment %", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" }
