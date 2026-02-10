@@ -1941,38 +1941,19 @@ function AllocationSimulator({
                       </tr>
                     )}
 
-                    {/* Member Asset Selection Row */}
+                    {/* Member Asset Selection Row - Replaced with button */}
                     {allocation.includeAssets && (
-                      <tr className="border-b border-gray-200 bg-gray-50/50">
-                        <td colSpan={7} className="py-3 px-4">
-                          <div className="text-xs font-medium text-gray-600 mb-2">Select {member.name}'s Assets & Start Year:</div>
-                          <div className="space-y-2">
-                            {getAssetsForEntity(member.id).map(asset => (
-                              <div key={asset.id} className="flex items-center gap-3 p-2 bg-white border rounded">
-                                <input
-                                  type="checkbox"
-                                  checked={allocation.selectedAssets?.[asset.id] !== false}
-                                  onChange={() => toggleAsset(member.id, asset.id)}
-                                  className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                                />
-                                <span className="text-sm text-gray-700 flex-1">{asset.label}</span>
-                                <span className="text-sm font-medium text-green-600">₹{formatLargeNumber(asset.value)}</span>
-                                <div className="flex items-center gap-1">
-                                  <span className="text-xs text-gray-500">From:</span>
-                                  <select
-                                    value={allocation.assetStartYears?.[asset.id] || currentYear}
-                                    onChange={(e) => updateAssetStartYear(member.id, asset.id, parseInt(e.target.value))}
-                                    disabled={allocation.selectedAssets?.[asset.id] === false}
-                                    className="h-7 text-xs border border-gray-200 rounded px-1 bg-white disabled:bg-gray-100 disabled:text-gray-400"
-                                  >
-                                    {yearOptions.map(y => (
-                                      <option key={y} value={y}>{y}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                      <tr className="border-b border-gray-200">
+                        <td colSpan={7} className="py-2 px-4">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => openAssetModal(member.id)}
+                            className="text-xs gap-1.5"
+                          >
+                            <Settings2 className="h-3 w-3" />
+                            Configure Assets ({getAssetsForEntity(member.id).filter(a => allocation.selectedAssets?.[a.id] !== false).length} selected)
+                          </Button>
                         </td>
                       </tr>
                     )}
@@ -1987,6 +1968,86 @@ function AllocationSimulator({
         <div className="text-[10px] text-gray-400 mt-2">
           Note: Debt instruments with maturity dates (FD, Bonds, RD, Insurance) are excluded - they will be available only at maturity.
         </div>
+
+        {/* Asset Selection Modal */}
+        <Dialog open={assetModalOpen} onOpenChange={setAssetModalOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg">
+                <Settings2 className="h-5 w-5 text-blue-600" />
+                Configure Assets - {assetModalEntity && getEntityName(assetModalEntity)}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-3 max-h-[400px] overflow-y-auto py-2">
+              {assetModalEntity && getAssetsForEntity(assetModalEntity).map(asset => {
+                const allocation = getEntityAllocation(assetModalEntity);
+                const isSelected = allocation.selectedAssets?.[asset.id] !== false;
+                const startYear = allocation.assetStartYears?.[asset.id] || currentYear;
+                
+                return (
+                  <div 
+                    key={asset.id} 
+                    className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                      isSelected ? 'border-blue-200 bg-blue-50/30' : 'border-gray-100 bg-gray-50/30'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleAsset(assetModalEntity, asset.id)}
+                      className="h-5 w-5 rounded border-gray-300 text-blue-600 cursor-pointer"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-800 text-sm">{asset.label}</div>
+                      <div className="text-xs text-gray-500">Market Value</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-green-600">₹{formatLargeNumber(asset.value)}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-[10px] text-gray-500 font-medium">Include from</span>
+                      <select
+                        value={startYear}
+                        onChange={(e) => updateAssetStartYear(assetModalEntity, asset.id, parseInt(e.target.value))}
+                        disabled={!isSelected}
+                        className="h-8 text-sm border border-gray-200 rounded px-2 bg-white disabled:bg-gray-100 disabled:text-gray-400 min-w-[90px]"
+                      >
+                        {yearOptions.map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {assetModalEntity && getAssetsForEntity(assetModalEntity).length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="text-sm">No assets available for selection.</p>
+                  <p className="text-xs mt-1">Add assets in the Income section to include them here.</p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="border-t pt-4">
+              <div className="flex items-center justify-between w-full">
+                <div className="text-sm text-gray-600">
+                  Total Selected: <span className="font-semibold text-green-600">
+                    ₹{assetModalEntity && formatLargeNumber(
+                      getAssetsForEntity(assetModalEntity)
+                        .filter(a => getEntityAllocation(assetModalEntity).selectedAssets?.[a.id] !== false)
+                        .reduce((sum, a) => sum + a.value, 0)
+                    )}
+                  </span>
+                </div>
+                <Button onClick={() => setAssetModalOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
