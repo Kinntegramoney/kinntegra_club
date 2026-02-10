@@ -311,11 +311,12 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
           // API returns price per troy ounce in INR
           // 1 troy ounce = 31.1035 grams
           // Convert to per kg: (price per oz / 31.1035) * 1000
+          // Add ~8% premium for Indian retail (import duty + GST + making)
           const goldPricePerOz = data.xauPrice || 0;
           const silverPricePerOz = data.xagPrice || 0;
           
-          const goldPricePerKg = Math.round((goldPricePerOz / 31.1035) * 1000);
-          const silverPricePerKg = Math.round((silverPricePerOz / 31.1035) * 1000);
+          const goldPricePerKg = Math.round(((goldPricePerOz / 31.1035) * 1000) * 1.08);
+          const silverPricePerKg = Math.round(((silverPricePerOz / 31.1035) * 1000) * 1.22);
           
           setCommodityPrices({
             Gold: goldPricePerKg,
