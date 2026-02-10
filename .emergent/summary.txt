@@ -1,171 +1,152 @@
 <analysis>**original_problem_statement:**
-The user wants to build a comprehensive financial data intake form. The initial request was to update the fields in the Income, Expense, Liability, and Insurance sections based on provided  files. The scope has since expanded significantly with multiple UI/UX redesigns and detailed requirements for auto-calculated fields, conditional logic, and specific component behaviors across various financial categories. The most recent requests involve updating the Expense tab based on a new document, implementing a large set of calculation rules, and making the UI sleeker.
+The user has reported a bug in the Analysis tab. When parsing a PDF financial statement, a Multi-Asset Fund entry is being incorrectly merged with a Liquid Fund entry, causing the multi-asset fund to be missing from the final output (an Excel file).
 
-**PRODUCT REQUIREMENTS:**
-- A multi-tab financial intake form (Income, Expenses, Liabilities, Insurance, Goals, Assets).
-- Each tab should allow the user to add and fill data for specific categories (e.g., Salary Income, Rental Income, Home Loan).
-- The UI should feature a top bar of clickable pills to add new category cards for data entry.
-- Implement a large number of system-calculated, read-only fields based on user input (e.g.,  from monthly income).
-- Enforce conditional logic (e.g., enabling/disabling fields based on a dropdown selection).
-- The sidebar should be collapsible to maximize screen space.
-- After saving data in a category card, the card should collapse.
+The user also requested and guided the agent through a series of major refactoring and feature updates across the Data Gathering section:
+1.  **Assets Tab:** Reworked into a view-only summary table with member names as columns.
+2.  **Liabilities Tab:** Reworked into a view-only summary table. Data entry for loans was moved to the Expenses tab with new EMI-based fields (Monthly EMI, No. of Installments, auto-calculated Outstanding Amount and Completion Year).
+3.  **Expenses Tab:** Refactored into a unified entry point for Regular Expenses, Loan EMIs, and Insurance Premiums.
+4.  **Insurance Tab:** Reworked into a view-only summary table showing Suggested vs Actual coverage. Data entry for insurance premiums was moved to the Expenses tab with new fields (Yearly Premium, Upto Year, Coverage Amount).
+5.  **Goals Tab:** Enhanced to support multi-year selection for recurring goals and added a Family option to the member dropdown for shared goals.
 
 **User's preferred language**: English
 
 **what currently exists?**
-- A React-based frontend application with sections for Income, Expense, Liability, Insurance, Goals, and Assets.
-- The UI uses a pill-based design where users click a category name at the top to add an expandable data-entry card below.
-- Basic CRUD functionality (add, view, save) is implemented via API calls to a backend.
-- Auto-calculation logic for 'Year of Retirement' and 'Net Income (Yearly)' is implemented specifically for the 'Salary Income' category.
-- A fix has been implemented to ensure cards collapse after saving and do not re-expand on data refresh. This fix is pending verification.
-- A partially implemented collapsible sidebar exists (the toggle button is present, but the main layout does not yet respond to it).
+The  feature has been significantly refactored.
+- The , , and  tabs are now view-only summary tables that display data in a matrix with members as columns.
+- The  tab is now a unified data entry point for three distinct types of items: Regular Expenses, Loan EMIs, and Insurance Premiums, each with its own specific form fields. The categories are visually distinguished by colored borders.
+- The  tab has been updated to allow selecting multiple years for a single goal (for recurring events) and to assign goals to the entire Family instead of just individual members. It also includes quick-selection buttons for year patterns (e.g., Every 2 Years).
+- An  tab exists with a feature to parse PDF statements, which is currently buggy.
 
 **Last working item**:
-- **Last item agent was working:** The agent acknowledged the user's request to update the expense tab based on a newly uploaded document (). This interrupted the previous task of implementing a sleeker UI design.
-- **Status:** NOT STARTED
-- **Agent Testing Done:** N
-- **Which testing method agent to use?** Frontend testing agent
-- **User Testing Done:** N
+-   **Last item agent was working:** Debugging a PDF parsing bug within the  tab. The user reported that a Multi-Asset Fund from an uploaded statement is being incorrectly merged with a Liquid Fund entry, causing it to be missing from the generated Excel output. The agent has located the relevant backend logic in  and was about to start analyzing the large file to find the root cause of the incorrect data merging.
+-   **Status:** IN PROGRESS
+-   **Agent Testing Done:** N
+-   **Which testing method agent to use?** manual testing by curl
+-   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P0):** Card does not collapse permanently after saving.
-- **Issue 2 (P1):** Pre-existing lint errors in multiple component files.
+-   **Issue 1:** PDF parsing incorrectly merges mutual fund entries. (P0)
 
 **Issues Detail:**
-- **Issue 1: Card does not collapse permanently after saving**
-  - **Description:** The user reported that after saving, the card would either not collapse or would re-expand. The agent identified that a  hook, intended to expand cards with data on initial load, was firing after every data refresh (including the refresh post-save), causing the card to re-open.
-  - **Attempted fixes:** The agent introduced a  flag () into the  hooks across all section components (, , etc.). This is intended to allow the auto-expand logic to run only on the component's first render.
-  - **Next debug checklist:**
-    1. Manually test the save functionality in any category (e.g., Salary Income).
-    2. Add an item, fill in the data, and click Save.
-    3. Verify that the card collapses and stays collapsed.
-    4. Refresh the page and confirm the card loads in an expanded state (as it now contains data).
-    5. If it fails, review the  and  logic in  to ensure the state updates are correct and not conflicting.
-  - **Why fix this issue and what will be achieved with the fix?** This directly addresses a user-reported bug and aligns the application with the desired UX flow.
-  - **Status:** USER VERIFICATION PENDING
-  - **Is recurring issue?** Y
-  - **Should Test frontend/backend/both after fix?** Frontend
-  - **Blocked on other issue:** None
-
-- **Issue 2: Pre-existing lint errors**
-  - **Description:** The agent noted multiple lint errors during compilation, such as improper use of quotes in JSX text, but ignored them as non-critical.
-  - **Next debug checklist:**
-    1. Run  or check the console output after .
-    2. Go through the reported files (e.g., ) and fix the errors, such as changing  to .
-  - **Why fix this issue and what will be achieved with the fix?** Improves code quality, maintainability, and prevents potential hidden bugs.
-  - **Status:** NOT STARTED
-  - **Is recurring issue?** Y
-  - **Should Test frontend/backend/both after fix?** Frontend
-  - **Blocked on other issue:** None
+-   **Issue 1:**
+    -   **Description:** In the Analysis tab, the PDF parsing service incorrectly categorizes or merges an ICICI Prudential Multi-Asset Fund entry into a Liquid Fund entry, causing the multi-asset fund data to be lost in the final Excel output.
+    -   **Attempted fixes:** None. The agent has only identified the file containing the parsing logic ().
+    -   **Next debug checklist:**
+        1.  Examine .
+        2.  Search for the code responsible for reading, categorizing, and aggregating mutual fund data from the parsed PDF text.
+        3.  Pay close attention to the regular expressions or string matching logic that identifies fund types. It's likely that the pattern for Multi-Asset Fund is either missing or too broad, causing it to fall back into another category like Liquid.
+        4.  Trace how the parsed data is structured before being written to the Excel file.
+    -   **Why fix this issue and what will be achieved with the fix?** To ensure accurate and complete data extraction from user-uploaded financial statements, which is a critical function of the Analysis feature.
+    -   **Status:** IN PROGRESS
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** backend
+    -   **Blocked on other issue:** None
 
 **In progress Task List**:
-- **Task 1: Make Sidebar Collapsible**
-  - **Description:** The user requested a collapsible sidebar. The agent added a state and a toggle button to  but did not complete the implementation.
-  - **Where to resume:** The main layout component (likely  or a wrapper component) needs to be modified. It should accept the  state from the sidebar and apply conditional styling (e.g., changing  or ) to the main content area so it expands to fill the space when the sidebar is collapsed.
-  - **What will be achieved with this?** It will fulfill a user requirement for more usable screen space.
-  - **Status:** IN PROGRESS
-  - **Should Test frontend/backend/both after fix?** Frontend
-  - **Blocked on something:** No
+There are no in-progress feature tasks. The current focus is on the bug fix listed above.
 
 **Upcoming and Future Tasks**
-- **Upcoming Tasks:**
-  - **(P0) Implement All Pending Calculation Logic:** This is the highest priority task. Implement the detailed calculations, read-only fields, and conditional logic specified by the user in chat message 348 for all relevant categories in , , and .
-      - **Categories include:** Business Income, Rental Income, PPF, EPF, Gratuity, FD, RD/PIS, Pension Income, Bond, and Insurance.
-  - **(P0) Update Expense Tab:** Read the  file and apply the specified changes to the  component.
-  - **(P1) Implement Sleeker Design:** Apply more compact spacing, smaller fonts, and cleaner styling across all section components (, , etc.) as requested by the user. This should be done after the functional requirements are met.
+There are no outstanding feature requests from the user at this time. All previous requests in this session have been implemented.
 
 **Completed work in this session**
-- **UI/UX Redesign:**
-  - Implemented the current UI featuring clickable category pills that add expandable data-entry cards ().
-  - Reverted two previous UI designs (a card-flip animation and a complex card layout) based on user feedback.
-- **Auto-Calculation for Salary Income:**
-  - Implemented logic to automatically calculate  and  in .
-- **Initial Field Population:**
-  - Updated fields across Income, Expense, Liability, and Insurance sections based on the first batch of user-provided documents.
+-   **Assets Tab Refactor**: Converted  into a view-only summary table with member-based columns and removed the Actions column.
+-   **Liabilities Logic Overhaul**:
+    -   Changed liability fields from Amount Today to Monthly EMI & No. of Installments with auto-calculated Outstanding Amount and Completion Year in .
+    -   Moved all liability/loan data entry forms into the .
+    -   Converted  into a view-only summary table showing outstanding loan amounts.
+-   **Insurance Logic Overhaul**:
+    -   Added new fields for insurance (Yearly Premium, Upto Year, Coverage Amount).
+    -   Moved all insurance premium data entry forms into .
+    -   Converted  into a view-only summary table comparing Suggested vs Actual coverage.
+-   **Unified Expenses Tab**: Refactored  to manage three different data structures (regular expenses, loans, insurance) within a single component, with unique forms and styling for each type.
+-   **Goals Tab Enhancements**:
+    -   Implemented a multi-year selector for recurring goals in .
+    -   Added quick-select patterns (e.g., Every 2 Years) to the year picker.
+    -   Added a Family option to the member dropdown for shared goals.
 
 **Earlier issues found/mentioned but not fixed**
-- The pre-existing linting errors were identified but deferred by the agent. This is captured in the All Pending/In progress Issue list.
+None. All issues raised during the session prior to the final PDF bug were addressed.
 
 **Known issue recurrence from previous fork**
-- None related to application code. A system memory issue was mentioned in the history but was resolved by the platform.
+-   **Issue recurrence in previous fork:** N/A
+-   **Recurrence count:** 0
+-   **Status:** N/A
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frontend:** React.js (v18)
-- **State Management:** React Hooks (, , )
-- **API Client:** Axios for making HTTP requests to the backend.
-- **Styling:** Tailwind CSS for utility-first styling.
-- **Architecture:** Component-based architecture with separate, stateful components for each major section of the financial form.
+-   **Frontend:** React, JSX
+-   **State Management:** ,  hooks for component-level state.
+-   **UI/UX:** Major refactoring from data entry forms to view-only summary tables. Conditional rendering to handle multiple data types within a single component ().
+-   **Data Processing:** Backend logic in  for parsing PDF files.
 
 **key DB schema**
-- The database schema is not directly visible. Data is fetched from and sent to a REST API. The frontend data structures suggest a JSON-based document store where a main profile object contains keys like , , etc., which in turn contain objects for each category (e.g., ) holding an array of data entries.
+Database schema was not directly accessed, but can be inferred from the frontend models:
+-   **Assets:** 
+-   **Liabilities (as entered in Expenses):** 
+-   **Insurance (as entered in Expenses):** 
+-   **Goals:** 
 
 **changes in tech stack**
-- None observed.
+No changes in the underlying technology stack.
 
 **All files of reference**
-- : The most frequently modified file, contains logic for income categories, calculations, and UI.
-- : To be modified for the new expense requirements.
-- : Contains UI and logic for liability.
-- : Contains UI and logic for insurance.
-- : Contains UI and logic for goals.
-- : Contains UI and logic for assets.
-- : Modified to include state for the collapsible feature.
-- : Contains global styles and potentially unused CSS from reverted features.
+*   **/app/services/analysis.service.js**: Contains the backend PDF parsing logic that is currently being debugged.
+*   **/app/frontend/src/pages/DataGathering/ExpenseSection.jsx**: Modified extensively to become a unified entry point for expenses, loans, and insurance.
+*   **/app/frontend/src/pages/DataGathering/AssetsSection.jsx**: Refactored into a view-only summary table.
+*   **/app/frontend/src/pages/DataGathering/LiabilitySection.jsx**: Refactored into a view-only summary table.
+*   **/app/frontend/src/pages/DataGathering/InsuranceCoverSection.jsx**: Refactored into a view-only summary table.
+*   **/app/frontend/src/pages/DataGathering/GoalSection.jsx**: Modified to support multi-year goals and a Family member option.
 
-**Areas that need refactoring**:
-- **Component Duplication:** The six  components share a vast amount of boilerplate code for fetching data, managing expanded/collapsed state, handling save logic, and rendering the pill/card UI. This logic should be extracted into a generic, reusable custom hook (e.g., ) to reduce duplication and simplify maintenance.
-- **CSS Cleanup:** The  file should be checked for any leftover CSS related to the reverted card-flip animation and removed.
+**Areas that need refactoring**
+-   **/app/frontend/src/pages/DataGathering/ExpenseSection.jsx**: This component is now extremely large and complex, managing the state, UI, and logic for three different types of data (regular expenses, loan EMIs, insurance premiums). It should be broken down into smaller, more specialized child components to improve maintainability.
+-   **/app/services/analysis.service.js**: The agent noted this file is very large. It could likely benefit from being modularized to separate different stages of the parsing process (e.g., text extraction, data categorization, aggregation, Excel generation).
 
 **key api endpoints**
-- : Fetches all data for a section (e.g., ).
-- : Saves a new data entry for a specific category (e.g., ).
+API endpoints were not explicitly shown, but are implied by the save functions in the components:
+-   
+-    (or handled via expense endpoint)
+-    (or handled via expense endpoint)
+-   
+-    (inferred)
 
 **Critical Info for New Agent**
-- **Prioritize User Requirements:** The user has provided an extremely detailed list of calculation and behavior requirements in chat message 348. This is your primary guide for the next set of tasks. Do not deviate without confirmation.
-- **Confirm UI Changes:** The user has strong opinions on the UI and has requested multiple reverts. Before applying a design change (like the sleeker look) across all sections, implement it on one section () and get user approval via a screenshot.
-- **Complete In-Progress Work:** The collapsible sidebar is only half-done. Remember to modify the main application layout to make it functional.
-- **Verify Bug Fixes:** The fix for the card not collapsing bug needs to be tested thoroughly to ensure it works as expected and hasn't introduced new regressions.
+-   The primary task is to fix the PDF parsing bug in .
+-   Be aware of the major architectural changes in the Data Gathering section: , , and  are now read-only summary tabs. All corresponding data entry has been centralized into the  tab.
+-   The  component is very complex. Changes there should be made carefully.
+-   The user's PDF files ( and ) are the source for testing the parsing bug.
 
 **documents and test reports created in this job**
-- User-provided artifacts:
-  - 
-  - 
-  - 
-  - 
-  - 
+None.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1. : Requested an update to the expense tab with a new document. **(PENDING)**
-2. : Requested a more compact UI design. **(PENDING)**
-3. : Provided detailed requirements for dozens of calculated fields and conditional logic. **(PENDING)**
-4. : Reported a bug where the card re-opens after save. **(FIX ATTEMPTED, PENDING VERIFICATION)**
-5. : Clarified the desired behavior on save. **(DONE)**
-6. : Provided specific calculation logic for Salary Income. **(DONE)**
-7. : Requested a collapsible sidebar. **(IN PROGRESS)**
-8. : Provided a screenshot for a new pill-based UI. **(DONE)**
-9. : Requested to revert a UI design. **(DONE)**
-10. : Requested to revert another UI design. **(DONE)**
+1.  **User (Message 236):** Confirmed the PDF parsing issue happens in the Analysis tab where the output is an Excel file.
+2.  **Agent (Message 237):** Acknowledged the problem and planned to investigate the Analysis section code.
+3.  **User (Message 234):** Provided an image showing the Multi-Asset Fund entry is missing and has been merged with a liquid fund.
+4.  **Agent (Message 235):** Asked for clarification on where the issue occurs and what the expected behavior is.
+5.  **Agent (Message 233):** Summarized the final updates to the Goals section after screenshot tools failed. (COMPLETED)
+6.  **User (Message 210):** Requested adding a Family option to the Member dropdown and quick-select options for years (e.g., every alternate year) in the Goals tab. (COMPLETED)
+7.  **Agent (Message 209):** Confirmed the multi-year selection for goals is implemented and working. (COMPLETED)
+8.  **User (Message 198):** Requested that the Goal Year field in the Goals tab should allow multi-select. (COMPLETED)
+9.  **Agent (Message 197):** Confirmed the Insurance Cover tab was updated to a summary table. (COMPLETED)
+10. **User (Message 190):** Requested the Insurance coverage tab show a summary table like Assets/Liabilities with suggested and actual cover. (COMPLETED)
 
 **Project Health Check:**
-- **Broken:** The collapsible sidebar is incomplete and not functional.
-- **Mocked:** None.
+-   **Broken:** The PDF parsing feature in the  tab is not correctly categorizing all mutual funds.
+-   **Mocked:** The Suggested Cover values on the  tab are hardcoded constants within the  component.
 
 **3rd Party Integrations**
-- None identified beyond standard frontend libraries.
+-   No new integrations were explicitly added, but the UI for multi-select in the Goals section suggests the use of a library like  or a similar custom component.
 
 **Testing status**
-- **Testing agent used after significant changes:** NO
-- **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None.
-- **Known regressions:** A bug was introduced where cards wouldn't stay collapsed on save. A fix was implemented but has not been verified.
+-   **Testing agent used after significant changes:** NO
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** []
+-   **Known regressions:** The PDF parsing feature in the  tab is confirmed to be regressed or buggy.
 
 **Credentials to test flow:**
-- None were provided. The agent observed a login page requiring a PAN NO and password but did not attempt to log in.
+Credentials can be found by running  in the terminal.
 
 **What agent forgot to execute**
-- The agent did not complete the implementation of the collapsible sidebar. Only the button and state were added to the  component itself; the main layout was not updated to react to the state change.
-- The agent consistently noted but failed to fix pre-existing linting errors.
-- The agent often starts applying a change across all section components but gets interrupted, leaving the components in an inconsistent state (e.g., the sleeker design was only started on ).</analysis>
+The agent was in the process of debugging the PDF parsing issue when the session ended. The task is in progress and has not been forgotten.</analysis>

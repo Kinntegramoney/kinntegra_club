@@ -7,7 +7,7 @@ import requests
 import os
 import json
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://asset-table-view.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pdf-parse-fix.preview.emergentagent.com')
 
 # Test credentials
 BROKER_CREDENTIALS = {
