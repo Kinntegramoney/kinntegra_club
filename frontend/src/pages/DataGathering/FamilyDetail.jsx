@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ArrowLeft, Users, DollarSign, Target, Receipt, Shield, 
-  CreditCard, TrendingUp, Plus, Edit, Trash2, User, RefreshCw
+  CreditCard, TrendingUp, Plus, Edit, Trash2, User, RefreshCw, Wallet, PieChart
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -16,8 +16,10 @@ import GoalSection from "./sections/GoalSection";
 import ExpenseSection from "./sections/ExpenseSection";
 import InsuranceSection from "./sections/InsuranceSection";
 import LiabilitySection from "./sections/LiabilitySection";
+import AssetsSection from "./sections/AssetsSection";
 import SurplusSection from "./sections/SurplusSection";
 import MembersSection from "./sections/MembersSection";
+import NetworthSection from "./sections/NetworthSection";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
