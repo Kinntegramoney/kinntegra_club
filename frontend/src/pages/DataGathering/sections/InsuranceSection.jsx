@@ -28,9 +28,13 @@ export default function InsuranceSection({ family }) {
     memberIncomes.forEach(income => {
       const details = income.details || {};
       
-      // Salary income
+      // Salary income (net_income_yearly)
       if (income.category === 'salary') {
-        totalAnnual += parseFloat(details.annual_income) || 0;
+        totalAnnual += parseFloat(details.net_income_yearly) || (parseFloat(details.net_income_monthly) * 12) || 0;
+      }
+      // Business income (net_income_yearly)
+      else if (income.category === 'business') {
+        totalAnnual += parseFloat(details.net_income_yearly) || 0;
       }
       // Rental income
       else if (income.category === 'rental' && details.is_on_rent === 'Yes') {
@@ -38,10 +42,6 @@ export default function InsuranceSection({ family }) {
       }
       // Pension income
       else if (income.category === 'pension') {
-        totalAnnual += parseFloat(details.amount_yearly) || 0;
-      }
-      // Other income with yearly amount
-      else if (details.amount_yearly) {
         totalAnnual += parseFloat(details.amount_yearly) || 0;
       }
     });
