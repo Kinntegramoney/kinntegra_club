@@ -11,9 +11,8 @@ export default function SurplusSection({ family, isReadOnly }) {
 
   const currentYear = new Date().getFullYear();
   
-  // Generate default years to show
-  const defaultYears = [currentYear, currentYear + 1, currentYear + 2, currentYear + 3, currentYear + 4, currentYear + 5];
-  const [displayYears, setDisplayYears] = useState(defaultYears.map(String));
+  // Selected year for detailed view
+  const [selectedYear, setSelectedYear] = useState(currentYear.toString());
 
   // Get primary member for retirement calculation
   const primaryMember = members.find(m => m.is_primary) || members[0];
@@ -29,146 +28,104 @@ export default function SurplusSection({ family, isReadOnly }) {
     return age;
   };
 
-  // Get retirement info from income data
-  const getRetirementInfo = () => {
-    let earliestRetirementAge = 60;
-    let earliestRetirementYear = null;
-    
-    incomeDetails.forEach(income => {
-      if (income.category === 'salary' || income.category === 'business') {
-        const retAge = parseInt(income.details?.retirement_age);
-        const retYear = parseInt(income.details?.year_of_retirement);
-        if (retAge && retAge < earliestRetirementAge) {
-          earliestRetirementAge = retAge;
-        }
-        if (retYear && (!earliestRetirementYear || retYear < earliestRetirementYear)) {
-          earliestRetirementYear = retYear;
-        }
-      }
-    });
-    
-    const primaryAge = calculateAge(primaryMember?.date_of_birth);
-    if (!earliestRetirementYear) {
-      earliestRetirementYear = currentYear + (earliestRetirementAge - primaryAge);
-    }
-    
-    return { retirementAge: earliestRetirementAge, retirementYear: earliestRetirementYear };
-  };
-
-  const { retirementAge, retirementYear } = getRetirementInfo();
   const primaryAge = calculateAge(primaryMember?.date_of_birth);
   const lifeExpectancy = parseInt(primaryMember?.life_expectancy) || 85;
   const endYear = currentYear + (lifeExpectancy - primaryAge);
 
-  // Get income growth rates from actual data
-  const getIncomeGrowthRates = () => {
-    const rates = { salary: 0, business: 0, rental: 3, pension: 0 };
+  // Get member-specific income growth rates and retirement info
+  const getMemberIncomeInfo = (memberId) => {
+    const memberIncomes = incomeDetails.filter(inc => inc.member_ids?.includes(memberId));
     
-    incomeDetails.forEach(income => {
-      const growthRate = parseFloat(income.details?.avg_growth_rate) || 0;
-      if (income.category === 'salary' && growthRate > rates.salary) {
-        rates.salary = growthRate;
-      }
-      if (income.category === 'business' && growthRate > rates.business) {
-        rates.business = growthRate;
-      }
-    });
+    let salaryGrowth = 0, businessGrowth = 0, retirementAge = 60, retirementYear = null;
+    let baseSalary = 0, baseBusiness = 0, baseRental = 0, basePension = 0;
     
-    return rates;
-  };
-
-  const incomeGrowthRates = getIncomeGrowthRates();
-
-  // Calculate base year income
-  const getBaseIncome = () => {
-    let total = 0;
-    incomeDetails.forEach(inc => {
-      const details = inc.details || {};
-      switch (inc.category) {
+    memberIncomes.forEach(income => {
+      const details = income.details || {};
+      
+      switch (income.category) {
         case 'salary':
           const salaryYearly = parseFloat(details.net_income_yearly) || 0;
           const salaryMonthly = parseFloat(details.net_income_monthly) || 0;
-          total += salaryYearly > 0 ? salaryYearly : salaryMonthly * 12;
+          baseSalary += salaryYearly > 0 ? salaryYearly : salaryMonthly * 12;
+          salaryGrowth = Math.max(salaryGrowth, parseFloat(details.avg_growth_rate) || 0);
+          if (details.retirement_age) retirementAge = Math.min(retirementAge, parseInt(details.retirement_age));
+          if (details.year_of_retirement) {
+            const yr = parseInt(details.year_of_retirement);
+            retirementYear = retirementYear ? Math.min(retirementYear, yr) : yr;
+          }
           break;
         case 'business':
-          total += parseFloat(details.net_income_yearly) || 0;
+          baseBusiness += parseFloat(details.net_income_yearly) || 0;
+          businessGrowth = Math.max(businessGrowth, parseFloat(details.avg_growth_rate) || 0);
+          if (details.retirement_age) retirementAge = Math.min(retirementAge, parseInt(details.retirement_age));
+          if (details.year_of_retirement) {
+            const yr = parseInt(details.year_of_retirement);
+            retirementYear = retirementYear ? Math.min(retirementYear, yr) : yr;
+          }
           break;
         case 'rental':
           if (details.is_on_rent === 'Yes') {
             const annualRent = parseFloat(details.annual_rent) || 0;
             const rentPerMonth = parseFloat(details.rent_per_month) || 0;
-            total += annualRent > 0 ? annualRent : rentPerMonth * 12;
+            baseRental += annualRent > 0 ? annualRent : rentPerMonth * 12;
           }
           break;
         case 'pension':
           const pensionYearly = parseFloat(details.amount_yearly) || 0;
           if (pensionYearly > 0) {
-            total += pensionYearly;
+            basePension += pensionYearly;
           } else {
             const pensionAmount = parseFloat(details.amount) || 0;
             const frequency = details.payable_type;
             const multiplier = frequency === 'Monthly' ? 12 : frequency === 'Quarterly' ? 4 : frequency === 'Half-Yearly' ? 2 : 1;
-            total += pensionAmount * multiplier;
+            basePension += pensionAmount * multiplier;
           }
           break;
         default:
           break;
       }
     });
-    return total;
+    
+    const memberAge = calculateAge(members.find(m => m.id === memberId)?.date_of_birth);
+    if (!retirementYear) {
+      retirementYear = currentYear + (retirementAge - memberAge);
+    }
+    
+    return {
+      salaryGrowth,
+      businessGrowth,
+      rentalGrowth: 3,
+      retirementAge,
+      retirementYear,
+      baseSalary,
+      baseBusiness,
+      baseRental,
+      basePension,
+      baseTotal: baseSalary + baseBusiness + baseRental + basePension
+    };
   };
 
-  // Get base income by category for post-retirement calculation
-  const getBaseIncomeByCategory = () => {
-    const income = { salary: 0, business: 0, rental: 0, pension: 0 };
-    incomeDetails.forEach(inc => {
-      const details = inc.details || {};
-      switch (inc.category) {
-        case 'salary':
-          const salaryYearly = parseFloat(details.net_income_yearly) || 0;
-          const salaryMonthly = parseFloat(details.net_income_monthly) || 0;
-          income.salary += salaryYearly > 0 ? salaryYearly : salaryMonthly * 12;
-          break;
-        case 'business':
-          income.business += parseFloat(details.net_income_yearly) || 0;
-          break;
-        case 'rental':
-          if (details.is_on_rent === 'Yes') {
-            const annualRent = parseFloat(details.annual_rent) || 0;
-            const rentPerMonth = parseFloat(details.rent_per_month) || 0;
-            income.rental += annualRent > 0 ? annualRent : rentPerMonth * 12;
-          }
-          break;
-        case 'pension':
-          const pensionYearly = parseFloat(details.amount_yearly) || 0;
-          if (pensionYearly > 0) {
-            income.pension += pensionYearly;
-          } else {
-            const pensionAmount = parseFloat(details.amount) || 0;
-            const frequency = details.payable_type;
-            const multiplier = frequency === 'Monthly' ? 12 : frequency === 'Quarterly' ? 4 : frequency === 'Half-Yearly' ? 2 : 1;
-            income.pension += pensionAmount * multiplier;
-          }
-          break;
-        default:
-          break;
-      }
-    });
-    return income;
+  // Get member expenses with inflation
+  const getMemberExpenses = (memberId) => {
+    return expenseDetails
+      .filter(exp => exp.member_ids?.includes(memberId))
+      .map(expense => ({
+        annualAmount: parseFloat(expense.annual_amount) || (parseFloat(expense.monthly_amount) || 0) * 12,
+        inflationRate: parseFloat(expense.inflation_percent) ?? 5,
+        uptoYear: parseInt(expense.upto_year) || endYear,
+        considerPostRetirement: expense.consider_post_retirement || false,
+        postRetirementPercent: parseFloat(expense.post_retirement_percent) ?? 100
+      }));
   };
 
-  // Calculate base year expenses with individual inflation rates
-  const getBaseExpensesWithInflation = () => {
-    return expenseDetails.map(expense => ({
-      annualAmount: parseFloat(expense.annual_amount) || (parseFloat(expense.monthly_amount) || 0) * 12,
-      inflationRate: parseFloat(expense.inflation_percent) ?? 5,
-      uptoYear: parseInt(expense.upto_year) || endYear,
-      considerPostRetirement: expense.consider_post_retirement || false,
-      postRetirementPercent: parseFloat(expense.post_retirement_percent) ?? 100
-    }));
+  // Get member investments
+  const getMemberInvestments = (memberId) => {
+    return investmentDetails
+      .filter(inv => inv.member_id === memberId)
+      .reduce((sum, inv) => sum + (parseFloat(inv.annual_amount) || 0), 0);
   };
 
-  // Get goals mapped by year with inflated amounts
+  // Get goals by year (family-level or member-specific)
   const getGoalsByYear = () => {
     const goalsByYear = {};
     
@@ -176,74 +133,76 @@ export default function SurplusSection({ family, isReadOnly }) {
       const amountToday = parseFloat(goal.goal_amount) || 0;
       const inflationRate = parseFloat(goal.inflation_percent) || 6;
       const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
+      const isFamilyGoal = goal.is_family_goal;
+      const memberIds = isFamilyGoal ? members.map(m => m.id) : (goal.member_ids || []);
       
       goalYears.forEach(yearStr => {
         const year = parseInt(yearStr);
         if (!year || isNaN(year)) return;
         
-        // Calculate inflated amount for the goal year
         const yearsFromNow = year - currentYear;
         const inflatedAmount = yearsFromNow > 0 
           ? amountToday * Math.pow(1 + inflationRate / 100, yearsFromNow)
           : amountToday;
         
         if (!goalsByYear[year]) {
-          goalsByYear[year] = { total: 0, goals: [] };
+          goalsByYear[year] = { total: 0, byMember: {} };
+          members.forEach(m => { goalsByYear[year].byMember[m.id] = 0; });
         }
-        goalsByYear[year].total += inflatedAmount;
-        goalsByYear[year].goals.push({
-          category: goal.category,
-          amountToday,
-          inflatedAmount,
-          inflationRate
+        
+        // Distribute goal amount among members
+        const perMemberAmount = inflatedAmount / memberIds.length;
+        memberIds.forEach(mid => {
+          if (goalsByYear[year].byMember[mid] !== undefined) {
+            goalsByYear[year].byMember[mid] += perMemberAmount;
+          }
         });
+        goalsByYear[year].total += inflatedAmount;
       });
     });
     
     return goalsByYear;
   };
 
-  const baseIncome = getBaseIncome();
-  const baseIncomeByCategory = getBaseIncomeByCategory();
-  const baseExpensesWithInflation = getBaseExpensesWithInflation();
-  const baseExpensesTotal = baseExpensesWithInflation.reduce((sum, exp) => sum + exp.annualAmount, 0);
-  const baseInvestments = investmentDetails.reduce((sum, inv) => sum + (parseFloat(inv.annual_amount) || 0), 0);
   const goalsByYear = getGoalsByYear();
 
-  // Calculate projected income for a given year
-  const getProjectedIncome = (year) => {
+  // Calculate projected income for member for a given year
+  const getProjectedMemberIncome = (memberId, year) => {
+    const info = getMemberIncomeInfo(memberId);
     const targetYear = parseInt(year);
     const yearsFromNow = targetYear - currentYear;
-    const isPostRetirement = targetYear >= retirementYear;
+    const isPostRetirement = targetYear >= info.retirementYear;
     
-    if (yearsFromNow <= 0) return baseIncome;
+    if (yearsFromNow <= 0) return info.baseTotal;
     
     if (isPostRetirement) {
-      const yearsFromRetirement = targetYear - retirementYear;
-      const preRetirementYears = retirementYear - currentYear;
-      const rental = baseIncomeByCategory.rental * Math.pow(1 + incomeGrowthRates.rental / 100, preRetirementYears + yearsFromRetirement);
-      const pension = baseIncomeByCategory.pension;
-      return rental + pension;
+      const preRetYears = info.retirementYear - currentYear;
+      const postRetYears = targetYear - info.retirementYear;
+      const rental = info.baseRental * Math.pow(1 + info.rentalGrowth / 100, preRetYears + postRetYears);
+      return rental + info.basePension;
     }
     
-    const salary = baseIncomeByCategory.salary * Math.pow(1 + incomeGrowthRates.salary / 100, yearsFromNow);
-    const business = baseIncomeByCategory.business * Math.pow(1 + incomeGrowthRates.business / 100, yearsFromNow);
-    const rental = baseIncomeByCategory.rental * Math.pow(1 + incomeGrowthRates.rental / 100, yearsFromNow);
-    const pension = baseIncomeByCategory.pension;
+    const salary = info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
+    const business = info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
+    const rental = info.baseRental * Math.pow(1 + info.rentalGrowth / 100, yearsFromNow);
     
-    return salary + business + rental + pension;
+    return salary + business + rental + info.basePension;
   };
 
-  // Calculate projected expenses for a given year (regular expenses only)
-  const getProjectedExpenses = (year) => {
+  // Calculate projected expenses for member for a given year
+  const getProjectedMemberExpenses = (memberId, year) => {
+    const memberExpenses = getMemberExpenses(memberId);
+    const info = getMemberIncomeInfo(memberId);
     const targetYear = parseInt(year);
     const yearsFromNow = targetYear - currentYear;
-    const isPostRetirement = targetYear >= retirementYear;
+    const isPostRetirement = targetYear >= info.retirementYear;
     
-    if (yearsFromNow <= 0) return baseExpensesTotal;
+    if (yearsFromNow <= 0) {
+      return memberExpenses.reduce((sum, exp) => sum + exp.annualAmount, 0);
+    }
     
     let total = 0;
-    baseExpensesWithInflation.forEach(expense => {
+    memberExpenses.forEach(expense => {
       if (targetYear > expense.uptoYear) return;
       
       let projectedAmount = expense.annualAmount * Math.pow(1 + expense.inflationRate / 100, yearsFromNow);
@@ -258,28 +217,26 @@ export default function SurplusSection({ family, isReadOnly }) {
     return total;
   };
 
-  // Get goal expenses for a specific year (already inflated)
-  const getGoalExpensesForYear = (year) => {
-    const yearInt = parseInt(year);
-    return goalsByYear[yearInt]?.total || 0;
-  };
-
-  // Calculate projected investments
-  const getProjectedInvestments = (year) => {
+  // Calculate projected investments for member
+  const getProjectedMemberInvestments = (memberId, year) => {
+    const baseInv = getMemberInvestments(memberId);
+    const info = getMemberIncomeInfo(memberId);
     const targetYear = parseInt(year);
     const yearsFromNow = targetYear - currentYear;
-    const isPostRetirement = targetYear >= retirementYear;
+    const isPostRetirement = targetYear >= info.retirementYear;
     
-    if (yearsFromNow <= 0) return baseInvestments;
-    
-    if (isPostRetirement) {
-      return baseInvestments * 0.5;
-    }
-    
-    return baseInvestments * Math.pow(1.05, yearsFromNow);
+    if (yearsFromNow <= 0) return baseInv;
+    if (isPostRetirement) return baseInv * 0.5;
+    return baseInv * Math.pow(1.05, yearsFromNow);
   };
 
-  // Generate year options for dropdown
+  // Get goal expenses for member for a year
+  const getMemberGoalExpenses = (memberId, year) => {
+    const yearInt = parseInt(year);
+    return goalsByYear[yearInt]?.byMember[memberId] || 0;
+  };
+
+  // Generate year options
   const yearOptions = useMemo(() => {
     const years = [];
     for (let y = currentYear; y <= Math.min(endYear, currentYear + 40); y++) {
@@ -287,14 +244,6 @@ export default function SurplusSection({ family, isReadOnly }) {
     }
     return years;
   }, [currentYear, endYear]);
-
-  // Handle year selection change
-  const handleYearChange = (index, newYear) => {
-    const newYears = [...displayYears];
-    newYears[index] = newYear;
-    newYears.sort((a, b) => parseInt(a) - parseInt(b));
-    setDisplayYears(newYears);
-  };
 
   // Format currency
   const formatAmount = (amount) => {
@@ -316,75 +265,127 @@ export default function SurplusSection({ family, isReadOnly }) {
     );
   }
 
-  // Calculate values for each display year
-  const yearData = displayYears.map(year => {
-    const yearInt = parseInt(year);
-    const income = getProjectedIncome(year);
-    const expenses = getProjectedExpenses(year);
-    const goalExpenses = getGoalExpensesForYear(year);
-    const totalExpenses = expenses + goalExpenses;
-    const investments = getProjectedInvestments(year);
-    const savings = income - totalExpenses;
+  // Calculate data for selected year
+  const selectedYearInt = parseInt(selectedYear);
+  const hasGoalsThisYear = goalsByYear[selectedYearInt]?.total > 0;
+
+  const memberData = members.map(member => {
+    const info = getMemberIncomeInfo(member.id);
+    const income = getProjectedMemberIncome(member.id, selectedYear);
+    const expenses = getProjectedMemberExpenses(member.id, selectedYear);
+    const goalExpenses = getMemberGoalExpenses(member.id, selectedYear);
+    const totalOutflow = expenses + goalExpenses;
+    const investments = getProjectedMemberInvestments(member.id, selectedYear);
+    const savings = income - totalOutflow;
     const surplus = savings - investments;
-    const isRetired = yearInt >= retirementYear;
-    const hasGoals = goalExpenses > 0;
+    const isRetired = selectedYearInt >= info.retirementYear;
     
-    return { year, yearInt, income, expenses, goalExpenses, totalExpenses, investments, savings, surplus, isRetired, hasGoals };
+    return {
+      id: member.id,
+      name: member.name,
+      isPrimary: member.is_primary,
+      salaryGrowth: info.salaryGrowth,
+      businessGrowth: info.businessGrowth,
+      retirementYear: info.retirementYear,
+      isRetired,
+      income,
+      expenses,
+      goalExpenses,
+      totalOutflow,
+      investments,
+      savings,
+      surplus
+    };
   });
 
-  // Check if any year has goals
-  const anyYearHasGoals = yearData.some(d => d.hasGoals);
+  // Calculate family totals
+  const familyTotals = {
+    income: memberData.reduce((sum, m) => sum + m.income, 0),
+    expenses: memberData.reduce((sum, m) => sum + m.expenses, 0),
+    goalExpenses: memberData.reduce((sum, m) => sum + m.goalExpenses, 0),
+    totalOutflow: memberData.reduce((sum, m) => sum + m.totalOutflow, 0),
+    investments: memberData.reduce((sum, m) => sum + m.investments, 0),
+    savings: memberData.reduce((sum, m) => sum + m.savings, 0),
+    surplus: memberData.reduce((sum, m) => sum + m.surplus, 0)
+  };
+
+  // Get earliest retirement year for any member
+  const earliestRetirement = Math.min(...memberData.map(m => m.retirementYear));
 
   return (
     <div className="space-y-4">
-      {/* Info Text */}
-      <div className="text-xs text-gray-500 px-1">
-        Year-wise cash flow projection using growth rates from Income and inflation from Expenses. 
-        Goals are included as expenses in their target year (inflated from today's cost).
+      {/* Year Selector */}
+      <div className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-3">
+        <div className="flex items-center gap-4">
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">Select Year</label>
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map(y => {
+                  const yInt = parseInt(y);
+                  const hasGoal = goalsByYear[yInt]?.total > 0;
+                  const isRetYear = yInt === earliestRetirement;
+                  return (
+                    <SelectItem key={y} value={y}>
+                      {y} {isRetYear && '(R)'} {hasGoal && '🎯'}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+          {hasGoalsThisYear && (
+            <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">
+              Goal Year: {formatAmount(goalsByYear[selectedYearInt]?.total)}
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-slate-500 text-right">
+          {selectedYearInt - currentYear} years from now
+        </div>
       </div>
 
-      {/* Main Projection Table */}
+      {/* Member Growth Rates Info */}
+      <div className="text-xs text-gray-500 px-1 flex flex-wrap gap-x-4 gap-y-1">
+        {memberData.map(m => (
+          <span key={m.id} className="whitespace-nowrap">
+            <span className="font-medium">{m.name}:</span>
+            <span className="text-blue-600 ml-1">Sal {m.salaryGrowth}%</span>
+            {m.businessGrowth > 0 && <span className="text-purple-600 ml-1">Biz {m.businessGrowth}%</span>}
+            <span className="text-amber-600 ml-1">Ret {m.retirementYear}</span>
+          </span>
+        ))}
+      </div>
+
+      {/* Main Table - Member-wise */}
       <div className="border border-gray-200 rounded-lg overflow-x-auto">
-        <table className="w-full min-w-[800px]">
+        <table className="w-full min-w-[600px]">
           <thead>
-            {/* Year Selection Row */}
             <tr className="bg-blue-50 border-b border-gray-200">
-              <th className="text-left text-xs font-semibold text-gray-700 px-4 py-2 border-r border-gray-200 min-w-[160px]">
+              <th className="text-left text-xs font-semibold text-gray-700 px-4 py-2 border-r border-gray-200 min-w-[140px]">
                 Particulars
               </th>
-              {displayYears.map((year, idx) => {
-                const yearInt = parseInt(year);
-                const isRetired = yearInt >= retirementYear;
-                const hasGoals = goalsByYear[yearInt]?.total > 0;
-                return (
-                  <th key={idx} className={`text-center px-2 py-2 min-w-[100px] ${idx < displayYears.length - 1 ? 'border-r border-gray-200' : ''}`}>
-                    <Select value={year} onValueChange={(v) => handleYearChange(idx, v)}>
-                      <SelectTrigger className="h-7 text-xs w-full border-0 bg-transparent shadow-none justify-center font-semibold text-blue-700">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {yearOptions.map(y => {
-                          const yInt = parseInt(y);
-                          const yHasGoal = goalsByYear[yInt]?.total > 0;
-                          return (
-                            <SelectItem key={y} value={y}>
-                              {y} {yInt === retirementYear && '(R)'} {yHasGoal && '🎯'}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex items-center justify-center gap-1 mt-0.5">
-                      {isRetired && (
-                        <span className="text-[9px] text-amber-600 font-normal">Post-Ret</span>
-                      )}
-                      {hasGoals && (
-                        <span className="text-[9px] text-purple-600 font-normal">Goal</span>
-                      )}
-                    </div>
-                  </th>
-                );
-              })}
+              {members.map((member, idx) => (
+                <th 
+                  key={member.id} 
+                  className={`text-center text-xs font-semibold text-blue-700 px-3 py-2 min-w-[100px] ${idx < members.length - 1 ? 'border-r border-gray-200' : ''}`}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <User className="h-3 w-3" />
+                    {member.name}
+                    {member.is_primary && <span className="text-blue-500">*</span>}
+                  </div>
+                  {memberData.find(m => m.id === member.id)?.isRetired && (
+                    <span className="text-[9px] text-amber-600 font-normal">Post-Ret</span>
+                  )}
+                </th>
+              ))}
+              <th className="text-center text-xs font-semibold text-blue-800 px-3 py-2 bg-blue-100 border-l border-gray-200 min-w-[100px]">
+                Family Total
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -395,67 +396,73 @@ export default function SurplusSection({ family, isReadOnly }) {
                   <TrendingUp className="h-4 w-4 text-green-600" />
                   <span className="text-sm font-medium text-gray-800">Income</span>
                 </div>
-                <div className="text-[10px] text-green-600 mt-0.5">
-                  Sal({incomeGrowthRates.salary}%) + Biz({incomeGrowthRates.business}%) + Rent + Pension
-                </div>
               </td>
-              {yearData.map((data, idx) => (
-                <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className="text-sm font-medium text-green-700">{formatAmount(data.income)}</span>
+              {memberData.map((m, idx) => (
+                <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                  <span className="text-sm font-medium text-green-700">{formatAmount(m.income)}</span>
                 </td>
               ))}
+              <td className="px-3 py-2.5 text-right bg-green-100/50 border-l border-gray-200">
+                <span className="text-sm font-bold text-green-800">{formatAmount(familyTotals.income)}</span>
+              </td>
             </tr>
 
-            {/* Regular Expenses Row */}
+            {/* Expenses Row */}
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-2.5 border-r border-gray-100">
                 <div className="flex items-center gap-2">
                   <TrendingDown className="h-4 w-4 text-orange-600" />
                   <span className="text-sm font-medium text-gray-800">Expenses</span>
                 </div>
-                <div className="text-[10px] text-orange-600 mt-0.5">Regular expenses with inflation</div>
               </td>
-              {yearData.map((data, idx) => (
-                <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className="text-sm font-medium text-orange-700">{formatAmount(data.expenses)}</span>
+              {memberData.map((m, idx) => (
+                <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                  <span className="text-sm text-orange-700">{formatAmount(m.expenses)}</span>
                 </td>
               ))}
+              <td className="px-3 py-2.5 text-right bg-gray-50 border-l border-gray-200">
+                <span className="text-sm font-semibold text-orange-800">{formatAmount(familyTotals.expenses)}</span>
+              </td>
             </tr>
 
-            {/* Goals Row - Only show if there are goals */}
-            {anyYearHasGoals && (
+            {/* Goals Row - Only show if there are goals this year */}
+            {hasGoalsThisYear && (
               <tr className="bg-purple-50/30 hover:bg-purple-50/50">
                 <td className="px-4 py-2.5 border-r border-gray-100">
                   <div className="flex items-center gap-2">
                     <Target className="h-4 w-4 text-purple-600" />
                     <span className="text-sm font-medium text-gray-800">Goals</span>
                   </div>
-                  <div className="text-[10px] text-purple-600 mt-0.5">Inflated to target year cost</div>
                 </td>
-                {yearData.map((data, idx) => (
-                  <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                    <span className={`text-sm font-medium ${data.goalExpenses > 0 ? 'text-purple-700' : 'text-gray-300'}`}>
-                      {data.goalExpenses > 0 ? formatAmount(data.goalExpenses) : '-'}
+                {memberData.map((m, idx) => (
+                  <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                    <span className={`text-sm ${m.goalExpenses > 0 ? 'text-purple-700' : 'text-gray-300'}`}>
+                      {m.goalExpenses > 0 ? formatAmount(m.goalExpenses) : '-'}
                     </span>
                   </td>
                 ))}
+                <td className="px-3 py-2.5 text-right bg-purple-50 border-l border-gray-200">
+                  <span className="text-sm font-semibold text-purple-800">{formatAmount(familyTotals.goalExpenses)}</span>
+                </td>
               </tr>
             )}
 
-            {/* Total Expenses Row */}
+            {/* Total Outflow Row */}
             <tr className="bg-orange-50/50 hover:bg-orange-50">
               <td className="px-4 py-2.5 border-r border-gray-100">
                 <div className="flex items-center gap-2">
                   <TrendingDown className="h-4 w-4 text-orange-700" />
                   <span className="text-sm font-semibold text-gray-800">Total Outflow</span>
                 </div>
-                <div className="text-[10px] text-orange-600 mt-0.5">Expenses + Goals</div>
               </td>
-              {yearData.map((data, idx) => (
-                <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className="text-sm font-semibold text-orange-800">{formatAmount(data.totalExpenses)}</span>
+              {memberData.map((m, idx) => (
+                <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                  <span className="text-sm font-semibold text-orange-800">{formatAmount(m.totalOutflow)}</span>
                 </td>
               ))}
+              <td className="px-3 py-2.5 text-right bg-orange-100/50 border-l border-gray-200">
+                <span className="text-sm font-bold text-orange-900">{formatAmount(familyTotals.totalOutflow)}</span>
+              </td>
             </tr>
 
             {/* Savings Row */}
@@ -465,15 +472,19 @@ export default function SurplusSection({ family, isReadOnly }) {
                   <PiggyBank className="h-4 w-4 text-blue-600" />
                   <span className="text-sm font-semibold text-gray-800">Savings</span>
                 </div>
-                <div className="text-[10px] text-blue-600 mt-0.5">Income - Total Outflow</div>
               </td>
-              {yearData.map((data, idx) => (
-                <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className={`text-sm font-semibold ${data.savings >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
-                    {formatAmount(data.savings)}
+              {memberData.map((m, idx) => (
+                <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                  <span className={`text-sm font-semibold ${m.savings >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                    {formatAmount(m.savings)}
                   </span>
                 </td>
               ))}
+              <td className={`px-3 py-2.5 text-right border-l border-gray-200 ${familyTotals.savings >= 0 ? 'bg-blue-100/50' : 'bg-red-100/50'}`}>
+                <span className={`text-sm font-bold ${familyTotals.savings >= 0 ? 'text-blue-800' : 'text-red-700'}`}>
+                  {formatAmount(familyTotals.savings)}
+                </span>
+              </td>
             </tr>
 
             {/* Investments Row */}
@@ -483,13 +494,15 @@ export default function SurplusSection({ family, isReadOnly }) {
                   <Landmark className="h-4 w-4 text-indigo-600" />
                   <span className="text-sm font-medium text-gray-800">Investments</span>
                 </div>
-                <div className="text-[10px] text-indigo-600 mt-0.5">SIP, PPF, NPS, etc.</div>
               </td>
-              {yearData.map((data, idx) => (
-                <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className="text-sm font-medium text-indigo-700">{formatAmount(data.investments)}</span>
+              {memberData.map((m, idx) => (
+                <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                  <span className="text-sm text-indigo-700">{formatAmount(m.investments)}</span>
                 </td>
               ))}
+              <td className="px-3 py-2.5 text-right bg-gray-50 border-l border-gray-200">
+                <span className="text-sm font-semibold text-indigo-800">{formatAmount(familyTotals.investments)}</span>
+              </td>
             </tr>
 
             {/* Surplus Row */}
@@ -497,39 +510,94 @@ export default function SurplusSection({ family, isReadOnly }) {
               <td className="px-4 py-3 border-r border-emerald-200">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-emerald-700" />
-                  <span className="text-sm font-bold text-emerald-800">Surplus / (Deficit)</span>
+                  <span className="text-sm font-bold text-emerald-800">Surplus</span>
                 </div>
-                <div className="text-[10px] text-emerald-600 mt-0.5">Savings - Investments</div>
               </td>
-              {yearData.map((data, idx) => (
-                <td key={idx} className={`px-2 py-3 text-right ${idx < yearData.length - 1 ? 'border-r border-emerald-200' : ''} ${data.surplus >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                  <span className={`text-sm font-bold ${data.surplus >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                    {formatAmount(data.surplus)}
+              {memberData.map((m, idx) => (
+                <td key={m.id} className={`px-3 py-3 text-right ${idx < members.length - 1 ? 'border-r border-emerald-200' : ''} ${m.surplus >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                  <span className={`text-sm font-bold ${m.surplus >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {formatAmount(m.surplus)}
                   </span>
                 </td>
               ))}
+              <td className={`px-3 py-3 text-right border-l border-emerald-200 ${familyTotals.surplus >= 0 ? 'bg-emerald-200/50' : 'bg-red-200/50'}`}>
+                <span className={`text-sm font-bold ${familyTotals.surplus >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>
+                  {formatAmount(familyTotals.surplus)}
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Summary Info */}
-      <div className="flex items-center justify-between text-xs text-gray-500 px-1">
-        <div>
-          <span className="font-medium">Retirement:</span> {retirementYear} (Age {retirementAge})
-          <span className="mx-2">|</span>
-          <span className="font-medium">Life Expectancy:</span> Age {lifeExpectancy}
+      {/* Quick Year Comparison - Family Total Only */}
+      <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div className="bg-slate-100 px-4 py-2 border-b">
+          <h4 className="text-xs font-medium text-slate-700">Family Total - Year Overview</h4>
         </div>
-        <div className="text-[10px] flex items-center gap-3">
-          <span><span className="text-amber-600">(R)</span> Retirement</span>
-          <span>🎯 Goal Year</span>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b">
+                <th className="text-left py-2 px-3 font-medium text-slate-600 min-w-[60px]">Year</th>
+                <th className="text-right py-2 px-3 font-medium text-green-600 min-w-[70px]">Income</th>
+                <th className="text-right py-2 px-3 font-medium text-orange-600 min-w-[70px]">Outflow</th>
+                <th className="text-right py-2 px-3 font-medium text-blue-600 min-w-[70px]">Savings</th>
+                <th className="text-right py-2 px-3 font-medium text-indigo-600 min-w-[70px]">Invest</th>
+                <th className="text-right py-2 px-3 font-medium text-slate-700 min-w-[70px]">Surplus</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[0, 1, 2, 3, 4, 5, 10, 15, 20].filter(offset => currentYear + offset <= endYear).map(offset => {
+                const year = currentYear + offset;
+                const yearStr = year.toString();
+                const isSelected = yearStr === selectedYear;
+                const hasGoal = goalsByYear[year]?.total > 0;
+                
+                // Calculate family totals for this year
+                let totalIncome = 0, totalExpenses = 0, totalGoals = 0, totalInvestments = 0;
+                members.forEach(member => {
+                  totalIncome += getProjectedMemberIncome(member.id, yearStr);
+                  totalExpenses += getProjectedMemberExpenses(member.id, yearStr);
+                  totalGoals += getMemberGoalExpenses(member.id, yearStr);
+                  totalInvestments += getProjectedMemberInvestments(member.id, yearStr);
+                });
+                const totalOutflow = totalExpenses + totalGoals;
+                const savings = totalIncome - totalOutflow;
+                const surplus = savings - totalInvestments;
+                
+                return (
+                  <tr 
+                    key={year} 
+                    className={`border-b cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                    onClick={() => setSelectedYear(yearStr)}
+                  >
+                    <td className={`py-2 px-3 font-medium ${isSelected ? 'text-blue-700' : ''}`}>
+                      {year}
+                      {hasGoal && <span className="ml-1">🎯</span>}
+                    </td>
+                    <td className="text-right py-2 px-3 text-green-600">{formatAmount(totalIncome)}</td>
+                    <td className="text-right py-2 px-3 text-orange-600">{formatAmount(totalOutflow)}</td>
+                    <td className={`text-right py-2 px-3 ${savings >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                      {formatAmount(savings)}
+                    </td>
+                    <td className="text-right py-2 px-3 text-indigo-600">{formatAmount(totalInvestments)}</td>
+                    <td className={`text-right py-2 px-3 font-semibold ${surplus >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {formatAmount(surplus)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {/* Notes */}
-      <div className="text-[10px] text-gray-400 px-1">
-        • Goals are added as expenses in their target year. Amount shown is today's cost inflated to that year.
-        • Post-retirement: Salary & Business income stops. Only Pension & Rental continue.
+      <div className="text-[10px] text-gray-400 px-1 space-y-0.5">
+        <p>• Each member's salary/business growth rate is applied individually from their Income data</p>
+        <p>• Goals are inflated to target year and distributed among assigned members</p>
+        <p>• Click any year in the overview to see member-wise breakdown</p>
       </div>
     </div>
   );
