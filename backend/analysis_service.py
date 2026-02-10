@@ -325,7 +325,8 @@ class CASParser:
                         full_line = pending_scheme_line + ' ' + line
                     
                     # Extract scheme name - everything between scheme code and " - ISIN:"
-                    scheme_match = re.match(r'^([A-Z0-9]+)-(.+?)\s*-\s*ISIN:', full_line)
+                    # Use greedy match to capture the full scheme name up to the last " - ISIN:"
+                    scheme_match = re.match(r'^([A-Z0-9]+)-(.+)\s+-\s+ISIN:$', full_line)
                     if scheme_match:
                         scheme_code = scheme_match.group(1)
                         scheme_name = scheme_match.group(2).strip()
