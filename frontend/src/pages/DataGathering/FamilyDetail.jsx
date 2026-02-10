@@ -57,10 +57,12 @@ export default function FamilyDetail({ family: initialFamily, onBack, onUpdate, 
   const tabs = [
     { id: "members", label: "Members", icon: Users, count: family.members?.length || 0 },
     { id: "income", label: "Income", icon: DollarSign, count: family.income_details?.length || 0 },
-    { id: "goals", label: "Goals", icon: Target, count: family.goal_details?.length || 0 },
     { id: "expenses", label: "Expenses", icon: Receipt, count: family.expense_details?.length || 0 },
-    { id: "insurance", label: "Insurance", icon: Shield, count: family.insurance_premiums?.length || 0 },
+    { id: "goals", label: "Goals", icon: Target, count: family.goal_details?.length || 0 },
     { id: "liability", label: "Liability", icon: CreditCard, count: family.liabilities?.length || 0 },
+    { id: "assets", label: "Assets", icon: Wallet, count: null },
+    { id: "insurance", label: "Insurance", icon: Shield, count: family.insurance_premiums?.length || 0 },
+    { id: "networth", label: "Networth", icon: PieChart, count: null },
     { id: "surplus", label: "Surplus", icon: TrendingUp, count: null }
   ];
 
