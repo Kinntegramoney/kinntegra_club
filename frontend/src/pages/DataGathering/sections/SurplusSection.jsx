@@ -1532,7 +1532,8 @@ function AllocationSimulator({
           Allocation Simulator
         </CardTitle>
         <p className="text-xs text-gray-500">
-          Check if your invested surplus will last until life expectancy based on asset allocation
+          Check if your invested surplus will last until life expectancy based on asset allocation.
+          <span className="block mt-0.5 text-gray-400">Note: Debt instruments with maturity dates (FD, Bonds, RD, Insurance, etc.) are excluded as they will be available only at maturity.</span>
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
