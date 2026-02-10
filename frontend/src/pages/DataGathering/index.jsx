@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { 
   RefreshCw, Users, DollarSign, Target, Receipt, Shield, 
   CreditCard, TrendingUp, Trash2, UserPlus, ClipboardList,
-  Plus, Search, ChevronRight, Eye, Lightbulb, CheckCircle2, Landmark, PieChart
+  Plus, Search, ChevronRight, Eye, Lightbulb, CheckCircle2, Landmark, PieChart, BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
