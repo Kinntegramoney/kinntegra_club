@@ -1018,7 +1018,16 @@ export default function SurplusSection({ family, isReadOnly }) {
                   <div className="flex items-center gap-1">
                     <Target className="h-3 w-3 text-purple-600" />
                     <span className="text-xs font-medium text-gray-800">Goals</span>
-                    <Info className="h-3 w-3 text-gray-400" />
+                    <TooltipProvider>
+                      <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-gray-400 cursor-help hover:text-blue-500" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="text-xs max-w-[220px]">
+                          <p>Future goals with inflation applied. Amounts shown are inflated values at goal year.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </td>
                 {displayYears.map((year, yearIdx) => {
