@@ -907,7 +907,16 @@ export default function SurplusSection({ family, isReadOnly }) {
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3 text-green-600" />
                   <span className="text-xs font-medium text-gray-800">Income</span>
-                  <Info className="h-3 w-3 text-gray-400" />
+                  <TooltipProvider>
+                    <Tooltip delayDuration={0}>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3 w-3 text-gray-400 cursor-help hover:text-blue-500" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs max-w-[220px]">
+                        <p>Projected income including salary, business, rental & pension. Growth rates applied from Income section.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </td>
               {displayYears.map((year, yearIdx) => {
