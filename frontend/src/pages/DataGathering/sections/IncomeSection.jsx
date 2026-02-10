@@ -464,15 +464,8 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 const maturityDateStr = field === "maturity_date" ? value : newDetails.maturity_date;
                 
                 if (investmentVal > 0 && maturityAmt > 0 && investmentDateStr && maturityDateStr) {
-                  // Parse MM/YY format to date
-                  const parseMMYY = (mmyy) => {
-                    const [month, year] = mmyy.split('/');
-                    const fullYear = parseInt(year) > 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
-                    return new Date(fullYear, parseInt(month) - 1, 1);
-                  };
-                  
-                  const investDate = parseMMYY(investmentDateStr);
-                  const maturityDate = parseMMYY(maturityDateStr);
+                  const investDate = new Date(investmentDateStr);
+                  const maturityDate = new Date(maturityDateStr);
                   const days = Math.max(1, (maturityDate - investDate) / (1000 * 60 * 60 * 24));
                   const years = days / 365;
                   
