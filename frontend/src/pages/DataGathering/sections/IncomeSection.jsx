@@ -156,14 +156,20 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     color: "violet",
     fields: [
+      { key: "bond_name", label: "Bond Name", type: "text" },
+      { key: "isin", label: "ISIN", type: "text" },
+      { key: "face_value", label: "Face Value", type: "number" },
+      { key: "units", label: "Units", type: "number" },
       { key: "investment_value", label: "Investment Value", type: "number", readOnly: true, calculated: true },
-      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true },
-      { key: "description", label: "Description", type: "text" },
-      { key: "principal_amount", label: "Principal", type: "number" },
-      { key: "interest_rate", label: "Interest %", type: "number" },
-      { key: "payable_cycle", label: "Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Monthly" },
-      { key: "maturity_date", label: "Maturity", type: "date" },
-      { key: "payment_amount_yearly", label: "Yearly Payment", type: "number", readOnly: true, calculated: true }
+      { key: "settlement_date", label: "Settlement Date", type: "date" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" },
+      { key: "coupon_rate", label: "Coupon Rate %", type: "number" },
+      { key: "payout_frequency", label: "Payout Frequency", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Half-Yearly" },
+      { key: "purchase_price", label: "Purchase Price", type: "number" },
+      { key: "purchase_ytm", label: "Purchase YTM %", type: "number" },
+      { key: "current_price", label: "Current Price", type: "number" },
+      { key: "current_ytm", label: "Current YTM %", type: "number", readOnly: true, calculated: true },
+      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
