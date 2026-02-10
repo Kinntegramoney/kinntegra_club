@@ -374,14 +374,14 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             
             // Rental calculations
             if (category === "rental") {
-              if (field === "income_per_month") {
+              if (field === "rent_per_month") {
                 newDetails.annual_income = Math.round(parseFloat(value || 0) * 12);
               }
               if (field === "is_on_rent") {
                 if (value === "No") {
                   // Clear all rental-related fields when switching to No
                   newDetails.rental_details = "";
-                  newDetails.income_per_month = "";
+                  newDetails.rent_per_month = "";
                   newDetails.annual_income = 0;
                   newDetails.start_date = "";
                   newDetails.end_date = "";
