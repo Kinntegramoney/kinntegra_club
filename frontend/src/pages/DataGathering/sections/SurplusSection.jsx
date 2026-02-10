@@ -1756,26 +1756,26 @@ function AllocationSimulator({
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-center py-2 px-3 font-semibold text-gray-700 min-w-[140px]">Name</th>
-                <th className="text-center py-2 px-2 font-semibold text-gray-700 border-l border-gray-200" colSpan={2}>
-                  <span className="text-[10px]">Asset Allocation (%)</span>
+                <th className="text-center py-2 px-3 font-semibold text-gray-700 min-w-[120px]">Name</th>
+                <th className="text-center py-2 px-1 font-semibold text-gray-700 border-l border-gray-200 w-[50px]" colSpan={2}>
+                  <span className="text-[9px]">Allocation %</span>
                 </th>
-                <th className="text-center py-2 px-2 font-semibold text-gray-700 border-l border-gray-200" colSpan={2}>
-                  <span className="text-[10px]">Expected Returns (%)</span>
+                <th className="text-center py-2 px-1 font-semibold text-gray-700 border-l border-gray-200 w-[50px]" colSpan={2}>
+                  <span className="text-[9px]">Returns %</span>
                 </th>
-                <th className="text-center py-2 px-2 font-semibold text-gray-700 border-l border-gray-200 min-w-[60px]">
-                  <span className="text-[10px]">Include<br/>Assets</span>
+                <th className="text-center py-2 px-2 font-semibold text-gray-700 border-l border-gray-200 min-w-[80px]">
+                  <span className="text-[9px]">Include Assets</span>
                 </th>
-                <th className="text-center py-2 px-2 font-semibold text-gray-700 border-l border-gray-200 min-w-[220px]">
-                  <span className="text-[10px]">Actions</span>
+                <th className="text-center py-2 px-2 font-semibold text-gray-700 border-l border-gray-200 min-w-[200px]">
+                  <span className="text-[9px]">Actions</span>
                 </th>
               </tr>
               <tr className="bg-gray-100/50 border-b border-gray-200">
                 <th></th>
-                <th className="text-center py-1 px-2 text-[9px] font-medium text-gray-500 border-l border-gray-200">Equity</th>
-                <th className="text-center py-1 px-2 text-[9px] font-medium text-gray-500 bg-blue-50/50">Debt</th>
-                <th className="text-center py-1 px-2 text-[9px] font-medium text-gray-500 border-l border-gray-200">Equity</th>
-                <th className="text-center py-1 px-2 text-[9px] font-medium text-gray-500 bg-blue-50/50">Debt</th>
+                <th className="text-center py-1 px-1 text-[8px] font-medium text-gray-500 border-l border-gray-200 w-[50px]">Eq</th>
+                <th className="text-center py-1 px-1 text-[8px] font-medium text-gray-500 bg-blue-50/50 w-[50px]">Debt</th>
+                <th className="text-center py-1 px-1 text-[8px] font-medium text-gray-500 border-l border-gray-200 w-[50px]">Eq</th>
+                <th className="text-center py-1 px-1 text-[8px] font-medium text-gray-500 bg-blue-50/50 w-[50px]">Debt</th>
                 <th></th>
                 <th></th>
               </tr>
