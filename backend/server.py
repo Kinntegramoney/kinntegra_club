@@ -26208,7 +26208,9 @@ async def add_goal_detail(family_id: str, goal: GoalDetailCreate, current_user: 
         "category": goal.category,
         "goal_amount": goal.goal_amount,
         "inflation_percent": goal.inflation_percent,
-        "goal_year": goal.goal_year,
+        "goal_year": goal.goal_year if goal.goal_year else (int(goal.goal_years[0]) if goal.goal_years else 2050),
+        "goal_years": goal.goal_years or ([str(goal.goal_year)] if goal.goal_year else []),
+        "is_family_goal": goal.is_family_goal,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": current_user['id']
     }
