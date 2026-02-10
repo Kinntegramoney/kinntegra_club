@@ -1221,7 +1221,7 @@ export default function SurplusSection({ family, isReadOnly }) {
   );
 }
 
-// Allocation Simulator Component
+// Allocation Simulator Component - Table-based design for Family & Individual calculations
 function AllocationSimulator({ 
   members, 
   family,
@@ -1238,249 +1238,62 @@ function AllocationSimulator({
   lifeExpectancy,
   calculateAge
 }) {
-  const [allocations, setAllocations] = useState({
-    equity: 60,
-    debt: 40
+  // State for family-level allocation
+  const [familyAllocation, setFamilyAllocation] = useState({
+    equity: 80,
+    debt: 20,
+    equityReturn: 12,
+    debtReturn: 7,
+    includeAssets: false,
+    selectedAssets: {},
+    result: null,
+    lastCalculated: null
   });
-  const [returns, setReturns] = useState({
-    equity: 12,
-    debt: 7
-  });
-  const [includeAssets, setIncludeAssets] = useState(false);
-  const [assetSelectionMode, setAssetSelectionMode] = useState('all'); // 'all', 'select'
-  const [selectedAssets, setSelectedAssets] = useState({});
-  const [assetStartYear, setAssetStartYear] = useState({}); // Per-asset start year
-  const [simulationResult, setSimulationResult] = useState(null);
-  const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
+
+  // State for individual member allocations
+  const [memberAllocations, setMemberAllocations] = useState({});
 
   // Categories with maturity dates are debt instruments - exclude from allocation simulator
-  // They will be considered only when they mature (handled in cash flow separately)
   const DEBT_CATEGORIES_WITH_MATURITY = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps'];
 
-  // Get all assets with details (excluding debt instruments with maturity dates), grouped by member
-  const getAssetsList = () => {
+  // Get assets for a specific member or family
+  const getAssetsForEntity = (entityId) => {
     const assets = [];
     incomeDetails.forEach(inc => {
       const details = inc.details || {};
-      
-      // Check if this is a debt instrument with a maturity date
       const hasMaturityDate = details.maturity_date || details.maturity_year || details.maturity_amount;
       const isDebtCategory = DEBT_CATEGORIES_WITH_MATURITY.includes(inc.category);
       
-      // Skip assets with maturity dates (they're debt portfolio until maturity)
-      if (isDebtCategory && hasMaturityDate) {
-        return;
-      }
+      if (isDebtCategory && hasMaturityDate) return;
       
       const mktValue = parseFloat(details.market_value) || parseFloat(details.current_value) || 
                        parseFloat(details.investment_value) || 0;
       if (mktValue > 0) {
         const memberIds = inc.member_ids || [];
-        const memberNames = memberIds
-          .map(mid => members.find(m => m.id === mid)?.name || '')
-          .filter(Boolean)
-          .join(', ') || 'Family';
-        
-        // Get primary member ID for this asset (for grouping)
-        const primaryMemberId = memberIds[0] || 'family';
-        
-        assets.push({
-          id: inc.id,
-          category: inc.category,
-          label: getCategoryLabel(inc.category),
-          memberIds: memberIds,
-          member: memberNames,
-          primaryMemberId: primaryMemberId,
-          value: mktValue,
-          selected: true
-        });
+        // For family, include all assets; for individual, include only their assets
+        if (entityId === 'family' || memberIds.includes(entityId)) {
+          assets.push({
+            id: inc.id,
+            category: inc.category,
+            label: getCategoryLabel(inc.category),
+            memberIds: memberIds,
+            value: entityId === 'family' ? mktValue : mktValue / Math.max(1, memberIds.length),
+            selected: true
+          });
+        }
       }
     });
     return assets;
   };
 
-  // Group assets by member
-  const getAssetsGroupedByMember = () => {
-    const grouped = {};
-    const assetsList = getAssetsList();
-    
-    // Initialize with all members
-    members.forEach(m => {
-      grouped[m.id] = {
-        memberId: m.id,
-        memberName: m.name,
-        isPrimary: m.is_primary,
-        assets: [],
-        total: 0
-      };
-    });
-    
-    // Add "Family" group for shared assets
-    grouped['family'] = {
-      memberId: 'family',
-      memberName: 'Family (Shared)',
-      isPrimary: false,
-      assets: [],
-      total: 0
-    };
-    
-    // Group assets
-    assetsList.forEach(asset => {
-      const groupKey = asset.primaryMemberId;
-      if (grouped[groupKey]) {
-        grouped[groupKey].assets.push(asset);
-        grouped[groupKey].total += asset.value;
-      } else if (grouped['family']) {
-        grouped['family'].assets.push(asset);
-        grouped['family'].total += asset.value;
-      }
-    });
-    
-    // Filter out empty groups
-    return Object.values(grouped).filter(g => g.assets.length > 0);
-  };
-
   const getCategoryLabel = (category) => {
     const labels = {
-      salary: 'Salary Assets',
-      business: 'Business',
-      rental: 'Real Estate',
-      mutual_fund: 'Mutual Funds',
-      shares_pms: 'Stocks/PMS',
-      fd: 'Fixed Deposits',
-      bonds: 'Bonds',
-      ppf: 'PPF',
-      epf: 'EPF',
-      nps: 'NPS',
-      rd_pis: 'Recurring Deposits',
-      commodities: 'Gold/Commodities',
-      insurance_income: 'Insurance',
-      cash: 'Cash',
-      vehicle: 'Vehicle'
+      salary: 'Salary Assets', business: 'Business', rental: 'Real Estate',
+      mutual_fund: 'Mutual Funds', shares_pms: 'Stocks/PMS', fd: 'Fixed Deposits',
+      bonds: 'Bonds', ppf: 'PPF', epf: 'EPF', nps: 'NPS', rd_pis: 'RD',
+      commodities: 'Gold/Commodities', insurance_income: 'Insurance', cash: 'Cash', vehicle: 'Vehicle'
     };
     return labels[category] || category;
-  };
-
-  const assetsList = getAssetsList();
-  const assetsGroupedByMember = getAssetsGroupedByMember();
-
-  // Initialize selected assets and start years
-  React.useEffect(() => {
-    const initial = {};
-    const initialYears = {};
-    assetsList.forEach(asset => {
-      initial[asset.id] = true;
-      initialYears[asset.id] = currentYear; // Default: include from current year
-    });
-    setSelectedAssets(initial);
-    setAssetStartYear(initialYears);
-  }, [incomeDetails]);
-
-  // Calculate assets to include for a specific year
-  const getAssetsForYear = (year) => {
-    if (!includeAssets) return 0;
-    
-    let totalAssets = 0;
-    assetsList.forEach(asset => {
-      if (assetSelectionMode === 'all' || selectedAssets[asset.id]) {
-        const startYear = assetStartYear[asset.id] || currentYear;
-        if (year >= startYear) {
-          totalAssets += asset.value;
-        }
-      }
-    });
-    return totalAssets;
-  };
-
-  // Calculate current total assets based on selection (for display)
-  const getCurrentAssets = () => {
-    if (!includeAssets) return 0;
-    
-    let totalAssets = 0;
-    assetsList.forEach(asset => {
-      if (assetSelectionMode === 'all' || selectedAssets[asset.id]) {
-        totalAssets += asset.value;
-      }
-    });
-    return totalAssets;
-  };
-
-  const runSimulation = () => {
-    const weightedReturn = (allocations.equity * returns.equity + allocations.debt * returns.debt) / 100;
-    
-    let corpus = 0;
-    let breakdown = [];
-    let exhaustYear = null;
-    let assetsAdded = {};  // Track which assets have been added
-    
-    for (let year = currentYear; year <= endYear; year++) {
-      const yearStr = year.toString();
-      const age = primaryAge + (year - currentYear);
-      
-      // Add assets that should be included from this year
-      if (includeAssets) {
-        assetsList.forEach(asset => {
-          if (!assetsAdded[asset.id] && (assetSelectionMode === 'all' || selectedAssets[asset.id])) {
-            const startYear = assetStartYear[asset.id] || currentYear;
-            if (year >= startYear) {
-              corpus += asset.value;
-              assetsAdded[asset.id] = true;
-            }
-          }
-        });
-      }
-      
-      // Calculate total income for this year
-      const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
-      
-      // Calculate total outflows
-      const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
-      const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
-      const totalInvestments = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, yearStr), 0);
-      
-      // Surplus for this year
-      const yearSurplus = totalIncome - totalExpenses - totalGoals;
-      
-      // Apply returns and add/withdraw surplus
-      corpus = corpus * (1 + weightedReturn / 100) + yearSurplus;
-      
-      breakdown.push({
-        year,
-        age,
-        income: totalIncome,
-        expenses: totalExpenses,
-        goals: totalGoals,
-        surplus: yearSurplus,
-        corpus: corpus,
-        status: corpus > 0 ? 'ok' : 'exhausted'
-      });
-      
-      if (corpus <= 0 && !exhaustYear) {
-        exhaustYear = year;
-      }
-    }
-    
-    setYearlyBreakdown(breakdown);
-    
-    if (exhaustYear) {
-      const yearsShort = endYear - exhaustYear;
-      setSimulationResult({
-        success: false,
-        exhaustYear,
-        yearsShort,
-        finalCorpus: 0,
-        message: `The money will last till year ${exhaustYear}. Your money will exhaust ${yearsShort} years before your life expectancy.`
-      });
-    } else {
-      const finalCorpus = breakdown[breakdown.length - 1]?.corpus || 0;
-      setSimulationResult({
-        success: true,
-        exhaustYear: null,
-        yearsShort: 0,
-        finalCorpus,
-        message: `Great! Your money will last till life expectancy (${endYear}) with ₹${formatLargeNumber(finalCorpus)} remaining.`
-      });
-    }
   };
 
   const formatLargeNumber = (num) => {
@@ -1489,41 +1302,150 @@ function AllocationSimulator({
     return num.toLocaleString('en-IN');
   };
 
-  // Update asset start year
-  const updateAssetStartYear = (assetId, year) => {
-    setAssetStartYear(prev => ({ ...prev, [assetId]: year }));
+  // Initialize member allocations
+  React.useEffect(() => {
+    const initial = {};
+    members.forEach(m => {
+      initial[m.id] = {
+        equity: 60,
+        debt: 40,
+        equityReturn: 12,
+        debtReturn: 0,
+        includeAssets: false,
+        selectedAssets: {},
+        result: null,
+        lastCalculated: null
+      };
+    });
+    setMemberAllocations(initial);
+  }, [members]);
+
+  // Run simulation for an entity (family or individual member)
+  const runSimulation = (entityId) => {
+    const isFamily = entityId === 'family';
+    const allocation = isFamily ? familyAllocation : memberAllocations[entityId];
+    if (!allocation) return;
+
+    const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets } = allocation;
+    const weightedReturn = (equity * equityReturn + debt * debtReturn) / 100;
+    
+    // Get assets for this entity
+    const entityAssets = getAssetsForEntity(entityId);
+    let startingCorpus = 0;
+    if (includeAssets) {
+      entityAssets.forEach(asset => {
+        if (selectedAssets[asset.id] !== false) {
+          startingCorpus += asset.value;
+        }
+      });
+    }
+
+    let corpus = startingCorpus;
+    let exhaustYear = null;
+    
+    // Determine end year based on entity
+    const entityEndYear = isFamily ? endYear : (() => {
+      const member = members.find(m => m.id === entityId);
+      const age = calculateAge(member?.date_of_birth);
+      const memberLifeExp = parseInt(member?.life_expectancy) || 85;
+      return currentYear + (memberLifeExp - age);
+    })();
+
+    for (let year = currentYear; year <= entityEndYear; year++) {
+      const yearStr = year.toString();
+      
+      // Calculate income/expenses based on entity
+      let totalIncome, totalExpenses, totalGoals;
+      if (isFamily) {
+        totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
+        totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
+        totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
+      } else {
+        totalIncome = getProjectedMemberIncome(entityId, yearStr);
+        totalExpenses = getProjectedMemberExpenses(entityId, yearStr);
+        totalGoals = getMemberGoalExpenses(entityId, yearStr);
+      }
+      
+      const yearSurplus = totalIncome - totalExpenses - totalGoals;
+      corpus = corpus * (1 + weightedReturn / 100) + yearSurplus;
+      
+      if (corpus <= 0 && !exhaustYear) {
+        exhaustYear = year;
+      }
+    }
+    
+    const result = exhaustYear ? {
+      success: false,
+      lastYear: exhaustYear,
+      yearsShort: entityEndYear - exhaustYear,
+      message: `The money will last till year ${exhaustYear}. Your money will exhaust ${entityEndYear - exhaustYear} years before your ${isFamily ? 'living' : ''} expectancy.`
+    } : {
+      success: true,
+      lastYear: entityEndYear,
+      yearsShort: 0,
+      finalCorpus: corpus,
+      message: `Great! Your money will last till ${entityEndYear} with ₹${formatLargeNumber(corpus)} remaining.`
+    };
+
+    const now = new Date();
+    const timestamp = now.toLocaleDateString('en-IN') + ' ' + now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+    if (isFamily) {
+      setFamilyAllocation(prev => ({ ...prev, result, lastCalculated: timestamp }));
+    } else {
+      setMemberAllocations(prev => ({
+        ...prev,
+        [entityId]: { ...prev[entityId], result, lastCalculated: timestamp }
+      }));
+    }
   };
 
-  const handleEquityChange = (value) => {
-    const equity = Math.min(100, Math.max(0, parseInt(value) || 0));
-    setAllocations({ equity, debt: 100 - equity });
+  // Update allocation for entity
+  const updateAllocation = (entityId, field, value) => {
+    if (entityId === 'family') {
+      if (field === 'equity') {
+        const equity = Math.min(100, Math.max(0, parseInt(value) || 0));
+        setFamilyAllocation(prev => ({ ...prev, equity, debt: 100 - equity }));
+      } else {
+        setFamilyAllocation(prev => ({ ...prev, [field]: value }));
+      }
+    } else {
+      if (field === 'equity') {
+        const equity = Math.min(100, Math.max(0, parseInt(value) || 0));
+        setMemberAllocations(prev => ({
+          ...prev,
+          [entityId]: { ...prev[entityId], equity, debt: 100 - equity }
+        }));
+      } else {
+        setMemberAllocations(prev => ({
+          ...prev,
+          [entityId]: { ...prev[entityId], [field]: value }
+        }));
+      }
+    }
   };
 
-  const handleDebtChange = (value) => {
-    const debt = Math.min(100, Math.max(0, parseInt(value) || 0));
-    setAllocations({ equity: 100 - debt, debt });
+  // Toggle asset selection
+  const toggleAsset = (entityId, assetId) => {
+    if (entityId === 'family') {
+      setFamilyAllocation(prev => ({
+        ...prev,
+        selectedAssets: { ...prev.selectedAssets, [assetId]: !prev.selectedAssets[assetId] }
+      }));
+    } else {
+      setMemberAllocations(prev => ({
+        ...prev,
+        [entityId]: {
+          ...prev[entityId],
+          selectedAssets: { ...prev[entityId]?.selectedAssets, [assetId]: !prev[entityId]?.selectedAssets?.[assetId] }
+        }
+      }));
+    }
   };
 
-  const toggleAssetSelection = (assetId) => {
-    setSelectedAssets(prev => ({ ...prev, [assetId]: !prev[assetId] }));
-  };
-
-  const selectAllAssets = () => {
-    const all = {};
-    assetsList.forEach(asset => { all[asset.id] = true; });
-    setSelectedAssets(all);
-  };
-
-  const deselectAllAssets = () => {
-    const none = {};
-    assetsList.forEach(asset => { none[asset.id] = false; });
-    setSelectedAssets(none);
-  };
-
-  const yearOptions = [];
-  for (let y = currentYear; y <= endYear; y++) {
-    yearOptions.push(y);
-  }
+  // Get primary member name for family row
+  const primaryMember = members.find(m => m.is_primary);
+  const familyName = primaryMember ? `${primaryMember.name} & FAMILY` : 'Family';
 
   return (
     <Card className="mt-6 border-2 border-blue-200">
@@ -1533,121 +1455,273 @@ function AllocationSimulator({
           Allocation Simulator
         </CardTitle>
         <p className="text-xs text-gray-500">
-          Check if your invested surplus will last until life expectancy based on asset allocation.
-          <span className="block mt-0.5 text-gray-400">Note: Debt instruments with maturity dates (FD, Bonds, RD, Insurance, etc.) are excluded as they will be available only at maturity.</span>
+          Calculate if money will last until life expectancy - for family and individual members.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Member Life Expectancy Info */}
-        <div className="bg-blue-50/50 rounded-lg p-3 border border-blue-100">
-          <h4 className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1">
-            <User className="h-3 w-3" />
-            Member Life Expectancy & Retirement
-          </h4>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {members.map(member => {
-              const age = calculateAge(member.date_of_birth);
-              const memberLifeExp = parseInt(member.life_expectancy) || 85;
-              const memberInfo = getMemberIncomeInfo(member.id);
-              const yearsToRetirement = memberInfo.retirementYear - currentYear;
-              const yearsToLifeExp = memberLifeExp - age;
-              
-              return (
-                <div key={member.id} className="bg-white rounded-md p-2 border border-blue-200/50">
-                  <div className="flex items-center gap-1 mb-1">
-                    <User className="h-3 w-3 text-blue-600" />
-                    <span className="text-xs font-medium text-gray-800 truncate">
-                      {member.name}
-                      {member.is_primary && <span className="text-blue-500 ml-0.5">*</span>}
-                    </span>
-                  </div>
-                  <div className="space-y-0.5">
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-500">Current Age:</span>
-                      <span className="font-medium text-gray-700">{age} yrs</span>
+        {/* Allocation Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b-2 border-gray-200">
+                <th className="text-left py-3 px-2 text-sm font-medium text-gray-600" rowSpan={2}>Name</th>
+                <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" colSpan={2}>Asset Allocation (%)</th>
+                <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" colSpan={2}>Expected Returns (%)</th>
+                <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" rowSpan={2}>Include Assets</th>
+                <th className="text-center py-2 px-2" rowSpan={2}></th>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <th className="text-center py-2 px-2 text-xs font-medium text-gray-500 border-l border-gray-200">Equity</th>
+                <th className="text-center py-2 px-2 text-xs font-medium text-gray-500 bg-blue-50">Debt</th>
+                <th className="text-center py-2 px-2 text-xs font-medium text-gray-500 border-l border-gray-200">Equity</th>
+                <th className="text-center py-2 px-2 text-xs font-medium text-gray-500 bg-blue-50">Debt</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Family Row */}
+              <tr className="border-b border-gray-100 bg-amber-50/30">
+                <td className="py-3 px-2">
+                  <div className="font-medium text-gray-800">{familyName}</div>
+                  {familyAllocation.lastCalculated && (
+                    <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+                      <Clock className="h-2.5 w-2.5" />
+                      Last calculated: {familyAllocation.lastCalculated}
                     </div>
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-500">Life Expectancy:</span>
-                      <span className="font-medium text-blue-700">{memberLifeExp} yrs</span>
+                  )}
+                </td>
+                <td className="py-3 px-2 border-l border-gray-200">
+                  <select
+                    value={familyAllocation.equity}
+                    onChange={(e) => updateAllocation('family', 'equity', e.target.value)}
+                    className="w-16 h-8 text-sm border border-gray-300 rounded px-1 bg-white"
+                  >
+                    {[...Array(11)].map((_, i) => (
+                      <option key={i * 10} value={i * 10}>{i * 10}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="py-3 px-2 bg-blue-50/50">
+                  <input
+                    type="number"
+                    value={familyAllocation.debt}
+                    readOnly
+                    className="w-14 h-8 text-sm border border-gray-200 rounded px-2 bg-gray-100 text-center"
+                  />
+                </td>
+                <td className="py-3 px-2 border-l border-gray-200">
+                  <input
+                    type="number"
+                    value={familyAllocation.equityReturn}
+                    onChange={(e) => updateAllocation('family', 'equityReturn', parseFloat(e.target.value) || 0)}
+                    className="w-14 h-8 text-sm border border-gray-300 rounded px-2 bg-white text-center"
+                  />
+                </td>
+                <td className="py-3 px-2 bg-blue-50/50">
+                  <input
+                    type="number"
+                    value={familyAllocation.debtReturn}
+                    onChange={(e) => updateAllocation('family', 'debtReturn', parseFloat(e.target.value) || 0)}
+                    className="w-14 h-8 text-sm border border-gray-300 rounded px-2 bg-white text-center"
+                  />
+                </td>
+                <td className="py-3 px-2 border-l border-gray-200 text-center">
+                  <input
+                    type="checkbox"
+                    checked={familyAllocation.includeAssets}
+                    onChange={(e) => updateAllocation('family', 'includeAssets', e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                  />
+                </td>
+                <td className="py-3 px-2">
+                  <Button 
+                    size="sm" 
+                    onClick={() => runSimulation('family')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Calculate
+                  </Button>
+                </td>
+              </tr>
+
+              {/* Family Result Row */}
+              {familyAllocation.result && (
+                <tr className="border-b border-gray-200">
+                  <td colSpan={7} className="py-2 px-4">
+                    <div className={`text-sm ${familyAllocation.result.success ? 'text-green-700' : ''}`}>
+                      {!familyAllocation.result.success ? (
+                        <>
+                          The money will last till year {familyAllocation.result.lastYear}. {' '}
+                          <span className="text-red-600 font-medium">
+                            Your money will exhaust {familyAllocation.result.yearsShort} years before your living expectancy.
+                          </span>
+                        </>
+                      ) : (
+                        familyAllocation.result.message
+                      )}
                     </div>
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-500">Retirement Year:</span>
-                      <span className="font-medium text-amber-700">{memberInfo.retirementYear}</span>
+                  </td>
+                </tr>
+              )}
+
+              {/* Family Asset Selection Row */}
+              {familyAllocation.includeAssets && (
+                <tr className="border-b border-gray-200 bg-gray-50/50">
+                  <td colSpan={7} className="py-3 px-4">
+                    <div className="text-xs font-medium text-gray-600 mb-2">Select Family Assets:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {getAssetsForEntity('family').map(asset => (
+                        <label key={asset.id} className="flex items-center gap-1.5 px-2 py-1 bg-white border rounded text-xs cursor-pointer hover:bg-blue-50">
+                          <input
+                            type="checkbox"
+                            checked={familyAllocation.selectedAssets[asset.id] !== false}
+                            onChange={() => toggleAsset('family', asset.id)}
+                            className="h-3 w-3 rounded border-gray-300 text-blue-600"
+                          />
+                          <span>{asset.label}</span>
+                          <span className="text-green-600 font-medium">₹{formatLargeNumber(asset.value)}</span>
+                        </label>
+                      ))}
                     </div>
-                    <div className="flex justify-between text-[10px] pt-1 border-t border-gray-100 mt-1">
-                      <span className="text-gray-500">Years Left:</span>
-                      <span className="font-semibold text-green-700">{yearsToLifeExp} yrs</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  </td>
+                </tr>
+              )}
+
+              {/* Individual Member Rows */}
+              {members.map((member, idx) => {
+                const allocation = memberAllocations[member.id] || { equity: 60, debt: 40, equityReturn: 12, debtReturn: 0 };
+                const age = calculateAge(member.date_of_birth);
+                const memberLifeExp = parseInt(member.life_expectancy) || 85;
+                const memberInfo = getMemberIncomeInfo(member.id);
+                
+                return (
+                  <React.Fragment key={member.id}>
+                    <tr className={`border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                      <td className="py-3 px-2">
+                        <div className="font-medium text-gray-800">
+                          {member.name}
+                          {member.is_primary && <span className="text-blue-500 ml-1 text-xs">*</span>}
+                        </div>
+                        <div className="text-[10px] text-gray-400 mt-0.5">
+                          Age: {age} | Life Exp: {memberLifeExp} | Retire: {memberInfo.retirementYear}
+                        </div>
+                        {allocation.lastCalculated && (
+                          <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+                            <Clock className="h-2.5 w-2.5" />
+                            {allocation.lastCalculated}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-2 border-l border-gray-200">
+                        <select
+                          value={allocation.equity}
+                          onChange={(e) => updateAllocation(member.id, 'equity', e.target.value)}
+                          className="w-16 h-8 text-sm border border-gray-300 rounded px-1 bg-white"
+                        >
+                          {[...Array(11)].map((_, i) => (
+                            <option key={i * 10} value={i * 10}>{i * 10}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-3 px-2 bg-blue-50/50">
+                        <input
+                          type="number"
+                          value={allocation.debt}
+                          readOnly
+                          className="w-14 h-8 text-sm border border-gray-200 rounded px-2 bg-gray-100 text-center"
+                        />
+                      </td>
+                      <td className="py-3 px-2 border-l border-gray-200">
+                        <input
+                          type="number"
+                          value={allocation.equityReturn}
+                          onChange={(e) => updateAllocation(member.id, 'equityReturn', parseFloat(e.target.value) || 0)}
+                          className="w-14 h-8 text-sm border border-gray-300 rounded px-2 bg-white text-center"
+                        />
+                      </td>
+                      <td className="py-3 px-2 bg-blue-50/50">
+                        <input
+                          type="number"
+                          value={allocation.debtReturn}
+                          onChange={(e) => updateAllocation(member.id, 'debtReturn', parseFloat(e.target.value) || 0)}
+                          className="w-14 h-8 text-sm border border-gray-300 rounded px-2 bg-white text-center"
+                        />
+                      </td>
+                      <td className="py-3 px-2 border-l border-gray-200 text-center">
+                        <input
+                          type="checkbox"
+                          checked={allocation.includeAssets || false}
+                          onChange={(e) => updateAllocation(member.id, 'includeAssets', e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                        />
+                      </td>
+                      <td className="py-3 px-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => runSimulation(member.id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Calculate
+                        </Button>
+                      </td>
+                    </tr>
+
+                    {/* Member Result Row */}
+                    {allocation.result && (
+                      <tr className="border-b border-gray-100">
+                        <td colSpan={7} className="py-2 px-4">
+                          <div className={`text-sm ${allocation.result.success ? 'text-green-700' : ''}`}>
+                            {!allocation.result.success ? (
+                              <>
+                                The money will last till year {allocation.result.lastYear}. {' '}
+                                <span className="text-red-600 font-medium">
+                                  Your money will exhaust {allocation.result.yearsShort} years before your expectancy.
+                                </span>
+                              </>
+                            ) : (
+                              allocation.result.message
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Member Asset Selection Row */}
+                    {allocation.includeAssets && (
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td colSpan={7} className="py-3 px-4">
+                          <div className="text-xs font-medium text-gray-600 mb-2">Select {member.name}'s Assets:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {getAssetsForEntity(member.id).map(asset => (
+                              <label key={asset.id} className="flex items-center gap-1.5 px-2 py-1 bg-white border rounded text-xs cursor-pointer hover:bg-blue-50">
+                                <input
+                                  type="checkbox"
+                                  checked={allocation.selectedAssets?.[asset.id] !== false}
+                                  onChange={() => toggleAsset(member.id, asset.id)}
+                                  className="h-3 w-3 rounded border-gray-300 text-blue-600"
+                                />
+                                <span>{asset.label}</span>
+                                <span className="text-green-600 font-medium">₹{formatLargeNumber(asset.value)}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
 
-        {/* Asset Inclusion Toggle */}
-        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="includeAssets"
-              checked={includeAssets}
-              onChange={(e) => setIncludeAssets(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <label htmlFor="includeAssets" className="text-sm font-medium text-gray-700">
-              Include existing assets in calculation
-            </label>
-          </div>
-
-          {includeAssets && (
-            <div className="ml-7 space-y-3">
-              {/* Asset Selection Mode */}
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="assetMode"
-                    value="all"
-                    checked={assetSelectionMode === 'all'}
-                    onChange={() => setAssetSelectionMode('all')}
-                    className="h-4 w-4 text-blue-600"
-                  />
-                  <span className="text-sm text-gray-600">Include all assets (from current year)</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="assetMode"
-                    value="select"
-                    checked={assetSelectionMode === 'select'}
-                    onChange={() => setAssetSelectionMode('select')}
-                    className="h-4 w-4 text-blue-600"
-                  />
-                  <span className="text-sm text-gray-600">Select specific assets & years</span>
-                </label>
-              </div>
-
-              {/* Asset Selection List - Grouped by Member */}
-              {assetSelectionMode === 'select' && (
-                <div className="border rounded-lg p-3 bg-white">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-medium text-gray-600">Select assets and choose when to include them:</span>
-                    <div className="flex gap-2">
-                      <button onClick={selectAllAssets} className="text-xs text-blue-600 hover:underline">Select All</button>
-                      <button onClick={deselectAllAssets} className="text-xs text-red-600 hover:underline">Deselect All</button>
-                    </div>
-                  </div>
-                  
-                  <div className="max-h-[350px] overflow-y-auto space-y-4">
-                    {assetsGroupedByMember.map(group => (
-                      <div key={group.memberId} className="border border-gray-200 rounded-lg p-3 bg-gray-50/50">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-blue-600" />
-                            <span className="text-sm font-medium text-gray-800">
-                              {group.memberName}
-                              {group.isPrimary && <span className="text-blue-500 ml-1">*</span>}
+        {/* Info Note */}
+        <div className="text-[10px] text-gray-400 mt-2">
+          Note: Debt instruments with maturity dates (FD, Bonds, RD, Insurance) are excluded - they will be available only at maturity.
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
                             </span>
                           </div>
                           <span className="text-xs font-semibold text-green-700">
