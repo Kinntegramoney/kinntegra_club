@@ -12,20 +12,42 @@ const INSURANCE_CATEGORIES = [
   { value: "professional", label: "Professional Indemnity", icon: Briefcase }
 ];
 
-// Suggested cover multipliers (can be customized based on business rules)
-const SUGGESTED_COVER_RULES = {
-  term_life: { multiplier: 10, baseField: "annual_income" }, // 10x annual income
-  health: { fixed: 1000000 }, // ₹10 Lakhs fixed
-  critical_illness: { fixed: 2500000 }, // ₹25 Lakhs fixed
-  personal_accident: { fixed: 5000000 }, // ₹50 Lakhs fixed
-  motor: { fixed: 0 }, // Based on vehicle value
-  home_insurance: { fixed: 0 }, // Based on property value
-  professional: { fixed: 1000000 } // ₹10 Lakhs fixed
-};
-
 export default function InsuranceSection({ family }) {
   const members = family?.members || [];
   const existingInsurance = family?.insurance_details || [];
+  const incomeDetails = family?.income_details || [];
+
+  // Get annual income for a member from income_details
+  const getMemberAnnualIncome = (memberId) => {
+    // Sum up annual income from salary and other income sources
+    const memberIncomes = incomeDetails.filter(
+      income => income.member_ids?.includes(memberId)
+    );
+    
+    let totalAnnual = 0;
+    memberIncomes.forEach(income => {
+      const details = income.details || {};
+      
+      // Salary income
+      if (income.category === 'salary') {
+        totalAnnual += parseFloat(details.annual_income) || 0;
+      }
+      // Rental income
+      else if (income.category === 'rental' && details.is_on_rent === 'Yes') {
+        totalAnnual += parseFloat(details.annual_rent) || 0;
+      }
+      // Pension income
+      else if (income.category === 'pension') {
+        totalAnnual += parseFloat(details.amount_yearly) || 0;
+      }
+      // Other income with yearly amount
+      else if (details.amount_yearly) {
+        totalAnnual += parseFloat(details.amount_yearly) || 0;
+      }
+    });
+    
+    return totalAnnual;
+  };
 
   // Get actual cover for a specific member and category
   const getActualCover = (memberId, categoryValue) => {
@@ -38,22 +60,43 @@ export default function InsuranceSection({ family }) {
     }, 0);
   };
 
-  // Get suggested cover for a member and category
-  const getSuggestedCover = (member, categoryValue) => {
-    const rule = SUGGESTED_COVER_RULES[categoryValue];
-    if (!rule) return 0;
+  // Get suggested cover for a member and category based on new rules
+  const getSuggestedCover = (member, categoryValue, termLifeCover = 0) => {
+    const annualIncome = getMemberAnnualIncome(member.id);
     
-    if (rule.fixed !== undefined) {
-      return rule.fixed;
+    switch (categoryValue) {
+      case 'term_life':
+        // Term Life - 20x annual income
+        return annualIncome * 20;
+      
+      case 'health':
+        // Health Insurance - 3x annual income
+        return annualIncome * 3;
+      
+      case 'critical_illness':
+        // Critical Illness - 3x annual income
+        return annualIncome * 3;
+      
+      case 'personal_accident':
+        // Personal Accident - 20% of Term Life cover
+        const termCover = termLifeCover || (annualIncome * 20);
+        return termCover * 0.2;
+      
+      case 'professional':
+        // Professional Indemnity - 10x annual income
+        return annualIncome * 10;
+      
+      case 'motor':
+        // Based on vehicle value - no default suggestion
+        return 0;
+      
+      case 'home_insurance':
+        // Based on property value - no default suggestion
+        return 0;
+      
+      default:
+        return 0;
     }
-    
-    if (rule.multiplier && rule.baseField === "annual_income") {
-      // Assume annual income from member data or default
-      const annualIncome = parseFloat(member.annual_income) || 1000000; // Default 10L
-      return annualIncome * rule.multiplier;
-    }
-    
-    return 0;
   };
 
   // Calculate totals for a member
@@ -62,8 +105,11 @@ export default function InsuranceSection({ family }) {
     let suggestedTotal = 0;
     let actualTotal = 0;
     
+    // First calculate term life for personal accident calculation
+    const termLifeSuggested = getSuggestedCover(member, 'term_life');
+    
     INSURANCE_CATEGORIES.forEach(cat => {
-      suggestedTotal += getSuggestedCover(member, cat.value);
+      suggestedTotal += getSuggestedCover(member, cat.value, termLifeSuggested);
       actualTotal += getActualCover(memberId, cat.value);
     });
     
@@ -131,8 +177,12 @@ export default function InsuranceSection({ family }) {
         </div>
       </div>
 
-      <div className="text-xs text-gray-500 px-1">
-        Summary of insurance coverage by family member. Add premiums in Expenses tab.
+      {/* Rules Info */}
+      <div className="text-xs text-gray-500 px-1 space-y-1">
+        <p>Suggested cover based on annual income:</p>
+        <p className="text-[10px] text-gray-400">
+          Term Life: 20× | Health: 3× | Critical Illness: 3× | Personal Accident: 20% of Term Life | Professional: 10×
+        </p>
       </div>
 
       {/* Insurance Coverage Table with Member Columns */}
@@ -150,10 +200,15 @@ export default function InsuranceSection({ family }) {
                   colSpan={2} 
                   className={`text-center text-xs font-semibold text-teal-700 px-2 py-2 ${idx < members.length - 1 ? 'border-r border-gray-200' : ''}`}
                 >
-                  <div className="flex items-center justify-center gap-1">
-                    <User className="h-3 w-3" />
-                    {member.name}
-                    {member.is_primary && <span className="text-teal-500">*</span>}
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {member.name}
+                      {member.is_primary && <span className="text-teal-500">*</span>}
+                    </div>
+                    <span className="text-[9px] text-gray-400 font-normal">
+                      Income: {formatCurrency(getMemberAnnualIncome(member.id))}/yr
+                    </span>
                   </div>
                 </th>
               ))}
@@ -189,7 +244,8 @@ export default function InsuranceSection({ family }) {
               let rowSuggested = 0;
               let rowActual = 0;
               members.forEach(m => {
-                rowSuggested += getSuggestedCover(m, category.value);
+                const termLifeSuggested = getSuggestedCover(m, 'term_life');
+                rowSuggested += getSuggestedCover(m, category.value, termLifeSuggested);
                 rowActual += getActualCover(m.id, category.value);
               });
               
@@ -207,7 +263,8 @@ export default function InsuranceSection({ family }) {
                     </div>
                   </td>
                   {members.map((member, idx) => {
-                    const suggested = getSuggestedCover(member, category.value);
+                    const termLifeSuggested = getSuggestedCover(member, 'term_life');
+                    const suggested = getSuggestedCover(member, category.value, termLifeSuggested);
                     const actual = getActualCover(member.id, category.value);
                     const cellStatus = getCoverageStatus(suggested, actual);
                     
