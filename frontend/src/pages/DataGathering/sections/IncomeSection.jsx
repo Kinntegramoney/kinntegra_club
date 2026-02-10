@@ -130,7 +130,6 @@ const INCOME_CATEGORIES = [
       { key: "end_date", label: "End Date", type: "date" },
       { key: "num_installments", label: "Installments", type: "number", readOnly: true, calculated: true },
       { key: "investment_value", label: "Total Investment", type: "number", readOnly: true, calculated: true },
-      { key: "expected_maturity", label: "Expected Maturity", type: "number", readOnly: true, calculated: true },
       { key: "maturity_value", label: "Maturity Value", type: "number" },
       { key: "gross_xirr", label: "Gross XIRR %", type: "number", readOnly: true, calculated: true }
     ]
