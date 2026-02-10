@@ -1293,6 +1293,7 @@ export default function SurplusSection({ family, isReadOnly }) {
 // Allocation Simulator Component
 function AllocationSimulator({ 
   members, 
+  family,
   currentYear, 
   endYear, 
   retirementYear, 
@@ -1300,9 +1301,11 @@ function AllocationSimulator({
   getProjectedMemberExpenses, 
   getMemberGoalExpenses,
   getProjectedMemberInvestments,
+  getMemberIncomeInfo,
   incomeDetails,
   primaryAge,
-  lifeExpectancy
+  lifeExpectancy,
+  calculateAge
 }) {
   const [allocations, setAllocations] = useState({
     equity: 60,
