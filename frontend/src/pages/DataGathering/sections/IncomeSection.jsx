@@ -807,28 +807,24 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             
             // Commodities calculations
             if (category === "commodities") {
-              if (["commodity_type", "weight_kg", "purchase_price_per_kg"].includes(field)) {
+              if (["commodity_type", "weight_kg"].includes(field)) {
                 const commodityType = field === "commodity_type" ? value : (newDetails.commodity_type || "Gold");
                 const weightKg = field === "weight_kg" ? parseFloat(value || 0) : (parseFloat(newDetails.weight_kg) || 0);
-                const purchasePrice = field === "purchase_price_per_kg" ? parseFloat(value || 0) : (parseFloat(newDetails.purchase_price_per_kg) || 0);
                 
                 // Get current price from API (stored in commodityPrices state)
                 const currentPrice = commodityPrices[commodityType] || 0;
-                newDetails.current_price_per_kg = currentPrice;
                 
-                // Calculate investment value
-                if (weightKg > 0 && purchasePrice > 0) {
-                  newDetails.investment_value = Math.round(weightKg * purchasePrice);
-                }
-                
-                // Calculate market value
-                if (weightKg > 0 && currentPrice > 0) {
-                  newDetails.market_value = Math.round(weightKg * currentPrice);
-                }
-                
-                // Calculate gain/loss
-                if (newDetails.investment_value && newDetails.market_value) {
-                  newDetails.gain_loss = newDetails.market_value - newDetails.investment_value;
+                // Only show values if API returned valid prices
+                if (currentPrice > 0) {
+                  newDetails.price_per_kg = currentPrice;
+                  if (weightKg > 0) {
+                    newDetails.current_value = Math.round(weightKg * currentPrice);
+                  } else {
+                    newDetails.current_value = "";
+                  }
+                } else {
+                  newDetails.price_per_kg = "";
+                  newDetails.current_value = "";
                 }
               }
             }
