@@ -245,8 +245,8 @@ export default function DataGathering() {
       if (activeTab === "introduction") {
         setShowWhyModal(true);
       } else {
-        // Move to next tab for other tabs
-        const tabOrder = ["introduction", "income", "goals", "expenses", "insurance", "liability", "surplus"];
+        // Move to next tab for other tabs (matches TABS order: Members, Income, Expenses, Goals, Surplus, Liabilities, Assets, Insurance, Networth)
+        const tabOrder = ["introduction", "income", "expenses", "goals", "surplus", "liability", "assets", "insurance", "networth"];
         const currentIndex = tabOrder.indexOf(activeTab);
         if (currentIndex < tabOrder.length - 1) {
           setActiveTab(tabOrder[currentIndex + 1]);
