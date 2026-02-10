@@ -398,17 +398,26 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
               }
             }
             
-            // FD/Bond calculations
-            if (["fd", "bond"].includes(category)) {
+            // FD calculations
+            if (category === "fd") {
+              if (["investment_value", "interest_rate"].includes(field)) {
+                const investmentVal = field === "investment_value" ? value : newDetails.investment_value;
+                const rate = field === "interest_rate" ? value : newDetails.interest_rate;
+                if (investmentVal && rate) {
+                  newDetails.payment_amount_yearly = Math.round((parseFloat(investmentVal) * parseFloat(rate)) / 100);
+                }
+              }
+            }
+            
+            // Bond calculations
+            if (category === "bond") {
               if (["principal_amount", "interest_rate"].includes(field)) {
                 const principal = field === "principal_amount" ? value : newDetails.principal_amount;
                 const rate = field === "interest_rate" ? value : newDetails.interest_rate;
                 if (principal && rate) newDetails.payment_amount_yearly = Math.round((parseFloat(principal) * parseFloat(rate)) / 100);
               }
               if (field === "principal_amount") {
-                // Investment Value = Principal Amount
                 newDetails.investment_value = parseFloat(value) || 0;
-                // Market Value = Same as investment for now
                 newDetails.market_value = parseFloat(value) || 0;
               }
             }
@@ -421,18 +430,13 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 if (start && end) {
                   const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
                   newDetails.num_installments = Math.max(0, months);
-                  if (newDetails.principal_amount_monthly) {
-                    newDetails.principal_amount = parseFloat(newDetails.principal_amount_monthly) * newDetails.num_installments;
-                    // Update investment value when principal is calculated
-                    newDetails.investment_value = newDetails.principal_amount;
-                    newDetails.market_value = newDetails.principal_amount;
+                  if (newDetails.investment_value_monthly) {
+                    newDetails.investment_value = parseFloat(newDetails.investment_value_monthly) * newDetails.num_installments;
                   }
                 }
               }
-              if (field === "principal_amount_monthly" && newDetails.num_installments) {
-                newDetails.principal_amount = parseFloat(value) * newDetails.num_installments;
-                newDetails.investment_value = newDetails.principal_amount;
-                newDetails.market_value = newDetails.principal_amount;
+              if (field === "investment_value_monthly" && newDetails.num_installments) {
+                newDetails.investment_value = parseFloat(value) * newDetails.num_installments;
               }
             }
             
