@@ -479,7 +479,10 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   <span className="text-[10px] text-gray-400 mb-1">Member *</span>
                                   <Select value={item.memberId || ""} onValueChange={v => updateItem(cat.value, item.id, "memberId", v)} disabled={isReadOnly}>
                                     <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}</SelectContent>
+                                    <SelectContent>
+                                      <SelectItem value="family" className="text-xs font-medium text-blue-600">{family?.name || 'Family'} & Family</SelectItem>
+                                      {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
+                                    </SelectContent>
                                   </Select>
                                 </div>
                                 <div className="flex flex-col flex-1 min-w-[120px]">
