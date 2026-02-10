@@ -1024,7 +1024,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                           </div>
                           {commodityPrices.date && (
                             <span className="text-gray-400 text-[10px]">
-                              As on: {new Date(commodityPrices.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              As on: {commodityPrices.date.split(',')[0]}
                             </span>
                           )}
                         </div>
