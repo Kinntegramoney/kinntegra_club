@@ -522,7 +522,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                     </div>
                                     <div className="flex flex-col w-[70px]">
                                       <span className="text-[10px] text-gray-400 mb-1">%</span>
-                                      <Input type="number" value={item.details.post_retirement_percent ?? 100} onChange={e => updateItem(cat.value, item.id, "post_retirement_percent", e.target.value)} className="h-8 w-full text-xs bg-white border-gray-200" disabled={isReadOnly} min={0} max={100} />
+                                      <Input type="number" value={item.details.post_retirement_percent ?? 100} onChange={e => updateItem(cat.value, item.id, "post_retirement_percent", e.target.value)} className="h-8 w-full text-xs bg-white border-gray-200" disabled={isReadOnly} min={0} />
                                     </div>
                                   </>
                                 )}
