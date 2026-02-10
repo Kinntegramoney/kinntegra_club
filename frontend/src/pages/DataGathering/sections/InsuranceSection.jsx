@@ -189,9 +189,9 @@ export default function InsuranceSection({ family }) {
 
       {/* Rules Info */}
       <div className="text-xs text-gray-500 px-1 space-y-1">
-        <p>Suggested cover based on annual income:</p>
+        <p>Suggested cover based on annual income & assets:</p>
         <p className="text-[10px] text-gray-400">
-          Term Life: 20× | Health: 3× | Critical Illness: 3× | Personal Accident: 20% of Term Life | Professional: 10×
+          Term Life: 20× income | Health: 3× income | Critical Illness: 3× income | Personal Accident: 20% of Term Life | Professional: 10× income | Motor: Vehicle value | Home: Property value
         </p>
       </div>
 
