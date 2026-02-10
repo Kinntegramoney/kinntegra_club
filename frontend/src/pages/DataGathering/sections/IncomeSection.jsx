@@ -200,6 +200,7 @@ const INCOME_CATEGORIES = [
     icon: Wallet,
     color: "slate",
     fields: [
+      { key: "description", label: "Description", type: "text" },
       { key: "bank_balance", label: "Bank Balance", type: "number" }
     ]
   },
