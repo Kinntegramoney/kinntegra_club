@@ -63,9 +63,7 @@ const INCOME_CATEGORIES = [
       { key: "end_date", label: "End Date", type: "monthyear", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "maintenance", label: "Maintenance (Yearly)", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "property_tax", label: "Property Tax (Yearly)", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "absolute_return", label: "Absolute Return %", type: "number", readOnly: true, calculated: true, dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "auto_renew", label: "Auto Renew", type: "select", options: ["Yes", "No"], dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "rental_increment_percent", label: "Rental Increment %", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" }
+      { key: "absolute_return", label: "Absolute Return %", type: "number", readOnly: true, calculated: true, dependsOn: "is_on_rent", showWhen: "Yes" }
     ]
   },
   { 
