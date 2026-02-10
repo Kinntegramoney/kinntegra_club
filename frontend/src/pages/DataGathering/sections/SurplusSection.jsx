@@ -1316,13 +1316,27 @@ function AllocationSimulator({
   const [simulationResult, setSimulationResult] = useState(null);
   const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
 
-  // Get all assets with details
+  // Categories with maturity dates are debt instruments - exclude from allocation simulator
+  // They will be considered only when they mature (handled in cash flow separately)
+  const DEBT_CATEGORIES_WITH_MATURITY = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps'];
+
+  // Get all assets with details (excluding debt instruments with maturity dates)
   const getAssetsList = () => {
     const assets = [];
     incomeDetails.forEach(inc => {
       const details = inc.details || {};
-      const mktValue = parseFloat(details.market_value) || parseFloat(details.maturity_value) || 
-                       parseFloat(details.current_value) || parseFloat(details.investment_value) || 0;
+      
+      // Check if this is a debt instrument with a maturity date
+      const hasMaturityDate = details.maturity_date || details.maturity_year || details.maturity_amount;
+      const isDebtCategory = DEBT_CATEGORIES_WITH_MATURITY.includes(inc.category);
+      
+      // Skip assets with maturity dates (they're debt portfolio until maturity)
+      if (isDebtCategory && hasMaturityDate) {
+        return;
+      }
+      
+      const mktValue = parseFloat(details.market_value) || parseFloat(details.current_value) || 
+                       parseFloat(details.investment_value) || 0;
       if (mktValue > 0) {
         const memberNames = (inc.member_ids || [])
           .map(mid => members.find(m => m.id === mid)?.name || '')
