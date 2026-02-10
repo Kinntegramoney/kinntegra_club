@@ -173,18 +173,7 @@ export default function InsuranceSection({ family }) {
       {/* Summary Banner */}
       <div className="flex items-center justify-between bg-teal-50 border border-teal-200 rounded-lg px-4 py-3">
         <span className="text-sm text-teal-600 font-medium">Insurance Coverage Summary</span>
-        <div className="flex gap-6">
-          <div className="text-right">
-            <div className="text-[10px] text-teal-500">Suggested Cover</div>
-            <div className="font-semibold text-teal-700">{formatCurrency(grandTotals.suggested)}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] text-teal-500">Actual Cover</div>
-            <div className={`font-semibold ${grandTotals.actual >= grandTotals.suggested ? 'text-green-600' : 'text-amber-600'}`}>
-              {formatCurrency(grandTotals.actual)}
-            </div>
-          </div>
-        </div>
+        <span className="text-xs text-gray-500">Compare suggested vs actual coverage per member</span>
       </div>
 
       {/* Rules Info */}
