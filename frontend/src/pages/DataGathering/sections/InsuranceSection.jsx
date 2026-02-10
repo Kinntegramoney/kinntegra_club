@@ -87,12 +87,22 @@ export default function InsuranceSection({ family }) {
         return annualIncome * 10;
       
       case 'motor':
-        // Based on vehicle value - no default suggestion
-        return 0;
+        // Motor Insurance - Market value of vehicles
+        const vehicleIncomes = incomeDetails.filter(
+          income => income.category === 'vehicle' && income.member_ids?.includes(member.id)
+        );
+        return vehicleIncomes.reduce((sum, income) => {
+          return sum + (parseFloat(income.details?.market_value) || 0);
+        }, 0);
       
       case 'home_insurance':
-        // Based on property value - no default suggestion
-        return 0;
+        // Home Insurance - Market value of rental properties
+        const propertyIncomes = incomeDetails.filter(
+          income => income.category === 'rental' && income.member_ids?.includes(member.id)
+        );
+        return propertyIncomes.reduce((sum, income) => {
+          return sum + (parseFloat(income.details?.market_value) || 0);
+        }, 0);
       
       default:
         return 0;
