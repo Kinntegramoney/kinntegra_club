@@ -1021,6 +1021,26 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 {/* Content */}
                 <CollapsibleContent>
                   <div className="px-3 pb-3 pt-1 border-t border-gray-100">
+                    {/* Show current commodity prices for Commodities category */}
+                    {category.value === "commodities" && (commodityPrices.Gold > 0 || commodityPrices.Silver > 0) && (
+                      <div className="mb-3 p-2 bg-gradient-to-r from-yellow-50 to-gray-50 rounded-lg border border-yellow-200">
+                        <div className="flex items-center gap-4 text-xs">
+                          <span className="text-gray-500 font-medium">Live Prices (INR/Kg):</span>
+                          {commodityPrices.Gold > 0 && (
+                            <span className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                              <span className="font-semibold text-yellow-700">Gold: ₹{commodityPrices.Gold.toLocaleString('en-IN')}</span>
+                            </span>
+                          )}
+                          {commodityPrices.Silver > 0 && (
+                            <span className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                              <span className="font-semibold text-gray-600">Silver: ₹{commodityPrices.Silver.toLocaleString('en-IN')}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     {items.length === 0 ? (
                       <p className="text-center py-4 text-xs text-gray-400">Click + to add entry</p>
                     ) : (
