@@ -309,28 +309,35 @@ export default function SurplusSection({ family, isReadOnly }) {
               {displayYears.map((year, idx) => {
                 const yearInt = parseInt(year);
                 const hasGoals = goalsByYear[yearInt]?.total > 0;
+                const isBaseYear = idx === 0;
                 return (
                   <th 
                     key={idx} 
                     colSpan={members.length + 1}
                     className={`text-center px-1 py-1 ${idx < displayYears.length - 1 ? 'border-r border-gray-200' : ''}`}
                   >
-                    <Select value={year} onValueChange={(v) => handleYearChange(idx, v)}>
-                      <SelectTrigger className="h-6 text-[10px] w-full border-0 bg-transparent shadow-none justify-center font-semibold text-blue-700">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {yearOptions.map(y => {
-                          const yInt = parseInt(y);
-                          const yHasGoal = goalsByYear[yInt]?.total > 0;
-                          return (
-                            <SelectItem key={y} value={y}>
-                              {y} {yInt === earliestRetirement && '(R)'} {yHasGoal && '🎯'}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                    {isBaseYear ? (
+                      <div className="h-6 flex items-center justify-center text-[10px] font-semibold text-blue-700">
+                        {year} (Base)
+                      </div>
+                    ) : (
+                      <Select value={year} onValueChange={(v) => handleYearChange(idx, v)}>
+                        <SelectTrigger className="h-6 text-[10px] w-full border-0 bg-transparent shadow-none justify-center font-semibold text-blue-700">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAvailableYears(idx).map(y => {
+                            const yInt = parseInt(y);
+                            const yHasGoal = goalsByYear[yInt]?.total > 0;
+                            return (
+                              <SelectItem key={y} value={y}>
+                                {y} {yInt === earliestRetirement && '(R)'} {yHasGoal && '🎯'}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    )}
                     {hasGoals && <span className="text-[8px] text-purple-600">Goal</span>}
                   </th>
                 );
