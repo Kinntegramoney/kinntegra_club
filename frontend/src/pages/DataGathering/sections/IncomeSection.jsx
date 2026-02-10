@@ -295,58 +295,12 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     }
   }, [family?.id, existingIncomes.length, initialLoadDone]);
 
-  // Commodity prices state with date
-  const [commodityPrices, setCommodityPrices] = useState({ Gold: 0, Silver: 0, date: null });
-  
-  // Fetch commodity prices from free API (prices in INR)
-  useEffect(() => {
-    const fetchCommodityPrices = async () => {
-      try {
-        // Use freegoldapi.com (USD) and convert to INR
-        const goldUsdResponse = await axios.get('https://freegoldapi.com/data/latest.json');
-        const forexResponse = await axios.get('https://api.exchangerate-api.com/v4/latest/USD');
-        
-        if (goldUsdResponse.data && goldUsdResponse.data.length > 0 && forexResponse.data) {
-          const latestData = goldUsdResponse.data[goldUsdResponse.data.length - 1];
-          const goldPriceUsdPerOz = latestData?.price || 0; // Price per troy ounce in USD
-          const priceDate = latestData?.date || new Date().toISOString().split('T')[0];
-          const usdToInr = forexResponse.data.rates?.INR || 83;
-          
-          // Convert: 1 troy ounce = 31.1035 grams
-          // Gold price per gram in INR (with 15% India premium for import duty, GST, making charges)
-          const goldPricePerGramInr = ((goldPriceUsdPerOz / 31.1035) * usdToInr) * 1.15;
-          const goldPricePerKg = Math.round(goldPricePerGramInr * 1000);
-          
-          // Silver: Current ratio is approximately 55:1 in India
-          const silverPricePerGramInr = (goldPricePerGramInr / 55);
-          const silverPricePerKg = Math.round(silverPricePerGramInr * 1000);
-          
-          // Validate against expected range (Gold: 1-2 Cr/kg, Silver: 80k-4L/kg)
-          const validGold = goldPricePerKg >= 10000000 && goldPricePerKg <= 20000000;
-          const validSilver = silverPricePerKg >= 80000 && silverPricePerKg <= 400000;
-          
-          if (validGold && validSilver) {
-            setCommodityPrices({
-              Gold: goldPricePerKg,
-              Silver: silverPricePerKg,
-              date: priceDate
-            });
-            return;
-          }
-        }
-      } catch (error) {
-        console.log('Commodity API unavailable:', error.message);
-      }
-      
-      // Use current market prices as fallback (Feb 2025)
-      setCommodityPrices({ 
-        Gold: 15800000,  // ₹1.58 Cr per kg
-        Silver: 290000,   // ₹2.90 L per kg
-        date: new Date().toISOString().split('T')[0]
-      });
-    };
-    fetchCommodityPrices();
-  }, []);
+  // Commodity prices state with date (using current Indian market prices)
+  const [commodityPrices, setCommodityPrices] = useState({ 
+    Gold: 15800000,  // ₹1.58 Cr per kg
+    Silver: 290000,   // ₹2.90 L per kg
+    date: new Date().toISOString().split('T')[0]
+  });
   
   // Update commodity items when prices are fetched
   useEffect(() => {
