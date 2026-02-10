@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Save, Briefcase, Building, Wallet, Landmark, PiggyBank, TrendingUp, 
-  DollarSign, Plus, Trash2, ChevronDown, ChevronRight, User, X
+  DollarSign, Plus, Trash2, ChevronDown, ChevronRight, User, X, Car
 } from "lucide-react";
 import { toast } from "sonner";
 
