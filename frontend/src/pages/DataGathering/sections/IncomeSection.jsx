@@ -48,8 +48,8 @@ const INCOME_CATEGORIES = [
     icon: Building,
     color: "teal",
     fields: [
+      { key: "property_type", label: "Property Type", type: "select", options: ["Residential", "Commercial", "Land"] },
       { key: "property_details", label: "Property Details", type: "text" },
-      { key: "property_type", label: "Type", type: "select", options: ["Residential", "Commercial", "Land"] },
       { key: "purchase_value", label: "Purchase Value", type: "number" },
       { key: "market_value", label: "Market Value", type: "number" },
       { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"], defaultValue: "No" },
