@@ -1797,50 +1797,6 @@ function AllocationSimulator({
           </div>
         )}
 
-        {/* Yearly Breakdown Table */}
-        {yearlyBreakdown.length > 0 && (
-          <div className="mt-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Year-wise Corpus Projection</h4>
-            <div className="border rounded-lg overflow-x-auto max-h-[300px] overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-gray-100">
-                  <tr>
-                    <th className="text-left py-2 px-3 font-medium text-gray-600">Year</th>
-                    <th className="text-left py-2 px-3 font-medium text-gray-600">Age</th>
-                    <th className="text-right py-2 px-3 font-medium text-green-600">Income</th>
-                    <th className="text-right py-2 px-3 font-medium text-orange-600">Expenses</th>
-                    <th className="text-right py-2 px-3 font-medium text-purple-600">Goals</th>
-                    <th className="text-right py-2 px-3 font-medium text-blue-600">Surplus</th>
-                    <th className="text-right py-2 px-3 font-medium text-gray-700">Corpus</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {yearlyBreakdown.filter((_, i) => i % 1 === 0).map((row, idx) => (
-                    <tr key={row.year} className={`border-t ${row.status === 'exhausted' ? 'bg-red-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                      <td className="py-1.5 px-3 font-medium">
-                        {row.year}
-                        {row.year === retirementYear && <span className="text-amber-600 ml-1">(R)</span>}
-                      </td>
-                      <td className="py-1.5 px-3">{row.age}</td>
-                      <td className="py-1.5 px-3 text-right text-green-600">₹{formatLargeNumber(row.income)}</td>
-                      <td className="py-1.5 px-3 text-right text-orange-600">₹{formatLargeNumber(row.expenses)}</td>
-                      <td className="py-1.5 px-3 text-right text-purple-600">{row.goals > 0 ? `₹${formatLargeNumber(row.goals)}` : '-'}</td>
-                      <td className={`py-1.5 px-3 text-right ${row.surplus >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                        {row.surplus >= 0 ? '' : '-'}₹{formatLargeNumber(Math.abs(row.surplus))}
-                      </td>
-                      <td className={`py-1.5 px-3 text-right font-medium ${row.corpus > 0 ? 'text-gray-800' : 'text-red-700'}`}>
-                        {row.corpus > 0 ? `₹${formatLargeNumber(row.corpus)}` : 'Exhausted'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="text-[10px] text-gray-400 mt-1">
-              (R) = Retirement Year
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
