@@ -1507,6 +1507,28 @@ function AllocationSimulator({
     }
   };
 
+  // Open asset selection modal
+  const openAssetModal = (entityId) => {
+    setAssetModalEntity(entityId);
+    setAssetModalOpen(true);
+  };
+
+  // Get current entity allocation for modal
+  const getEntityAllocation = (entityId) => {
+    if (entityId === 'family') return familyAllocation;
+    return memberAllocations[entityId] || {};
+  };
+
+  // Get entity name for display
+  const getEntityName = (entityId) => {
+    if (entityId === 'family') {
+      const primaryMember = members.find(m => m.is_primary);
+      return primaryMember ? `${primaryMember.name} & Family` : 'Family';
+    }
+    const member = members.find(m => m.id === entityId);
+    return member?.name || 'Member';
+  };
+
   // Export cash flow for specific entity
   const exportEntityCashFlow = (entityId) => {
     const isFamily = entityId === 'family';
