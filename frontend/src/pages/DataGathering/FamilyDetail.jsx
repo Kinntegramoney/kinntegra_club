@@ -157,6 +157,15 @@ export default function FamilyDetail({ family: initialFamily, onBack, onUpdate, 
           />
         </TabsContent>
 
+        <TabsContent value="expenses">
+          <ExpenseSection 
+            family={family} 
+            onUpdate={(data) => handleDataUpdate('expense_details', data)}
+            isReadOnly={isReadOnly}
+            onRefresh={refreshFamily}
+          />
+        </TabsContent>
+
         <TabsContent value="goals">
           <GoalSection 
             family={family} 
@@ -166,12 +175,19 @@ export default function FamilyDetail({ family: initialFamily, onBack, onUpdate, 
           />
         </TabsContent>
 
-        <TabsContent value="expenses">
-          <ExpenseSection 
+        <TabsContent value="liability">
+          <LiabilitySection 
             family={family} 
-            onUpdate={(data) => handleDataUpdate('expense_details', data)}
+            onUpdate={(data) => handleDataUpdate('liabilities', data)}
             isReadOnly={isReadOnly}
             onRefresh={refreshFamily}
+          />
+        </TabsContent>
+
+        <TabsContent value="assets">
+          <AssetsSection 
+            family={family}
+            isReadOnly={isReadOnly}
           />
         </TabsContent>
 
@@ -184,12 +200,10 @@ export default function FamilyDetail({ family: initialFamily, onBack, onUpdate, 
           />
         </TabsContent>
 
-        <TabsContent value="liability">
-          <LiabilitySection 
-            family={family} 
-            onUpdate={(data) => handleDataUpdate('liabilities', data)}
+        <TabsContent value="networth">
+          <NetworthSection 
+            family={family}
             isReadOnly={isReadOnly}
-            onRefresh={refreshFamily}
           />
         </TabsContent>
 
