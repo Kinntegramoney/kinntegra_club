@@ -438,8 +438,6 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                   newDetails.absolute_return = 0;
                   newDetails.start_date = "";
                   newDetails.end_date = "";
-                  newDetails.auto_renew = "";
-                  newDetails.rental_increment_percent = "";
                 }
               }
             }
