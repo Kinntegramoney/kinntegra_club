@@ -122,11 +122,11 @@ export default function AssetsSection({ family }) {
             <TrendingUp className="h-6 w-6 text-green-600" />
             <div>
               <span className="text-sm text-green-600 font-medium">Total Assets Value</span>
-              <p className="text-xs text-green-500">Investment Value: ₹{grandTotalInvestment > 0 ? grandTotalInvestment.toLocaleString('en-IN') : '0'}</p>
+              <p className="text-xs text-green-500">Investment Value: ₹{formatLargeNumber(grandTotalInvestment)}</p>
             </div>
           </div>
           <div className="text-right">
-            <div className="font-semibold text-green-700">₹{grandTotalMarket.toLocaleString('en-IN')}</div>
+            <div className="font-semibold text-green-700">₹{formatLargeNumber(grandTotalMarket)}</div>
             <p className="text-[10px] text-green-500">Market/Maturity Value</p>
           </div>
         </div>
