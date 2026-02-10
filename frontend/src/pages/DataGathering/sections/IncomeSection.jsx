@@ -399,12 +399,6 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 const maturityYear = new Date(value).getFullYear();
                 newDetails.year_to_mature = Math.max(0, maturityYear - new Date().getFullYear());
               }
-              if (field === "amount") {
-                // Investment Value = Amount entered
-                newDetails.investment_value = parseFloat(value) || 0;
-                // Market Value = Same as investment for now (can be updated from backend)
-                newDetails.market_value = parseFloat(value) || 0;
-              }
             }
             
             // FD/Bond calculations
