@@ -1354,6 +1354,7 @@ function AllocationSimulator({
         includeAssets: false,
         selectedAssets: {},
         assetStartYears: {},  // Per-asset start year
+        assetAmounts: {},     // Custom amounts for assets
         result: null,
         lastCalculated: null
       };
