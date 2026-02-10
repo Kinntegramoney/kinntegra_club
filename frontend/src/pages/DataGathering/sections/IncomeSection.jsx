@@ -50,7 +50,8 @@ const INCOME_CATEGORIES = [
     fields: [
       { key: "property_type", label: "Property Type", type: "select", options: ["Residential", "Commercial", "Land"] },
       { key: "property_details", label: "Property Details", type: "text" },
-      { key: "purchase_value", label: "Purchase Value", type: "number" },
+      { key: "investment_amount", label: "Investment Amount", type: "number" },
+      { key: "investment_date", label: "Investment Date", type: "monthyear" },
       { key: "market_value", label: "Market Value", type: "number" },
       { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"], defaultValue: "No" },
       { key: "rental_details", label: "Rental Details", type: "text", dependsOn: "is_on_rent", showWhen: "Yes" },
