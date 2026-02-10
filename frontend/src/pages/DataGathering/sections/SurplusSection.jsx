@@ -14,6 +14,18 @@ export default function SurplusSection({ family, isReadOnly }) {
   // Generate default years to show (base year fixed + 5 more)
   const defaultYears = [currentYear, currentYear + 1, currentYear + 2, currentYear + 3, currentYear + 4, currentYear + 5];
   const [displayYears, setDisplayYears] = useState(defaultYears.map(String));
+  
+  // Expanded rows state
+  const [expandedRows, setExpandedRows] = useState({
+    income: false,
+    expenses: false,
+    goals: false,
+    investments: false
+  });
+
+  const toggleRow = (row) => {
+    setExpandedRows(prev => ({ ...prev, [row]: !prev[row] }));
+  };
 
   // Get primary member
   const primaryMember = members.find(m => m.is_primary) || members[0];
