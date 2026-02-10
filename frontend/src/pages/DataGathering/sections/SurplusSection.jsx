@@ -1368,7 +1368,7 @@ function AllocationSimulator({
     const allocation = isFamily ? familyAllocation : memberAllocations[entityId];
     if (!allocation) return;
 
-    const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears } = allocation;
+    const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears, assetAmounts } = allocation;
     const weightedReturn = (equity * equityReturn + debt * debtReturn) / 100;
     
     // Get assets for this entity
@@ -1395,7 +1395,9 @@ function AllocationSimulator({
           if (!assetsAdded[asset.id] && selectedAssets[asset.id] !== false) {
             const startYear = assetStartYears[asset.id] || currentYear;
             if (year >= startYear) {
-              corpus += asset.value;
+              // Use custom amount if set, otherwise use original value
+              const assetValue = assetAmounts[asset.id] !== undefined ? assetAmounts[asset.id] : asset.value;
+              corpus += assetValue;
               assetsAdded[asset.id] = true;
             }
           }
