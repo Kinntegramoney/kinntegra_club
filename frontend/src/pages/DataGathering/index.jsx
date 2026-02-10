@@ -25,6 +25,7 @@ import InsuranceSection from "./sections/InsuranceSection";
 import LiabilitySection from "./sections/LiabilitySection";
 import SurplusSection from "./sections/SurplusSection";
 import AssetsSection from "./sections/AssetsSection";
+import NetworthSection from "./sections/NetworthSection";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
