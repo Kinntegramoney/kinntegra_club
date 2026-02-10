@@ -26852,6 +26852,55 @@ async def update_surplus_allocation(family_id: str, surplus_data: dict, current_
     return {"message": "Surplus allocation updated"}
 
 
+# =====================================================
+# INVESTMENTS APIs
+# =====================================================
+
+@api_router.put("/data-gathering/family/{family_id}/investments")
+async def update_investments(family_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Update family investment details"""
+    
+    if current_user['role'] not in ['broker', 'sub_broker']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    family = await db.data_gathering_families.find_one({"id": family_id})
+    if not family:
+        raise HTTPException(status_code=404, detail="Family not found")
+    
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Process investment details
+    investment_details = data.get('investment_details', [])
+    processed_investments = []
+    
+    for inv in investment_details:
+        investment = {
+            "id": inv.get('id') or str(uuid.uuid4()),
+            "category": inv.get('category'),
+            "member_id": inv.get('member_id'),
+            "amount": inv.get('amount', 0),
+            "frequency": inv.get('frequency', 'monthly'),
+            "annual_amount": inv.get('annual_amount', 0),
+            "start_date": inv.get('start_date'),
+            "end_date": inv.get('end_date'),
+            "description": inv.get('description', '')
+        }
+        processed_investments.append(investment)
+    
+    await db.data_gathering_families.update_one(
+        {"id": family_id},
+        {
+            "$set": {
+                "investment_details": processed_investments,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Investments updated successfully", "investment_details": processed_investments}
+
+
 @api_router.delete("/data-gathering/family/{family_id}")
 async def delete_family(family_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a family and all its data"""
