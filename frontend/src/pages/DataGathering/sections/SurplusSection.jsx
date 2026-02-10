@@ -1826,8 +1826,6 @@ function AllocationSimulator({
                   </td>
                 </tr>
               )}
-                </tr>
-              )}
 
               {/* Individual Member Rows */}
               {members.map((member, idx) => {
