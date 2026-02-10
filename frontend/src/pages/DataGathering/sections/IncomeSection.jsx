@@ -53,6 +53,7 @@ const INCOME_CATEGORIES = [
       { key: "investment_amount", label: "Investment Amount", type: "number" },
       { key: "investment_date", label: "Investment Date", type: "monthyear" },
       { key: "market_value", label: "Market Value", type: "number" },
+      { key: "market_value_date", label: "As On Date", type: "monthyear" },
       { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"], defaultValue: "No" },
       { key: "rental_details", label: "Rental Details", type: "text", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "income_per_month", label: "Income – Per Month", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
