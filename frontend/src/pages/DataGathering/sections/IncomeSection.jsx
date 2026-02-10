@@ -659,6 +659,44 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                       {field.options.map(opt => <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>)}
                                     </SelectContent>
                                   </Select>
+                                ) : field.type === "monthyear" ? (
+                                  <div className="flex gap-1">
+                                    <Select 
+                                      value={item.details[field.key]?.split('/')[0] || ""} 
+                                      onValueChange={v => {
+                                        const year = item.details[field.key]?.split('/')[1] || new Date().getFullYear().toString().slice(-2);
+                                        updateIncomeItem(category.value, item.id, field.key, `${v}/${year}`);
+                                      }} 
+                                      disabled={isReadOnly}
+                                    >
+                                      <SelectTrigger className="h-8 w-[70px] text-xs bg-white border-gray-200">
+                                        <SelectValue placeholder="MM" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {['01','02','03','04','05','06','07','08','09','10','11','12'].map(m => (
+                                          <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Select 
+                                      value={item.details[field.key]?.split('/')[1] || ""} 
+                                      onValueChange={v => {
+                                        const month = item.details[field.key]?.split('/')[0] || '01';
+                                        updateIncomeItem(category.value, item.id, field.key, `${month}/${v}`);
+                                      }} 
+                                      disabled={isReadOnly}
+                                    >
+                                      <SelectTrigger className="h-8 w-[70px] text-xs bg-white border-gray-200">
+                                        <SelectValue placeholder="YY" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Array.from({length: 50}, (_, i) => {
+                                          const year = (new Date().getFullYear() - 30 + i).toString().slice(-2);
+                                          return <SelectItem key={year} value={year} className="text-xs">{year}</SelectItem>;
+                                        })}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
                                 ) : field.type === "date" ? (
                                   <Input
                                     type="date"
