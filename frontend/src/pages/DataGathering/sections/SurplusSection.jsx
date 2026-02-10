@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, TrendingUp, TrendingDown, PiggyBank, Landmark, Target } from "lucide-react";
+import { User, TrendingUp, TrendingDown, PiggyBank, Landmark, Target, ChevronDown, ChevronRight } from "lucide-react";
 
 export default function SurplusSection({ family, isReadOnly }) {
   const members = family?.members || [];
