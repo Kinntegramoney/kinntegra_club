@@ -1,5 +1,5 @@
 import React from "react";
-import { User, Landmark, Home, Car, Gem, Wallet, TrendingUp, Building, PiggyBank, Coins, Briefcase } from "lucide-react";
+import { User, Landmark, Home, Car, Gem, Wallet, TrendingUp, Building, PiggyBank, Coins } from "lucide-react";
 
 // Asset categories mapped to income section categories
 // Note: Pension is excluded - it's an income source, not an asset
