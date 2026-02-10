@@ -205,6 +205,16 @@ const INCOME_CATEGORIES = [
     ]
   },
   { 
+    value: "vehicle", 
+    label: "Vehicle", 
+    icon: Car,
+    color: "blue",
+    fields: [
+      { key: "description", label: "Description", type: "text" },
+      { key: "market_value", label: "Current Market Value", type: "number" }
+    ]
+  },
+  { 
     value: "commodities", 
     label: "Commodities", 
     icon: DollarSign,
