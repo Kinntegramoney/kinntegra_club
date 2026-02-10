@@ -1,152 +1,158 @@
 <analysis>**original_problem_statement:**
-The user has reported a bug in the Analysis tab. When parsing a PDF financial statement, a Multi-Asset Fund entry is being incorrectly merged with a Liquid Fund entry, causing the multi-asset fund to be missing from the final output (an Excel file).
+The initial problem was a bug in the Consolidated Account Statement (CAS) PDF parsing service. Specifically, ICICI Prudential Multi-Asset Fund was being incorrectly merged with Liquid Fund during parsing, leading to data inaccuracies in the generated Excel report.
 
-The user also requested and guided the agent through a series of major refactoring and feature updates across the Data Gathering section:
-1.  **Assets Tab:** Reworked into a view-only summary table with member names as columns.
-2.  **Liabilities Tab:** Reworked into a view-only summary table. Data entry for loans was moved to the Expenses tab with new EMI-based fields (Monthly EMI, No. of Installments, auto-calculated Outstanding Amount and Completion Year).
-3.  **Expenses Tab:** Refactored into a unified entry point for Regular Expenses, Loan EMIs, and Insurance Premiums.
-4.  **Insurance Tab:** Reworked into a view-only summary table showing Suggested vs Actual coverage. Data entry for insurance premiums was moved to the Expenses tab with new fields (Yearly Premium, Upto Year, Coverage Amount).
-5.  **Goals Tab:** Enhanced to support multi-year selection for recurring goals and added a Family option to the member dropdown for shared goals.
+This evolved into a major feature implementation effort based on a detailed Product Requirements Document (PRD) provided by the user. The user requested a complete overhaul of the Income section with specific fields, calculations, and layouts for numerous sub-categories, including:
+- Rental Income
+- Public Provident Fund (PPF)
+- Employee Provident Fund (EPF)
+- Fixed Deposit (FD)
+- Recurring Deposit (RD)
+- Pension Income
+- Bonds
+- Insurance
+- Other Income
+
+Subsequent requests involved UI/UX improvements and new features for the Assets, Expenses, and Insurance Coverage sections, as well as the creation of new asset categories like Vehicles.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The  feature has been significantly refactored.
-- The , , and  tabs are now view-only summary tables that display data in a matrix with members as columns.
-- The  tab is now a unified data entry point for three distinct types of items: Regular Expenses, Loan EMIs, and Insurance Premiums, each with its own specific form fields. The categories are visually distinguished by colored borders.
-- The  tab has been updated to allow selecting multiple years for a single goal (for recurring events) and to assign goals to the entire Family instead of just individual members. It also includes quick-selection buttons for year patterns (e.g., Every 2 Years).
-- An  tab exists with a feature to parse PDF statements, which is currently buggy.
+The application consists of a Python backend for PDF parsing and a React frontend for data entry and visualization.
+
+A significant amount of work has been completed in this session:
+1.  **PDF Parsing Bug Fix**: The complex PDF parsing bug related to fund categorization, varying text formats (ISIN on new lines), incorrect regex matching, and flawed FIFO logic for sales transactions has been resolved and verified by the user.
+2.  **Income & Assets Overhaul**: The frontend Income section has been extensively built out to match the user's detailed specifications for multiple categories (Rental, FD, RD, Bonds, Insurance, Commodities, etc.). This includes adding dozens of new fields, complex client-side financial calculations (XIRR, Absolute Return), conditional UI logic, and API integration for live commodity prices. The Assets summary table was updated to reflect these new income sources correctly.
+3.  **UI/UX Enhancements**: Significant UI changes were made to the Expenses, Insurance, and other sections based on user feedback, including layout redesigns, conditional field rendering, and adding new options to dropdowns.
 
 **Last working item**:
--   **Last item agent was working:** Debugging a PDF parsing bug within the  tab. The user reported that a Multi-Asset Fund from an uploaded statement is being incorrectly merged with a Liquid Fund entry, causing it to be missing from the generated Excel output. The agent has located the relevant backend logic in  and was about to start analyzing the large file to find the root cause of the incorrect data merging.
--   **Status:** IN PROGRESS
--   **Agent Testing Done:** N
--   **Which testing method agent to use?** manual testing by curl
--   **User Testing Done:** N
+-   **Last item agent was working**: The agent was in the process of restructuring the main navigation tabs of the application. The user requested to move the Goals tab, split the Networth and Surplus tab into two separate tabs, and define a new order for them. The agent had started by creating a new, empty file for the Networth section.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?**: Frontend testing agent
+-   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1:** PDF parsing incorrectly merges mutual fund entries. (P0)
-
-**Issues Detail:**
--   **Issue 1:**
-    -   **Description:** In the Analysis tab, the PDF parsing service incorrectly categorizes or merges an ICICI Prudential Multi-Asset Fund entry into a Liquid Fund entry, causing the multi-asset fund data to be lost in the final Excel output.
-    -   **Attempted fixes:** None. The agent has only identified the file containing the parsing logic ().
-    -   **Next debug checklist:**
-        1.  Examine .
-        2.  Search for the code responsible for reading, categorizing, and aggregating mutual fund data from the parsed PDF text.
-        3.  Pay close attention to the regular expressions or string matching logic that identifies fund types. It's likely that the pattern for Multi-Asset Fund is either missing or too broad, causing it to fall back into another category like Liquid.
-        4.  Trace how the parsed data is structured before being written to the Excel file.
-    -   **Why fix this issue and what will be achieved with the fix?** To ensure accurate and complete data extraction from user-uploaded financial statements, which is a critical function of the Analysis feature.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** backend
-    -   **Blocked on other issue:** None
+There are no pending bugs or issues. The current work is a feature/refactoring task.
 
 **In progress Task List**:
-There are no in-progress feature tasks. The current focus is on the bug fix listed above.
+-   **Task 1: Reorganize main application tabs (P0)**
+    -   **Where to resume**: The agent has just created an empty file at . The next steps are:
+        1.  Open . Copy the existing Networth logic from it and paste it into the new .
+        2.  Modify  to only contain the Surplus logic, and rename the component to . Update the file name accordingly to .
+        3.  Update the imports in  to import the new  and .
+        4.  In , update the  array to reflect the new order and split tabs. The requested order is: , , , , , , , , .
+        5.  In , update the component mapping to match the new tab order.
+    -   **What will be achieved with this?**: The main navigation tabs will be restructured to match the user's requirements, improving the application's information architecture.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on something**: No
 
 **Upcoming and Future Tasks**
-There are no outstanding feature requests from the user at this time. All previous requests in this session have been implemented.
+There are no other explicit upcoming tasks mentioned by the user. The primary focus is to complete the tab reorganization.
 
 **Completed work in this session**
--   **Assets Tab Refactor**: Converted  into a view-only summary table with member-based columns and removed the Actions column.
--   **Liabilities Logic Overhaul**:
-    -   Changed liability fields from Amount Today to Monthly EMI & No. of Installments with auto-calculated Outstanding Amount and Completion Year in .
-    -   Moved all liability/loan data entry forms into the .
-    -   Converted  into a view-only summary table showing outstanding loan amounts.
--   **Insurance Logic Overhaul**:
-    -   Added new fields for insurance (Yearly Premium, Upto Year, Coverage Amount).
-    -   Moved all insurance premium data entry forms into .
-    -   Converted  into a view-only summary table comparing Suggested vs Actual coverage.
--   **Unified Expenses Tab**: Refactored  to manage three different data structures (regular expenses, loans, insurance) within a single component, with unique forms and styling for each type.
--   **Goals Tab Enhancements**:
-    -   Implemented a multi-year selector for recurring goals in .
-    -   Added quick-select patterns (e.g., Every 2 Years) to the year picker.
-    -   Added a Family option to the member dropdown for shared goals.
+-   **PDF Parsing Engine Fixes (backend)**:
+    -   Resolved incorrect merging of Multi-Asset and Liquid funds.
+    -   Handled multiple PDF text formats, including ISIN codes on separate lines and varying folio/scheme order.
+    -   Corrected greedy regex that truncated long fund names.
+    -   Fixed FIFO logic in Sold Units sheet generation to prevent matching sales with future purchases. ()
+-   **Income Section Overhaul (frontend)**:
+    -   **Rental Income**: Implemented fields for property details, rent, expenses, and calculated fields for Absolute Return % and XIRR Return % with conditional coloring.
+    -   **FD & Bonds**: Implemented simplified fields and a Gross XIRR % calculation based on cash flows (investment, periodic payouts, maturity).
+    -   **RD/PIS**: Implemented fields for monthly investment and a Gross XIRR % calculation to compare real vs. stated returns.
+    -   **Insurance**: Implemented fields for premium payments and a Gross XIRR % calculation based on premium cash flows vs. maturity amount.
+    -   **Commodities**: Replaced Gold with Commodities (Gold/Silver), integrated a live  API for INR prices, and implemented logic for price conversions and premiums.
+    -   **PPF/EPF/Gratuity/Pension**: Simplified and standardized fields.
+    -   **Vehicle**: Added a new Vehicle asset category.
+    -   **Cash in Hand**: Added a Description field.
+-   **Assets Section Update (frontend)**:
+    -   Refactored to correctly display  or  from the various new income sources.
+-   **Expenses Section UI Refactor (frontend)**:
+    -   Redesigned the layout into a single, space-utilizing line.
+    -   Made post-retirement fields conditionally editable.
+    -   Added a Family option to member dropdowns.
+-   **Insurance Cover Section Logic (frontend)**:
+    -   Implemented dynamic Suggested Cover calculations based on the family's annual income and asset values.
+    -   Removed nonsensical Total column from the summary table.
 
 **Earlier issues found/mentioned but not fixed**
-None. All issues raised during the session prior to the final PDF bug were addressed.
+None. The agent has been diligent in addressing all user-reported issues and feedback throughout the session.
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork:** N/A
--   **Recurrence count:** 0
--   **Status:** N/A
+None. This is the first fork for this problem.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Frontend:** React, JSX
--   **State Management:** ,  hooks for component-level state.
--   **UI/UX:** Major refactoring from data entry forms to view-only summary tables. Conditional rendering to handle multiple data types within a single component ().
--   **Data Processing:** Backend logic in  for parsing PDF files.
+-   **Frontend**: React, JavaScript (ES6+), Tailwind CSS
+-   **Backend**: Python (likely Flask, given the API structure)
+-   **Financial Calculations**: Implemented complex financial formulas in JavaScript, including XIRR via the Newton-Raphson method for irregular cash flows, absolute return, and asset valuation.
+-   **PDF Parsing**: Utilized advanced regular expressions in Python to extract structured data from unstructured PDF text.
+-   **API Integration**: Fetched real-time data from an external, unauthenticated REST API () for commodity prices.
 
 **key DB schema**
-Database schema was not directly accessed, but can be inferred from the frontend models:
--   **Assets:** 
--   **Liabilities (as entered in Expenses):** 
--   **Insurance (as entered in Expenses):** 
--   **Goals:** 
+No direct database interaction was performed. Data is managed in the frontend React state, primarily within the , , and  objects in . The structure is inferred from the UI fields (e.g.,  is an array of objects, where each object represents an income item with keys like , , , , etc.).
 
 **changes in tech stack**
-No changes in the underlying technology stack.
+No changes were made to the core technologies. An external API integration was added for commodity pricing.
 
 **All files of reference**
-*   **/app/services/analysis.service.js**: Contains the backend PDF parsing logic that is currently being debugged.
-*   **/app/frontend/src/pages/DataGathering/ExpenseSection.jsx**: Modified extensively to become a unified entry point for expenses, loans, and insurance.
-*   **/app/frontend/src/pages/DataGathering/AssetsSection.jsx**: Refactored into a view-only summary table.
-*   **/app/frontend/src/pages/DataGathering/LiabilitySection.jsx**: Refactored into a view-only summary table.
-*   **/app/frontend/src/pages/DataGathering/InsuranceCoverSection.jsx**: Refactored into a view-only summary table.
-*   **/app/frontend/src/pages/DataGathering/GoalSection.jsx**: Modified to support multi-year goals and a Family member option.
+-   : Fixed all PDF parsing bugs.
+-   : Major feature implementation for over 10 income sub-categories. This file is now very large.
+-   : Refactored to display data from the .
+-   : Major UI layout refactoring.
+-   : Implemented new business logic for suggested cover amounts.
+-   : Manages application state and tab structure.
+-   : Defines the main navigation tabs (needs modification).
+-   : Renders tab content (needs modification).
+-   : To be split into two components.
+-   : Newly created file for the pending task.
 
-**Areas that need refactoring**
--   **/app/frontend/src/pages/DataGathering/ExpenseSection.jsx**: This component is now extremely large and complex, managing the state, UI, and logic for three different types of data (regular expenses, loan EMIs, insurance premiums). It should be broken down into smaller, more specialized child components to improve maintainability.
--   **/app/services/analysis.service.js**: The agent noted this file is very large. It could likely benefit from being modularized to separate different stages of the parsing process (e.g., text extraction, data categorization, aggregation, Excel generation).
+**Areas that need refactoring**:
+-   ****: This component is now monolithic and handles logic for over 10 different income types, each with unique fields, calculations, and UI. It should be broken down into smaller, more manageable sub-components (e.g., , , ).
+-   **XIRR Calculation**: The Newton-Raphson logic for calculating XIRR is duplicated in the  function for FD, RD/PIS, Bonds, and Insurance. This should be extracted into a shared financial utility function.
 
 **key api endpoints**
-API endpoints were not explicitly shown, but are implied by the save functions in the components:
--   
--    (or handled via expense endpoint)
--    (or handled via expense endpoint)
--   
--    (inferred)
+-   : Endpoint to upload the CAS PDF for backend processing.
+-   : Endpoint to download the resulting Excel report.
+-   : External API used to fetch live gold and silver prices in INR.
 
 **Critical Info for New Agent**
--   The primary task is to fix the PDF parsing bug in .
--   Be aware of the major architectural changes in the Data Gathering section: , , and  are now read-only summary tabs. All corresponding data entry has been centralized into the  tab.
--   The  component is very complex. Changes there should be made carefully.
--   The user's PDF files ( and ) are the source for testing the parsing bug.
+-   The user is highly detail-oriented and provides very specific feedback on UI labels, field order, calculations, and visual styling. Pay close attention to their exact wording.
+-   The current task is a structural refactor of the main application tabs and requires modifying several core components (, , ) and splitting .
+-   Be aware that  is extremely large and complex. Changes there require careful testing.
 
 **documents and test reports created in this job**
-None.
+No documents were created.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Message 236):** Confirmed the PDF parsing issue happens in the Analysis tab where the output is an Excel file.
-2.  **Agent (Message 237):** Acknowledged the problem and planned to investigate the Analysis section code.
-3.  **User (Message 234):** Provided an image showing the Multi-Asset Fund entry is missing and has been merged with a liquid fund.
-4.  **Agent (Message 235):** Asked for clarification on where the issue occurs and what the expected behavior is.
-5.  **Agent (Message 233):** Summarized the final updates to the Goals section after screenshot tools failed. (COMPLETED)
-6.  **User (Message 210):** Requested adding a Family option to the Member dropdown and quick-select options for years (e.g., every alternate year) in the Goals tab. (COMPLETED)
-7.  **Agent (Message 209):** Confirmed the multi-year selection for goals is implemented and working. (COMPLETED)
-8.  **User (Message 198):** Requested that the Goal Year field in the Goals tab should allow multi-select. (COMPLETED)
-9.  **Agent (Message 197):** Confirmed the Insurance Cover tab was updated to a summary table. (COMPLETED)
-10. **User (Message 190):** Requested the Insurance coverage tab show a summary table like Assets/Liabilities with suggested and actual cover. (COMPLETED)
+1.  **Request**: Move Goals tab, split Networth and Surplus into separate tabs with a new order. (IN PROGRESS)
+2.  **Request**: Remove the Total row/column from the insurance coverage table. (Completed)
+3.  **Bug Report**: Insurance calculations are incorrect for a user with 60L annual income. (Completed)
+4.  **Requirement**: Home/Motor insurance suggested cover should be based on market value. (Completed)
+5.  **Requirement**: Provided detailed formulas for calculating suggested insurance coverage. (Completed)
+6.  **Bug Report**: Family Name is not appearing correctly in the expense member dropdown. (Completed)
+7.  **Requirement**: Add a Family option to the expense member dropdowns. (Completed)
+8.  **Requirement**: Make post-retirement expense fields read-only until a checkbox is ticked. (Completed)
+9.  **Requirement**: Allow the post-retirement percentage field to accept values >100%. (Completed)
+10. **UI Feedback**: Expense fields are cramped and not using available space. (Completed)
 
 **Project Health Check:**
--   **Broken:** The PDF parsing feature in the  tab is not correctly categorizing all mutual funds.
--   **Mocked:** The Suggested Cover values on the  tab are hardcoded constants within the  component.
+-   **Broken**: The main tab navigation is currently mid-refactor and will not function correctly until the pending task is completed.
+-   **Mocked**: The commodity pricing feature has hardcoded fallback values (, ) that are used if the external API call fails.
 
 **3rd Party Integrations**
--   No new integrations were explicitly added, but the UI for multi-select in the Goals section suggests the use of a library like  or a similar custom component.
+-   **GoldPrice.org**: Provides live gold (XAU) and silver (XAG) spot prices. Fetched via . Does not require an API key.
 
 **Testing status**
--   **Testing agent used after significant changes:** NO
--   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** []
--   **Known regressions:** The PDF parsing feature in the  tab is confirmed to be regressed or buggy.
+-   **Testing agent used after significant changes**: NO
+-   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Test files created**: None
+-   **Known regressions**: None
 
 **Credentials to test flow:**
-Credentials can be found by running  in the terminal.
+N/A
 
 **What agent forgot to execute**
-The agent was in the process of debugging the PDF parsing issue when the session ended. The task is in progress and has not been forgotten.</analysis>
+The agent has correctly identified the last user request but has not completed its execution. The task of splitting the Networth/Surplus tab and reordering all the main navigation tabs is still in its initial phase.</analysis>
