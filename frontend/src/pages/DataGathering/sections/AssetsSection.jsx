@@ -44,6 +44,16 @@ export default function AssetsSection({ family }) {
       } else {
         // Use the specific market/maturity key for this category
         if (category.marketKey) {
+          // Handle array of keys (try each until one has a value)
+          if (Array.isArray(category.marketKey)) {
+            for (const key of category.marketKey) {
+              const val = parseFloat(details[key]);
+              if (val && val > 0) {
+                return sum + val;
+              }
+            }
+            return sum;
+          }
           return sum + (parseFloat(details[category.marketKey]) || 0);
         }
         return sum;
