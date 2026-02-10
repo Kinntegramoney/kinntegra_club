@@ -519,7 +519,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   <Select value={item.details.post_retirement_member || ""} onValueChange={v => updateItem(cat.value, item.id, "post_retirement_member", v)} disabled={isReadOnly || !item.details.consider_post_retirement}>
                                     <SelectTrigger className={`h-8 w-full text-xs border-gray-200 ${item.details.consider_post_retirement ? 'bg-white' : 'bg-gray-100 text-gray-400'}`}><SelectValue placeholder="-" /></SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="family" className="text-xs font-medium text-blue-600">{family?.name || 'Family'} & Family</SelectItem>
+                                      <SelectItem value="family" className="text-xs font-medium text-blue-600">{members.find(m => m.is_primary)?.name || 'Family'} & Family</SelectItem>
                                       {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}
                                     </SelectContent>
                                   </Select>
