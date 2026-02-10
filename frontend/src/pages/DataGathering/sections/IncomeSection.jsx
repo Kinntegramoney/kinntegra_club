@@ -69,9 +69,7 @@ const INCOME_CATEGORIES = [
     icon: PiggyBank,
     color: "green",
     fields: [
-      { key: "investment_value", label: "Investment Value", type: "number", readOnly: true, calculated: true },
-      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true },
-      { key: "amount", label: "Amount", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
       { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
     ]
@@ -82,9 +80,7 @@ const INCOME_CATEGORIES = [
     icon: PiggyBank,
     color: "emerald",
     fields: [
-      { key: "investment_value", label: "Investment Value", type: "number", readOnly: true, calculated: true },
-      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true },
-      { key: "amount", label: "Amount", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
       { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
     ]
@@ -95,9 +91,7 @@ const INCOME_CATEGORIES = [
     icon: Wallet,
     color: "amber",
     fields: [
-      { key: "investment_value", label: "Investment Value", type: "number", readOnly: true, calculated: true },
-      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true },
-      { key: "amount", label: "Amount", type: "number" },
+      { key: "market_value", label: "Market Value", type: "number" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
       { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
     ]
