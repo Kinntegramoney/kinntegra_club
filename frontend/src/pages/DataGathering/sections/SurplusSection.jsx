@@ -1334,22 +1334,15 @@ function AllocationSimulator({
     const allocation = isFamily ? familyAllocation : memberAllocations[entityId];
     if (!allocation) return;
 
-    const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets } = allocation;
+    const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears } = allocation;
     const weightedReturn = (equity * equityReturn + debt * debtReturn) / 100;
     
     // Get assets for this entity
     const entityAssets = getAssetsForEntity(entityId);
-    let startingCorpus = 0;
-    if (includeAssets) {
-      entityAssets.forEach(asset => {
-        if (selectedAssets[asset.id] !== false) {
-          startingCorpus += asset.value;
-        }
-      });
-    }
-
-    let corpus = startingCorpus;
+    
+    let corpus = 0;
     let exhaustYear = null;
+    let assetsAdded = {};  // Track which assets have been added
     
     // Determine end year based on entity
     const entityEndYear = isFamily ? endYear : (() => {
@@ -1361,6 +1354,19 @@ function AllocationSimulator({
 
     for (let year = currentYear; year <= entityEndYear; year++) {
       const yearStr = year.toString();
+      
+      // Add assets that should be included from this year
+      if (includeAssets) {
+        entityAssets.forEach(asset => {
+          if (!assetsAdded[asset.id] && selectedAssets[asset.id] !== false) {
+            const startYear = assetStartYears[asset.id] || currentYear;
+            if (year >= startYear) {
+              corpus += asset.value;
+              assetsAdded[asset.id] = true;
+            }
+          }
+        });
+      }
       
       // Calculate income/expenses based on entity
       let totalIncome, totalExpenses, totalGoals;
