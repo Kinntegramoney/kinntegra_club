@@ -295,64 +295,46 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     }
   }, [family?.id, existingIncomes.length, initialLoadDone]);
 
-  // Commodity prices state
-  const [commodityPrices, setCommodityPrices] = useState({ Gold: 0, Silver: 0 });
+  // Commodity prices state with date
+  const [commodityPrices, setCommodityPrices] = useState({ Gold: 0, Silver: 0, date: null });
   
   // Fetch commodity prices from free API (prices in INR)
   useEffect(() => {
     const fetchCommodityPrices = async () => {
       try {
-        // Try GoldAPI.io for INR prices
-        const goldResponse = await axios.get('https://www.goldapi.io/api/XAU/INR', {
-          headers: { 'x-access-token': 'goldapi-demo' }
-        });
-        const silverResponse = await axios.get('https://www.goldapi.io/api/XAG/INR', {
-          headers: { 'x-access-token': 'goldapi-demo' }
-        });
-        
-        if (goldResponse.data && silverResponse.data) {
-          // API returns price per troy ounce, convert to per kg
-          // 1 troy ounce = 31.1035 grams, so 1 kg = 32.1507 troy ounces
-          const goldPricePerKg = Math.round(goldResponse.data.price * 32.1507);
-          const silverPricePerKg = Math.round(silverResponse.data.price * 32.1507);
-          setCommodityPrices({
-            Gold: goldPricePerKg,
-            Silver: silverPricePerKg
-          });
-          return;
-        }
-      } catch (error) {
-        console.log('GoldAPI unavailable, trying alternative...');
-      }
-      
-      try {
-        // Alternative: Use freegoldapi.com (USD) and convert to INR
+        // Use freegoldapi.com (USD) and convert to INR
         const goldUsdResponse = await axios.get('https://freegoldapi.com/data/latest.json');
         const forexResponse = await axios.get('https://api.exchangerate-api.com/v4/latest/USD');
         
-        if (goldUsdResponse.data && forexResponse.data) {
-          const goldPriceUsd = goldUsdResponse.data[goldUsdResponse.data.length - 1]?.price || 0;
+        if (goldUsdResponse.data && goldUsdResponse.data.length > 0 && forexResponse.data) {
+          const latestData = goldUsdResponse.data[goldUsdResponse.data.length - 1];
+          const goldPriceUsdPerOz = latestData?.price || 0; // Price per troy ounce in USD
+          const priceDate = latestData?.date || null;
           const usdToInr = forexResponse.data.rates?.INR || 83;
           
-          // Gold price is per troy ounce in USD
-          const goldPriceInr = goldPriceUsd * usdToInr;
-          const goldPricePerKg = Math.round(goldPriceInr * 32.1507);
+          // Convert: 1 troy ounce = 31.1035 grams
+          // Gold price per gram in INR
+          const goldPricePerGramInr = (goldPriceUsdPerOz / 31.1035) * usdToInr;
+          const goldPricePerKg = Math.round(goldPricePerGramInr * 1000);
           
-          // Silver is typically ~1/80th of gold price
-          const silverPricePerKg = Math.round(goldPricePerKg / 80);
+          // Silver: Fetch silver price or use gold/silver ratio (~85:1)
+          // Silver price per gram in INR (approximately 1/85th of gold)
+          const silverPricePerGramInr = goldPricePerGramInr / 85;
+          const silverPricePerKg = Math.round(silverPricePerGramInr * 1000);
           
           setCommodityPrices({
             Gold: goldPricePerKg,
-            Silver: silverPricePerKg
+            Silver: silverPricePerKg,
+            date: priceDate
           });
           return;
         }
       } catch (error) {
-        console.log('Alternative API also unavailable');
+        console.log('Commodity API unavailable:', error.message);
       }
       
-      // If all APIs fail, leave prices as 0
-      setCommodityPrices({ Gold: 0, Silver: 0 });
+      // If API fails, leave prices as 0
+      setCommodityPrices({ Gold: 0, Silver: 0, date: null });
     };
     fetchCommodityPrices();
   }, []);
