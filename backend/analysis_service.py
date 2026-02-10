@@ -777,6 +777,10 @@ class CASParser:
                                         'dishonoured' in trans_type_line.lower() or
                                         'not realised' in trans_type_line.lower())
                         
+                        # Debug logging for transaction classification
+                        if is_redemption:
+                            logger.debug(f"Redemption detected: date={date_str}, amount={amount}, type={trans_type_line[:50]}")
+                        
                         # Track first transaction date per advisor
                         if current_advisor:
                             try:
