@@ -1,152 +1,87 @@
-# Kinntegraa - Product Requirements Document
+# Kinntegraa - Financial Planning & Portfolio Analysis Platform
 
-## Recent Changes (Feb 6, 2026)
+## Original Problem Statement
+A comprehensive financial planning tool for brokers and advisors that includes:
+1. **Data Gathering** - Client financial data collection (Assets, Liabilities, Expenses, Insurance, Goals)
+2. **Portfolio Analysis** - Parse CAS PDFs and generate Gap Sheet reports
 
-### Assets Tab Redesign - View-Only Summary Table (Feb 6, 2026) ✅ NEW
+## Core Requirements
+- Multi-user support (Broker, Sub-broker, Client roles)
+- CAS PDF parsing with transaction extraction
+- Gap Sheet Excel report generation
+- Client financial data management
 
-**Feature:** Redesigned the Assets section in Data Gathering to be a view-only summary table with member-based columns.
+## What's Been Implemented
 
-**New Table Structure:**
-- **Particulars Column** - Asset category names with icons
-- **Member Columns** - Each family member gets a column with:
-  - Investment Value sub-column
-  - Market Value sub-column
-- **Total Column** - Combined totals across all members
-- **Grand Total Row** - Sum of all assets
+### Data Gathering Section (Completed)
+- **Assets Tab**: View-only summary table with member-based columns
+- **Liabilities Tab**: View-only summary table showing outstanding loan amounts
+- **Expenses Tab**: Unified data entry for Regular Expenses, Loan EMIs, Insurance Premiums
+- **Insurance Cover Tab**: View-only summary table comparing "Suggested" vs "Actual" coverage
+- **Goals Tab**: Multi-year selection for recurring goals, "Family" option for shared goals
 
-**Key Changes:**
-- Removed Actions column (view-only page)
-- Member names displayed as column headers
-- Investment Value and Market Value as sub-columns under each member
-- Clean, read-only display of asset allocations per family member
+### Analysis Section
+- CAS PDF parsing with investor info, portfolio summary, folios, transactions
+- Gap Sheet Excel generation with multiple sheets (Summary, Portfolio Performance, MF Transactions, Sold Units, etc.)
+- Dashboard view with holdings breakdown
 
-**Asset Categories (14 total):**
-1. PPF (→ Income)
-2. EPF (→ Income)
-3. Gratuity (→ Income)
-4. Fixed Deposits (→ Income)
-5. RD / PIS (→ Income)
-6. Bonds (→ Income)
-7. Insurance (→ Income)
-8. Mutual Fund
-9. Shares / PMS
-10. Gold
-11. Cash in Hand
-12. Real Estate
-13. Vehicles
-14. Other Assets
+## Bug Fixes Applied
 
-**Files Modified:**
-- `/app/frontend/src/pages/DataGathering/sections/AssetsSection.jsx` - Complete rewrite
+### 2025-02-10: PDF Parsing & Sold Units Fixes
 
-**Testing:** ✅ Verified with single and multiple member families
+#### Issue 1: Multi-Asset Fund Not Being Parsed
+**Problem:** ICICI Prudential Multi-Asset Fund entries were not appearing in the output when the ISIN was on a separate line from "ISIN:".
 
----
+**Root Cause:** The ISIN regex expected the ISIN code to be on the same line as "ISIN:", but some PDFs have the format:
+```
+...Fund Name (Non-Demat) - ISIN:
+INF109K015K4(Advisor: DIRECT)
+```
 
-### Expense Section Update (Feb 6, 2026) ✅
+**Fix:** Added handling for cases where `ISIN:` is at the end of one line and the actual ISIN code is on the next line.
 
-**Feature:** Updated the Expense Section based on the new `Expense_Category_NEW.docx` requirements.
+#### Issue 2: Scheme Name Truncation
+**Problem:** Fund names with multiple dashes (like "Multi-Asset Fund - Direct Plan - Growth") were being truncated.
 
-**Categories Updated (17 total):**
-1. Food & Grocery
-2. House Rent / Maintenance / Repair
-3. Conveyance, Fuel & Maintenance
-4. Medicines / Doctor / Healthcare
-5. Electricity / Water / Labour / AMC
-6. Mobile
-7. Gas Line / Telephone / Internet / Cable
-8. Clothes and Accessories
-9. Shopping, Gifts, White Goods, Gadgets
-10. Dining / Movies / Sports
-11. Personal Care / Others
-12. Mediclaim / PA / CI
-13. Children's Schooling / College Expenses
-14. Contribution To Parents / Siblings
-15. Motor Insurance
-16. Life Insurance – Term Plan
-17. EMI
+**Root Cause:** The regex used non-greedy matching `(.+?)` which stopped at the first ` - `.
 
-**Field Changes:**
-- **Monthly Amount** - New primary input field (user enters monthly expense)
-- **Annual Amount** - Auto-calculated read-only field (Monthly × 12)
-- **Upto Year** - Dropdown (2020-2080)
-- **Inflation %** - Default 5%
-- **Consider Post Retirement** - Checkbox (NEW)
-- **Post-Retirement Applicable Member** - Dropdown, enabled only when checkbox is checked
-- **% of Current Annual Expense** - Number input (0-100%), enabled only when checkbox is checked
+**Fix:** Changed to greedy matching `(.+)` to capture the full scheme name up to the last ` - ISIN:`.
 
----
+#### Issue 3: Transactions Not Associated with Folios
+**Problem:** When Folio No appears before ISIN in the PDF, transactions were not being properly associated.
 
-## Architecture
+**Root Cause:** The folio entry was created with stale scheme/ISIN data from the previous fund.
 
-### Tech Stack
-- **Frontend:** React 18, Vite, Tailwind CSS, Shadcn/UI components
-- **Backend:** Python FastAPI, Pydantic
+**Fix:** 
+1. Create folio entry when Folio No is detected
+2. When ISIN is detected later, migrate transactions from the old key to the new folio+ISIN key
+3. Delete the old folio-only entry to avoid duplicates
+
+#### Issue 4: Sold Units Showing Purchases After Sale Date
+**Problem:** The Sold Units sheet was incorrectly matching sales with purchases that happened AFTER the sale date, resulting in negative holding days.
+
+**Root Cause:** The FIFO matching algorithm didn't check if the purchase date was before the sale date.
+
+**Fix:** Added a check in the FIFO matching to skip purchases that happened on or after the sale date:
+```python
+if sale_date and purchase_date >= sale_date:
+    continue  # Skip purchases that happened on or after the sale date
+```
+
+## Known Issues / Tech Debt
+1. `ExpenseSection.jsx` is very large and should be refactored into smaller components
+2. `analysis_service.py` is large (~3500 lines) and could be modularized
+3. "Suggested Cover" values in Insurance Cover tab are hardcoded constants
+
+## Key Files
+- `/app/backend/analysis_service.py` - CAS PDF parsing and Gap Sheet generation
+- `/app/backend/server.py` - Main API server
+- `/app/frontend/src/pages/Analysis.jsx` - Analysis UI
+- `/app/frontend/src/pages/DataGathering/*.jsx` - Data gathering components
+
+## Tech Stack
+- **Frontend:** React, Shadcn/UI, Tailwind CSS
+- **Backend:** FastAPI, Python
 - **Database:** MongoDB
-
-### Key Directories
-```
-/app
-├── backend/
-│   └── server.py (main FastAPI application)
-├── frontend/
-│   └── src/
-│       ├── pages/
-│       │   └── DataGathering/
-│       │       ├── index.jsx (main Data Gathering page)
-│       │       └── sections/
-│       │           ├── AssetsSection.jsx     ✅ Redesigned
-│       │           ├── ExpenseSection.jsx
-│       │           ├── GoalSection.jsx
-│       │           ├── IncomeSection.jsx
-│       │           ├── InsuranceSection.jsx
-│       │           ├── LiabilitySection.jsx
-│       │           ├── MembersSection.jsx
-│       │           └── SurplusSection.jsx
-│       └── components/ui/ (Shadcn components)
-└── memory/
-    └── PRD.md
-```
-
-### Data Gathering Tabs (8 total)
-1. Introduction (Family Members)
-2. Income
-3. Expenses
-4. **Assets** ← Redesigned as view-only summary table
-5. Liabilities
-6. Insurance Cover
-7. Goals
-8. Net Worth & Surplus
-
----
-
-## Pending Tasks
-
-### P1 - High Priority
-- [ ] Verify "common header" feature in Goal, Insurance, Liability sections
-- [ ] Component refactoring - Break down complex `IncomeSection.jsx`
-
-### P2 - Medium Priority
-- [ ] Extract reusable header/delete button logic into shared components
-
----
-
-## API Endpoints (Data Gathering)
-
-- `GET /api/data-gathering/families` - List families
-- `POST /api/data-gathering/family` - Create family
-- `GET /api/data-gathering/family/{id}` - Get family details
-- `POST /api/data-gathering/family/{id}/member` - Add member
-- `PUT /api/data-gathering/family/{id}/member/{member_id}` - Update member
-- `POST /api/data-gathering/family/{id}/asset` - Add asset
-- `PUT /api/data-gathering/family/{id}/asset/{asset_id}` - Update asset
-- `DELETE /api/data-gathering/family/{id}/asset/{asset_id}` - Delete asset
-
----
-
-## Test Credentials
-
-**Broker (Admin) Account:**
-- PAN: `ANVPB5297J`
-- Password: `Laksh@0208`
-- PIN: `0516`
+- **PDF Parsing:** PyMuPDF (fitz)
+- **Excel Generation:** openpyxl
