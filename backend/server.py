@@ -25701,7 +25701,9 @@ class GoalDetailCreate(BaseModel):
     category: str
     goal_amount: float
     inflation_percent: float
-    goal_year: int
+    goal_year: Optional[int] = None  # For backward compatibility
+    goal_years: Optional[List[str]] = None  # New: array of years
+    is_family_goal: Optional[bool] = False
 
 class ExpenseDetailCreate(BaseModel):
     family_id: str
