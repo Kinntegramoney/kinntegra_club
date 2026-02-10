@@ -451,17 +451,37 @@ export default function SurplusSection({ family, isReadOnly }) {
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3 text-green-600" />
                   <span className="text-xs font-medium text-gray-800">Income</span>
+                  <Info className="h-3 w-3 text-gray-400" />
                 </div>
               </td>
               {displayYears.map((year, yearIdx) => {
                 const total = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, year), 0);
                 return (
                   <React.Fragment key={`income-${year}`}>
-                    {members.map((member) => (
-                      <td key={`income-${year}-${member.id}`} className="px-1 py-2 text-center">
-                        <span className="text-[10px] text-green-700">{formatAmount(getProjectedMemberIncome(member.id, year))}</span>
-                      </td>
-                    ))}
+                    {members.map((member) => {
+                      const breakdown = getMemberIncomeBreakdown(member.id, year);
+                      const value = getProjectedMemberIncome(member.id, year);
+                      return (
+                        <td key={`income-${year}-${member.id}`} className="px-1 py-2 text-center">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-[10px] text-green-700 cursor-help">{formatAmount(value)}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                <div className="space-y-1">
+                                  <div className="font-semibold border-b pb-1">{member.name} - {year}</div>
+                                  {breakdown.salary > 0 && <div>Salary: {formatAmount(breakdown.salary)}</div>}
+                                  {breakdown.business > 0 && <div>Business: {formatAmount(breakdown.business)}</div>}
+                                  {breakdown.rental > 0 && <div>Rental: {formatAmount(breakdown.rental)}</div>}
+                                  {breakdown.pension > 0 && <div>Pension: {formatAmount(breakdown.pension)}</div>}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </td>
+                      );
+                    })}
                     <td className={`px-1 py-2 text-center bg-green-50/50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
                       <span className="text-[10px] font-semibold text-green-800">{formatAmount(total)}</span>
                     </td>
@@ -476,17 +496,39 @@ export default function SurplusSection({ family, isReadOnly }) {
                 <div className="flex items-center gap-1">
                   <TrendingDown className="h-3 w-3 text-orange-600" />
                   <span className="text-xs font-medium text-gray-800">Expenses</span>
+                  <Info className="h-3 w-3 text-gray-400" />
                 </div>
               </td>
               {displayYears.map((year, yearIdx) => {
                 const total = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year), 0);
                 return (
                   <React.Fragment key={`exp-${year}`}>
-                    {members.map((member) => (
-                      <td key={`exp-${year}-${member.id}`} className="px-1 py-2 text-center">
-                        <span className="text-[10px] text-orange-700">{formatAmount(getProjectedMemberExpenses(member.id, year))}</span>
-                      </td>
-                    ))}
+                    {members.map((member) => {
+                      const breakdown = getMemberExpenseBreakdown(member.id, year);
+                      const value = getProjectedMemberExpenses(member.id, year);
+                      return (
+                        <td key={`exp-${year}-${member.id}`} className="px-1 py-2 text-center">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-[10px] text-orange-700 cursor-help">{formatAmount(value)}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs max-w-[200px]">
+                                <div className="space-y-1">
+                                  <div className="font-semibold border-b pb-1">{member.name} - {year}</div>
+                                  {Object.entries(breakdown).map(([cat, amt]) => (
+                                    <div key={cat} className="flex justify-between gap-2">
+                                      <span className="capitalize">{cat.replace(/_/g, ' ')}:</span>
+                                      <span>{formatAmount(amt)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </td>
+                      );
+                    })}
                     <td className={`px-1 py-2 text-center bg-gray-50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
                       <span className="text-[10px] font-semibold text-orange-800">{formatAmount(total)}</span>
                     </td>
@@ -502,20 +544,41 @@ export default function SurplusSection({ family, isReadOnly }) {
                   <div className="flex items-center gap-1">
                     <Target className="h-3 w-3 text-purple-600" />
                     <span className="text-xs font-medium text-gray-800">Goals</span>
+                    <Info className="h-3 w-3 text-gray-400" />
                   </div>
                 </td>
                 {displayYears.map((year, yearIdx) => {
                   const yearInt = parseInt(year);
                   const total = goalsByYear[yearInt]?.total || 0;
+                  const yearGoals = goalDetails.filter(g => {
+                    const goalYears = g.goal_years || (g.goal_year ? [g.goal_year.toString()] : []);
+                    return goalYears.includes(year);
+                  });
                   return (
                     <React.Fragment key={`goal-${year}`}>
                       {members.map((member) => {
                         const val = getMemberGoalExpenses(member.id, year);
                         return (
                           <td key={`goal-${year}-${member.id}`} className="px-1 py-2 text-center">
-                            <span className={`text-[10px] ${val > 0 ? 'text-purple-700' : 'text-gray-300'}`}>
-                              {val > 0 ? formatAmount(val) : '-'}
-                            </span>
+                            {val > 0 ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="text-[10px] text-purple-700 cursor-help">{formatAmount(val)}</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs max-w-[200px]">
+                                    <div className="space-y-1">
+                                      <div className="font-semibold border-b pb-1">{member.name} Goals - {year}</div>
+                                      {yearGoals.map((g, i) => (
+                                        <div key={i}>{g.category}: {formatAmount(parseFloat(g.goal_amount) || 0)} (Today)</div>
+                                      ))}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              <span className="text-[10px] text-gray-300">-</span>
+                            )}
                           </td>
                         );
                       })}
@@ -576,17 +639,40 @@ export default function SurplusSection({ family, isReadOnly }) {
                 <div className="flex items-center gap-1">
                   <Landmark className="h-3 w-3 text-indigo-600" />
                   <span className="text-xs font-medium text-gray-800">Investments</span>
+                  <Info className="h-3 w-3 text-gray-400" />
                 </div>
               </td>
               {displayYears.map((year, yearIdx) => {
                 const total = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, year), 0);
                 return (
                   <React.Fragment key={`inv-${year}`}>
-                    {members.map((member) => (
-                      <td key={`inv-${year}-${member.id}`} className="px-1 py-2 text-center">
-                        <span className="text-[10px] text-indigo-700">{formatAmount(getProjectedMemberInvestments(member.id, year))}</span>
-                      </td>
-                    ))}
+                    {members.map((member) => {
+                      const breakdown = getMemberInvestmentBreakdown(member.id);
+                      const value = getProjectedMemberInvestments(member.id, year);
+                      return (
+                        <td key={`inv-${year}-${member.id}`} className="px-1 py-2 text-center">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-[10px] text-indigo-700 cursor-help">{formatAmount(value)}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs max-w-[200px]">
+                                <div className="space-y-1">
+                                  <div className="font-semibold border-b pb-1">{member.name} Investments</div>
+                                  {Object.entries(breakdown).map(([cat, amt]) => (
+                                    <div key={cat} className="flex justify-between gap-2">
+                                      <span className="capitalize">{cat.replace(/_/g, ' ')}:</span>
+                                      <span>{formatAmount(amt)}</span>
+                                    </div>
+                                  ))}
+                                  {Object.keys(breakdown).length === 0 && <div className="text-gray-400">No investments</div>}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </td>
+                      );
+                    })}
                     <td className={`px-1 py-2 text-center bg-gray-50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
                       <span className="text-[10px] font-semibold text-indigo-800">{formatAmount(total)}</span>
                     </td>
