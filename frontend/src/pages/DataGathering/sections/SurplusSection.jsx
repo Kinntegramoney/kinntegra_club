@@ -348,6 +348,212 @@ export default function SurplusSection({ family, isReadOnly }) {
     return yearOptions.filter(y => !selectedYears.includes(y));
   };
 
+  // Export to Excel function
+  const exportToExcel = () => {
+    const wb = XLSX.utils.book_new();
+    
+    // Generate all years from current to life expectancy
+    const allYears = [];
+    for (let y = currentYear; y <= endYear; y++) {
+      allYears.push(y);
+    }
+
+    // Sheet 1: Summary
+    const summaryData = [
+      ["Family Cash Flow Projection"],
+      ["Family Name:", family?.family_name || "Family"],
+      ["Generated On:", new Date().toLocaleDateString()],
+      ["Base Year:", currentYear],
+      ["Life Expectancy:", lifeExpectancy],
+      ["Earliest Retirement Year:", earliestRetirement],
+      [],
+      ["Members:"],
+      ...members.map(m => {
+        const info = getMemberIncomeInfo(m.id);
+        return [`  ${m.name}${m.is_primary ? ' (Primary)' : ''}`, `Retirement: ${info.retirementYear}`, `Salary Growth: ${info.salaryGrowth}%`, `Business Growth: ${info.businessGrowth}%`];
+      }),
+    ];
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+
+    // Sheet 2: Year-wise Cash Flow
+    const cashFlowHeaders = [
+      "Year", 
+      "Age",
+      ...members.flatMap(m => [`${m.name.split(' ')[0]} Income`, `${m.name.split(' ')[0]} Expenses`, `${m.name.split(' ')[0]} Goals`, `${m.name.split(' ')[0]} Investments`, `${m.name.split(' ')[0]} Surplus`]),
+      "Total Income",
+      "Total Expenses", 
+      "Total Goals",
+      "Total Investments",
+      "Total Savings",
+      "Total Surplus"
+    ];
+
+    const cashFlowData = allYears.map(year => {
+      const yearStr = year.toString();
+      const age = primaryAge + (year - currentYear);
+      
+      const memberValues = members.flatMap(m => {
+        const inc = getProjectedMemberIncome(m.id, yearStr);
+        const exp = getProjectedMemberExpenses(m.id, yearStr);
+        const goal = getMemberGoalExpenses(m.id, yearStr);
+        const inv = getProjectedMemberInvestments(m.id, yearStr);
+        const surplus = inc - exp - goal - inv;
+        return [Math.round(inc), Math.round(exp), Math.round(goal), Math.round(inv), Math.round(surplus)];
+      });
+
+      const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
+      const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
+      const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
+      const totalInvestments = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, yearStr), 0);
+      const totalSavings = totalIncome - totalExpenses - totalGoals;
+      const totalSurplus = totalSavings - totalInvestments;
+
+      return [
+        year,
+        age,
+        ...memberValues,
+        Math.round(totalIncome),
+        Math.round(totalExpenses),
+        Math.round(totalGoals),
+        Math.round(totalInvestments),
+        Math.round(totalSavings),
+        Math.round(totalSurplus)
+      ];
+    });
+
+    const cashFlowSheet = XLSX.utils.aoa_to_sheet([cashFlowHeaders, ...cashFlowData]);
+    
+    // Set column widths
+    cashFlowSheet['!cols'] = [
+      { wch: 8 }, { wch: 6 },
+      ...members.flatMap(() => [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }]),
+      { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, cashFlowSheet, "Cash Flow");
+
+    // Sheet 3: Income Breakdown
+    const incomeHeaders = [
+      "Year",
+      ...members.flatMap(m => [`${m.name.split(' ')[0]} Salary`, `${m.name.split(' ')[0]} Business`, `${m.name.split(' ')[0]} Rental`, `${m.name.split(' ')[0]} Pension`]),
+      "Total Salary", "Total Business", "Total Rental", "Total Pension", "Grand Total"
+    ];
+
+    const incomeData = allYears.map(year => {
+      const yearStr = year.toString();
+      const memberBreakdowns = members.map(m => getMemberIncomeBreakdown(m.id, yearStr));
+      
+      const totalSalary = memberBreakdowns.reduce((sum, b) => sum + b.salary, 0);
+      const totalBusiness = memberBreakdowns.reduce((sum, b) => sum + b.business, 0);
+      const totalRental = memberBreakdowns.reduce((sum, b) => sum + b.rental, 0);
+      const totalPension = memberBreakdowns.reduce((sum, b) => sum + b.pension, 0);
+
+      return [
+        year,
+        ...memberBreakdowns.flatMap(b => [Math.round(b.salary), Math.round(b.business), Math.round(b.rental), Math.round(b.pension)]),
+        Math.round(totalSalary), Math.round(totalBusiness), Math.round(totalRental), Math.round(totalPension),
+        Math.round(totalSalary + totalBusiness + totalRental + totalPension)
+      ];
+    });
+
+    const incomeSheet = XLSX.utils.aoa_to_sheet([incomeHeaders, ...incomeData]);
+    XLSX.utils.book_append_sheet(wb, incomeSheet, "Income Breakdown");
+
+    // Sheet 4: Expense Breakdown
+    const expenseCategories = [...new Set(expenseDetails.map(e => e.expense_type || 'other'))];
+    const expenseHeaders = ["Year", ...expenseCategories.map(c => c.replace(/_/g, ' ').toUpperCase()), "Total Expenses"];
+
+    const expenseData = allYears.map(year => {
+      const yearStr = year.toString();
+      const categoryTotals = {};
+      expenseCategories.forEach(cat => { categoryTotals[cat] = 0; });
+      
+      members.forEach(m => {
+        const breakdown = getMemberExpenseBreakdown(m.id, yearStr);
+        Object.entries(breakdown).forEach(([cat, amt]) => {
+          if (categoryTotals[cat] !== undefined) {
+            categoryTotals[cat] += amt;
+          }
+        });
+      });
+
+      const total = Object.values(categoryTotals).reduce((sum, v) => sum + v, 0);
+      return [year, ...expenseCategories.map(cat => Math.round(categoryTotals[cat] || 0)), Math.round(total)];
+    });
+
+    const expenseSheet = XLSX.utils.aoa_to_sheet([expenseHeaders, ...expenseData]);
+    XLSX.utils.book_append_sheet(wb, expenseSheet, "Expense Breakdown");
+
+    // Sheet 5: Goals
+    if (goalDetails.length > 0) {
+      const goalsHeaders = ["Year", ...goalDetails.map(g => g.category || 'Goal'), "Total Goals"];
+      
+      const goalsData = allYears.map(year => {
+        const yearStr = year.toString();
+        const yearInt = parseInt(yearStr);
+        
+        const goalAmounts = goalDetails.map(goal => {
+          const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
+          if (!goalYears.includes(yearStr)) return 0;
+          
+          const amountToday = parseFloat(goal.goal_amount) || 0;
+          const inflationRate = parseFloat(goal.inflation_percent) || 6;
+          const yearsFromNow = yearInt - currentYear;
+          return yearsFromNow > 0 ? amountToday * Math.pow(1 + inflationRate / 100, yearsFromNow) : amountToday;
+        });
+
+        const total = goalAmounts.reduce((sum, v) => sum + v, 0);
+        return [year, ...goalAmounts.map(a => Math.round(a)), Math.round(total)];
+      });
+
+      const goalsSheet = XLSX.utils.aoa_to_sheet([goalsHeaders, ...goalsData]);
+      XLSX.utils.book_append_sheet(wb, goalsSheet, "Goals");
+    }
+
+    // Sheet 6: Investments
+    if (investmentDetails.length > 0) {
+      const investmentCategories = [...new Set(investmentDetails.map(i => i.category || 'other'))];
+      const investmentHeaders = ["Year", ...investmentCategories.map(c => c.replace(/_/g, ' ').toUpperCase()), "Total Investments"];
+
+      const investmentData = allYears.map(year => {
+        const yearStr = year.toString();
+        const yearInt = parseInt(yearStr);
+        const yearsFromNow = yearInt - currentYear;
+        const isPostRetirement = yearInt >= earliestRetirement;
+        
+        const categoryTotals = {};
+        investmentCategories.forEach(cat => { categoryTotals[cat] = 0; });
+        
+        investmentDetails.forEach(inv => {
+          const cat = inv.category || 'other';
+          const baseAmount = parseFloat(inv.annual_amount) || 0;
+          let projectedAmount = baseAmount;
+          
+          if (yearsFromNow > 0) {
+            projectedAmount = isPostRetirement ? baseAmount * 0.5 : baseAmount * Math.pow(1.05, yearsFromNow);
+          }
+          
+          if (categoryTotals[cat] !== undefined) {
+            categoryTotals[cat] += projectedAmount;
+          }
+        });
+
+        const total = Object.values(categoryTotals).reduce((sum, v) => sum + v, 0);
+        return [year, ...investmentCategories.map(cat => Math.round(categoryTotals[cat] || 0)), Math.round(total)];
+      });
+
+      const investmentSheet = XLSX.utils.aoa_to_sheet([investmentHeaders, ...investmentData]);
+      XLSX.utils.book_append_sheet(wb, investmentSheet, "Investments");
+    }
+
+    // Generate and save file
+    const fileName = `cashflow_${(family?.family_name || 'family').toLowerCase().replace(/\s+/g, '_')}_${currentYear}.xlsx`;
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    saveAs(blob, fileName);
+  };
+
   // Format currency
   const formatAmount = (amount) => {
     if (amount === undefined || amount === null || isNaN(amount)) return "-";
