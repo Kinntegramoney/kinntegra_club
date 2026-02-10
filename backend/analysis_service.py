@@ -338,6 +338,30 @@ class CASParser:
                     current_scheme_full = f"{scheme_code}-{scheme_name}"
                     current_scheme = scheme_name
                 
+                # IMPORTANT: Update current_key when ISIN changes (for multi-scheme folios)
+                # This ensures schemes with the same folio but different ISINs get separate entries
+                if current_folio and current_isin:
+                    new_key = f"{current_folio}_{current_isin}"
+                    if new_key != current_key:
+                        current_key = new_key
+                        # Create new folio entry if it doesn't exist
+                        if current_key not in self.folios:
+                            self.folios[current_key] = {
+                                'folio': current_folio,
+                                'scheme': current_scheme,
+                                'scheme_code': current_scheme_full,
+                                'isin': current_isin,
+                                'pan': current_pan,
+                                'amc': current_amc,
+                                'advisor': current_advisor,
+                                'transactions': [],
+                                'closing_balance': 0,
+                                'cost_value': 0,
+                                'current_nav': 0,
+                                'market_value': 0,
+                                'opening_balance': 0
+                            }
+                
                 pending_scheme_line = None
             
             # Detect Folio No
