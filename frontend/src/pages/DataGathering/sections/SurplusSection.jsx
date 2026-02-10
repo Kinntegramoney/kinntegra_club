@@ -11,10 +11,11 @@ export default function SurplusSection({ family, isReadOnly }) {
 
   const currentYear = new Date().getFullYear();
   
-  // Selected year for detailed view
-  const [selectedYear, setSelectedYear] = useState(currentYear.toString());
+  // Generate default years to show
+  const defaultYears = [currentYear, currentYear + 1, currentYear + 2, currentYear + 3, currentYear + 4, currentYear + 5];
+  const [displayYears, setDisplayYears] = useState(defaultYears.map(String));
 
-  // Get primary member for retirement calculation
+  // Get primary member
   const primaryMember = members.find(m => m.is_primary) || members[0];
   
   // Calculate age from DOB
@@ -32,7 +33,7 @@ export default function SurplusSection({ family, isReadOnly }) {
   const lifeExpectancy = parseInt(primaryMember?.life_expectancy) || 85;
   const endYear = currentYear + (lifeExpectancy - primaryAge);
 
-  // Get member-specific income growth rates and retirement info
+  // Get member-specific income info and growth rates
   const getMemberIncomeInfo = (memberId) => {
     const memberIncomes = incomeDetails.filter(inc => inc.member_ids?.includes(memberId));
     
@@ -91,22 +92,11 @@ export default function SurplusSection({ family, isReadOnly }) {
       retirementYear = currentYear + (retirementAge - memberAge);
     }
     
-    return {
-      salaryGrowth,
-      businessGrowth,
-      rentalGrowth: 3,
-      retirementAge,
-      retirementYear,
-      baseSalary,
-      baseBusiness,
-      baseRental,
-      basePension,
-      baseTotal: baseSalary + baseBusiness + baseRental + basePension
-    };
+    return { salaryGrowth, businessGrowth, rentalGrowth: 3, retirementYear, baseSalary, baseBusiness, baseRental, basePension };
   };
 
   // Get member expenses with inflation
-  const getMemberExpenses = (memberId) => {
+  const getMemberBaseExpenses = (memberId) => {
     return expenseDetails
       .filter(exp => exp.member_ids?.includes(memberId))
       .map(expense => ({
@@ -119,13 +109,13 @@ export default function SurplusSection({ family, isReadOnly }) {
   };
 
   // Get member investments
-  const getMemberInvestments = (memberId) => {
+  const getMemberBaseInvestments = (memberId) => {
     return investmentDetails
       .filter(inv => inv.member_id === memberId)
       .reduce((sum, inv) => sum + (parseFloat(inv.annual_amount) || 0), 0);
   };
 
-  // Get goals by year (family-level or member-specific)
+  // Get goals by year
   const getGoalsByYear = () => {
     const goalsByYear = {};
     
@@ -150,7 +140,6 @@ export default function SurplusSection({ family, isReadOnly }) {
           members.forEach(m => { goalsByYear[year].byMember[m.id] = 0; });
         }
         
-        // Distribute goal amount among members
         const perMemberAmount = inflatedAmount / memberIds.length;
         memberIds.forEach(mid => {
           if (goalsByYear[year].byMember[mid] !== undefined) {
@@ -166,14 +155,16 @@ export default function SurplusSection({ family, isReadOnly }) {
 
   const goalsByYear = getGoalsByYear();
 
-  // Calculate projected income for member for a given year
+  // Calculate projected member income for a year
   const getProjectedMemberIncome = (memberId, year) => {
     const info = getMemberIncomeInfo(memberId);
     const targetYear = parseInt(year);
     const yearsFromNow = targetYear - currentYear;
     const isPostRetirement = targetYear >= info.retirementYear;
     
-    if (yearsFromNow <= 0) return info.baseTotal;
+    if (yearsFromNow <= 0) {
+      return info.baseSalary + info.baseBusiness + info.baseRental + info.basePension;
+    }
     
     if (isPostRetirement) {
       const preRetYears = info.retirementYear - currentYear;
@@ -189,9 +180,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     return salary + business + rental + info.basePension;
   };
 
-  // Calculate projected expenses for member for a given year
+  // Calculate projected member expenses for a year
   const getProjectedMemberExpenses = (memberId, year) => {
-    const memberExpenses = getMemberExpenses(memberId);
+    const memberExpenses = getMemberBaseExpenses(memberId);
     const info = getMemberIncomeInfo(memberId);
     const targetYear = parseInt(year);
     const yearsFromNow = targetYear - currentYear;
@@ -204,22 +195,19 @@ export default function SurplusSection({ family, isReadOnly }) {
     let total = 0;
     memberExpenses.forEach(expense => {
       if (targetYear > expense.uptoYear) return;
-      
       let projectedAmount = expense.annualAmount * Math.pow(1 + expense.inflationRate / 100, yearsFromNow);
-      
       if (isPostRetirement && expense.considerPostRetirement) {
         projectedAmount = projectedAmount * (expense.postRetirementPercent / 100);
       }
-      
       total += projectedAmount;
     });
     
     return total;
   };
 
-  // Calculate projected investments for member
+  // Calculate projected member investments
   const getProjectedMemberInvestments = (memberId, year) => {
-    const baseInv = getMemberInvestments(memberId);
+    const baseInv = getMemberBaseInvestments(memberId);
     const info = getMemberIncomeInfo(memberId);
     const targetYear = parseInt(year);
     const yearsFromNow = targetYear - currentYear;
@@ -230,7 +218,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     return baseInv * Math.pow(1.05, yearsFromNow);
   };
 
-  // Get goal expenses for member for a year
+  // Get member goal expenses for a year
   const getMemberGoalExpenses = (memberId, year) => {
     const yearInt = parseInt(year);
     return goalsByYear[yearInt]?.byMember[memberId] || 0;
@@ -245,14 +233,22 @@ export default function SurplusSection({ family, isReadOnly }) {
     return years;
   }, [currentYear, endYear]);
 
+  // Handle year selection change
+  const handleYearChange = (index, newYear) => {
+    const newYears = [...displayYears];
+    newYears[index] = newYear;
+    newYears.sort((a, b) => parseInt(a) - parseInt(b));
+    setDisplayYears(newYears);
+  };
+
   // Format currency
   const formatAmount = (amount) => {
     if (amount === undefined || amount === null || isNaN(amount)) return "-";
     const absValue = Math.abs(amount);
     if (absValue === 0) return "-";
-    if (absValue >= 10000000) return `${amount < 0 ? '-' : ''}${(absValue / 10000000).toFixed(2)} Cr`;
-    if (absValue >= 100000) return `${amount < 0 ? '-' : ''}${(absValue / 100000).toFixed(2)} L`;
-    return `${amount < 0 ? '-' : ''}${absValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+    if (absValue >= 10000000) return `${amount < 0 ? '-' : ''}${(absValue / 10000000).toFixed(1)}Cr`;
+    if (absValue >= 100000) return `${amount < 0 ? '-' : ''}${(absValue / 100000).toFixed(1)}L`;
+    return `${amount < 0 ? '-' : ''}${Math.round(absValue / 1000)}K`;
   };
 
   if (members.length === 0) {
@@ -265,339 +261,313 @@ export default function SurplusSection({ family, isReadOnly }) {
     );
   }
 
-  // Calculate data for selected year
-  const selectedYearInt = parseInt(selectedYear);
-  const hasGoalsThisYear = goalsByYear[selectedYearInt]?.total > 0;
+  // Check if any display year has goals
+  const anyYearHasGoals = displayYears.some(y => goalsByYear[parseInt(y)]?.total > 0);
 
-  const memberData = members.map(member => {
-    const info = getMemberIncomeInfo(member.id);
-    const income = getProjectedMemberIncome(member.id, selectedYear);
-    const expenses = getProjectedMemberExpenses(member.id, selectedYear);
-    const goalExpenses = getMemberGoalExpenses(member.id, selectedYear);
-    const totalOutflow = expenses + goalExpenses;
-    const investments = getProjectedMemberInvestments(member.id, selectedYear);
-    const savings = income - totalOutflow;
-    const surplus = savings - investments;
-    const isRetired = selectedYearInt >= info.retirementYear;
-    
-    return {
-      id: member.id,
-      name: member.name,
-      isPrimary: member.is_primary,
-      salaryGrowth: info.salaryGrowth,
-      businessGrowth: info.businessGrowth,
-      retirementYear: info.retirementYear,
-      isRetired,
-      income,
-      expenses,
-      goalExpenses,
-      totalOutflow,
-      investments,
-      savings,
-      surplus
-    };
-  });
-
-  // Calculate family totals
-  const familyTotals = {
-    income: memberData.reduce((sum, m) => sum + m.income, 0),
-    expenses: memberData.reduce((sum, m) => sum + m.expenses, 0),
-    goalExpenses: memberData.reduce((sum, m) => sum + m.goalExpenses, 0),
-    totalOutflow: memberData.reduce((sum, m) => sum + m.totalOutflow, 0),
-    investments: memberData.reduce((sum, m) => sum + m.investments, 0),
-    savings: memberData.reduce((sum, m) => sum + m.savings, 0),
-    surplus: memberData.reduce((sum, m) => sum + m.surplus, 0)
-  };
-
-  // Get earliest retirement year for any member
-  const earliestRetirement = Math.min(...memberData.map(m => m.retirementYear));
+  // Get earliest retirement year
+  const earliestRetirement = Math.min(...members.map(m => getMemberIncomeInfo(m.id).retirementYear));
 
   return (
     <div className="space-y-4">
-      {/* Year Selector */}
-      <div className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-3">
-        <div className="flex items-center gap-4">
-          <div>
-            <label className="text-xs text-slate-500 mb-1 block">Select Year</label>
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-36 h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map(y => {
-                  const yInt = parseInt(y);
-                  const hasGoal = goalsByYear[yInt]?.total > 0;
-                  const isRetYear = yInt === earliestRetirement;
-                  return (
-                    <SelectItem key={y} value={y}>
-                      {y} {isRetYear && '(R)'} {hasGoal && '🎯'}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-          {hasGoalsThisYear && (
-            <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">
-              Goal Year: {formatAmount(goalsByYear[selectedYearInt]?.total)}
-            </span>
-          )}
-        </div>
-        <div className="text-xs text-slate-500 text-right">
-          {selectedYearInt - currentYear} years from now
-        </div>
+      {/* Info Text */}
+      <div className="text-xs text-gray-500 px-1">
+        Year-wise cash flow with member breakdown. Growth rates from Income section, inflation from Expenses.
       </div>
 
-      {/* Member Growth Rates Info */}
-      <div className="text-xs text-gray-500 px-1 flex flex-wrap gap-x-4 gap-y-1">
-        {memberData.map(m => (
-          <span key={m.id} className="whitespace-nowrap">
-            <span className="font-medium">{m.name}:</span>
-            <span className="text-blue-600 ml-1">Sal {m.salaryGrowth}%</span>
-            {m.businessGrowth > 0 && <span className="text-purple-600 ml-1">Biz {m.businessGrowth}%</span>}
-            <span className="text-amber-600 ml-1">Ret {m.retirementYear}</span>
-          </span>
-        ))}
-      </div>
-
-      {/* Main Table - Member-wise */}
+      {/* Main Projection Table */}
       <div className="border border-gray-200 rounded-lg overflow-x-auto">
-        <table className="w-full min-w-[600px]">
+        <table className="w-full">
           <thead>
+            {/* Year Selection Row */}
             <tr className="bg-blue-50 border-b border-gray-200">
-              <th className="text-left text-xs font-semibold text-gray-700 px-4 py-2 border-r border-gray-200 min-w-[140px]">
+              <th rowSpan={2} className="text-left text-xs font-semibold text-gray-700 px-3 py-2 border-r border-gray-200 min-w-[100px] align-bottom">
                 Particulars
               </th>
-              {members.map((member, idx) => (
-                <th 
-                  key={member.id} 
-                  className={`text-center text-xs font-semibold text-blue-700 px-3 py-2 min-w-[100px] ${idx < members.length - 1 ? 'border-r border-gray-200' : ''}`}
-                >
-                  <div className="flex items-center justify-center gap-1">
-                    <User className="h-3 w-3" />
-                    {member.name}
-                    {member.is_primary && <span className="text-blue-500">*</span>}
-                  </div>
-                  {memberData.find(m => m.id === member.id)?.isRetired && (
-                    <span className="text-[9px] text-amber-600 font-normal">Post-Ret</span>
-                  )}
-                </th>
+              {displayYears.map((year, idx) => {
+                const yearInt = parseInt(year);
+                const hasGoals = goalsByYear[yearInt]?.total > 0;
+                return (
+                  <th 
+                    key={idx} 
+                    colSpan={members.length + 1}
+                    className={`text-center px-1 py-1 ${idx < displayYears.length - 1 ? 'border-r border-gray-200' : ''}`}
+                  >
+                    <Select value={year} onValueChange={(v) => handleYearChange(idx, v)}>
+                      <SelectTrigger className="h-6 text-[10px] w-full border-0 bg-transparent shadow-none justify-center font-semibold text-blue-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {yearOptions.map(y => {
+                          const yInt = parseInt(y);
+                          const yHasGoal = goalsByYear[yInt]?.total > 0;
+                          return (
+                            <SelectItem key={y} value={y}>
+                              {y} {yInt === earliestRetirement && '(R)'} {yHasGoal && '🎯'}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {hasGoals && <span className="text-[8px] text-purple-600">Goal</span>}
+                  </th>
+                );
+              })}
+            </tr>
+            {/* Member Sub-headers Row */}
+            <tr className="bg-gray-50 border-b border-gray-200">
+              {displayYears.map((year, yearIdx) => (
+                <React.Fragment key={`sub-${year}`}>
+                  {members.map((member, mIdx) => (
+                    <th 
+                      key={`${year}-${member.id}`}
+                      className="text-center text-[9px] font-medium text-gray-500 px-1 py-1 min-w-[55px]"
+                    >
+                      {member.name.split(' ')[0]}
+                      {member.is_primary && '*'}
+                    </th>
+                  ))}
+                  <th className={`text-center text-[9px] font-semibold text-blue-600 px-1 py-1 min-w-[55px] bg-blue-50/50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-200' : ''}`}>
+                    Total
+                  </th>
+                </React.Fragment>
               ))}
-              <th className="text-center text-xs font-semibold text-blue-800 px-3 py-2 bg-blue-100 border-l border-gray-200 min-w-[100px]">
-                Family Total
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {/* Income Row */}
-            <tr className="bg-green-50/50 hover:bg-green-50">
-              <td className="px-4 py-2.5 border-r border-gray-100">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium text-gray-800">Income</span>
+            <tr className="bg-green-50/30 hover:bg-green-50/50">
+              <td className="px-3 py-2 border-r border-gray-100">
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-green-600" />
+                  <span className="text-xs font-medium text-gray-800">Income</span>
                 </div>
               </td>
-              {memberData.map((m, idx) => (
-                <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className="text-sm font-medium text-green-700">{formatAmount(m.income)}</span>
-                </td>
-              ))}
-              <td className="px-3 py-2.5 text-right bg-green-100/50 border-l border-gray-200">
-                <span className="text-sm font-bold text-green-800">{formatAmount(familyTotals.income)}</span>
-              </td>
+              {displayYears.map((year, yearIdx) => {
+                const total = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, year), 0);
+                return (
+                  <React.Fragment key={`income-${year}`}>
+                    {members.map((member) => (
+                      <td key={`income-${year}-${member.id}`} className="px-1 py-2 text-center">
+                        <span className="text-[10px] text-green-700">{formatAmount(getProjectedMemberIncome(member.id, year))}</span>
+                      </td>
+                    ))}
+                    <td className={`px-1 py-2 text-center bg-green-50/50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                      <span className="text-[10px] font-semibold text-green-800">{formatAmount(total)}</span>
+                    </td>
+                  </React.Fragment>
+                );
+              })}
             </tr>
 
             {/* Expenses Row */}
             <tr className="hover:bg-gray-50">
-              <td className="px-4 py-2.5 border-r border-gray-100">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-orange-600" />
-                  <span className="text-sm font-medium text-gray-800">Expenses</span>
+              <td className="px-3 py-2 border-r border-gray-100">
+                <div className="flex items-center gap-1">
+                  <TrendingDown className="h-3 w-3 text-orange-600" />
+                  <span className="text-xs font-medium text-gray-800">Expenses</span>
                 </div>
               </td>
-              {memberData.map((m, idx) => (
-                <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className="text-sm text-orange-700">{formatAmount(m.expenses)}</span>
-                </td>
-              ))}
-              <td className="px-3 py-2.5 text-right bg-gray-50 border-l border-gray-200">
-                <span className="text-sm font-semibold text-orange-800">{formatAmount(familyTotals.expenses)}</span>
-              </td>
+              {displayYears.map((year, yearIdx) => {
+                const total = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year), 0);
+                return (
+                  <React.Fragment key={`exp-${year}`}>
+                    {members.map((member) => (
+                      <td key={`exp-${year}-${member.id}`} className="px-1 py-2 text-center">
+                        <span className="text-[10px] text-orange-700">{formatAmount(getProjectedMemberExpenses(member.id, year))}</span>
+                      </td>
+                    ))}
+                    <td className={`px-1 py-2 text-center bg-gray-50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                      <span className="text-[10px] font-semibold text-orange-800">{formatAmount(total)}</span>
+                    </td>
+                  </React.Fragment>
+                );
+              })}
             </tr>
 
-            {/* Goals Row - Only show if there are goals this year */}
-            {hasGoalsThisYear && (
+            {/* Goals Row */}
+            {anyYearHasGoals && (
               <tr className="bg-purple-50/30 hover:bg-purple-50/50">
-                <td className="px-4 py-2.5 border-r border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-purple-600" />
-                    <span className="text-sm font-medium text-gray-800">Goals</span>
+                <td className="px-3 py-2 border-r border-gray-100">
+                  <div className="flex items-center gap-1">
+                    <Target className="h-3 w-3 text-purple-600" />
+                    <span className="text-xs font-medium text-gray-800">Goals</span>
                   </div>
                 </td>
-                {memberData.map((m, idx) => (
-                  <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                    <span className={`text-sm ${m.goalExpenses > 0 ? 'text-purple-700' : 'text-gray-300'}`}>
-                      {m.goalExpenses > 0 ? formatAmount(m.goalExpenses) : '-'}
-                    </span>
-                  </td>
-                ))}
-                <td className="px-3 py-2.5 text-right bg-purple-50 border-l border-gray-200">
-                  <span className="text-sm font-semibold text-purple-800">{formatAmount(familyTotals.goalExpenses)}</span>
-                </td>
+                {displayYears.map((year, yearIdx) => {
+                  const yearInt = parseInt(year);
+                  const total = goalsByYear[yearInt]?.total || 0;
+                  return (
+                    <React.Fragment key={`goal-${year}`}>
+                      {members.map((member) => {
+                        const val = getMemberGoalExpenses(member.id, year);
+                        return (
+                          <td key={`goal-${year}-${member.id}`} className="px-1 py-2 text-center">
+                            <span className={`text-[10px] ${val > 0 ? 'text-purple-700' : 'text-gray-300'}`}>
+                              {val > 0 ? formatAmount(val) : '-'}
+                            </span>
+                          </td>
+                        );
+                      })}
+                      <td className={`px-1 py-2 text-center bg-purple-50/50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        <span className={`text-[10px] font-semibold ${total > 0 ? 'text-purple-800' : 'text-gray-300'}`}>
+                          {total > 0 ? formatAmount(total) : '-'}
+                        </span>
+                      </td>
+                    </React.Fragment>
+                  );
+                })}
               </tr>
             )}
 
             {/* Total Outflow Row */}
-            <tr className="bg-orange-50/50 hover:bg-orange-50">
-              <td className="px-4 py-2.5 border-r border-gray-100">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-orange-700" />
-                  <span className="text-sm font-semibold text-gray-800">Total Outflow</span>
+            <tr className="bg-orange-50/30 hover:bg-orange-50/50">
+              <td className="px-3 py-2 border-r border-gray-100">
+                <div className="flex items-center gap-1">
+                  <TrendingDown className="h-3 w-3 text-orange-700" />
+                  <span className="text-xs font-semibold text-gray-800">Outflow</span>
                 </div>
               </td>
-              {memberData.map((m, idx) => (
-                <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className="text-sm font-semibold text-orange-800">{formatAmount(m.totalOutflow)}</span>
-                </td>
-              ))}
-              <td className="px-3 py-2.5 text-right bg-orange-100/50 border-l border-gray-200">
-                <span className="text-sm font-bold text-orange-900">{formatAmount(familyTotals.totalOutflow)}</span>
-              </td>
+              {displayYears.map((year, yearIdx) => {
+                const yearInt = parseInt(year);
+                return (
+                  <React.Fragment key={`out-${year}`}>
+                    {members.map((member) => {
+                      const exp = getProjectedMemberExpenses(member.id, year);
+                      const goal = getMemberGoalExpenses(member.id, year);
+                      return (
+                        <td key={`out-${year}-${member.id}`} className="px-1 py-2 text-center">
+                          <span className="text-[10px] font-medium text-orange-800">{formatAmount(exp + goal)}</span>
+                        </td>
+                      );
+                    })}
+                    <td className={`px-1 py-2 text-center bg-orange-50/50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                      <span className="text-[10px] font-bold text-orange-900">
+                        {formatAmount(members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year) + getMemberGoalExpenses(m.id, year), 0))}
+                      </span>
+                    </td>
+                  </React.Fragment>
+                );
+              })}
             </tr>
 
             {/* Savings Row */}
-            <tr className="bg-blue-50/50 hover:bg-blue-50">
-              <td className="px-4 py-2.5 border-r border-gray-100">
-                <div className="flex items-center gap-2">
-                  <PiggyBank className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-semibold text-gray-800">Savings</span>
+            <tr className="bg-blue-50/30 hover:bg-blue-50/50">
+              <td className="px-3 py-2 border-r border-gray-100">
+                <div className="flex items-center gap-1">
+                  <PiggyBank className="h-3 w-3 text-blue-600" />
+                  <span className="text-xs font-semibold text-gray-800">Savings</span>
                 </div>
               </td>
-              {memberData.map((m, idx) => (
-                <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className={`text-sm font-semibold ${m.savings >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
-                    {formatAmount(m.savings)}
-                  </span>
-                </td>
-              ))}
-              <td className={`px-3 py-2.5 text-right border-l border-gray-200 ${familyTotals.savings >= 0 ? 'bg-blue-100/50' : 'bg-red-100/50'}`}>
-                <span className={`text-sm font-bold ${familyTotals.savings >= 0 ? 'text-blue-800' : 'text-red-700'}`}>
-                  {formatAmount(familyTotals.savings)}
-                </span>
-              </td>
+              {displayYears.map((year, yearIdx) => {
+                return (
+                  <React.Fragment key={`sav-${year}`}>
+                    {members.map((member) => {
+                      const inc = getProjectedMemberIncome(member.id, year);
+                      const exp = getProjectedMemberExpenses(member.id, year);
+                      const goal = getMemberGoalExpenses(member.id, year);
+                      const sav = inc - exp - goal;
+                      return (
+                        <td key={`sav-${year}-${member.id}`} className="px-1 py-2 text-center">
+                          <span className={`text-[10px] font-medium ${sav >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                            {formatAmount(sav)}
+                          </span>
+                        </td>
+                      );
+                    })}
+                    <td className={`px-1 py-2 text-center bg-blue-50/50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                      {(() => {
+                        const total = members.reduce((sum, m) => {
+                          const inc = getProjectedMemberIncome(m.id, year);
+                          const exp = getProjectedMemberExpenses(m.id, year);
+                          const goal = getMemberGoalExpenses(m.id, year);
+                          return sum + inc - exp - goal;
+                        }, 0);
+                        return <span className={`text-[10px] font-bold ${total >= 0 ? 'text-blue-800' : 'text-red-700'}`}>{formatAmount(total)}</span>;
+                      })()}
+                    </td>
+                  </React.Fragment>
+                );
+              })}
             </tr>
 
             {/* Investments Row */}
             <tr className="hover:bg-gray-50">
-              <td className="px-4 py-2.5 border-r border-gray-100">
-                <div className="flex items-center gap-2">
-                  <Landmark className="h-4 w-4 text-indigo-600" />
-                  <span className="text-sm font-medium text-gray-800">Investments</span>
+              <td className="px-3 py-2 border-r border-gray-100">
+                <div className="flex items-center gap-1">
+                  <Landmark className="h-3 w-3 text-indigo-600" />
+                  <span className="text-xs font-medium text-gray-800">Investments</span>
                 </div>
               </td>
-              {memberData.map((m, idx) => (
-                <td key={m.id} className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className="text-sm text-indigo-700">{formatAmount(m.investments)}</span>
-                </td>
-              ))}
-              <td className="px-3 py-2.5 text-right bg-gray-50 border-l border-gray-200">
-                <span className="text-sm font-semibold text-indigo-800">{formatAmount(familyTotals.investments)}</span>
-              </td>
+              {displayYears.map((year, yearIdx) => {
+                const total = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, year), 0);
+                return (
+                  <React.Fragment key={`inv-${year}`}>
+                    {members.map((member) => (
+                      <td key={`inv-${year}-${member.id}`} className="px-1 py-2 text-center">
+                        <span className="text-[10px] text-indigo-700">{formatAmount(getProjectedMemberInvestments(member.id, year))}</span>
+                      </td>
+                    ))}
+                    <td className={`px-1 py-2 text-center bg-gray-50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                      <span className="text-[10px] font-semibold text-indigo-800">{formatAmount(total)}</span>
+                    </td>
+                  </React.Fragment>
+                );
+              })}
             </tr>
 
             {/* Surplus Row */}
             <tr className="bg-emerald-100">
-              <td className="px-4 py-3 border-r border-emerald-200">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-emerald-700" />
-                  <span className="text-sm font-bold text-emerald-800">Surplus</span>
+              <td className="px-3 py-2.5 border-r border-emerald-200">
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-emerald-700" />
+                  <span className="text-xs font-bold text-emerald-800">Surplus</span>
                 </div>
               </td>
-              {memberData.map((m, idx) => (
-                <td key={m.id} className={`px-3 py-3 text-right ${idx < members.length - 1 ? 'border-r border-emerald-200' : ''} ${m.surplus >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                  <span className={`text-sm font-bold ${m.surplus >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                    {formatAmount(m.surplus)}
-                  </span>
-                </td>
-              ))}
-              <td className={`px-3 py-3 text-right border-l border-emerald-200 ${familyTotals.surplus >= 0 ? 'bg-emerald-200/50' : 'bg-red-200/50'}`}>
-                <span className={`text-sm font-bold ${familyTotals.surplus >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>
-                  {formatAmount(familyTotals.surplus)}
-                </span>
-              </td>
+              {displayYears.map((year, yearIdx) => {
+                return (
+                  <React.Fragment key={`sur-${year}`}>
+                    {members.map((member) => {
+                      const inc = getProjectedMemberIncome(member.id, year);
+                      const exp = getProjectedMemberExpenses(member.id, year);
+                      const goal = getMemberGoalExpenses(member.id, year);
+                      const inv = getProjectedMemberInvestments(member.id, year);
+                      const sur = inc - exp - goal - inv;
+                      return (
+                        <td key={`sur-${year}-${member.id}`} className={`px-1 py-2.5 text-center ${sur >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                          <span className={`text-[10px] font-bold ${sur >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                            {formatAmount(sur)}
+                          </span>
+                        </td>
+                      );
+                    })}
+                    <td className={`px-1 py-2.5 text-center ${yearIdx < displayYears.length - 1 ? 'border-r border-emerald-200' : ''}`}>
+                      {(() => {
+                        const total = members.reduce((sum, m) => {
+                          const inc = getProjectedMemberIncome(m.id, year);
+                          const exp = getProjectedMemberExpenses(m.id, year);
+                          const goal = getMemberGoalExpenses(m.id, year);
+                          const inv = getProjectedMemberInvestments(m.id, year);
+                          return sum + inc - exp - goal - inv;
+                        }, 0);
+                        return (
+                          <span className={`text-[10px] font-bold ${total >= 0 ? 'text-emerald-800 bg-emerald-100' : 'text-red-800 bg-red-100'}`}>
+                            {formatAmount(total)}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                  </React.Fragment>
+                );
+              })}
             </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Quick Year Comparison - Family Total Only */}
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="bg-slate-100 px-4 py-2 border-b">
-          <h4 className="text-xs font-medium text-slate-700">Family Total - Year Overview</h4>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b">
-                <th className="text-left py-2 px-3 font-medium text-slate-600 min-w-[60px]">Year</th>
-                <th className="text-right py-2 px-3 font-medium text-green-600 min-w-[70px]">Income</th>
-                <th className="text-right py-2 px-3 font-medium text-orange-600 min-w-[70px]">Outflow</th>
-                <th className="text-right py-2 px-3 font-medium text-blue-600 min-w-[70px]">Savings</th>
-                <th className="text-right py-2 px-3 font-medium text-indigo-600 min-w-[70px]">Invest</th>
-                <th className="text-right py-2 px-3 font-medium text-slate-700 min-w-[70px]">Surplus</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[0, 1, 2, 3, 4, 5, 10, 15, 20].filter(offset => currentYear + offset <= endYear).map(offset => {
-                const year = currentYear + offset;
-                const yearStr = year.toString();
-                const isSelected = yearStr === selectedYear;
-                const hasGoal = goalsByYear[year]?.total > 0;
-                
-                // Calculate family totals for this year
-                let totalIncome = 0, totalExpenses = 0, totalGoals = 0, totalInvestments = 0;
-                members.forEach(member => {
-                  totalIncome += getProjectedMemberIncome(member.id, yearStr);
-                  totalExpenses += getProjectedMemberExpenses(member.id, yearStr);
-                  totalGoals += getMemberGoalExpenses(member.id, yearStr);
-                  totalInvestments += getProjectedMemberInvestments(member.id, yearStr);
-                });
-                const totalOutflow = totalExpenses + totalGoals;
-                const savings = totalIncome - totalOutflow;
-                const surplus = savings - totalInvestments;
-                
-                return (
-                  <tr 
-                    key={year} 
-                    className={`border-b cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
-                    onClick={() => setSelectedYear(yearStr)}
-                  >
-                    <td className={`py-2 px-3 font-medium ${isSelected ? 'text-blue-700' : ''}`}>
-                      {year}
-                      {hasGoal && <span className="ml-1">🎯</span>}
-                    </td>
-                    <td className="text-right py-2 px-3 text-green-600">{formatAmount(totalIncome)}</td>
-                    <td className="text-right py-2 px-3 text-orange-600">{formatAmount(totalOutflow)}</td>
-                    <td className={`text-right py-2 px-3 ${savings >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                      {formatAmount(savings)}
-                    </td>
-                    <td className="text-right py-2 px-3 text-indigo-600">{formatAmount(totalInvestments)}</td>
-                    <td className={`text-right py-2 px-3 font-semibold ${surplus >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {formatAmount(surplus)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Notes */}
-      <div className="text-[10px] text-gray-400 px-1 space-y-0.5">
-        <p>• Each member's salary/business growth rate is applied individually from their Income data</p>
-        <p>• Goals are inflated to target year and distributed among assigned members</p>
-        <p>• Click any year in the overview to see member-wise breakdown</p>
+      {/* Footer Info */}
+      <div className="flex items-center justify-between text-[10px] text-gray-400 px-1">
+        <span>* Primary member | (R) Retirement year | 🎯 Goal year</span>
+        <span>Click year dropdown to change</span>
       </div>
     </div>
   );
