@@ -426,32 +426,28 @@ class CASParser:
                 
                 pending_scheme_line = None
             
-            # Detect Folio No
+            # Detect Folio No - just store it, don't create entry yet
+            # The folio entry will be created when we detect the ISIN for this folio
             folio_match = re.search(r'Folio No:\s*([\d\s/]+)', line)
             if folio_match:
-                current_folio = folio_match.group(1).strip()
-                
+                new_folio = folio_match.group(1).strip()
+                # Only update current_folio if it's a new folio number
+                # This prevents resetting scheme info when seeing the same folio again
+                if new_folio != current_folio:
+                    current_folio = new_folio
+                    # Reset ISIN for new folio - will be set when ISIN line is parsed
+                    # Don't reset current_isin here, as ISIN line may come before or after Folio
+                    
+                # Check if we already have a key for this folio+isin combination
                 if current_isin:
-                    current_key = f"{current_folio}_{current_isin}"
+                    potential_key = f"{current_folio}_{current_isin}"
+                    if potential_key in self.folios:
+                        current_key = potential_key
+                    else:
+                        # Key will be created when ISIN is detected
+                        current_key = current_folio  # Temporary key
                 else:
                     current_key = current_folio
-                
-                if current_key and current_key not in self.folios:
-                    self.folios[current_key] = {
-                        'folio': current_folio,
-                        'scheme': current_scheme,
-                        'scheme_code': current_scheme_full,
-                        'isin': current_isin,
-                        'pan': current_pan,
-                        'amc': current_amc,
-                        'advisor': current_advisor,
-                        'transactions': [],
-                        'closing_balance': 0,
-                        'cost_value': 0,
-                        'current_nav': 0,
-                        'market_value': 0,
-                        'opening_balance': 0
-                    }
             
             # Detect opening balance
             if 'Opening Unit Balance:' in line:
