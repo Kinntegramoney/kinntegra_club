@@ -81,7 +81,7 @@ export default function AssetsSection({ family }) {
     }, 0);
   };
 
-  // Format currency in Lacs and Crores
+  // Format currency in Thousands, Lacs and Crores
   const formatCurrency = (value, showDash = false) => {
     if (value === 0 || value === null || value === undefined) {
       return showDash ? '-' : '-';
@@ -89,6 +89,7 @@ export default function AssetsSection({ family }) {
     const absValue = Math.abs(value);
     if (absValue >= 10000000) return `₹${(absValue / 10000000).toFixed(2)} Cr`;
     if (absValue >= 100000) return `₹${(absValue / 100000).toFixed(2)} L`;
+    if (absValue >= 1000) return `₹${(absValue / 1000).toFixed(1)} K`;
     return `₹${absValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
   };
 
@@ -97,6 +98,7 @@ export default function AssetsSection({ family }) {
     if (!value || value === 0) return "0";
     if (value >= 10000000) return `${(value / 10000000).toFixed(2)} Cr`;
     if (value >= 100000) return `${(value / 100000).toFixed(2)} L`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1)} K`;
     return value.toLocaleString('en-IN', { maximumFractionDigits: 0 });
   };
 
