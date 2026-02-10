@@ -113,7 +113,7 @@ const INCOME_CATEGORIES = [
       { key: "interest_rate", label: "Interest %", type: "number" },
       { key: "payable_cycle", label: "Interest Payout Frequency", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
       { key: "maturity_date", label: "Maturity", type: "date" },
-      { key: "payment_amount_yearly", label: "Yearly Payment", type: "number", readOnly: true, calculated: true },
+      { key: "interest_amount", label: "Interest Amount", type: "number", readOnly: true, calculated: true },
       { key: "maturity_value", label: "Maturity Value", type: "number", readOnly: true, calculated: true }
     ]
   },
