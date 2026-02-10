@@ -1226,12 +1226,14 @@ export default function SurplusSection({ family, isReadOnly }) {
           </tbody>
         </table>
       </div>
-
+      
       {/* Footer Info */}
-      <div className="flex items-center justify-between text-[10px] text-gray-400 px-1">
+      <div className="flex items-center justify-between text-[10px] text-gray-400 px-4 py-2 bg-gray-50 border-t border-gray-100">
         <span>* Primary member | (R) Retirement year | 🎯 Goal year</span>
         <span>Click year dropdown to change</span>
       </div>
+        </CardContent>
+      </Card>
 
       {/* Allocation Simulator */}
       <AllocationSimulator 
