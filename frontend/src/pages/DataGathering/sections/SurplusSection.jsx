@@ -1775,12 +1775,11 @@ function AllocationSimulator({
                     {familyAllocation.includeAssets && (
                       <Button 
                         size="sm" 
-                        variant="ghost"
                         onClick={() => openAssetModal('family')}
-                        className="text-[10px] h-6 px-2 gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 gap-1"
                       >
                         <Settings2 className="h-3 w-3" />
-                        ({getAssetsForEntity('family').filter(a => familyAllocation.selectedAssets[a.id] !== false).length})
+                        Configure ({getAssetsForEntity('family').filter(a => familyAllocation.selectedAssets[a.id] !== false).length})
                       </Button>
                     )}
                   </div>
@@ -1790,15 +1789,14 @@ function AllocationSimulator({
                     <Button 
                       size="sm" 
                       onClick={() => runSimulation('family')}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
                     >
                       Calculate
                     </Button>
                     <Button 
                       size="sm" 
-                      variant="outline"
                       onClick={() => exportEntityCashFlow('family')}
-                      className="text-xs gap-1 h-8"
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 gap-1"
                       title="Download Excel"
                     >
                       <Download className="h-3 w-3" />
