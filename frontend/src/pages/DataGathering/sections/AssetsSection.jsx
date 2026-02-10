@@ -99,7 +99,6 @@ export default function AssetsSection({ family }) {
     );
   }
 
-  const grandTotalInvestment = getGrandTotal('investment');
   const grandTotalMarket = getGrandTotal('market');
 
   return (
