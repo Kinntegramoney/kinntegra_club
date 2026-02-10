@@ -362,56 +362,116 @@ export default function SurplusSection({ family, isReadOnly }) {
       allYears.push(y);
     }
 
+    // Get maturities by year from income details
+    const getMaturitiesByYear = () => {
+      const maturities = {};
+      allYears.forEach(y => { maturities[y] = { total: 0, details: [] }; });
+      
+      incomeDetails.forEach(inc => {
+        const details = inc.details || {};
+        let maturityYear = null;
+        let maturityValue = 0;
+        let maturityType = '';
+        
+        // Check for maturity dates/years in different income types
+        if (details.maturity_date) {
+          maturityYear = new Date(details.maturity_date).getFullYear();
+        } else if (details.maturity_year) {
+          maturityYear = parseInt(details.maturity_year);
+        }
+        
+        maturityValue = parseFloat(details.maturity_value) || parseFloat(details.maturity_amount) || 0;
+        
+        if (maturityYear && maturityValue > 0 && maturities[maturityYear]) {
+          maturityType = inc.category === 'fd' ? 'FD Maturity' :
+                        inc.category === 'bonds' ? 'Bond Maturity' :
+                        inc.category === 'ppf' ? 'PPF Maturity' :
+                        inc.category === 'rd_pis' ? 'RD Maturity' :
+                        inc.category === 'insurance_income' ? 'Insurance Maturity' :
+                        inc.category === 'nps' ? 'NPS Maturity' :
+                        'Other Maturity';
+          
+          maturities[maturityYear].total += maturityValue;
+          maturities[maturityYear].details.push({
+            type: maturityType,
+            category: inc.category,
+            value: maturityValue,
+            memberIds: inc.member_ids || []
+          });
+        }
+      });
+      
+      return maturities;
+    };
+
+    const maturitiesByYear = getMaturitiesByYear();
+
     // Sheet 1: Summary
     const summaryData = [
-      ["Family Cash Flow Projection"],
+      ["FAMILY CASH FLOW PROJECTION"],
+      [],
       ["Family Name:", family?.family_name || "Family"],
       ["Generated On:", new Date().toLocaleDateString()],
       ["Base Year:", currentYear],
       ["Life Expectancy:", lifeExpectancy],
       ["Earliest Retirement Year:", earliestRetirement],
       [],
-      ["Members:"],
+      ["FAMILY MEMBERS"],
+      ["Name", "Relation", "Retirement Year", "Salary Growth %", "Business Growth %"],
       ...members.map(m => {
         const info = getMemberIncomeInfo(m.id);
-        return [`  ${m.name}${m.is_primary ? ' (Primary)' : ''}`, `Retirement: ${info.retirementYear}`, `Salary Growth: ${info.salaryGrowth}%`, `Business Growth: ${info.businessGrowth}%`];
+        return [
+          m.name + (m.is_primary ? ' (Primary)' : ''),
+          m.relation || '',
+          info.retirementYear,
+          info.salaryGrowth,
+          info.businessGrowth
+        ];
       }),
     ];
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    summarySheet['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
     XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
 
-    // Sheet 2: Year-wise Cash Flow
-    const cashFlowHeaders = [
-      "Year", 
-      "Age",
-      ...members.flatMap(m => [`${m.name.split(' ')[0]} Income`, `${m.name.split(' ')[0]} Expenses`, `${m.name.split(' ')[0]} Goals`, `${m.name.split(' ')[0]} Investments`, `${m.name.split(' ')[0]} Surplus`]),
-      "Total Income",
-      "Total Expenses", 
-      "Total Goals",
-      "Total Investments",
-      "Total Savings",
-      "Total Surplus"
+    // Sheet 2: Year-wise Cash Flow (Comprehensive)
+    const cashFlowHeaders1 = [
+      "", "",
+      ...members.flatMap(m => [m.name, "", "", "", "", ""]),
+      "FAMILY TOTAL", "", "", "", "", ""
+    ];
+    
+    const cashFlowHeaders2 = [
+      "Year", "Age",
+      ...members.flatMap(() => ["Income", "Expenses", "Goals", "Invest", "Maturity", "Surplus"]),
+      "Income", "Expenses", "Goals", "Invest", "Maturity", "Surplus"
     ];
 
     const cashFlowData = allYears.map(year => {
       const yearStr = year.toString();
       const age = primaryAge + (year - currentYear);
+      const yearMaturities = maturitiesByYear[year] || { total: 0, details: [] };
       
       const memberValues = members.flatMap(m => {
         const inc = getProjectedMemberIncome(m.id, yearStr);
         const exp = getProjectedMemberExpenses(m.id, yearStr);
         const goal = getMemberGoalExpenses(m.id, yearStr);
         const inv = getProjectedMemberInvestments(m.id, yearStr);
-        const surplus = inc - exp - goal - inv;
-        return [Math.round(inc), Math.round(exp), Math.round(goal), Math.round(inv), Math.round(surplus)];
+        
+        // Get member's share of maturities
+        const memberMaturity = yearMaturities.details
+          .filter(d => d.memberIds.includes(m.id))
+          .reduce((sum, d) => sum + d.value / d.memberIds.length, 0);
+        
+        const surplus = inc - exp - goal - inv + memberMaturity;
+        return [Math.round(inc), Math.round(exp), Math.round(goal), Math.round(inv), Math.round(memberMaturity), Math.round(surplus)];
       });
 
       const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
       const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
       const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
       const totalInvestments = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, yearStr), 0);
-      const totalSavings = totalIncome - totalExpenses - totalGoals;
-      const totalSurplus = totalSavings - totalInvestments;
+      const totalMaturity = yearMaturities.total;
+      const totalSurplus = totalIncome - totalExpenses - totalGoals - totalInvestments + totalMaturity;
 
       return [
         year,
@@ -421,79 +481,94 @@ export default function SurplusSection({ family, isReadOnly }) {
         Math.round(totalExpenses),
         Math.round(totalGoals),
         Math.round(totalInvestments),
-        Math.round(totalSavings),
+        Math.round(totalMaturity),
         Math.round(totalSurplus)
       ];
     });
 
-    const cashFlowSheet = XLSX.utils.aoa_to_sheet([cashFlowHeaders, ...cashFlowData]);
+    const cashFlowSheet = XLSX.utils.aoa_to_sheet([cashFlowHeaders1, cashFlowHeaders2, ...cashFlowData]);
     
-    // Set column widths
+    // Merge cells for member headers
+    cashFlowSheet['!merges'] = [
+      ...members.map((_, i) => ({ s: { r: 0, c: 2 + i * 6 }, e: { r: 0, c: 7 + i * 6 } })),
+      { s: { r: 0, c: 2 + members.length * 6 }, e: { r: 0, c: 7 + members.length * 6 } }
+    ];
+    
     cashFlowSheet['!cols'] = [
-      { wch: 8 }, { wch: 6 },
-      ...members.flatMap(() => [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }]),
-      { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }
+      { wch: 6 }, { wch: 5 },
+      ...members.flatMap(() => [{ wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 10 }]),
+      { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }
     ];
     
     XLSX.utils.book_append_sheet(wb, cashFlowSheet, "Cash Flow");
 
-    // Sheet 3: Income Breakdown
-    const incomeHeaders = [
-      "Year",
-      ...members.flatMap(m => [`${m.name.split(' ')[0]} Salary`, `${m.name.split(' ')[0]} Business`, `${m.name.split(' ')[0]} Rental`, `${m.name.split(' ')[0]} Pension`]),
-      "Total Salary", "Total Business", "Total Rental", "Total Pension", "Grand Total"
+    // Sheet 3: Income Breakdown by Member
+    const incomeSheetData = [
+      ["INCOME BREAKDOWN BY MEMBER"],
+      [],
     ];
-
-    const incomeData = allYears.map(year => {
-      const yearStr = year.toString();
-      const memberBreakdowns = members.map(m => getMemberIncomeBreakdown(m.id, yearStr));
+    
+    members.forEach((member, mIdx) => {
+      incomeSheetData.push([`${member.name}${member.is_primary ? ' (Primary)' : ''}`]);
+      incomeSheetData.push(["Year", "Salary", "Business", "Rental", "Pension", "Total"]);
       
-      const totalSalary = memberBreakdowns.reduce((sum, b) => sum + b.salary, 0);
-      const totalBusiness = memberBreakdowns.reduce((sum, b) => sum + b.business, 0);
-      const totalRental = memberBreakdowns.reduce((sum, b) => sum + b.rental, 0);
-      const totalPension = memberBreakdowns.reduce((sum, b) => sum + b.pension, 0);
-
-      return [
-        year,
-        ...memberBreakdowns.flatMap(b => [Math.round(b.salary), Math.round(b.business), Math.round(b.rental), Math.round(b.pension)]),
-        Math.round(totalSalary), Math.round(totalBusiness), Math.round(totalRental), Math.round(totalPension),
-        Math.round(totalSalary + totalBusiness + totalRental + totalPension)
-      ];
-    });
-
-    const incomeSheet = XLSX.utils.aoa_to_sheet([incomeHeaders, ...incomeData]);
-    XLSX.utils.book_append_sheet(wb, incomeSheet, "Income Breakdown");
-
-    // Sheet 4: Expense Breakdown
-    const expenseCategories = [...new Set(expenseDetails.map(e => e.expense_type || 'other'))];
-    const expenseHeaders = ["Year", ...expenseCategories.map(c => c.replace(/_/g, ' ').toUpperCase()), "Total Expenses"];
-
-    const expenseData = allYears.map(year => {
-      const yearStr = year.toString();
-      const categoryTotals = {};
-      expenseCategories.forEach(cat => { categoryTotals[cat] = 0; });
-      
-      members.forEach(m => {
-        const breakdown = getMemberExpenseBreakdown(m.id, yearStr);
-        Object.entries(breakdown).forEach(([cat, amt]) => {
-          if (categoryTotals[cat] !== undefined) {
-            categoryTotals[cat] += amt;
-          }
-        });
+      allYears.forEach(year => {
+        const yearStr = year.toString();
+        const breakdown = getMemberIncomeBreakdown(member.id, yearStr);
+        const total = breakdown.salary + breakdown.business + breakdown.rental + breakdown.pension;
+        incomeSheetData.push([
+          year,
+          Math.round(breakdown.salary),
+          Math.round(breakdown.business),
+          Math.round(breakdown.rental),
+          Math.round(breakdown.pension),
+          Math.round(total)
+        ]);
       });
-
-      const total = Object.values(categoryTotals).reduce((sum, v) => sum + v, 0);
-      return [year, ...expenseCategories.map(cat => Math.round(categoryTotals[cat] || 0)), Math.round(total)];
+      
+      incomeSheetData.push([]); // Empty row between members
     });
 
-    const expenseSheet = XLSX.utils.aoa_to_sheet([expenseHeaders, ...expenseData]);
-    XLSX.utils.book_append_sheet(wb, expenseSheet, "Expense Breakdown");
+    const incomeSheet = XLSX.utils.aoa_to_sheet(incomeSheetData);
+    XLSX.utils.book_append_sheet(wb, incomeSheet, "Income by Member");
 
-    // Sheet 5: Goals
-    if (goalDetails.length > 0) {
-      const goalsHeaders = ["Year", ...goalDetails.map(g => g.category || 'Goal'), "Total Goals"];
+    // Sheet 4: Expense Breakdown by Member
+    const expenseCategories = [...new Set(expenseDetails.map(e => e.expense_type || 'other'))];
+    const expenseSheetData = [
+      ["EXPENSE BREAKDOWN BY MEMBER"],
+      [],
+    ];
+    
+    members.forEach((member, mIdx) => {
+      expenseSheetData.push([`${member.name}${member.is_primary ? ' (Primary)' : ''}`]);
+      expenseSheetData.push(["Year", ...expenseCategories.map(c => c.replace(/_/g, ' ')), "Total"]);
       
-      const goalsData = allYears.map(year => {
+      allYears.forEach(year => {
+        const yearStr = year.toString();
+        const breakdown = getMemberExpenseBreakdown(member.id, yearStr);
+        const total = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
+        expenseSheetData.push([
+          year,
+          ...expenseCategories.map(cat => Math.round(breakdown[cat] || 0)),
+          Math.round(total)
+        ]);
+      });
+      
+      expenseSheetData.push([]);
+    });
+
+    const expenseSheet = XLSX.utils.aoa_to_sheet(expenseSheetData);
+    XLSX.utils.book_append_sheet(wb, expenseSheet, "Expenses by Member");
+
+    // Sheet 5: Goals with Inflation
+    if (goalDetails.length > 0) {
+      const goalsSheetData = [
+        ["GOALS - YEAR WISE (Inflated Values)"],
+        [],
+        ["Year", ...goalDetails.map(g => g.category || 'Goal'), "Total Goals"],
+      ];
+      
+      allYears.forEach(year => {
         const yearStr = year.toString();
         const yearInt = parseInt(yearStr);
         
@@ -508,53 +583,73 @@ export default function SurplusSection({ family, isReadOnly }) {
         });
 
         const total = goalAmounts.reduce((sum, v) => sum + v, 0);
-        return [year, ...goalAmounts.map(a => Math.round(a)), Math.round(total)];
+        if (total > 0) {
+          goalsSheetData.push([year, ...goalAmounts.map(a => Math.round(a)), Math.round(total)]);
+        }
       });
 
-      const goalsSheet = XLSX.utils.aoa_to_sheet([goalsHeaders, ...goalsData]);
+      const goalsSheet = XLSX.utils.aoa_to_sheet(goalsSheetData);
       XLSX.utils.book_append_sheet(wb, goalsSheet, "Goals");
     }
 
-    // Sheet 6: Investments
-    if (investmentDetails.length > 0) {
-      const investmentCategories = [...new Set(investmentDetails.map(i => i.category || 'other'))];
-      const investmentHeaders = ["Year", ...investmentCategories.map(c => c.replace(/_/g, ' ').toUpperCase()), "Total Investments"];
-
-      const investmentData = allYears.map(year => {
-        const yearStr = year.toString();
-        const yearInt = parseInt(yearStr);
-        const yearsFromNow = yearInt - currentYear;
-        const isPostRetirement = yearInt >= earliestRetirement;
-        
-        const categoryTotals = {};
-        investmentCategories.forEach(cat => { categoryTotals[cat] = 0; });
-        
-        investmentDetails.forEach(inv => {
-          const cat = inv.category || 'other';
-          const baseAmount = parseFloat(inv.annual_amount) || 0;
-          let projectedAmount = baseAmount;
-          
-          if (yearsFromNow > 0) {
-            projectedAmount = isPostRetirement ? baseAmount * 0.5 : baseAmount * Math.pow(1.05, yearsFromNow);
-          }
-          
-          if (categoryTotals[cat] !== undefined) {
-            categoryTotals[cat] += projectedAmount;
-          }
+    // Sheet 6: Maturities
+    const maturitySheetData = [
+      ["MATURITY INFLOWS"],
+      [],
+      ["Year", "Type", "Category", "Amount", "Members"],
+    ];
+    
+    allYears.forEach(year => {
+      const yearMaturities = maturitiesByYear[year];
+      if (yearMaturities && yearMaturities.total > 0) {
+        yearMaturities.details.forEach(d => {
+          const memberNames = d.memberIds.map(mid => members.find(m => m.id === mid)?.name || '').join(', ');
+          maturitySheetData.push([year, d.type, d.category, Math.round(d.value), memberNames]);
         });
+      }
+    });
+    
+    if (maturitySheetData.length > 3) {
+      const maturitySheet = XLSX.utils.aoa_to_sheet(maturitySheetData);
+      maturitySheet['!cols'] = [{ wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 30 }];
+      XLSX.utils.book_append_sheet(wb, maturitySheet, "Maturities");
+    }
 
-        const total = Object.values(categoryTotals).reduce((sum, v) => sum + v, 0);
-        return [year, ...investmentCategories.map(cat => Math.round(categoryTotals[cat] || 0)), Math.round(total)];
+    // Sheet 7: Investments by Member
+    if (investmentDetails.length > 0) {
+      const investmentSheetData = [
+        ["INVESTMENTS BY MEMBER"],
+        [],
+      ];
+      
+      members.forEach(member => {
+        const memberInvestments = investmentDetails.filter(inv => inv.member_id === member.id);
+        if (memberInvestments.length > 0) {
+          investmentSheetData.push([`${member.name}${member.is_primary ? ' (Primary)' : ''}`]);
+          investmentSheetData.push(["Category", "Amount", "Frequency", "Annual Amount"]);
+          
+          memberInvestments.forEach(inv => {
+            investmentSheetData.push([
+              (inv.category || 'other').replace(/_/g, ' '),
+              inv.amount || 0,
+              inv.frequency || 'monthly',
+              inv.annual_amount || 0
+            ]);
+          });
+          
+          const totalAnnual = memberInvestments.reduce((sum, inv) => sum + (parseFloat(inv.annual_amount) || 0), 0);
+          investmentSheetData.push(["TOTAL", "", "", Math.round(totalAnnual)]);
+          investmentSheetData.push([]);
+        }
       });
 
-      const investmentSheet = XLSX.utils.aoa_to_sheet([investmentHeaders, ...investmentData]);
+      const investmentSheet = XLSX.utils.aoa_to_sheet(investmentSheetData);
       XLSX.utils.book_append_sheet(wb, investmentSheet, "Investments");
     }
 
-    // Sheet 7: Assets
+    // Sheet 8: Assets by Member
     const assetCategories = [
-      { key: 'salary', label: 'Salary Income' },
-      { key: 'business', label: 'Business' },
+      { key: 'salary', label: 'Salary/Business Assets' },
       { key: 'rental', label: 'Real Estate' },
       { key: 'mutual_fund', label: 'Mutual Funds' },
       { key: 'shares_pms', label: 'Stocks/PMS' },
@@ -563,121 +658,149 @@ export default function SurplusSection({ family, isReadOnly }) {
       { key: 'ppf', label: 'PPF' },
       { key: 'epf', label: 'EPF' },
       { key: 'nps', label: 'NPS' },
+      { key: 'rd_pis', label: 'Recurring Deposits' },
       { key: 'commodities', label: 'Gold/Commodities' },
       { key: 'insurance_income', label: 'Insurance' },
-      { key: 'cash', label: 'Cash' }
+      { key: 'cash', label: 'Cash' },
+      { key: 'vehicle', label: 'Vehicle' }
     ];
 
-    const assetsHeaderRow1 = ["Category", ...members.flatMap(m => [m.name, ""]), "Total", ""];
-    const assetsHeaderRow2 = ["", ...members.flatMap(() => ["Inv Value", "Mkt Value"]), "Inv Value", "Mkt Value"];
-    
-    const assetsData = assetCategories.map(cat => {
-      const memberValues = members.flatMap(m => {
-        const memberIncomes = incomeDetails.filter(inc => inc.category === cat.key && inc.member_ids?.includes(m.id));
+    const assetsSheetData = [
+      ["ASSETS BY MEMBER"],
+      [],
+    ];
+
+    members.forEach(member => {
+      assetsSheetData.push([`${member.name}${member.is_primary ? ' (Primary)' : ''}`]);
+      assetsSheetData.push(["Category", "Investment Value", "Market Value"]);
+      
+      let memberInvTotal = 0, memberMktTotal = 0;
+      
+      assetCategories.forEach(cat => {
+        const memberAssets = incomeDetails.filter(inc => inc.category === cat.key && inc.member_ids?.includes(member.id));
         let invValue = 0, mktValue = 0;
         
-        memberIncomes.forEach(inc => {
-          const details = inc.details || {};
-          invValue += parseFloat(details.investment_value) || parseFloat(details.total_investment) || 0;
-          mktValue += parseFloat(details.market_value) || parseFloat(details.maturity_value) || parseFloat(details.current_value) || invValue;
+        memberAssets.forEach(asset => {
+          const details = asset.details || {};
+          const inv = parseFloat(details.investment_value) || parseFloat(details.total_investment) || parseFloat(details.purchase_value) || 0;
+          const mkt = parseFloat(details.market_value) || parseFloat(details.maturity_value) || parseFloat(details.current_value) || inv;
+          invValue += inv;
+          mktValue += mkt;
         });
         
-        return [invValue, mktValue];
+        if (invValue > 0 || mktValue > 0) {
+          assetsSheetData.push([cat.label, Math.round(invValue), Math.round(mktValue)]);
+          memberInvTotal += invValue;
+          memberMktTotal += mktValue;
+        }
       });
-
-      const totalInv = memberValues.filter((_, i) => i % 2 === 0).reduce((sum, v) => sum + v, 0);
-      const totalMkt = memberValues.filter((_, i) => i % 2 === 1).reduce((sum, v) => sum + v, 0);
-
-      return [cat.label, ...memberValues, totalInv, totalMkt];
+      
+      assetsSheetData.push(["TOTAL", Math.round(memberInvTotal), Math.round(memberMktTotal)]);
+      assetsSheetData.push([]);
     });
 
-    // Add totals row
-    const assetsTotals = ["TOTAL"];
-    for (let i = 0; i < members.length; i++) {
-      const invTotal = assetsData.reduce((sum, row) => sum + (row[1 + i * 2] || 0), 0);
-      const mktTotal = assetsData.reduce((sum, row) => sum + (row[2 + i * 2] || 0), 0);
-      assetsTotals.push(invTotal, mktTotal);
-    }
-    const grandInvTotal = assetsData.reduce((sum, row) => sum + (row[row.length - 2] || 0), 0);
-    const grandMktTotal = assetsData.reduce((sum, row) => sum + (row[row.length - 1] || 0), 0);
-    assetsTotals.push(grandInvTotal, grandMktTotal);
-
-    const assetsSheet = XLSX.utils.aoa_to_sheet([assetsHeaderRow1, assetsHeaderRow2, ...assetsData, assetsTotals]);
+    const assetsSheet = XLSX.utils.aoa_to_sheet(assetsSheetData);
+    assetsSheet['!cols'] = [{ wch: 25 }, { wch: 18 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(wb, assetsSheet, "Assets");
 
-    // Sheet 8: Liabilities
+    // Sheet 9: Liabilities by Member
     if (liabilities.length > 0) {
-      const liabilitiesHeaders = ["Type", "Member", "Principal", "EMI", "Interest Rate", "Remaining Tenure", "Outstanding"];
-      const liabilitiesData = liabilities.map(l => {
-        const memberName = members.find(m => m.id === l.member_id)?.name || 'Family';
-        return [
-          l.loan_type || l.type || 'Loan',
-          memberName,
-          l.principal_amount || l.loan_amount || 0,
-          l.emi_amount || l.emi || 0,
-          l.interest_rate || 0,
-          l.remaining_tenure || l.tenure || 0,
-          l.outstanding_amount || l.principal_amount || 0
-        ];
+      const liabilitiesSheetData = [
+        ["LIABILITIES BY MEMBER"],
+        [],
+      ];
+      
+      members.forEach(member => {
+        const memberLiabilities = liabilities.filter(l => l.member_id === member.id || l.member_ids?.includes(member.id));
+        if (memberLiabilities.length > 0) {
+          liabilitiesSheetData.push([`${member.name}${member.is_primary ? ' (Primary)' : ''}`]);
+          liabilitiesSheetData.push(["Loan Type", "Principal", "EMI", "Interest %", "Tenure", "Outstanding"]);
+          
+          memberLiabilities.forEach(l => {
+            liabilitiesSheetData.push([
+              l.loan_type || l.type || 'Loan',
+              l.principal_amount || l.loan_amount || 0,
+              l.emi_amount || l.emi || 0,
+              l.interest_rate || 0,
+              l.remaining_tenure || l.tenure || 0,
+              l.outstanding_amount || l.principal_amount || 0
+            ]);
+          });
+          
+          const totalOutstanding = memberLiabilities.reduce((sum, l) => sum + (parseFloat(l.outstanding_amount) || parseFloat(l.principal_amount) || 0), 0);
+          liabilitiesSheetData.push(["TOTAL", "", "", "", "", Math.round(totalOutstanding)]);
+          liabilitiesSheetData.push([]);
+        }
       });
 
-      const totalOutstanding = liabilities.reduce((sum, l) => sum + (parseFloat(l.outstanding_amount) || parseFloat(l.principal_amount) || 0), 0);
-      liabilitiesData.push(["TOTAL", "", "", "", "", "", totalOutstanding]);
+      // Family total
+      const totalFamilyLiabilities = liabilities.reduce((sum, l) => sum + (parseFloat(l.outstanding_amount) || parseFloat(l.principal_amount) || 0), 0);
+      liabilitiesSheetData.push(["FAMILY TOTAL LIABILITIES", "", "", "", "", Math.round(totalFamilyLiabilities)]);
 
-      const liabilitiesSheet = XLSX.utils.aoa_to_sheet([liabilitiesHeaders, ...liabilitiesData]);
+      const liabilitiesSheet = XLSX.utils.aoa_to_sheet(liabilitiesSheetData);
+      liabilitiesSheet['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 15 }];
       XLSX.utils.book_append_sheet(wb, liabilitiesSheet, "Liabilities");
     }
 
-    // Sheet 9: Insurance
+    // Sheet 10: Insurance by Member
     const insuranceFromIncome = incomeDetails.filter(inc => inc.category === 'insurance_income');
     if (insuranceFromIncome.length > 0 || insurancePremiums.length > 0) {
-      const insuranceHeaders = ["Policy Type", "Member", "Sum Assured", "Premium", "Premium Frequency", "Maturity Year", "Maturity Value"];
-      const insuranceData = insuranceFromIncome.map(ins => {
-        const details = ins.details || {};
-        const memberNames = (ins.member_ids || []).map(mid => members.find(m => m.id === mid)?.name || '').join(', ');
-        return [
-          details.policy_type || 'Life Insurance',
-          memberNames || 'Family',
-          details.sum_assured || 0,
-          details.premium_amount || 0,
-          details.premium_frequency || 'Yearly',
-          details.maturity_year || '',
-          details.maturity_value || 0
-        ];
+      const insuranceSheetData = [
+        ["INSURANCE BY MEMBER"],
+        [],
+      ];
+      
+      members.forEach(member => {
+        const memberInsurance = insuranceFromIncome.filter(ins => ins.member_ids?.includes(member.id));
+        const memberPremiums = insurancePremiums.filter(p => p.member_id === member.id);
+        
+        if (memberInsurance.length > 0 || memberPremiums.length > 0) {
+          insuranceSheetData.push([`${member.name}${member.is_primary ? ' (Primary)' : ''}`]);
+          insuranceSheetData.push(["Policy Type", "Sum Assured", "Premium", "Frequency", "Maturity Year", "Maturity Value"]);
+          
+          memberInsurance.forEach(ins => {
+            const details = ins.details || {};
+            insuranceSheetData.push([
+              details.policy_type || 'Life Insurance',
+              details.sum_assured || 0,
+              details.premium_amount || 0,
+              details.premium_frequency || 'Yearly',
+              details.maturity_year || '',
+              details.maturity_value || 0
+            ]);
+          });
+          
+          memberPremiums.forEach(prem => {
+            insuranceSheetData.push([
+              prem.policy_type || prem.type || 'Insurance',
+              prem.sum_assured || 0,
+              prem.premium || prem.amount || 0,
+              prem.frequency || 'Yearly',
+              prem.maturity_year || '',
+              prem.maturity_value || 0
+            ]);
+          });
+          
+          insuranceSheetData.push([]);
+        }
       });
 
-      // Add insurance premiums if available
-      insurancePremiums.forEach(prem => {
-        const memberName = members.find(m => m.id === prem.member_id)?.name || 'Family';
-        insuranceData.push([
-          prem.policy_type || prem.type || 'Insurance',
-          memberName,
-          prem.sum_assured || 0,
-          prem.premium || prem.amount || 0,
-          prem.frequency || 'Yearly',
-          prem.maturity_year || '',
-          prem.maturity_value || 0
-        ]);
-      });
-
-      const totalSumAssured = insuranceData.reduce((sum, row) => sum + (parseFloat(row[2]) || 0), 0);
-      const totalPremium = insuranceData.reduce((sum, row) => sum + (parseFloat(row[3]) || 0), 0);
-      insuranceData.push(["TOTAL", "", totalSumAssured, totalPremium, "", "", ""]);
-
-      const insuranceSheet = XLSX.utils.aoa_to_sheet([insuranceHeaders, ...insuranceData]);
+      const insuranceSheet = XLSX.utils.aoa_to_sheet(insuranceSheetData);
+      insuranceSheet['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 15 }];
       XLSX.utils.book_append_sheet(wb, insuranceSheet, "Insurance");
     }
 
-    // Sheet 10: Net Worth Projection
-    const networthHeaders = ["Year", "Age", "Total Assets", "Total Liabilities", "Net Worth", "Cumulative Surplus"];
+    // Sheet 11: Net Worth Projection
+    const networthHeaders = ["Year", "Age", "Total Assets", "Maturities", "Total Liabilities", "Net Worth", "Cumulative Surplus"];
     
     let cumulativeSurplus = 0;
     const networthData = allYears.map(year => {
       const yearStr = year.toString();
       const age = primaryAge + (year - currentYear);
       const yearsFromNow = year - currentYear;
+      const yearMaturities = maturitiesByYear[year] || { total: 0 };
       
-      // Calculate projected assets (simplified - using income as proxy + accumulated surplus)
+      // Calculate projected assets
       let totalAssets = 0;
       incomeDetails.forEach(inc => {
         const details = inc.details || {};
@@ -698,12 +821,12 @@ export default function SurplusSection({ family, isReadOnly }) {
         }
       });
 
-      // Calculate year's surplus and add to cumulative
+      // Calculate year's surplus
       const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
       const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
       const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
       const totalInvestments = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, yearStr), 0);
-      const yearSurplus = totalIncome - totalExpenses - totalGoals - totalInvestments;
+      const yearSurplus = totalIncome - totalExpenses - totalGoals - totalInvestments + yearMaturities.total;
       cumulativeSurplus += yearSurplus;
 
       const netWorth = totalAssets + cumulativeSurplus - totalLiabilities;
@@ -712,18 +835,26 @@ export default function SurplusSection({ family, isReadOnly }) {
         year,
         age,
         Math.round(totalAssets),
+        Math.round(yearMaturities.total),
         Math.round(totalLiabilities),
         Math.round(netWorth),
         Math.round(cumulativeSurplus)
       ];
     });
 
-    const networthSheet = XLSX.utils.aoa_to_sheet([networthHeaders, ...networthData]);
-    networthSheet['!cols'] = [{ wch: 8 }, { wch: 6 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 18 }];
+    const networthSheetData = [
+      ["NET WORTH PROJECTION"],
+      [],
+      networthHeaders,
+      ...networthData
+    ];
+    
+    const networthSheet = XLSX.utils.aoa_to_sheet(networthSheetData);
+    networthSheet['!cols'] = [{ wch: 8 }, { wch: 6 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(wb, networthSheet, "Net Worth");
 
     // Generate and save file
-    const fileName = `cashflow_${(family?.family_name || 'family').toLowerCase().replace(/\s+/g, '_')}_${currentYear}.xlsx`;
+    const fileName = `financial_plan_${(family?.family_name || 'family').toLowerCase().replace(/\s+/g, '_')}_${currentYear}.xlsx`;
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     saveAs(blob, fileName);
