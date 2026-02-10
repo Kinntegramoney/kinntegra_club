@@ -555,19 +555,74 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             
             // RD/PIS calculations
             if (category === "rd_pis") {
-              if (["start_date", "end_date"].includes(field)) {
-                const start = new Date(field === "start_date" ? value : newDetails.start_date);
-                const end = new Date(field === "end_date" ? value : newDetails.end_date);
-                if (start && end) {
-                  const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-                  newDetails.num_installments = Math.max(0, months);
-                  if (newDetails.investment_value_monthly) {
-                    newDetails.investment_value = parseFloat(newDetails.investment_value_monthly) * newDetails.num_installments;
+              // Calculate installments and total investment when dates change
+              if (["start_date", "end_date", "investment_value_monthly", "maturity_value", "interest_rate"].includes(field)) {
+                const startDateStr = field === "start_date" ? value : newDetails.start_date;
+                const endDateStr = field === "end_date" ? value : newDetails.end_date;
+                const monthlyAmt = field === "investment_value_monthly" ? parseFloat(value || 0) : (parseFloat(newDetails.investment_value_monthly) || 0);
+                const maturityVal = field === "maturity_value" ? parseFloat(value || 0) : (parseFloat(newDetails.maturity_value) || 0);
+                const statedRate = field === "interest_rate" ? parseFloat(value || 0) : (parseFloat(newDetails.interest_rate) || 0);
+                
+                if (startDateStr && endDateStr) {
+                  const start = new Date(startDateStr);
+                  const end = new Date(endDateStr);
+                  const months = Math.max(0, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()));
+                  newDetails.num_installments = months;
+                  
+                  if (monthlyAmt > 0) {
+                    newDetails.investment_value = monthlyAmt * months;
+                    
+                    // Calculate Gross XIRR based on monthly investments and maturity value
+                    if (maturityVal > 0 && months > 0) {
+                      // Build cash flows: monthly investments (negative) and maturity value (positive)
+                      const cashFlows = [];
+                      const dates = [];
+                      
+                      for (let i = 0; i < months; i++) {
+                        cashFlows.push(-monthlyAmt);
+                        const paymentDate = new Date(start);
+                        paymentDate.setMonth(paymentDate.getMonth() + i);
+                        dates.push(paymentDate);
+                      }
+                      cashFlows.push(maturityVal);
+                      dates.push(end);
+                      
+                      // Newton-Raphson XIRR calculation
+                      const calcNPV = (rate) => {
+                        let npv = 0;
+                        const baseDate = dates[0];
+                        for (let i = 0; i < cashFlows.length; i++) {
+                          const years = (dates[i] - baseDate) / (365 * 24 * 60 * 60 * 1000);
+                          npv += cashFlows[i] / Math.pow(1 + rate, years);
+                        }
+                        return npv;
+                      };
+                      
+                      let guess = 0.1;
+                      for (let iter = 0; iter < 100; iter++) {
+                        const npv = calcNPV(guess);
+                        const npv2 = calcNPV(guess + 0.0001);
+                        const derivative = (npv2 - npv) / 0.0001;
+                        if (Math.abs(derivative) < 0.0000001) break;
+                        const newGuess = guess - npv / derivative;
+                        if (Math.abs(newGuess - guess) < 0.0000001) break;
+                        guess = newGuess;
+                      }
+                      newDetails.gross_xirr = Math.round(guess * 100 * 100) / 100;
+                    }
+                    
+                    // Calculate Expected Maturity based on stated interest rate
+                    if (statedRate > 0 && months > 0) {
+                      // RD maturity formula with compound interest
+                      const monthlyRate = statedRate / 100 / 12;
+                      let expectedMaturity = 0;
+                      for (let i = 0; i < months; i++) {
+                        expectedMaturity += monthlyAmt * Math.pow(1 + monthlyRate, months - i);
+                      }
+                      newDetails.expected_maturity = Math.round(expectedMaturity);
+                    }
                   }
                 }
-              }
-              if (field === "investment_value_monthly" && newDetails.num_installments) {
-                newDetails.investment_value = parseFloat(value) * newDetails.num_installments;
               }
             }
             
