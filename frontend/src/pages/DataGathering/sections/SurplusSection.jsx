@@ -1309,32 +1309,100 @@ function AllocationSimulator({
     equity: 12,
     debt: 7
   });
+  const [includeAssets, setIncludeAssets] = useState(false);
+  const [assetSelectionMode, setAssetSelectionMode] = useState('all'); // 'all', 'select', 'from_year'
+  const [selectedAssets, setSelectedAssets] = useState({});
+  const [assetStartYear, setAssetStartYear] = useState(currentYear);
   const [simulationResult, setSimulationResult] = useState(null);
   const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
 
-  // Calculate current total assets
-  const getCurrentAssets = () => {
-    let totalAssets = 0;
+  // Get all assets with details
+  const getAssetsList = () => {
+    const assets = [];
     incomeDetails.forEach(inc => {
       const details = inc.details || {};
       const mktValue = parseFloat(details.market_value) || parseFloat(details.maturity_value) || 
                        parseFloat(details.current_value) || parseFloat(details.investment_value) || 0;
-      totalAssets += mktValue;
+      if (mktValue > 0) {
+        const memberNames = (inc.member_ids || [])
+          .map(mid => members.find(m => m.id === mid)?.name || '')
+          .filter(Boolean)
+          .join(', ') || 'Family';
+        
+        assets.push({
+          id: inc.id,
+          category: inc.category,
+          label: getCategoryLabel(inc.category),
+          member: memberNames,
+          value: mktValue,
+          selected: true
+        });
+      }
+    });
+    return assets;
+  };
+
+  const getCategoryLabel = (category) => {
+    const labels = {
+      salary: 'Salary Assets',
+      business: 'Business',
+      rental: 'Real Estate',
+      mutual_fund: 'Mutual Funds',
+      shares_pms: 'Stocks/PMS',
+      fd: 'Fixed Deposits',
+      bonds: 'Bonds',
+      ppf: 'PPF',
+      epf: 'EPF',
+      nps: 'NPS',
+      rd_pis: 'Recurring Deposits',
+      commodities: 'Gold/Commodities',
+      insurance_income: 'Insurance',
+      cash: 'Cash',
+      vehicle: 'Vehicle'
+    };
+    return labels[category] || category;
+  };
+
+  const assetsList = getAssetsList();
+
+  // Initialize selected assets
+  React.useEffect(() => {
+    const initial = {};
+    assetsList.forEach(asset => {
+      initial[asset.id] = true;
+    });
+    setSelectedAssets(initial);
+  }, [incomeDetails]);
+
+  // Calculate current total assets based on selection
+  const getCurrentAssets = () => {
+    if (!includeAssets) return 0;
+    
+    let totalAssets = 0;
+    assetsList.forEach(asset => {
+      if (assetSelectionMode === 'all' || selectedAssets[asset.id]) {
+        totalAssets += asset.value;
+      }
     });
     return totalAssets;
   };
 
   const runSimulation = () => {
-    const currentAssets = getCurrentAssets();
+    const startingAssets = assetSelectionMode === 'from_year' ? 0 : getCurrentAssets();
     const weightedReturn = (allocations.equity * returns.equity + allocations.debt * returns.debt) / 100;
     
-    let corpus = currentAssets;
+    let corpus = startingAssets;
     let breakdown = [];
     let exhaustYear = null;
     
     for (let year = currentYear; year <= endYear; year++) {
       const yearStr = year.toString();
       const age = primaryAge + (year - currentYear);
+      
+      // Add assets starting from selected year if 'from_year' mode
+      if (assetSelectionMode === 'from_year' && year === assetStartYear && includeAssets) {
+        corpus += getCurrentAssetsForFromYear();
+      }
       
       // Calculate total income for this year
       const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
@@ -1344,18 +1412,11 @@ function AllocationSimulator({
       const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
       const totalInvestments = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, yearStr), 0);
       
-      // Surplus for this year (income - expenses - goals)
+      // Surplus for this year
       const yearSurplus = totalIncome - totalExpenses - totalGoals;
       
-      // If surplus is positive, add to corpus (investment)
-      // If negative (post-retirement typically), withdraw from corpus
-      if (yearSurplus >= 0) {
-        // Growing phase - add surplus to corpus
-        corpus = corpus * (1 + weightedReturn / 100) + yearSurplus;
-      } else {
-        // Withdrawal phase - first apply returns, then withdraw
-        corpus = corpus * (1 + weightedReturn / 100) + yearSurplus; // yearSurplus is negative
-      }
+      // Apply returns and add/withdraw surplus
+      corpus = corpus * (1 + weightedReturn / 100) + yearSurplus;
       
       breakdown.push({
         year,
@@ -1396,6 +1457,16 @@ function AllocationSimulator({
     }
   };
 
+  const getCurrentAssetsForFromYear = () => {
+    let totalAssets = 0;
+    assetsList.forEach(asset => {
+      if (selectedAssets[asset.id]) {
+        totalAssets += asset.value;
+      }
+    });
+    return totalAssets;
+  };
+
   const formatLargeNumber = (num) => {
     if (num >= 10000000) return `${(num / 10000000).toFixed(2)} Cr`;
     if (num >= 100000) return `${(num / 100000).toFixed(2)} L`;
@@ -1412,6 +1483,27 @@ function AllocationSimulator({
     setAllocations({ equity: 100 - debt, debt });
   };
 
+  const toggleAssetSelection = (assetId) => {
+    setSelectedAssets(prev => ({ ...prev, [assetId]: !prev[assetId] }));
+  };
+
+  const selectAllAssets = () => {
+    const all = {};
+    assetsList.forEach(asset => { all[asset.id] = true; });
+    setSelectedAssets(all);
+  };
+
+  const deselectAllAssets = () => {
+    const none = {};
+    assetsList.forEach(asset => { none[asset.id] = false; });
+    setSelectedAssets(none);
+  };
+
+  const yearOptions = [];
+  for (let y = currentYear; y <= endYear; y++) {
+    yearOptions.push(y);
+  }
+
   return (
     <Card className="mt-6 border-2 border-blue-200">
       <CardHeader className="pb-3">
@@ -1424,6 +1516,120 @@ function AllocationSimulator({
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Asset Inclusion Toggle */}
+        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="includeAssets"
+              checked={includeAssets}
+              onChange={(e) => setIncludeAssets(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="includeAssets" className="text-sm font-medium text-gray-700">
+              Include existing assets in calculation
+            </label>
+          </div>
+
+          {includeAssets && (
+            <div className="ml-7 space-y-3">
+              {/* Asset Selection Mode */}
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="assetMode"
+                    value="all"
+                    checked={assetSelectionMode === 'all'}
+                    onChange={() => setAssetSelectionMode('all')}
+                    className="h-4 w-4 text-blue-600"
+                  />
+                  <span className="text-sm text-gray-600">Include all assets</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="assetMode"
+                    value="select"
+                    checked={assetSelectionMode === 'select'}
+                    onChange={() => setAssetSelectionMode('select')}
+                    className="h-4 w-4 text-blue-600"
+                  />
+                  <span className="text-sm text-gray-600">Select specific assets</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="assetMode"
+                    value="from_year"
+                    checked={assetSelectionMode === 'from_year'}
+                    onChange={() => setAssetSelectionMode('from_year')}
+                    className="h-4 w-4 text-blue-600"
+                  />
+                  <span className="text-sm text-gray-600">Include from specific year</span>
+                </label>
+              </div>
+
+              {/* Asset Selection List */}
+              {assetSelectionMode === 'select' && (
+                <div className="border rounded-lg p-3 bg-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-gray-600">Select assets to include:</span>
+                    <div className="flex gap-2">
+                      <button onClick={selectAllAssets} className="text-xs text-blue-600 hover:underline">Select All</button>
+                      <button onClick={deselectAllAssets} className="text-xs text-red-600 hover:underline">Deselect All</button>
+                    </div>
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto space-y-1">
+                    {assetsList.map(asset => (
+                      <label key={asset.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedAssets[asset.id] || false}
+                          onChange={() => toggleAssetSelection(asset.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                        />
+                        <span className="text-sm text-gray-700 flex-1">{asset.label}</span>
+                        <span className="text-xs text-gray-500">{asset.member}</span>
+                        <span className="text-sm font-medium text-green-600">₹{formatLargeNumber(asset.value)}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t flex justify-between">
+                    <span className="text-xs text-gray-500">Selected Assets:</span>
+                    <span className="text-sm font-semibold text-green-700">
+                      ₹{formatLargeNumber(Object.entries(selectedAssets)
+                        .filter(([_, selected]) => selected)
+                        .reduce((sum, [id]) => sum + (assetsList.find(a => a.id === id)?.value || 0), 0)
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Year Selection */}
+              {assetSelectionMode === 'from_year' && (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">Include assets from year:</span>
+                  <Select value={assetStartYear.toString()} onValueChange={(v) => setAssetStartYear(parseInt(v))}>
+                    <SelectTrigger className="w-32 h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {yearOptions.map(y => (
+                        <SelectItem key={y} value={y.toString()}>
+                          {y} {y === retirementYear && '(R)'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-gray-500">(Assets will be added to corpus in this year)</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Allocation Inputs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
@@ -1478,7 +1684,12 @@ function AllocationSimulator({
             </strong>
           </span>
           <span className="text-sm text-gray-600">
-            Current Assets: <strong className="text-green-700">₹{formatLargeNumber(getCurrentAssets())}</strong>
+            Starting Corpus: <strong className="text-green-700">
+              ₹{formatLargeNumber(assetSelectionMode === 'from_year' ? 0 : getCurrentAssets())}
+            </strong>
+            {assetSelectionMode === 'from_year' && includeAssets && (
+              <span className="text-xs text-gray-500 ml-1">(+₹{formatLargeNumber(getCurrentAssetsForFromYear())} in {assetStartYear})</span>
+            )}
           </span>
         </div>
 
@@ -1534,6 +1745,7 @@ function AllocationSimulator({
                       <td className="py-1.5 px-3 font-medium">
                         {row.year}
                         {row.year === retirementYear && <span className="text-amber-600 ml-1">(R)</span>}
+                        {assetSelectionMode === 'from_year' && row.year === assetStartYear && <span className="text-green-600 ml-1">(A)</span>}
                       </td>
                       <td className="py-1.5 px-3">{row.age}</td>
                       <td className="py-1.5 px-3 text-right text-green-600">₹{formatLargeNumber(row.income)}</td>
@@ -1549,6 +1761,9 @@ function AllocationSimulator({
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="text-[10px] text-gray-400 mt-1">
+              (R) = Retirement Year {assetSelectionMode === 'from_year' && '| (A) = Asset Addition Year'}
             </div>
           </div>
         )}
