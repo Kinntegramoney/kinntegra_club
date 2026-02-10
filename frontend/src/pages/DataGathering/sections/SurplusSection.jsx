@@ -1272,6 +1272,9 @@ function AllocationSimulator({
   getProjectedMemberInvestments,
   getMemberIncomeInfo,
   incomeDetails,
+  expenseDetails,
+  goalDetails,
+  investmentDetails,
   primaryAge,
   lifeExpectancy,
   calculateAge
