@@ -457,21 +457,77 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             // FD calculations
             if (category === "fd") {
               // Calculate Gross XIRR when relevant fields change
-              if (["investment_value", "investment_date", "maturity_amount", "maturity_date", "payable_cycle"].includes(field)) {
+              if (["investment_value", "investment_date", "maturity_amount", "maturity_date", "payable_cycle", "interest_rate"].includes(field)) {
                 const investmentVal = field === "investment_value" ? parseFloat(value || 0) : (parseFloat(newDetails.investment_value) || 0);
                 const maturityAmt = field === "maturity_amount" ? parseFloat(value || 0) : (parseFloat(newDetails.maturity_amount) || 0);
+                const interestRate = field === "interest_rate" ? parseFloat(value || 0) : (parseFloat(newDetails.interest_rate) || 0);
                 const investmentDateStr = field === "investment_date" ? value : newDetails.investment_date;
                 const maturityDateStr = field === "maturity_date" ? value : newDetails.maturity_date;
+                const payoutFrequency = field === "payable_cycle" ? value : (newDetails.payable_cycle || "On Maturity");
                 
-                if (investmentVal > 0 && maturityAmt > 0 && investmentDateStr && maturityDateStr) {
+                if (investmentVal > 0 && investmentDateStr && maturityDateStr) {
                   const investDate = new Date(investmentDateStr);
                   const maturityDate = new Date(maturityDateStr);
-                  const days = Math.max(1, (maturityDate - investDate) / (1000 * 60 * 60 * 24));
-                  const years = days / 365;
+                  const totalDays = Math.max(1, (maturityDate - investDate) / (1000 * 60 * 60 * 24));
+                  const totalYears = totalDays / 365;
                   
-                  if (years > 0) {
-                    // XIRR = ((Maturity Amount / Investment Value) ^ (1/years)) - 1
-                    const xirr = (Math.pow(maturityAmt / investmentVal, 1 / years) - 1) * 100;
+                  // Get frequency multiplier (payments per year)
+                  const frequencyMap = {
+                    "Monthly": 12,
+                    "Quarterly": 4,
+                    "Half-Yearly": 2,
+                    "Yearly": 1,
+                    "On Maturity": 0
+                  };
+                  const paymentsPerYear = frequencyMap[payoutFrequency] || 0;
+                  
+                  if (totalYears > 0) {
+                    let xirr = 0;
+                    
+                    if (paymentsPerYear === 0 || payoutFrequency === "On Maturity") {
+                      // Simple XIRR for lump sum at maturity
+                      const finalAmount = maturityAmt > 0 ? maturityAmt : investmentVal * (1 + (interestRate * totalYears / 100));
+                      xirr = (Math.pow(finalAmount / investmentVal, 1 / totalYears) - 1) * 100;
+                    } else {
+                      // XIRR with periodic interest payouts
+                      // Interest per period = Principal × (Rate/100) / PaymentsPerYear
+                      const interestPerPeriod = investmentVal * (interestRate / 100) / paymentsPerYear;
+                      const totalPeriods = Math.floor(totalYears * paymentsPerYear);
+                      
+                      // Build cash flows: -investment at start, +interest each period, +principal at end
+                      const cashFlows = [-investmentVal];
+                      const daysBetweenPayments = 365 / paymentsPerYear;
+                      
+                      for (let i = 1; i <= totalPeriods; i++) {
+                        cashFlows.push(interestPerPeriod);
+                      }
+                      // Add principal back at maturity
+                      cashFlows.push(investmentVal);
+                      
+                      // Calculate XIRR using Newton-Raphson approximation
+                      const calcNPV = (rate) => {
+                        let npv = cashFlows[0];
+                        for (let i = 1; i < cashFlows.length; i++) {
+                          const t = i <= totalPeriods ? (i * daysBetweenPayments / 365) : totalYears;
+                          npv += cashFlows[i] / Math.pow(1 + rate, t);
+                        }
+                        return npv;
+                      };
+                      
+                      // Newton-Raphson iteration to find XIRR
+                      let guess = interestRate / 100;
+                      for (let iter = 0; iter < 100; iter++) {
+                        const npv = calcNPV(guess);
+                        const npv2 = calcNPV(guess + 0.0001);
+                        const derivative = (npv2 - npv) / 0.0001;
+                        if (Math.abs(derivative) < 0.0000001) break;
+                        const newGuess = guess - npv / derivative;
+                        if (Math.abs(newGuess - guess) < 0.0000001) break;
+                        guess = newGuess;
+                      }
+                      xirr = guess * 100;
+                    }
+                    
                     newDetails.gross_xirr = Math.round(xirr * 100) / 100; // Round to 2 decimals
                   } else {
                     newDetails.gross_xirr = 0;
