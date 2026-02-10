@@ -1281,6 +1281,10 @@ function AllocationSimulator({
 
   // State for individual member allocations
   const [memberAllocations, setMemberAllocations] = useState({});
+  
+  // State for asset selection modal
+  const [assetModalOpen, setAssetModalOpen] = useState(false);
+  const [assetModalEntity, setAssetModalEntity] = useState(null); // 'family' or member id
 
   // Generate year options
   const yearOptions = [];
