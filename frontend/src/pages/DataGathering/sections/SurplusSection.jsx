@@ -1578,7 +1578,7 @@ function AllocationSimulator({
     const allocation = isFamily ? familyAllocation : memberAllocations[entityId];
     if (!allocation) return;
 
-    const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears } = allocation;
+    const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears, assetAmounts } = allocation;
     const entityAssets = getAssetsForEntity(entityId);
     
     // Determine entity name and end year
