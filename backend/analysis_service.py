@@ -404,11 +404,23 @@ class CASParser:
                 # This ensures schemes with the same folio but different ISINs get separate entries
                 if current_folio and current_isin:
                     new_key = f"{current_folio}_{current_isin}"
+                    old_key = current_key  # Save old key for transaction migration
+                    
                     if new_key != current_key:
                         current_key = new_key
                         # Create new folio entry if it doesn't exist
                         if current_key not in self.folios:
                             logger.info(f"Creating folio entry: key={current_key[:50]}, scheme={current_scheme[:40] if current_scheme else 'None'}")
+                            
+                            # Check if we need to migrate transactions from a folio-only key
+                            old_transactions = []
+                            if old_key and old_key in self.folios and old_key == current_folio:
+                                # The old entry was created with just folio number (no ISIN)
+                                # Migrate its transactions to the new key
+                                old_transactions = self.folios[old_key].get('transactions', [])
+                                logger.info(f"Migrating {len(old_transactions)} transactions from {old_key} to {current_key}")
+                                del self.folios[old_key]  # Remove the old folio-only entry
+                            
                             self.folios[current_key] = {
                                 'folio': current_folio,
                                 'scheme': current_scheme,
@@ -417,13 +429,18 @@ class CASParser:
                                 'pan': current_pan,
                                 'amc': current_amc,
                                 'advisor': current_advisor,
-                                'transactions': [],
+                                'transactions': old_transactions,  # Include migrated transactions
                                 'closing_balance': 0,
                                 'cost_value': 0,
                                 'current_nav': 0,
                                 'market_value': 0,
                                 'opening_balance': 0
                             }
+                        else:
+                            # Folio entry already exists - just update scheme info if needed
+                            if current_scheme and not self.folios[current_key].get('scheme'):
+                                self.folios[current_key]['scheme'] = current_scheme
+                                self.folios[current_key]['scheme_code'] = current_scheme_full
                 
                 pending_scheme_line = None
             
