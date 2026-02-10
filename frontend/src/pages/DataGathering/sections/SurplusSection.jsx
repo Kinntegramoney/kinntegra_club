@@ -1783,51 +1783,60 @@ function AllocationSimulator({
             <tbody className="divide-y divide-gray-100">
               {/* Family Row */}
               <tr className="bg-amber-50/40 hover:bg-amber-50/60 transition-colors">
-                <td className="py-2.5 px-3 text-center">
+                <td className="py-3 px-3 text-center">
                   <div className="font-semibold text-gray-800 text-[11px]">{familyName}</div>
-                  {familyAllocation.lastCalculated && (
-                    <div className="text-[9px] text-gray-400 flex items-center justify-center gap-0.5 mt-0.5">
-                      <Clock className="h-2 w-2" />
-                      {familyAllocation.lastCalculated}
+                  {familyAllocation.result && (
+                    <div className={`mt-1 text-[10px] flex items-center justify-center gap-1 ${familyAllocation.result.success ? 'text-green-600' : 'text-red-600'}`}>
+                      {familyAllocation.result.success ? (
+                        <CheckCircle className="h-3 w-3" />
+                      ) : (
+                        <AlertTriangle className="h-3 w-3" />
+                      )}
+                      <span>
+                        {familyAllocation.result.success 
+                          ? `Lasts till ${familyAllocation.result.lastYear}` 
+                          : `Exhausts in ${familyAllocation.result.lastYear} (${familyAllocation.result.yearsShort}y short)`
+                        }
+                      </span>
                     </div>
                   )}
                 </td>
-                <td className="py-2.5 px-1 border-l border-gray-100 text-center">
+                <td className="py-3 px-2 border-l border-gray-100 text-center">
                   <select
                     value={familyAllocation.equity}
                     onChange={(e) => updateAllocation('family', 'equity', e.target.value)}
-                    className="w-12 h-6 text-[10px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+                    className="w-14 h-7 text-[11px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                   >
                     {[...Array(11)].map((_, i) => (
                       <option key={i * 10} value={i * 10}>{i * 10}</option>
                     ))}
                   </select>
                 </td>
-                <td className="py-2.5 px-1 bg-blue-50/30 text-center">
+                <td className="py-3 px-2 bg-blue-50/30 text-center">
                   <input
                     type="number"
                     value={familyAllocation.debt}
                     readOnly
-                    className="w-10 h-6 text-[10px] border border-gray-200 rounded bg-gray-50 text-center text-gray-500"
+                    className="w-12 h-7 text-[11px] border border-gray-200 rounded bg-gray-50 text-center text-gray-500"
                   />
                 </td>
-                <td className="py-2.5 px-1 border-l border-gray-100 text-center">
+                <td className="py-3 px-2 border-l border-gray-100 text-center">
                   <input
                     type="number"
                     value={familyAllocation.equityReturn}
                     onChange={(e) => updateAllocation('family', 'equityReturn', parseFloat(e.target.value) || 0)}
-                    className="w-10 h-6 text-[10px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400"
+                    className="w-12 h-7 text-[11px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400"
                   />
                 </td>
-                <td className="py-2.5 px-1 bg-blue-50/30 text-center">
+                <td className="py-3 px-2 bg-blue-50/30 text-center">
                   <input
                     type="number"
                     value={familyAllocation.debtReturn}
                     onChange={(e) => updateAllocation('family', 'debtReturn', parseFloat(e.target.value) || 0)}
-                    className="w-10 h-6 text-[10px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400"
+                    className="w-12 h-7 text-[11px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400"
                   />
                 </td>
-                <td className="py-2.5 px-2 border-l border-gray-100 text-center">
+                <td className="py-3 px-3 border-l border-gray-100 text-center">
                   <input
                     type="checkbox"
                     checked={familyAllocation.includeAssets}
@@ -1835,26 +1844,26 @@ function AllocationSimulator({
                     className="h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer"
                   />
                 </td>
-                <td className="py-2.5 px-2 border-l border-gray-100 text-center">
-                  <div className="flex items-center justify-center gap-1">
+                <td className="py-3 px-3 border-l border-gray-100 text-center">
+                  <div className="flex items-center justify-center gap-2">
                     <button 
                       onClick={() => openAssetModal('family')}
                       disabled={!familyAllocation.includeAssets}
-                      className="px-2 py-1.5 text-[10px] font-medium rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                      className="px-3 py-1.5 text-[10px] font-medium rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
                     >
                       <Settings2 className="h-3 w-3" />
                       Configure
                     </button>
                     <button 
                       onClick={() => runSimulation('family')}
-                      className="px-2 py-1.5 text-[10px] font-medium rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                      className="px-3 py-1.5 text-[10px] font-medium rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                     >
                       Calculate
                     </button>
                     <button 
                       onClick={() => exportEntityCashFlow('family')}
                       disabled={!familyAllocation.result}
-                      className="px-2 py-1.5 text-[10px] font-medium rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                      className="px-3 py-1.5 text-[10px] font-medium rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
                       title="Download Excel"
                     >
                       <Download className="h-3 w-3" />
@@ -1862,31 +1871,6 @@ function AllocationSimulator({
                   </div>
                 </td>
               </tr>
-
-              {/* Family Result Row */}
-              {familyAllocation.result && (
-                <tr className={`${familyAllocation.result.success ? 'bg-green-50/50' : 'bg-red-50/50'}`}>
-                  <td colSpan={7} className="py-2 px-4">
-                    <div className={`text-[11px] flex items-center gap-2 justify-center ${familyAllocation.result.success ? 'text-green-700' : ''}`}>
-                      {familyAllocation.result.success ? (
-                        <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                      ) : (
-                        <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
-                      )}
-                      {!familyAllocation.result.success ? (
-                        <>
-                          Money lasts till {familyAllocation.result.lastYear}. {' '}
-                          <span className="text-red-600 font-medium">
-                            Exhausts {familyAllocation.result.yearsShort} years before life expectancy.
-                          </span>
-                        </>
-                      ) : (
-                        familyAllocation.result.message
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )}
 
               {/* Individual Member Rows */}
               {members.map((member, idx) => {
