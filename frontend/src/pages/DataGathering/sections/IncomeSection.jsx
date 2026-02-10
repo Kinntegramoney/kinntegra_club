@@ -110,11 +110,11 @@ const INCOME_CATEGORIES = [
     fields: [
       { key: "description", label: "Description", type: "text" },
       { key: "investment_value", label: "Investment Value", type: "number" },
-      { key: "investment_date", label: "Investment Date", type: "monthyear" },
+      { key: "investment_date", label: "Investment Date", type: "date" },
       { key: "interest_rate", label: "Interest %", type: "number" },
       { key: "payable_cycle", label: "Interest Payout Frequency", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
       { key: "maturity_amount", label: "Maturity Amount", type: "number" },
-      { key: "maturity_date", label: "Maturity Date", type: "monthyear" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" },
       { key: "gross_xirr", label: "Gross XIRR %", type: "number", readOnly: true, calculated: true }
     ]
   },
