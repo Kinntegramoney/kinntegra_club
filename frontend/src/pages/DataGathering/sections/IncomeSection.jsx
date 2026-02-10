@@ -538,49 +538,69 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
               }
             }
             
-            // Bond calculations
+            // Bond calculations - XIRR based on investment, periodic payouts, and maturity
             if (category === "bond") {
-              if (["face_value", "units", "clean_price", "accrued_interest", "current_clean_price", "coupon_rate", "settlement_date", "maturity_date", "payout_frequency"].includes(field)) {
-                const faceValue = field === "face_value" ? parseFloat(value || 0) : (parseFloat(newDetails.face_value) || 0);
-                const units = field === "units" ? parseFloat(value || 0) : (parseFloat(newDetails.units) || 0);
-                const cleanPrice = field === "clean_price" ? parseFloat(value || 0) : (parseFloat(newDetails.clean_price) || 0);
-                const accruedInterest = field === "accrued_interest" ? parseFloat(value || 0) : (parseFloat(newDetails.accrued_interest) || 0);
-                const currentCleanPrice = field === "current_clean_price" ? parseFloat(value || 0) : (parseFloat(newDetails.current_clean_price) || 0);
-                const couponRate = field === "coupon_rate" ? parseFloat(value || 0) : (parseFloat(newDetails.coupon_rate) || 0);
-                const settlementDateStr = field === "settlement_date" ? value : newDetails.settlement_date;
+              if (["investment_value", "investment_date", "payout_frequency", "payout_amount", "maturity_amount", "maturity_date"].includes(field)) {
+                const investmentVal = field === "investment_value" ? parseFloat(value || 0) : (parseFloat(newDetails.investment_value) || 0);
+                const investmentDateStr = field === "investment_date" ? value : newDetails.investment_date;
+                const payoutFrequency = field === "payout_frequency" ? value : (newDetails.payout_frequency || "Half-Yearly");
+                const payoutAmount = field === "payout_amount" ? parseFloat(value || 0) : (parseFloat(newDetails.payout_amount) || 0);
+                const maturityAmount = field === "maturity_amount" ? parseFloat(value || 0) : (parseFloat(newDetails.maturity_amount) || 0);
                 const maturityDateStr = field === "maturity_date" ? value : newDetails.maturity_date;
                 
-                // Calculate Dirty Price = Clean Price + Accrued Interest
-                if (cleanPrice > 0) {
-                  newDetails.dirty_price = Math.round((cleanPrice + accruedInterest) * 100) / 100;
-                }
-                
-                // Calculate Premium/Discount = Clean Price - Face Value (positive = premium, negative = discount)
-                if (cleanPrice > 0 && faceValue > 0) {
-                  newDetails.premium_discount = Math.round((cleanPrice - faceValue) * 100) / 100;
-                }
-                
-                // Calculate Investment Value = Dirty Price × Units
-                if (cleanPrice > 0 && units > 0) {
-                  const dirtyPrice = cleanPrice + accruedInterest;
-                  newDetails.investment_value = Math.round(dirtyPrice * units);
-                }
-                
-                // Calculate Market Value = Current Clean Price × Units
-                if (currentCleanPrice > 0 && units > 0) {
-                  newDetails.market_value = Math.round(currentCleanPrice * units);
-                }
-                
-                // Calculate Current YTM based on current clean price, coupon rate, and time to maturity
-                if (currentCleanPrice > 0 && faceValue > 0 && couponRate > 0 && maturityDateStr && settlementDateStr) {
-                  const today = new Date();
+                if (investmentVal > 0 && investmentDateStr && maturityDateStr && maturityAmount > 0) {
+                  const investDate = new Date(investmentDateStr);
                   const maturityDate = new Date(maturityDateStr);
-                  const yearsToMaturity = Math.max(0.1, (maturityDate - today) / (365 * 24 * 60 * 60 * 1000));
                   
-                  // Approximate YTM formula: (Coupon + (Face Value - Price) / Years) / ((Face Value + Price) / 2)
-                  const annualCoupon = faceValue * (couponRate / 100);
-                  const ytm = ((annualCoupon + (faceValue - currentCleanPrice) / yearsToMaturity) / ((faceValue + currentCleanPrice) / 2)) * 100;
-                  newDetails.current_ytm = Math.round(ytm * 100) / 100;
+                  // Get payments per year based on frequency
+                  const frequencyMap = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1 };
+                  const paymentsPerYear = frequencyMap[payoutFrequency] || 2;
+                  
+                  // Build cash flows
+                  const cashFlows = [-investmentVal];
+                  const dates = [investDate];
+                  
+                  // Add periodic payout cash flows
+                  if (payoutAmount > 0) {
+                    const monthsBetweenPayouts = 12 / paymentsPerYear;
+                    let payoutDate = new Date(investDate);
+                    payoutDate.setMonth(payoutDate.getMonth() + monthsBetweenPayouts);
+                    
+                    while (payoutDate < maturityDate) {
+                      cashFlows.push(payoutAmount);
+                      dates.push(new Date(payoutDate));
+                      payoutDate.setMonth(payoutDate.getMonth() + monthsBetweenPayouts);
+                    }
+                  }
+                  
+                  // Add maturity amount (principal + final payout if any)
+                  cashFlows.push(maturityAmount);
+                  dates.push(maturityDate);
+                  
+                  // Newton-Raphson XIRR calculation
+                  const calcNPV = (rate) => {
+                    let npv = 0;
+                    const baseDate = dates[0];
+                    for (let i = 0; i < cashFlows.length; i++) {
+                      const years = (dates[i] - baseDate) / (365 * 24 * 60 * 60 * 1000);
+                      npv += cashFlows[i] / Math.pow(1 + rate, years);
+                    }
+                    return npv;
+                  };
+                  
+                  let guess = 0.1;
+                  for (let iter = 0; iter < 100; iter++) {
+                    const npv = calcNPV(guess);
+                    const npv2 = calcNPV(guess + 0.0001);
+                    const derivative = (npv2 - npv) / 0.0001;
+                    if (Math.abs(derivative) < 0.0000001) break;
+                    const newGuess = guess - npv / derivative;
+                    if (Math.abs(newGuess - guess) < 0.0000001) break;
+                    guess = newGuess;
+                  }
+                  newDetails.gross_xirr = Math.round(guess * 100 * 100) / 100;
+                } else {
+                  newDetails.gross_xirr = 0;
                 }
               }
             }
