@@ -511,21 +511,17 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   <Checkbox id={`pr-${item.id}`} checked={item.details.consider_post_retirement || false} onCheckedChange={v => updateItem(cat.value, item.id, "consider_post_retirement", v)} disabled={isReadOnly} className="h-4 w-4" />
                                   <label htmlFor={`pr-${item.id}`} className="text-xs text-gray-500 whitespace-nowrap">Post Ret.</label>
                                 </div>
-                                {item.details.consider_post_retirement && (
-                                  <>
-                                    <div className="flex flex-col w-[120px]">
-                                      <span className="text-[10px] text-gray-400 mb-1">Ret. Member</span>
-                                      <Select value={item.details.post_retirement_member || ""} onValueChange={v => updateItem(cat.value, item.id, "post_retirement_member", v)} disabled={isReadOnly}>
-                                        <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
-                                        <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}</SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="flex flex-col w-[70px]">
-                                      <span className="text-[10px] text-gray-400 mb-1">%</span>
-                                      <Input type="number" value={item.details.post_retirement_percent ?? 100} onChange={e => updateItem(cat.value, item.id, "post_retirement_percent", e.target.value)} className="h-8 w-full text-xs bg-white border-gray-200" disabled={isReadOnly} min={0} />
-                                    </div>
-                                  </>
-                                )}
+                                <div className="flex flex-col w-[120px]">
+                                  <span className="text-[10px] text-gray-400 mb-1">Ret. Member</span>
+                                  <Select value={item.details.post_retirement_member || ""} onValueChange={v => updateItem(cat.value, item.id, "post_retirement_member", v)} disabled={isReadOnly || !item.details.consider_post_retirement}>
+                                    <SelectTrigger className={`h-8 w-full text-xs border-gray-200 ${item.details.consider_post_retirement ? 'bg-white' : 'bg-gray-100 text-gray-400'}`}><SelectValue placeholder="-" /></SelectTrigger>
+                                    <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}</SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex flex-col w-[70px]">
+                                  <span className="text-[10px] text-gray-400 mb-1">%</span>
+                                  <Input type="number" value={item.details.post_retirement_percent ?? 100} onChange={e => updateItem(cat.value, item.id, "post_retirement_percent", e.target.value)} className={`h-8 w-full text-xs border-gray-200 ${item.details.consider_post_retirement ? 'bg-white' : 'bg-gray-100 text-gray-400'}`} disabled={isReadOnly || !item.details.consider_post_retirement} min={0} />
+                                </div>
                                 {idx > 0 && (
                                   <button onClick={() => removeItem(cat.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><Trash2 className="h-4 w-4" /></button>
                                 )}
