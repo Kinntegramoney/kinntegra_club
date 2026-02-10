@@ -781,6 +781,8 @@ class CASParser:
                         
                         if current_key and current_key in self.folios:
                             self.folios[current_key]['transactions'].append(transaction)
+                        else:
+                            logger.warning(f"Transaction not added to folio! key={current_key}, scheme={current_scheme[:30] if current_scheme else 'None'}, date={date_str}")
                         
                     except Exception:
                         pass
