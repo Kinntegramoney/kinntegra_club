@@ -1475,16 +1475,29 @@ function AllocationSimulator({
   };
 
   const runSimulation = () => {
-    const startingAssets = assetSelectionMode === 'from_year' ? 0 : getCurrentAssets();
     const weightedReturn = (allocations.equity * returns.equity + allocations.debt * returns.debt) / 100;
     
-    let corpus = startingAssets;
+    let corpus = 0;
     let breakdown = [];
     let exhaustYear = null;
+    let assetsAdded = {};  // Track which assets have been added
     
     for (let year = currentYear; year <= endYear; year++) {
       const yearStr = year.toString();
       const age = primaryAge + (year - currentYear);
+      
+      // Add assets that should be included from this year
+      if (includeAssets) {
+        assetsList.forEach(asset => {
+          if (!assetsAdded[asset.id] && (assetSelectionMode === 'all' || selectedAssets[asset.id])) {
+            const startYear = assetStartYear[asset.id] || currentYear;
+            if (year >= startYear) {
+              corpus += asset.value;
+              assetsAdded[asset.id] = true;
+            }
+          }
+        });
+      }
       
       // Add assets starting from selected year if 'from_year' mode
       if (assetSelectionMode === 'from_year' && year === assetStartYear && includeAssets) {
