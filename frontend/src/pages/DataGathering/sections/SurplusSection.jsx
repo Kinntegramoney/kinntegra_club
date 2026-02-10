@@ -1704,7 +1704,7 @@ function AllocationSimulator({
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b-2 border-gray-200">
-                <th className="text-left py-3 px-2 text-sm font-medium text-gray-600" rowSpan={2}>Name</th>
+                <th className="text-center py-3 px-2 text-sm font-medium text-gray-600" rowSpan={2}>Name</th>
                 <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" colSpan={2}>Asset Allocation (%)</th>
                 <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" colSpan={2}>Expected Returns (%)</th>
                 <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" rowSpan={2}>Include<br/>Assets</th>
@@ -1720,27 +1720,27 @@ function AllocationSimulator({
             <tbody>
               {/* Family Row */}
               <tr className="border-b border-gray-100 bg-amber-50/30">
-                <td className="py-3 px-2">
+                <td className="py-3 px-2 text-center">
                   <div className="font-medium text-gray-800">{familyName}</div>
                   {familyAllocation.lastCalculated && (
-                    <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+                    <div className="text-[10px] text-gray-400 flex items-center justify-center gap-1 mt-0.5">
                       <Clock className="h-2.5 w-2.5" />
-                      Last calculated: {familyAllocation.lastCalculated}
+                      {familyAllocation.lastCalculated}
                     </div>
                   )}
                 </td>
-                <td className="py-3 px-2 border-l border-gray-200">
+                <td className="py-3 px-2 border-l border-gray-200 text-center">
                   <select
                     value={familyAllocation.equity}
                     onChange={(e) => updateAllocation('family', 'equity', e.target.value)}
-                    className="w-16 h-8 text-sm border border-gray-300 rounded px-1 bg-white"
+                    className="w-16 h-8 text-sm border border-gray-300 rounded px-1 bg-white text-center"
                   >
                     {[...Array(11)].map((_, i) => (
                       <option key={i * 10} value={i * 10}>{i * 10}</option>
                     ))}
                   </select>
                 </td>
-                <td className="py-3 px-2 bg-blue-50/50">
+                <td className="py-3 px-2 bg-blue-50/50 text-center">
                   <input
                     type="number"
                     value={familyAllocation.debt}
@@ -1748,7 +1748,7 @@ function AllocationSimulator({
                     className="w-14 h-8 text-sm border border-gray-200 rounded px-2 bg-gray-100 text-center"
                   />
                 </td>
-                <td className="py-3 px-2 border-l border-gray-200">
+                <td className="py-3 px-2 border-l border-gray-200 text-center">
                   <input
                     type="number"
                     value={familyAllocation.equityReturn}
@@ -1756,7 +1756,7 @@ function AllocationSimulator({
                     className="w-14 h-8 text-sm border border-gray-300 rounded px-2 bg-white text-center"
                   />
                 </td>
-                <td className="py-3 px-2 bg-blue-50/50">
+                <td className="py-3 px-2 bg-blue-50/50 text-center">
                   <input
                     type="number"
                     value={familyAllocation.debtReturn}
@@ -1772,8 +1772,8 @@ function AllocationSimulator({
                     className="h-4 w-4 rounded border-gray-300 text-blue-600"
                   />
                 </td>
-                <td className="py-3 px-2 border-l border-gray-200">
-                  <div className="flex items-center gap-1">
+                <td className="py-3 px-2 border-l border-gray-200 text-center">
+                  <div className="flex items-center justify-center gap-1">
                     <Button 
                       size="sm" 
                       onClick={() => openAssetModal('family')}
