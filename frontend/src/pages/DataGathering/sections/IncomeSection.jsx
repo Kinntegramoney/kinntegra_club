@@ -818,13 +818,13 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 if (currentPrice > 0) {
                   newDetails.price_per_kg = currentPrice;
                   if (weightKg > 0) {
-                    newDetails.current_value = Math.round(weightKg * currentPrice);
+                    newDetails.market_value = Math.round(weightKg * currentPrice);
                   } else {
-                    newDetails.current_value = "";
+                    newDetails.market_value = "";
                   }
                 } else {
                   newDetails.price_per_kg = "";
-                  newDetails.current_value = "";
+                  newDetails.market_value = "";
                 }
               }
             }
