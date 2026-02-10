@@ -31,11 +31,12 @@ import InvestmentSection from "./sections/InvestmentSection";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Tab configuration - Order: Members, Income, Expenses, Goals, Surplus, Insurance, Assets, Liabilities, Networth
+// Tab configuration - Order: Members, Income, Expenses, Investments, Goals, Surplus, Insurance, Assets, Liabilities, Networth
 const TABS = [
   { id: "introduction", label: "Members", icon: Users },
   { id: "income", label: "Income", icon: DollarSign },
   { id: "expenses", label: "Expenses", icon: Receipt },
+  { id: "investments", label: "Investments", icon: BarChart3 },
   { id: "goals", label: "Goals", icon: Target },
   { id: "surplus", label: "Surplus", icon: TrendingUp },
   { id: "insurance", label: "Insurance", icon: Shield },
