@@ -1,149 +1,153 @@
-<analysis>**original_problem_statement:**
-The initial problem was a bug in the Consolidated Account Statement (CAS) PDF parsing service. Specifically, ICICI Prudential Multi-Asset Fund was being incorrectly merged with Liquid Fund during parsing, leading to data inaccuracies in the generated Excel report.
+<analysis>**original_problem_statement:** The user's goal is to build a comprehensive financial planning tool within an existing application.
 
-This evolved into a major feature implementation effort based on a detailed Product Requirements Document (PRD) provided by the user. The user requested a complete overhaul of the Income section with specific fields, calculations, and layouts for numerous sub-categories, including:
-- Rental Income
-- Public Provident Fund (PPF)
-- Employee Provident Fund (EPF)
-- Fixed Deposit (FD)
-- Recurring Deposit (RD)
-- Pension Income
-- Bonds
-- Insurance
-- Other Income
-
-Subsequent requests involved UI/UX improvements and new features for the Assets, Expenses, and Insurance Coverage sections, as well as the creation of new asset categories like Vehicles.
+The initial requests were:
+1.  Separate the 'Net Worth & Surplus' tab into two distinct tabs.
+2.  Re-order the tabs to: Members → Income → Expenses → Goals → Surplus → Liabilities → Assets → Insurance → Networth. This order was changed several times based on user feedback.
+3.  Modify the 'Assets' tab UI to remove a summary banner and adjust a total row.
+4.  Implement a new 'Surplus' calculation logic based on income, expenses, and investments, with year-wise projections considering inflation and growth rates.
+5.  Create a new 'Investment' tab to record recurring investment outflows.
+6.  Implement an Excel export feature for the entire financial plan, including cash flow projections.
+7.  Add an 'Allocation Simulator' to project wealth longevity based on investment returns.
+8.  Fix bugs related to saving data in the 'Expense' tab.
+9.  Refine the UI/UX of multiple sections for clarity and consistency.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application consists of a Python backend for PDF parsing and a React frontend for data entry and visualization.
-
-A significant amount of work has been completed in this session:
-1.  **PDF Parsing Bug Fix**: The complex PDF parsing bug related to fund categorization, varying text formats (ISIN on new lines), incorrect regex matching, and flawed FIFO logic for sales transactions has been resolved and verified by the user.
-2.  **Income & Assets Overhaul**: The frontend Income section has been extensively built out to match the user's detailed specifications for multiple categories (Rental, FD, RD, Bonds, Insurance, Commodities, etc.). This includes adding dozens of new fields, complex client-side financial calculations (XIRR, Absolute Return), conditional UI logic, and API integration for live commodity prices. The Assets summary table was updated to reflect these new income sources correctly.
-3.  **UI/UX Enhancements**: Significant UI changes were made to the Expenses, Insurance, and other sections based on user feedback, including layout redesigns, conditional field rendering, and adding new options to dropdowns.
+The application has a  page that has been heavily modified.
+-   The tab order is now: **Members → Income → Expenses → Investments → Goals → Surplus → Insurance → Assets → Liabilities → Networth**.
+-   The  is a complex component that displays a year-by-year financial projection. It shows member-specific data in sub-columns under each year. The calculations account for member-specific income growth, category-specific expense inflation, future goals (as inflated expenses), and investment outflows.
+-   Hovering over the main categories (Income, Expenses, Goals, Investments) in the Surplus table shows a detailed tooltip with a value breakdown.
+-   A new  exists for users to input recurring investments like SIPs, PPF, etc.
+-   An Allocation Simulator has been added to the bottom of the  to project wealth sustainability until life expectancy.
+-   A comprehensive multi-sheet Excel download feature is available, exporting the entire financial plan.
+-   The  is a read-only view that automatically displays loan data entered in the .
+-   A bug preventing the saving of Loan EMI and Insurance Premiums from the  has been fixed.
 
 **Last working item**:
--   **Last item agent was working**: The agent was in the process of restructuring the main navigation tabs of the application. The user requested to move the Goals tab, split the Networth and Surplus tab into two separate tabs, and define a new order for them. The agent had started by creating a new, empty file for the Networth section.
+The agent was implementing a multi-part user request to enhance the Liabilities table and the Allocation Simulator.
+
+-   **Last item agent was working**:
+    1.  **Liabilities Table UI**: Updating the  table to match the visual style and structure of the  (e.g., member-wise columns, totals).
+    2.  **Allocation Simulator Logic**: Adding options to the simulator to let the user choose whether to include existing assets in the calculation. If included, the user should be able to select which assets to use.
+    3.  **Allocation Simulator UI**: Cleaning up the UI of the simulator and adding a display for each member's life expectancy.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
 -   **Which testing method agent to use?**: Frontend testing agent
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-There are no pending bugs or issues. The current work is a feature/refactoring task.
+-   **Issue 1**: Complete the enhancement of the  section and . (Priority: P0)
+
+    -   **Issues Detail**:
+        -   **Issue 1**:
+            -   **Attempted fixes**: The agent started rewriting  to match the asset table's structure. It then began editing  to add the new logic and UI elements (like a  for including assets) to the . The work was interrupted mid-edit.
+            -   **Next debug checklist**:
+                1.  Finalize the UI of  to ensure it mirrors the  layout (member-wise columns, grand totals).
+                2.  In , complete the  UI cleanup.
+                3.  Fetch and display the life expectancy for each member within the  component, likely near the top where growth rates are shown. This data should be available in .
+                4.  Implement the logic for including assets:
+                    -   Add a  or  labeled Include existing assets in simulation?.
+                    -   When enabled, display a multi-select dropdown to choose which assets from  to include.
+                    -   Modify the  function to use the market value of selected assets as the starting corpus.
+            -   **Why fix this issue and what will be achieved with the fix?**: This will fulfill the user's request for a more powerful and realistic wealth simulator and improve UI consistency across tabs.
+            -   **Status**: IN PROGRESS
+            -   **Is recurring issue?**: N
+            -   **Should Test frontend/backend/both after fix?**: Frontend
 
 **In progress Task List**:
--   **Task 1: Reorganize main application tabs (P0)**
-    -   **Where to resume**: The agent has just created an empty file at . The next steps are:
-        1.  Open . Copy the existing Networth logic from it and paste it into the new .
-        2.  Modify  to only contain the Surplus logic, and rename the component to . Update the file name accordingly to .
-        3.  Update the imports in  to import the new  and .
-        4.  In , update the  array to reflect the new order and split tabs. The requested order is: , , , , , , , , .
-        5.  In , update the component mapping to match the new tab order.
-    -   **What will be achieved with this?**: The main navigation tabs will be restructured to match the user's requirements, improving the application's information architecture.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on something**: No
+-   **Task 1**: Refactor  and  UI/Logic.
+
+    -   **Task Detail**:
+        -   **Where to resume**: The agent was editing . Resume by implementing the UI elements for asset selection in the  and then wiring them to the  function. Also, review and complete the changes in .
+        -   **What will be achieved with this?**: The  table will have a consistent UI. The  will be more flexible, providing more accurate projections by optionally including existing assets. The UI will be cleaner and more informative.
+        -   **Status**: IN PROGRESS
+        -   **Should Test frontend/backend/both after fix?**: Frontend
+        -   **Blocked on something**: No.
 
 **Upcoming and Future Tasks**
-There are no other explicit upcoming tasks mentioned by the user. The primary focus is to complete the tab reorganization.
+There are no other explicit future tasks requested by the user at this time. The development has been iterative.
 
 **Completed work in this session**
--   **PDF Parsing Engine Fixes (backend)**:
-    -   Resolved incorrect merging of Multi-Asset and Liquid funds.
-    -   Handled multiple PDF text formats, including ISIN codes on separate lines and varying folio/scheme order.
-    -   Corrected greedy regex that truncated long fund names.
-    -   Fixed FIFO logic in Sold Units sheet generation to prevent matching sales with future purchases. ()
--   **Income Section Overhaul (frontend)**:
-    -   **Rental Income**: Implemented fields for property details, rent, expenses, and calculated fields for Absolute Return % and XIRR Return % with conditional coloring.
-    -   **FD & Bonds**: Implemented simplified fields and a Gross XIRR % calculation based on cash flows (investment, periodic payouts, maturity).
-    -   **RD/PIS**: Implemented fields for monthly investment and a Gross XIRR % calculation to compare real vs. stated returns.
-    -   **Insurance**: Implemented fields for premium payments and a Gross XIRR % calculation based on premium cash flows vs. maturity amount.
-    -   **Commodities**: Replaced Gold with Commodities (Gold/Silver), integrated a live  API for INR prices, and implemented logic for price conversions and premiums.
-    -   **PPF/EPF/Gratuity/Pension**: Simplified and standardized fields.
-    -   **Vehicle**: Added a new Vehicle asset category.
-    -   **Cash in Hand**: Added a Description field.
--   **Assets Section Update (frontend)**:
-    -   Refactored to correctly display  or  from the various new income sources.
--   **Expenses Section UI Refactor (frontend)**:
-    -   Redesigned the layout into a single, space-utilizing line.
-    -   Made post-retirement fields conditionally editable.
-    -   Added a Family option to member dropdowns.
--   **Insurance Cover Section Logic (frontend)**:
-    -   Implemented dynamic Suggested Cover calculations based on the family's annual income and asset values.
-    -   Removed nonsensical Total column from the summary table.
+-   **Tab Management**: Re-ordered and split the main data gathering tabs multiple times based on user feedback. (DONE in )
+-   **Surplus Section Overhaul**: Completely rewrote  to implement year-wise, member-specific projections considering income growth, expense inflation, goals, and investments. (DONE)
+-   **UI Enhancements**: Added hover-tooltips for category breakdowns in the Surplus table and aligned various UI elements. (DONE)
+-   **Investment Tab**: Created a new tab and backend endpoint for users to record recurring investments. (DONE in  and )
+-   **Excel Export**: Implemented a comprehensive, multi-sheet Excel export for the entire financial plan using . (DONE in )
+-   **Bug Fix (Expense Saving)**: Resolved an issue where saving Loan EMI and Insurance Premiums in the  was failing due to a payload mismatch between frontend and backend. (DONE in , , )
+-   **Liabilities View**: Configured the  to be a read-only summary view populated from data entered in the . (DONE)
+-   **Allocation Simulator (v1)**: Added the initial version of the wealth projection simulator. (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-None. The agent has been diligent in addressing all user-reported issues and feedback throughout the session.
+None. All identified issues have been addressed or are currently in progress.
 
 **Known issue recurrence from previous fork**
-None. This is the first fork for this problem.
+No previous fork summary was provided.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Frontend**: React, JavaScript (ES6+), Tailwind CSS
--   **Backend**: Python (likely Flask, given the API structure)
--   **Financial Calculations**: Implemented complex financial formulas in JavaScript, including XIRR via the Newton-Raphson method for irregular cash flows, absolute return, and asset valuation.
--   **PDF Parsing**: Utilized advanced regular expressions in Python to extract structured data from unstructured PDF text.
--   **API Integration**: Fetched real-time data from an external, unauthenticated REST API () for commodity prices.
+-   **Frontend**: React, TailwindCSS, ShadCN/UI components, React Context API.
+-   **Backend**: Python with FastAPI, Pydantic for data validation.
+-   **Data Handling**:  and  for client-side Excel generation.
+-   **Core Logic**: Financial projection calculations involving compound growth, inflation, and corpus simulation, implemented in JavaScript within the  component.
 
 **key DB schema**
-No direct database interaction was performed. Data is managed in the frontend React state, primarily within the , , and  objects in . The structure is inferred from the UI fields (e.g.,  is an array of objects, where each object represents an income item with keys like , , , , etc.).
+The application uses Pydantic models that reflect the database structure. Key models include:
+-   : The root object containing lists of details for members, income, expenses, assets, etc.
+-   : Stores  for salary/business.
+-   : Stores  for each expense category.
+-   : Stores , , and .
+-   : Stores recurring investment , , and .
+-   : Stores loan information like  and .
 
 **changes in tech stack**
-No changes were made to the core technologies. An external API integration was added for commodity pricing.
+-   Added  and  to the frontend dependencies for Excel export functionality.
 
 **All files of reference**
--   : Fixed all PDF parsing bugs.
--   : Major feature implementation for over 10 income sub-categories. This file is now very large.
--   : Refactored to display data from the .
--   : Major UI layout refactoring.
--   : Implemented new business logic for suggested cover amounts.
--   : Manages application state and tab structure.
--   : Defines the main navigation tabs (needs modification).
--   : Renders tab content (needs modification).
--   : To be split into two components.
--   : Newly created file for the pending task.
+-   : The most heavily modified file, containing logic for projections, Excel export, and the allocation simulator.
+-   : Updated to be read-only and is currently being restyled.
+-   : A new file created to handle the investment tab.
+-   : Modified multiple times to manage the tab order.
+-   : Modified to fix a bug with saving EMI data.
+-   : Updated with a new  endpoint and modifications to  and  endpoints.
+-   : Pydantic models were updated to support the bug fix and new features.
 
-**Areas that need refactoring**:
--   ****: This component is now monolithic and handles logic for over 10 different income types, each with unique fields, calculations, and UI. It should be broken down into smaller, more manageable sub-components (e.g., , , ).
--   **XIRR Calculation**: The Newton-Raphson logic for calculating XIRR is duplicated in the  function for FD, RD/PIS, Bonds, and Insurance. This should be extracted into a shared financial utility function.
+**Areas that need refactoring**
+-    has grown very large and complex. It manages state, performs all financial calculations, renders multiple complex UI sections, and handles the Excel export. This component should be broken down into smaller, more manageable child components and the complex calculation logic should be extracted into custom hooks (e.g., , ).
 
 **key api endpoints**
--   : Endpoint to upload the CAS PDF for backend processing.
--   : Endpoint to download the resulting Excel report.
--   : External API used to fetch live gold and silver prices in INR.
+-   : Saves data from the Investment tab.
+-   : Creates a new liability entry (used by the Expense tab for loan EMIs).
+-   : Creates a new insurance premium entry (used by the Expense tab).
 
 **Critical Info for New Agent**
--   The user is highly detail-oriented and provides very specific feedback on UI labels, field order, calculations, and visual styling. Pay close attention to their exact wording.
--   The current task is a structural refactor of the main application tabs and requires modifying several core components (, , ) and splitting .
--   Be aware that  is extremely large and complex. Changes there require careful testing.
+-   The user provides feedback iteratively, so be prepared for frequent changes and refinements. UI consistency is important to them (e.g., matching table styles).
+-   The  component is the central hub for many features. Most new logic for financial projections will likely need to be integrated here. Be mindful of its complexity when making changes.
+-   Data is heavily interconnected. For example, loan entries in the  populate the , and all data from , , , and  tabs is consumed by the .
 
 **documents and test reports created in this job**
-No documents were created.
+-   User-provided reference for Excel format: 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **Request**: Move Goals tab, split Networth and Surplus into separate tabs with a new order. (IN PROGRESS)
-2.  **Request**: Remove the Total row/column from the insurance coverage table. (Completed)
-3.  **Bug Report**: Insurance calculations are incorrect for a user with 60L annual income. (Completed)
-4.  **Requirement**: Home/Motor insurance suggested cover should be based on market value. (Completed)
-5.  **Requirement**: Provided detailed formulas for calculating suggested insurance coverage. (Completed)
-6.  **Bug Report**: Family Name is not appearing correctly in the expense member dropdown. (Completed)
-7.  **Requirement**: Add a Family option to the expense member dropdowns. (Completed)
-8.  **Requirement**: Make post-retirement expense fields read-only until a checkbox is ticked. (Completed)
-9.  **Requirement**: Allow the post-retirement percentage field to accept values >100%. (Completed)
-10. **UI Feedback**: Expense fields are cramped and not using available space. (Completed)
+1.   - **IN PROGRESS**
+2.   - **IN PROGRESS**
+3.   - **Completed**
+4.   - **Completed**
+5.   - **Completed**
+6.   - **Completed**
+7.   - **Completed**
+8.   - **Completed**
+9.   - **Completed**
+10.  - **Completed**
 
 **Project Health Check:**
--   **Broken**: The main tab navigation is currently mid-refactor and will not function correctly until the pending task is completed.
--   **Mocked**: The commodity pricing feature has hardcoded fallback values (, ) that are used if the external API call fails.
+-   **Broken**: The  functionality and  table UI are incomplete as they were being actively modified when the session ended.
+-   **Mocked**: None.
 
 **3rd Party Integrations**
--   **GoldPrice.org**: Provides live gold (XAU) and silver (XAG) spot prices. Fetched via . Does not require an API key.
+-   None explicitly mentioned or used beyond standard open-source libraries.
 
 **Testing status**
 -   **Testing agent used after significant changes**: NO
@@ -152,7 +156,9 @@ No documents were created.
 -   **Known regressions**: None
 
 **Credentials to test flow:**
-N/A
+-   **PAN**: 
+-   **Password**: 
+    (Discovered from )
 
 **What agent forgot to execute**
-The agent has correctly identified the last user request but has not completed its execution. The task of splitting the Networth/Surplus tab and reordering all the main navigation tabs is still in its initial phase.</analysis>
+-   The agent was in the middle of executing the last user request when the session ended. No other tasks appear to have been forgotten or overlooked.</analysis>

@@ -7,7 +7,7 @@ import requests
 import os
 import json
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://finance-tab-refactor.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://financial-planner-16.preview.emergentagent.com')
 
 # Test credentials
 BROKER_CREDENTIALS = {
