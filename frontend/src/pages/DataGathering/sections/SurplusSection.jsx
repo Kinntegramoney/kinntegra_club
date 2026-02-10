@@ -1444,17 +1444,189 @@ function AllocationSimulator({
     if (entityId === 'family') {
       setFamilyAllocation(prev => ({
         ...prev,
-        selectedAssets: { ...prev.selectedAssets, [assetId]: !prev.selectedAssets[assetId] }
+        selectedAssets: { ...prev.selectedAssets, [assetId]: prev.selectedAssets[assetId] === false ? true : false }
       }));
     } else {
       setMemberAllocations(prev => ({
         ...prev,
         [entityId]: {
           ...prev[entityId],
-          selectedAssets: { ...prev[entityId]?.selectedAssets, [assetId]: !prev[entityId]?.selectedAssets?.[assetId] }
+          selectedAssets: { ...prev[entityId]?.selectedAssets, [assetId]: prev[entityId]?.selectedAssets?.[assetId] === false ? true : false }
         }
       }));
     }
+  };
+
+  // Update asset start year
+  const updateAssetStartYear = (entityId, assetId, year) => {
+    if (entityId === 'family') {
+      setFamilyAllocation(prev => ({
+        ...prev,
+        assetStartYears: { ...prev.assetStartYears, [assetId]: year }
+      }));
+    } else {
+      setMemberAllocations(prev => ({
+        ...prev,
+        [entityId]: {
+          ...prev[entityId],
+          assetStartYears: { ...prev[entityId]?.assetStartYears, [assetId]: year }
+        }
+      }));
+    }
+  };
+
+  // Export cash flow for specific entity
+  const exportEntityCashFlow = (entityId) => {
+    const isFamily = entityId === 'family';
+    const allocation = isFamily ? familyAllocation : memberAllocations[entityId];
+    if (!allocation) return;
+
+    const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears } = allocation;
+    const entityAssets = getAssetsForEntity(entityId);
+    
+    // Determine entity name and end year
+    let entityName, entityEndYear;
+    if (isFamily) {
+      const primaryMember = members.find(m => m.is_primary);
+      entityName = primaryMember ? `${primaryMember.name}_Family` : 'Family';
+      entityEndYear = endYear;
+    } else {
+      const member = members.find(m => m.id === entityId);
+      entityName = member?.name || 'Member';
+      const age = calculateAge(member?.date_of_birth);
+      const memberLifeExp = parseInt(member?.life_expectancy) || 85;
+      entityEndYear = currentYear + (memberLifeExp - age);
+    }
+
+    const wb = XLSX.utils.book_new();
+    const allYears = [];
+    for (let y = currentYear; y <= entityEndYear; y++) {
+      allYears.push(y);
+    }
+
+    // Cash Flow Sheet
+    const cashFlowData = [];
+    cashFlowData.push(['Cash Flow Projection - ' + entityName]);
+    cashFlowData.push([]);
+    cashFlowData.push(['Asset Allocation', `Equity: ${equity}%`, `Debt: ${debt}%`]);
+    cashFlowData.push(['Expected Returns', `Equity: ${equityReturn}%`, `Debt: ${debtReturn}%`]);
+    cashFlowData.push([]);
+
+    // Headers
+    cashFlowData.push(['Year', ...allYears]);
+    
+    // Age row
+    if (isFamily) {
+      cashFlowData.push(['Primary Age', ...allYears.map(y => primaryAge + (y - currentYear))]);
+    } else {
+      const member = members.find(m => m.id === entityId);
+      const age = calculateAge(member?.date_of_birth);
+      cashFlowData.push(['Age', ...allYears.map(y => age + (y - currentYear))]);
+    }
+
+    // Income
+    cashFlowData.push(['Income', ...allYears.map(y => {
+      const yearStr = y.toString();
+      if (isFamily) {
+        return Math.round(members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0));
+      } else {
+        return Math.round(getProjectedMemberIncome(entityId, yearStr));
+      }
+    })]);
+
+    // Expenses
+    cashFlowData.push(['Expenses', ...allYears.map(y => {
+      const yearStr = y.toString();
+      if (isFamily) {
+        return Math.round(members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0));
+      } else {
+        return Math.round(getProjectedMemberExpenses(entityId, yearStr));
+      }
+    })]);
+
+    // Goals
+    cashFlowData.push(['Goals', ...allYears.map(y => {
+      const yearStr = y.toString();
+      if (isFamily) {
+        return Math.round(members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0));
+      } else {
+        return Math.round(getMemberGoalExpenses(entityId, yearStr));
+      }
+    })]);
+
+    // Annual Surplus
+    cashFlowData.push(['Annual Surplus', ...allYears.map(y => {
+      const yearStr = y.toString();
+      let income, expenses, goals;
+      if (isFamily) {
+        income = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
+        expenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
+        goals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
+      } else {
+        income = getProjectedMemberIncome(entityId, yearStr);
+        expenses = getProjectedMemberExpenses(entityId, yearStr);
+        goals = getMemberGoalExpenses(entityId, yearStr);
+      }
+      return Math.round(income - expenses - goals);
+    })]);
+
+    cashFlowData.push([]);
+
+    // Assets added (if included)
+    if (includeAssets) {
+      cashFlowData.push(['Assets Added']);
+      entityAssets.forEach(asset => {
+        if (selectedAssets[asset.id] !== false) {
+          const startYear = assetStartYears[asset.id] || currentYear;
+          cashFlowData.push([asset.label, ...allYears.map(y => y === startYear ? Math.round(asset.value) : '')]);
+        }
+      });
+      cashFlowData.push([]);
+    }
+
+    // Corpus projection
+    const weightedReturn = (equity * equityReturn + debt * debtReturn) / 100;
+    let corpus = 0;
+    let assetsAdded = {};
+    const corpusValues = allYears.map(y => {
+      const yearStr = y.toString();
+      
+      // Add assets
+      if (includeAssets) {
+        entityAssets.forEach(asset => {
+          if (!assetsAdded[asset.id] && selectedAssets[asset.id] !== false) {
+            const startYear = assetStartYears[asset.id] || currentYear;
+            if (y >= startYear) {
+              corpus += asset.value;
+              assetsAdded[asset.id] = true;
+            }
+          }
+        });
+      }
+      
+      let income, expenses, goals;
+      if (isFamily) {
+        income = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
+        expenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
+        goals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
+      } else {
+        income = getProjectedMemberIncome(entityId, yearStr);
+        expenses = getProjectedMemberExpenses(entityId, yearStr);
+        goals = getMemberGoalExpenses(entityId, yearStr);
+      }
+      
+      const surplus = income - expenses - goals;
+      corpus = corpus * (1 + weightedReturn / 100) + surplus;
+      return Math.round(corpus);
+    });
+
+    cashFlowData.push(['Corpus', ...corpusValues]);
+
+    const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
+    cashFlowSheet['!cols'] = [{ wch: 20 }, ...allYears.map(() => ({ wch: 12 }))];
+    XLSX.utils.book_append_sheet(wb, cashFlowSheet, "Cash Flow");
+
+    XLSX.writeFile(wb, `CashFlow_${entityName.replace(/\s+/g, '_')}.xlsx`);
   };
 
   // Get primary member name for family row
