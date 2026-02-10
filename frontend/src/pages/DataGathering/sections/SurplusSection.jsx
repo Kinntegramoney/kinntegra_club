@@ -1536,6 +1536,53 @@ function AllocationSimulator({
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Member Life Expectancy Info */}
+        <div className="bg-blue-50/50 rounded-lg p-3 border border-blue-100">
+          <h4 className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1">
+            <User className="h-3 w-3" />
+            Member Life Expectancy & Retirement
+          </h4>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {members.map(member => {
+              const age = calculateAge(member.date_of_birth);
+              const memberLifeExp = parseInt(member.life_expectancy) || 85;
+              const memberInfo = getMemberIncomeInfo(member.id);
+              const yearsToRetirement = memberInfo.retirementYear - currentYear;
+              const yearsToLifeExp = memberLifeExp - age;
+              
+              return (
+                <div key={member.id} className="bg-white rounded-md p-2 border border-blue-200/50">
+                  <div className="flex items-center gap-1 mb-1">
+                    <User className="h-3 w-3 text-blue-600" />
+                    <span className="text-xs font-medium text-gray-800 truncate">
+                      {member.name}
+                      {member.is_primary && <span className="text-blue-500 ml-0.5">*</span>}
+                    </span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-500">Current Age:</span>
+                      <span className="font-medium text-gray-700">{age} yrs</span>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-500">Life Expectancy:</span>
+                      <span className="font-medium text-blue-700">{memberLifeExp} yrs</span>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-500">Retirement Year:</span>
+                      <span className="font-medium text-amber-700">{memberInfo.retirementYear}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] pt-1 border-t border-gray-100 mt-1">
+                      <span className="text-gray-500">Years Left:</span>
+                      <span className="font-semibold text-green-700">{yearsToLifeExp} yrs</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Asset Inclusion Toggle */}
         <div className="bg-gray-50 rounded-lg p-4 space-y-3">
           <div className="flex items-center gap-3">
