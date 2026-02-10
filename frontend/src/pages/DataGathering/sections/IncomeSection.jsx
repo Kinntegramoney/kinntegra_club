@@ -321,6 +321,29 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     };
     fetchCommodityPrices();
   }, []);
+  
+  // Update commodity items when prices are fetched
+  useEffect(() => {
+    if (commodityPrices.Gold > 0 || commodityPrices.Silver > 0) {
+      setIncomeItems(prev => ({
+        ...prev,
+        commodities: (prev.commodities || []).map(item => {
+          const commodityType = item.details.commodity_type || "Gold";
+          const weightKg = parseFloat(item.details.weight_kg || 0);
+          const currentPrice = commodityPrices[commodityType] || 0;
+          
+          return {
+            ...item,
+            details: {
+              ...item.details,
+              price_per_kg: currentPrice > 0 ? currentPrice : "",
+              market_value: (currentPrice > 0 && weightKg > 0) ? Math.round(weightKg * currentPrice) : ""
+            }
+          };
+        })
+      }));
+    }
+  }, [commodityPrices]);
 
   const addCategory = (categoryValue) => {
     if (!addedCategories.includes(categoryValue)) {
