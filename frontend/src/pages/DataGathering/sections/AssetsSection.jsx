@@ -12,7 +12,7 @@ const ASSET_CATEGORIES = [
   { value: "bond", label: "Bonds", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_amount" },
   { value: "insurance_income", label: "Insurance", icon: Building, investmentKey: "total_paid", marketKey: "maturity_amount" },
   { value: "pension", label: "Pension", icon: Briefcase, investmentKey: null, marketKey: "amount_yearly" },
-  { value: "commodities", label: "Commodities", icon: Gem, investmentKey: null, marketKey: "market_value" },
+  { value: "commodities", label: "Commodities", icon: Gem, investmentKey: null, marketKey: ["market_value", "current_value"] },
   { value: "shares_pms", label: "Shares / PMS", icon: TrendingUp, investmentKey: null, marketKey: "market_value" },
   { value: "cash", label: "Cash in Hand", icon: Coins, investmentKey: null, marketKey: "bank_balance" },
   { value: "vehicle", label: "Vehicles", icon: Car, investmentKey: null, marketKey: "market_value" },
