@@ -779,6 +779,18 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                     className="h-8 w-full text-xs bg-white border-gray-200"
                                     disabled={isReadOnly}
                                   />
+                                ) : (field.key.includes('percent') || field.key.includes('rate') || field.key === 'interest_rate') ? (
+                                  <div className="relative">
+                                    <Input
+                                      type="number"
+                                      value={item.details[field.key] || ""}
+                                      onChange={e => updateIncomeItem(category.value, item.id, field.key, e.target.value)}
+                                      placeholder="0"
+                                      className="h-8 w-full text-xs bg-white border-gray-200 pr-6"
+                                      disabled={isReadOnly}
+                                    />
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">%</span>
+                                  </div>
                                 ) : (field.key.includes('amount') || field.key.includes('income') || field.key.includes('value') || field.key.includes('payment') || field.key.includes('principal') || field.key.includes('balance') || field.key.includes('rent') || field.key.includes('tax') || field.key.includes('maintenance')) ? (
                                   <div className="relative">
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">₹</span>
