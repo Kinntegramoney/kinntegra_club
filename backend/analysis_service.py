@@ -2793,13 +2793,8 @@ class GapSheetGenerator:
                         # Calculate sale amount for these units
                         sale_amount_portion = (units_from_this_purchase / units_to_sell) * sale_amount if units_to_sell > 0 else 0
                         
-                        # Calculate holding period
-                        try:
-                            purchase_date = datetime.strptime(purchase['date'], '%d-%b-%Y')
-                            holding_days = (sale_date - purchase_date).days if sale_date else 0
-                        except:
-                            purchase_date = None
-                            holding_days = 0
+                        # Calculate holding period (purchase_date already parsed above)
+                        holding_days = (sale_date - purchase_date).days if sale_date and purchase_date else 0
                         
                         # Calculate profit/loss
                         profit_loss = sale_amount_portion - purchase_amount
