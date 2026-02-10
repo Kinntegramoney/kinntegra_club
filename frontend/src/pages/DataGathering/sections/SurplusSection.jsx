@@ -859,12 +859,12 @@ export default function SurplusSection({ family, isReadOnly }) {
                     className={`text-center px-1 py-1 ${idx < displayYears.length - 1 ? 'border-r border-gray-200' : ''}`}
                   >
                     {isBaseYear ? (
-                      <div className="h-6 flex items-center justify-center text-[11px] font-semibold text-blue-700">
+                      <div className="h-6 flex items-center justify-center text-[11px] font-semibold text-emerald-700">
                         {year} (Base)
                       </div>
                     ) : (
                       <Select value={year} onValueChange={(v) => handleYearChange(idx, v)}>
-                        <SelectTrigger className="h-6 text-[11px] w-full border-0 bg-transparent shadow-none justify-center font-semibold text-blue-700">
+                        <SelectTrigger className="h-6 text-[11px] w-full border-0 bg-transparent shadow-none justify-center font-semibold text-emerald-700">
                           {year} {yearInt === earliestRetirement && '(R)'} {hasGoals && '🎯'}
                         </SelectTrigger>
                         <SelectContent>
