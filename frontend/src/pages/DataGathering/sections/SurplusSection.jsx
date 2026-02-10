@@ -1796,7 +1796,7 @@ function AllocationSimulator({
                   <select
                     value={familyAllocation.equity}
                     onChange={(e) => updateAllocation('family', 'equity', e.target.value)}
-                    className="w-14 h-7 text-[11px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+                    className="w-12 h-6 text-[10px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                   >
                     {[...Array(11)].map((_, i) => (
                       <option key={i * 10} value={i * 10}>{i * 10}</option>
@@ -1808,7 +1808,7 @@ function AllocationSimulator({
                     type="number"
                     value={familyAllocation.debt}
                     readOnly
-                    className="w-12 h-7 text-[11px] border border-gray-200 rounded bg-gray-50 text-center text-gray-500"
+                    className="w-10 h-6 text-[10px] border border-gray-200 rounded bg-gray-50 text-center text-gray-500"
                   />
                 </td>
                 <td className="py-2.5 px-1 border-l border-gray-100 text-center">
@@ -1816,7 +1816,7 @@ function AllocationSimulator({
                     type="number"
                     value={familyAllocation.equityReturn}
                     onChange={(e) => updateAllocation('family', 'equityReturn', parseFloat(e.target.value) || 0)}
-                    className="w-12 h-7 text-[11px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400"
+                    className="w-10 h-6 text-[10px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400"
                   />
                 </td>
                 <td className="py-2.5 px-1 bg-blue-50/30 text-center">
@@ -1824,7 +1824,7 @@ function AllocationSimulator({
                     type="number"
                     value={familyAllocation.debtReturn}
                     onChange={(e) => updateAllocation('family', 'debtReturn', parseFloat(e.target.value) || 0)}
-                    className="w-12 h-7 text-[11px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400"
+                    className="w-10 h-6 text-[10px] border border-gray-200 rounded text-center bg-white focus:ring-1 focus:ring-blue-400"
                   />
                 </td>
                 <td className="py-2.5 px-2 border-l border-gray-100 text-center">
