@@ -1431,17 +1431,37 @@ function AllocationSimulator({
   };
 
   const assetsList = getAssetsList();
+  const assetsGroupedByMember = getAssetsGroupedByMember();
 
-  // Initialize selected assets
+  // Initialize selected assets and start years
   React.useEffect(() => {
     const initial = {};
+    const initialYears = {};
     assetsList.forEach(asset => {
       initial[asset.id] = true;
+      initialYears[asset.id] = currentYear; // Default: include from current year
     });
     setSelectedAssets(initial);
+    setAssetStartYear(initialYears);
   }, [incomeDetails]);
 
-  // Calculate current total assets based on selection
+  // Calculate assets to include for a specific year
+  const getAssetsForYear = (year) => {
+    if (!includeAssets) return 0;
+    
+    let totalAssets = 0;
+    assetsList.forEach(asset => {
+      if (assetSelectionMode === 'all' || selectedAssets[asset.id]) {
+        const startYear = assetStartYear[asset.id] || currentYear;
+        if (year >= startYear) {
+          totalAssets += asset.value;
+        }
+      }
+    });
+    return totalAssets;
+  };
+
+  // Calculate current total assets based on selection (for display)
   const getCurrentAssets = () => {
     if (!includeAssets) return 0;
     
