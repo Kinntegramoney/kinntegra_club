@@ -81,12 +81,23 @@ export default function AssetsSection({ family }) {
     }, 0);
   };
 
-  // Format currency
+  // Format currency in Lacs and Crores
   const formatCurrency = (value, showDash = false) => {
     if (value === 0 || value === null || value === undefined) {
       return showDash ? '-' : '-';
     }
-    return `₹${value.toLocaleString('en-IN')}`;
+    const absValue = Math.abs(value);
+    if (absValue >= 10000000) return `₹${(absValue / 10000000).toFixed(2)} Cr`;
+    if (absValue >= 100000) return `₹${(absValue / 100000).toFixed(2)} L`;
+    return `₹${absValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+  };
+
+  // Format large number for summary banner
+  const formatLargeNumber = (value) => {
+    if (!value || value === 0) return "0";
+    if (value >= 10000000) return `${(value / 10000000).toFixed(2)} Cr`;
+    if (value >= 100000) return `${(value / 100000).toFixed(2)} L`;
+    return value.toLocaleString('en-IN', { maximumFractionDigits: 0 });
   };
 
   if (members.length === 0) {
