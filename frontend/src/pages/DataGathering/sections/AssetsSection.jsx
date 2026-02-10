@@ -100,9 +100,27 @@ export default function AssetsSection({ family }) {
   }
 
   const grandTotalMarket = getGrandTotal('market');
+  const grandTotalInvestment = getGrandTotal('investment');
 
   return (
     <div className="space-y-4">
+      {/* Summary Banner */}
+      {grandTotalMarket > 0 && (
+        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-3">
+            <TrendingUp className="h-6 w-6 text-green-600" />
+            <div>
+              <span className="text-sm text-green-600 font-medium">Total Assets Value</span>
+              <p className="text-xs text-green-500">Investment Value: ₹{grandTotalInvestment > 0 ? grandTotalInvestment.toLocaleString('en-IN') : '0'}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="font-semibold text-green-700">₹{grandTotalMarket.toLocaleString('en-IN')}</div>
+            <p className="text-[10px] text-green-500">Market/Maturity Value</p>
+          </div>
+        </div>
+      )}
+
       <div className="text-xs text-gray-500 px-1">
         Summary of asset values from Income section by family member.
       </div>
