@@ -172,13 +172,16 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     color: "pink",
     fields: [
-      { key: "investment_value", label: "Investment Value", type: "number", readOnly: true, calculated: true },
-      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true },
       { key: "description", label: "Description", type: "text" },
-      { key: "principal_amount", label: "Premium", type: "number" },
-      { key: "payable_cycle", label: "Interest Payout Frequency", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
-      { key: "maturity_date", label: "Maturity", type: "date" },
-      { key: "payment_amount_yearly", label: "Yearly Payment", type: "number", readOnly: true, calculated: true }
+      { key: "premium_frequency", label: "Premium Payment Frequency", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Yearly" },
+      { key: "premium_amount", label: "Premium Amount", type: "number" },
+      { key: "premium_start_date", label: "Premium Start", type: "monthyear" },
+      { key: "premium_end_date", label: "Premium Payable Upto", type: "monthyear" },
+      { key: "total_paid", label: "Total Paid Till Date", type: "number", readOnly: true, calculated: true },
+      { key: "total_pending", label: "Total Payable Pending", type: "number", readOnly: true, calculated: true },
+      { key: "maturity_date", label: "Maturity Date", type: "date" },
+      { key: "maturity_amount", label: "Maturity Amount", type: "number" },
+      { key: "gross_xirr", label: "Gross XIRR %", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
