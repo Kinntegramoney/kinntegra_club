@@ -827,22 +827,27 @@ export default function SurplusSection({ family, isReadOnly }) {
 
   return (
     <div className="space-y-4">
-      {/* Header with Info and Download */}
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-gray-500">
-          Year-wise cash flow with member breakdown. Growth rates from Income section, inflation from Expenses.
-        </div>
-      </div>
-
-      {/* Main Projection Table */}
-      <div className="border border-gray-200 rounded-lg overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            {/* Year Selection Row */}
-            <tr className="bg-blue-50 border-b border-gray-200">
-              <th rowSpan={2} className="text-left text-xs font-semibold text-gray-700 px-3 py-2 border-r border-gray-200 min-w-[100px] align-bottom">
-                Particulars
-              </th>
+      {/* Cash Flow Header Card */}
+      <Card className="border border-gray-200 shadow-sm">
+        <CardHeader className="pb-2 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-100">
+          <CardTitle className="text-sm flex items-center gap-2 text-gray-800">
+            <TrendingUp className="h-4 w-4 text-emerald-600" />
+            Year-wise Cash Flow Projection
+          </CardTitle>
+          <p className="text-[11px] text-gray-500 mt-1">
+            Comprehensive cash flow analysis with member-wise breakdown. Growth rates from Income section, inflation rates from Expenses section.
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          {/* Main Projection Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                {/* Year Selection Row */}
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th rowSpan={2} className="text-left text-xs font-semibold text-gray-700 px-3 py-2 border-r border-gray-200 min-w-[100px] align-bottom">
+                    Particulars
+                  </th>
               {displayYears.map((year, idx) => {
                 const yearInt = parseInt(year);
                 const hasGoals = goalsByYear[yearInt]?.total > 0;
