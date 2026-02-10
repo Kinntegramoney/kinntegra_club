@@ -1268,6 +1268,291 @@ export default function SurplusSection({ family, isReadOnly }) {
         <span>* Primary member | (R) Retirement year | 🎯 Goal year</span>
         <span>Click year dropdown to change</span>
       </div>
+
+      {/* Allocation Simulator */}
+      <AllocationSimulator 
+        members={members}
+        currentYear={currentYear}
+        endYear={endYear}
+        retirementYear={earliestRetirement}
+        getProjectedMemberIncome={getProjectedMemberIncome}
+        getProjectedMemberExpenses={getProjectedMemberExpenses}
+        getMemberGoalExpenses={getMemberGoalExpenses}
+        getProjectedMemberInvestments={getProjectedMemberInvestments}
+        incomeDetails={incomeDetails}
+        primaryAge={primaryAge}
+        lifeExpectancy={lifeExpectancy}
+      />
     </div>
+  );
+}
+
+// Allocation Simulator Component
+function AllocationSimulator({ 
+  members, 
+  currentYear, 
+  endYear, 
+  retirementYear, 
+  getProjectedMemberIncome, 
+  getProjectedMemberExpenses, 
+  getMemberGoalExpenses,
+  getProjectedMemberInvestments,
+  incomeDetails,
+  primaryAge,
+  lifeExpectancy
+}) {
+  const [allocations, setAllocations] = useState({
+    equity: 60,
+    debt: 40
+  });
+  const [returns, setReturns] = useState({
+    equity: 12,
+    debt: 7
+  });
+  const [simulationResult, setSimulationResult] = useState(null);
+  const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
+
+  // Calculate current total assets
+  const getCurrentAssets = () => {
+    let totalAssets = 0;
+    incomeDetails.forEach(inc => {
+      const details = inc.details || {};
+      const mktValue = parseFloat(details.market_value) || parseFloat(details.maturity_value) || 
+                       parseFloat(details.current_value) || parseFloat(details.investment_value) || 0;
+      totalAssets += mktValue;
+    });
+    return totalAssets;
+  };
+
+  const runSimulation = () => {
+    const currentAssets = getCurrentAssets();
+    const weightedReturn = (allocations.equity * returns.equity + allocations.debt * returns.debt) / 100;
+    
+    let corpus = currentAssets;
+    let breakdown = [];
+    let exhaustYear = null;
+    
+    for (let year = currentYear; year <= endYear; year++) {
+      const yearStr = year.toString();
+      const age = primaryAge + (year - currentYear);
+      
+      // Calculate total income for this year
+      const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
+      
+      // Calculate total outflows
+      const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
+      const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
+      const totalInvestments = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, yearStr), 0);
+      
+      // Surplus for this year (income - expenses - goals)
+      const yearSurplus = totalIncome - totalExpenses - totalGoals;
+      
+      // If surplus is positive, add to corpus (investment)
+      // If negative (post-retirement typically), withdraw from corpus
+      if (yearSurplus >= 0) {
+        // Growing phase - add surplus to corpus
+        corpus = corpus * (1 + weightedReturn / 100) + yearSurplus;
+      } else {
+        // Withdrawal phase - first apply returns, then withdraw
+        corpus = corpus * (1 + weightedReturn / 100) + yearSurplus; // yearSurplus is negative
+      }
+      
+      breakdown.push({
+        year,
+        age,
+        income: totalIncome,
+        expenses: totalExpenses,
+        goals: totalGoals,
+        surplus: yearSurplus,
+        corpus: corpus,
+        status: corpus > 0 ? 'ok' : 'exhausted'
+      });
+      
+      if (corpus <= 0 && !exhaustYear) {
+        exhaustYear = year;
+      }
+    }
+    
+    setYearlyBreakdown(breakdown);
+    
+    if (exhaustYear) {
+      const yearsShort = endYear - exhaustYear;
+      setSimulationResult({
+        success: false,
+        exhaustYear,
+        yearsShort,
+        finalCorpus: 0,
+        message: `The money will last till year ${exhaustYear}. Your money will exhaust ${yearsShort} years before your life expectancy.`
+      });
+    } else {
+      const finalCorpus = breakdown[breakdown.length - 1]?.corpus || 0;
+      setSimulationResult({
+        success: true,
+        exhaustYear: null,
+        yearsShort: 0,
+        finalCorpus,
+        message: `Great! Your money will last till life expectancy (${endYear}) with ₹${formatLargeNumber(finalCorpus)} remaining.`
+      });
+    }
+  };
+
+  const formatLargeNumber = (num) => {
+    if (num >= 10000000) return `${(num / 10000000).toFixed(2)} Cr`;
+    if (num >= 100000) return `${(num / 100000).toFixed(2)} L`;
+    return num.toLocaleString('en-IN');
+  };
+
+  const handleEquityChange = (value) => {
+    const equity = Math.min(100, Math.max(0, parseInt(value) || 0));
+    setAllocations({ equity, debt: 100 - equity });
+  };
+
+  const handleDebtChange = (value) => {
+    const debt = Math.min(100, Math.max(0, parseInt(value) || 0));
+    setAllocations({ equity: 100 - debt, debt });
+  };
+
+  return (
+    <Card className="mt-6 border-2 border-blue-200">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Calculator className="h-5 w-5 text-blue-600" />
+          Allocation Simulator
+        </CardTitle>
+        <p className="text-xs text-gray-500">
+          Check if your invested surplus will last until life expectancy based on asset allocation
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Allocation Inputs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">Equity Allocation %</label>
+            <Input
+              type="number"
+              value={allocations.equity}
+              onChange={(e) => handleEquityChange(e.target.value)}
+              className="h-9"
+              min="0"
+              max="100"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">Debt Allocation %</label>
+            <Input
+              type="number"
+              value={allocations.debt}
+              onChange={(e) => handleDebtChange(e.target.value)}
+              className="h-9"
+              min="0"
+              max="100"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">Equity Return %</label>
+            <Input
+              type="number"
+              value={returns.equity}
+              onChange={(e) => setReturns(prev => ({ ...prev, equity: parseFloat(e.target.value) || 0 }))}
+              className="h-9"
+              step="0.5"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">Debt Return %</label>
+            <Input
+              type="number"
+              value={returns.debt}
+              onChange={(e) => setReturns(prev => ({ ...prev, debt: parseFloat(e.target.value) || 0 }))}
+              className="h-9"
+              step="0.5"
+            />
+          </div>
+        </div>
+
+        {/* Weighted Return Display */}
+        <div className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2">
+          <span className="text-sm text-gray-600">
+            Weighted Average Return: <strong className="text-blue-700">
+              {((allocations.equity * returns.equity + allocations.debt * returns.debt) / 100).toFixed(2)}%
+            </strong>
+          </span>
+          <span className="text-sm text-gray-600">
+            Current Assets: <strong className="text-green-700">₹{formatLargeNumber(getCurrentAssets())}</strong>
+          </span>
+        </div>
+
+        {/* Simulate Button */}
+        <Button onClick={runSimulation} className="w-full gap-2">
+          <Calculator className="h-4 w-4" />
+          Run Simulation
+        </Button>
+
+        {/* Simulation Result */}
+        {simulationResult && (
+          <div className={`rounded-lg p-4 ${simulationResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+            <div className="flex items-start gap-3">
+              {simulationResult.success ? (
+                <CheckCircle className="h-6 w-6 text-green-600 shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="h-6 w-6 text-red-600 shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className={`font-medium ${simulationResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                  {simulationResult.message}
+                </p>
+                {!simulationResult.success && (
+                  <p className="text-sm text-red-600 mt-1">
+                    Consider increasing your savings rate, adjusting asset allocation, or reviewing your expenses.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Yearly Breakdown Table */}
+        {yearlyBreakdown.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Year-wise Corpus Projection</h4>
+            <div className="border rounded-lg overflow-x-auto max-h-[300px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-gray-100">
+                  <tr>
+                    <th className="text-left py-2 px-3 font-medium text-gray-600">Year</th>
+                    <th className="text-left py-2 px-3 font-medium text-gray-600">Age</th>
+                    <th className="text-right py-2 px-3 font-medium text-green-600">Income</th>
+                    <th className="text-right py-2 px-3 font-medium text-orange-600">Expenses</th>
+                    <th className="text-right py-2 px-3 font-medium text-purple-600">Goals</th>
+                    <th className="text-right py-2 px-3 font-medium text-blue-600">Surplus</th>
+                    <th className="text-right py-2 px-3 font-medium text-gray-700">Corpus</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {yearlyBreakdown.filter((_, i) => i % 1 === 0).map((row, idx) => (
+                    <tr key={row.year} className={`border-t ${row.status === 'exhausted' ? 'bg-red-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                      <td className="py-1.5 px-3 font-medium">
+                        {row.year}
+                        {row.year === retirementYear && <span className="text-amber-600 ml-1">(R)</span>}
+                      </td>
+                      <td className="py-1.5 px-3">{row.age}</td>
+                      <td className="py-1.5 px-3 text-right text-green-600">₹{formatLargeNumber(row.income)}</td>
+                      <td className="py-1.5 px-3 text-right text-orange-600">₹{formatLargeNumber(row.expenses)}</td>
+                      <td className="py-1.5 px-3 text-right text-purple-600">{row.goals > 0 ? `₹${formatLargeNumber(row.goals)}` : '-'}</td>
+                      <td className={`py-1.5 px-3 text-right ${row.surplus >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        {row.surplus >= 0 ? '' : '-'}₹{formatLargeNumber(Math.abs(row.surplus))}
+                      </td>
+                      <td className={`py-1.5 px-3 text-right font-medium ${row.corpus > 0 ? 'text-gray-800' : 'text-red-700'}`}>
+                        {row.corpus > 0 ? `₹${formatLargeNumber(row.corpus)}` : 'Exhausted'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
