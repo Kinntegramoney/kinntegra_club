@@ -26637,6 +26637,8 @@ async def add_liability(family_id: str, liability: LiabilityCreate, current_user
         "inflation_percent": liability.inflation_percent,
         "goal_year": liability.goal_year,
         "amount_today": liability.amount_today,
+        "monthly_emi": liability.monthly_emi,
+        "num_installments": liability.num_installments,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": current_user['id']
     }
