@@ -427,28 +427,36 @@ class CASParser:
                 
                 pending_scheme_line = None
             
-            # Detect Folio No - just store it, don't create entry yet
-            # The folio entry will be created when we detect the ISIN for this folio
+            # Detect Folio No - create entry immediately (will be updated when ISIN is found)
             folio_match = re.search(r'Folio No:\s*([\d\s/]+)', line)
             if folio_match:
-                new_folio = folio_match.group(1).strip()
-                # Only update current_folio if it's a new folio number
-                # This prevents resetting scheme info when seeing the same folio again
-                if new_folio != current_folio:
-                    current_folio = new_folio
-                    # Reset ISIN for new folio - will be set when ISIN line is parsed
-                    # Don't reset current_isin here, as ISIN line may come before or after Folio
-                    
-                # Check if we already have a key for this folio+isin combination
+                current_folio = folio_match.group(1).strip()
+                
+                # Create key - use ISIN if available (from previous parsing in same folio group)
                 if current_isin:
-                    potential_key = f"{current_folio}_{current_isin}"
-                    if potential_key in self.folios:
-                        current_key = potential_key
-                    else:
-                        # Key will be created when ISIN is detected
-                        current_key = current_folio  # Temporary key
+                    current_key = f"{current_folio}_{current_isin}"
                 else:
                     current_key = current_folio
+                
+                # Create folio entry if it doesn't exist
+                # Note: This might have stale scheme data if ISIN comes after Folio
+                # The entry will be updated when ISIN is detected
+                if current_key and current_key not in self.folios:
+                    self.folios[current_key] = {
+                        'folio': current_folio,
+                        'scheme': current_scheme,
+                        'scheme_code': current_scheme_full,
+                        'isin': current_isin,
+                        'pan': current_pan,
+                        'amc': current_amc,
+                        'advisor': current_advisor,
+                        'transactions': [],
+                        'closing_balance': 0,
+                        'cost_value': 0,
+                        'current_nav': 0,
+                        'market_value': 0,
+                        'opening_balance': 0
+                    }
             
             # Detect opening balance
             if 'Opening Unit Balance:' in line:
