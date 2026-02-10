@@ -212,7 +212,7 @@ const INCOME_CATEGORIES = [
       { key: "commodity_type", label: "Type", type: "select", options: ["Gold", "Silver"], defaultValue: "Gold" },
       { key: "weight_kg", label: "Weight (Kg)", type: "number" },
       { key: "price_per_kg", label: "Price/Kg", type: "number", readOnly: true, calculated: true },
-      { key: "current_value", label: "Current Value", type: "number", readOnly: true, calculated: true }
+      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
