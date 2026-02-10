@@ -792,111 +792,11 @@ export default function SurplusSection({ family, isReadOnly }) {
     const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
     cashFlowSheet['!cols'] = [{ wch: 30 }, { wch: 10 }, ...allYears.map(() => ({ wch: 12 }))];
     XLSX.utils.book_append_sheet(wb, cashFlowSheet, "Data Gathering");
-      expenseSheetData.push(["Year", ...expenseCategories.map(c => c.replace(/_/g, ' ')), "Total"]);
-      
-      allYears.forEach(year => {
-        const yearStr = year.toString();
-        const breakdown = getMemberExpenseBreakdown(member.id, yearStr);
-        const total = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
-        expenseSheetData.push([
-          year,
-          ...expenseCategories.map(cat => Math.round(breakdown[cat] || 0)),
-          Math.round(total)
-        ]);
-      });
-      
-      expenseSheetData.push([]);
-    });
 
-    const expenseSheet = XLSX.utils.aoa_to_sheet(expenseSheetData);
-    XLSX.utils.book_append_sheet(wb, expenseSheet, "Expenses by Member");
-
-    // Sheet 5: Goals with Inflation
-    if (goalDetails.length > 0) {
-      const goalsSheetData = [
-        ["GOALS - YEAR WISE (Inflated Values)"],
-        [],
-        ["Year", ...goalDetails.map(g => g.category || 'Goal'), "Total Goals"],
-      ];
-      
-      allYears.forEach(year => {
-        const yearStr = year.toString();
-        const yearInt = parseInt(yearStr);
-        
-        const goalAmounts = goalDetails.map(goal => {
-          const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
-          if (!goalYears.includes(yearStr)) return 0;
-          
-          const amountToday = parseFloat(goal.goal_amount) || 0;
-          const inflationRate = parseFloat(goal.inflation_percent) || 6;
-          const yearsFromNow = yearInt - currentYear;
-          return yearsFromNow > 0 ? amountToday * Math.pow(1 + inflationRate / 100, yearsFromNow) : amountToday;
-        });
-
-        const total = goalAmounts.reduce((sum, v) => sum + v, 0);
-        if (total > 0) {
-          goalsSheetData.push([year, ...goalAmounts.map(a => Math.round(a)), Math.round(total)]);
-        }
-      });
-
-      const goalsSheet = XLSX.utils.aoa_to_sheet(goalsSheetData);
-      XLSX.utils.book_append_sheet(wb, goalsSheet, "Goals");
-    }
-
-    // Sheet 6: Maturities
-    const maturitySheetData = [
-      ["MATURITY INFLOWS"],
-      [],
-      ["Year", "Type", "Category", "Amount", "Members"],
-    ];
-    
-    allYears.forEach(year => {
-      const yearMaturities = maturitiesByYear[year];
-      if (yearMaturities && yearMaturities.total > 0) {
-        yearMaturities.details.forEach(d => {
-          const memberNames = d.memberIds.map(mid => members.find(m => m.id === mid)?.name || '').join(', ');
-          maturitySheetData.push([year, d.type, d.category, Math.round(d.value), memberNames]);
-        });
-      }
-    });
-    
-    if (maturitySheetData.length > 3) {
-      const maturitySheet = XLSX.utils.aoa_to_sheet(maturitySheetData);
-      maturitySheet['!cols'] = [{ wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 30 }];
-      XLSX.utils.book_append_sheet(wb, maturitySheet, "Maturities");
-    }
-
-    // Sheet 7: Investments by Member
-    if (investmentDetails.length > 0) {
-      const investmentSheetData = [
-        ["INVESTMENTS BY MEMBER"],
-        [],
-      ];
-      
-      members.forEach(member => {
-        const memberInvestments = investmentDetails.filter(inv => inv.member_id === member.id);
-        if (memberInvestments.length > 0) {
-          investmentSheetData.push([`${member.name}${member.is_primary ? ' (Primary)' : ''}`]);
-          investmentSheetData.push(["Category", "Amount", "Frequency", "Annual Amount"]);
-          
-          memberInvestments.forEach(inv => {
-            investmentSheetData.push([
-              (inv.category || 'other').replace(/_/g, ' '),
-              inv.amount || 0,
-              inv.frequency || 'monthly',
-              inv.annual_amount || 0
-            ]);
-          });
-          
-          const totalAnnual = memberInvestments.reduce((sum, inv) => sum + (parseFloat(inv.annual_amount) || 0), 0);
-          investmentSheetData.push(["TOTAL", "", "", Math.round(totalAnnual)]);
-          investmentSheetData.push([]);
-        }
-      });
-
-      const investmentSheet = XLSX.utils.aoa_to_sheet(investmentSheetData);
-      XLSX.utils.book_append_sheet(wb, investmentSheet, "Investments");
-    }
+    // Download the workbook
+    const familyName = family?.family_name || 'Family';
+    XLSX.writeFile(wb, `Comprehensive_Plan_${familyName.replace(/\s+/g, '_')}.xlsx`);
+  };
 
     // Sheet 8: Assets by Member
     const assetCategories = [
