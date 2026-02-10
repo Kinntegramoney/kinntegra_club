@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, TrendingUp, TrendingDown, PiggyBank, Landmark } from "lucide-react";
+import { User, TrendingUp, TrendingDown, PiggyBank, Landmark, Target } from "lucide-react";
 
 export default function SurplusSection({ family, isReadOnly }) {
   const members = family?.members || [];
   const incomeDetails = family?.income_details || [];
   const expenseDetails = family?.expense_details || [];
   const investmentDetails = family?.investment_details || [];
+  const goalDetails = family?.goal_details || [];
 
   const currentYear = new Date().getFullYear();
   
@@ -167,11 +168,47 @@ export default function SurplusSection({ family, isReadOnly }) {
     }));
   };
 
+  // Get goals mapped by year with inflated amounts
+  const getGoalsByYear = () => {
+    const goalsByYear = {};
+    
+    goalDetails.forEach(goal => {
+      const amountToday = parseFloat(goal.goal_amount) || 0;
+      const inflationRate = parseFloat(goal.inflation_percent) || 6;
+      const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
+      
+      goalYears.forEach(yearStr => {
+        const year = parseInt(yearStr);
+        if (!year || isNaN(year)) return;
+        
+        // Calculate inflated amount for the goal year
+        const yearsFromNow = year - currentYear;
+        const inflatedAmount = yearsFromNow > 0 
+          ? amountToday * Math.pow(1 + inflationRate / 100, yearsFromNow)
+          : amountToday;
+        
+        if (!goalsByYear[year]) {
+          goalsByYear[year] = { total: 0, goals: [] };
+        }
+        goalsByYear[year].total += inflatedAmount;
+        goalsByYear[year].goals.push({
+          category: goal.category,
+          amountToday,
+          inflatedAmount,
+          inflationRate
+        });
+      });
+    });
+    
+    return goalsByYear;
+  };
+
   const baseIncome = getBaseIncome();
   const baseIncomeByCategory = getBaseIncomeByCategory();
   const baseExpensesWithInflation = getBaseExpensesWithInflation();
   const baseExpensesTotal = baseExpensesWithInflation.reduce((sum, exp) => sum + exp.annualAmount, 0);
   const baseInvestments = investmentDetails.reduce((sum, inv) => sum + (parseFloat(inv.annual_amount) || 0), 0);
+  const goalsByYear = getGoalsByYear();
 
   // Calculate projected income for a given year
   const getProjectedIncome = (year) => {
@@ -182,7 +219,6 @@ export default function SurplusSection({ family, isReadOnly }) {
     if (yearsFromNow <= 0) return baseIncome;
     
     if (isPostRetirement) {
-      // Post-retirement: Only rental and pension continue
       const yearsFromRetirement = targetYear - retirementYear;
       const preRetirementYears = retirementYear - currentYear;
       const rental = baseIncomeByCategory.rental * Math.pow(1 + incomeGrowthRates.rental / 100, preRetirementYears + yearsFromRetirement);
@@ -190,7 +226,6 @@ export default function SurplusSection({ family, isReadOnly }) {
       return rental + pension;
     }
     
-    // Pre-retirement: Apply growth rates
     const salary = baseIncomeByCategory.salary * Math.pow(1 + incomeGrowthRates.salary / 100, yearsFromNow);
     const business = baseIncomeByCategory.business * Math.pow(1 + incomeGrowthRates.business / 100, yearsFromNow);
     const rental = baseIncomeByCategory.rental * Math.pow(1 + incomeGrowthRates.rental / 100, yearsFromNow);
@@ -199,7 +234,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     return salary + business + rental + pension;
   };
 
-  // Calculate projected expenses for a given year
+  // Calculate projected expenses for a given year (regular expenses only)
   const getProjectedExpenses = (year) => {
     const targetYear = parseInt(year);
     const yearsFromNow = targetYear - currentYear;
@@ -221,6 +256,12 @@ export default function SurplusSection({ family, isReadOnly }) {
     });
     
     return total;
+  };
+
+  // Get goal expenses for a specific year (already inflated)
+  const getGoalExpensesForYear = (year) => {
+    const yearInt = parseInt(year);
+    return goalsByYear[yearInt]?.total || 0;
   };
 
   // Calculate projected investments
@@ -251,7 +292,6 @@ export default function SurplusSection({ family, isReadOnly }) {
   const handleYearChange = (index, newYear) => {
     const newYears = [...displayYears];
     newYears[index] = newYear;
-    // Sort years in ascending order
     newYears.sort((a, b) => parseInt(a) - parseInt(b));
     setDisplayYears(newYears);
   };
@@ -281,22 +321,26 @@ export default function SurplusSection({ family, isReadOnly }) {
     const yearInt = parseInt(year);
     const income = getProjectedIncome(year);
     const expenses = getProjectedExpenses(year);
+    const goalExpenses = getGoalExpensesForYear(year);
+    const totalExpenses = expenses + goalExpenses;
     const investments = getProjectedInvestments(year);
-    const savings = income - expenses;
+    const savings = income - totalExpenses;
     const surplus = savings - investments;
     const isRetired = yearInt >= retirementYear;
+    const hasGoals = goalExpenses > 0;
     
-    return { year, yearInt, income, expenses, investments, savings, surplus, isRetired };
+    return { year, yearInt, income, expenses, goalExpenses, totalExpenses, investments, savings, surplus, isRetired, hasGoals };
   });
+
+  // Check if any year has goals
+  const anyYearHasGoals = yearData.some(d => d.hasGoals);
 
   return (
     <div className="space-y-4">
       {/* Info Text */}
       <div className="text-xs text-gray-500 px-1">
-        Year-wise cash flow projection based on income growth rates and expense inflation from your data. 
-        <span className="ml-1 text-blue-600">
-          (Salary: {incomeGrowthRates.salary}% | Business: {incomeGrowthRates.business}% growth)
-        </span>
+        Year-wise cash flow projection using growth rates from Income and inflation from Expenses. 
+        Goals are included as expenses in their target year (inflated from today's cost).
       </div>
 
       {/* Main Projection Table */}
@@ -311,6 +355,7 @@ export default function SurplusSection({ family, isReadOnly }) {
               {displayYears.map((year, idx) => {
                 const yearInt = parseInt(year);
                 const isRetired = yearInt >= retirementYear;
+                const hasGoals = goalsByYear[yearInt]?.total > 0;
                 return (
                   <th key={idx} className={`text-center px-2 py-2 min-w-[100px] ${idx < displayYears.length - 1 ? 'border-r border-gray-200' : ''}`}>
                     <Select value={year} onValueChange={(v) => handleYearChange(idx, v)}>
@@ -318,16 +363,25 @@ export default function SurplusSection({ family, isReadOnly }) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {yearOptions.map(y => (
-                          <SelectItem key={y} value={y}>
-                            {y} {parseInt(y) === retirementYear && '(R)'}
-                          </SelectItem>
-                        ))}
+                        {yearOptions.map(y => {
+                          const yInt = parseInt(y);
+                          const yHasGoal = goalsByYear[yInt]?.total > 0;
+                          return (
+                            <SelectItem key={y} value={y}>
+                              {y} {yInt === retirementYear && '(R)'} {yHasGoal && '🎯'}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
-                    {isRetired && (
-                      <span className="text-[9px] text-amber-600 font-normal">Post-Ret</span>
-                    )}
+                    <div className="flex items-center justify-center gap-1 mt-0.5">
+                      {isRetired && (
+                        <span className="text-[9px] text-amber-600 font-normal">Post-Ret</span>
+                      )}
+                      {hasGoals && (
+                        <span className="text-[9px] text-purple-600 font-normal">Goal</span>
+                      )}
+                    </div>
                   </th>
                 );
               })}
@@ -341,7 +395,9 @@ export default function SurplusSection({ family, isReadOnly }) {
                   <TrendingUp className="h-4 w-4 text-green-600" />
                   <span className="text-sm font-medium text-gray-800">Income</span>
                 </div>
-                <div className="text-[10px] text-green-600 mt-0.5">Salary + Business + Rental + Pension</div>
+                <div className="text-[10px] text-green-600 mt-0.5">
+                  Sal({incomeGrowthRates.salary}%) + Biz({incomeGrowthRates.business}%) + Rent + Pension
+                </div>
               </td>
               {yearData.map((data, idx) => (
                 <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
@@ -350,18 +406,54 @@ export default function SurplusSection({ family, isReadOnly }) {
               ))}
             </tr>
 
-            {/* Expenses Row */}
+            {/* Regular Expenses Row */}
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-2.5 border-r border-gray-100">
                 <div className="flex items-center gap-2">
                   <TrendingDown className="h-4 w-4 text-orange-600" />
                   <span className="text-sm font-medium text-gray-800">Expenses</span>
                 </div>
-                <div className="text-[10px] text-orange-600 mt-0.5">With individual inflation rates</div>
+                <div className="text-[10px] text-orange-600 mt-0.5">Regular expenses with inflation</div>
               </td>
               {yearData.map((data, idx) => (
                 <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
                   <span className="text-sm font-medium text-orange-700">{formatAmount(data.expenses)}</span>
+                </td>
+              ))}
+            </tr>
+
+            {/* Goals Row - Only show if there are goals */}
+            {anyYearHasGoals && (
+              <tr className="bg-purple-50/30 hover:bg-purple-50/50">
+                <td className="px-4 py-2.5 border-r border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm font-medium text-gray-800">Goals</span>
+                  </div>
+                  <div className="text-[10px] text-purple-600 mt-0.5">Inflated to target year cost</div>
+                </td>
+                {yearData.map((data, idx) => (
+                  <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                    <span className={`text-sm font-medium ${data.goalExpenses > 0 ? 'text-purple-700' : 'text-gray-300'}`}>
+                      {data.goalExpenses > 0 ? formatAmount(data.goalExpenses) : '-'}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            )}
+
+            {/* Total Expenses Row */}
+            <tr className="bg-orange-50/50 hover:bg-orange-50">
+              <td className="px-4 py-2.5 border-r border-gray-100">
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4 text-orange-700" />
+                  <span className="text-sm font-semibold text-gray-800">Total Outflow</span>
+                </div>
+                <div className="text-[10px] text-orange-600 mt-0.5">Expenses + Goals</div>
+              </td>
+              {yearData.map((data, idx) => (
+                <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                  <span className="text-sm font-semibold text-orange-800">{formatAmount(data.totalExpenses)}</span>
                 </td>
               ))}
             </tr>
@@ -373,7 +465,7 @@ export default function SurplusSection({ family, isReadOnly }) {
                   <PiggyBank className="h-4 w-4 text-blue-600" />
                   <span className="text-sm font-semibold text-gray-800">Savings</span>
                 </div>
-                <div className="text-[10px] text-blue-600 mt-0.5">Income - Expenses</div>
+                <div className="text-[10px] text-blue-600 mt-0.5">Income - Total Outflow</div>
               </td>
               {yearData.map((data, idx) => (
                 <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
@@ -388,14 +480,14 @@ export default function SurplusSection({ family, isReadOnly }) {
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-2.5 border-r border-gray-100">
                 <div className="flex items-center gap-2">
-                  <Landmark className="h-4 w-4 text-purple-600" />
+                  <Landmark className="h-4 w-4 text-indigo-600" />
                   <span className="text-sm font-medium text-gray-800">Investments</span>
                 </div>
-                <div className="text-[10px] text-purple-600 mt-0.5">SIP, PPF, NPS, etc.</div>
+                <div className="text-[10px] text-indigo-600 mt-0.5">SIP, PPF, NPS, etc.</div>
               </td>
               {yearData.map((data, idx) => (
                 <td key={idx} className={`px-2 py-2.5 text-right ${idx < yearData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                  <span className="text-sm font-medium text-purple-700">{formatAmount(data.investments)}</span>
+                  <span className="text-sm font-medium text-indigo-700">{formatAmount(data.investments)}</span>
                 </td>
               ))}
             </tr>
@@ -424,19 +516,20 @@ export default function SurplusSection({ family, isReadOnly }) {
       {/* Summary Info */}
       <div className="flex items-center justify-between text-xs text-gray-500 px-1">
         <div>
-          <span className="font-medium">Retirement Year:</span> {retirementYear} (Age {retirementAge})
+          <span className="font-medium">Retirement:</span> {retirementYear} (Age {retirementAge})
           <span className="mx-2">|</span>
           <span className="font-medium">Life Expectancy:</span> Age {lifeExpectancy}
         </div>
-        <div className="text-[10px]">
-          <span className="text-amber-600">(R)</span> = Retirement Year
+        <div className="text-[10px] flex items-center gap-3">
+          <span><span className="text-amber-600">(R)</span> Retirement</span>
+          <span>🎯 Goal Year</span>
         </div>
       </div>
 
       {/* Notes */}
       <div className="text-[10px] text-gray-400 px-1">
+        • Goals are added as expenses in their target year. Amount shown is today's cost inflated to that year.
         • Post-retirement: Salary & Business income stops. Only Pension & Rental continue.
-        • Use dropdowns to select different years for comparison.
       </div>
     </div>
   );
