@@ -831,15 +831,6 @@ export default function SurplusSection({ family, isReadOnly }) {
         <div className="text-xs text-gray-500">
           Year-wise cash flow with member breakdown. Growth rates from Income section, inflation from Expenses.
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={exportToExcel}
-          className="gap-2 text-xs"
-        >
-          <Download className="h-3 w-3" />
-          Download Excel
-        </Button>
       </div>
 
       {/* Main Projection Table */}
