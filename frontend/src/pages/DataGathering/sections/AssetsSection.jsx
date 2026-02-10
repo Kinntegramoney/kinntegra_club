@@ -207,20 +207,17 @@ export default function AssetsSection({ family }) {
               );
             })}
             
-            {/* Grand Total Row */}
+            {/* Grand Total Row - Only Market Value */}
             <tr className="bg-green-100 font-semibold">
               <td className="px-4 py-3 text-sm text-green-800 border-r border-green-200">
                 Grand Total
               </td>
               {members.map((member, idx) => {
-                const memberInvTotal = getMemberTotal(member.id, 'investment');
                 const memberMktTotal = getMemberTotal(member.id, 'market');
                 return (
                   <React.Fragment key={`total-${member.id}`}>
                     <td className="px-2 py-3 text-right">
-                      <span className="text-xs text-green-700">
-                        {formatCurrency(memberInvTotal)}
-                      </span>
+                      <span className="text-xs text-gray-300">-</span>
                     </td>
                     <td className={`px-2 py-3 text-right ${idx < members.length - 1 ? 'border-r border-green-200' : ''}`}>
                       <span className="text-xs text-green-700">
@@ -231,9 +228,7 @@ export default function AssetsSection({ family }) {
                 );
               })}
               <td className="px-2 py-3 text-right bg-green-200/50 border-l border-green-200">
-                <span className="text-sm text-green-800">
-                  {formatCurrency(grandTotalInvestment)}
-                </span>
+                <span className="text-xs text-gray-300">-</span>
               </td>
               <td className="px-2 py-3 text-right bg-green-200/50">
                 <span className="text-sm text-green-800">
