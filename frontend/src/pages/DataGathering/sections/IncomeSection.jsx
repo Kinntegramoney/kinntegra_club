@@ -761,7 +761,13 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                     disabled={isReadOnly || field.readOnly}
                                   />
                                 ) : field.readOnly ? (
-                                  <div className="h-8 px-3 w-full flex items-center text-xs bg-gray-100 border border-gray-200 rounded-md text-gray-600 font-medium">
+                                  <div className={`h-8 px-3 w-full flex items-center text-xs border border-gray-200 rounded-md font-medium ${
+                                    ['xirr_return', 'absolute_return'].includes(field.key) 
+                                      ? (parseFloat(item.details[field.key]) >= 8 
+                                          ? 'bg-green-100 text-green-700 border-green-300' 
+                                          : 'bg-red-100 text-red-700 border-red-300')
+                                      : 'bg-gray-100 text-gray-600'
+                                  }`}>
                                     {formatValue(item.details[field.key], field.key)}
                                   </div>
                                 ) : (field.key.includes('amount') || field.key.includes('income') || field.key.includes('value') || field.key.includes('payment') || field.key.includes('principal') || field.key.includes('balance')) ? (
