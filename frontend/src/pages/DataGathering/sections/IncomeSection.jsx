@@ -369,6 +369,15 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     categoryConfig?.fields?.forEach(field => {
       if (field.defaultValue) defaultDetails[field.key] = field.defaultValue;
     });
+    
+    // For commodities, set initial price from API
+    if (category === "commodities") {
+      const commodityType = defaultDetails.commodity_type || "Gold";
+      const currentPrice = commodityPrices[commodityType] || 0;
+      if (currentPrice > 0) {
+        defaultDetails.price_per_kg = currentPrice;
+      }
+    }
 
     setIncomeItems(prev => ({
       ...prev,
