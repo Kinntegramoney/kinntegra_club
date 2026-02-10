@@ -140,9 +140,9 @@ const INCOME_CATEGORIES = [
     icon: Wallet,
     color: "rose",
     fields: [
+      { key: "payable_type", label: "Payout Frequency", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Monthly" },
       { key: "description", label: "Description", type: "text" },
       { key: "amount", label: "Amount", type: "number" },
-      { key: "payable_type", label: "Payable", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Monthly" },
       { key: "amount_yearly", label: "Yearly Amt", type: "number", readOnly: true, calculated: true },
       { key: "start_date", label: "Start Date", type: "date" },
       { key: "upto_life", label: "Upto Life", type: "select", options: ["Yes", "No"] },
