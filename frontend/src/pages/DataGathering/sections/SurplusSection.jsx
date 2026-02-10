@@ -1316,9 +1316,9 @@ function AllocationSimulator({
     debt: 7
   });
   const [includeAssets, setIncludeAssets] = useState(false);
-  const [assetSelectionMode, setAssetSelectionMode] = useState('all'); // 'all', 'select', 'from_year'
+  const [assetSelectionMode, setAssetSelectionMode] = useState('all'); // 'all', 'select'
   const [selectedAssets, setSelectedAssets] = useState({});
-  const [assetStartYear, setAssetStartYear] = useState(currentYear);
+  const [assetStartYear, setAssetStartYear] = useState({}); // Per-asset start year
   const [simulationResult, setSimulationResult] = useState(null);
   const [yearlyBreakdown, setYearlyBreakdown] = useState([]);
 
@@ -1326,7 +1326,7 @@ function AllocationSimulator({
   // They will be considered only when they mature (handled in cash flow separately)
   const DEBT_CATEGORIES_WITH_MATURITY = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps'];
 
-  // Get all assets with details (excluding debt instruments with maturity dates)
+  // Get all assets with details (excluding debt instruments with maturity dates), grouped by member
   const getAssetsList = () => {
     const assets = [];
     incomeDetails.forEach(inc => {
@@ -1344,22 +1344,69 @@ function AllocationSimulator({
       const mktValue = parseFloat(details.market_value) || parseFloat(details.current_value) || 
                        parseFloat(details.investment_value) || 0;
       if (mktValue > 0) {
-        const memberNames = (inc.member_ids || [])
+        const memberIds = inc.member_ids || [];
+        const memberNames = memberIds
           .map(mid => members.find(m => m.id === mid)?.name || '')
           .filter(Boolean)
           .join(', ') || 'Family';
+        
+        // Get primary member ID for this asset (for grouping)
+        const primaryMemberId = memberIds[0] || 'family';
         
         assets.push({
           id: inc.id,
           category: inc.category,
           label: getCategoryLabel(inc.category),
+          memberIds: memberIds,
           member: memberNames,
+          primaryMemberId: primaryMemberId,
           value: mktValue,
           selected: true
         });
       }
     });
     return assets;
+  };
+
+  // Group assets by member
+  const getAssetsGroupedByMember = () => {
+    const grouped = {};
+    const assetsList = getAssetsList();
+    
+    // Initialize with all members
+    members.forEach(m => {
+      grouped[m.id] = {
+        memberId: m.id,
+        memberName: m.name,
+        isPrimary: m.is_primary,
+        assets: [],
+        total: 0
+      };
+    });
+    
+    // Add "Family" group for shared assets
+    grouped['family'] = {
+      memberId: 'family',
+      memberName: 'Family (Shared)',
+      isPrimary: false,
+      assets: [],
+      total: 0
+    };
+    
+    // Group assets
+    assetsList.forEach(asset => {
+      const groupKey = asset.primaryMemberId;
+      if (grouped[groupKey]) {
+        grouped[groupKey].assets.push(asset);
+        grouped[groupKey].total += asset.value;
+      } else if (grouped['family']) {
+        grouped['family'].assets.push(asset);
+        grouped['family'].total += asset.value;
+      }
+    });
+    
+    // Filter out empty groups
+    return Object.values(grouped).filter(g => g.assets.length > 0);
   };
 
   const getCategoryLabel = (category) => {
