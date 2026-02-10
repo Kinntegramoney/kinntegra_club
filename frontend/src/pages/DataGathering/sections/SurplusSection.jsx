@@ -1552,20 +1552,15 @@ function AllocationSimulator({
     }
   };
 
-  const getCurrentAssetsForFromYear = () => {
-    let totalAssets = 0;
-    assetsList.forEach(asset => {
-      if (selectedAssets[asset.id]) {
-        totalAssets += asset.value;
-      }
-    });
-    return totalAssets;
-  };
-
   const formatLargeNumber = (num) => {
     if (num >= 10000000) return `${(num / 10000000).toFixed(2)} Cr`;
     if (num >= 100000) return `${(num / 100000).toFixed(2)} L`;
     return num.toLocaleString('en-IN');
+  };
+
+  // Update asset start year
+  const updateAssetStartYear = (assetId, year) => {
+    setAssetStartYear(prev => ({ ...prev, [assetId]: year }));
   };
 
   const handleEquityChange = (value) => {
