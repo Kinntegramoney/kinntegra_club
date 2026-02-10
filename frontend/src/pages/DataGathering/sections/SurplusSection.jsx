@@ -1828,11 +1828,11 @@ function AllocationSimulator({
             </strong>
           </span>
           <span className="text-sm text-gray-600">
-            Starting Corpus: <strong className="text-green-700">
-              ₹{formatLargeNumber(assetSelectionMode === 'from_year' ? 0 : getCurrentAssets())}
+            Total Selected Assets: <strong className="text-green-700">
+              ₹{formatLargeNumber(getCurrentAssets())}
             </strong>
-            {assetSelectionMode === 'from_year' && includeAssets && (
-              <span className="text-xs text-gray-500 ml-1">(+₹{formatLargeNumber(getCurrentAssetsForFromYear())} in {assetStartYear})</span>
+            {assetSelectionMode === 'select' && includeAssets && (
+              <span className="text-xs text-gray-500 ml-1">(Added based on year selection)</span>
             )}
           </span>
         </div>
@@ -1889,7 +1889,6 @@ function AllocationSimulator({
                       <td className="py-1.5 px-3 font-medium">
                         {row.year}
                         {row.year === retirementYear && <span className="text-amber-600 ml-1">(R)</span>}
-                        {assetSelectionMode === 'from_year' && row.year === assetStartYear && <span className="text-green-600 ml-1">(A)</span>}
                       </td>
                       <td className="py-1.5 px-3">{row.age}</td>
                       <td className="py-1.5 px-3 text-right text-green-600">₹{formatLargeNumber(row.income)}</td>
@@ -1907,7 +1906,7 @@ function AllocationSimulator({
               </table>
             </div>
             <div className="text-[10px] text-gray-400 mt-1">
-              (R) = Retirement Year {assetSelectionMode === 'from_year' && '| (A) = Asset Addition Year'}
+              (R) = Retirement Year
             </div>
           </div>
         )}
