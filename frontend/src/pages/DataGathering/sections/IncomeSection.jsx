@@ -156,23 +156,14 @@ const INCOME_CATEGORIES = [
     icon: Landmark,
     color: "violet",
     fields: [
-      { key: "bond_name", label: "Bond Name", type: "text" },
-      { key: "isin", label: "ISIN", type: "text" },
-      { key: "face_value", label: "Face Value", type: "number" },
-      { key: "units", label: "Units", type: "number" },
-      { key: "settlement_date", label: "Settlement Date", type: "date" },
-      { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "coupon_rate", label: "Coupon Rate %", type: "number" },
+      { key: "description", label: "Description", type: "text" },
+      { key: "investment_date", label: "Investment Date", type: "date" },
+      { key: "investment_value", label: "Investment Value", type: "number" },
       { key: "payout_frequency", label: "Payout Frequency", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Half-Yearly" },
-      { key: "clean_price", label: "Clean Price", type: "number" },
-      { key: "accrued_interest", label: "Accrued Interest", type: "number" },
-      { key: "dirty_price", label: "Dirty Price", type: "number", readOnly: true, calculated: true },
-      { key: "premium_discount", label: "Premium/Discount", type: "number", readOnly: true, calculated: true },
-      { key: "investment_value", label: "Investment Value", type: "number", readOnly: true, calculated: true },
-      { key: "purchase_ytm", label: "Purchase YTM %", type: "number" },
-      { key: "current_clean_price", label: "Current Clean Price", type: "number" },
-      { key: "current_ytm", label: "Current YTM %", type: "number", readOnly: true, calculated: true },
-      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true }
+      { key: "payout_amount", label: "Payout Amount", type: "number" },
+      { key: "maturity_amount", label: "Maturity Amount", type: "number" },
+      { key: "maturity_date", label: "Maturity Date", type: "date" },
+      { key: "gross_xirr", label: "Gross XIRR %", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
