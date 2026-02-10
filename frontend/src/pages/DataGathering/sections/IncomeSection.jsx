@@ -377,14 +377,16 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             // Rental calculations
             if (category === "rental") {
               if (field === "rent_per_month") {
-                newDetails.annual_income = Math.round(parseFloat(value || 0) * 12);
+                newDetails.annual_rent = Math.round(parseFloat(value || 0) * 12);
               }
               if (field === "is_on_rent") {
                 if (value === "No") {
                   // Clear all rental-related fields when switching to No
                   newDetails.rental_details = "";
                   newDetails.rent_per_month = "";
-                  newDetails.annual_income = 0;
+                  newDetails.annual_rent = 0;
+                  newDetails.maintenance = "";
+                  newDetails.property_tax = "";
                   newDetails.start_date = "";
                   newDetails.end_date = "";
                   newDetails.pay_date = "";
