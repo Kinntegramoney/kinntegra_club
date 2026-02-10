@@ -546,14 +546,36 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             
             // Bond calculations
             if (category === "bond") {
-              if (["principal_amount", "interest_rate"].includes(field)) {
-                const principal = field === "principal_amount" ? value : newDetails.principal_amount;
-                const rate = field === "interest_rate" ? value : newDetails.interest_rate;
-                if (principal && rate) newDetails.payment_amount_yearly = Math.round((parseFloat(principal) * parseFloat(rate)) / 100);
-              }
-              if (field === "principal_amount") {
-                newDetails.investment_value = parseFloat(value) || 0;
-                newDetails.market_value = parseFloat(value) || 0;
+              if (["face_value", "units", "purchase_price", "current_price", "coupon_rate", "settlement_date", "maturity_date", "payout_frequency"].includes(field)) {
+                const faceValue = field === "face_value" ? parseFloat(value || 0) : (parseFloat(newDetails.face_value) || 0);
+                const units = field === "units" ? parseFloat(value || 0) : (parseFloat(newDetails.units) || 0);
+                const purchasePrice = field === "purchase_price" ? parseFloat(value || 0) : (parseFloat(newDetails.purchase_price) || 0);
+                const currentPrice = field === "current_price" ? parseFloat(value || 0) : (parseFloat(newDetails.current_price) || 0);
+                const couponRate = field === "coupon_rate" ? parseFloat(value || 0) : (parseFloat(newDetails.coupon_rate) || 0);
+                const settlementDateStr = field === "settlement_date" ? value : newDetails.settlement_date;
+                const maturityDateStr = field === "maturity_date" ? value : newDetails.maturity_date;
+                
+                // Calculate Investment Value = Purchase Price × Units
+                if (purchasePrice > 0 && units > 0) {
+                  newDetails.investment_value = Math.round(purchasePrice * units);
+                }
+                
+                // Calculate Market Value = Current Price × Units
+                if (currentPrice > 0 && units > 0) {
+                  newDetails.market_value = Math.round(currentPrice * units);
+                }
+                
+                // Calculate Current YTM based on current price, coupon rate, and time to maturity
+                if (currentPrice > 0 && faceValue > 0 && couponRate > 0 && maturityDateStr && settlementDateStr) {
+                  const settlementDate = new Date(settlementDateStr);
+                  const maturityDate = new Date(maturityDateStr);
+                  const yearsToMaturity = Math.max(0.1, (maturityDate - settlementDate) / (365 * 24 * 60 * 60 * 1000));
+                  
+                  // Approximate YTM formula: (Coupon + (Face Value - Price) / Years) / ((Face Value + Price) / 2)
+                  const annualCoupon = faceValue * (couponRate / 100);
+                  const ytm = ((annualCoupon + (faceValue - currentPrice) / yearsToMaturity) / ((faceValue + currentPrice) / 2)) * 100;
+                  newDetails.current_ytm = Math.round(ytm * 100) / 100;
+                }
               }
             }
             
