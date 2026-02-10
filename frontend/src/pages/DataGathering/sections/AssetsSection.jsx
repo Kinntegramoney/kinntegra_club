@@ -104,23 +104,6 @@ export default function AssetsSection({ family }) {
 
   return (
     <div className="space-y-4">
-      {/* Summary Banner */}
-      {(grandTotalInvestment > 0 || grandTotalMarket > 0) && (
-        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-          <span className="text-sm text-green-600 font-medium">Total Assets Value</span>
-          <div className="flex gap-6">
-            <div className="text-right">
-              <div className="text-[10px] text-green-500">Investment</div>
-              <div className="font-semibold text-green-700">{formatCurrency(grandTotalInvestment)}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-[10px] text-green-500">Market/Maturity</div>
-              <div className="font-semibold text-green-700">{formatCurrency(grandTotalMarket)}</div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="text-xs text-gray-500 px-1">
         Summary of asset values from Income section by family member.
       </div>
