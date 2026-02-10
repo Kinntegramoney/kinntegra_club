@@ -111,7 +111,7 @@ const INCOME_CATEGORIES = [
       { key: "description", label: "Description", type: "text" },
       { key: "investment_value", label: "Investment Value", type: "number" },
       { key: "interest_rate", label: "Interest %", type: "number" },
-      { key: "payable_cycle", label: "Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
+      { key: "payable_cycle", label: "Interest Payout Frequency", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
       { key: "maturity_date", label: "Maturity", type: "date" },
       { key: "payment_amount_yearly", label: "Yearly Payment", type: "number", readOnly: true, calculated: true },
       { key: "maturity_value", label: "Maturity Value", type: "number", readOnly: true, calculated: true }
@@ -175,7 +175,7 @@ const INCOME_CATEGORIES = [
       { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true },
       { key: "description", label: "Description", type: "text" },
       { key: "principal_amount", label: "Premium", type: "number" },
-      { key: "payable_cycle", label: "Cycle", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
+      { key: "payable_cycle", label: "Interest Payout Frequency", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"], defaultValue: "Monthly" },
       { key: "maturity_date", label: "Maturity", type: "date" },
       { key: "payment_amount_yearly", label: "Yearly Payment", type: "number", readOnly: true, calculated: true }
     ]
