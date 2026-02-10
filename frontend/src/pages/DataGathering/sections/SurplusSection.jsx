@@ -1320,6 +1320,7 @@ function AllocationSimulator({
         debtReturn: 0,
         includeAssets: false,
         selectedAssets: {},
+        assetStartYears: {},  // Per-asset start year
         result: null,
         lastCalculated: null
       };
