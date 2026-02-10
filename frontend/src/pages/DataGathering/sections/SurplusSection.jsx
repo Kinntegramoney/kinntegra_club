@@ -1248,6 +1248,9 @@ export default function SurplusSection({ family, isReadOnly }) {
         getProjectedMemberInvestments={getProjectedMemberInvestments}
         getMemberIncomeInfo={getMemberIncomeInfo}
         incomeDetails={incomeDetails}
+        expenseDetails={expenseDetails}
+        goalDetails={goalDetails}
+        investmentDetails={investmentDetails}
         primaryAge={primaryAge}
         lifeExpectancy={lifeExpectancy}
         calculateAge={calculateAge}
