@@ -30,16 +30,17 @@ import NetworthSection from "./sections/NetworthSection";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Tab configuration - New order: Income, Expenses, Assets, Liabilities, Insurance Cover, Goals, Net Worth & Surplus
+// Tab configuration - Order: Members, Income, Expenses, Goals, Surplus, Liabilities, Assets, Insurance, Networth
 const TABS = [
-  { id: "introduction", label: "Introduction", icon: ClipboardList },
+  { id: "introduction", label: "Members", icon: Users },
   { id: "income", label: "Income", icon: DollarSign },
   { id: "expenses", label: "Expenses", icon: Receipt },
-  { id: "assets", label: "Assets", icon: Landmark },
-  { id: "liability", label: "Liabilities", icon: CreditCard },
-  { id: "insurance", label: "Insurance Cover", icon: Shield },
   { id: "goals", label: "Goals", icon: Target },
-  { id: "surplus", label: "Net Worth & Surplus", icon: PieChart }
+  { id: "surplus", label: "Surplus", icon: TrendingUp },
+  { id: "liability", label: "Liabilities", icon: CreditCard },
+  { id: "assets", label: "Assets", icon: Landmark },
+  { id: "insurance", label: "Insurance", icon: Shield },
+  { id: "networth", label: "Networth", icon: PieChart }
 ];
 
 // Form options
