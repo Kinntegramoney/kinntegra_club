@@ -1454,8 +1454,8 @@ function AllocationSimulator({
           <Calculator className="h-5 w-5 text-blue-600" />
           Allocation Simulator
         </CardTitle>
-        <p className="text-xs text-gray-500">
-          Calculate if money will last until life expectancy - for family and individual members.
+        <p className="text-xs text-gray-500 mt-1">
+          This simulator gently adjusts for life changes—like family separation, loss of income, or shifting expenses—to help you understand if your wealth can comfortably support you over time.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
