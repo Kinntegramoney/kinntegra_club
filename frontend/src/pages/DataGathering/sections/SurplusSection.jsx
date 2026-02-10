@@ -1833,7 +1833,7 @@ function AllocationSimulator({
                 return (
                   <React.Fragment key={member.id}>
                     <tr className={`border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                      <td className="py-3 px-2">
+                      <td className="py-3 px-2 text-center">
                         <div className="font-medium text-gray-800">
                           {member.name}
                           {member.is_primary && <span className="text-blue-500 ml-1 text-xs">*</span>}
@@ -1842,24 +1842,24 @@ function AllocationSimulator({
                           Age: {age} | Life Exp: {memberLifeExp} | Retire: {memberInfo.retirementYear}
                         </div>
                         {allocation.lastCalculated && (
-                          <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+                          <div className="text-[10px] text-gray-400 flex items-center justify-center gap-1 mt-0.5">
                             <Clock className="h-2.5 w-2.5" />
                             {allocation.lastCalculated}
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-2 border-l border-gray-200">
+                      <td className="py-3 px-2 border-l border-gray-200 text-center">
                         <select
                           value={allocation.equity}
                           onChange={(e) => updateAllocation(member.id, 'equity', e.target.value)}
-                          className="w-16 h-8 text-sm border border-gray-300 rounded px-1 bg-white"
+                          className="w-16 h-8 text-sm border border-gray-300 rounded px-1 bg-white text-center"
                         >
                           {[...Array(11)].map((_, i) => (
                             <option key={i * 10} value={i * 10}>{i * 10}</option>
                           ))}
                         </select>
                       </td>
-                      <td className="py-3 px-2 bg-blue-50/50">
+                      <td className="py-3 px-2 bg-blue-50/50 text-center">
                         <input
                           type="number"
                           value={allocation.debt}
@@ -1867,7 +1867,7 @@ function AllocationSimulator({
                           className="w-14 h-8 text-sm border border-gray-200 rounded px-2 bg-gray-100 text-center"
                         />
                       </td>
-                      <td className="py-3 px-2 border-l border-gray-200">
+                      <td className="py-3 px-2 border-l border-gray-200 text-center">
                         <input
                           type="number"
                           value={allocation.equityReturn}
@@ -1875,7 +1875,7 @@ function AllocationSimulator({
                           className="w-14 h-8 text-sm border border-gray-300 rounded px-2 bg-white text-center"
                         />
                       </td>
-                      <td className="py-3 px-2 bg-blue-50/50">
+                      <td className="py-3 px-2 bg-blue-50/50 text-center">
                         <input
                           type="number"
                           value={allocation.debtReturn}
@@ -1891,8 +1891,8 @@ function AllocationSimulator({
                           className="h-4 w-4 rounded border-gray-300 text-blue-600"
                         />
                       </td>
-                      <td className="py-3 px-2 border-l border-gray-200">
-                        <div className="flex items-center gap-1">
+                      <td className="py-3 px-2 border-l border-gray-200 text-center">
+                        <div className="flex items-center justify-center gap-1">
                           <Button 
                             size="sm" 
                             onClick={() => openAssetModal(member.id)}
