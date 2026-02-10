@@ -380,6 +380,22 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
               if (field === "rent_per_month") {
                 newDetails.annual_rent = Math.round(parseFloat(value || 0) * 12);
               }
+              // Calculate Absolute Return when any relevant field changes
+              if (["rent_per_month", "maintenance", "property_tax", "investment_amount"].includes(field)) {
+                const annualRent = field === "rent_per_month" 
+                  ? Math.round(parseFloat(value || 0) * 12) 
+                  : (newDetails.annual_rent || 0);
+                const maintenance = field === "maintenance" ? parseFloat(value || 0) : (parseFloat(newDetails.maintenance) || 0);
+                const propertyTax = field === "property_tax" ? parseFloat(value || 0) : (parseFloat(newDetails.property_tax) || 0);
+                const investmentValue = field === "investment_amount" ? parseFloat(value || 0) : (parseFloat(newDetails.investment_amount) || 0);
+                
+                if (investmentValue > 0) {
+                  const netIncome = annualRent - propertyTax - maintenance;
+                  newDetails.absolute_return = Math.round((netIncome / investmentValue) * 100 * 100) / 100; // Round to 2 decimals
+                } else {
+                  newDetails.absolute_return = 0;
+                }
+              }
               if (field === "is_on_rent") {
                 if (value === "No") {
                   // Clear all rental-related fields when switching to No
@@ -388,6 +404,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                   newDetails.annual_rent = 0;
                   newDetails.maintenance = "";
                   newDetails.property_tax = "";
+                  newDetails.absolute_return = 0;
                   newDetails.start_date = "";
                   newDetails.end_date = "";
                   newDetails.pay_date = "";
