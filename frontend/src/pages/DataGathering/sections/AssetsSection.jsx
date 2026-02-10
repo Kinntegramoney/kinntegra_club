@@ -2,6 +2,7 @@ import React from "react";
 import { User, Landmark, Home, Car, Gem, Wallet, TrendingUp, Building, PiggyBank, Coins, Briefcase } from "lucide-react";
 
 // Asset categories mapped to income section categories
+// Note: Pension is excluded - it's an income source, not an asset
 const ASSET_CATEGORIES = [
   { value: "rental", label: "Rental Property", icon: Home, investmentKey: "investment_amount", marketKey: "market_value" },
   { value: "ppf", label: "PPF", icon: PiggyBank, investmentKey: null, marketKey: "market_value" },
@@ -11,7 +12,6 @@ const ASSET_CATEGORIES = [
   { value: "rd_pis", label: "RD / PIS", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_value" },
   { value: "bond", label: "Bonds", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_amount" },
   { value: "insurance_income", label: "Insurance", icon: Building, investmentKey: "total_paid", marketKey: "maturity_amount" },
-  { value: "pension", label: "Pension", icon: Briefcase, investmentKey: null, marketKey: "amount_yearly" },
   { value: "commodities", label: "Commodities", icon: Gem, investmentKey: null, marketKey: ["market_value", "current_value"] },
   { value: "shares_pms", label: "Shares / PMS", icon: TrendingUp, investmentKey: null, marketKey: "market_value" },
   { value: "cash", label: "Cash in Hand", icon: Coins, investmentKey: null, marketKey: "bank_balance" },
