@@ -197,7 +197,7 @@ export default function InsuranceSection({ family }) {
 
       {/* Insurance Coverage Table with Member Columns */}
       <div className="border border-gray-200 rounded-lg overflow-x-auto">
-        <table className="w-full min-w-[700px]">
+        <table className="w-full min-w-[500px]">
           <thead>
             {/* Member Names Row */}
             <tr className="bg-teal-50 border-b border-gray-200">
@@ -222,9 +222,6 @@ export default function InsuranceSection({ family }) {
                   </div>
                 </th>
               ))}
-              <th colSpan={2} className="text-center text-xs font-semibold text-teal-800 px-2 py-2 bg-teal-100 border-l border-gray-200">
-                Total
-              </th>
             </tr>
             {/* Sub-headers Row */}
             <tr className="bg-gray-50 border-b border-gray-200">
@@ -238,29 +235,20 @@ export default function InsuranceSection({ family }) {
                   </th>
                 </React.Fragment>
               ))}
-              <th className="text-right text-[10px] font-medium text-teal-600 px-2 py-1.5 w-24 bg-teal-50 border-l border-gray-200">
-                Suggested
-              </th>
-              <th className="text-right text-[10px] font-medium text-teal-600 px-2 py-1.5 w-24 bg-teal-50">
-                Actual
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {INSURANCE_CATEGORIES.map(category => {
               const Icon = category.icon;
               
-              // Calculate row totals
-              let rowSuggested = 0;
-              let rowActual = 0;
+              // Check if any member has values for this category
+              let hasValues = false;
               members.forEach(m => {
                 const termLifeSuggested = getSuggestedCover(m, 'term_life');
-                rowSuggested += getSuggestedCover(m, category.value, termLifeSuggested);
-                rowActual += getActualCover(m.id, category.value);
+                const suggested = getSuggestedCover(m, category.value, termLifeSuggested);
+                const actual = getActualCover(m.id, category.value);
+                if (suggested > 0 || actual > 0) hasValues = true;
               });
-              
-              const hasValues = rowActual > 0 || rowSuggested > 0;
-              const status = getCoverageStatus(rowSuggested, rowActual);
               
               return (
                 <tr key={category.value} className={`hover:bg-gray-50 ${hasValues ? '' : 'text-gray-400'}`}>
@@ -298,67 +286,9 @@ export default function InsuranceSection({ family }) {
                       </React.Fragment>
                     );
                   })}
-                  {/* Row Totals */}
-                  <td className="px-2 py-2.5 text-right bg-teal-50/50 border-l border-gray-100">
-                    <span className={`text-xs ${rowSuggested > 0 ? 'text-gray-600' : 'text-gray-300'}`}>
-                      {formatCurrency(rowSuggested)}
-                    </span>
-                  </td>
-                  <td className="px-2 py-2.5 text-right bg-teal-50/50">
-                    <span className={`text-xs font-medium ${
-                      status === 'adequate' ? 'text-green-600' :
-                      status === 'partial' ? 'text-amber-600' :
-                      status === 'insufficient' ? 'text-red-500' :
-                      'text-gray-300'
-                    }`}>
-                      {formatCurrency(rowActual)}
-                    </span>
-                  </td>
                 </tr>
               );
             })}
-            
-            {/* Grand Total Row */}
-            <tr className="bg-teal-100 font-semibold">
-              <td className="px-4 py-3 text-sm text-teal-800 border-r border-teal-200">
-                Grand Total
-              </td>
-              {members.map((member, idx) => {
-                const totals = getMemberTotals(member.id);
-                const cellStatus = getCoverageStatus(totals.suggested, totals.actual);
-                
-                return (
-                  <React.Fragment key={`total-${member.id}`}>
-                    <td className="px-2 py-3 text-right">
-                      <span className="text-xs text-gray-600">
-                        {formatCurrency(totals.suggested)}
-                      </span>
-                    </td>
-                    <td className={`px-2 py-3 text-right ${idx < members.length - 1 ? 'border-r border-teal-200' : ''}`}>
-                      <span className={`text-xs font-medium ${
-                        cellStatus === 'adequate' ? 'text-green-600' :
-                        cellStatus === 'partial' ? 'text-amber-600' :
-                        'text-red-500'
-                      }`}>
-                        {formatCurrency(totals.actual)}
-                      </span>
-                    </td>
-                  </React.Fragment>
-                );
-              })}
-              <td className="px-2 py-3 text-right bg-teal-200/50 border-l border-teal-200">
-                <span className="text-sm text-teal-800">
-                  {formatCurrency(grandTotals.suggested)}
-                </span>
-              </td>
-              <td className="px-2 py-3 text-right bg-teal-200/50">
-                <span className={`text-sm font-bold ${
-                  grandTotals.actual >= grandTotals.suggested ? 'text-green-600' : 'text-amber-600'
-                }`}>
-                  {formatCurrency(grandTotals.actual)}
-                </span>
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>
