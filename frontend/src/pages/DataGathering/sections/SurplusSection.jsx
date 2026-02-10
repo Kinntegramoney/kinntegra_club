@@ -1883,28 +1883,25 @@ function AllocationSimulator({
                           className="w-14 h-8 text-sm border border-gray-300 rounded px-2 bg-white text-center"
                         />
                       </td>
-                      <td className="py-3 px-2 border-l border-gray-200">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={allocation.includeAssets || false}
-                            onChange={(e) => updateAllocation(member.id, 'includeAssets', e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                          />
-                          {allocation.includeAssets && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => openAssetModal(member.id)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 gap-1"
-                            >
-                              <Settings2 className="h-3 w-3" />
-                              Configure ({getAssetsForEntity(member.id).filter(a => allocation.selectedAssets?.[a.id] !== false).length})
-                            </Button>
-                          )}
-                        </div>
+                      <td className="py-3 px-2 border-l border-gray-200 text-center">
+                        <input
+                          type="checkbox"
+                          checked={allocation.includeAssets || false}
+                          onChange={(e) => updateAllocation(member.id, 'includeAssets', e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                        />
                       </td>
-                      <td className="py-3 px-2">
+                      <td className="py-3 px-2 border-l border-gray-200">
                         <div className="flex items-center gap-1">
+                          <Button 
+                            size="sm" 
+                            onClick={() => openAssetModal(member.id)}
+                            disabled={!allocation.includeAssets}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Settings2 className="h-3 w-3" />
+                            Configure
+                          </Button>
                           <Button 
                             size="sm" 
                             onClick={() => runSimulation(member.id)}
@@ -1915,7 +1912,8 @@ function AllocationSimulator({
                           <Button 
                             size="sm" 
                             onClick={() => exportEntityCashFlow(member.id)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 gap-1"
+                            disabled={!allocation.result}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Download Excel"
                           >
                             <Download className="h-3 w-3" />
