@@ -25719,17 +25719,22 @@ class InsurancePremiumCreate(BaseModel):
     family_id: str
     member_ids: List[str]
     category: str  # motor, life
-    inflation_percent: float
-    goal_year: int
-    amount_today: float
+    inflation_percent: float = 0
+    goal_year: int = 2050
+    amount_today: float = 0
+    yearly_premium: Optional[float] = None
+    upto_year: Optional[int] = None
+    coverage_amount: Optional[float] = None
 
 class LiabilityCreate(BaseModel):
     family_id: str
     member_ids: List[str]
     category: str  # home_loan, vehicle_loan, etc.
-    inflation_percent: float
-    goal_year: int
-    amount_today: float
+    inflation_percent: float = 0
+    goal_year: int = 2050
+    amount_today: float = 0
+    monthly_emi: Optional[float] = None
+    num_installments: Optional[int] = None
 
 class AssetDetailCreate(BaseModel):
     family_id: str
