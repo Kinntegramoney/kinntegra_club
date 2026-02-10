@@ -1,41 +1,147 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, PiggyBank, Wallet, ArrowUpRight, ArrowDownRight, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
+import { TrendingUp, TrendingDown, PiggyBank, Wallet, ArrowUpRight, ArrowDownRight, User, Briefcase, Building, Home } from "lucide-react";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+// Income categories that generate cashflows (salary, business, rental income, pension)
+const CASHFLOW_INCOME_CATEGORIES = ['salary', 'business', 'rental', 'pension'];
 
 export default function SurplusSection({ family, isReadOnly }) {
-  const [surplusData, setSurplusData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("savings");
+  const members = family?.members || [];
+  const incomeDetails = family?.income_details || [];
+  const expenseDetails = family?.expense_details || [];
 
-  const fetchSurplus = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/data-gathering/family/${family.id}/surplus`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSurplusData(response.data);
-    } catch (error) {
-      console.error("Error fetching surplus:", error);
-      toast.error("Failed to load surplus data");
-    } finally {
-      setLoading(false);
-    }
+  // Calculate annual income for a member from cashflow-generating categories
+  const getMemberIncome = (memberId) => {
+    const memberIncomes = incomeDetails.filter(
+      income => CASHFLOW_INCOME_CATEGORIES.includes(income.category) && income.member_ids?.includes(memberId)
+    );
+    
+    let totalIncome = 0;
+    memberIncomes.forEach(income => {
+      const details = income.details || {};
+      
+      switch (income.category) {
+        case 'salary':
+          // Salary: net_income_yearly or net_income_monthly * 12
+          const salaryYearly = parseFloat(details.net_income_yearly) || 0;
+          const salaryMonthly = parseFloat(details.net_income_monthly) || 0;
+          totalIncome += salaryYearly > 0 ? salaryYearly : salaryMonthly * 12;
+          break;
+        case 'business':
+          // Business: net_income_yearly
+          totalIncome += parseFloat(details.net_income_yearly) || 0;
+          break;
+        case 'rental':
+          // Rental: annual_rent (only if property is on rent)
+          if (details.is_on_rent === 'Yes') {
+            const annualRent = parseFloat(details.annual_rent) || 0;
+            const rentPerMonth = parseFloat(details.rent_per_month) || 0;
+            totalIncome += annualRent > 0 ? annualRent : rentPerMonth * 12;
+          }
+          break;
+        case 'pension':
+          // Pension: amount_yearly or calculated from amount and frequency
+          const pensionYearly = parseFloat(details.amount_yearly) || 0;
+          if (pensionYearly > 0) {
+            totalIncome += pensionYearly;
+          } else {
+            const pensionAmount = parseFloat(details.amount) || 0;
+            const frequency = details.payable_type;
+            const multiplier = frequency === 'Monthly' ? 12 : frequency === 'Quarterly' ? 4 : frequency === 'Half-Yearly' ? 2 : 1;
+            totalIncome += pensionAmount * multiplier;
+          }
+          break;
+        default:
+          break;
+      }
+    });
+    
+    return totalIncome;
   };
 
-  useEffect(() => {
-    fetchSurplus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [family.id]);
+  // Calculate annual expenses for a member
+  const getMemberExpenses = (memberId) => {
+    const memberExpenses = expenseDetails.filter(
+      expense => expense.member_ids?.includes(memberId)
+    );
+    
+    return memberExpenses.reduce((sum, expense) => {
+      const annualAmount = parseFloat(expense.annual_amount) || 0;
+      const monthlyAmount = parseFloat(expense.monthly_amount) || 0;
+      return sum + (annualAmount > 0 ? annualAmount : monthlyAmount * 12);
+    }, 0);
+  };
 
+  // Get income breakdown by category for a member
+  const getMemberIncomeBreakdown = (memberId) => {
+    const memberIncomes = incomeDetails.filter(
+      income => CASHFLOW_INCOME_CATEGORIES.includes(income.category) && income.member_ids?.includes(memberId)
+    );
+    
+    const breakdown = { salary: 0, business: 0, rental: 0, pension: 0 };
+    
+    memberIncomes.forEach(income => {
+      const details = income.details || {};
+      
+      switch (income.category) {
+        case 'salary':
+          const salaryYearly = parseFloat(details.net_income_yearly) || 0;
+          const salaryMonthly = parseFloat(details.net_income_monthly) || 0;
+          breakdown.salary += salaryYearly > 0 ? salaryYearly : salaryMonthly * 12;
+          break;
+        case 'business':
+          breakdown.business += parseFloat(details.net_income_yearly) || 0;
+          break;
+        case 'rental':
+          if (details.is_on_rent === 'Yes') {
+            const annualRent = parseFloat(details.annual_rent) || 0;
+            const rentPerMonth = parseFloat(details.rent_per_month) || 0;
+            breakdown.rental += annualRent > 0 ? annualRent : rentPerMonth * 12;
+          }
+          break;
+        case 'pension':
+          const pensionYearly = parseFloat(details.amount_yearly) || 0;
+          if (pensionYearly > 0) {
+            breakdown.pension += pensionYearly;
+          } else {
+            const pensionAmount = parseFloat(details.amount) || 0;
+            const frequency = details.payable_type;
+            const multiplier = frequency === 'Monthly' ? 12 : frequency === 'Quarterly' ? 4 : frequency === 'Half-Yearly' ? 2 : 1;
+            breakdown.pension += pensionAmount * multiplier;
+          }
+          break;
+        default:
+          break;
+      }
+    });
+    
+    return breakdown;
+  };
+
+  // Calculate totals
+  const getTotals = () => {
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    
+    members.forEach(member => {
+      totalIncome += getMemberIncome(member.id);
+      totalExpenses += getMemberExpenses(member.id);
+    });
+    
+    return {
+      totalIncome,
+      totalExpenses,
+      surplus: totalIncome - totalExpenses
+    };
+  };
+
+  // Format currency
   const formatAmount = (amount) => {
-    if (amount === undefined || amount === null) return "-";
+    if (amount === undefined || amount === null || amount === 0) return "₹0";
+    const absValue = Math.abs(amount);
+    if (absValue >= 10000000) return `${amount < 0 ? '-' : ''}₹${(absValue / 10000000).toFixed(2)} Cr`;
+    if (absValue >= 100000) return `${amount < 0 ? '-' : ''}₹${(absValue / 100000).toFixed(2)} L`;
     return new Intl.NumberFormat('en-IN', { 
       style: 'currency', 
       currency: 'INR', 
@@ -43,17 +149,18 @@ export default function SurplusSection({ family, isReadOnly }) {
     }).format(amount);
   };
 
-  if (loading) {
+  if (members.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="flex flex-col items-center justify-center py-12">
+        <User className="h-10 w-10 text-emerald-500 mb-3" />
+        <h3 className="text-base font-medium text-gray-700 mb-1">No Family Members</h3>
+        <p className="text-gray-500 text-sm">Add members in Members tab first.</p>
       </div>
     );
   }
 
-  const totals = surplusData?.totals || { total_income: 0, total_expense: 0, total_savings: 0 };
-  const memberSummary = surplusData?.member_summary || [];
-  const isSurplus = totals.total_savings >= 0;
+  const totals = getTotals();
+  const isSurplus = totals.surplus >= 0;
 
   return (
     <div className="space-y-6">
@@ -67,8 +174,8 @@ export default function SurplusSection({ family, isReadOnly }) {
                   <ArrowUpRight className="h-4 w-4" />
                   Total Income
                 </p>
-                <p className="text-2xl font-bold text-green-700">{formatAmount(totals.total_income)}</p>
-                <p className="text-xs text-green-600">Annual</p>
+                <p className="text-2xl font-bold text-green-700">{formatAmount(totals.totalIncome)}</p>
+                <p className="text-xs text-green-600">Salary + Business + Rental + Pension (Annual)</p>
               </div>
               <TrendingUp className="h-10 w-10 text-green-300" />
             </div>
@@ -81,10 +188,10 @@ export default function SurplusSection({ family, isReadOnly }) {
               <div>
                 <p className="text-sm text-orange-600 flex items-center gap-1">
                   <ArrowDownRight className="h-4 w-4" />
-                  Total Outflow
+                  Total Expenses
                 </p>
-                <p className="text-2xl font-bold text-orange-700">{formatAmount(totals.total_expense)}</p>
-                <p className="text-xs text-orange-600">Expenses + Insurance + Liabilities</p>
+                <p className="text-2xl font-bold text-orange-700">{formatAmount(totals.totalExpenses)}</p>
+                <p className="text-xs text-orange-600">Annual Expenses</p>
               </div>
               <TrendingDown className="h-10 w-10 text-orange-300" />
             </div>
@@ -100,10 +207,10 @@ export default function SurplusSection({ family, isReadOnly }) {
                   {isSurplus ? 'Surplus' : 'Deficit'}
                 </p>
                 <p className={`text-2xl font-bold ${isSurplus ? 'text-emerald-700' : 'text-red-700'}`}>
-                  {formatAmount(Math.abs(totals.total_savings))}
+                  {formatAmount(Math.abs(totals.surplus))}
                 </p>
                 <p className={`text-xs ${isSurplus ? 'text-emerald-600' : 'text-red-600'}`}>
-                  Available for savings/investment
+                  Income - Expenses
                 </p>
               </div>
               {isSurplus ? (
@@ -122,23 +229,43 @@ export default function SurplusSection({ family, isReadOnly }) {
           <CardTitle className="text-lg">Member-wise Cash Flow</CardTitle>
         </CardHeader>
         <CardContent>
-          {memberSummary.length === 0 ? (
-            <p className="text-center text-gray-500 py-8">No member data available</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-2 font-medium text-gray-600">Member</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600">Income</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600">Expenses</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600">Insurance</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600">Liability</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600">Savings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {memberSummary.map((member) => (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left py-3 px-2 font-medium text-gray-600">Member</th>
+                  <th className="text-right py-3 px-2 font-medium text-blue-600">
+                    <div className="flex items-center justify-end gap-1">
+                      <Briefcase className="h-3 w-3" />
+                      Salary
+                    </div>
+                  </th>
+                  <th className="text-right py-3 px-2 font-medium text-purple-600">
+                    <div className="flex items-center justify-end gap-1">
+                      <Building className="h-3 w-3" />
+                      Business
+                    </div>
+                  </th>
+                  <th className="text-right py-3 px-2 font-medium text-teal-600">
+                    <div className="flex items-center justify-end gap-1">
+                      <Home className="h-3 w-3" />
+                      Rental
+                    </div>
+                  </th>
+                  <th className="text-right py-3 px-2 font-medium text-rose-600">Pension</th>
+                  <th className="text-right py-3 px-2 font-medium text-green-600">Total Income</th>
+                  <th className="text-right py-3 px-2 font-medium text-orange-600">Expenses</th>
+                  <th className="text-right py-3 px-2 font-medium text-gray-700">Surplus</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.map((member) => {
+                  const breakdown = getMemberIncomeBreakdown(member.id);
+                  const totalIncome = getMemberIncome(member.id);
+                  const expenses = getMemberExpenses(member.id);
+                  const surplus = totalIncome - expenses;
+                  
+                  return (
                     <tr key={member.id} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-2">
                         <div className="flex items-center gap-2">
@@ -146,144 +273,128 @@ export default function SurplusSection({ family, isReadOnly }) {
                             <span className="text-sm font-medium">{member.name?.charAt(0)}</span>
                           </div>
                           <span className="font-medium">{member.name}</span>
+                          {member.is_primary && <span className="text-emerald-500">*</span>}
                         </div>
                       </td>
+                      <td className="text-right py-3 px-2 text-blue-600">
+                        {breakdown.salary > 0 ? formatAmount(breakdown.salary) : '-'}
+                      </td>
+                      <td className="text-right py-3 px-2 text-purple-600">
+                        {breakdown.business > 0 ? formatAmount(breakdown.business) : '-'}
+                      </td>
+                      <td className="text-right py-3 px-2 text-teal-600">
+                        {breakdown.rental > 0 ? formatAmount(breakdown.rental) : '-'}
+                      </td>
+                      <td className="text-right py-3 px-2 text-rose-600">
+                        {breakdown.pension > 0 ? formatAmount(breakdown.pension) : '-'}
+                      </td>
                       <td className="text-right py-3 px-2 text-green-600 font-medium">
-                        {formatAmount(member.total_income)}
+                        {formatAmount(totalIncome)}
                       </td>
                       <td className="text-right py-3 px-2 text-orange-600">
-                        {formatAmount(member.total_expense)}
+                        {formatAmount(expenses)}
                       </td>
-                      <td className="text-right py-3 px-2 text-blue-600">
-                        {formatAmount(member.total_insurance)}
-                      </td>
-                      <td className="text-right py-3 px-2 text-red-600">
-                        {formatAmount(member.total_liability)}
-                      </td>
-                      <td className={`text-right py-3 px-2 font-semibold ${member.savings >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {formatAmount(member.savings)}
+                      <td className={`text-right py-3 px-2 font-semibold ${surplus >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {formatAmount(surplus)}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 font-semibold">
-                    <td className="py-3 px-2">Total</td>
-                    <td className="text-right py-3 px-2 text-green-600">{formatAmount(totals.total_income)}</td>
-                    <td className="text-right py-3 px-2 text-orange-600">{formatAmount(totals.total_expense)}</td>
-                    <td className="text-right py-3 px-2 text-blue-600">-</td>
-                    <td className="text-right py-3 px-2 text-red-600">-</td>
-                    <td className={`text-right py-3 px-2 ${totals.total_savings >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {formatAmount(totals.total_savings)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-gray-100 font-semibold">
+                  <td className="py-3 px-2">Total</td>
+                  <td className="text-right py-3 px-2 text-blue-600">
+                    {formatAmount(members.reduce((sum, m) => sum + getMemberIncomeBreakdown(m.id).salary, 0))}
+                  </td>
+                  <td className="text-right py-3 px-2 text-purple-600">
+                    {formatAmount(members.reduce((sum, m) => sum + getMemberIncomeBreakdown(m.id).business, 0))}
+                  </td>
+                  <td className="text-right py-3 px-2 text-teal-600">
+                    {formatAmount(members.reduce((sum, m) => sum + getMemberIncomeBreakdown(m.id).rental, 0))}
+                  </td>
+                  <td className="text-right py-3 px-2 text-rose-600">
+                    {formatAmount(members.reduce((sum, m) => sum + getMemberIncomeBreakdown(m.id).pension, 0))}
+                  </td>
+                  <td className="text-right py-3 px-2 text-green-600">{formatAmount(totals.totalIncome)}</td>
+                  <td className="text-right py-3 px-2 text-orange-600">{formatAmount(totals.totalExpenses)}</td>
+                  <td className={`text-right py-3 px-2 ${totals.surplus >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {formatAmount(totals.surplus)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Surplus Allocation */}
+      {isSurplus && totals.surplus > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Surplus Allocation Suggestions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="border-2 border-dashed border-blue-200 bg-blue-50/30">
+                <CardContent className="p-4 text-center">
+                  <h4 className="font-medium text-gray-700 mb-2">Conservative (40%)</h4>
+                  <p className="text-xl font-bold text-blue-600">
+                    {formatAmount(totals.surplus * 0.4)}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">FD, PPF, Bonds</p>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-dashed border-green-200 bg-green-50/30">
+                <CardContent className="p-4 text-center">
+                  <h4 className="font-medium text-gray-700 mb-2">Moderate (35%)</h4>
+                  <p className="text-xl font-bold text-green-600">
+                    {formatAmount(totals.surplus * 0.35)}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Mutual Funds, Gold</p>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-dashed border-purple-200 bg-purple-50/30">
+                <CardContent className="p-4 text-center">
+                  <h4 className="font-medium text-gray-700 mb-2">Aggressive (25%)</h4>
+                  <p className="text-xl font-bold text-purple-600">
+                    {formatAmount(totals.surplus * 0.25)}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Equity, Stocks</p>
+                </CardContent>
+              </Card>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-xs text-gray-500 mt-4 text-center">
+              Monthly Surplus: {formatAmount(totals.surplus / 12)} available for investment
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Savings & Investments Tabs */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Surplus Allocation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="savings" className="flex items-center gap-2">
-                <PiggyBank className="h-4 w-4" />
-                Savings
-              </TabsTrigger>
-              <TabsTrigger value="investments" className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Investments
-              </TabsTrigger>
-            </TabsList>
+      {/* Deficit Warning */}
+      {!isSurplus && (
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="p-6 text-center">
+            <Wallet className="h-12 w-12 mx-auto text-red-500 mb-3" />
+            <h3 className="text-lg font-semibold text-red-700">Cash Flow Deficit</h3>
+            <p className="text-3xl font-bold text-red-600 my-2">
+              {formatAmount(Math.abs(totals.surplus))}
+            </p>
+            <p className="text-sm text-red-600">
+              Monthly shortfall: {formatAmount(Math.abs(totals.surplus) / 12)}
+            </p>
+            <p className="text-xs text-gray-500 mt-3">
+              Consider reducing expenses or increasing income to achieve positive cash flow.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-            <TabsContent value="savings">
-              <div className="space-y-4">
-                {isSurplus ? (
-                  <div className="bg-emerald-50 rounded-lg p-6 text-center">
-                    <PiggyBank className="h-12 w-12 mx-auto text-emerald-500 mb-3" />
-                    <h3 className="text-lg font-semibold text-emerald-700">
-                      Annual Savings Potential
-                    </h3>
-                    <p className="text-3xl font-bold text-emerald-600 my-2">
-                      {formatAmount(totals.total_savings)}
-                    </p>
-                    <p className="text-sm text-emerald-600">
-                      Monthly: {formatAmount(totals.total_savings / 12)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-3">
-                      This amount is available after all expenses, insurance, and liability payments.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bg-red-50 rounded-lg p-6 text-center">
-                    <Wallet className="h-12 w-12 mx-auto text-red-500 mb-3" />
-                    <h3 className="text-lg font-semibold text-red-700">
-                      Cash Flow Deficit
-                    </h3>
-                    <p className="text-3xl font-bold text-red-600 my-2">
-                      {formatAmount(Math.abs(totals.total_savings))}
-                    </p>
-                    <p className="text-sm text-red-600">
-                      Monthly shortfall: {formatAmount(Math.abs(totals.total_savings) / 12)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-3">
-                      Consider reducing expenses or increasing income to achieve positive cash flow.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="investments">
-              <div className="space-y-4">
-                {isSurplus && totals.total_savings > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <Card className="border-2 border-dashed">
-                      <CardContent className="p-4 text-center">
-                        <h4 className="font-medium text-gray-700 mb-2">Conservative (40%)</h4>
-                        <p className="text-xl font-bold text-blue-600">
-                          {formatAmount(totals.total_savings * 0.4)}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">FD, PPF, Bonds</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-2 border-dashed">
-                      <CardContent className="p-4 text-center">
-                        <h4 className="font-medium text-gray-700 mb-2">Moderate (35%)</h4>
-                        <p className="text-xl font-bold text-green-600">
-                          {formatAmount(totals.total_savings * 0.35)}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">Mutual Funds, Gold</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-2 border-dashed">
-                      <CardContent className="p-4 text-center">
-                        <h4 className="font-medium text-gray-700 mb-2">Aggressive (25%)</h4>
-                        <p className="text-xl font-bold text-purple-600">
-                          {formatAmount(totals.total_savings * 0.25)}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">Equity, Stocks</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <TrendingUp className="h-10 w-10 mx-auto text-gray-300 mb-3" />
-                    <p>No surplus available for investments</p>
-                    <p className="text-sm mt-1">Address the deficit first before planning investments</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-xs text-gray-500 px-1">
+        <span>* Primary member</span>
+        <span>Income sources: Salary, Business, Rental & Pension</span>
+      </div>
     </div>
   );
 }
