@@ -419,37 +419,6 @@ export default function SurplusSection({ family, isReadOnly }) {
               </tr>
             )}
 
-            {/* Total Outflow Row */}
-            <tr className="bg-orange-50/30 hover:bg-orange-50/50">
-              <td className="px-3 py-2 border-r border-gray-100">
-                <div className="flex items-center gap-1">
-                  <TrendingDown className="h-3 w-3 text-orange-700" />
-                  <span className="text-xs font-semibold text-gray-800">Outflow</span>
-                </div>
-              </td>
-              {displayYears.map((year, yearIdx) => {
-                const yearInt = parseInt(year);
-                return (
-                  <React.Fragment key={`out-${year}`}>
-                    {members.map((member) => {
-                      const exp = getProjectedMemberExpenses(member.id, year);
-                      const goal = getMemberGoalExpenses(member.id, year);
-                      return (
-                        <td key={`out-${year}-${member.id}`} className="px-1 py-2 text-center">
-                          <span className="text-[10px] font-medium text-orange-800">{formatAmount(exp + goal)}</span>
-                        </td>
-                      );
-                    })}
-                    <td className={`px-1 py-2 text-center bg-orange-50/50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      <span className="text-[10px] font-bold text-orange-900">
-                        {formatAmount(members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year) + getMemberGoalExpenses(m.id, year), 0))}
-                      </span>
-                    </td>
-                  </React.Fragment>
-                );
-              })}
-            </tr>
-
             {/* Savings Row */}
             <tr className="bg-blue-50/30 hover:bg-blue-50/50">
               <td className="px-3 py-2 border-r border-gray-100">
