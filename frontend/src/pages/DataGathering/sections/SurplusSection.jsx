@@ -1887,29 +1887,53 @@ function AllocationSimulator({
                           className="w-14 h-8 text-sm border border-gray-300 rounded px-2 bg-white text-center"
                         />
                       </td>
-                      <td className="py-3 px-2 border-l border-gray-200 text-center">
-                        <input
-                          type="checkbox"
-                          checked={allocation.includeAssets || false}
-                          onChange={(e) => updateAllocation(member.id, 'includeAssets', e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                        />
+                      <td className="py-3 px-2 border-l border-gray-200">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={allocation.includeAssets || false}
+                            onChange={(e) => updateAllocation(member.id, 'includeAssets', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                          />
+                          {allocation.includeAssets && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => openAssetModal(member.id)}
+                              className="text-[10px] h-6 px-2 gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Settings2 className="h-3 w-3" />
+                              ({getAssetsForEntity(member.id).filter(a => allocation.selectedAssets?.[a.id] !== false).length})
+                            </Button>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-2">
-                        <Button 
-                          size="sm" 
-                          onClick={() => runSimulation(member.id)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          Calculate
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            size="sm" 
+                            onClick={() => runSimulation(member.id)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                          >
+                            Calculate
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => exportEntityCashFlow(member.id)}
+                            className="text-xs gap-1 h-8"
+                            title="Download Excel"
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
 
                     {/* Member Result Row */}
                     {allocation.result && (
-                      <tr className="border-b border-gray-100">
-                        <td colSpan={6} className="py-2 px-4">
+                      <tr className="border-b border-gray-100 bg-gray-50/30">
+                        <td colSpan={7} className="py-2 px-4">
                           <div className={`text-sm ${allocation.result.success ? 'text-green-700' : ''}`}>
                             {!allocation.result.success ? (
                               <>
@@ -1922,34 +1946,6 @@ function AllocationSimulator({
                               allocation.result.message
                             )}
                           </div>
-                        </td>
-                        <td className="py-2 px-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => exportEntityCashFlow(member.id)}
-                            className="text-xs gap-1"
-                          >
-                            <Download className="h-3 w-3" />
-                            Excel
-                          </Button>
-                        </td>
-                      </tr>
-                    )}
-
-                    {/* Member Asset Selection Row - Replaced with button */}
-                    {allocation.includeAssets && (
-                      <tr className="border-b border-gray-200">
-                        <td colSpan={7} className="py-2 px-4">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => openAssetModal(member.id)}
-                            className="text-xs gap-1.5"
-                          >
-                            <Settings2 className="h-3 w-3" />
-                            Configure Assets ({getAssetsForEntity(member.id).filter(a => allocation.selectedAssets?.[a.id] !== false).length} selected)
-                          </Button>
                         </td>
                       </tr>
                     )}
