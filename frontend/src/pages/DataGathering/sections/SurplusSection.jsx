@@ -1511,6 +1511,45 @@ function AllocationSimulator({
     }
   };
 
+  // Update asset custom amount
+  const updateAssetAmount = (entityId, assetId, amount) => {
+    const parsedAmount = parseFloat(amount) || 0;
+    if (entityId === 'family') {
+      setFamilyAllocation(prev => ({
+        ...prev,
+        assetAmounts: { ...prev.assetAmounts, [assetId]: parsedAmount }
+      }));
+    } else {
+      setMemberAllocations(prev => ({
+        ...prev,
+        [entityId]: {
+          ...prev[entityId],
+          assetAmounts: { ...prev[entityId]?.assetAmounts, [assetId]: parsedAmount }
+        }
+      }));
+    }
+  };
+
+  // Reset asset amount to original
+  const resetAssetAmount = (entityId, assetId) => {
+    if (entityId === 'family') {
+      setFamilyAllocation(prev => {
+        const newAmounts = { ...prev.assetAmounts };
+        delete newAmounts[assetId];
+        return { ...prev, assetAmounts: newAmounts };
+      });
+    } else {
+      setMemberAllocations(prev => {
+        const newAmounts = { ...prev[entityId]?.assetAmounts };
+        delete newAmounts[assetId];
+        return {
+          ...prev,
+          [entityId]: { ...prev[entityId], assetAmounts: newAmounts }
+        };
+      });
+    }
+  };
+
   // Open asset selection modal
   const openAssetModal = (entityId) => {
     setAssetModalEntity(entityId);
