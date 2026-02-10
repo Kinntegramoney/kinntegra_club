@@ -2773,6 +2773,15 @@ class GapSheetGenerator:
                     if purchase['remaining_units'] <= 0:
                         continue
                     
+                    # IMPORTANT: Only match purchases that happened BEFORE the sale
+                    try:
+                        purchase_date = datetime.strptime(purchase['date'], '%d-%b-%Y')
+                        if sale_date and purchase_date >= sale_date:
+                            # Skip purchases that happened on or after the sale date
+                            continue
+                    except:
+                        pass
+                    
                     # Calculate how many units from this purchase are sold
                     units_from_this_purchase = min(remaining_to_sell, purchase['remaining_units'])
                     
