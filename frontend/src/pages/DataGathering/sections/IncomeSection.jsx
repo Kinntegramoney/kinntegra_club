@@ -687,15 +687,90 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             
             // Insurance calculations
             if (category === "insurance_income") {
-              if (["principal_amount", "payable_cycle"].includes(field)) {
-                const premium = field === "principal_amount" ? value : newDetails.principal_amount;
-                const cycle = field === "payable_cycle" ? value : (newDetails.payable_cycle || "Monthly");
-                const multipliers = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1, "On Maturity": 1 };
-                if (premium) {
-                  newDetails.payment_amount_yearly = Math.round(parseFloat(premium) * (multipliers[cycle] || 12));
-                  // Investment Value = Yearly Payment
-                  newDetails.investment_value = newDetails.payment_amount_yearly;
-                  newDetails.market_value = newDetails.payment_amount_yearly;
+              if (["premium_amount", "premium_frequency", "premium_start_date", "premium_end_date", "maturity_amount", "maturity_date"].includes(field)) {
+                const premiumAmount = field === "premium_amount" ? parseFloat(value || 0) : (parseFloat(newDetails.premium_amount) || 0);
+                const frequency = field === "premium_frequency" ? value : (newDetails.premium_frequency || "Yearly");
+                const startDateStr = field === "premium_start_date" ? value : newDetails.premium_start_date;
+                const endDateStr = field === "premium_end_date" ? value : newDetails.premium_end_date;
+                const maturityAmount = field === "maturity_amount" ? parseFloat(value || 0) : (parseFloat(newDetails.maturity_amount) || 0);
+                const maturityDateStr = field === "maturity_date" ? value : newDetails.maturity_date;
+                
+                // Get payments per year based on frequency
+                const frequencyMap = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1 };
+                const paymentsPerYear = frequencyMap[frequency] || 1;
+                
+                // Parse MM/YY dates
+                const parseMMYY = (mmyy) => {
+                  if (!mmyy) return null;
+                  const [month, year] = mmyy.split('/');
+                  const fullYear = parseInt(year) > 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
+                  return new Date(fullYear, parseInt(month) - 1, 1);
+                };
+                
+                const startDate = parseMMYY(startDateStr);
+                const endDate = parseMMYY(endDateStr);
+                const today = new Date();
+                
+                if (startDate && endDate && premiumAmount > 0) {
+                  // Calculate total payments from start to end
+                  const totalMonths = Math.max(0, (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth()));
+                  const totalPayments = Math.ceil(totalMonths / (12 / paymentsPerYear));
+                  const totalAmount = totalPayments * premiumAmount;
+                  
+                  // Calculate paid till date
+                  const paidMonths = Math.max(0, Math.min(totalMonths, (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth())));
+                  const paidPayments = Math.ceil(paidMonths / (12 / paymentsPerYear));
+                  newDetails.total_paid = Math.round(paidPayments * premiumAmount);
+                  
+                  // Calculate pending
+                  newDetails.total_pending = Math.round(totalAmount - newDetails.total_paid);
+                }
+                
+                // Calculate Gross XIRR
+                if (startDate && maturityDateStr && maturityAmount > 0 && premiumAmount > 0) {
+                  const maturityDate = new Date(maturityDateStr);
+                  const monthsBetweenPayments = 12 / paymentsPerYear;
+                  
+                  // Build cash flows
+                  const cashFlows = [];
+                  const dates = [];
+                  
+                  // Add premium payments as negative cash flows
+                  let paymentDate = new Date(startDate);
+                  while (paymentDate <= endDate) {
+                    cashFlows.push(-premiumAmount);
+                    dates.push(new Date(paymentDate));
+                    paymentDate.setMonth(paymentDate.getMonth() + monthsBetweenPayments);
+                  }
+                  
+                  // Add maturity amount as positive cash flow
+                  cashFlows.push(maturityAmount);
+                  dates.push(maturityDate);
+                  
+                  // Newton-Raphson XIRR calculation
+                  if (cashFlows.length > 1) {
+                    const calcNPV = (rate) => {
+                      let npv = 0;
+                      const baseDate = dates[0];
+                      for (let i = 0; i < cashFlows.length; i++) {
+                        const years = (dates[i] - baseDate) / (365 * 24 * 60 * 60 * 1000);
+                        npv += cashFlows[i] / Math.pow(1 + rate, years);
+                      }
+                      return npv;
+                    };
+                    
+                    let guess = 0.08;
+                    for (let iter = 0; iter < 100; iter++) {
+                      const npv = calcNPV(guess);
+                      const npv2 = calcNPV(guess + 0.0001);
+                      const derivative = (npv2 - npv) / 0.0001;
+                      if (Math.abs(derivative) < 0.0000001) break;
+                      const newGuess = guess - npv / derivative;
+                      if (Math.abs(newGuess - guess) < 0.0000001) break;
+                      guess = newGuess;
+                    }
+                    newDetails.gross_xirr = Math.round(guess * 100 * 100) / 100;
+                  }
                 }
               }
             }
