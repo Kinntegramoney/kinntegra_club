@@ -1675,7 +1675,8 @@ function AllocationSimulator({
       entityAssets.forEach(asset => {
         if (selectedAssets[asset.id] !== false) {
           const startYear = assetStartYears[asset.id] || currentYear;
-          cashFlowData.push([asset.label, ...allYears.map(y => y === startYear ? Math.round(asset.value) : '')]);
+          const assetValue = assetAmounts?.[asset.id] !== undefined ? assetAmounts[asset.id] : asset.value;
+          cashFlowData.push([asset.label, ...allYears.map(y => y === startYear ? Math.round(assetValue) : '')]);
         }
       });
       cashFlowData.push([]);
@@ -1694,7 +1695,8 @@ function AllocationSimulator({
           if (!assetsAdded[asset.id] && selectedAssets[asset.id] !== false) {
             const startYear = assetStartYears[asset.id] || currentYear;
             if (y >= startYear) {
-              corpus += asset.value;
+              const assetValue = assetAmounts?.[asset.id] !== undefined ? assetAmounts[asset.id] : asset.value;
+              corpus += assetValue;
               assetsAdded[asset.id] = true;
             }
           }
