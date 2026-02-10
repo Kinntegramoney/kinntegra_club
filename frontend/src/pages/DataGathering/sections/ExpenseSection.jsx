@@ -262,10 +262,11 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
             family_id: family.id,
             member_ids: [item.memberId],
             category: cat,
-            monthly_emi: parseFloat(item.details.monthly_emi),
-            num_installments: parseInt(item.details.num_installments),
+            monthly_emi: parseFloat(item.details.monthly_emi) || 0,
+            num_installments: parseInt(item.details.num_installments) || 0,
             amount_today: outstanding,
-            goal_year: completionYear
+            goal_year: completionYear,
+            inflation_percent: 0
           };
           if (item.isNew) {
             await axios.post(`${API}/data-gathering/family/${family.id}/liability`, payload, { headers: { Authorization: `Bearer ${token}` } });
@@ -277,11 +278,12 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
             family_id: family.id,
             member_ids: [item.memberId],
             category: cat,
-            yearly_premium: parseFloat(item.details.yearly_premium),
-            amount_today: parseFloat(item.details.yearly_premium),
-            upto_year: parseInt(item.details.upto_year),
-            goal_year: parseInt(item.details.upto_year),
-            coverage_amount: parseFloat(item.details.coverage_amount)
+            yearly_premium: parseFloat(item.details.yearly_premium) || 0,
+            amount_today: parseFloat(item.details.yearly_premium) || 0,
+            upto_year: parseInt(item.details.upto_year) || currentYear + 20,
+            goal_year: parseInt(item.details.upto_year) || currentYear + 20,
+            coverage_amount: parseFloat(item.details.coverage_amount) || 0,
+            inflation_percent: 0
           };
           if (item.isNew) {
             await axios.post(`${API}/data-gathering/family/${family.id}/insurance`, payload, { headers: { Authorization: `Bearer ${token}` } });
