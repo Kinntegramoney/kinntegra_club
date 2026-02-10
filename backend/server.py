@@ -26466,6 +26466,9 @@ async def update_insurance_premium(family_id: str, insurance_id: str, insurance:
                 "inflation_percent": insurance.inflation_percent,
                 "goal_year": insurance.goal_year,
                 "amount_today": insurance.amount_today,
+                "yearly_premium": insurance.yearly_premium,
+                "upto_year": insurance.upto_year,
+                "coverage_amount": insurance.coverage_amount,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             })
             break
