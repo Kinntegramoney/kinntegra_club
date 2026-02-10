@@ -1,47 +1,60 @@
 import React from "react";
-import { User, Landmark, Home, Car, Gem, Wallet, TrendingUp, Building, PiggyBank, Coins } from "lucide-react";
+import { User, Landmark, Home, Car, Gem, Wallet, TrendingUp, Building, PiggyBank, Coins, Briefcase } from "lucide-react";
 
-// Asset categories for display
+// Asset categories mapped to income section categories
 const ASSET_CATEGORIES = [
-  { value: "ppf", label: "PPF", icon: PiggyBank },
-  { value: "epf", label: "EPF", icon: PiggyBank },
-  { value: "gratuity", label: "Gratuity", icon: Wallet },
-  { value: "fd", label: "Fixed Deposits", icon: Landmark },
-  { value: "rd_pis", label: "RD / PIS", icon: Landmark },
-  { value: "bond", label: "Bonds", icon: Landmark },
-  { value: "insurance_corpus", label: "Insurance", icon: Building },
-  { value: "mutual_fund", label: "Mutual Fund", icon: TrendingUp },
-  { value: "shares_pms", label: "Shares / PMS", icon: TrendingUp },
-  { value: "gold", label: "Gold", icon: Gem },
-  { value: "cash", label: "Cash in Hand", icon: Coins },
-  { value: "real_estate", label: "Real Estate", icon: Home },
-  { value: "vehicle", label: "Vehicles", icon: Car },
-  { value: "other", label: "Other Assets", icon: Wallet }
+  { value: "rental", label: "Rental Property", icon: Home, investmentKey: "investment_amount", marketKey: "market_value" },
+  { value: "ppf", label: "PPF", icon: PiggyBank, investmentKey: null, marketKey: "market_value" },
+  { value: "epf", label: "EPF", icon: PiggyBank, investmentKey: null, marketKey: "market_value" },
+  { value: "gratuity", label: "Gratuity", icon: Wallet, investmentKey: null, marketKey: "market_value" },
+  { value: "fd", label: "Fixed Deposits", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_amount" },
+  { value: "rd_pis", label: "RD / PIS", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_value" },
+  { value: "bond", label: "Bonds", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_amount" },
+  { value: "insurance_income", label: "Insurance", icon: Building, investmentKey: "total_paid", marketKey: "maturity_amount" },
+  { value: "pension", label: "Pension", icon: Briefcase, investmentKey: null, marketKey: "amount_yearly" },
+  { value: "commodities", label: "Commodities", icon: Gem, investmentKey: null, marketKey: "market_value" },
+  { value: "shares_pms", label: "Shares / PMS", icon: TrendingUp, investmentKey: null, marketKey: "market_value" },
+  { value: "cash", label: "Cash in Hand", icon: Coins, investmentKey: null, marketKey: "bank_balance" },
+  { value: "vehicle", label: "Vehicles", icon: Car, investmentKey: null, marketKey: "market_value" },
+  { value: "other", label: "Other Assets", icon: Wallet, investmentKey: null, marketKey: "value" }
 ];
 
 export default function AssetsSection({ family }) {
   const members = family?.members || [];
-  const existingAssets = family?.asset_details || [];
+  const existingIncomes = family?.income_details || [];
 
   // Get asset value for a specific member and category
   const getAssetValue = (memberId, categoryValue, valueType) => {
-    const assets = existingAssets.filter(
-      asset => asset.category === categoryValue && asset.member_ids?.includes(memberId)
+    const category = ASSET_CATEGORIES.find(c => c.value === categoryValue);
+    if (!category) return 0;
+    
+    const incomes = existingIncomes.filter(
+      income => income.category === categoryValue && income.member_ids?.includes(memberId)
     );
     
-    return assets.reduce((sum, asset) => {
-      const details = asset.details || {};
+    return incomes.reduce((sum, income) => {
+      const details = income.details || {};
+      
       if (valueType === 'investment') {
-        return sum + (parseFloat(details.principal_amount) || parseFloat(details.current_value) || 
-                     parseFloat(details.amount) || parseFloat(details.sum_assured) || 
-                     parseFloat(details.expected_amount) || parseFloat(details.purchase_value) || 
-                     parseFloat(details.value) || 0);
+        // Use the specific investment key for this category
+        if (category.investmentKey) {
+          return sum + (parseFloat(details[category.investmentKey]) || 0);
+        }
+        return sum; // No investment value for this category
       } else {
-        return sum + (parseFloat(details.market_value) || parseFloat(details.current_value) || 
-                     parseFloat(details.amount) || parseFloat(details.principal_amount) || 
-                     parseFloat(details.value) || 0);
+        // Use the specific market/maturity key for this category
+        if (category.marketKey) {
+          return sum + (parseFloat(details[category.marketKey]) || 0);
+        }
+        return sum;
       }
     }, 0);
+  };
+
+  // Check if category has investment value configured
+  const hasInvestmentValue = (categoryValue) => {
+    const category = ASSET_CATEGORIES.find(c => c.value === categoryValue);
+    return category?.investmentKey !== null;
   };
 
   // Calculate totals for a member
@@ -59,8 +72,10 @@ export default function AssetsSection({ family }) {
   };
 
   // Format currency
-  const formatCurrency = (value) => {
-    if (value === 0) return '-';
+  const formatCurrency = (value, showDash = false) => {
+    if (value === 0 || value === null || value === undefined) {
+      return showDash ? '-' : '-';
+    }
     return `₹${value.toLocaleString('en-IN')}`;
   };
 
@@ -89,7 +104,7 @@ export default function AssetsSection({ family }) {
               <div className="font-semibold text-green-700">{formatCurrency(grandTotalInvestment)}</div>
             </div>
             <div className="text-right">
-              <div className="text-[10px] text-green-500">Market</div>
+              <div className="text-[10px] text-green-500">Market/Maturity</div>
               <div className="font-semibold text-green-700">{formatCurrency(grandTotalMarket)}</div>
             </div>
           </div>
@@ -97,7 +112,7 @@ export default function AssetsSection({ family }) {
       )}
 
       <div className="text-xs text-gray-500 px-1">
-        Summary of asset face values by family member.
+        Summary of asset values from Income section by family member.
       </div>
 
       {/* Assets Summary Table with Member Columns */}
@@ -134,7 +149,7 @@ export default function AssetsSection({ family }) {
                     Inv. Value
                   </th>
                   <th className={`text-right text-[10px] font-medium text-gray-500 px-2 py-1.5 w-24 ${idx < members.length - 1 ? 'border-r border-gray-200' : ''}`}>
-                    Mkt. Value
+                    Mkt/Mat Value
                   </th>
                 </React.Fragment>
               ))}
@@ -142,13 +157,14 @@ export default function AssetsSection({ family }) {
                 Inv. Value
               </th>
               <th className="text-right text-[10px] font-medium text-green-600 px-2 py-1.5 w-24 bg-green-50">
-                Mkt. Value
+                Mkt/Mat Value
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {ASSET_CATEGORIES.map(category => {
               const Icon = category.icon;
+              const hasInvKey = category.investmentKey !== null;
               
               // Calculate row totals
               const rowTotalInvestment = members.reduce((sum, m) => sum + getAssetValue(m.id, category.value, 'investment'), 0);
@@ -171,8 +187,8 @@ export default function AssetsSection({ family }) {
                     return (
                       <React.Fragment key={`${category.value}-${member.id}`}>
                         <td className="px-2 py-2.5 text-right">
-                          <span className={`text-xs ${invValue > 0 ? 'text-gray-700' : 'text-gray-300'}`}>
-                            {formatCurrency(invValue)}
+                          <span className={`text-xs ${!hasInvKey ? 'text-gray-300' : invValue > 0 ? 'text-gray-700' : 'text-gray-300'}`}>
+                            {!hasInvKey ? '-' : formatCurrency(invValue)}
                           </span>
                         </td>
                         <td className={`px-2 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
@@ -185,8 +201,8 @@ export default function AssetsSection({ family }) {
                   })}
                   {/* Row Totals */}
                   <td className="px-2 py-2.5 text-right bg-green-50/50 border-l border-gray-100">
-                    <span className={`text-xs font-medium ${rowTotalInvestment > 0 ? 'text-green-700' : 'text-gray-300'}`}>
-                      {formatCurrency(rowTotalInvestment)}
+                    <span className={`text-xs font-medium ${!hasInvKey ? 'text-gray-300' : rowTotalInvestment > 0 ? 'text-green-700' : 'text-gray-300'}`}>
+                      {!hasInvKey ? '-' : formatCurrency(rowTotalInvestment)}
                     </span>
                   </td>
                   <td className="px-2 py-2.5 text-right bg-green-50/50">
