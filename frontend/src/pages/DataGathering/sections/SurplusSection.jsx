@@ -1246,12 +1246,19 @@ function AllocationSimulator({
     debtReturn: 7,
     includeAssets: false,
     selectedAssets: {},
+    assetStartYears: {},  // Per-asset start year
     result: null,
     lastCalculated: null
   });
 
   // State for individual member allocations
   const [memberAllocations, setMemberAllocations] = useState({});
+
+  // Generate year options
+  const yearOptions = [];
+  for (let y = currentYear; y <= endYear; y++) {
+    yearOptions.push(y);
+  }
 
   // Categories with maturity dates are debt instruments - exclude from allocation simulator
   const DEBT_CATEGORIES_WITH_MATURITY = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps'];
