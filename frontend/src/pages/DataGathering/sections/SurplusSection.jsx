@@ -141,6 +141,86 @@ export default function SurplusSection({ family, isReadOnly }) {
       .reduce((sum, inv) => sum + (parseFloat(inv.annual_amount) || 0), 0);
   };
 
+  // Get member investment breakdown by category
+  const getMemberInvestmentBreakdown = (memberId) => {
+    const breakdown = {};
+    investmentDetails
+      .filter(inv => inv.member_id === memberId)
+      .forEach(inv => {
+        const cat = inv.category || 'other';
+        if (!breakdown[cat]) breakdown[cat] = 0;
+        breakdown[cat] += parseFloat(inv.annual_amount) || 0;
+      });
+    return breakdown;
+  };
+
+  // Get member income breakdown (salary, business, rental, pension)
+  const getMemberIncomeBreakdown = (memberId, year) => {
+    const info = getMemberIncomeInfo(memberId);
+    const targetYear = parseInt(year);
+    const yearsFromNow = targetYear - currentYear;
+    const isPostRetirement = targetYear >= info.retirementYear;
+    
+    if (yearsFromNow <= 0) {
+      return { salary: info.baseSalary, business: info.baseBusiness, rental: info.baseRental, pension: info.basePension };
+    }
+    
+    if (isPostRetirement) {
+      const preRetYears = info.retirementYear - currentYear;
+      const postRetYears = targetYear - info.retirementYear;
+      return {
+        salary: 0,
+        business: 0,
+        rental: info.baseRental * Math.pow(1 + info.rentalGrowth / 100, preRetYears + postRetYears),
+        pension: info.basePension
+      };
+    }
+    
+    return {
+      salary: info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow),
+      business: info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow),
+      rental: info.baseRental * Math.pow(1 + info.rentalGrowth / 100, yearsFromNow),
+      pension: info.basePension
+    };
+  };
+
+  // Get member expense breakdown by category
+  const getMemberExpenseBreakdown = (memberId, year) => {
+    const info = getMemberIncomeInfo(memberId);
+    const targetYear = parseInt(year);
+    const yearsFromNow = targetYear - currentYear;
+    const isPostRetirement = targetYear >= info.retirementYear;
+    
+    const breakdown = {};
+    
+    expenseDetails.forEach(exp => {
+      const expMemberIds = exp.member_ids || [];
+      const isFamilyExpense = expMemberIds.includes('family') || expMemberIds.length === 0;
+      const isAssignedToMember = expMemberIds.includes(memberId);
+      
+      if (isAssignedToMember || isFamilyExpense) {
+        const category = exp.expense_type || 'other';
+        const baseAmount = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) || 0) * 12;
+        const amount = isFamilyExpense ? baseAmount / members.length : baseAmount;
+        const inflationRate = parseFloat(exp.inflation_percent) ?? 5;
+        const uptoYear = parseInt(exp.upto_year) || endYear;
+        
+        if (targetYear > uptoYear) return;
+        
+        let projectedAmount = yearsFromNow <= 0 ? amount : amount * Math.pow(1 + inflationRate / 100, yearsFromNow);
+        
+        if (isPostRetirement && exp.consider_post_retirement) {
+          projectedAmount = projectedAmount * ((parseFloat(exp.post_retirement_percent) ?? 100) / 100);
+        }
+        
+        if (!breakdown[category]) breakdown[category] = 0;
+        breakdown[category] += projectedAmount;
+      }
+    });
+    
+    return breakdown;
+  };
+
   // Get goals by year
   const getGoalsByYear = () => {
     const goalsByYear = {};
