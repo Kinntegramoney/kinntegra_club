@@ -480,7 +480,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   <Select value={item.memberId || ""} onValueChange={v => updateItem(cat.value, item.id, "memberId", v)} disabled={isReadOnly}>
                                     <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200"><SelectValue placeholder="Select" /></SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="family" className="text-xs font-medium text-blue-600">{family?.name || 'Family'} & Family</SelectItem>
+                                      <SelectItem value="family" className="text-xs font-medium text-blue-600">{members.find(m => m.is_primary)?.name || 'Family'} & Family</SelectItem>
                                       {members.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}{m.is_primary ? ' *' : ''}</SelectItem>)}
                                     </SelectContent>
                                   </Select>
