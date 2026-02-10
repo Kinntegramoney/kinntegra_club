@@ -373,6 +373,13 @@ export default function DataGathering() {
             isReadOnly={isReadOnly}
           />
         );
+      case "networth":
+        return (
+          <NetworthSection 
+            family={selectedFamily}
+            isReadOnly={isReadOnly}
+          />
+        );
       default:
         return null;
     }
