@@ -95,17 +95,31 @@ export default function SurplusSection({ family, isReadOnly }) {
     return { salaryGrowth, businessGrowth, rentalGrowth: 3, retirementYear, baseSalary, baseBusiness, baseRental, basePension };
   };
 
-  // Get member expenses with inflation
+  // Get member expenses with inflation (including family expenses distributed)
   const getMemberBaseExpenses = (memberId) => {
-    return expenseDetails
-      .filter(exp => exp.member_ids?.includes(memberId))
-      .map(expense => ({
-        annualAmount: parseFloat(expense.annual_amount) || (parseFloat(expense.monthly_amount) || 0) * 12,
-        inflationRate: parseFloat(expense.inflation_percent) ?? 5,
-        uptoYear: parseInt(expense.upto_year) || endYear,
-        considerPostRetirement: expense.consider_post_retirement || false,
-        postRetirementPercent: parseFloat(expense.post_retirement_percent) ?? 100
-      }));
+    const memberExpenses = [];
+    
+    expenseDetails.forEach(exp => {
+      const expMemberIds = exp.member_ids || [];
+      const isFamilyExpense = expMemberIds.includes('family') || expMemberIds.length === 0;
+      const isAssignedToMember = expMemberIds.includes(memberId);
+      
+      if (isAssignedToMember || isFamilyExpense) {
+        const baseAmount = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) || 0) * 12;
+        // If family expense, divide among all members
+        const amount = isFamilyExpense ? baseAmount / members.length : baseAmount;
+        
+        memberExpenses.push({
+          annualAmount: amount,
+          inflationRate: parseFloat(exp.inflation_percent) ?? 5,
+          uptoYear: parseInt(exp.upto_year) || endYear,
+          considerPostRetirement: exp.consider_post_retirement || false,
+          postRetirementPercent: parseFloat(exp.post_retirement_percent) ?? 100
+        });
+      }
+    });
+    
+    return memberExpenses;
   };
 
   // Get member investments
