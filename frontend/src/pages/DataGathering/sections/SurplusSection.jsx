@@ -1707,8 +1707,8 @@ function AllocationSimulator({
                 <th className="text-left py-3 px-2 text-sm font-medium text-gray-600" rowSpan={2}>Name</th>
                 <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" colSpan={2}>Asset Allocation (%)</th>
                 <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" colSpan={2}>Expected Returns (%)</th>
-                <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" rowSpan={2}>Include Assets</th>
-                <th className="text-center py-2 px-2" rowSpan={2}></th>
+                <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" rowSpan={2}>Include<br/>Assets</th>
+                <th className="text-center py-2 px-2 text-sm font-medium text-gray-600 border-l border-gray-200" rowSpan={2}>Actions</th>
               </tr>
               <tr className="border-b border-gray-200">
                 <th className="text-center py-2 px-2 text-xs font-medium text-gray-500 border-l border-gray-200">Equity</th>
