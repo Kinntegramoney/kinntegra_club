@@ -1272,6 +1272,7 @@ export default function SurplusSection({ family, isReadOnly }) {
       {/* Allocation Simulator */}
       <AllocationSimulator 
         members={members}
+        family={family}
         currentYear={currentYear}
         endYear={endYear}
         retirementYear={earliestRetirement}
@@ -1279,9 +1280,11 @@ export default function SurplusSection({ family, isReadOnly }) {
         getProjectedMemberExpenses={getProjectedMemberExpenses}
         getMemberGoalExpenses={getMemberGoalExpenses}
         getProjectedMemberInvestments={getProjectedMemberInvestments}
+        getMemberIncomeInfo={getMemberIncomeInfo}
         incomeDetails={incomeDetails}
         primaryAge={primaryAge}
         lifeExpectancy={lifeExpectancy}
+        calculateAge={calculateAge}
       />
     </div>
   );
