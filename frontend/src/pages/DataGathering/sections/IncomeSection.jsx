@@ -140,14 +140,13 @@ const INCOME_CATEGORIES = [
     icon: Wallet,
     color: "rose",
     fields: [
-      { key: "investment_value", label: "Investment Value", type: "number", readOnly: true, calculated: true },
-      { key: "market_value", label: "Market Value", type: "number", readOnly: true, calculated: true },
+      { key: "description", label: "Description", type: "text" },
       { key: "amount", label: "Amount", type: "number" },
       { key: "payable_type", label: "Payable", type: "select", options: ["Monthly", "Quarterly", "Half-Yearly", "Yearly"], defaultValue: "Monthly" },
       { key: "amount_yearly", label: "Yearly Amt", type: "number", readOnly: true, calculated: true },
-      { key: "start_date", label: "Start", type: "date" },
+      { key: "start_date", label: "Start Date", type: "date" },
       { key: "upto_life", label: "Upto Life", type: "select", options: ["Yes", "No"] },
-      { key: "end_date", label: "End", type: "date", dependsOn: "upto_life", showWhen: "No" },
+      { key: "end_date", label: "End Date", type: "date", dependsOn: "upto_life", showWhen: "No" },
       { key: "payable_to_relation", label: "Payable To", type: "select", options: ["Self", "Spouse"] }
     ]
   },
