@@ -555,12 +555,11 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             // RD/PIS calculations
             if (category === "rd_pis") {
               // Calculate installments and total investment when dates change
-              if (["start_date", "end_date", "investment_value_monthly", "maturity_value", "interest_rate"].includes(field)) {
+              if (["start_date", "end_date", "investment_value_monthly", "maturity_value"].includes(field)) {
                 const startDateStr = field === "start_date" ? value : newDetails.start_date;
                 const endDateStr = field === "end_date" ? value : newDetails.end_date;
                 const monthlyAmt = field === "investment_value_monthly" ? parseFloat(value || 0) : (parseFloat(newDetails.investment_value_monthly) || 0);
                 const maturityVal = field === "maturity_value" ? parseFloat(value || 0) : (parseFloat(newDetails.maturity_value) || 0);
-                const statedRate = field === "interest_rate" ? parseFloat(value || 0) : (parseFloat(newDetails.interest_rate) || 0);
                 
                 if (startDateStr && endDateStr) {
                   const start = new Date(startDateStr);
@@ -608,17 +607,6 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                         guess = newGuess;
                       }
                       newDetails.gross_xirr = Math.round(guess * 100 * 100) / 100;
-                    }
-                    
-                    // Calculate Expected Maturity based on stated interest rate
-                    if (statedRate > 0 && months > 0) {
-                      // RD maturity formula with compound interest
-                      const monthlyRate = statedRate / 100 / 12;
-                      let expectedMaturity = 0;
-                      for (let i = 0; i < months; i++) {
-                        expectedMaturity += monthlyAmt * Math.pow(1 + monthlyRate, months - i);
-                      }
-                      newDetails.expected_maturity = Math.round(expectedMaturity);
                     }
                   }
                 }
