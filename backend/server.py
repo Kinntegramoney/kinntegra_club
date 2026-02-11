@@ -3823,7 +3823,7 @@ async def _call_kinntegra_for_allocation(cashflow: dict, client: dict, allocatio
             "DealId": deal_id,
             "BondInvestmentDate": cashflow.get('date', datetime.now(timezone.utc).strftime('%Y-%m-%d')),
             "InvestmentAmount": amount,
-            "PortfolioName": allocation.get('portfolio', 'wealth'),
+            "PortfolioName": format_portfolio_name(allocation.get('portfolio', 'wealth')),
             "MFInvestmentDate": datetime.now(timezone.utc).strftime('%Y-%m-%d')
         }
         
