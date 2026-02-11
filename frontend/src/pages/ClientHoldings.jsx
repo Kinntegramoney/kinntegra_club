@@ -903,6 +903,181 @@ export default function ClientHoldings() {
                 </div>
               </>
             )}
+            </>
+          )}
+          
+          {/* Real Estate Tab Content */}
+          {mainTab === "real-estate" && (
+            <>
+              {realEstateInvestments.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-xl border">
+                  <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">No real estate investments yet</p>
+                  <p className="text-sm text-gray-400 mt-2">Your property investments will appear here</p>
+                  <Button
+                    className="mt-4 bg-teal-600 hover:bg-teal-700"
+                    onClick={() => navigate("/client/opportunities")}
+                  >
+                    Browse Real Estate Opportunities
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Real Estate Summary */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-4">
+                    <div className="flex flex-wrap items-center gap-6 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-teal-600" />
+                        <span className="text-gray-500">Total Properties:</span>
+                        <span className="font-semibold text-gray-800">{realEstateInvestments.length}</span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-200"></div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">Total Investment:</span>
+                        <span className="font-mono font-semibold text-teal-600">
+                          AED {realEstateInvestments.reduce((sum, re) => sum + (re.my_investment?.amount || 0), 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-200"></div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">Avg. Share:</span>
+                        <span className="font-semibold text-purple-600">
+                          {realEstateInvestments.length > 0 
+                            ? (realEstateInvestments.reduce((sum, re) => sum + (re.my_investment?.share_percentage || 0), 0) / realEstateInvestments.length).toFixed(1)
+                            : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Real Estate Cards */}
+                  {realEstateInvestments.map((property) => (
+                    <div key={property.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      {/* Property Header */}
+                      <div className="p-6 border-b border-gray-100">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
+                              <Building2 className="h-6 w-6 text-teal-600" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-lg font-semibold text-gray-800">{property.building_name}</h3>
+                                <Badge className="bg-purple-100 text-purple-700">Off-Plan</Badge>
+                              </div>
+                              <p className="text-sm text-gray-500">
+                                Unit {property.unit_no}
+                                {property.location && <span> • <MapPin className="h-3 w-3 inline" /> {property.location}</span>}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-500">My Investment</p>
+                            <p className="text-xl font-bold text-teal-600">
+                              AED {(property.my_investment?.amount || 0).toLocaleString()}
+                            </p>
+                            <p className="text-sm text-gray-500">{property.my_investment?.share_percentage || 0}% share</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Payment Schedule */}
+                      {property.payment_schedule && property.payment_schedule.length > 0 && (
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-medium text-gray-800 flex items-center gap-2">
+                              <Calendar className="h-5 w-5 text-teal-600" />
+                              Payment Schedule
+                            </h4>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-500">Progress:</span>
+                              <span className="font-bold text-teal-600">{property.total_payment_percentage_completed || 0}%</span>
+                            </div>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div className="w-full bg-gray-100 rounded-full h-2 mb-4">
+                            <div 
+                              className="bg-teal-500 h-2 rounded-full" 
+                              style={{ width: `${property.total_payment_percentage_completed || 0}%` }}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            {property.payment_schedule.map((payment, idx) => (
+                              <div 
+                                key={idx}
+                                className={`flex items-center justify-between p-3 rounded-lg ${
+                                  payment.completed ? 'bg-green-50' : 'bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                                    payment.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
+                                  }`}>
+                                    {payment.completed ? <Check className="h-4 w-4" /> : idx + 1}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-gray-800 text-sm">{payment.description || `Payment ${idx + 1}`}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {payment.date ? format(new Date(payment.date), 'dd MMM yyyy') : '-'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-gray-800">{payment.percentage}%</p>
+                                  <p className="text-xs text-gray-500">AED {(payment.amount || 0).toLocaleString()}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Sale Info */}
+                      {(property.expected_sale_rate || property.estimated_sell_date) && (
+                        <div className="px-6 pb-6">
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <h4 className="font-medium text-gray-700 mb-2">Sale Projection</h4>
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                              {property.expected_sale_rate && (
+                                <div>
+                                  <p className="text-gray-500">Expected Rate</p>
+                                  <p className="font-medium">AED {property.expected_sale_rate.toLocaleString()}/sqft</p>
+                                </div>
+                              )}
+                              {property.estimated_sell_date && (
+                                <div>
+                                  <p className="text-gray-500">Est. Sell Date</p>
+                                  <p className="font-medium">{format(new Date(property.estimated_sell_date), 'MMM yyyy')}</p>
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-gray-500">Status</p>
+                                <p className="font-medium text-teal-600 capitalize">{property.status || 'Active'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* View Details Button */}
+                      <div className="px-6 pb-6">
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => navigate(`/client/real-estate/${property.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Property Details
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
