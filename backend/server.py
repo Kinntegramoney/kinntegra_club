@@ -18176,11 +18176,8 @@ async def get_real_estate_opportunities(
     """Get all real estate opportunities with pagination and optimized fields"""
     query = {}
     
-    # All roles can see all real estate opportunities
-    # (Similar to bonds - brokers see all, sub-brokers see all, clients see available)
-    if current_user['role'] == 'client':
-        # Clients only see available opportunities
-        query["status"] = {"$in": ["available", "partially_invested"]}
+    # All roles can see all real estate opportunities (same as bonds)
+    # Clients can view available, funded, and invested properties
     
     if status:
         query["status"] = status
