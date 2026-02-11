@@ -3917,7 +3917,7 @@ async def submit_to_kinntegra_internal(submission_id: str) -> dict:
                 "DealId": cf.get('bond_id', ''),
                 "BondInvestmentDate": cf.get('date', ''),
                 "InvestmentAmount": cf.get('net_amount', 0),
-                "PortfolioName": submission.get('portfolio_category', 'wealth'),
+                "PortfolioName": format_portfolio_name(submission.get('portfolio_category', 'wealth')),
                 "MFInvestmentDate": datetime.now(timezone.utc).strftime('%Y-%m-%d')
             })
         
