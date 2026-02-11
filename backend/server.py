@@ -3712,7 +3712,7 @@ async def call_kinntegra_mf_buy_scheduler(cashflow: dict, client: dict, is_revis
             "DealId": deal_id,
             "BondInvestmentDate": cashflow.get('date', datetime.now(timezone.utc).strftime('%Y-%m-%d')),
             "InvestmentAmount": amount,
-            "PortfolioName": cashflow.get('portfolio_category', 'wealth'),
+            "PortfolioName": format_portfolio_name(cashflow.get('portfolio_category', 'wealth')),
             "MFInvestmentDate": datetime.now(timezone.utc).strftime('%Y-%m-%d')
         }
         
