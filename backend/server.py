@@ -3626,6 +3626,23 @@ async def broker_approve_trade(
 KINNTEGRA_API_BASE_URL = "https://api.kinntegra.co.in/api/transaction"
 KINNTEGRA_API_KEY = "397071386F563639685674495956545432704E4F6E673D3D"
 
+# Portfolio name mapping for Kinntegra API (internal lowercase -> API Title Case)
+PORTFOLIO_NAME_MAP = {
+    'wealth': 'Wealth',
+    'tax': 'Tax',
+    'short_term': 'Short Term',
+    'commodities': 'Commodities',
+    'bonds': 'Bonds',
+    'real_estate': 'Real Estate',
+    'none': 'None'
+}
+
+def format_portfolio_name(portfolio: str) -> str:
+    """Convert internal portfolio name to Kinntegra API format (Title Case)"""
+    if not portfolio:
+        return 'Wealth'
+    return PORTFOLIO_NAME_MAP.get(portfolio.lower(), portfolio.title().replace('_', ' '))
+
 
 async def call_kinntegra_mf_buy_scheduler(cashflow: dict, client: dict, is_revision: bool = False) -> dict:
     """
