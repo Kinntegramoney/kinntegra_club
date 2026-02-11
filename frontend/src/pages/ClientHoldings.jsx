@@ -5,10 +5,11 @@ import ClientSidebar from "@/components/ClientSidebar";
 import { 
   Wallet, Calendar, Download, ChevronDown, ChevronUp, 
   Check, Clock, X, MapPin, Percent, ChevronRight, 
-  ClipboardList, Eye, RefreshCw, IndianRupee, Calculator, FileText
+  ClipboardList, Eye, RefreshCw, IndianRupee, Calculator, FileText, Building2
 } from "lucide-react";
 import html2pdf from 'html2pdf.js';
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
