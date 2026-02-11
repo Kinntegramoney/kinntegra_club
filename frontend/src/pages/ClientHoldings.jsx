@@ -642,27 +642,58 @@ export default function ClientHoldings() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-800" data-testid="holdings-title">My Holdings</h1>
-                <p className="text-sm text-gray-500">View your bond investments and cashflows</p>
+                <p className="text-sm text-gray-500">View your investments and cashflows</p>
               </div>
             </div>
+          </div>
+          
+          {/* Main Tab Navigation */}
+          <div className="flex items-center gap-6 mt-4 border-t pt-4">
+            <button 
+              onClick={() => setMainTab("bonds")}
+              className={`pb-2 border-b-2 font-medium transition-colors flex items-center gap-2 ${
+                mainTab === "bonds" 
+                  ? "border-teal-600 text-teal-700" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+              data-testid="tab-bonds"
+            >
+              <Wallet className="h-4 w-4" />
+              Bonds ({holdings?.holdings?.length || 0})
+            </button>
+            <button 
+              onClick={() => setMainTab("real-estate")}
+              className={`pb-2 border-b-2 font-medium transition-colors flex items-center gap-2 ${
+                mainTab === "real-estate" 
+                  ? "border-teal-600 text-teal-700" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+              data-testid="tab-real-estate"
+            >
+              <Building2 className="h-4 w-4" />
+              Real Estate ({realEstateInvestments.length})
+            </button>
           </div>
         </div>
 
         <div className="p-6">
-          {!holdings || holdings.holdings?.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl border">
-              <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 font-medium">No bond holdings yet</p>
-              <p className="text-sm text-gray-400 mt-2">Your bond investments will appear here</p>
-              <Button
-                className="mt-4 bg-teal-600 hover:bg-teal-700"
-                onClick={() => navigate("/client/opportunities")}
-              >
-                Browse Bond Opportunities
-              </Button>
-            </div>
-          ) : (
+          {/* Bonds Tab Content */}
+          {mainTab === "bonds" && (
             <>
+              {!holdings || holdings.holdings?.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-xl border">
+                  <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">No bond holdings yet</p>
+                  <p className="text-sm text-gray-400 mt-2">Your bond investments will appear here</p>
+                  <Button
+                    className="mt-4 bg-teal-600 hover:bg-teal-700"
+                    onClick={() => navigate("/client/opportunities")}
+                  >
+                    Browse Bond Opportunities
+                  </Button>
+                </div>
+              ) : (
+                <>
               {/* Summary Stats Bar */}
                 <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
                   <div className="flex flex-wrap items-center gap-4 text-xs mb-3">
