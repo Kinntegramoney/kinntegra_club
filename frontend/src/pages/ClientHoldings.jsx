@@ -65,10 +65,16 @@ export default function ClientHoldings() {
   const fetchHoldings = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/client/holdings`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setHoldings(response.data);
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      // Fetch both bond holdings and real estate investments in parallel
+      const [holdingsRes, realEstateRes] = await Promise.all([
+        axios.get(`${API}/client/holdings`, { headers }),
+        axios.get(`${API}/client/real-estate-investments`, { headers }).catch(() => ({ data: [] }))
+      ]);
+      
+      setHoldings(holdingsRes.data);
+      setRealEstateInvestments(realEstateRes.data || []);
     } catch (error) {
       console.error("Error fetching holdings:", error);
     } finally {
