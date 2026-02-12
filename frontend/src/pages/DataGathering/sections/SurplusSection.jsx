@@ -1818,117 +1818,195 @@ function AllocationSimulator({
     annualSavingsSheet['!cols'] = [{ wch: 20 }, ...allYears.map(() => ({ wch: 12 }))];
     XLSX.utils.book_append_sheet(wb, annualSavingsSheet, "Annual Savings");
 
-    // ========== SHEET 3: CASH FLOW (Data Gathering) ==========
+    // ========== SHEET 3: CASH FLOW (Matching Expected Format) ==========
     const cashFlowData = [];
-    cashFlowData.push(['CASH FLOW & CORPUS PROJECTION']);
+    cashFlowData.push(['CASH FLOW PROJECTION']);
     cashFlowData.push([entityName]);
+    cashFlowData.push([`Generated: ${new Date().toLocaleDateString('en-IN')}`]);
     cashFlowData.push([]);
 
-    cashFlowData.push(['Year', '', ...allYears]);
-    cashFlowData.push(['Age', '', ...allYears.map(y => entityAge + (y - currentYear))]);
-    cashFlowData.push([]);
-
-    // Annual Savings
-    cashFlowData.push(['Annual Savings', '', ...allYears.map(y => {
+    // Calculate data for all years first
+    let equityCorpus = 0;
+    let debtCorpus = 0;
+    const yearlyData = allYears.map((y, idx) => {
       const yearStr = y.toString();
-      const totalIncome = targetMembers.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
-      const totalExpenses = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
-      const totalGoals = targetMembers.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
-      return Math.round(totalIncome - totalExpenses - totalGoals);
-    })]);
-    cashFlowData.push([]);
+      const age = entityAge + (y - currentYear);
+      
+      // Income calculations
+      let salaryIncome = 0, rentalIncome = 0, investmentIncome = 0;
+      targetMembers.forEach(m => {
+        const info = getMemberIncomeInfo(m.id);
+        const isPostRetirement = y >= info.retirementYear;
+        const yearsFromNow = y - currentYear;
+        
+        if (!isPostRetirement) {
+          salaryIncome += info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
+          salaryIncome += info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
+        }
+        rentalIncome += info.baseRental * Math.pow(1 + (info.rentalGrowth || 5) / 100, yearsFromNow);
+      });
+      const totalIncome = salaryIncome + rentalIncome + investmentIncome;
 
-    // Savings Invested
-    cashFlowData.push(['SAVINGS INVESTED IN']);
-    cashFlowData.push([`Equity (${equity}%)`, '', ...allYears.map(y => {
-      const yearStr = y.toString();
-      const totalIncome = targetMembers.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
-      const totalExpenses = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
-      const totalGoals = targetMembers.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
-      const savings = Math.max(0, totalIncome - totalExpenses - totalGoals);
-      return Math.round(savings * equity / 100);
-    })]);
-    cashFlowData.push([`Debt (${debt}%)`, '', ...allYears.map(y => {
-      const yearStr = y.toString();
-      const totalIncome = targetMembers.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
-      const totalExpenses = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
-      const totalGoals = targetMembers.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
-      const savings = Math.max(0, totalIncome - totalExpenses - totalGoals);
-      return Math.round(savings * debt / 100);
-    })]);
-    cashFlowData.push([]);
-
-    // Assets Added
-    if (includeAssets) {
-      cashFlowData.push(['ASSETS ADDED']);
-      entityAssets.forEach(asset => {
-        if (selectedAssets[asset.id] !== false) {
-          const startYear = assetStartYears[asset.id] || currentYear;
-          const assetValue = assetAmounts?.[asset.id] !== undefined ? assetAmounts[asset.id] : asset.value;
-          cashFlowData.push([asset.label, '', ...allYears.map(y => y === startYear ? Math.round(assetValue) : '')]);
+      // Expense calculations
+      const livingExpenses = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
+      const info = getMemberIncomeInfo(targetMembers[0]?.id);
+      const insurancePremium = y < (info?.retirementYear || 2050) ? totalAnnualPremium : 0;
+      
+      // Loan installments
+      let homeLoanInstall = 0, vehicleLoanInstall = 0, personalLoanInstall = 0;
+      entityLiabilities.forEach(l => {
+        const loanType = (l.loan_type || l.expense_type || '').toLowerCase();
+        const emi = (parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0) * 12;
+        const remaining = parseInt(l.remaining_tenure) || parseInt(l.num_installments) || 0;
+        const yearsRemaining = Math.ceil(remaining / 12);
+        
+        if ((y - currentYear) < yearsRemaining) {
+          if (loanType.includes('home')) homeLoanInstall += emi;
+          else if (loanType.includes('vehicle') || loanType.includes('car')) vehicleLoanInstall += emi;
+          else personalLoanInstall += emi;
         }
       });
-      cashFlowData.push([]);
-    }
+      const totalLoanInstall = homeLoanInstall + vehicleLoanInstall + personalLoanInstall;
+      const totalExpense = livingExpenses + insurancePremium + totalLoanInstall;
 
-    // Corpus Projection
-    cashFlowData.push(['CORPUS PROJECTION']);
-    const weightedReturn = (equity * equityReturn + debt * debtReturn) / 100;
-    let corpus = 0;
-    let assetsAdded = {};
-    const corpusData = allYears.map(y => {
-      const yearStr = y.toString();
+      // Goal expenses for this year
+      const goalExpenses = targetMembers.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
+
+      // Annual savings
+      const annualSavings = totalIncome - totalExpense - goalExpenses;
       
-      // Add assets
+      // Savings invested
+      const savingsEquity = annualSavings > 0 ? annualSavings * equity / 100 : 0;
+      const savingsDebt = annualSavings > 0 ? annualSavings * debt / 100 : 0;
+
+      // Add assets in start year
+      let assetAddition = 0;
       if (includeAssets) {
         entityAssets.forEach(asset => {
-          if (!assetsAdded[asset.id] && selectedAssets[asset.id] !== false) {
+          if (selectedAssets[asset.id] !== false) {
             const startYear = assetStartYears[asset.id] || currentYear;
-            if (y >= startYear) {
+            if (y === startYear) {
               const assetValue = assetAmounts?.[asset.id] !== undefined ? assetAmounts[asset.id] : asset.value;
-              corpus += assetValue;
-              assetsAdded[asset.id] = true;
+              assetAddition += assetValue;
             }
           }
         });
       }
+
+      // Portfolio calculations - Opening balance
+      const openingEquity = equityCorpus;
+      const openingDebt = debtCorpus;
+      const openingTotal = openingEquity + openingDebt;
+
+      // Add savings + asset additions to portfolio
+      const additionsEquity = savingsEquity + (assetAddition * equity / 100);
+      const additionsDebt = savingsDebt + (assetAddition * debt / 100);
+
+      // Calculate returns
+      const equityReturns = openingEquity * equityReturn / 100;
+      const debtReturns = openingDebt * debtReturn / 100;
+
+      // Closing balance
+      equityCorpus = openingEquity + additionsEquity + equityReturns;
+      debtCorpus = openingDebt + additionsDebt + debtReturns;
       
-      const totalIncome = targetMembers.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
-      const totalExpenses = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
-      const totalGoals = targetMembers.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
-      const surplus = totalIncome - totalExpenses - totalGoals;
-      
-      corpus = corpus * (1 + weightedReturn / 100) + surplus;
+      // Handle negative savings (withdrawals)
+      if (annualSavings < 0) {
+        const withdrawal = Math.abs(annualSavings);
+        const withdrawEquity = withdrawal * equity / 100;
+        const withdrawDebt = withdrawal * debt / 100;
+        equityCorpus = Math.max(0, equityCorpus - withdrawEquity);
+        debtCorpus = Math.max(0, debtCorpus - withdrawDebt);
+      }
+
+      const closingTotal = equityCorpus + debtCorpus;
+
       return {
         year: y,
-        corpus: Math.round(corpus),
-        equityPortion: Math.round(corpus * equity / 100),
-        debtPortion: Math.round(corpus * debt / 100)
+        age,
+        salaryIncome: Math.round(salaryIncome),
+        rentalIncome: Math.round(rentalIncome),
+        investmentIncome: Math.round(investmentIncome),
+        totalIncome: Math.round(totalIncome),
+        livingExpenses: Math.round(livingExpenses),
+        insurancePremium: Math.round(insurancePremium),
+        homeLoanInstall: Math.round(homeLoanInstall),
+        vehicleLoanInstall: Math.round(vehicleLoanInstall),
+        personalLoanInstall: Math.round(personalLoanInstall),
+        totalExpense: Math.round(totalExpense),
+        goalExpenses: Math.round(goalExpenses),
+        annualSavings: Math.round(annualSavings),
+        savingsEquity: Math.round(savingsEquity),
+        savingsDebt: Math.round(savingsDebt),
+        openingEquity: Math.round(openingEquity),
+        openingDebt: Math.round(openingDebt),
+        additionsEquity: Math.round(additionsEquity),
+        additionsDebt: Math.round(additionsDebt),
+        equityReturns: Math.round(equityReturns),
+        debtReturns: Math.round(debtReturns),
+        closingEquity: Math.round(equityCorpus),
+        closingDebt: Math.round(debtCorpus),
+        closingTotal: Math.round(closingTotal)
       };
     });
 
-    cashFlowData.push(['Opening Corpus', '', ...corpusData.map((d, i) => i === 0 ? 0 : corpusData[i-1].corpus)]);
-    cashFlowData.push(['Returns Earned', '', ...corpusData.map((d, i) => {
-      const opening = i === 0 ? 0 : corpusData[i-1].corpus;
-      return Math.round(opening * weightedReturn / 100);
-    })]);
-    cashFlowData.push(['Savings Added', '', ...allYears.map(y => {
-      const yearStr = y.toString();
-      const totalIncome = targetMembers.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
-      const totalExpenses = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
-      const totalGoals = targetMembers.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
-      return Math.round(totalIncome - totalExpenses - totalGoals);
-    })]);
-    cashFlowData.push(['Closing Corpus', '', ...corpusData.map(d => d.corpus)]);
+    // Build Cash Flow sheet with proper headers
+    cashFlowData.push(['Year', ...yearlyData.map(d => d.year)]);
+    cashFlowData.push(['Age', ...yearlyData.map(d => d.age)]);
     cashFlowData.push([]);
 
-    // Portfolio Split
-    cashFlowData.push(['PORTFOLIO SPLIT']);
-    cashFlowData.push([`Equity Corpus (${equity}%)`, '', ...corpusData.map(d => d.equityPortion)]);
-    cashFlowData.push([`Debt Corpus (${debt}%)`, '', ...corpusData.map(d => d.debtPortion)]);
+    // Income Section
+    cashFlowData.push(['INCOME']);
+    cashFlowData.push(['Salary Income', ...yearlyData.map(d => d.salaryIncome)]);
+    cashFlowData.push(['Rental Income', ...yearlyData.map(d => d.rentalIncome)]);
+    cashFlowData.push(['Investment Income', ...yearlyData.map(d => d.investmentIncome)]);
+    cashFlowData.push(['Total Income', ...yearlyData.map(d => d.totalIncome)]);
+    cashFlowData.push([]);
+
+    // Expenses Section
+    cashFlowData.push(['EXPENSES']);
+    cashFlowData.push(['Living Expenses', ...yearlyData.map(d => d.livingExpenses)]);
+    cashFlowData.push(['Insurance Premium', ...yearlyData.map(d => d.insurancePremium)]);
+    cashFlowData.push(['Home Loan Installment', ...yearlyData.map(d => d.homeLoanInstall)]);
+    cashFlowData.push(['Vehicle Loan Installment', ...yearlyData.map(d => d.vehicleLoanInstall)]);
+    cashFlowData.push(['Personal Loan Installment', ...yearlyData.map(d => d.personalLoanInstall)]);
+    cashFlowData.push(['Total Expense', ...yearlyData.map(d => d.totalExpense)]);
+    cashFlowData.push([]);
+
+    // Goals/Cash Outflow Section
+    cashFlowData.push(['CASH OUTFLOW (Goals)']);
+    cashFlowData.push(['Goal Expenses', ...yearlyData.map(d => d.goalExpenses)]);
+    cashFlowData.push([]);
+
+    // Annual Savings
+    cashFlowData.push(['ANNUAL SAVINGS']);
+    cashFlowData.push(['Annual Savings', ...yearlyData.map(d => d.annualSavings)]);
+    cashFlowData.push([`Equity (${equity}%)`, ...yearlyData.map(d => d.savingsEquity)]);
+    cashFlowData.push([`Debt (${debt}%)`, ...yearlyData.map(d => d.savingsDebt)]);
+    cashFlowData.push([]);
+
+    // Portfolio Section - Equity
+    cashFlowData.push(['PORTFOLIO - EQUITY']);
+    cashFlowData.push(['Opening Balance (Equity)', ...yearlyData.map(d => d.openingEquity)]);
+    cashFlowData.push(['Additions (Equity)', ...yearlyData.map(d => d.additionsEquity)]);
+    cashFlowData.push([`Expected Returns (${equityReturn}%)`, ...yearlyData.map(d => d.equityReturns)]);
+    cashFlowData.push(['Closing Balance (Equity)', ...yearlyData.map(d => d.closingEquity)]);
+    cashFlowData.push([]);
+
+    // Portfolio Section - Debt
+    cashFlowData.push(['PORTFOLIO - DEBT']);
+    cashFlowData.push(['Opening Balance (Debt)', ...yearlyData.map(d => d.openingDebt)]);
+    cashFlowData.push(['Additions (Debt)', ...yearlyData.map(d => d.additionsDebt)]);
+    cashFlowData.push([`Expected Returns (${debtReturn}%)`, ...yearlyData.map(d => d.debtReturns)]);
+    cashFlowData.push(['Closing Balance (Debt)', ...yearlyData.map(d => d.closingDebt)]);
+    cashFlowData.push([]);
+
+    // Net Carried Forward
+    cashFlowData.push(['NET PORTFOLIO']);
+    cashFlowData.push(['Total Investment + Returns', ...yearlyData.map(d => d.closingTotal)]);
 
     const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
-    cashFlowSheet['!cols'] = [{ wch: 25 }, { wch: 8 }, ...allYears.map(() => ({ wch: 12 }))];
+    cashFlowSheet['!cols'] = [{ wch: 28 }, ...allYears.map(() => ({ wch: 14 }))];
     XLSX.utils.book_append_sheet(wb, cashFlowSheet, "Cash Flow");
 
     // Download
