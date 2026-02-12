@@ -726,28 +726,33 @@ export default function SurplusSection({ family, isReadOnly }) {
       };
     });
 
-    // Portfolio - Lumpsum
-    cashFlowData.push(['Portfolio - Lumpsum', '', ...portfolioByYear.map(p => p.portfolio)]);
+    // Portfolio Summary with Opening/Closing Balance
+    cashFlowData.push(['PORTFOLIO SUMMARY']);
+    cashFlowData.push(['Opening Balance', '', ...portfolioByYear.map(p => p.openingBalance)]);
+    cashFlowData.push(['Additions (Savings + Inflows)', '', ...portfolioByYear.map(p => p.additions)]);
+    cashFlowData.push(['Expected Returns', '', ...portfolioByYear.map(p => p.returns)]);
+    cashFlowData.push(['Less: Cash Outflow (Goals)', '', ...portfolioByYear.map(p => -p.cashOutflow)]);
+    cashFlowData.push(['Closing Balance', '', ...portfolioByYear.map(p => p.closingBalance)]);
     cashFlowData.push([]);
 
     // Portfolio Lumpsum - Equity (C)
-    cashFlowData.push([`Portfolio Lumpsum - Equity (C)`, `${equityPct}%`, ...portfolioByYear.map(p => p.equityPortion)]);
-    cashFlowData.push(['Additions', '', ...portfolioByYear.map(p => Math.round(p.savings * equityPct / 100))]);
-    cashFlowData.push(['Total (A+C)', '', ...portfolioByYear.map(p => p.equityPortion)]);
-    cashFlowData.push([`Expected Returns`, `${equityReturn}%`, ...portfolioByYear.map(p => Math.round(p.equityPortion * equityReturn / 100))]);
+    cashFlowData.push([`Portfolio Lumpsum - Equity (C)`, `${equityPct}%`, ...portfolioByYear.map(p => Math.round(p.openingBalance * equityPct / 100))]);
+    cashFlowData.push(['Additions', '', ...portfolioByYear.map(p => Math.round(p.additions * equityPct / 100))]);
+    cashFlowData.push(['Total Equity', '', ...portfolioByYear.map(p => Math.round((p.openingBalance + p.additions) * equityPct / 100))]);
+    cashFlowData.push([`Expected Returns`, `${equityReturn}%`, ...portfolioByYear.map(p => Math.round(p.openingBalance * equityPct / 100 * equityReturn / 100))]);
     cashFlowData.push(['Investment + Returns', '', ...portfolioByYear.map(p => Math.round(p.equityPortion * (1 + equityReturn / 100)))]);
     cashFlowData.push([]);
 
     // Portfolio Lumpsum - Debt (D)
-    cashFlowData.push([`Portfolio Lumpsum - Debt (D)`, `${debtPct}%`, ...portfolioByYear.map(p => p.debtPortion)]);
-    cashFlowData.push(['Additions', '', ...portfolioByYear.map(p => Math.round(p.savings * debtPct / 100))]);
-    cashFlowData.push(['Total (B+D)', '', ...portfolioByYear.map(p => p.debtPortion)]);
-    cashFlowData.push([`Expected Returns`, `${debtReturn}%`, ...portfolioByYear.map(p => Math.round(p.debtPortion * debtReturn / 100))]);
+    cashFlowData.push([`Portfolio Lumpsum - Debt (D)`, `${debtPct}%`, ...portfolioByYear.map(p => Math.round(p.openingBalance * debtPct / 100))]);
+    cashFlowData.push(['Additions', '', ...portfolioByYear.map(p => Math.round(p.additions * debtPct / 100))]);
+    cashFlowData.push(['Total Debt', '', ...portfolioByYear.map(p => Math.round((p.openingBalance + p.additions) * debtPct / 100))]);
+    cashFlowData.push([`Expected Returns`, `${debtReturn}%`, ...portfolioByYear.map(p => Math.round(p.openingBalance * debtPct / 100 * debtReturn / 100))]);
     cashFlowData.push(['Investment + Returns', '', ...portfolioByYear.map(p => Math.round(p.debtPortion * (1 + debtReturn / 100)))]);
     cashFlowData.push([]);
 
-    // Total Investment + Returns
-    cashFlowData.push(['Total Investment + Returns', '', ...portfolioByYear.map(p => Math.round(p.portfolio * (1 + (equityPct * equityReturn + debtPct * debtReturn) / 10000)))]);
+    // Total Investment + Returns (This becomes next year's Opening Balance)
+    cashFlowData.push(['Total Investment + Returns (Next Year Opening)', '', ...portfolioByYear.map(p => p.closingBalance)]);
     cashFlowData.push([]);
 
     // Cash Inflow
