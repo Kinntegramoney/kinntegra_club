@@ -656,6 +656,52 @@ export default function BondDetails() {
             </div>
           </div>
         )}
+
+        {/* Presentations Section */}
+        {bondData.presentations && bondData.presentations.length > 0 && (
+          <div className="mb-6 bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <FileText className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Presentations</p>
+                <p className="text-xs text-gray-500">{bondData.presentations.length} file(s) available</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {bondData.presentations.map((pres) => (
+                <a
+                  key={pres.id}
+                  href={`${BACKEND_URL}${pres.url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors group"
+                  data-testid={`presentation-${pres.id}`}
+                >
+                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200 group-hover:border-blue-300">
+                    {pres.content_type?.includes('pdf') || pres.original_filename?.endsWith('.pdf') ? (
+                      <FileText className="h-5 w-5 text-red-500" />
+                    ) : pres.content_type?.includes('presentation') || pres.original_filename?.match(/\.(pptx?|ppt)$/i) ? (
+                      <FileText className="h-5 w-5 text-orange-500" />
+                    ) : (
+                      <FileText className="h-5 w-5 text-blue-500" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate" title={pres.original_filename}>
+                      {pres.original_filename}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {pres.size ? (pres.size < 1024 * 1024 ? `${(pres.size / 1024).toFixed(1)} KB` : `${(pres.size / (1024 * 1024)).toFixed(1)} MB`) : 'View'}
+                    </p>
+                  </div>
+                  <Download className="h-4 w-4 text-gray-400 group-hover:text-blue-500" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Bond Summary */}
