@@ -2079,72 +2079,90 @@ function AllocationSimulator({
       };
     });
 
-    // Build Cash Flow sheet with proper headers
-    cashFlowData.push(['Year', ...yearlyData.map(d => d.year)]);
-    cashFlowData.push(['Age', ...yearlyData.map(d => d.age)]);
-    cashFlowData.push([]);
+    // Build Cash Flow sheet with proper headers - Year & Age
+    cashFlowData.push(['', 'YEAR', ...yearlyData.map(d => d.year)]);
+    cashFlowData.push(['', 'AGE', ...yearlyData.map(d => d.age)]);
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Income Section
-    cashFlowData.push(['INCOME']);
-    cashFlowData.push(['Salary Income', ...yearlyData.map(d => d.salaryIncome)]);
-    cashFlowData.push(['Rental Income', ...yearlyData.map(d => d.rentalIncome)]);
-    cashFlowData.push(['Investment Income', ...yearlyData.map(d => d.investmentIncome)]);
-    cashFlowData.push(['Total Income', ...yearlyData.map(d => d.totalIncome)]);
-    cashFlowData.push([]);
+    // CASH INFLOW Section
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '▶ CASH INFLOW']);
+    cashFlowData.push(['', '  Salary & Business Income', ...yearlyData.map(d => d.salaryIncome)]);
+    cashFlowData.push(['', '  Rental Income', ...yearlyData.map(d => d.rentalIncome)]);
+    cashFlowData.push(['', '  Investment Income', ...yearlyData.map(d => d.investmentIncome)]);
+    cashFlowData.push(['', '  TOTAL INFLOW (A)', ...yearlyData.map(d => d.totalIncome)]);
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Expenses Section
-    cashFlowData.push(['EXPENSES']);
-    cashFlowData.push(['Living Expenses', ...yearlyData.map(d => d.livingExpenses)]);
-    cashFlowData.push(['Insurance Premium', ...yearlyData.map(d => d.insurancePremium)]);
-    cashFlowData.push(['Home Loan Installment', ...yearlyData.map(d => d.homeLoanInstall)]);
-    cashFlowData.push(['Vehicle Loan Installment', ...yearlyData.map(d => d.vehicleLoanInstall)]);
-    cashFlowData.push(['Personal Loan Installment', ...yearlyData.map(d => d.personalLoanInstall)]);
-    cashFlowData.push(['Total Expense', ...yearlyData.map(d => d.totalExpense)]);
-    cashFlowData.push([]);
+    // CASH OUTFLOW Section
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '▶ CASH OUTFLOW']);
+    cashFlowData.push(['', '  Living & Household Expenses', ...yearlyData.map(d => d.livingExpenses)]);
+    cashFlowData.push(['', '  Insurance Premiums', ...yearlyData.map(d => d.insurancePremium)]);
+    cashFlowData.push(['', '  Home Loan EMI', ...yearlyData.map(d => d.homeLoanInstall)]);
+    cashFlowData.push(['', '  Vehicle Loan EMI', ...yearlyData.map(d => d.vehicleLoanInstall)]);
+    cashFlowData.push(['', '  Personal/Other Loan EMI', ...yearlyData.map(d => d.personalLoanInstall)]);
+    cashFlowData.push(['', '  TOTAL OUTFLOW (B)', ...yearlyData.map(d => d.totalExpense)]);
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Goals/Cash Outflow Section
-    cashFlowData.push(['CASH OUTFLOW (Goals)']);
-    cashFlowData.push(['Goal Expenses', ...yearlyData.map(d => d.goalExpenses)]);
-    cashFlowData.push([]);
+    // GOALS Section
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '▶ FINANCIAL GOALS']);
+    cashFlowData.push(['', '  Goal Outflows (C)', ...yearlyData.map(d => d.goalExpenses)]);
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Annual Savings from Income
-    cashFlowData.push(['ANNUAL SAVINGS (from Income)']);
-    cashFlowData.push(['Annual Savings', ...yearlyData.map(d => d.annualSavings)]);
-    cashFlowData.push([`Savings to Equity (${equity}%)`, ...yearlyData.map(d => d.savingsEquity)]);
-    cashFlowData.push([`Savings to Debt (${debt}%)`, ...yearlyData.map(d => d.savingsDebt)]);
-    cashFlowData.push([]);
+    // NET SAVINGS Section
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '▶ NET ANNUAL SAVINGS']);
+    cashFlowData.push(['', '  Net Savings = (A) - (B) - (C)', ...yearlyData.map(d => d.annualSavings)]);
+    cashFlowData.push(['', `  Allocated to Equity (${equity}%)`, ...yearlyData.map(d => d.savingsEquity)]);
+    cashFlowData.push(['', `  Allocated to Debt (${debt}%)`, ...yearlyData.map(d => d.savingsDebt)]);
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Assets Added (if include assets is selected)
+    // ASSETS Section (if include assets is selected)
     if (includeAssets) {
-      cashFlowData.push(['ASSETS INCLUDED IN OPENING BALANCE']);
-      cashFlowData.push(['Total Assets Added', ...yearlyData.map(d => d.assetAddition)]);
-      cashFlowData.push([`Assets to Equity (${equity}%)`, ...yearlyData.map(d => d.assetEquity)]);
-      cashFlowData.push([`Assets to Debt (${debt}%)`, ...yearlyData.map(d => d.assetDebt)]);
-      cashFlowData.push([]);
+      cashFlowData.push(['']);
+      cashFlowData.push(['', '▶ EXISTING ASSETS (Added to Opening Balance)']);
+      cashFlowData.push(['', '  Total Assets Included', ...yearlyData.map(d => d.assetAddition || '')]);
+      cashFlowData.push(['', `  To Equity Portfolio (${equity}%)`, ...yearlyData.map(d => d.assetEquity || '')]);
+      cashFlowData.push(['', `  To Debt Portfolio (${debt}%)`, ...yearlyData.map(d => d.assetDebt || '')]);
+      cashFlowData.push(['']);
+      cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
     }
 
-    // Portfolio Section - Equity
-    cashFlowData.push(['PORTFOLIO - EQUITY']);
-    cashFlowData.push(['Opening Balance (incl. Assets)', ...yearlyData.map(d => d.openingEquity)]);
-    cashFlowData.push(['Savings Additions', ...yearlyData.map(d => d.additionsEquity)]);
-    cashFlowData.push([`Expected Returns (${equityReturn}%)`, ...yearlyData.map(d => d.equityReturns)]);
-    cashFlowData.push(['Closing Balance (Equity)', ...yearlyData.map(d => d.closingEquity)]);
-    cashFlowData.push([]);
+    // EQUITY PORTFOLIO Section
+    cashFlowData.push(['']);
+    cashFlowData.push(['', `▶ EQUITY PORTFOLIO (${equity}% Allocation @ ${equityReturn}% Return)`]);
+    cashFlowData.push(['', '  Opening Balance', ...yearlyData.map(d => d.openingEquity)]);
+    cashFlowData.push(['', '  (+) Savings Added', ...yearlyData.map(d => d.additionsEquity)]);
+    cashFlowData.push(['', `  (+) Returns @ ${equityReturn}%`, ...yearlyData.map(d => d.equityReturns)]);
+    cashFlowData.push(['', '  CLOSING BALANCE', ...yearlyData.map(d => d.closingEquity)]);
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Portfolio Section - Debt
-    cashFlowData.push(['PORTFOLIO - DEBT']);
-    cashFlowData.push(['Opening Balance (incl. Assets)', ...yearlyData.map(d => d.openingDebt)]);
-    cashFlowData.push(['Savings Additions', ...yearlyData.map(d => d.additionsDebt)]);
-    cashFlowData.push([`Expected Returns (${debtReturn}%)`, ...yearlyData.map(d => d.debtReturns)]);
-    cashFlowData.push(['Closing Balance (Debt)', ...yearlyData.map(d => d.closingDebt)]);
-    cashFlowData.push([]);
+    // DEBT PORTFOLIO Section
+    cashFlowData.push(['']);
+    cashFlowData.push(['', `▶ DEBT PORTFOLIO (${debt}% Allocation @ ${debtReturn}% Return)`]);
+    cashFlowData.push(['', '  Opening Balance', ...yearlyData.map(d => d.openingDebt)]);
+    cashFlowData.push(['', '  (+) Savings Added', ...yearlyData.map(d => d.additionsDebt)]);
+    cashFlowData.push(['', `  (+) Returns @ ${debtReturn}%`, ...yearlyData.map(d => d.debtReturns)]);
+    cashFlowData.push(['', '  CLOSING BALANCE', ...yearlyData.map(d => d.closingDebt)]);
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Net Carried Forward
-    cashFlowData.push(['NET PORTFOLIO']);
-    cashFlowData.push(['Total Investment + Returns', ...yearlyData.map(d => d.closingTotal)]);
+    // TOTAL PORTFOLIO Section
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '▶ TOTAL PORTFOLIO VALUE']);
+    cashFlowData.push(['', '  Equity + Debt Portfolio', ...yearlyData.map(d => d.closingTotal)]);
+    cashFlowData.push(['']);
+    cashFlowData.push(['═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════']);
 
     const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
-    cashFlowSheet['!cols'] = [{ wch: 30 }, ...allYears.map(() => ({ wch: 14 }))];
+    cashFlowSheet['!cols'] = [{ wch: 3 }, { wch: 35 }, ...allYears.map(() => ({ wch: 14 }))];
     XLSX.utils.book_append_sheet(wb, cashFlowSheet, "Cash Flow");
 
     // Download
