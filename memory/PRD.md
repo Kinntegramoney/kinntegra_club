@@ -19,11 +19,28 @@ A comprehensive financial planning tool for brokers and advisors that includes:
 - **Expenses Tab**: Unified data entry for Regular Expenses, Loan EMIs, Insurance Premiums
 - **Insurance Cover Tab**: View-only summary table comparing "Suggested" vs "Actual" coverage
 - **Goals Tab**: Multi-year selection for recurring goals, "Family" option for shared goals
+- **Investments Tab**: Added "Up to Year" dropdown field (2026-02-12)
+- **Income Tab**: Extended year dropdowns to include years from 1950 for assets (2026-02-12)
 
 ### Analysis Section
 - CAS PDF parsing with investor info, portfolio summary, folios, transactions
 - Gap Sheet Excel generation with multiple sheets (Summary, Portfolio Performance, MF Transactions, Sold Units, etc.)
 - Dashboard view with holdings breakdown
+
+## Features Added (2026-02-12)
+
+### Investment "Up to Year" Field
+**File:** `/app/frontend/src/pages/DataGathering/sections/InvestmentSection.jsx`
+- Added new "Up to Year" column to investments table
+- Dropdown with years from current year to +50 years
+- Allows specifying when an investment will continue until
+- Data saved to backend with `upto_year` field
+
+### Income Year Range Extension  
+**File:** `/app/frontend/src/pages/DataGathering/sections/IncomeSection.jsx`
+- Extended year dropdown in monthyear fields to include years from 1950
+- Previously only showed ~50 years around current year
+- Now shows full years (e.g., 1950, 1951, ... 2076) instead of just 2-digit YY
 
 ## Bug Fixes Applied
 
