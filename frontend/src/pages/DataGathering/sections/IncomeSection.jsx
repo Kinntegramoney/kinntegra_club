@@ -1133,10 +1133,12 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                       <SelectTrigger className="h-8 w-[70px] text-xs bg-white border-gray-200">
                                         <SelectValue placeholder="YY" />
                                       </SelectTrigger>
-                                      <SelectContent>
-                                        {Array.from({length: 50}, (_, i) => {
-                                          const year = (new Date().getFullYear() - 30 + i).toString().slice(-2);
-                                          return <SelectItem key={year} value={year} className="text-xs">{year}</SelectItem>;
+                                      <SelectContent className="max-h-[300px]">
+                                        {/* Years from 1950 to current year + 50 */}
+                                        {Array.from({length: new Date().getFullYear() - 1950 + 51}, (_, i) => {
+                                          const fullYear = 1950 + i;
+                                          const year = fullYear.toString().slice(-2);
+                                          return <SelectItem key={fullYear} value={year} className="text-xs">{fullYear}</SelectItem>;
                                         })}
                                       </SelectContent>
                                     </Select>
