@@ -774,11 +774,13 @@ export default function SurplusSection({ family, isReadOnly }) {
     cashFlowData.push(['Total', '', ...allYears.map(y => maturitiesByYear[y]?.total || 0)]);
     cashFlowData.push([]);
 
-    // Cash Outflow (Goals)
-    cashFlowData.push(['Cash Outflow']);
+    // Cash Outflow (Goals) - List each goal by name
+    cashFlowData.push(['CASH OUTFLOW (Goals)']);
     goalDetails.forEach(goal => {
       const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
-      cashFlowData.push([goal.category || 'Goal', `${goal.inflation_percent || 0}%`, ...allYears.map(y => {
+      // Use goal name if available, otherwise use category, otherwise 'Goal'
+      const goalName = goal.name || goal.goal_name || goal.category || 'Goal';
+      cashFlowData.push([goalName, `${goal.inflation_percent || 0}%`, ...allYears.map(y => {
         if (!goalYears.includes(y.toString())) return 0;
         const amountToday = parseFloat(goal.goal_amount) || 0;
         const inflationRate = parseFloat(goal.inflation_percent) || 0;
