@@ -203,12 +203,11 @@ export default function RealEstateDetails() {
   // Convert amount from AED to selected currency
   const convertCurrency = (amountInAED, targetCurrency = selectedCurrency) => {
     const converted = amountInAED * currencyRates[targetCurrency];
-    const symbols = { AED: 'AED', INR: '₹', USD: '$', EUR: '€' };
     const formattedAmount = new Intl.NumberFormat('en-US', { 
       minimumFractionDigits: 0, 
       maximumFractionDigits: 0 
     }).format(converted || 0);
-    return `${symbols[targetCurrency]} ${formattedAmount}`;
+    return `${currencySymbols[targetCurrency] || targetCurrency} ${formattedAmount}`;
   };
 
   const formatDate = (dateStr) => {
