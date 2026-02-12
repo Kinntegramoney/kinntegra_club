@@ -85,3 +85,39 @@ if sale_date and purchase_date >= sale_date:
 - **Database:** MongoDB
 - **PDF Parsing:** PyMuPDF (fitz)
 - **Excel Generation:** openpyxl
+
+## Features Added (2026-02-12)
+
+### Bond Presentation Upload Feature
+**User Request:** Allow uploading presentations when creating or editing bonds.
+
+**Implementation:**
+1. **Backend API** (`/app/backend/server.py`):
+   - `POST /api/bonds/{bond_id}/presentations` - Upload presentations (PDF, PPT, PPTX, DOC, DOCX)
+   - `DELETE /api/bonds/{bond_id}/presentations/{presentation_id}` - Delete a presentation
+   - Max 10 presentations per bond
+   - Files stored in `/app/uploads/bond_presentations/`
+
+2. **EditBondModal** (`/app/frontend/src/components/EditBondModal.jsx`):
+   - Added "Presentations" section with file upload
+   - View/download existing presentations
+   - Delete presentations with confirmation
+   - Shows file type icons and file sizes
+
+3. **CreateBondModal** (`/app/frontend/src/components/CreateBondModal.jsx`):
+   - Added "Presentations" tab
+   - Queue presentations for upload (uploaded after bond creation)
+   - Preview pending files before creation
+   - Clear all / remove individual files
+
+**Testing:**
+- Backend API tested with curl - upload and delete working correctly
+- Frontend linting passed (no errors)
+
+## Pending User Verification
+1. Real Estate UI changes (currencies, percentages, download)
+2. Bond presentation upload feature (frontend manual testing needed due to 2-step auth)
+
+## Backlog / Future Tasks
+1. Centralize currency options into shared utility file
+2. Improve automated testing to handle two-step authentication
