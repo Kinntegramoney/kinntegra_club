@@ -207,7 +207,7 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
           <tbody className="divide-y">
             {investments.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">
+                <td colSpan={8} className="text-center py-8 text-gray-500">
                   <TrendingUp className="h-8 w-8 mx-auto text-gray-300 mb-2" />
                   <p>No investments added yet</p>
                   <p className="text-xs mt-1">Click "Add Investment" to start tracking</p>
