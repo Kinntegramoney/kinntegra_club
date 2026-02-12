@@ -658,7 +658,7 @@ export default function BondDetails() {
         )}
 
         {/* Presentations Section */}
-        {bondData.presentations && bondData.presentations.length > 0 && (
+        {bondData.presentations && bondData.presentations.length > 0 ? (
           <div className="mb-6 bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -699,6 +699,20 @@ export default function BondDetails() {
                   <Download className="h-4 w-4 text-gray-400 group-hover:text-blue-500" />
                 </a>
               ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 bg-gray-50 rounded-xl p-5 border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                <FileText className="h-5 w-5 text-gray-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">No Presentations</p>
+                <p className="text-xs text-gray-400">
+                  {user?.role === 'broker' ? 'Use Edit Bond to upload presentations' : 'No presentations available for this bond'}
+                </p>
+              </div>
             </div>
           </div>
         )}
