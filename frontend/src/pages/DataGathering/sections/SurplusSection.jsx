@@ -1627,109 +1627,205 @@ function AllocationSimulator({
     // ========== SHEET 1: DATA SHEET ==========
     const dataSheetData = [];
     
-    // Member Information
-    dataSheetData.push(['COMPREHENSIVE FINANCIAL PLAN']);
-    dataSheetData.push([entityName]);
-    dataSheetData.push([`Generated: ${new Date().toLocaleDateString('en-IN')}`]);
-    dataSheetData.push([]);
+    // Helper function to add styled header row
+    const addSectionHeader = (arr, title) => {
+      arr.push([]);
+      arr.push([title, '', '', '', '']);
+    };
 
-    dataSheetData.push(['MEMBER INFORMATION']);
-    dataSheetData.push(['Name', ...targetMembers.map(m => m.name)]);
-    dataSheetData.push(['Relation', ...targetMembers.map(m => m.is_primary ? 'Primary' : m.relation || '')]);
-    dataSheetData.push(['Date of Birth', ...targetMembers.map(m => m.date_of_birth || '')]);
-    dataSheetData.push(['Life Expectancy', ...targetMembers.map(m => parseInt(m.life_expectancy) || 85)]);
-    dataSheetData.push(['Retirement Year', ...targetMembers.map(m => getMemberIncomeInfo(m.id).retirementYear)]);
-    dataSheetData.push([]);
+    // Title Section
+    dataSheetData.push(['']);
+    dataSheetData.push(['', 'COMPREHENSIVE FINANCIAL PLAN']);
+    dataSheetData.push(['', entityName.toUpperCase()]);
+    dataSheetData.push(['', `Plan Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`]);
+    dataSheetData.push(['']);
+    dataSheetData.push(['═══════════════════════════════════════════════════════════════════════════════']);
+    dataSheetData.push(['']);
 
-    // Income Summary
-    dataSheetData.push(['INCOME SUMMARY']);
-    dataSheetData.push(['Member', 'Salary/Business', 'Growth %', 'Rental', 'Total Annual']);
-    targetMembers.forEach(m => {
+    // SECTION 1: MEMBER DETAILS
+    dataSheetData.push(['', 'SECTION 1: MEMBER DETAILS']);
+    dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
+    dataSheetData.push(['']);
+    dataSheetData.push(['', 'Particulars', ...targetMembers.map((m, i) => `Member ${i + 1}`)]);
+    dataSheetData.push(['', 'Name', ...targetMembers.map(m => m.name)]);
+    dataSheetData.push(['', 'Relation', ...targetMembers.map(m => m.is_primary ? 'Self (Primary)' : (m.relation || '-'))]);
+    dataSheetData.push(['', 'Date of Birth', ...targetMembers.map(m => m.date_of_birth || '-')]);
+    dataSheetData.push(['', 'Current Age', ...targetMembers.map(m => {
+      if (m.date_of_birth) {
+        const dob = new Date(m.date_of_birth);
+        return Math.floor((new Date() - dob) / (365.25 * 24 * 60 * 60 * 1000));
+      }
+      return '-';
+    })]);
+    dataSheetData.push(['', 'Retirement Age', ...targetMembers.map(m => getMemberIncomeInfo(m.id).retirementAge || 60)]);
+    dataSheetData.push(['', 'Retirement Year', ...targetMembers.map(m => getMemberIncomeInfo(m.id).retirementYear)]);
+    dataSheetData.push(['', 'Life Expectancy', ...targetMembers.map(m => parseInt(m.life_expectancy) || 85)]);
+    dataSheetData.push(['']);
+
+    // SECTION 2: INCOME DETAILS
+    dataSheetData.push(['', 'SECTION 2: INCOME DETAILS (Annual)']);
+    dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
+    dataSheetData.push(['']);
+    dataSheetData.push(['', 'Income Type', ...targetMembers.map(m => m.name), 'Total']);
+    
+    // Salary Income
+    const salaryByMember = targetMembers.map(m => getMemberIncomeInfo(m.id).baseSalary);
+    dataSheetData.push(['', 'Salary Income', ...salaryByMember, salaryByMember.reduce((a, b) => a + b, 0)]);
+    
+    // Business Income
+    const businessByMember = targetMembers.map(m => getMemberIncomeInfo(m.id).baseBusiness);
+    dataSheetData.push(['', 'Business Income', ...businessByMember, businessByMember.reduce((a, b) => a + b, 0)]);
+    
+    // Rental Income
+    const rentalByMember = targetMembers.map(m => getMemberIncomeInfo(m.id).baseRental);
+    dataSheetData.push(['', 'Rental Income', ...rentalByMember, rentalByMember.reduce((a, b) => a + b, 0)]);
+    
+    // Total Income
+    const totalByMember = targetMembers.map(m => {
       const info = getMemberIncomeInfo(m.id);
-      dataSheetData.push([
-        m.name,
-        info.baseSalary + info.baseBusiness,
-        info.salaryGrowth,
-        info.baseRental,
-        info.baseSalary + info.baseBusiness + info.baseRental
-      ]);
+      return info.baseSalary + info.baseBusiness + info.baseRental;
     });
-    dataSheetData.push([]);
+    dataSheetData.push(['', 'TOTAL INCOME', ...totalByMember, totalByMember.reduce((a, b) => a + b, 0)]);
+    dataSheetData.push(['']);
+    
+    // Growth Rates
+    dataSheetData.push(['', 'Growth Rates:']);
+    dataSheetData.push(['', '  Salary Growth %', ...targetMembers.map(m => `${getMemberIncomeInfo(m.id).salaryGrowth}%`)]);
+    dataSheetData.push(['', '  Business Growth %', ...targetMembers.map(m => `${getMemberIncomeInfo(m.id).businessGrowth}%`)]);
+    dataSheetData.push(['']);
 
-    // Expenses Summary
-    dataSheetData.push(['EXPENSE SUMMARY']);
+    // SECTION 3: EXPENSE DETAILS
+    dataSheetData.push(['', 'SECTION 3: EXPENSE DETAILS (Annual)']);
+    dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
+    dataSheetData.push(['']);
+    dataSheetData.push(['', 'Expense Category', 'Annual Amount', 'Monthly Amount', 'Inflation %']);
+    
     const expenseCategories = [...new Set(expenseDetails.map(e => e.expense_type || 'other'))];
-    dataSheetData.push(['Category', 'Annual Amount', 'Inflation %']);
+    let totalExpenses = 0;
     expenseCategories.forEach(cat => {
       const categoryExpenses = expenseDetails.filter(e => e.expense_type === cat);
       const totalAmount = categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
       const avgInflation = categoryExpenses.length > 0 
         ? categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.inflation_percent) || 6), 0) / categoryExpenses.length 
         : 6;
-      dataSheetData.push([cat.replace(/_/g, ' '), totalAmount, avgInflation.toFixed(1)]);
+      totalExpenses += totalAmount;
+      const displayName = cat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      dataSheetData.push(['', displayName, totalAmount, Math.round(totalAmount / 12), `${avgInflation.toFixed(1)}%`]);
     });
-    dataSheetData.push([]);
+    dataSheetData.push(['', 'TOTAL EXPENSES', totalExpenses, Math.round(totalExpenses / 12), '']);
+    dataSheetData.push(['']);
 
-    // Goals
+    // SECTION 4: LIABILITIES
+    if (entityLiabilities.length > 0) {
+      dataSheetData.push(['', 'SECTION 4: LIABILITIES']);
+      dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
+      dataSheetData.push(['']);
+      dataSheetData.push(['', 'Loan Type', 'Monthly EMI', 'Annual EMI', 'Remaining Months', 'Interest Rate', 'Outstanding']);
+      
+      let totalEMI = 0;
+      entityLiabilities.forEach(l => {
+        const emi = parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0;
+        const remaining = parseInt(l.remaining_tenure) || parseInt(l.num_installments) || 0;
+        const rate = parseFloat(l.interest_rate) || 0;
+        const outstanding = emi * remaining;
+        totalEMI += emi;
+        const loanType = (l.loan_type || 'Loan').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        dataSheetData.push(['', loanType, emi, emi * 12, remaining, `${rate}%`, outstanding]);
+      });
+      dataSheetData.push(['', 'TOTAL', totalEMI, totalEMI * 12, '', '', '']);
+      dataSheetData.push(['']);
+    }
+
+    // SECTION 5: FINANCIAL GOALS
     if (goalDetails.length > 0) {
-      dataSheetData.push(['GOALS']);
-      dataSheetData.push(['Goal', 'Amount', 'Inflation %', 'Target Year(s)']);
+      dataSheetData.push(['', 'SECTION 5: FINANCIAL GOALS']);
+      dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
+      dataSheetData.push(['']);
+      dataSheetData.push(['', 'Goal Name', 'Current Amount', 'Target Year', 'Inflation %', 'Future Value']);
+      
       goalDetails.forEach(goal => {
         const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
-        dataSheetData.push([
-          goal.category || 'Goal',
-          goal.goal_amount || 0,
-          goal.inflation_percent || 0,
-          goalYears.join(', ')
-        ]);
+        const firstYear = goalYears[0] ? parseInt(goalYears[0]) : currentYear + 5;
+        const yearsToGoal = firstYear - currentYear;
+        const inflation = parseFloat(goal.inflation_percent) || 6;
+        const currentAmt = parseFloat(goal.goal_amount) || 0;
+        const futureValue = Math.round(currentAmt * Math.pow(1 + inflation / 100, yearsToGoal));
+        const goalName = (goal.category || 'Goal').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        dataSheetData.push(['', goalName, currentAmt, goalYears.join(', '), `${inflation}%`, futureValue]);
       });
-      dataSheetData.push([]);
+      dataSheetData.push(['']);
     }
 
-    // Liabilities
-    if (entityLiabilities.length > 0) {
-      dataSheetData.push(['LIABILITIES']);
-      dataSheetData.push(['Type', 'EMI', 'Remaining Tenure', 'Interest Rate']);
-      entityLiabilities.forEach(l => {
-        dataSheetData.push([
-          l.loan_type || 'Loan',
-          l.emi_amount || l.monthly_emi || 0,
-          l.remaining_tenure || l.num_installments || 0,
-          l.interest_rate || 0
-        ]);
-      });
-      dataSheetData.push([]);
-    }
-
-    // Assets included in simulation
+    // SECTION 6: EXISTING ASSETS
     if (includeAssets && entityAssets.length > 0) {
-      dataSheetData.push(['ASSETS INCLUDED IN SIMULATION']);
-      dataSheetData.push(['Asset', 'Original Value', 'Amount Used', 'Include From Year']);
+      dataSheetData.push(['', 'SECTION 6: EXISTING ASSETS (Included in Plan)']);
+      dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
+      dataSheetData.push(['']);
+      dataSheetData.push(['', 'Asset Name', 'Current Value', 'Amount Used', 'Include From Year', 'To Equity', 'To Debt']);
+      
+      let totalAssets = 0;
       entityAssets.forEach(asset => {
         if (selectedAssets[asset.id] !== false) {
           const customAmount = assetAmounts?.[asset.id];
           const usedAmount = customAmount !== undefined ? customAmount : asset.value;
+          totalAssets += usedAmount;
           dataSheetData.push([
+            '', 
             asset.label,
             asset.value,
             usedAmount,
-            assetStartYears[asset.id] || currentYear
+            assetStartYears[asset.id] || currentYear,
+            Math.round(usedAmount * equity / 100),
+            Math.round(usedAmount * debt / 100)
           ]);
         }
       });
-      dataSheetData.push([]);
+      dataSheetData.push(['', 'TOTAL ASSETS', '', totalAssets, '', Math.round(totalAssets * equity / 100), Math.round(totalAssets * debt / 100)]);
+      dataSheetData.push(['']);
     }
 
-    // Allocation Settings
-    dataSheetData.push(['ALLOCATION SETTINGS']);
-    dataSheetData.push(['Equity Allocation', `${equity}%`]);
-    dataSheetData.push(['Debt Allocation', `${debt}%`]);
-    dataSheetData.push(['Equity Return', `${equityReturn}%`]);
-    dataSheetData.push(['Debt Return', `${debtReturn}%`]);
-    dataSheetData.push(['Weighted Return', `${((equity * equityReturn + debt * debtReturn) / 100).toFixed(2)}%`]);
+    // SECTION 7: INVESTMENT ASSUMPTIONS
+    dataSheetData.push(['', 'SECTION 7: INVESTMENT ASSUMPTIONS']);
+    dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
+    dataSheetData.push(['']);
+    dataSheetData.push(['', 'Parameter', 'Value', 'Description']);
+    dataSheetData.push(['', 'Equity Allocation', `${equity}%`, 'Portion invested in equity']);
+    dataSheetData.push(['', 'Debt Allocation', `${debt}%`, 'Portion invested in debt']);
+    dataSheetData.push(['', 'Expected Equity Return', `${equityReturn}%`, 'Annual return on equity']);
+    dataSheetData.push(['', 'Expected Debt Return', `${debtReturn}%`, 'Annual return on debt']);
+    dataSheetData.push(['', 'Weighted Average Return', `${((equity * equityReturn + debt * debtReturn) / 100).toFixed(2)}%`, 'Blended portfolio return']);
+    dataSheetData.push(['']);
+
+    // SECTION 8: SUMMARY
+    const totalAnnualIncome = totalByMember.reduce((a, b) => a + b, 0);
+    const totalAnnualEMI = entityLiabilities.reduce((sum, l) => sum + ((parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0) * 12), 0);
+    const annualSurplus = totalAnnualIncome - totalExpenses - totalAnnualEMI;
+    
+    dataSheetData.push(['', 'SECTION 8: FINANCIAL SUMMARY']);
+    dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
+    dataSheetData.push(['']);
+    dataSheetData.push(['', 'Metric', 'Annual', 'Monthly']);
+    dataSheetData.push(['', 'Total Income', totalAnnualIncome, Math.round(totalAnnualIncome / 12)]);
+    dataSheetData.push(['', 'Total Expenses', totalExpenses, Math.round(totalExpenses / 12)]);
+    dataSheetData.push(['', 'Total EMI Payments', totalAnnualEMI, Math.round(totalAnnualEMI / 12)]);
+    dataSheetData.push(['', 'Available for Savings', annualSurplus, Math.round(annualSurplus / 12)]);
+    dataSheetData.push(['', 'Savings Rate', `${((annualSurplus / totalAnnualIncome) * 100).toFixed(1)}%`, '']);
+    dataSheetData.push(['']);
+    dataSheetData.push(['═══════════════════════════════════════════════════════════════════════════════']);
 
     const dataSheet = XLSX.utils.aoa_to_sheet(dataSheetData);
-    dataSheet['!cols'] = [{ wch: 25 }, { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+    
+    // Set column widths
+    dataSheet['!cols'] = [
+      { wch: 3 },   // Margin column
+      { wch: 28 },  // Labels
+      { wch: 18 },  // Values
+      { wch: 18 },  // Values
+      { wch: 18 },  // Values
+      { wch: 18 },  // Values
+      { wch: 18 },  // Values
+    ];
+    
     XLSX.utils.book_append_sheet(wb, dataSheet, "Data Sheet");
 
     // ========== SHEET 2: ANNUAL SAVINGS ==========
