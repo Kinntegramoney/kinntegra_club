@@ -681,9 +681,10 @@ export default function SurplusSection({ family, isReadOnly }) {
     })]);
     cashFlowData.push([]);
 
-    // Calculate portfolio values year by year
-    let portfolioTotal = 0; // Starting portfolio - would need actual initial value
-    const portfolioByYear = allYears.map(y => {
+    // Calculate portfolio values year by year with proper Opening/Closing balance logic
+    // Opening Balance = Previous Year's Closing Balance (Total Investment + Returns)
+    let previousClosingBalance = 0; // Starting portfolio
+    const portfolioByYear = allYears.map((y, index) => {
       const yearStr = y.toString();
       const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
       const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
@@ -691,23 +692,37 @@ export default function SurplusSection({ family, isReadOnly }) {
       const savings = totalIncome - totalExpenses - totalGoals;
       const yearMaturities = maturitiesByYear[y]?.total || 0;
       
-      // Calculate inflows/outflows
-      const cashInflow = yearMaturities;
+      // Opening Balance = Previous year's closing (Total Investment + Returns)
+      const openingBalance = previousClosingBalance;
+      
+      // Additions = Savings + Cash Inflows
+      const additions = savings + yearMaturities;
+      
+      // Calculate returns on opening balance
+      const weightedReturnRate = (equityPct * equityReturn + debtPct * debtReturn) / 100;
+      const returns = openingBalance * (weightedReturnRate / 100);
+      
+      // Cash outflow (goals)
       const cashOutflow = totalGoals;
       
-      // Weighted return
-      const weightedReturn = (equityPct * equityReturn + debtPct * debtReturn) / 100;
+      // Closing Balance = Opening + Additions + Returns - Outflows
+      const closingBalance = openingBalance + additions + returns - cashOutflow;
       
-      portfolioTotal = portfolioTotal * (1 + weightedReturn / 100) + savings + cashInflow - cashOutflow;
+      // Store closing balance for next year's opening
+      previousClosingBalance = closingBalance;
       
       return {
         year: y,
-        portfolio: Math.round(portfolioTotal),
-        equityPortion: Math.round(portfolioTotal * equityPct / 100),
-        debtPortion: Math.round(portfolioTotal * debtPct / 100),
-        savings: Math.round(savings),
-        cashInflow: Math.round(cashInflow),
-        cashOutflow: Math.round(cashOutflow)
+        openingBalance: Math.round(openingBalance),
+        additions: Math.round(additions),
+        returns: Math.round(returns),
+        cashInflow: Math.round(yearMaturities),
+        cashOutflow: Math.round(cashOutflow),
+        closingBalance: Math.round(closingBalance),
+        portfolio: Math.round(closingBalance), // For backward compatibility
+        equityPortion: Math.round(closingBalance * equityPct / 100),
+        debtPortion: Math.round(closingBalance * debtPct / 100),
+        savings: Math.round(savings)
       };
     });
 
