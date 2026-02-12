@@ -484,10 +484,15 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 const marketValueDateStr = field === "market_value_date" ? value : newDetails.market_value_date;
                 
                 if (investmentAmount > 0 && marketValue > 0 && investmentDateStr && marketValueDateStr) {
-                  // Parse MM/YY format to date
+                  // Parse MM/YY or MM/YYYY format to date
                   const parseMMYY = (mmyy) => {
                     const [month, year] = mmyy.split('/');
-                    const fullYear = parseInt(year) > 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
+                    let fullYear;
+                    if (year.length === 4) {
+                      fullYear = parseInt(year);
+                    } else {
+                      fullYear = parseInt(year) >= 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
+                    }
                     return new Date(fullYear, parseInt(month) - 1, 1);
                   };
                   
