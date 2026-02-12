@@ -1828,19 +1828,27 @@ function AllocationSimulator({
     
     XLSX.utils.book_append_sheet(wb, dataSheet, "Data Sheet");
 
-    // ========== SHEET 2: ANNUAL SAVINGS ==========
+    // ========== SHEET 2: ANNUAL PROJECTIONS ==========
     const annualSavingsData = [];
-    annualSavingsData.push(['ANNUAL SAVINGS PROJECTION']);
-    annualSavingsData.push([entityName]);
-    annualSavingsData.push([]);
     
-    annualSavingsData.push(['Year', ...allYears]);
-    annualSavingsData.push(['Age', ...allYears.map(y => entityAge + (y - currentYear))]);
-    annualSavingsData.push([]);
+    // Header
+    annualSavingsData.push(['']);
+    annualSavingsData.push(['', 'ANNUAL PROJECTIONS']);
+    annualSavingsData.push(['', entityName.toUpperCase()]);
+    annualSavingsData.push(['']);
+    annualSavingsData.push(['═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════']);
+    annualSavingsData.push(['']);
+    
+    // Year and Age headers
+    annualSavingsData.push(['', 'YEAR', ...allYears]);
+    annualSavingsData.push(['', 'AGE', ...allYears.map(y => entityAge + (y - currentYear))]);
+    annualSavingsData.push(['']);
+    annualSavingsData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Income
-    annualSavingsData.push(['INCOME']);
-    annualSavingsData.push(['Salary/Business', ...allYears.map(y => {
+    // INCOME SECTION
+    annualSavingsData.push(['']);
+    annualSavingsData.push(['', '▶ INCOME']);
+    annualSavingsData.push(['', '  Salary/Business Income', ...allYears.map(y => {
       const yearStr = y.toString();
       return Math.round(targetMembers.reduce((sum, m) => {
         const info = getMemberIncomeInfo(m.id);
@@ -1852,7 +1860,7 @@ function AllocationSimulator({
       }, 0));
     })]);
 
-    annualSavingsData.push(['Rental', ...allYears.map(y => {
+    annualSavingsData.push(['', '  Rental Income', ...allYears.map(y => {
       return Math.round(targetMembers.reduce((sum, m) => {
         const info = getMemberIncomeInfo(m.id);
         const yearsFromNow = y - currentYear;
@@ -1860,44 +1868,48 @@ function AllocationSimulator({
       }, 0));
     })]);
 
-    annualSavingsData.push(['Total Income', ...allYears.map(y => {
+    annualSavingsData.push(['', '  TOTAL INCOME (A)', ...allYears.map(y => {
       const yearStr = y.toString();
       return Math.round(targetMembers.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0));
     })]);
-    annualSavingsData.push([]);
+    annualSavingsData.push(['']);
+    annualSavingsData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Expenses
-    annualSavingsData.push(['EXPENSES']);
-    annualSavingsData.push(['Living Expenses', ...allYears.map(y => {
+    // EXPENSES SECTION
+    annualSavingsData.push(['']);
+    annualSavingsData.push(['', '▶ EXPENSES']);
+    annualSavingsData.push(['', '  Household & Living', ...allYears.map(y => {
       const yearStr = y.toString();
       return Math.round(targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0));
     })]);
 
     const totalAnnualPremium = entityPremiums.reduce((sum, p) => sum + (parseFloat(p.amount) || parseFloat(p.premium) || 0), 0);
-    annualSavingsData.push(['Insurance Premium', ...allYears.map(y => {
+    annualSavingsData.push(['', '  Insurance Premiums', ...allYears.map(y => {
       const info = getMemberIncomeInfo(targetMembers[0]?.id);
       return y < (info?.retirementYear || 2050) ? totalAnnualPremium : 0;
     })]);
 
     const totalEMI = entityLiabilities.reduce((sum, l) => sum + (parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0), 0) * 12;
-    annualSavingsData.push(['Loan EMIs', ...allYears.map(() => totalEMI)]);
+    annualSavingsData.push(['', '  Loan EMI Payments', ...allYears.map(() => totalEMI)]);
 
-    annualSavingsData.push(['Total Expenses', ...allYears.map(y => {
+    annualSavingsData.push(['', '  TOTAL EXPENSES (B)', ...allYears.map(y => {
       const yearStr = y.toString();
       const expenses = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
       const info = getMemberIncomeInfo(targetMembers[0]?.id);
       const premium = y < (info?.retirementYear || 2050) ? totalAnnualPremium : 0;
       return Math.round(expenses + premium + totalEMI);
     })]);
-    annualSavingsData.push([]);
+    annualSavingsData.push(['']);
+    annualSavingsData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Goals
-    annualSavingsData.push(['GOALS']);
-    annualSavingsData.push(['Goal Expenses', ...allYears.map(y => {
+    // GOALS SECTION
+    annualSavingsData.push(['']);
+    annualSavingsData.push(['', '▶ FINANCIAL GOALS']);
+    annualSavingsData.push(['', '  Goal Outflows (C)', ...allYears.map(y => {
       const yearStr = y.toString();
       return Math.round(targetMembers.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0));
     })]);
-    annualSavingsData.push([]);
+    annualSavingsData.push(['']);
 
     // Net Savings
     annualSavingsData.push(['NET ANNUAL SAVINGS', ...allYears.map(y => {
