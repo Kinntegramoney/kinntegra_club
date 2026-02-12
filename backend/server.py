@@ -18660,6 +18660,8 @@ async def delete_real_estate_presentation(
     )
     
     return {"message": "Presentation deleted successfully", "remaining_presentations": len(updated_presentations)}
+
+@api_router.get("/real-estate-opportunities/{opportunity_id}/presentations/{presentation_id}")
 async def download_presentation(
     opportunity_id: str,
     presentation_id: str,
