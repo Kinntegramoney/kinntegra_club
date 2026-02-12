@@ -125,10 +125,44 @@ if sale_date and purchase_date >= sale_date:
 - Backend API tested with curl - upload and delete working correctly
 - Frontend linting passed (no errors)
 
+## Features Added (2026-02-12) - Excel & PDF Export
+
+### Cash Flow Excel Export Enhancements
+**File:** `/app/frontend/src/pages/DataGathering/sections/SurplusSection.jsx`
+
+**Completed Features:**
+1. **Goal Naming**: Display specific goal names in Cash Outflow section (not generic categories)
+2. **Portfolio Calculation Clarity**: Restructured portfolio section with:
+   - Opening Balance (carried from previous year)
+   - Additions (new savings/investments)
+   - Returns (growth on portfolio)
+   - Closing Balance
+3. **Sheet Management**: 
+   - Removed "Annual Projection" sheet
+   - Merged "Cash Flow" and "Portfolio Details" into single comprehensive sheet
+4. **Asset Consider for Restructuring** section:
+   - Year 1: Shows initial assets
+   - Year 2+: Previous year's closing balance split by equity/debt ratio
+5. **Retirement Withdrawals** section: Shows yearly withdrawals when expenses exceed income
+6. **Currency Formatting**: Indian Rupee symbol (₹) with comma separators (e.g., ₹ 4,14,66,532)
+7. **Excel Styling**: Color-coded sections with headers, totals highlighted
+
+### PDF Export (New Feature)
+- Summarized PDF version of the cash flow projection
+- Includes: Summary stats, yearly cash flow table, portfolio allocation boxes
+- Uses jsPDF with autotable for professional formatting
+
+**Testing Status:** ✅ PASSED
+- Both Excel and PDF exports execute without JavaScript errors
+- Files download successfully
+- Test report: `/app/test_reports/iteration_37.json`
+
 ## Pending User Verification
 1. Real Estate UI changes (currencies, percentages, download)
 2. Bond presentation upload feature (frontend manual testing needed due to 2-step auth)
+3. Excel/PDF export - verify file contents match requirements
 
 ## Backlog / Future Tasks
 1. Centralize currency options into shared utility file
 2. Improve automated testing to handle two-step authentication
+3. Refactor `SurplusSection.jsx` (~2900 lines) - extract calculation logic to custom hook, move export functions to utility module
