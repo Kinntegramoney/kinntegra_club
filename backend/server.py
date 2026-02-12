@@ -15434,6 +15434,7 @@ class Bond(BaseModel):
     description: Optional[str] = None  # Bond description
     calculator_file_url: Optional[str] = None  # URL to the uploaded pricing calculator Excel
     calculator_filename: Optional[str] = None  # Original filename of the calculator
+    presentations: Optional[List[dict]] = []  # Presentation files (PDFs, PPTs, DOCs)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # Legacy fields for backward compatibility
     face_value: Optional[float] = None
