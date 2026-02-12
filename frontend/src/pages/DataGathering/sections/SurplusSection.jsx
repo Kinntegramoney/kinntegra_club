@@ -1554,6 +1554,10 @@ function AllocationSimulator({
     const insurancePremiums = family?.insurance_premiums || [];
     const entityLiabilities = isFamily ? liabilities : liabilities.filter(l => l.member_id === entityId || l.member_ids?.includes(entityId));
     const entityPremiums = isFamily ? insurancePremiums : insurancePremiums.filter(p => p.member_id === entityId);
+    
+    // Get goals and investments
+    const entityGoals = goalDetails || [];
+    const entityInvestments = investments || [];
 
     // ========== SHEET 1: DATA SHEET ==========
     const dataSheetData = [];
