@@ -1933,7 +1933,7 @@ function AllocationSimulator({
         goalExpenseDetails,
         totalGoalExp: Math.round(totalGoalExp),
         // Investment details
-        investmentDetails,
+        yearInvestmentDetails,
         totalInvestments: Math.round(totalInvestments),
         // Savings
         annualSavings: Math.round(annualSavings),
