@@ -1862,24 +1862,269 @@ function AllocationSimulator({
     annualSavingsSheet['!cols'] = [{ wch: 3 }, { wch: 28 }, ...allYears.map(() => ({ wch: 14 }))];
     XLSX.utils.book_append_sheet(wb, annualSavingsSheet, "Annual Projections");
 
-    // ========== SHEET 3: CASH FLOW & PORTFOLIO ==========
+    // ========== SHEET 3: CASH FLOW (Member-wise breakdown matching UI) ==========
     const cashFlowData = [];
     
-    // Currency formatter with ₹ symbol and commas
+    // Format number in Lakhs/Crores with ₹ symbol
+    const formatInLakhsCr = (num) => {
+      if (num === 0 || num === '' || num === null || num === undefined) return '-';
+      const absValue = Math.abs(num);
+      if (absValue >= 10000000) return `₹ ${(num / 10000000).toFixed(1)}Cr`;
+      if (absValue >= 100000) return `₹ ${(num / 100000).toFixed(1)}L`;
+      if (absValue >= 1000) return `₹ ${(num / 1000).toFixed(1)}K`;
+      return `₹ ${Math.round(num)}`;
+    };
+
+    // Currency formatter with ₹ symbol and commas (for detailed sheets)
     const formatCurrency = (num) => {
       if (num === 0 || num === '' || num === null || num === undefined) return '';
       const rounded = Math.round(num);
       return '₹ ' + rounded.toLocaleString('en-IN');
     };
-    
-    // Header
-    cashFlowData.push(['']);
-    cashFlowData.push(['', 'CASH FLOW & PORTFOLIO PROJECTION']);
-    cashFlowData.push(['', entityName.toUpperCase()]);
-    cashFlowData.push(['']);
-    cashFlowData.push(['═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════']);
-    cashFlowData.push(['']);
 
+    // Calculate member-wise data for each year
+    const memberYearlyData = {};
+    targetMembers.forEach(m => {
+      memberYearlyData[m.id] = allYears.map(y => {
+        const yearStr = y.toString();
+        const income = getProjectedMemberIncome(m.id, yearStr);
+        const expenses = getProjectedMemberExpenses(m.id, yearStr);
+        const goals = getMemberGoalExpenses(m.id, yearStr);
+        const investments = getProjectedMemberInvestments(m.id, yearStr);
+        const savings = income - expenses - goals;
+        const surplus = savings - investments;
+        
+        return {
+          year: y,
+          income: Math.round(income),
+          expenses: Math.round(expenses),
+          goals: Math.round(goals),
+          savings: Math.round(savings),
+          investments: Math.round(investments),
+          surplus: Math.round(surplus)
+        };
+      });
+    });
+
+    // Build header rows
+    // Row 1: Empty + Year headers (spanning 3 columns each: Member1, Member2, Total)
+    const headerRow1 = ['Particulars'];
+    allYears.forEach((y, idx) => {
+      const isBaseYear = idx === 0;
+      headerRow1.push(isBaseYear ? `${y} (Base)` : `${y}`);
+      headerRow1.push('');
+      headerRow1.push('');
+    });
+    cashFlowData.push(headerRow1);
+
+    // Row 2: Empty + Member names for each year
+    const headerRow2 = [''];
+    allYears.forEach(() => {
+      targetMembers.forEach(m => {
+        const isPrimary = m.is_primary;
+        headerRow2.push(isPrimary ? `${m.name.split(' ')[0]}*` : m.name.split(' ')[0]);
+      });
+      headerRow2.push('Total');
+    });
+    cashFlowData.push(headerRow2);
+
+    // Empty row for spacing
+    cashFlowData.push([]);
+
+    // Income Row
+    const incomeRow = ['↗ Income'];
+    allYears.forEach((y, yIdx) => {
+      let yearTotal = 0;
+      targetMembers.forEach(m => {
+        const val = memberYearlyData[m.id][yIdx].income;
+        yearTotal += val;
+        incomeRow.push(formatInLakhsCr(val));
+      });
+      incomeRow.push(formatInLakhsCr(yearTotal));
+    });
+    cashFlowData.push(incomeRow);
+
+    // Empty row
+    cashFlowData.push([]);
+
+    // Expenses Row
+    const expensesRow = ['↘ Expenses'];
+    allYears.forEach((y, yIdx) => {
+      let yearTotal = 0;
+      targetMembers.forEach(m => {
+        const val = memberYearlyData[m.id][yIdx].expenses;
+        yearTotal += val;
+        expensesRow.push(formatInLakhsCr(val));
+      });
+      expensesRow.push(formatInLakhsCr(yearTotal));
+    });
+    cashFlowData.push(expensesRow);
+
+    // Empty row
+    cashFlowData.push([]);
+
+    // Goals Row
+    const goalsRow = ['🎯 Goals'];
+    allYears.forEach((y, yIdx) => {
+      let yearTotal = 0;
+      targetMembers.forEach(m => {
+        const val = memberYearlyData[m.id][yIdx].goals;
+        yearTotal += val;
+        goalsRow.push(val > 0 ? formatInLakhsCr(val) : '-');
+      });
+      goalsRow.push(yearTotal > 0 ? formatInLakhsCr(yearTotal) : '-');
+    });
+    cashFlowData.push(goalsRow);
+
+    // Empty row
+    cashFlowData.push([]);
+
+    // Savings Row
+    const savingsRow = ['💰 Savings'];
+    allYears.forEach((y, yIdx) => {
+      let yearTotal = 0;
+      targetMembers.forEach(m => {
+        const val = memberYearlyData[m.id][yIdx].savings;
+        yearTotal += val;
+        savingsRow.push(formatInLakhsCr(val));
+      });
+      savingsRow.push(formatInLakhsCr(yearTotal));
+    });
+    cashFlowData.push(savingsRow);
+
+    // Empty row
+    cashFlowData.push([]);
+
+    // Investments Row
+    const investmentsRow = ['🏦 Investments'];
+    allYears.forEach((y, yIdx) => {
+      let yearTotal = 0;
+      targetMembers.forEach(m => {
+        const val = memberYearlyData[m.id][yIdx].investments;
+        yearTotal += val;
+        investmentsRow.push(val > 0 ? formatInLakhsCr(val) : '-');
+      });
+      investmentsRow.push(yearTotal > 0 ? formatInLakhsCr(yearTotal) : '-');
+    });
+    cashFlowData.push(investmentsRow);
+
+    // Empty row
+    cashFlowData.push([]);
+
+    // Surplus Row (highlighted)
+    const surplusRow = ['↗ Surplus'];
+    allYears.forEach((y, yIdx) => {
+      let yearTotal = 0;
+      targetMembers.forEach(m => {
+        const val = memberYearlyData[m.id][yIdx].surplus;
+        yearTotal += val;
+        surplusRow.push(formatInLakhsCr(val));
+      });
+      surplusRow.push(formatInLakhsCr(yearTotal));
+    });
+    cashFlowData.push(surplusRow);
+
+    // Create the worksheet
+    const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
+
+    // Set column widths
+    const colWidths = [{ wch: 18 }]; // Particulars column
+    allYears.forEach(() => {
+      targetMembers.forEach(() => colWidths.push({ wch: 12 }));
+      colWidths.push({ wch: 12 }); // Total column
+    });
+    cashFlowSheet['!cols'] = colWidths;
+
+    // Apply cell styling using cell properties
+    // Define color fills
+    const headerFill = { fgColor: { rgb: "E8F5E9" } }; // Light green for headers
+    const totalColFill = { fgColor: { rgb: "E8F5E9" } }; // Light mint for Total columns
+    const surplusRowFill = { fgColor: { rgb: "A5D6A7" } }; // Darker green for Surplus row
+    const headerFont = { bold: true, color: { rgb: "1B5E20" } };
+    const totalFont = { bold: true };
+
+    // Calculate cell references for styling
+    const numRows = cashFlowData.length;
+    const numCols = 1 + (allYears.length * (targetMembers.length + 1));
+
+    // Style header rows (rows 1 and 2)
+    for (let c = 0; c < numCols; c++) {
+      const cell1 = XLSX.utils.encode_cell({ r: 0, c });
+      const cell2 = XLSX.utils.encode_cell({ r: 1, c });
+      
+      if (cashFlowSheet[cell1]) {
+        cashFlowSheet[cell1].s = { 
+          fill: headerFill, 
+          font: headerFont,
+          alignment: { horizontal: 'center', vertical: 'center' }
+        };
+      }
+      if (cashFlowSheet[cell2]) {
+        cashFlowSheet[cell2].s = { 
+          fill: headerFill, 
+          font: { bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        };
+      }
+    }
+
+    // Style Total columns (every 3rd column after first) and Surplus row (last data row)
+    for (let r = 0; r < numRows; r++) {
+      for (let c = 0; c < numCols; c++) {
+        const cellRef = XLSX.utils.encode_cell({ r, c });
+        if (!cashFlowSheet[cellRef]) continue;
+        
+        // Initialize style if not exists
+        if (!cashFlowSheet[cellRef].s) {
+          cashFlowSheet[cellRef].s = {};
+        }
+        
+        // Check if this is a Total column
+        const isTotalCol = c > 0 && ((c - 1) % (targetMembers.length + 1) === targetMembers.length);
+        
+        // Check if this is the Surplus row (last data row)
+        const isSurplusRow = r === numRows - 1;
+        
+        if (isSurplusRow) {
+          cashFlowSheet[cellRef].s = {
+            ...cashFlowSheet[cellRef].s,
+            fill: surplusRowFill,
+            font: { bold: true, color: { rgb: "1B5E20" } },
+            alignment: { horizontal: c === 0 ? 'left' : 'center' }
+          };
+        } else if (isTotalCol && r > 1) {
+          cashFlowSheet[cellRef].s = {
+            ...cashFlowSheet[cellRef].s,
+            fill: totalColFill,
+            font: totalFont,
+            alignment: { horizontal: 'center' }
+          };
+        } else if (c > 0 && r > 1) {
+          cashFlowSheet[cellRef].s = {
+            ...cashFlowSheet[cellRef].s,
+            alignment: { horizontal: 'center' }
+          };
+        }
+      }
+    }
+
+    // Merge year header cells
+    const merges = [];
+    let colOffset = 1;
+    allYears.forEach(() => {
+      merges.push({
+        s: { r: 0, c: colOffset },
+        e: { r: 0, c: colOffset + targetMembers.length }
+      });
+      colOffset += targetMembers.length + 1;
+    });
+    cashFlowSheet['!merges'] = merges;
+
+    XLSX.utils.book_append_sheet(wb, cashFlowSheet, "Cash Flow");
+
+    // ========== SHEET 4: DETAILED PORTFOLIO (Keep existing detailed view) ==========
+    const portfolioData = [];
+    
     // Pre-calculate which assets to add in which year (for opening balance)
     const assetsByYear = {};
     if (includeAssets) {
@@ -1893,10 +2138,10 @@ function AllocationSimulator({
       });
     }
 
-    // Calculate data for all years
+    // Calculate portfolio data for all years
     let equityCorpus = 0;
     let debtCorpus = 0;
-    const yearlyData = allYears.map((y, idx) => {
+    const yearlyPortfolioData = allYears.map((y, idx) => {
       const yearStr = y.toString();
       const age = entityAge + (y - currentYear);
       
@@ -1908,6 +2153,160 @@ function AllocationSimulator({
         const yearsFromNow = y - currentYear;
         
         if (!isPostRetirement) {
+          salaryIncome += info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
+          salaryIncome += info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
+        }
+        rentalIncome += info.baseRental * Math.pow(1 + (info.rentalGrowth || 5) / 100, yearsFromNow);
+      });
+      const totalIncome = salaryIncome + rentalIncome + investmentIncome;
+
+      // Expense calculations
+      const livingExpenses = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
+      const info = getMemberIncomeInfo(targetMembers[0]?.id);
+      const insurancePremium = y < (info?.retirementYear || 2050) ? totalAnnualPremium : 0;
+      
+      // Loan installments
+      let homeLoanInstall = 0, vehicleLoanInstall = 0, personalLoanInstall = 0;
+      entityLiabilities.forEach(l => {
+        const loanType = (l.loan_type || l.expense_type || '').toLowerCase();
+        const emi = (parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0) * 12;
+        const remaining = parseInt(l.remaining_tenure) || parseInt(l.num_installments) || 0;
+        const yearsRemaining = Math.ceil(remaining / 12);
+        
+        if ((y - currentYear) < yearsRemaining) {
+          if (loanType.includes('home')) homeLoanInstall += emi;
+          else if (loanType.includes('vehicle') || loanType.includes('car')) vehicleLoanInstall += emi;
+          else personalLoanInstall += emi;
+        }
+      });
+      const totalLoanInstall = homeLoanInstall + vehicleLoanInstall + personalLoanInstall;
+      const totalExpense = livingExpenses + insurancePremium + totalLoanInstall;
+
+      // Goal expenses for this year
+      const goalExpenses = targetMembers.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
+
+      // Annual savings from income
+      const annualSavings = totalIncome - totalExpense - goalExpenses;
+      
+      // Savings invested (from income only)
+      const savingsEquity = annualSavings > 0 ? annualSavings * equity / 100 : 0;
+      const savingsDebt = annualSavings > 0 ? annualSavings * debt / 100 : 0;
+
+      // Assets added to opening balance
+      const assetAdditionThisYear = assetsByYear[y] || 0;
+      const assetEquity = assetAdditionThisYear * equity / 100;
+      const assetDebt = assetAdditionThisYear * debt / 100;
+
+      // Opening balance calculation
+      const openingEquity = equityCorpus + assetEquity;
+      const openingDebt = debtCorpus + assetDebt;
+
+      // Calculate returns
+      const equityReturns = openingEquity * equityReturn / 100;
+      const debtReturns = openingDebt * debtReturn / 100;
+
+      // Closing balance
+      equityCorpus = openingEquity + equityReturns + savingsEquity;
+      debtCorpus = openingDebt + debtReturns + savingsDebt;
+      
+      // Handle withdrawals
+      let withdrawalAmount = 0;
+      if (annualSavings < 0) {
+        withdrawalAmount = Math.abs(annualSavings);
+        equityCorpus = Math.max(0, equityCorpus - withdrawalAmount * equity / 100);
+        debtCorpus = Math.max(0, debtCorpus - withdrawalAmount * debt / 100);
+      }
+
+      const closingTotal = equityCorpus + debtCorpus;
+
+      return {
+        year: y,
+        age,
+        totalIncome: Math.round(totalIncome),
+        totalExpense: Math.round(totalExpense),
+        goalExpenses: Math.round(goalExpenses),
+        annualSavings: Math.round(annualSavings),
+        openingEquity: Math.round(openingEquity),
+        openingDebt: Math.round(openingDebt),
+        closingEquity: Math.round(equityCorpus),
+        closingDebt: Math.round(debtCorpus),
+        closingTotal: Math.round(closingTotal),
+        withdrawalAmount: Math.round(withdrawalAmount),
+        assetAddition: Math.round(assetAdditionThisYear)
+      };
+    });
+
+    // Portfolio Details Header
+    portfolioData.push(['PORTFOLIO PROJECTION - ' + entityName.toUpperCase()]);
+    portfolioData.push([]);
+    portfolioData.push(['Year', ...yearlyPortfolioData.map(d => d.year)]);
+    portfolioData.push(['Age', ...yearlyPortfolioData.map(d => d.age)]);
+    portfolioData.push([]);
+
+    // Asset Consider for Restructuring
+    portfolioData.push(['▶ ASSET CONSIDER FOR RESTRUCTURING']);
+    portfolioData.push(['  Total Assets Included', ...yearlyPortfolioData.map((d, idx) => {
+      if (idx === 0) return includeAssets ? formatCurrency(d.assetAddition) : '';
+      return formatCurrency(yearlyPortfolioData[idx - 1].closingTotal);
+    })]);
+    portfolioData.push([`  To Equity Portfolio (${equity}%)`, ...yearlyPortfolioData.map((d, idx) => {
+      if (idx === 0) return includeAssets ? formatCurrency(d.assetAddition * equity / 100) : '';
+      return formatCurrency(yearlyPortfolioData[idx - 1].closingTotal * equity / 100);
+    })]);
+    portfolioData.push([`  To Debt Portfolio (${debt}%)`, ...yearlyPortfolioData.map((d, idx) => {
+      if (idx === 0) return includeAssets ? formatCurrency(d.assetAddition * debt / 100) : '';
+      return formatCurrency(yearlyPortfolioData[idx - 1].closingTotal * debt / 100);
+    })]);
+    portfolioData.push([]);
+
+    // Equity Portfolio
+    portfolioData.push([`▶ EQUITY PORTFOLIO (${equity}% @ ${equityReturn}% Return)`]);
+    portfolioData.push(['  Opening Balance', ...yearlyPortfolioData.map((d, idx) => {
+      if (idx === 0) return formatCurrency(d.openingEquity);
+      return formatCurrency(yearlyPortfolioData[idx - 1].closingTotal * equity / 100);
+    })]);
+    portfolioData.push(['  (+) Savings Added', ...yearlyPortfolioData.map(d => formatCurrency(d.annualSavings > 0 ? d.annualSavings * equity / 100 : 0))]);
+    portfolioData.push([`  (+) Returns @ ${equityReturn}%`, ...yearlyPortfolioData.map((d, idx) => {
+      const opening = idx === 0 ? d.openingEquity : yearlyPortfolioData[idx - 1].closingTotal * equity / 100;
+      return formatCurrency(Math.round(opening * equityReturn / 100));
+    })]);
+    portfolioData.push(['  CLOSING BALANCE', ...yearlyPortfolioData.map(d => formatCurrency(d.closingEquity))]);
+    portfolioData.push([]);
+
+    // Debt Portfolio
+    portfolioData.push([`▶ DEBT PORTFOLIO (${debt}% @ ${debtReturn}% Return)`]);
+    portfolioData.push(['  Opening Balance', ...yearlyPortfolioData.map((d, idx) => {
+      if (idx === 0) return formatCurrency(d.openingDebt);
+      return formatCurrency(yearlyPortfolioData[idx - 1].closingTotal * debt / 100);
+    })]);
+    portfolioData.push(['  (+) Savings Added', ...yearlyPortfolioData.map(d => formatCurrency(d.annualSavings > 0 ? d.annualSavings * debt / 100 : 0))]);
+    portfolioData.push([`  (+) Returns @ ${debtReturn}%`, ...yearlyPortfolioData.map((d, idx) => {
+      const opening = idx === 0 ? d.openingDebt : yearlyPortfolioData[idx - 1].closingTotal * debt / 100;
+      return formatCurrency(Math.round(opening * debtReturn / 100));
+    })]);
+    portfolioData.push(['  CLOSING BALANCE', ...yearlyPortfolioData.map(d => formatCurrency(d.closingDebt))]);
+    portfolioData.push([]);
+
+    // Total Portfolio
+    portfolioData.push(['▶ TOTAL PORTFOLIO VALUE']);
+    portfolioData.push(['  Closing Balance', ...yearlyPortfolioData.map(d => formatCurrency(d.closingTotal))]);
+    portfolioData.push([]);
+
+    // Retirement Withdrawals
+    portfolioData.push(['▶ RETIREMENT WITHDRAWALS']);
+    portfolioData.push(['  Yearly Withdrawal Required', ...yearlyPortfolioData.map(d => d.withdrawalAmount > 0 ? formatCurrency(d.withdrawalAmount) : '')]);
+    let cumWithdrawal = 0;
+    portfolioData.push(['  Cumulative Withdrawals', ...yearlyPortfolioData.map(d => {
+      cumWithdrawal += d.withdrawalAmount;
+      return cumWithdrawal > 0 ? formatCurrency(cumWithdrawal) : '';
+    })]);
+
+    const portfolioSheet = XLSX.utils.aoa_to_sheet(portfolioData);
+    portfolioSheet['!cols'] = [{ wch: 32 }, ...allYears.map(() => ({ wch: 16 }))];
+    XLSX.utils.book_append_sheet(wb, portfolioSheet, "Portfolio Details");
+
+    // Download
+    XLSX.writeFile(wb, `Financial_Plan_${entityName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
           salaryIncome += info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
           salaryIncome += info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
         }
