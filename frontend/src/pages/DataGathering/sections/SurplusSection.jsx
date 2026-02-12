@@ -1557,7 +1557,7 @@ function AllocationSimulator({
     
     // Get goals and investments
     const entityGoals = goalDetails || [];
-    const entityInvestments = investments || [];
+    const entityInvestments = investmentDetails || [];
 
     // ========== SHEET 1: DATA SHEET ==========
     const dataSheetData = [];
