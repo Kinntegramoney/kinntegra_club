@@ -129,6 +129,7 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
           annual_amount: inv.annual_amount,
           start_date: inv.start_date,
           end_date: inv.end_date,
+          upto_year: inv.upto_year ? parseInt(inv.upto_year) : null,
           description: inv.description
         }))
       };
