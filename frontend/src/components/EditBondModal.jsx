@@ -54,8 +54,96 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
         description: bond.description || "",
         calculator_file: null
       });
+      setPresentations(bond.presentations || []);
     }
   }, [bond]);
+
+  // Upload presentations
+  const handlePresentationUpload = async (files) => {
+    if (!files || files.length === 0) return;
+    
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/vnd.ms-powerpoint',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    const validFiles = Array.from(files).filter(f => 
+      allowedTypes.includes(f.type) || 
+      f.name.match(/\.(pdf|pptx|ppt|doc|docx)$/i)
+    );
+    
+    if (validFiles.length === 0) {
+      toast.error("Please upload PDF, PowerPoint, or Word files only");
+      return;
+    }
+    
+    if (presentations.length + validFiles.length > 10) {
+      toast.error(`Maximum 10 presentations allowed. Currently have ${presentations.length}`);
+      return;
+    }
+    
+    setUploadingPresentations(true);
+    try {
+      const token = localStorage.getItem("token");
+      const formDataUpload = new FormData();
+      validFiles.forEach(file => formDataUpload.append('files', file));
+      
+      const response = await axios.post(`${API}/bonds/${bond.id}/presentations`, formDataUpload, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      setPresentations([...presentations, ...response.data.presentations]);
+      toast.success(`Uploaded ${response.data.presentations.length} presentation(s)`);
+    } catch (error) {
+      console.error("Error uploading presentations:", error);
+      toast.error(error.response?.data?.detail || "Failed to upload presentations");
+    } finally {
+      setUploadingPresentations(false);
+    }
+  };
+
+  // Delete presentation
+  const handleDeletePresentation = async (presentationId) => {
+    setDeletingPresentation(presentationId);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API}/bonds/${bond.id}/presentations/${presentationId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPresentations(presentations.filter(p => p.id !== presentationId));
+      toast.success("Presentation deleted");
+    } catch (error) {
+      console.error("Error deleting presentation:", error);
+      toast.error(error.response?.data?.detail || "Failed to delete presentation");
+    } finally {
+      setDeletingPresentation(null);
+    }
+  };
+
+  // Get file icon based on type
+  const getFileIcon = (contentType, filename) => {
+    if (contentType?.includes('pdf') || filename?.endsWith('.pdf')) {
+      return <FileText className="h-4 w-4 text-red-500" />;
+    }
+    if (contentType?.includes('presentation') || filename?.match(/\.(pptx?|ppt)$/i)) {
+      return <FileText className="h-4 w-4 text-orange-500" />;
+    }
+    return <FileText className="h-4 w-4 text-blue-500" />;
+  };
+
+  // Format file size
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
