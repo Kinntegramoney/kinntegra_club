@@ -63,6 +63,7 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
         annual_amount: inv.annual_amount || 0,
         start_date: inv.start_date || "",
         end_date: inv.end_date || "",
+        upto_year: inv.upto_year || "",
         description: inv.description || "",
         isNew: false,
         isModified: false
@@ -80,6 +81,7 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
       annual_amount: 0,
       start_date: "",
       end_date: "",
+      upto_year: "",
       description: "",
       isNew: true,
       isModified: false
