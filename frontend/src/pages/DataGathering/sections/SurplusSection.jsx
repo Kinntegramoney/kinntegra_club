@@ -2247,39 +2247,43 @@ function AllocationSimulator({
     XLSX.writeFile(wb, `Financial_Plan_${entityName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
   };
 
-  // ========== PDF EXPORT FUNCTION ==========
+  // ========== PDF EXPORT FUNCTION (COMPREHENSIVE) ==========
   const exportEntityPDF = (entityId, isFamily, allocation) => {
     const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears, assetAmounts } = allocation;
     
     // Get entity details
-    let entityName, entityAge, targetMembers;
+    let entityName, entityAge, entityEndYear;
+    const targetMembers = isFamily ? members : members.filter(m => m.id === entityId);
     if (isFamily) {
       const primary = members.find(m => m.is_primary);
       entityName = primary ? `${primary.name} & Family` : 'Family';
-      entityAge = primary?.age || 30;
-      targetMembers = members;
+      entityAge = calculateAge(primary?.date_of_birth);
+      entityEndYear = endYear;
     } else {
       const member = members.find(m => m.id === entityId);
       entityName = member?.name || 'Member';
-      entityAge = member?.age || 30;
-      targetMembers = [member];
+      entityAge = calculateAge(member?.date_of_birth);
+      const memberLifeExp = parseInt(member?.life_expectancy) || 85;
+      entityEndYear = currentYear + (memberLifeExp - entityAge);
     }
 
     // Get entity data
     const entityAssets = getAssetsForEntity(entityId);
     const liabilities = family?.liabilities || [];
     const insurancePremiums = family?.insurance_premiums || [];
-    const entityLiabilities = isFamily ? liabilities : liabilities.filter(l => l.member_id === entityId);
+    const entityLiabilities = isFamily ? liabilities : liabilities.filter(l => l.member_id === entityId || l.member_ids?.includes(entityId));
     const entityPremiums = isFamily ? insurancePremiums : insurancePremiums.filter(p => p.member_id === entityId);
     const entityGoals = goalDetails || [];
     const entityInvestments = investmentDetails || [];
     
     const totalAnnualPremium = entityPremiums.reduce((sum, p) => sum + (parseFloat(p.amount) || parseFloat(p.premium) || 0), 0);
 
-    // Calculate projections for PDF
-    const projectionYears = 10;
-    const allYears = Array.from({ length: projectionYears }, (_, i) => currentYear + i);
-    
+    // Generate all years from current to end year
+    const allYears = [];
+    for (let y = currentYear; y <= entityEndYear; y++) {
+      allYears.push(y);
+    }
+
     // Pre-calculate assets by year
     const assetsByYear = {};
     if (includeAssets) {
@@ -2292,84 +2296,159 @@ function AllocationSimulator({
         }
       });
     }
+
+    // Calculate detailed yearly data (same logic as Excel export)
+    let equityCorpus = 0;
+    let debtCorpus = 0;
     
-    // Calculate yearly projections
-    let equityCorpus = 0, debtCorpus = 0;
     const yearlyData = allYears.map((y, idx) => {
       const yearStr = y.toString();
+      const age = entityAge + (y - currentYear);
       const yearsFromNow = y - currentYear;
       
-      // Income
-      let totalIncome = 0;
+      // Detailed income breakdown by member
+      const memberIncomes = {};
+      let totalSalary = 0, totalBusiness = 0, totalRental = 0;
+      
       targetMembers.forEach(m => {
         const info = getMemberIncomeInfo(m.id);
         const isPostRetirement = y >= info.retirementYear;
-        if (!isPostRetirement) {
-          totalIncome += info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
-          totalIncome += info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
-        }
-        totalIncome += info.baseRental * Math.pow(1 + (info.rentalGrowth || 5) / 100, yearsFromNow);
+        
+        const salary = isPostRetirement ? 0 : info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
+        const business = isPostRetirement ? 0 : info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
+        const rental = info.baseRental * Math.pow(1 + (info.rentalGrowth || 5) / 100, yearsFromNow);
+        
+        memberIncomes[m.id] = { name: m.name, salary, business, rental, total: salary + business + rental };
+        totalSalary += salary;
+        totalBusiness += business;
+        totalRental += rental;
       });
       
-      // Expenses
-      let totalExpense = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
-      const info = getMemberIncomeInfo(targetMembers[0]?.id);
-      if (y < (info?.retirementYear || 2050)) totalExpense += totalAnnualPremium;
+      const totalIncome = totalSalary + totalBusiness + totalRental;
+
+      // Detailed expense breakdown
+      const memberExpenses = {};
+      let totalLivingExp = 0;
       
-      // Loans
+      targetMembers.forEach(m => {
+        const expenses = getProjectedMemberExpenses(m.id, yearStr);
+        memberExpenses[m.id] = { name: m.name, amount: expenses };
+        totalLivingExp += expenses;
+      });
+
+      // Insurance premium
+      const info = getMemberIncomeInfo(targetMembers[0]?.id);
+      const insurancePremium = y < (info?.retirementYear || 2050) ? totalAnnualPremium : 0;
+      
+      // Loan EMIs
+      let totalLoanEMI = 0;
       entityLiabilities.forEach(l => {
         const emi = (parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0) * 12;
         const remaining = parseInt(l.remaining_tenure) || parseInt(l.num_installments) || 0;
-        if (yearsFromNow < Math.ceil(remaining / 12)) totalExpense += emi;
-      });
-      
-      // Goals
-      let totalGoals = 0;
-      entityGoals.forEach(goal => {
-        const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
-        if (goalYears.includes(yearStr)) {
-          const amount = parseFloat(goal.goal_amount) || 0;
-          const inflation = parseFloat(goal.inflation_percent) || 0;
-          totalGoals += yearsFromNow > 0 ? amount * Math.pow(1 + inflation / 100, yearsFromNow) : amount;
+        const yearsRemaining = Math.ceil(remaining / 12);
+        if (yearsFromNow < yearsRemaining) {
+          totalLoanEMI += emi;
         }
       });
       
-      // Savings & Portfolio
-      const savings = totalIncome - totalExpense - totalGoals;
-      const assetAddition = assetsByYear[y] || 0;
+      const totalExpense = totalLivingExp + insurancePremium + totalLoanEMI;
+
+      // Goal expenses - detailed by goal
+      const goalExpenseDetails = {};
+      let totalGoalExp = 0;
       
-      const openingEquity = equityCorpus + assetAddition * equity / 100;
-      const openingDebt = debtCorpus + assetAddition * debt / 100;
+      entityGoals.forEach(goal => {
+        const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
+        if (goalYears.includes(yearStr)) {
+          const amountToday = parseFloat(goal.goal_amount) || 0;
+          const inflationRate = parseFloat(goal.inflation_percent) || 0;
+          const futureAmount = yearsFromNow > 0 ? amountToday * Math.pow(1 + inflationRate / 100, yearsFromNow) : amountToday;
+          const goalName = goal.name || goal.goal_name || goal.category || 'Goal';
+          goalExpenseDetails[goalName] = Math.round(futureAmount);
+          totalGoalExp += futureAmount;
+        }
+      });
+
+      // Investment details
+      let totalInvestments = 0;
+      entityInvestments.forEach(inv => {
+        const monthlyAmount = parseFloat(inv.monthly_investment) || parseFloat(inv.sip_amount) || parseFloat(inv.amount) || 0;
+        const annualAmount = parseFloat(inv.annual_investment) || (monthlyAmount * 12);
+        totalInvestments += annualAmount;
+      });
+
+      // Annual savings
+      const annualSavings = totalIncome - totalExpense - totalGoalExp;
+      
+      // Savings allocation
+      const savingsEquity = annualSavings > 0 ? annualSavings * equity / 100 : 0;
+      const savingsDebt = annualSavings > 0 ? annualSavings * debt / 100 : 0;
+
+      // Assets added
+      const assetAdditionThisYear = assetsByYear[y] || 0;
+      const assetEquity = assetAdditionThisYear * equity / 100;
+      const assetDebt = assetAdditionThisYear * debt / 100;
+
+      // Opening balance calculation
+      const openingEquity = equityCorpus + assetEquity;
+      const openingDebt = debtCorpus + assetDebt;
+
+      // Calculate returns
       const equityReturns = openingEquity * equityReturn / 100;
       const debtReturns = openingDebt * debtReturn / 100;
+
+      // Closing balance
+      equityCorpus = openingEquity + equityReturns + savingsEquity;
+      debtCorpus = openingDebt + debtReturns + savingsDebt;
       
-      equityCorpus = openingEquity + equityReturns + (savings > 0 ? savings * equity / 100 : 0);
-      debtCorpus = openingDebt + debtReturns + (savings > 0 ? savings * debt / 100 : 0);
-      
-      if (savings < 0) {
-        const withdrawal = Math.abs(savings);
-        equityCorpus = Math.max(0, equityCorpus - withdrawal * equity / 100);
-        debtCorpus = Math.max(0, debtCorpus - withdrawal * debt / 100);
+      // Handle withdrawals (when savings is negative)
+      let withdrawalAmount = 0;
+      if (annualSavings < 0) {
+        withdrawalAmount = Math.abs(annualSavings);
+        equityCorpus = Math.max(0, equityCorpus - withdrawalAmount * equity / 100);
+        debtCorpus = Math.max(0, debtCorpus - withdrawalAmount * debt / 100);
       }
-      
+
+      const closingTotal = equityCorpus + debtCorpus;
+
       return {
         year: y,
-        age: entityAge + yearsFromNow,
-        income: Math.round(totalIncome),
-        expense: Math.round(totalExpense),
-        goals: Math.round(totalGoals),
-        savings: Math.round(savings),
-        portfolio: Math.round(equityCorpus + debtCorpus)
+        age,
+        memberIncomes,
+        totalSalary: Math.round(totalSalary),
+        totalBusiness: Math.round(totalBusiness),
+        totalRental: Math.round(totalRental),
+        totalIncome: Math.round(totalIncome),
+        memberExpenses,
+        totalLivingExp: Math.round(totalLivingExp),
+        insurancePremium: Math.round(insurancePremium),
+        totalLoanEMI: Math.round(totalLoanEMI),
+        totalExpense: Math.round(totalExpense),
+        goalExpenseDetails,
+        totalGoalExp: Math.round(totalGoalExp),
+        totalInvestments: Math.round(totalInvestments),
+        annualSavings: Math.round(annualSavings),
+        savingsEquity: Math.round(savingsEquity),
+        savingsDebt: Math.round(savingsDebt),
+        assetAddition: Math.round(assetAdditionThisYear),
+        openingEquity: Math.round(openingEquity),
+        openingDebt: Math.round(openingDebt),
+        equityReturns: Math.round(equityReturns),
+        debtReturns: Math.round(debtReturns),
+        closingEquity: Math.round(equityCorpus),
+        closingDebt: Math.round(debtCorpus),
+        closingTotal: Math.round(closingTotal),
+        withdrawalAmount: Math.round(withdrawalAmount)
       };
     });
 
     // Format currency for PDF
     const formatPDFCurrency = (num) => {
-      if (!num) return '₹ 0';
-      const absValue = Math.abs(num);
-      if (absValue >= 10000000) return `₹ ${(num / 10000000).toFixed(2)} Cr`;
-      if (absValue >= 100000) return `₹ ${(num / 100000).toFixed(2)} L`;
-      return `₹ ${num.toLocaleString('en-IN')}`;
+      if (num === 0 || num === null || num === undefined) return '-';
+      const rounded = Math.round(num);
+      if (Math.abs(rounded) >= 10000000) return `₹ ${(rounded / 10000000).toFixed(2)} Cr`;
+      if (Math.abs(rounded) >= 100000) return `₹ ${(rounded / 100000).toFixed(2)} L`;
+      return '₹ ' + rounded.toLocaleString('en-IN');
     };
 
     // Create PDF
@@ -2380,40 +2459,49 @@ function AllocationSimulator({
     // Colors
     const primaryColor = [21, 101, 192]; // Blue
     const secondaryColor = [245, 245, 245]; // Light gray
-    const accentColor = [255, 193, 7]; // Amber
+    const greenColor = [46, 125, 50]; // Green for income
+    const redColor = [198, 40, 40]; // Red for expenses
+    const amberColor = [255, 160, 0]; // Amber for goals
     
-    // Header
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, pageWidth, 25, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('FINANCIAL PLAN SUMMARY', pageWidth / 2, 12, { align: 'center' });
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text(entityName.toUpperCase(), pageWidth / 2, 20, { align: 'center' });
+    // Helper to add page header
+    const addPageHeader = (title) => {
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, pageWidth, 18, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, pageWidth / 2, 10, { align: 'center' });
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(entityName.toUpperCase(), pageWidth / 2, 15, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+      return 25;
+    };
     
-    // Reset text color
-    doc.setTextColor(0, 0, 0);
+    // Helper to add page footer
+    const addPageFooter = (pageNum, totalPages) => {
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, pageHeight - 8, pageWidth, 8, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(7);
+      doc.text(`Generated on ${new Date().toLocaleDateString('en-IN')} | Page ${pageNum} of ${totalPages}`, pageWidth / 2, pageHeight - 3, { align: 'center' });
+    };
+
+    // ============== PAGE 1: SUMMARY ==============
+    let yPos = addPageHeader('COMPREHENSIVE FINANCIAL PLAN');
     
     // Summary Stats Box
-    let yPos = 35;
     doc.setFillColor(...secondaryColor);
-    doc.roundedRect(10, yPos, pageWidth - 20, 25, 3, 3, 'F');
+    doc.roundedRect(10, yPos, pageWidth - 20, 22, 3, 3, 'F');
     
     const lastYear = yearlyData[yearlyData.length - 1];
     const firstYear = yearlyData[0];
     
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    const statsY = yPos + 10;
-    
-    // Summary metrics
     const metrics = [
       { label: 'Current Age', value: `${entityAge} years` },
-      { label: 'Projection Period', value: `${projectionYears} years` },
-      { label: 'Current Income', value: formatPDFCurrency(firstYear.income) },
-      { label: 'Projected Portfolio', value: formatPDFCurrency(lastYear.portfolio) },
+      { label: 'Life Expectancy', value: `${entityAge + allYears.length - 1} years` },
+      { label: 'Current Income', value: formatPDFCurrency(firstYear.totalIncome) },
+      { label: 'Final Portfolio', value: formatPDFCurrency(lastYear.closingTotal) },
       { label: 'Allocation', value: `${equity}% Equity / ${debt}% Debt` }
     ];
     
@@ -2421,105 +2509,298 @@ function AllocationSimulator({
     metrics.forEach((m, i) => {
       const xPos = 10 + colWidth * i + colWidth / 2;
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.text(m.label, xPos, statsY, { align: 'center' });
+      doc.setFontSize(7);
+      doc.text(m.label, xPos, yPos + 8, { align: 'center' });
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.text(m.value, xPos, statsY + 8, { align: 'center' });
+      doc.setFontSize(10);
+      doc.text(m.value, xPos, yPos + 16, { align: 'center' });
     });
     
-    yPos += 35;
+    yPos += 30;
     
-    // Cash Flow Table
+    // Cash Flow Summary Table (First 15 years)
+    const displayYears = yearlyData.slice(0, 15);
+    
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
+    doc.setFontSize(10);
     doc.setTextColor(...primaryColor);
-    doc.text('YEARLY CASH FLOW PROJECTION', 10, yPos);
-    yPos += 5;
+    doc.text('YEARLY CASH FLOW SUMMARY', 10, yPos);
+    yPos += 3;
     
     doc.autoTable({
       startY: yPos,
-      head: [['Year', 'Age', 'Income', 'Expenses', 'Goals', 'Savings', 'Portfolio Value']],
-      body: yearlyData.map(d => [
+      head: [['Year', 'Age', 'Total Income', 'Total Expenses', 'Goals', 'Net Savings', 'Portfolio Value']],
+      body: displayYears.map(d => [
         d.year,
         d.age,
-        formatPDFCurrency(d.income),
-        formatPDFCurrency(d.expense),
-        formatPDFCurrency(d.goals),
-        formatPDFCurrency(d.savings),
-        formatPDFCurrency(d.portfolio)
+        formatPDFCurrency(d.totalIncome),
+        formatPDFCurrency(d.totalExpense),
+        formatPDFCurrency(d.totalGoalExp),
+        formatPDFCurrency(d.annualSavings),
+        formatPDFCurrency(d.closingTotal)
       ]),
-      theme: 'grid',
-      headStyles: {
-        fillColor: primaryColor,
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      bodyStyles: {
-        halign: 'center',
-        fontSize: 9
-      },
-      alternateRowStyles: {
-        fillColor: [245, 250, 255]
-      },
-      columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 15 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 35 },
-        5: { cellWidth: 35 },
-        6: { cellWidth: 45, fontStyle: 'bold' }
-      },
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+      bodyStyles: { halign: 'center', fontSize: 7 },
+      alternateRowStyles: { fillColor: [245, 250, 255] },
+      columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 12 }, 6: { fontStyle: 'bold' } },
+      margin: { left: 10, right: 10 }
+    });
+    
+    yPos = doc.lastAutoTable.finalY + 8;
+    
+    // Portfolio Summary Boxes
+    const boxWidth = (pageWidth - 40) / 3;
+    
+    // Equity Box
+    doc.setFillColor(227, 242, 253);
+    doc.roundedRect(10, yPos, boxWidth, 35, 3, 3, 'F');
+    doc.setTextColor(...primaryColor);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('EQUITY PORTFOLIO', 10 + boxWidth / 2, yPos + 8, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Allocation: ${equity}%`, 10 + boxWidth / 2, yPos + 16, { align: 'center' });
+    doc.text(`Return: ${equityReturn}% p.a.`, 10 + boxWidth / 2, yPos + 22, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Final: ${formatPDFCurrency(lastYear.closingEquity)}`, 10 + boxWidth / 2, yPos + 30, { align: 'center' });
+    
+    // Debt Box
+    doc.setFillColor(255, 243, 224);
+    doc.roundedRect(15 + boxWidth, yPos, boxWidth, 35, 3, 3, 'F');
+    doc.setTextColor(230, 126, 34);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('DEBT PORTFOLIO', 15 + boxWidth + boxWidth / 2, yPos + 8, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Allocation: ${debt}%`, 15 + boxWidth + boxWidth / 2, yPos + 16, { align: 'center' });
+    doc.text(`Return: ${debtReturn}% p.a.`, 15 + boxWidth + boxWidth / 2, yPos + 22, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Final: ${formatPDFCurrency(lastYear.closingDebt)}`, 15 + boxWidth + boxWidth / 2, yPos + 30, { align: 'center' });
+    
+    // Total Box
+    doc.setFillColor(232, 245, 233);
+    doc.roundedRect(20 + boxWidth * 2, yPos, boxWidth, 35, 3, 3, 'F');
+    doc.setTextColor(...greenColor);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('TOTAL PORTFOLIO', 20 + boxWidth * 2 + boxWidth / 2, yPos + 8, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Starting: ${formatPDFCurrency(firstYear.closingTotal)}`, 20 + boxWidth * 2 + boxWidth / 2, yPos + 16, { align: 'center' });
+    doc.text(`Growth: ${((lastYear.closingTotal / (firstYear.closingTotal || 1) - 1) * 100).toFixed(1)}%`, 20 + boxWidth * 2 + boxWidth / 2, yPos + 22, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(`Final: ${formatPDFCurrency(lastYear.closingTotal)}`, 20 + boxWidth * 2 + boxWidth / 2, yPos + 30, { align: 'center' });
+    
+    // ============== PAGE 2: INCOME DETAILS ==============
+    doc.addPage();
+    yPos = addPageHeader('INCOME BREAKDOWN');
+    
+    // Member Income Table
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...greenColor);
+    doc.text('MEMBER-WISE INCOME (Annual)', 10, yPos);
+    yPos += 3;
+    
+    const incomeHeaders = ['Year', ...targetMembers.map(m => m.name.split(' ')[0]), 'Total Income'];
+    const incomeBody = displayYears.map(d => [
+      d.year,
+      ...targetMembers.map(m => formatPDFCurrency(d.memberIncomes[m.id]?.total || 0)),
+      formatPDFCurrency(d.totalIncome)
+    ]);
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [incomeHeaders],
+      body: incomeBody,
+      theme: 'striped',
+      headStyles: { fillColor: greenColor, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+      bodyStyles: { halign: 'center', fontSize: 7 },
       margin: { left: 10, right: 10 }
     });
     
     yPos = doc.lastAutoTable.finalY + 10;
     
-    // Portfolio Allocation Box
-    if (yPos < pageHeight - 50) {
-      doc.setFillColor(227, 242, 253);
-      doc.roundedRect(10, yPos, (pageWidth - 30) / 2, 40, 3, 3, 'F');
-      doc.setFillColor(255, 243, 224);
-      doc.roundedRect((pageWidth + 10) / 2, yPos, (pageWidth - 30) / 2, 40, 3, 3, 'F');
+    // Income Type Breakdown
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...greenColor);
+    doc.text('INCOME BY TYPE', 10, yPos);
+    yPos += 3;
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [['Year', 'Salary', 'Business', 'Rental', 'Total']],
+      body: displayYears.map(d => [
+        d.year,
+        formatPDFCurrency(d.totalSalary),
+        formatPDFCurrency(d.totalBusiness),
+        formatPDFCurrency(d.totalRental),
+        formatPDFCurrency(d.totalIncome)
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: greenColor, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+      bodyStyles: { halign: 'center', fontSize: 7 },
+      margin: { left: 10, right: 10 }
+    });
+    
+    // ============== PAGE 3: EXPENSES & GOALS ==============
+    doc.addPage();
+    yPos = addPageHeader('EXPENSES & GOALS');
+    
+    // Expense Breakdown
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...redColor);
+    doc.text('EXPENSE BREAKDOWN (Annual)', 10, yPos);
+    yPos += 3;
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [['Year', 'Living Expenses', 'Insurance', 'Loan EMIs', 'Total Expenses']],
+      body: displayYears.map(d => [
+        d.year,
+        formatPDFCurrency(d.totalLivingExp),
+        formatPDFCurrency(d.insurancePremium),
+        formatPDFCurrency(d.totalLoanEMI),
+        formatPDFCurrency(d.totalExpense)
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: redColor, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+      bodyStyles: { halign: 'center', fontSize: 7 },
+      margin: { left: 10, right: 10 }
+    });
+    
+    yPos = doc.lastAutoTable.finalY + 10;
+    
+    // Goals Table
+    const allGoalNames = new Set();
+    yearlyData.forEach(d => Object.keys(d.goalExpenseDetails).forEach(name => allGoalNames.add(name)));
+    
+    if (allGoalNames.size > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...amberColor);
+      doc.text('FINANCIAL GOALS', 10, yPos);
+      yPos += 3;
       
-      // Equity Box
-      doc.setTextColor(...primaryColor);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.text('EQUITY PORTFOLIO', 10 + (pageWidth - 30) / 4, yPos + 10, { align: 'center' });
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Allocation: ${equity}%`, 10 + (pageWidth - 30) / 4, yPos + 20, { align: 'center' });
-      doc.text(`Expected Return: ${equityReturn}% p.a.`, 10 + (pageWidth - 30) / 4, yPos + 28, { align: 'center' });
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Value: ${formatPDFCurrency(lastYear.portfolio * equity / 100)}`, 10 + (pageWidth - 30) / 4, yPos + 36, { align: 'center' });
+      const goalHeaders = ['Year', ...Array.from(allGoalNames), 'Total Goals'];
+      const goalBody = displayYears.map(d => [
+        d.year,
+        ...Array.from(allGoalNames).map(name => d.goalExpenseDetails[name] ? formatPDFCurrency(d.goalExpenseDetails[name]) : '-'),
+        formatPDFCurrency(d.totalGoalExp)
+      ]);
       
-      // Debt Box
-      doc.setTextColor(230, 126, 34);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.text('DEBT PORTFOLIO', (pageWidth + 10) / 2 + (pageWidth - 30) / 4, yPos + 10, { align: 'center' });
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Allocation: ${debt}%`, (pageWidth + 10) / 2 + (pageWidth - 30) / 4, yPos + 20, { align: 'center' });
-      doc.text(`Expected Return: ${debtReturn}% p.a.`, (pageWidth + 10) / 2 + (pageWidth - 30) / 4, yPos + 28, { align: 'center' });
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Value: ${formatPDFCurrency(lastYear.portfolio * debt / 100)}`, (pageWidth + 10) / 2 + (pageWidth - 30) / 4, yPos + 36, { align: 'center' });
+      doc.autoTable({
+        startY: yPos,
+        head: [goalHeaders],
+        body: goalBody,
+        theme: 'striped',
+        headStyles: { fillColor: amberColor, textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 7 },
+        bodyStyles: { halign: 'center', fontSize: 7 },
+        margin: { left: 10, right: 10 }
+      });
     }
     
-    // Footer
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, pageHeight - 10, pageWidth, 10, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.text(`Generated on ${new Date().toLocaleDateString('en-IN')} | This is a projection and actual results may vary`, pageWidth / 2, pageHeight - 4, { align: 'center' });
+    // ============== PAGE 4: PORTFOLIO DETAILS ==============
+    doc.addPage();
+    yPos = addPageHeader('PORTFOLIO GROWTH');
+    
+    // Portfolio Table
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...primaryColor);
+    doc.text('EQUITY PORTFOLIO', 10, yPos);
+    yPos += 3;
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [['Year', 'Opening', 'Savings Added', `Returns @${equityReturn}%`, 'Closing']],
+      body: displayYears.map((d, idx) => [
+        d.year,
+        formatPDFCurrency(d.openingEquity),
+        formatPDFCurrency(d.savingsEquity),
+        formatPDFCurrency(d.equityReturns),
+        formatPDFCurrency(d.closingEquity)
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+      bodyStyles: { halign: 'center', fontSize: 7 },
+      columnStyles: { 4: { fontStyle: 'bold' } },
+      margin: { left: 10, right: 10 }
+    });
+    
+    yPos = doc.lastAutoTable.finalY + 10;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(230, 126, 34);
+    doc.text('DEBT PORTFOLIO', 10, yPos);
+    yPos += 3;
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [['Year', 'Opening', 'Savings Added', `Returns @${debtReturn}%`, 'Closing']],
+      body: displayYears.map((d, idx) => [
+        d.year,
+        formatPDFCurrency(d.openingDebt),
+        formatPDFCurrency(d.savingsDebt),
+        formatPDFCurrency(d.debtReturns),
+        formatPDFCurrency(d.closingDebt)
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [230, 126, 34], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+      bodyStyles: { halign: 'center', fontSize: 7 },
+      columnStyles: { 4: { fontStyle: 'bold' } },
+      margin: { left: 10, right: 10 }
+    });
+    
+    // Check for retirement withdrawals
+    const hasWithdrawals = yearlyData.some(d => d.withdrawalAmount > 0);
+    if (hasWithdrawals) {
+      yPos = doc.lastAutoTable.finalY + 10;
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...redColor);
+      doc.text('RETIREMENT WITHDRAWALS (When Expenses > Income)', 10, yPos);
+      yPos += 3;
+      
+      const withdrawalYears = yearlyData.filter(d => d.withdrawalAmount > 0);
+      doc.autoTable({
+        startY: yPos,
+        head: [['Year', 'Age', 'Withdrawal Required', 'From Equity', 'From Debt', 'Remaining Portfolio']],
+        body: withdrawalYears.slice(0, 15).map(d => [
+          d.year,
+          d.age,
+          formatPDFCurrency(d.withdrawalAmount),
+          formatPDFCurrency(d.withdrawalAmount * equity / 100),
+          formatPDFCurrency(d.withdrawalAmount * debt / 100),
+          formatPDFCurrency(d.closingTotal)
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: redColor, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 8 },
+        bodyStyles: { halign: 'center', fontSize: 7 },
+        margin: { left: 10, right: 10 }
+      });
+    }
+    
+    // Add page numbers
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      addPageFooter(i, totalPages);
+    }
     
     // Save PDF
-    doc.save(`Financial_Summary_${entityName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    doc.save(`Financial_Plan_${entityName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
   // Get primary member name for family row
