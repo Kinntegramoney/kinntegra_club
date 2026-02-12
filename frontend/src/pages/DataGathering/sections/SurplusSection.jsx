@@ -1910,9 +1910,12 @@ function AllocationSimulator({
       return Math.round(targetMembers.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0));
     })]);
     annualSavingsData.push(['']);
+    annualSavingsData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // Net Savings
-    annualSavingsData.push(['NET ANNUAL SAVINGS', ...allYears.map(y => {
+    // Net Savings Summary
+    annualSavingsData.push(['']);
+    annualSavingsData.push(['', '▶ NET ANNUAL SAVINGS']);
+    annualSavingsData.push(['', '  Savings = (A) - (B) - (C)', ...allYears.map(y => {
       const yearStr = y.toString();
       const totalIncome = targetMembers.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
       const totalExpenses = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
@@ -1921,17 +1924,23 @@ function AllocationSimulator({
       const premium = y < (info?.retirementYear || 2050) ? totalAnnualPremium : 0;
       return Math.round(totalIncome - totalExpenses - totalGoals - premium - totalEMI);
     })]);
+    annualSavingsData.push(['']);
+    annualSavingsData.push(['═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════']);
 
     const annualSavingsSheet = XLSX.utils.aoa_to_sheet(annualSavingsData);
-    annualSavingsSheet['!cols'] = [{ wch: 20 }, ...allYears.map(() => ({ wch: 12 }))];
-    XLSX.utils.book_append_sheet(wb, annualSavingsSheet, "Annual Savings");
+    annualSavingsSheet['!cols'] = [{ wch: 3 }, { wch: 28 }, ...allYears.map(() => ({ wch: 14 }))];
+    XLSX.utils.book_append_sheet(wb, annualSavingsSheet, "Annual Projections");
 
-    // ========== SHEET 3: CASH FLOW (Matching Expected Format) ==========
+    // ========== SHEET 3: CASH FLOW & PORTFOLIO ==========
     const cashFlowData = [];
-    cashFlowData.push(['CASH FLOW PROJECTION']);
-    cashFlowData.push([entityName]);
-    cashFlowData.push([`Generated: ${new Date().toLocaleDateString('en-IN')}`]);
-    cashFlowData.push([]);
+    
+    // Header
+    cashFlowData.push(['']);
+    cashFlowData.push(['', 'CASH FLOW & PORTFOLIO PROJECTION']);
+    cashFlowData.push(['', entityName.toUpperCase()]);
+    cashFlowData.push(['']);
+    cashFlowData.push(['═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════']);
+    cashFlowData.push(['']);
 
     // Pre-calculate which assets to add in which year (for opening balance)
     const assetsByYear = {};
