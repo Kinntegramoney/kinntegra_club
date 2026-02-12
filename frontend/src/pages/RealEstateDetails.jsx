@@ -2154,6 +2154,17 @@ export default function RealEstateDetails() {
                     <option value="EUR">EUR (€)</option>
                     <option value="GBP">GBP (£)</option>
                     <option value="CNY">CNY (¥)</option>
+                    <option value="JPY">JPY (¥)</option>
+                    <option value="CHF">CHF (Fr)</option>
+                    <option value="CAD">CAD (C$)</option>
+                    <option value="AUD">AUD (A$)</option>
+                    <option value="SGD">SGD (S$)</option>
+                    <option value="HKD">HKD (HK$)</option>
+                    <option value="SAR">SAR (﷼)</option>
+                    <option value="KWD">KWD (د.ك)</option>
+                    <option value="QAR">QAR (﷼)</option>
+                    <option value="BHD">BHD (.د.ب)</option>
+                    <option value="OMR">OMR (﷼)</option>
                   </select>
                 </div>
                 <button 
