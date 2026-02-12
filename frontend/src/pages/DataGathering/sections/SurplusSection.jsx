@@ -2097,52 +2097,45 @@ function AllocationSimulator({
     // EQUITY PORTFOLIO Section
     cashFlowData.push(['']);
     cashFlowData.push(['', `▶ EQUITY PORTFOLIO (${equity}% Allocation @ ${equityReturn}% Return)`]);
-    // Opening Balance = Previous Year's Closing Balance (carries forward)
+    // Opening Balance = Previous Year's Closing * Equity Ratio (restructured)
     cashFlowData.push(['', '  Opening Balance', ...yearlyData.map((d, idx) => {
-      // Year 1: Opening = Assets added
-      // Year 2+: Opening = Previous year's closing
-      if (idx === 0) return d.openingEquity;
-      return yearlyData[idx - 1].closingEquity;
+      if (idx === 0) return formatCurrency(d.openingEquity);
+      // Year 2+: Previous year's total closing * equity ratio (restructured)
+      return formatCurrency(yearlyData[idx - 1].closingTotal * equity / 100);
     })]);
-    cashFlowData.push(['', '  (+) Savings Added', ...yearlyData.map(d => d.additionsEquity)]);
+    cashFlowData.push(['', '  (+) Savings Added', ...yearlyData.map(d => formatCurrency(d.additionsEquity))]);
     cashFlowData.push(['', `  (+) Returns @ ${equityReturn}%`, ...yearlyData.map((d, idx) => {
       // Calculate returns on opening balance
-      const opening = idx === 0 ? d.openingEquity : yearlyData[idx - 1].closingEquity;
-      return Math.round(opening * equityReturn / 100);
+      const opening = idx === 0 ? d.openingEquity : yearlyData[idx - 1].closingTotal * equity / 100;
+      return formatCurrency(Math.round(opening * equityReturn / 100));
     })]);
-    cashFlowData.push(['', '  CLOSING BALANCE', ...yearlyData.map(d => d.closingEquity)]);
+    cashFlowData.push(['', '  CLOSING BALANCE', ...yearlyData.map(d => formatCurrency(d.closingEquity))]);
     cashFlowData.push(['']);
     cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
     // DEBT PORTFOLIO Section
     cashFlowData.push(['']);
     cashFlowData.push(['', `▶ DEBT PORTFOLIO (${debt}% Allocation @ ${debtReturn}% Return)`]);
-    // Opening Balance = Previous Year's Closing Balance (carries forward)
+    // Opening Balance = Previous Year's Closing * Debt Ratio (restructured)
     cashFlowData.push(['', '  Opening Balance', ...yearlyData.map((d, idx) => {
-      // Year 1: Opening = Assets added
-      // Year 2+: Opening = Previous year's closing
-      if (idx === 0) return d.openingDebt;
-      return yearlyData[idx - 1].closingDebt;
+      if (idx === 0) return formatCurrency(d.openingDebt);
+      // Year 2+: Previous year's total closing * debt ratio (restructured)
+      return formatCurrency(yearlyData[idx - 1].closingTotal * debt / 100);
     })]);
-    cashFlowData.push(['', '  (+) Savings Added', ...yearlyData.map(d => d.additionsDebt)]);
+    cashFlowData.push(['', '  (+) Savings Added', ...yearlyData.map(d => formatCurrency(d.additionsDebt))]);
     cashFlowData.push(['', `  (+) Returns @ ${debtReturn}%`, ...yearlyData.map((d, idx) => {
       // Calculate returns on opening balance
-      const opening = idx === 0 ? d.openingDebt : yearlyData[idx - 1].closingDebt;
-      return Math.round(opening * debtReturn / 100);
+      const opening = idx === 0 ? d.openingDebt : yearlyData[idx - 1].closingTotal * debt / 100;
+      return formatCurrency(Math.round(opening * debtReturn / 100));
     })]);
-    cashFlowData.push(['', '  CLOSING BALANCE', ...yearlyData.map(d => d.closingDebt)]);
+    cashFlowData.push(['', '  CLOSING BALANCE', ...yearlyData.map(d => formatCurrency(d.closingDebt))]);
     cashFlowData.push(['']);
     cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // TOTAL PORTFOLIO Section
+    // TOTAL PORTFOLIO Section - Only Closing Balance
     cashFlowData.push(['']);
     cashFlowData.push(['', '▶ TOTAL PORTFOLIO VALUE']);
-    // Opening Balance for each year (Year 1 = Assets, Year 2+ = Previous Closing)
-    cashFlowData.push(['', '  Opening Balance', ...yearlyData.map((d, idx) => {
-      if (idx === 0) return d.openingEquity + d.openingDebt;
-      return yearlyData[idx - 1].closingTotal;
-    })]);
-    cashFlowData.push(['', '  Closing Balance (Equity + Debt)', ...yearlyData.map(d => d.closingTotal)]);
+    cashFlowData.push(['', '  Closing Balance (Equity + Debt)', ...yearlyData.map(d => formatCurrency(d.closingTotal))]);
     cashFlowData.push(['']);
     cashFlowData.push(['═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════']);
 
