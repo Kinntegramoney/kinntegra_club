@@ -73,7 +73,7 @@ export default function RealEstateDetails() {
   
   // Payment Schedule View Details Modal
   const [showPaymentScheduleModal, setShowPaymentScheduleModal] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState('AED'); // AED, INR, USD, EUR, GBP, CNY
+  const [selectedCurrency, setSelectedCurrency] = useState('AED'); // Multiple currencies supported
   
   // Currency conversion rates (can be fetched from API or use fixed rates)
   const currencyRates = {
@@ -82,7 +82,25 @@ export default function RealEstateDetails() {
     USD: 0.27,   // 1 AED = ~0.27 USD
     EUR: 0.25,   // 1 AED = ~0.25 EUR
     GBP: 0.21,   // 1 AED = ~0.21 GBP
-    CNY: 1.97    // 1 AED = ~1.97 CNY
+    CNY: 1.97,   // 1 AED = ~1.97 CNY
+    JPY: 40.5,   // 1 AED = ~40.5 JPY
+    CHF: 0.24,   // 1 AED = ~0.24 CHF
+    CAD: 0.37,   // 1 AED = ~0.37 CAD
+    AUD: 0.42,   // 1 AED = ~0.42 AUD
+    SGD: 0.36,   // 1 AED = ~0.36 SGD
+    HKD: 2.12,   // 1 AED = ~2.12 HKD
+    SAR: 1.02,   // 1 AED = ~1.02 SAR
+    KWD: 0.083,  // 1 AED = ~0.083 KWD
+    QAR: 0.99,   // 1 AED = ~0.99 QAR
+    BHD: 0.10,   // 1 AED = ~0.10 BHD
+    OMR: 0.10    // 1 AED = ~0.10 OMR
+  };
+  
+  // Currency symbols for display
+  const currencySymbols = {
+    AED: 'د.إ', INR: '₹', USD: '$', EUR: '€', GBP: '£', CNY: '¥',
+    JPY: '¥', CHF: 'Fr', CAD: 'C$', AUD: 'A$', SGD: 'S$', HKD: 'HK$',
+    SAR: '﷼', KWD: 'د.ك', QAR: '﷼', BHD: '.د.ب', OMR: '﷼'
   };
   
   // Dummy investors for demo when no real investors exist
