@@ -1410,11 +1410,20 @@ function AllocationSimulator({
       success: false,
       lastYear: exhaustYear,
       yearsShort: entityEndYear - exhaustYear,
+      lifeExpectancy,
+      entityEndYear,
+      currentAge: entityAge,
+      yearlyData,
+      finalCorpus: 0,
       message: `The money will last till year ${exhaustYear}. Your money will exhaust ${entityEndYear - exhaustYear} years before your ${isFamily ? 'living' : ''} expectancy.`
     } : {
       success: true,
       lastYear: entityEndYear,
       yearsShort: 0,
+      lifeExpectancy,
+      entityEndYear,
+      currentAge: entityAge,
+      yearlyData,
       finalCorpus: corpus,
       message: `Great! Your money will last till ${entityEndYear} with ₹${formatLargeNumber(corpus)} remaining.`
     };
