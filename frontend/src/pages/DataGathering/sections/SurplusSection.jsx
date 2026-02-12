@@ -1865,6 +1865,13 @@ function AllocationSimulator({
     // ========== SHEET 3: CASH FLOW & PORTFOLIO ==========
     const cashFlowData = [];
     
+    // Currency formatter with ₹ symbol and commas
+    const formatCurrency = (num) => {
+      if (num === 0 || num === '' || num === null || num === undefined) return '';
+      const rounded = Math.round(num);
+      return '₹ ' + rounded.toLocaleString('en-IN');
+    };
+    
     // Header
     cashFlowData.push(['']);
     cashFlowData.push(['', 'CASH FLOW & PORTFOLIO PROJECTION']);
