@@ -2202,12 +2202,79 @@ export default function RealEstateDetails() {
                 </div>
               </div>
               
+              {/* Share Percentage Selector for Available/Open Opportunities */}
+              {(!opp.investors || opp.investors.length === 0 || opp.status === 'available') && (
+                <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-200">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <h4 className="font-semibold text-blue-800 text-sm mb-1">Calculate Your Investment</h4>
+                      <p className="text-xs text-blue-600">Select a share percentage to see your payment breakdown</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Preset Percentage Buttons */}
+                      {presetPercentages.map((pct) => (
+                        <button
+                          key={pct}
+                          onClick={() => {
+                            setViewingSharePercentage(pct);
+                            setCustomShareInput('');
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                            viewingSharePercentage === pct && !customShareInput
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-blue-600 border border-blue-300 hover:bg-blue-100'
+                          }`}
+                        >
+                          {pct}%
+                        </button>
+                      ))}
+                      {/* Custom Input */}
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0.1"
+                          max="100"
+                          step="0.1"
+                          placeholder="Custom %"
+                          value={customShareInput}
+                          onChange={(e) => {
+                            setCustomShareInput(e.target.value);
+                            const val = parseFloat(e.target.value);
+                            if (val > 0 && val <= 100) {
+                              setViewingSharePercentage(val);
+                            }
+                          }}
+                          className="w-24 px-2 py-1.5 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                        <span className="text-sm text-blue-600">%</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Show calculated investment amount */}
+                  <div className="mt-3 pt-3 border-t border-blue-200 flex items-center justify-between">
+                    <span className="text-sm text-blue-700">Your Investment ({viewingSharePercentage}% share):</span>
+                    <span className="text-lg font-bold text-blue-800">{convertCurrency(opp.total_cost * viewingSharePercentage / 100)}</span>
+                  </div>
+                </div>
+              )}
+              
               {/* Payment Schedule Table with User Contributions */}
               <div className="bg-gray-50 rounded-lg p-4 border">
-                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-green-600" />
-                  Payment Schedule with Per-User Contribution
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-green-600" />
+                    Payment Schedule {(!opp.investors || opp.investors.length === 0) ? `(${viewingSharePercentage}% Share)` : 'with Per-User Contribution'}
+                  </h3>
+                  {/* Download Button */}
+                  <button
+                    onClick={() => downloadPaymentSchedule(opp, viewingSharePercentage)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors"
+                    title="Download Payment Schedule"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </button>
+                </div>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -2218,19 +2285,25 @@ export default function RealEstateDetails() {
                         <th className="text-center py-3 px-4 font-semibold text-gray-700">Date</th>
                         <th className="text-center py-3 px-4 font-semibold text-gray-700">%</th>
                         <th className="text-right py-3 px-4 font-semibold text-gray-700">Total Amount</th>
-                        {/* User contribution columns - use actual investors or dummy */}
-                        {(opp.investors?.length > 0 ? opp.investors : dummyInvestors).map((inv, i) => (
-                          <th key={i} className="text-center py-3 px-3 font-medium text-gray-700 min-w-[100px] bg-blue-50">
-                            <div className="text-xs">{inv.client_name?.split(' ')[0] || inv.name}</div>
-                            <div className="text-[10px] text-gray-500">{inv.share_percentage}%</div>
+                        {/* User contribution columns - use actual investors or selected percentage for preview */}
+                        {opp.investors?.length > 0 ? (
+                          opp.investors.map((inv, i) => (
+                            <th key={i} className="text-center py-3 px-3 font-medium text-gray-700 min-w-[100px] bg-blue-50">
+                              <div className="text-xs">{inv.client_name?.split(' ')[0] || inv.name}</div>
+                              <div className="text-[10px] text-gray-500">{inv.share_percentage}%</div>
+                            </th>
+                          ))
+                        ) : (
+                          <th className="text-center py-3 px-3 font-medium text-gray-700 min-w-[120px] bg-blue-50">
+                            <div className="text-xs">Your Contribution</div>
+                            <div className="text-[10px] text-blue-600 font-bold">{viewingSharePercentage}%</div>
                           </th>
-                        ))}
+                        )}
                       </tr>
                     </thead>
                     <tbody>
                       {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, idx) => {
                         const milestoneAmount = opp.unit_price * milestone.percentage / 100;
-                        const investors = opp.investors?.length > 0 ? opp.investors : dummyInvestors;
                         
                         return (
                           <tr key={idx} className="border-b border-gray-100 hover:bg-white">
