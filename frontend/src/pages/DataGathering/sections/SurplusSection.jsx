@@ -1331,8 +1331,21 @@ function AllocationSimulator({
       return currentYear + (memberLifeExp - age);
     })();
 
+    // Get current age for the entity
+    const entityAge = isFamily 
+      ? calculateAge(members.find(m => m.is_primary)?.date_of_birth)
+      : calculateAge(members.find(m => m.id === entityId)?.date_of_birth);
+    
+    const lifeExpectancy = isFamily 
+      ? parseInt(members.find(m => m.is_primary)?.life_expectancy) || 85
+      : parseInt(members.find(m => m.id === entityId)?.life_expectancy) || 85;
+
+    // Store yearly data for chart
+    const yearlyData = [];
+
     for (let year = currentYear; year <= entityEndYear; year++) {
       const yearStr = year.toString();
+      const age = entityAge + (year - currentYear);
       
       // Add assets that should be included from this year
       if (includeAssets) {
@@ -1364,9 +1377,33 @@ function AllocationSimulator({
       const yearSurplus = totalIncome - totalExpenses - totalGoals;
       corpus = corpus * (1 + weightedReturn / 100) + yearSurplus;
       
+      // Store data point for chart (sample every 5 years or key years)
+      const yearsFromNow = year - currentYear;
+      if (yearsFromNow === 0 || yearsFromNow % 5 === 0 || year === entityEndYear || (corpus <= 0 && !exhaustYear)) {
+        yearlyData.push({
+          year,
+          age,
+          corpus: Math.max(0, Math.round(corpus)),
+          isExhausted: corpus <= 0,
+          isLifeExpectancy: year === entityEndYear
+        });
+      }
+      
       if (corpus <= 0 && !exhaustYear) {
         exhaustYear = year;
       }
+    }
+    
+    // Ensure life expectancy year is always included
+    if (!yearlyData.find(d => d.year === entityEndYear)) {
+      const finalAge = entityAge + (entityEndYear - currentYear);
+      yearlyData.push({
+        year: entityEndYear,
+        age: finalAge,
+        corpus: Math.max(0, Math.round(corpus)),
+        isExhausted: exhaustYear !== null,
+        isLifeExpectancy: true
+      });
     }
     
     const result = exhaustYear ? {
