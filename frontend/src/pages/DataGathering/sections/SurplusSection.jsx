@@ -1974,11 +1974,12 @@ function AllocationSimulator({
       equityCorpus = openingEquity + equityReturns + additionsEquity;
       debtCorpus = openingDebt + debtReturns + additionsDebt;
       
-      // Handle negative savings (withdrawals from corpus)
+      // Handle negative savings (withdrawals from corpus) - when expenses > income after retirement
+      let withdrawalAmount = 0;
       if (annualSavings < 0) {
-        const withdrawal = Math.abs(annualSavings);
-        const withdrawEquity = withdrawal * equity / 100;
-        const withdrawDebt = withdrawal * debt / 100;
+        withdrawalAmount = Math.abs(annualSavings);
+        const withdrawEquity = withdrawalAmount * equity / 100;
+        const withdrawDebt = withdrawalAmount * debt / 100;
         equityCorpus = Math.max(0, equityCorpus - withdrawEquity);
         debtCorpus = Math.max(0, debtCorpus - withdrawDebt);
       }
@@ -2013,6 +2014,7 @@ function AllocationSimulator({
         debtReturns: Math.round(debtReturns),
         closingEquity: Math.round(equityCorpus),
         closingDebt: Math.round(debtCorpus),
+        withdrawalAmount: Math.round(withdrawalAmount),
         closingTotal: Math.round(closingTotal)
       };
     });
