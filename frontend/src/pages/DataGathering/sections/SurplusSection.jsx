@@ -2063,41 +2063,35 @@ function AllocationSimulator({
 
     // ═══════════════ SAVINGS SECTION ═══════════════
     cashFlowData.push([]);
-    cashFlowData.push(['▶ GROSS SAVINGS']);
+    cashFlowData.push(['▶ NET ANNUAL SAVINGS']);
     cashFlowData.push([]);
-    cashFlowData.push(['  Gross Savings = (A) - (B) - (C)', ...yearlyData.map(d => formatCurrency(d.grossSavings))]);
+    cashFlowData.push(['  Net Savings = (A) - (B) - (C)', ...yearlyData.map(d => formatCurrency(d.annualSavings))]);
+    cashFlowData.push([`  Allocated to Equity (${equity}%)`, ...yearlyData.map(d => formatCurrency(d.savingsEquity))]);
+    cashFlowData.push([`  Allocated to Debt (${debt}%)`, ...yearlyData.map(d => formatCurrency(d.savingsDebt))]);
     cashFlowData.push([]);
     cashFlowData.push(['────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
     // ═══════════════ INVESTMENTS SECTION ═══════════════
     if (entityInvestments.length > 0) {
       cashFlowData.push([]);
-      cashFlowData.push(['▶ ONGOING INVESTMENTS (D) - Already Invested by Client']);
+      cashFlowData.push(['▶ ONGOING INVESTMENTS (SIP/Recurring) - Annual']);
       cashFlowData.push([]);
       
       entityInvestments.forEach(inv => {
         const invName = inv.scheme_name || inv.name || 'Investment';
-        const invAmount = parseFloat(inv.annual_investment) || parseFloat(inv.amount) || 0;
-        if (invAmount > 0) {
-          cashFlowData.push([`  ${invName}`, ...yearlyData.map(() => formatCurrency(invAmount))]);
+        // Get annual amount - multiply by 12 if it's monthly
+        const monthlyAmount = parseFloat(inv.monthly_investment) || parseFloat(inv.sip_amount) || parseFloat(inv.amount) || 0;
+        const annualAmount = parseFloat(inv.annual_investment) || (monthlyAmount * 12);
+        if (annualAmount > 0) {
+          cashFlowData.push([`  ${invName}`, ...yearlyData.map(() => formatCurrency(annualAmount))]);
         }
       });
       
       cashFlowData.push([]);
-      cashFlowData.push(['  TOTAL ONGOING INVESTMENTS (D)', ...yearlyData.map(d => formatCurrency(d.totalInvestments))]);
+      cashFlowData.push(['  TOTAL ANNUAL INVESTMENTS', ...yearlyData.map(d => formatCurrency(d.totalInvestments))]);
       cashFlowData.push([]);
       cashFlowData.push(['────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
     }
-
-    // ═══════════════ NET SURPLUS SECTION ═══════════════
-    cashFlowData.push([]);
-    cashFlowData.push(['▶ NET SURPLUS (Available for Portfolio)']);
-    cashFlowData.push([]);
-    cashFlowData.push(['  Net Surplus = Gross Savings - Ongoing Investments', ...yearlyData.map(d => formatCurrency(d.netSavings))]);
-    cashFlowData.push([`  Allocated to Equity (${equity}%)`, ...yearlyData.map(d => formatCurrency(d.savingsEquity))]);
-    cashFlowData.push([`  Allocated to Debt (${debt}%)`, ...yearlyData.map(d => formatCurrency(d.savingsDebt))]);
-    cashFlowData.push([]);
-    cashFlowData.push(['────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
     // ═══════════════ PORTFOLIO SECTION ═══════════════
     cashFlowData.push([]);
