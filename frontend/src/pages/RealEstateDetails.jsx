@@ -74,6 +74,11 @@ export default function RealEstateDetails() {
   // Payment Schedule View Details Modal
   const [showPaymentScheduleModal, setShowPaymentScheduleModal] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState('AED'); // Multiple currencies supported
+  const [viewingSharePercentage, setViewingSharePercentage] = useState(25); // Default 25% for preview
+  const [customShareInput, setCustomShareInput] = useState(''); // For custom percentage input
+  
+  // Preset percentage options for available opportunities
+  const presetPercentages = [12.5, 25, 37.5, 50];
   
   // Currency conversion rates (can be fetched from API or use fixed rates)
   const currencyRates = {
