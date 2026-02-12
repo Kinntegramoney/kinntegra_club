@@ -2546,28 +2546,16 @@ function AllocationSimulator({
                 return (
                   <React.Fragment key={member.id}>
                     <tr className={`hover:bg-gray-50/80 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                      <td className="py-3 px-3 text-center">
-                        <div className="font-medium text-gray-800 text-[11px]">
+                      <td className="py-3 px-3">
+                        <div className="font-medium text-gray-800 text-[11px] text-center">
                           {member.name}
                           {member.is_primary && <span className="text-blue-500 ml-0.5 text-[9px]">*</span>}
                         </div>
-                        <div className="text-[9px] text-gray-400 mt-0.5">
+                        <div className="text-[9px] text-gray-400 mt-0.5 text-center">
                           {age}y | LE:{memberLifeExp} | R:{memberInfo.retirementYear}
                         </div>
                         {allocation.result && (
-                          <div className={`mt-1 text-[10px] flex items-center justify-center gap-1 ${allocation.result.success ? 'text-green-600' : 'text-red-600'}`}>
-                            {allocation.result.success ? (
-                              <CheckCircle className="h-3 w-3" />
-                            ) : (
-                              <AlertTriangle className="h-3 w-3" />
-                            )}
-                            <span>
-                              {allocation.result.success 
-                                ? `Lasts till ${allocation.result.lastYear}` 
-                                : `Exhausts in ${allocation.result.lastYear} (${allocation.result.yearsShort}y short)`
-                              }
-                            </span>
-                          </div>
+                          <WealthChart result={allocation.result} entityName={member.name} />
                         )}
                       </td>
                       <td className="py-3 px-2 border-l border-gray-100 text-center">
