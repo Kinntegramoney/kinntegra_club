@@ -1123,22 +1123,32 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                       </SelectContent>
                                     </Select>
                                     <Select 
-                                      value={item.details[field.key]?.split('/')[1] || ""} 
+                                      value={(() => {
+                                        const stored = item.details[field.key]?.split('/')[1] || "";
+                                        // Handle both 2-digit (YY) and 4-digit (YYYY) stored values
+                                        if (stored.length === 4) return stored;
+                                        if (stored.length === 2) {
+                                          // Convert 2-digit to 4-digit for matching
+                                          const num = parseInt(stored);
+                                          return num >= 50 ? `19${stored}` : `20${stored}`;
+                                        }
+                                        return "";
+                                      })()} 
                                       onValueChange={v => {
                                         const month = item.details[field.key]?.split('/')[0] || '01';
+                                        // Store as 4-digit year
                                         updateIncomeItem(category.value, item.id, field.key, `${month}/${v}`);
                                       }} 
                                       disabled={isReadOnly}
                                     >
-                                      <SelectTrigger className="h-8 w-[70px] text-xs bg-white border-gray-200">
-                                        <SelectValue placeholder="YY" />
+                                      <SelectTrigger className="h-8 w-[80px] text-xs bg-white border-gray-200">
+                                        <SelectValue placeholder="Year" />
                                       </SelectTrigger>
                                       <SelectContent className="max-h-[300px]">
                                         {/* Years from 1950 to current year + 50 */}
                                         {Array.from({length: new Date().getFullYear() - 1950 + 51}, (_, i) => {
                                           const fullYear = 1950 + i;
-                                          const year = fullYear.toString().slice(-2);
-                                          return <SelectItem key={fullYear} value={year} className="text-xs">{fullYear}</SelectItem>;
+                                          return <SelectItem key={fullYear} value={fullYear.toString()} className="text-xs">{fullYear}</SelectItem>;
                                         })}
                                       </SelectContent>
                                     </Select>
