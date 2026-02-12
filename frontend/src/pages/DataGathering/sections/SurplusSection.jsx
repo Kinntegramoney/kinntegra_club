@@ -2762,10 +2762,20 @@ function AllocationSimulator({
                           <button 
                             onClick={() => exportEntityCashFlow(member.id)}
                             disabled={!allocation.result}
-                            className="px-3 py-1.5 text-[10px] font-medium rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                            className="px-3 py-1.5 text-[10px] font-medium rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
                             title="Download Excel"
                           >
                             <Download className="h-3 w-3" />
+                            <span>Excel</span>
+                          </button>
+                          <button 
+                            onClick={() => exportEntityPDF(member.id, false, allocation)}
+                            disabled={!allocation.result}
+                            className="px-3 py-1.5 text-[10px] font-medium rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                            title="Download PDF Summary"
+                          >
+                            <FileText className="h-3 w-3" />
+                            <span>PDF</span>
                           </button>
                         </div>
                       </td>
