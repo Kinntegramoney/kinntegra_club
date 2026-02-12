@@ -1990,24 +1990,33 @@ function AllocationSimulator({
     cashFlowData.push(['Goal Expenses', ...yearlyData.map(d => d.goalExpenses)]);
     cashFlowData.push([]);
 
-    // Annual Savings
-    cashFlowData.push(['ANNUAL SAVINGS']);
+    // Annual Savings from Income
+    cashFlowData.push(['ANNUAL SAVINGS (from Income)']);
     cashFlowData.push(['Annual Savings', ...yearlyData.map(d => d.annualSavings)]);
-    cashFlowData.push([`Equity (${equity}%)`, ...yearlyData.map(d => d.savingsEquity)]);
-    cashFlowData.push([`Debt (${debt}%)`, ...yearlyData.map(d => d.savingsDebt)]);
+    cashFlowData.push([`Savings to Equity (${equity}%)`, ...yearlyData.map(d => d.savingsEquity)]);
+    cashFlowData.push([`Savings to Debt (${debt}%)`, ...yearlyData.map(d => d.savingsDebt)]);
     cashFlowData.push([]);
+
+    // Assets Added (if include assets is selected)
+    if (includeAssets) {
+      cashFlowData.push(['ASSETS INCLUDED IN OPENING BALANCE']);
+      cashFlowData.push(['Total Assets Added', ...yearlyData.map(d => d.assetAddition)]);
+      cashFlowData.push([`Assets to Equity (${equity}%)`, ...yearlyData.map(d => d.assetEquity)]);
+      cashFlowData.push([`Assets to Debt (${debt}%)`, ...yearlyData.map(d => d.assetDebt)]);
+      cashFlowData.push([]);
+    }
 
     // Portfolio Section - Equity
     cashFlowData.push(['PORTFOLIO - EQUITY']);
-    cashFlowData.push(['Opening Balance (Equity)', ...yearlyData.map(d => d.openingEquity)]);
-    cashFlowData.push(['Additions (Equity)', ...yearlyData.map(d => d.additionsEquity)]);
+    cashFlowData.push(['Opening Balance (incl. Assets)', ...yearlyData.map(d => d.openingEquity)]);
+    cashFlowData.push(['Savings Additions', ...yearlyData.map(d => d.additionsEquity)]);
     cashFlowData.push([`Expected Returns (${equityReturn}%)`, ...yearlyData.map(d => d.equityReturns)]);
     cashFlowData.push(['Closing Balance (Equity)', ...yearlyData.map(d => d.closingEquity)]);
     cashFlowData.push([]);
 
     // Portfolio Section - Debt
     cashFlowData.push(['PORTFOLIO - DEBT']);
-    cashFlowData.push(['Opening Balance (Debt)', ...yearlyData.map(d => d.openingDebt)]);
+    cashFlowData.push(['Opening Balance (incl. Assets)', ...yearlyData.map(d => d.openingDebt)]);
     cashFlowData.push(['Additions (Debt)', ...yearlyData.map(d => d.additionsDebt)]);
     cashFlowData.push([`Expected Returns (${debtReturn}%)`, ...yearlyData.map(d => d.debtReturns)]);
     cashFlowData.push(['Closing Balance (Debt)', ...yearlyData.map(d => d.closingDebt)]);
