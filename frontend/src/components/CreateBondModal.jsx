@@ -125,6 +125,61 @@ export default function CreateBondModal({ onClose, onSuccess }) {
     toast.success(`Generated ${schedule.length} interest payments`);
   };
 
+  // Handle adding presentations
+  const handleAddPresentations = (files) => {
+    if (!files || files.length === 0) return;
+    
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/vnd.ms-powerpoint',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    const validFiles = Array.from(files).filter(f => 
+      allowedTypes.includes(f.type) || 
+      f.name.match(/\.(pdf|pptx|ppt|doc|docx)$/i)
+    );
+    
+    if (validFiles.length === 0) {
+      toast.error("Please select PDF, PowerPoint, or Word files only");
+      return;
+    }
+    
+    if (pendingPresentations.length + validFiles.length > 10) {
+      toast.error(`Maximum 10 presentations allowed. Currently have ${pendingPresentations.length}`);
+      return;
+    }
+    
+    setPendingPresentations([...pendingPresentations, ...validFiles]);
+    toast.success(`Added ${validFiles.length} presentation(s)`);
+  };
+
+  // Remove pending presentation
+  const removePendingPresentation = (index) => {
+    setPendingPresentations(pendingPresentations.filter((_, i) => i !== index));
+  };
+
+  // Get file icon based on name
+  const getFileIcon = (filename) => {
+    if (filename?.endsWith('.pdf')) {
+      return <FileText className="h-4 w-4 text-red-500" />;
+    }
+    if (filename?.match(/\.(pptx?|ppt)$/i)) {
+      return <FileText className="h-4 w-4 text-orange-500" />;
+    }
+    return <FileText className="h-4 w-4 text-blue-500" />;
+  };
+
+  // Format file size
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -176,11 +231,33 @@ export default function CreateBondModal({ onClose, onSuccess }) {
       };
 
       const token = localStorage.getItem("token");
-      await axios.post(`${API}/bonds`, bondData, {
+      const response = await axios.post(`${API}/bonds`, bondData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      toast.success("Bond created successfully!");
+      const bondId = response.data.id;
+      
+      // Upload presentations if any
+      if (pendingPresentations.length > 0 && bondId) {
+        try {
+          const formDataUpload = new FormData();
+          pendingPresentations.forEach(file => formDataUpload.append('files', file));
+          
+          await axios.post(`${API}/bonds/${bondId}/presentations`, formDataUpload, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+          toast.success(`Bond created with ${pendingPresentations.length} presentation(s)!`);
+        } catch (presError) {
+          console.error("Error uploading presentations:", presError);
+          toast.success("Bond created! (Presentations upload failed - you can add them later)");
+        }
+      } else {
+        toast.success("Bond created successfully!");
+      }
+      
       onSuccess?.();
       onClose();
     } catch (error) {
