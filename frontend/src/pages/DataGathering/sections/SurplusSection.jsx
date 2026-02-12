@@ -1878,15 +1878,12 @@ function AllocationSimulator({
         }
       });
 
-      // Annual savings (before investments)
-      const grossSavings = totalIncome - totalExpense - totalGoalExp;
+      // Annual savings (Income - Expenses - Goals)
+      const annualSavings = totalIncome - totalExpense - totalGoalExp;
       
-      // Net savings after deducting ongoing investments (already invested by client)
-      const netSavings = grossSavings - totalInvestments;
-      
-      // Savings allocation (from net savings only - after ongoing investments)
-      const savingsEquity = netSavings > 0 ? netSavings * equity / 100 : 0;
-      const savingsDebt = netSavings > 0 ? netSavings * debt / 100 : 0;
+      // Savings allocation
+      const savingsEquity = annualSavings > 0 ? annualSavings * equity / 100 : 0;
+      const savingsDebt = annualSavings > 0 ? annualSavings * debt / 100 : 0;
 
       // Assets added to opening balance
       const assetAdditionThisYear = assetsByYear[y] || 0;
@@ -1905,10 +1902,10 @@ function AllocationSimulator({
       equityCorpus = openingEquity + equityReturns + savingsEquity;
       debtCorpus = openingDebt + debtReturns + savingsDebt;
       
-      // Handle withdrawals (when net savings is negative)
+      // Handle withdrawals (when savings is negative)
       let withdrawalAmount = 0;
-      if (netSavings < 0) {
-        withdrawalAmount = Math.abs(netSavings);
+      if (annualSavings < 0) {
+        withdrawalAmount = Math.abs(annualSavings);
         equityCorpus = Math.max(0, equityCorpus - withdrawalAmount * equity / 100);
         debtCorpus = Math.max(0, debtCorpus - withdrawalAmount * debt / 100);
       }
@@ -1939,8 +1936,7 @@ function AllocationSimulator({
         yearInvestmentDetails,
         totalInvestments: Math.round(totalInvestments),
         // Savings
-        grossSavings: Math.round(grossSavings),
-        netSavings: Math.round(netSavings),
+        annualSavings: Math.round(annualSavings),
         savingsEquity: Math.round(savingsEquity),
         savingsDebt: Math.round(savingsDebt),
         // Assets
