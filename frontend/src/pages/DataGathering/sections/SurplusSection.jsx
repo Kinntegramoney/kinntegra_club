@@ -809,8 +809,8 @@ export default function SurplusSection({ family, isReadOnly }) {
     })]);
     cashFlowData.push([]);
 
-    // Net Carried Forward Next Year
-    cashFlowData.push(['Net Carried Forward Next Year', '', ...portfolioByYear.map(p => p.portfolio)]);
+    // Opening Balance for Next Year (This is the Closing Balance which becomes next year's opening)
+    cashFlowData.push(['Opening Balance for Next Year', '', ...portfolioByYear.map(p => p.closingBalance)]);
 
     const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
     cashFlowSheet['!cols'] = [{ wch: 30 }, { wch: 10 }, ...allYears.map(() => ({ wch: 12 }))];
