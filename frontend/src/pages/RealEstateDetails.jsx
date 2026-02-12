@@ -221,6 +221,125 @@ export default function RealEstateDetails() {
     return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  // Download Payment Schedule as Excel
+  const downloadPaymentSchedule = (opportunity, sharePercentage) => {
+    if (!opportunity || !opportunity.payment_schedule) {
+      toast.error("No payment schedule available");
+      return;
+    }
+    
+    const wb = XLSX.utils.book_new();
+    
+    // Property Summary Sheet
+    const summaryData = [
+      ['Property Payment Schedule'],
+      [],
+      ['Property Details'],
+      ['Building Name', opportunity.building_name || '-'],
+      ['Unit No', opportunity.unit_no || '-'],
+      ['Location', opportunity.location || '-'],
+      ['Developer', opportunity.developer_name || '-'],
+      ['Total Area', `${opportunity.total_area?.toLocaleString() || 0} sqft`],
+      [],
+      ['Investment Details'],
+      ['Unit Price (AED)', opportunity.unit_price?.toLocaleString() || 0],
+      ['Total Cost (AED)', opportunity.total_cost?.toLocaleString() || 0],
+      ['Your Share (%)', sharePercentage],
+      ['Your Investment (AED)', ((opportunity.total_cost || 0) * sharePercentage / 100).toLocaleString()],
+      [],
+      ['Currency Conversion (for reference)'],
+      ['Selected Currency', selectedCurrency],
+      ['Exchange Rate', `1 AED = ${currencyRates[selectedCurrency]} ${selectedCurrency}`],
+      ['Your Investment', convertCurrency((opportunity.total_cost || 0) * sharePercentage / 100)],
+    ];
+    
+    const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+    summaryWs['!cols'] = [{ wch: 25 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+    
+    // Payment Schedule Sheet
+    const hasInvestors = opportunity.investors?.length > 0;
+    
+    const scheduleHeaders = hasInvestors 
+      ? ['#', 'Milestone', 'Date', '%', 'Total Amount (AED)', ...opportunity.investors.map(inv => `${inv.client_name?.split(' ')[0] || 'Investor'} (${inv.share_percentage}%)`)]
+      : ['#', 'Milestone', 'Date', '%', 'Total Amount (AED)', `Your Contribution (${sharePercentage}%)`];
+    
+    const scheduleData = [scheduleHeaders];
+    
+    const sortedSchedule = [...opportunity.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    sortedSchedule.forEach((milestone, idx) => {
+      const milestoneAmount = (opportunity.unit_price || 0) * milestone.percentage / 100;
+      
+      if (hasInvestors) {
+        const investorContributions = opportunity.investors.map(inv => 
+          Math.round(milestoneAmount * (inv.share_percentage / 100))
+        );
+        scheduleData.push([
+          idx + 1,
+          milestone.description || `Payment ${idx + 1}`,
+          formatDate(milestone.date),
+          `${milestone.percentage}%`,
+          Math.round(milestoneAmount),
+          ...investorContributions
+        ]);
+      } else {
+        const userContribution = Math.round(milestoneAmount * sharePercentage / 100);
+        scheduleData.push([
+          idx + 1,
+          milestone.description || `Payment ${idx + 1}`,
+          formatDate(milestone.date),
+          `${milestone.percentage}%`,
+          Math.round(milestoneAmount),
+          userContribution
+        ]);
+      }
+    });
+    
+    // Add total row
+    const totalRow = hasInvestors
+      ? ['', 'TOTAL', '', '100%', opportunity.unit_price || 0, ...opportunity.investors.map(inv => Math.round((opportunity.unit_price || 0) * (inv.share_percentage / 100)))]
+      : ['', 'TOTAL', '', '100%', opportunity.unit_price || 0, Math.round((opportunity.unit_price || 0) * sharePercentage / 100)];
+    scheduleData.push(totalRow);
+    
+    const scheduleWs = XLSX.utils.aoa_to_sheet(scheduleData);
+    scheduleWs['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 8 }, { wch: 18 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, scheduleWs, 'Payment Schedule');
+    
+    // Currency Converted Sheet
+    const currencyHeaders = ['#', 'Milestone', 'Date', '%', `Total (${selectedCurrency})`, `Your Contribution (${selectedCurrency})`];
+    const currencyData = [currencyHeaders];
+    
+    sortedSchedule.forEach((milestone, idx) => {
+      const milestoneAmount = (opportunity.unit_price || 0) * milestone.percentage / 100;
+      const userContribution = milestoneAmount * sharePercentage / 100;
+      
+      currencyData.push([
+        idx + 1,
+        milestone.description || `Payment ${idx + 1}`,
+        formatDate(milestone.date),
+        `${milestone.percentage}%`,
+        Math.round(milestoneAmount * currencyRates[selectedCurrency]),
+        Math.round(userContribution * currencyRates[selectedCurrency])
+      ]);
+    });
+    
+    currencyData.push([
+      '', 'TOTAL', '', '100%',
+      Math.round((opportunity.unit_price || 0) * currencyRates[selectedCurrency]),
+      Math.round((opportunity.unit_price || 0) * sharePercentage / 100 * currencyRates[selectedCurrency])
+    ]);
+    
+    const currencyWs = XLSX.utils.aoa_to_sheet(currencyData);
+    currencyWs['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 8 }, { wch: 20 }, { wch: 25 }];
+    XLSX.utils.book_append_sheet(wb, currencyWs, `Schedule (${selectedCurrency})`);
+    
+    // Generate filename and download
+    const fileName = `Payment_Schedule_${opportunity.building_name?.replace(/\s+/g, '_') || 'Property'}_${sharePercentage}pct_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success('Payment schedule downloaded successfully!');
+  };
+
   // Handle removing an investor
   const handleRemoveInvestor = async (investor) => {
     if (!window.confirm(`Are you sure you want to remove ${investor.client_name || 'this investor'}?`)) {
