@@ -794,11 +794,16 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 const frequencyMap = { "Monthly": 12, "Quarterly": 4, "Half-Yearly": 2, "Yearly": 1 };
                 const paymentsPerYear = frequencyMap[frequency] || 1;
                 
-                // Parse MM/YY dates
+                // Parse MM/YY or MM/YYYY dates
                 const parseMMYY = (mmyy) => {
                   if (!mmyy) return null;
                   const [month, year] = mmyy.split('/');
-                  const fullYear = parseInt(year) > 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
+                  let fullYear;
+                  if (year.length === 4) {
+                    fullYear = parseInt(year);
+                  } else {
+                    fullYear = parseInt(year) >= 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
+                  }
                   return new Date(fullYear, parseInt(month) - 1, 1);
                 };
                 
