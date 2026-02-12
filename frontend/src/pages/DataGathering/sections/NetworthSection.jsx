@@ -66,15 +66,42 @@ export default function NetworthSection({ family }) {
     return totalAssets;
   };
 
-  // Calculate total liabilities for a member
+  // Calculate total liabilities for a member (matching LiabilitySection logic)
   const getMemberLiabilities = (memberId) => {
-    const memberLiabilities = liabilities.filter(
-      liability => liability.member_ids?.includes(memberId)
-    );
+    let totalOutstanding = 0;
+
+    // Process expense details (loan EMIs) - same logic as LiabilitySection
+    expenseDetails.forEach(exp => {
+      if (exp.expense_type?.includes('loan') || exp.expense_type?.includes('emi')) {
+        const memberIds = exp.member_ids || [];
+        const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
+        
+        const emi = parseFloat(exp.details?.monthly_emi) || parseFloat(exp.monthly_emi) || 0;
+        const remaining = parseInt(exp.details?.num_installments) || parseInt(exp.num_installments) || 0;
+        const outstanding = parseFloat(exp.details?.outstanding) || parseFloat(exp.amount_today) || emi * remaining;
+        
+        if (isFamilyExpense) {
+          // Distribute family expense among all members
+          totalOutstanding += outstanding / members.length;
+        } else if (memberIds.includes(memberId)) {
+          totalOutstanding += outstanding;
+        }
+      }
+    });
+
+    // Process dedicated liabilities
+    dedicatedLiabilities.forEach(lib => {
+      const memberIds = lib.member_ids || [];
+      
+      if (memberIds.includes(memberId)) {
+        const emi = parseFloat(lib.monthly_emi) || parseFloat(lib.emi_amount) || 0;
+        const remaining = parseInt(lib.num_installments) || parseInt(lib.remaining_installments) || 0;
+        const outstanding = parseFloat(lib.amount_today) || parseFloat(lib.outstanding_amount) || emi * remaining;
+        totalOutstanding += outstanding;
+      }
+    });
     
-    return memberLiabilities.reduce((sum, liability) => {
-      return sum + (parseFloat(liability.outstanding_amount) || parseFloat(liability.amount) || 0);
-    }, 0);
+    return totalOutstanding;
   };
 
   // Calculate networth (Assets - Liabilities)
