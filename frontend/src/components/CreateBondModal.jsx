@@ -583,6 +583,85 @@ export default function CreateBondModal({ onClose, onSuccess }) {
                 </div>
               </div>
             )}
+
+            {activeTab === "presentations" && (
+              <div className="space-y-6">
+                <div className="text-center mb-4">
+                  <h3 className="font-semibold text-gray-800 mb-1">Upload Presentations</h3>
+                  <p className="text-sm text-gray-500">Add PDF, PowerPoint, or Word documents related to this bond</p>
+                </div>
+
+                {/* Upload Area */}
+                <div>
+                  <input
+                    id="create-presentation-files"
+                    type="file"
+                    multiple
+                    accept=".pdf,.pptx,.ppt,.doc,.docx"
+                    onChange={(e) => handleAddPresentations(e.target.files)}
+                    className="hidden"
+                    data-testid="create-presentation-upload"
+                  />
+                  <label 
+                    htmlFor="create-presentation-files"
+                    className="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer transition-colors hover:border-etihad-gold-400 hover:bg-etihad-gold-50"
+                  >
+                    <Upload className="h-10 w-10 text-gray-400" />
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-gray-700">Click to upload presentations</p>
+                      <p className="text-xs text-gray-500 mt-1">PDF, PowerPoint, Word documents (max 10 files)</p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Pending Presentations List */}
+                {pendingPresentations.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium text-gray-700">Selected Files ({pendingPresentations.length}/10)</h4>
+                      <button 
+                        type="button"
+                        onClick={() => setPendingPresentations([])}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                    <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+                      {pendingPresentations.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                          <div className="flex items-center gap-3">
+                            {getFileIcon(file.name)}
+                            <div>
+                              <p className="text-sm font-medium text-gray-800 truncate max-w-[280px]" title={file.name}>
+                                {file.name}
+                              </p>
+                              <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removePendingPresentation(index)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Info Box */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Note:</strong> Presentations will be uploaded after the bond is created. You can also add or manage presentations later from the Edit Bond modal.
+                  </p>
+                </div>
+              </div>
+            )}
           </form>
         </div>
 
