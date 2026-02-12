@@ -2184,12 +2184,339 @@ function AllocationSimulator({
 
     // Create sheet with styling
     const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
-    cashFlowSheet['!cols'] = [{ wch: 38 }, ...allYears.map(() => ({ wch: 16 }))];
+    
+    // Set column widths
+    cashFlowSheet['!cols'] = [{ wch: 42 }, ...allYears.map(() => ({ wch: 18 }))];
+    
+    // Apply styles to cells (xlsx community version has limited styling support)
+    // We'll use xlsx-style patterns where possible
+    const range = XLSX.utils.decode_range(cashFlowSheet['!ref']);
+    
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!cashFlowSheet[cellAddress]) continue;
+        
+        const cellValue = cashFlowSheet[cellAddress].v || '';
+        
+        // Initialize cell style
+        if (!cashFlowSheet[cellAddress].s) {
+          cashFlowSheet[cellAddress].s = {};
+        }
+        
+        // Style section headers (▶ prefix)
+        if (typeof cellValue === 'string' && cellValue.startsWith('▶')) {
+          cashFlowSheet[cellAddress].s = {
+            font: { bold: true, color: { rgb: "1565C0" } },
+            fill: { fgColor: { rgb: "E3F2FD" } }
+          };
+        }
+        
+        // Style TOTAL rows
+        if (typeof cellValue === 'string' && (cellValue.includes('TOTAL') || cellValue.includes('CLOSING'))) {
+          cashFlowSheet[cellAddress].s = {
+            font: { bold: true },
+            fill: { fgColor: { rgb: "FFF8E1" } }
+          };
+        }
+        
+        // Style header row
+        if (R === 0) {
+          cashFlowSheet[cellAddress].s = {
+            font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "1565C0" } },
+            alignment: { horizontal: 'center' }
+          };
+        }
+        
+        // Style separator lines
+        if (typeof cellValue === 'string' && (cellValue.startsWith('═') || cellValue.startsWith('─'))) {
+          cashFlowSheet[cellAddress].s = {
+            font: { color: { rgb: "90A4AE" } }
+          };
+        }
+      }
+    }
     
     XLSX.utils.book_append_sheet(wb, cashFlowSheet, "Cash Flow & Portfolio");
 
-    // Download
+    // Download Excel
     XLSX.writeFile(wb, `Financial_Plan_${entityName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+  };
+
+  // ========== PDF EXPORT FUNCTION ==========
+  const exportEntityPDF = (entityId, isFamily, allocation) => {
+    const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears, assetAmounts } = allocation;
+    
+    // Get entity details
+    let entityName, entityAge, targetMembers;
+    if (isFamily) {
+      const primary = members.find(m => m.is_primary);
+      entityName = primary ? `${primary.name} & Family` : 'Family';
+      entityAge = primary?.age || 30;
+      targetMembers = members;
+    } else {
+      const member = members.find(m => m.id === entityId);
+      entityName = member?.name || 'Member';
+      entityAge = member?.age || 30;
+      targetMembers = [member];
+    }
+
+    // Get entity data
+    const entityAssets = getAssetsForEntity(entityId);
+    const liabilities = family?.liabilities || [];
+    const insurancePremiums = family?.insurance_premiums || [];
+    const entityLiabilities = isFamily ? liabilities : liabilities.filter(l => l.member_id === entityId);
+    const entityPremiums = isFamily ? insurancePremiums : insurancePremiums.filter(p => p.member_id === entityId);
+    const entityGoals = goalDetails || [];
+    const entityInvestments = investmentDetails || [];
+    
+    const totalAnnualPremium = entityPremiums.reduce((sum, p) => sum + (parseFloat(p.amount) || parseFloat(p.premium) || 0), 0);
+
+    // Calculate projections for PDF
+    const projectionYears = 10;
+    const allYears = Array.from({ length: projectionYears }, (_, i) => currentYear + i);
+    
+    // Pre-calculate assets by year
+    const assetsByYear = {};
+    if (includeAssets) {
+      entityAssets.forEach(asset => {
+        if (selectedAssets[asset.id] !== false) {
+          const startYear = assetStartYears[asset.id] || currentYear;
+          const assetValue = assetAmounts?.[asset.id] !== undefined ? assetAmounts[asset.id] : asset.value;
+          if (!assetsByYear[startYear]) assetsByYear[startYear] = 0;
+          assetsByYear[startYear] += assetValue;
+        }
+      });
+    }
+    
+    // Calculate yearly projections
+    let equityCorpus = 0, debtCorpus = 0;
+    const yearlyData = allYears.map((y, idx) => {
+      const yearStr = y.toString();
+      const yearsFromNow = y - currentYear;
+      
+      // Income
+      let totalIncome = 0;
+      targetMembers.forEach(m => {
+        const info = getMemberIncomeInfo(m.id);
+        const isPostRetirement = y >= info.retirementYear;
+        if (!isPostRetirement) {
+          totalIncome += info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
+          totalIncome += info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
+        }
+        totalIncome += info.baseRental * Math.pow(1 + (info.rentalGrowth || 5) / 100, yearsFromNow);
+      });
+      
+      // Expenses
+      let totalExpense = targetMembers.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
+      const info = getMemberIncomeInfo(targetMembers[0]?.id);
+      if (y < (info?.retirementYear || 2050)) totalExpense += totalAnnualPremium;
+      
+      // Loans
+      entityLiabilities.forEach(l => {
+        const emi = (parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0) * 12;
+        const remaining = parseInt(l.remaining_tenure) || parseInt(l.num_installments) || 0;
+        if (yearsFromNow < Math.ceil(remaining / 12)) totalExpense += emi;
+      });
+      
+      // Goals
+      let totalGoals = 0;
+      entityGoals.forEach(goal => {
+        const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
+        if (goalYears.includes(yearStr)) {
+          const amount = parseFloat(goal.goal_amount) || 0;
+          const inflation = parseFloat(goal.inflation_percent) || 0;
+          totalGoals += yearsFromNow > 0 ? amount * Math.pow(1 + inflation / 100, yearsFromNow) : amount;
+        }
+      });
+      
+      // Savings & Portfolio
+      const savings = totalIncome - totalExpense - totalGoals;
+      const assetAddition = assetsByYear[y] || 0;
+      
+      const openingEquity = equityCorpus + assetAddition * equity / 100;
+      const openingDebt = debtCorpus + assetAddition * debt / 100;
+      const equityReturns = openingEquity * equityReturn / 100;
+      const debtReturns = openingDebt * debtReturn / 100;
+      
+      equityCorpus = openingEquity + equityReturns + (savings > 0 ? savings * equity / 100 : 0);
+      debtCorpus = openingDebt + debtReturns + (savings > 0 ? savings * debt / 100 : 0);
+      
+      if (savings < 0) {
+        const withdrawal = Math.abs(savings);
+        equityCorpus = Math.max(0, equityCorpus - withdrawal * equity / 100);
+        debtCorpus = Math.max(0, debtCorpus - withdrawal * debt / 100);
+      }
+      
+      return {
+        year: y,
+        age: entityAge + yearsFromNow,
+        income: Math.round(totalIncome),
+        expense: Math.round(totalExpense),
+        goals: Math.round(totalGoals),
+        savings: Math.round(savings),
+        portfolio: Math.round(equityCorpus + debtCorpus)
+      };
+    });
+
+    // Format currency for PDF
+    const formatPDFCurrency = (num) => {
+      if (!num) return '₹ 0';
+      const absValue = Math.abs(num);
+      if (absValue >= 10000000) return `₹ ${(num / 10000000).toFixed(2)} Cr`;
+      if (absValue >= 100000) return `₹ ${(num / 100000).toFixed(2)} L`;
+      return `₹ ${num.toLocaleString('en-IN')}`;
+    };
+
+    // Create PDF
+    const doc = new jsPDF('landscape', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    
+    // Colors
+    const primaryColor = [21, 101, 192]; // Blue
+    const secondaryColor = [245, 245, 245]; // Light gray
+    const accentColor = [255, 193, 7]; // Amber
+    
+    // Header
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, pageWidth, 25, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('FINANCIAL PLAN SUMMARY', pageWidth / 2, 12, { align: 'center' });
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(entityName.toUpperCase(), pageWidth / 2, 20, { align: 'center' });
+    
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+    
+    // Summary Stats Box
+    let yPos = 35;
+    doc.setFillColor(...secondaryColor);
+    doc.roundedRect(10, yPos, pageWidth - 20, 25, 3, 3, 'F');
+    
+    const lastYear = yearlyData[yearlyData.length - 1];
+    const firstYear = yearlyData[0];
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    const statsY = yPos + 10;
+    
+    // Summary metrics
+    const metrics = [
+      { label: 'Current Age', value: `${entityAge} years` },
+      { label: 'Projection Period', value: `${projectionYears} years` },
+      { label: 'Current Income', value: formatPDFCurrency(firstYear.income) },
+      { label: 'Projected Portfolio', value: formatPDFCurrency(lastYear.portfolio) },
+      { label: 'Allocation', value: `${equity}% Equity / ${debt}% Debt` }
+    ];
+    
+    const colWidth = (pageWidth - 20) / metrics.length;
+    metrics.forEach((m, i) => {
+      const xPos = 10 + colWidth * i + colWidth / 2;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(m.label, xPos, statsY, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(m.value, xPos, statsY + 8, { align: 'center' });
+    });
+    
+    yPos += 35;
+    
+    // Cash Flow Table
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(...primaryColor);
+    doc.text('YEARLY CASH FLOW PROJECTION', 10, yPos);
+    yPos += 5;
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [['Year', 'Age', 'Income', 'Expenses', 'Goals', 'Savings', 'Portfolio Value']],
+      body: yearlyData.map(d => [
+        d.year,
+        d.age,
+        formatPDFCurrency(d.income),
+        formatPDFCurrency(d.expense),
+        formatPDFCurrency(d.goals),
+        formatPDFCurrency(d.savings),
+        formatPDFCurrency(d.portfolio)
+      ]),
+      theme: 'grid',
+      headStyles: {
+        fillColor: primaryColor,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      bodyStyles: {
+        halign: 'center',
+        fontSize: 9
+      },
+      alternateRowStyles: {
+        fillColor: [245, 250, 255]
+      },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 15 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 35 },
+        4: { cellWidth: 35 },
+        5: { cellWidth: 35 },
+        6: { cellWidth: 45, fontStyle: 'bold' }
+      },
+      margin: { left: 10, right: 10 }
+    });
+    
+    yPos = doc.lastAutoTable.finalY + 10;
+    
+    // Portfolio Allocation Box
+    if (yPos < pageHeight - 50) {
+      doc.setFillColor(227, 242, 253);
+      doc.roundedRect(10, yPos, (pageWidth - 30) / 2, 40, 3, 3, 'F');
+      doc.setFillColor(255, 243, 224);
+      doc.roundedRect((pageWidth + 10) / 2, yPos, (pageWidth - 30) / 2, 40, 3, 3, 'F');
+      
+      // Equity Box
+      doc.setTextColor(...primaryColor);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('EQUITY PORTFOLIO', 10 + (pageWidth - 30) / 4, yPos + 10, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Allocation: ${equity}%`, 10 + (pageWidth - 30) / 4, yPos + 20, { align: 'center' });
+      doc.text(`Expected Return: ${equityReturn}% p.a.`, 10 + (pageWidth - 30) / 4, yPos + 28, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Value: ${formatPDFCurrency(lastYear.portfolio * equity / 100)}`, 10 + (pageWidth - 30) / 4, yPos + 36, { align: 'center' });
+      
+      // Debt Box
+      doc.setTextColor(230, 126, 34);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('DEBT PORTFOLIO', (pageWidth + 10) / 2 + (pageWidth - 30) / 4, yPos + 10, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Allocation: ${debt}%`, (pageWidth + 10) / 2 + (pageWidth - 30) / 4, yPos + 20, { align: 'center' });
+      doc.text(`Expected Return: ${debtReturn}% p.a.`, (pageWidth + 10) / 2 + (pageWidth - 30) / 4, yPos + 28, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Value: ${formatPDFCurrency(lastYear.portfolio * debt / 100)}`, (pageWidth + 10) / 2 + (pageWidth - 30) / 4, yPos + 36, { align: 'center' });
+    }
+    
+    // Footer
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, pageHeight - 10, pageWidth, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.text(`Generated on ${new Date().toLocaleDateString('en-IN')} | This is a projection and actual results may vary`, pageWidth / 2, pageHeight - 4, { align: 'center' });
+    
+    // Save PDF
+    doc.save(`Financial_Summary_${entityName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
   // Get primary member name for family row
