@@ -1825,7 +1825,20 @@ function AllocationSimulator({
     cashFlowData.push([`Generated: ${new Date().toLocaleDateString('en-IN')}`]);
     cashFlowData.push([]);
 
-    // Calculate data for all years first
+    // Pre-calculate which assets to add in which year (for opening balance)
+    const assetsByYear = {};
+    if (includeAssets) {
+      entityAssets.forEach(asset => {
+        if (selectedAssets[asset.id] !== false) {
+          const startYear = assetStartYears[asset.id] || currentYear;
+          const assetValue = assetAmounts?.[asset.id] !== undefined ? assetAmounts[asset.id] : asset.value;
+          if (!assetsByYear[startYear]) assetsByYear[startYear] = 0;
+          assetsByYear[startYear] += assetValue;
+        }
+      });
+    }
+
+    // Calculate data for all years
     let equityCorpus = 0;
     let debtCorpus = 0;
     const yearlyData = allYears.map((y, idx) => {
@@ -1872,45 +1885,41 @@ function AllocationSimulator({
       // Goal expenses for this year
       const goalExpenses = targetMembers.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
 
-      // Annual savings
+      // Annual savings from income
       const annualSavings = totalIncome - totalExpense - goalExpenses;
       
-      // Savings invested
+      // Savings invested (from income only)
       const savingsEquity = annualSavings > 0 ? annualSavings * equity / 100 : 0;
       const savingsDebt = annualSavings > 0 ? annualSavings * debt / 100 : 0;
 
-      // Add assets in start year
-      let assetAddition = 0;
-      if (includeAssets) {
-        entityAssets.forEach(asset => {
-          if (selectedAssets[asset.id] !== false) {
-            const startYear = assetStartYears[asset.id] || currentYear;
-            if (y === startYear) {
-              const assetValue = assetAmounts?.[asset.id] !== undefined ? assetAmounts[asset.id] : asset.value;
-              assetAddition += assetValue;
-            }
-          }
-        });
-      }
+      // Assets added to opening balance in this year (split by ratio)
+      const assetAdditionThisYear = assetsByYear[y] || 0;
+      const assetEquity = assetAdditionThisYear * equity / 100;
+      const assetDebt = assetAdditionThisYear * debt / 100;
 
-      // Portfolio calculations - Opening balance
-      const openingEquity = equityCorpus;
-      const openingDebt = debtCorpus;
+      // Opening balance = Previous closing + Assets added this year
+      // Assets become part of opening balance in their start year
+      const openingEquityBeforeAssets = equityCorpus;
+      const openingDebtBeforeAssets = debtCorpus;
+      
+      // Add assets to opening balance
+      const openingEquity = openingEquityBeforeAssets + assetEquity;
+      const openingDebt = openingDebtBeforeAssets + assetDebt;
       const openingTotal = openingEquity + openingDebt;
 
-      // Add savings + asset additions to portfolio
-      const additionsEquity = savingsEquity + (assetAddition * equity / 100);
-      const additionsDebt = savingsDebt + (assetAddition * debt / 100);
-
-      // Calculate returns
+      // Calculate returns on opening balance (which now includes assets)
       const equityReturns = openingEquity * equityReturn / 100;
       const debtReturns = openingDebt * debtReturn / 100;
 
-      // Closing balance
-      equityCorpus = openingEquity + additionsEquity + equityReturns;
-      debtCorpus = openingDebt + additionsDebt + debtReturns;
+      // Additions from savings only (not assets - assets are in opening)
+      const additionsEquity = savingsEquity;
+      const additionsDebt = savingsDebt;
+
+      // Closing balance = Opening + Returns + Savings additions
+      equityCorpus = openingEquity + equityReturns + additionsEquity;
+      debtCorpus = openingDebt + debtReturns + additionsDebt;
       
-      // Handle negative savings (withdrawals)
+      // Handle negative savings (withdrawals from corpus)
       if (annualSavings < 0) {
         const withdrawal = Math.abs(annualSavings);
         const withdrawEquity = withdrawal * equity / 100;
@@ -1938,6 +1947,9 @@ function AllocationSimulator({
         annualSavings: Math.round(annualSavings),
         savingsEquity: Math.round(savingsEquity),
         savingsDebt: Math.round(savingsDebt),
+        assetAddition: Math.round(assetAdditionThisYear),
+        assetEquity: Math.round(assetEquity),
+        assetDebt: Math.round(assetDebt),
         openingEquity: Math.round(openingEquity),
         openingDebt: Math.round(openingDebt),
         additionsEquity: Math.round(additionsEquity),
