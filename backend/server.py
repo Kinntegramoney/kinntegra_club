@@ -17679,6 +17679,8 @@ async def deactivate_bond(
         "message": "Bond deactivated successfully",
         "listing_status": "pending"
     }
+
+@api_router.post("/bonds/{bond_id}/presentations")
 async def upload_bond_presentations(
     bond_id: str,
     files: List[UploadFile] = File(...),
