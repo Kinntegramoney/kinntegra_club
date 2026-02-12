@@ -2054,13 +2054,18 @@ function AllocationSimulator({
     cashFlowData.push(['']);
     cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // ASSETS Section (if include assets is selected)
+    // ASSETS Section (if include assets is selected) - Only show in Year 1
     if (includeAssets) {
+      const totalAssetsYear1 = yearlyData[0]?.assetAddition || 0;
+      const equityAssetsYear1 = yearlyData[0]?.assetEquity || 0;
+      const debtAssetsYear1 = yearlyData[0]?.assetDebt || 0;
+      
       cashFlowData.push(['']);
-      cashFlowData.push(['', '▶ EXISTING ASSETS (Added to Opening Balance)']);
-      cashFlowData.push(['', '  Total Assets Included', ...yearlyData.map(d => d.assetAddition || '')]);
-      cashFlowData.push(['', `  To Equity Portfolio (${equity}%)`, ...yearlyData.map(d => d.assetEquity || '')]);
-      cashFlowData.push(['', `  To Debt Portfolio (${debt}%)`, ...yearlyData.map(d => d.assetDebt || '')]);
+      cashFlowData.push(['', '▶ EXISTING ASSETS (Added to Year 1 Opening Balance)']);
+      // Only show asset values in Year 1, empty for all subsequent years
+      cashFlowData.push(['', '  Total Assets Included', ...yearlyData.map((d, idx) => idx === 0 ? (d.assetAddition || '') : '')]);
+      cashFlowData.push(['', `  To Equity Portfolio (${equity}%)`, ...yearlyData.map((d, idx) => idx === 0 ? (d.assetEquity || '') : '')]);
+      cashFlowData.push(['', `  To Debt Portfolio (${debt}%)`, ...yearlyData.map((d, idx) => idx === 0 ? (d.assetDebt || '') : '')]);
       cashFlowData.push(['']);
       cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
     }
@@ -2068,9 +2073,19 @@ function AllocationSimulator({
     // EQUITY PORTFOLIO Section
     cashFlowData.push(['']);
     cashFlowData.push(['', `▶ EQUITY PORTFOLIO (${equity}% Allocation @ ${equityReturn}% Return)`]);
-    cashFlowData.push(['', '  Opening Balance', ...yearlyData.map(d => d.openingEquity)]);
+    // Opening Balance = Previous Year's Closing Balance (carries forward)
+    cashFlowData.push(['', '  Opening Balance', ...yearlyData.map((d, idx) => {
+      // Year 1: Opening = Assets added
+      // Year 2+: Opening = Previous year's closing
+      if (idx === 0) return d.openingEquity;
+      return yearlyData[idx - 1].closingEquity;
+    })]);
     cashFlowData.push(['', '  (+) Savings Added', ...yearlyData.map(d => d.additionsEquity)]);
-    cashFlowData.push(['', `  (+) Returns @ ${equityReturn}%`, ...yearlyData.map(d => d.equityReturns)]);
+    cashFlowData.push(['', `  (+) Returns @ ${equityReturn}%`, ...yearlyData.map((d, idx) => {
+      // Calculate returns on opening balance
+      const opening = idx === 0 ? d.openingEquity : yearlyData[idx - 1].closingEquity;
+      return Math.round(opening * equityReturn / 100);
+    })]);
     cashFlowData.push(['', '  CLOSING BALANCE', ...yearlyData.map(d => d.closingEquity)]);
     cashFlowData.push(['']);
     cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
@@ -2078,9 +2093,19 @@ function AllocationSimulator({
     // DEBT PORTFOLIO Section
     cashFlowData.push(['']);
     cashFlowData.push(['', `▶ DEBT PORTFOLIO (${debt}% Allocation @ ${debtReturn}% Return)`]);
-    cashFlowData.push(['', '  Opening Balance', ...yearlyData.map(d => d.openingDebt)]);
+    // Opening Balance = Previous Year's Closing Balance (carries forward)
+    cashFlowData.push(['', '  Opening Balance', ...yearlyData.map((d, idx) => {
+      // Year 1: Opening = Assets added
+      // Year 2+: Opening = Previous year's closing
+      if (idx === 0) return d.openingDebt;
+      return yearlyData[idx - 1].closingDebt;
+    })]);
     cashFlowData.push(['', '  (+) Savings Added', ...yearlyData.map(d => d.additionsDebt)]);
-    cashFlowData.push(['', `  (+) Returns @ ${debtReturn}%`, ...yearlyData.map(d => d.debtReturns)]);
+    cashFlowData.push(['', `  (+) Returns @ ${debtReturn}%`, ...yearlyData.map((d, idx) => {
+      // Calculate returns on opening balance
+      const opening = idx === 0 ? d.openingDebt : yearlyData[idx - 1].closingDebt;
+      return Math.round(opening * debtReturn / 100);
+    })]);
     cashFlowData.push(['', '  CLOSING BALANCE', ...yearlyData.map(d => d.closingDebt)]);
     cashFlowData.push(['']);
     cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
@@ -2088,7 +2113,12 @@ function AllocationSimulator({
     // TOTAL PORTFOLIO Section
     cashFlowData.push(['']);
     cashFlowData.push(['', '▶ TOTAL PORTFOLIO VALUE']);
-    cashFlowData.push(['', '  Equity + Debt Portfolio', ...yearlyData.map(d => d.closingTotal)]);
+    // Opening Balance for each year (Year 1 = Assets, Year 2+ = Previous Closing)
+    cashFlowData.push(['', '  Opening Balance', ...yearlyData.map((d, idx) => {
+      if (idx === 0) return d.openingEquity + d.openingDebt;
+      return yearlyData[idx - 1].closingTotal;
+    })]);
+    cashFlowData.push(['', '  Closing Balance (Equity + Debt)', ...yearlyData.map(d => d.closingTotal)]);
     cashFlowData.push(['']);
     cashFlowData.push(['═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════']);
 
