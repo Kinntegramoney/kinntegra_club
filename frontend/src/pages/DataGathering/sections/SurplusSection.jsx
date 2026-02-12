@@ -2932,6 +2932,10 @@ function AllocationSimulator({
                     >
                       Calculate
                     </button>
+                  </div>
+                </td>
+                <td className="py-3 px-3 text-center border-l border-gray-200">
+                  <div className="flex items-center justify-center gap-2">
                     <button 
                       onClick={() => exportEntityCashFlow('family')}
                       disabled={!familyAllocation.result}
@@ -2940,15 +2944,6 @@ function AllocationSimulator({
                     >
                       <Download className="h-3 w-3" />
                       <span>Excel</span>
-                    </button>
-                    <button 
-                      onClick={() => exportEntityPDF('family', true, familyAllocation)}
-                      disabled={!familyAllocation.result}
-                      className="px-3 py-1.5 text-[10px] font-medium rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
-                      title="Download PDF Summary"
-                    >
-                      <FileText className="h-3 w-3" />
-                      <span>PDF</span>
                     </button>
                   </div>
                 </td>
