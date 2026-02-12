@@ -1786,6 +1786,9 @@ function AllocationSimulator({
     let equityCorpus = 0;
     let debtCorpus = 0;
     
+    // Calculate total annual premium from insurance policies
+    const totalAnnualPremium = entityPremiums.reduce((sum, p) => sum + (parseFloat(p.amount) || parseFloat(p.premium) || 0), 0);
+    
     const yearlyData = allYears.map((y, idx) => {
       const yearStr = y.toString();
       const age = entityAge + (y - currentYear);
