@@ -13,7 +13,7 @@ import os
 import uuid
 from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://real-estate-portal-10.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://goal-outflow-tracker.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 BROKER_PAN = "ANVPB5297J"
