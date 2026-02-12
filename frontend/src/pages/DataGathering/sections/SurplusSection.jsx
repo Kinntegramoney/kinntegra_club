@@ -2017,7 +2017,7 @@ function AllocationSimulator({
     // Portfolio Section - Debt
     cashFlowData.push(['PORTFOLIO - DEBT']);
     cashFlowData.push(['Opening Balance (incl. Assets)', ...yearlyData.map(d => d.openingDebt)]);
-    cashFlowData.push(['Additions (Debt)', ...yearlyData.map(d => d.additionsDebt)]);
+    cashFlowData.push(['Savings Additions', ...yearlyData.map(d => d.additionsDebt)]);
     cashFlowData.push([`Expected Returns (${debtReturn}%)`, ...yearlyData.map(d => d.debtReturns)]);
     cashFlowData.push(['Closing Balance (Debt)', ...yearlyData.map(d => d.closingDebt)]);
     cashFlowData.push([]);
@@ -2027,7 +2027,7 @@ function AllocationSimulator({
     cashFlowData.push(['Total Investment + Returns', ...yearlyData.map(d => d.closingTotal)]);
 
     const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
-    cashFlowSheet['!cols'] = [{ wch: 28 }, ...allYears.map(() => ({ wch: 14 }))];
+    cashFlowSheet['!cols'] = [{ wch: 30 }, ...allYears.map(() => ({ wch: 14 }))];
     XLSX.utils.book_append_sheet(wb, cashFlowSheet, "Cash Flow");
 
     // Download
