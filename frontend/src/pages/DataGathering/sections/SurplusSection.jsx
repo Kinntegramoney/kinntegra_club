@@ -2139,6 +2139,21 @@ function AllocationSimulator({
     cashFlowData.push(['', '▶ TOTAL PORTFOLIO VALUE']);
     cashFlowData.push(['', '  Closing Balance (Equity + Debt)', ...yearlyData.map(d => formatCurrency(d.closingTotal))]);
     cashFlowData.push(['']);
+    cashFlowData.push(['', '─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
+
+    // RETIREMENT WITHDRAWALS Section - Shows yearly withdrawals needed when expenses > income
+    cashFlowData.push(['']);
+    cashFlowData.push(['', '▶ RETIREMENT WITHDRAWALS (When Expenses > Income)']);
+    cashFlowData.push(['', '  Yearly Withdrawal Required', ...yearlyData.map(d => d.withdrawalAmount > 0 ? formatCurrency(d.withdrawalAmount) : '')]);
+    cashFlowData.push(['', `  From Equity Portfolio (${equity}%)`, ...yearlyData.map(d => d.withdrawalAmount > 0 ? formatCurrency(d.withdrawalAmount * equity / 100) : '')]);
+    cashFlowData.push(['', `  From Debt Portfolio (${debt}%)`, ...yearlyData.map(d => d.withdrawalAmount > 0 ? formatCurrency(d.withdrawalAmount * debt / 100) : '')]);
+    // Calculate cumulative withdrawals
+    let cumulativeWithdrawal = 0;
+    cashFlowData.push(['', '  Cumulative Withdrawals', ...yearlyData.map(d => {
+      cumulativeWithdrawal += d.withdrawalAmount;
+      return cumulativeWithdrawal > 0 ? formatCurrency(cumulativeWithdrawal) : '';
+    })]);
+    cashFlowData.push(['']);
     cashFlowData.push(['═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════']);
 
     const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
