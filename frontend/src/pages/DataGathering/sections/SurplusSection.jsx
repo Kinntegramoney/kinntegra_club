@@ -9,7 +9,10 @@ import { User, TrendingUp, TrendingDown, PiggyBank, Landmark, Target, Info, Down
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import { applyPlugin } from "jspdf-autotable";
+
+// Apply the autoTable plugin to jsPDF (required for jsPDF 4.x)
+applyPlugin(jsPDF);
 
 export default function SurplusSection({ family, isReadOnly }) {
   const members = family?.members || [];
