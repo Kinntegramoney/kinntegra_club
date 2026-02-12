@@ -31,6 +31,18 @@ const FREQUENCY_OPTIONS = [
   { value: "yearly", label: "Yearly", multiplier: 1 }
 ];
 
+// Generate year options from current year to +50 years
+const generateYearOptions = () => {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = 0; i <= 50; i++) {
+    years.push(currentYear + i);
+  }
+  return years;
+};
+
+const YEAR_OPTIONS = generateYearOptions();
+
 export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefresh }) {
   const [investments, setInvestments] = useState([]);
   const [saving, setSaving] = useState(false);
