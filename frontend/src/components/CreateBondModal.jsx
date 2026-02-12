@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, TrendingUp, Plus, Trash2, Calculator, Loader2 } from "lucide-react";
+import { X, TrendingUp, Plus, Trash2, Calculator, Loader2, Upload, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
   const [interestPayments, setInterestPayments] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
+  const [pendingPresentations, setPendingPresentations] = useState([]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
