@@ -2423,7 +2423,7 @@ function AllocationSimulator({
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-center py-2 px-3 font-semibold text-gray-700 min-w-[180px]">Name</th>
+                <th className="text-center py-2 px-3 font-semibold text-gray-700 min-w-[280px]">Name</th>
                 <th className="text-center py-2 px-2 font-semibold text-gray-700 border-l border-gray-200" colSpan={2}>
                   <span className="text-[10px]">Allocation %</span>
                 </th>
