@@ -2327,16 +2327,24 @@ export default function RealEstateDetails() {
                               {convertCurrency(milestoneAmount)}
                             </td>
                             {/* Per-user contribution */}
-                            {investors.map((inv, i) => {
-                              const userContribution = milestoneAmount * (inv.share_percentage / 100);
-                              return (
-                                <td key={i} className="py-3 px-3 text-center bg-blue-50/50">
-                                  <span className="font-mono text-sm text-blue-700">
-                                    {convertCurrency(userContribution)}
-                                  </span>
-                                </td>
-                              );
-                            })}
+                            {opp.investors?.length > 0 ? (
+                              opp.investors.map((inv, i) => {
+                                const userContribution = milestoneAmount * (inv.share_percentage / 100);
+                                return (
+                                  <td key={i} className="py-3 px-3 text-center bg-blue-50/50">
+                                    <span className="font-mono text-sm text-blue-700">
+                                      {convertCurrency(userContribution)}
+                                    </span>
+                                  </td>
+                                );
+                              })
+                            ) : (
+                              <td className="py-3 px-3 text-center bg-blue-50/50">
+                                <span className="font-mono text-sm text-blue-700 font-bold">
+                                  {convertCurrency(milestoneAmount * viewingSharePercentage / 100)}
+                                </span>
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
@@ -2348,16 +2356,24 @@ export default function RealEstateDetails() {
                           {convertCurrency(opp.unit_price)}
                         </td>
                         {/* Per-user total */}
-                        {(opp.investors?.length > 0 ? opp.investors : dummyInvestors).map((inv, i) => {
-                          const userTotal = opp.unit_price * (inv.share_percentage / 100);
-                          return (
-                            <td key={i} className="py-3 px-3 text-center bg-blue-100">
-                              <span className="font-mono font-bold text-blue-800">
-                                {convertCurrency(userTotal)}
-                              </span>
-                            </td>
-                          );
-                        })}
+                        {opp.investors?.length > 0 ? (
+                          opp.investors.map((inv, i) => {
+                            const userTotal = opp.unit_price * (inv.share_percentage / 100);
+                            return (
+                              <td key={i} className="py-3 px-3 text-center bg-blue-100">
+                                <span className="font-mono font-bold text-blue-800">
+                                  {convertCurrency(userTotal)}
+                                </span>
+                              </td>
+                            );
+                          })
+                        ) : (
+                          <td className="py-3 px-3 text-center bg-blue-100">
+                            <span className="font-mono font-bold text-blue-800">
+                              {convertCurrency(opp.unit_price * viewingSharePercentage / 100)}
+                            </span>
+                          </td>
+                        )}
                       </tr>
                     </tfoot>
                   </table>
@@ -2366,7 +2382,7 @@ export default function RealEstateDetails() {
               
               {/* Currency Conversion Info */}
               <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 text-center">
-                Exchange rates: 1 AED = ₹{currencyRates.INR} INR | ${currencyRates.USD} USD | €{currencyRates.EUR} EUR
+                Exchange rates: 1 AED = ₹{currencyRates.INR} INR | ${currencyRates.USD} USD | €{currencyRates.EUR} EUR | £{currencyRates.GBP} GBP | ¥{currencyRates.CNY} CNY
                 <br />
                 <span className="text-gray-400">Rates are indicative and may vary</span>
               </div>
