@@ -179,6 +179,33 @@ if sale_date and purchase_date >= sale_date:
 2. Bond presentation upload feature (frontend manual testing needed due to 2-step auth)
 3. Excel/PDF export - verify file contents match requirements
 
+## Bug Fixes (2026-02-12) - Presentation Downloads
+
+### Issue 1: Real Estate Presentation Download "Method Not Allowed"
+**File:** `/app/backend/server.py`
+
+**Problem:** Clicking download on real estate presentations returned `{"detail":"Method Not Allowed"}`.
+
+**Root Cause:** The `download_presentation` function was missing its `@api_router.get` decorator - it was a dangling function without a route.
+
+**Fix:** Added the missing decorator at line 18665:
+```python
+@api_router.get("/real-estate-opportunities/{opportunity_id}/presentations/{presentation_id}")
+async def download_presentation(...)
+```
+
+### Issue 2: Bond Presentations Not Visible for Download
+**File:** `/app/backend/server.py`
+
+**Problem:** Bond presentations uploaded via Edit Bond were not appearing in the bond details page.
+
+**Root Cause:** The `Bond` Pydantic model did not include a `presentations` field. When the API returned bond data, Pydantic validation stripped the `presentations` array due to `extra="ignore"` config.
+
+**Fix:** Added `presentations` field to the `Bond` model at line 15437:
+```python
+presentations: Optional[List[dict]] = []  # Presentation files (PDFs, PPTs, DOCs)
+```
+
 ## Features Updated (2026-02-12) - Chart Simplification
 
 ### Wealth Projection Display Reverted to Simple Text
