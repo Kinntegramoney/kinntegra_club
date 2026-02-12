@@ -2454,22 +2454,10 @@ function AllocationSimulator({
             <tbody className="divide-y divide-gray-100">
               {/* Family Row */}
               <tr className="bg-amber-50/40 hover:bg-amber-50/60 transition-colors">
-                <td className="py-3 px-3 text-center">
-                  <div className="font-semibold text-gray-800 text-[11px]">{familyName}</div>
+                <td className="py-3 px-3">
+                  <div className="font-semibold text-gray-800 text-[11px] text-center">{familyName}</div>
                   {familyAllocation.result && (
-                    <div className={`mt-1 text-[10px] flex items-center justify-center gap-1 ${familyAllocation.result.success ? 'text-green-600' : 'text-red-600'}`}>
-                      {familyAllocation.result.success ? (
-                        <CheckCircle className="h-3 w-3" />
-                      ) : (
-                        <AlertTriangle className="h-3 w-3" />
-                      )}
-                      <span>
-                        {familyAllocation.result.success 
-                          ? `Lasts till ${familyAllocation.result.lastYear}` 
-                          : `Exhausts in ${familyAllocation.result.lastYear} (${familyAllocation.result.yearsShort}y short)`
-                        }
-                      </span>
-                    </div>
+                    <WealthChart result={familyAllocation.result} entityName={familyName} />
                   )}
                 </td>
                 <td className="py-3 px-2 border-l border-gray-100 text-center">
