@@ -179,7 +179,29 @@ if sale_date and purchase_date >= sale_date:
 2. Bond presentation upload feature (frontend manual testing needed due to 2-step auth)
 3. Excel/PDF export - verify file contents match requirements
 
+## Features Updated (2026-02-12) - Chart Simplification
+
+### Wealth Projection Display Reverted to Simple Text
+**File:** `/app/frontend/src/pages/DataGathering/sections/SurplusSection.jsx`
+
+**User Request:** "remove the bar chart design and show it how it was reflecting in the past"
+
+**Changes Made:**
+1. Removed `recharts` bar chart visualization from `WealthChart` component
+2. Reverted to simple text-based result display showing:
+   - ✅ Green checkmark with "Lasts till [year]" for successful projections
+   - ⚠️ Orange warning with "Exhausts in [year]" for failed projections
+   - Badge showing "[X]y short" when projection falls short of life expectancy
+3. Removed complex chart elements (tooltips, multiple bar colors, axis labels, etc.)
+4. Comment updated: `// recharts removed - using simple text display`
+
+**Technical Details:**
+- `WealthChart` component reduced from ~110 lines to ~25 lines
+- No visual dependencies removed - `recharts` library still available if needed
+- Component still receives `result` object with `success`, `finalCorpus`, `lastYear`, `yearsShort` properties
+
 ## Backlog / Future Tasks
 1. Centralize currency options into shared utility file
 2. Improve automated testing to handle two-step authentication
 3. Refactor `SurplusSection.jsx` (~2900 lines) - extract calculation logic to custom hook, move export functions to utility module
+4. Remove unused `html2pdf.js` dependency (PDF export was removed but module still in package.json)
