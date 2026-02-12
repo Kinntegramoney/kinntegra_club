@@ -16290,6 +16290,7 @@ async def get_bond(bond_id: str):
     bond.setdefault('principal_payments', [])
     bond.setdefault('principal_amount', 0)
     bond.setdefault('description', None)
+    bond.setdefault('presentations', [])
     
     # Calculate total cashflows for primary buyer
     interest_payments = bond.get('interest_payments', [])
