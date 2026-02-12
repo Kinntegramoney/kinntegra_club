@@ -2834,8 +2834,11 @@ function AllocationSimulator({
                 <th className="text-center py-2 px-3 font-semibold text-gray-700 border-l border-gray-200 min-w-[90px]">
                   <span className="text-[10px]">Include Assets</span>
                 </th>
-                <th className="text-center py-2 px-3 font-semibold text-gray-700 border-l border-gray-200 min-w-[200px]">
+                <th className="text-center py-2 px-3 font-semibold text-gray-700 border-l border-gray-200 min-w-[180px]">
                   <span className="text-[10px]">Actions</span>
+                </th>
+                <th className="text-center py-2 px-3 font-semibold text-gray-700 border-l border-gray-200 min-w-[100px]">
+                  <span className="text-[10px]">Download</span>
                 </th>
               </tr>
               <tr className="bg-gray-100/50 border-b border-gray-200">
@@ -2844,6 +2847,7 @@ function AllocationSimulator({
                 <th className="text-center py-1 px-2 text-[9px] font-medium text-gray-500 bg-blue-50/50">Debt</th>
                 <th className="text-center py-1 px-2 text-[9px] font-medium text-gray-500 border-l border-gray-200">Equity</th>
                 <th className="text-center py-1 px-2 text-[9px] font-medium text-gray-500 bg-blue-50/50">Debt</th>
+                <th></th>
                 <th></th>
                 <th></th>
               </tr>
