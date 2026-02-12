@@ -16092,7 +16092,8 @@ async def get_bonds(
         "interested_count": 1,  # For display on card
         "current_investors": 1,  # For display on card
         "created_at": 1,
-        "created_by": 1
+        "created_by": 1,
+        "presentations": 1  # Needed for edit modal
     }
     
     bonds = await db.bonds.find({}, projection).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
