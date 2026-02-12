@@ -88,6 +88,17 @@ if sale_date and purchase_date >= sale_date:
 
 ## Features Added (2026-02-12)
 
+### Bug Fix: Family Net Worth Not Capturing Liabilities
+**Issue:** The Net Worth section in Data Gathering was showing ₹0 for liabilities even when loan data existed.
+
+**Root Cause:** `NetworthSection.jsx` was only looking at `family.liabilities` array with `outstanding_amount` field, but the actual liability data comes from `expense_details` (loan EMIs like home_loan, vehicle_loan, etc.) - the same source used by `LiabilitySection.jsx`.
+
+**Fix:** Updated `getMemberLiabilities()` in `NetworthSection.jsx` to:
+1. Process `expense_details` for loan EMI entries (home_loan, vehicle_loan, etc.)
+2. Calculate outstanding = EMI × remaining installments (or use explicit outstanding field)
+3. Handle both family-shared and member-specific liabilities
+4. Also process dedicated `liabilities` array as fallback
+
 ### Bond Presentation Upload Feature
 **User Request:** Allow uploading presentations when creating or editing bonds.
 
