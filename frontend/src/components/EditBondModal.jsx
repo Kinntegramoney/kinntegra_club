@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { X } from "lucide-react";
+import { X, Upload, FileText, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +30,9 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
     calculator_file: null
   });
   const [loading, setLoading] = useState(false);
+  const [presentations, setPresentations] = useState([]);
+  const [uploadingPresentations, setUploadingPresentations] = useState(false);
+  const [deletingPresentation, setDeletingPresentation] = useState(null);
 
   // Prefill form with bond data
   useEffect(() => {
