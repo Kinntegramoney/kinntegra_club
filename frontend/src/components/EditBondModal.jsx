@@ -437,6 +437,104 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
             </div>
           </div>
 
+          {/* Presentations */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-gray-700 border-b pb-2">Presentations</h3>
+            <div className="space-y-3">
+              {/* Existing Presentations */}
+              {presentations.length > 0 && (
+                <div className="space-y-2">
+                  {presentations.map((pres) => (
+                    <div key={pres.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {getFileIcon(pres.content_type, pres.original_filename)}
+                        <div>
+                          <p className="text-sm font-medium text-gray-800 truncate max-w-[250px]" title={pres.original_filename}>
+                            {pres.original_filename}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(pres.size)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={`${BACKEND_URL}${pres.url}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:text-blue-800 underline"
+                        >
+                          View
+                        </a>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeletePresentation(pres.id)}
+                          disabled={deletingPresentation === pres.id}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          data-testid={`delete-presentation-${pres.id}`}
+                        >
+                          {deletingPresentation === pres.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Upload New Presentations */}
+              <div>
+                <Label htmlFor="presentation_files">
+                  {presentations.length > 0 ? 'Add More Presentations' : 'Upload Presentations'}
+                  <span className="text-gray-400 font-normal ml-2">
+                    ({presentations.length}/10)
+                  </span>
+                </Label>
+                <div className="mt-1">
+                  <input
+                    id="presentation_files"
+                    type="file"
+                    multiple
+                    accept=".pdf,.pptx,.ppt,.doc,.docx"
+                    onChange={(e) => handlePresentationUpload(e.target.files)}
+                    className="hidden"
+                    data-testid="presentation-upload-input"
+                  />
+                  <label 
+                    htmlFor="presentation_files"
+                    className={`flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                      uploadingPresentations 
+                        ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
+                        : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                    }`}
+                  >
+                    {uploadingPresentations ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                        <span className="text-sm text-gray-600">Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-5 w-5 text-gray-400" />
+                        <span className="text-sm text-gray-600">
+                          Click to upload presentations (PDF, PPT, DOC)
+                        </span>
+                      </>
+                    )}
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Max 10 files. Supported: PDF, PowerPoint, Word documents
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Description */}
           <div className="space-y-4">
             <h3 className="font-medium text-gray-700 border-b pb-2">Additional Info</h3>
