@@ -1865,16 +1865,18 @@ function AllocationSimulator({
         }
       });
 
-      // Investment details for this year
+      // Investment details for this year - convert to annual amounts
       const yearInvestmentDetails = {};
       let totalInvestments = 0;
       
       entityInvestments.forEach(inv => {
-        const invAmount = parseFloat(inv.annual_investment) || parseFloat(inv.amount) || 0;
-        if (invAmount > 0) {
+        // Get annual amount - multiply by 12 if it's monthly
+        const monthlyAmount = parseFloat(inv.monthly_investment) || parseFloat(inv.sip_amount) || parseFloat(inv.amount) || 0;
+        const annualAmount = parseFloat(inv.annual_investment) || (monthlyAmount * 12);
+        if (annualAmount > 0) {
           const invName = inv.scheme_name || inv.name || 'Investment';
-          yearInvestmentDetails[invName] = Math.round(invAmount);
-          totalInvestments += invAmount;
+          yearInvestmentDetails[invName] = Math.round(annualAmount);
+          totalInvestments += annualAmount;
         }
       });
 
