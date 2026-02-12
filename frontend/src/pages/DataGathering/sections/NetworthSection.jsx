@@ -1,10 +1,17 @@
 import React from "react";
 import { User, TrendingUp, TrendingDown, Minus, PieChart } from "lucide-react";
 
+// Liability categories matching LiabilitySection
+const LIABILITY_CATEGORIES = [
+  "home_loan", "vehicle_loan", "personal_loan", "consumer_durable", 
+  "education_loan", "credit_card", "other_loan"
+];
+
 export default function NetworthSection({ family }) {
   const members = family?.members || [];
   const incomeDetails = family?.income_details || [];
-  const liabilities = family?.liabilities || [];
+  const expenseDetails = family?.expense_details || [];
+  const dedicatedLiabilities = family?.liabilities || family?.liability_details || [];
 
   // Calculate total assets for a member
   const getMemberAssets = (memberId) => {
