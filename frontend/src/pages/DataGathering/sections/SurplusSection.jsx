@@ -1287,6 +1287,119 @@ function AllocationSimulator({
     return num.toLocaleString('en-IN');
   };
 
+  // Mini Wealth Chart Component
+  const WealthChart = ({ result, entityName }) => {
+    if (!result || !result.yearlyData || result.yearlyData.length === 0) {
+      return null;
+    }
+
+    const { yearlyData, success, finalCorpus, lastYear, entityEndYear, lifeExpectancy, currentAge } = result;
+    
+    // Custom tooltip
+    const CustomTooltip = ({ active, payload }) => {
+      if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        return (
+          <div className="bg-white border border-gray-200 shadow-lg rounded-lg p-2 text-[10px]">
+            <p className="font-semibold text-gray-700">Year {data.year} (Age {data.age})</p>
+            <p className={data.corpus > 0 ? 'text-green-600' : 'text-red-600'}>
+              Portfolio: ₹{formatLargeNumber(data.corpus)}
+            </p>
+            {data.isLifeExpectancy && (
+              <p className="text-blue-600 font-medium">Life Expectancy</p>
+            )}
+            {data.isExhausted && (
+              <p className="text-red-600 font-medium">Money Exhausted</p>
+            )}
+          </div>
+        );
+      }
+      return null;
+    };
+
+    // Find the final value at life expectancy
+    const finalDataPoint = yearlyData.find(d => d.isLifeExpectancy) || yearlyData[yearlyData.length - 1];
+    const finalValue = success ? finalCorpus : 0;
+    const finalAge = currentAge + (entityEndYear - currentYear);
+
+    return (
+      <div className="mt-2 bg-white rounded-lg border border-gray-200 p-3">
+        {/* Header with status */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            {success ? (
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            )}
+            <span className={`text-xs font-semibold ${success ? 'text-green-600' : 'text-red-600'}`}>
+              {success ? `Lasts till ${lastYear}` : `Exhausts in ${lastYear}`}
+            </span>
+          </div>
+          {!success && result.yearsShort > 0 && (
+            <span className="text-[10px] text-red-500 bg-red-50 px-2 py-0.5 rounded">
+              {result.yearsShort}y short
+            </span>
+          )}
+        </div>
+
+        {/* Chart */}
+        <div className="h-24">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={yearlyData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis 
+                dataKey="year" 
+                tick={{ fontSize: 8, fill: '#888' }} 
+                axisLine={{ stroke: '#e0e0e0' }}
+                tickLine={false}
+              />
+              <YAxis 
+                tick={{ fontSize: 8, fill: '#888' }} 
+                axisLine={{ stroke: '#e0e0e0' }}
+                tickLine={false}
+                tickFormatter={(value) => {
+                  if (value >= 10000000) return `${(value / 10000000).toFixed(0)}Cr`;
+                  if (value >= 100000) return `${(value / 100000).toFixed(0)}L`;
+                  return value;
+                }}
+                width={35}
+              />
+              <RechartsTooltip content={<CustomTooltip />} />
+              <ReferenceLine 
+                x={entityEndYear} 
+                stroke="#3b82f6" 
+                strokeDasharray="3 3" 
+                label={{ value: 'LE', fontSize: 8, fill: '#3b82f6' }}
+              />
+              <Bar dataKey="corpus" radius={[2, 2, 0, 0]}>
+                {yearlyData.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.corpus > 0 
+                      ? (entry.isLifeExpectancy ? '#3b82f6' : '#10b981') 
+                      : '#ef4444'
+                    }
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Footer with final value */}
+        <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[10px]">
+          <span className="text-gray-500">
+            At age {finalAge} ({entityEndYear})
+          </span>
+          <span className={`font-bold ${finalValue > 0 ? 'text-green-600' : 'text-red-600'}`}>
+            ₹{formatLargeNumber(Math.max(0, finalValue))}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   // Initialize member allocations
   React.useEffect(() => {
     const initial = {};
