@@ -281,6 +281,22 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
                         </SelectContent>
                       </Select>
                     </td>
+                    <td className="px-3 py-2">
+                      <Select
+                        value={inv.upto_year?.toString() || ""}
+                        onValueChange={(v) => updateInvestment(inv.id, 'upto_year', v)}
+                        disabled={isReadOnly}
+                      >
+                        <SelectTrigger className="h-8 text-xs w-24">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {YEAR_OPTIONS.map(year => (
+                            <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
                     <td className="px-3 py-2 text-right">
                       <span className="text-xs font-medium text-purple-600">
                         {formatCurrency(inv.annual_amount)}
