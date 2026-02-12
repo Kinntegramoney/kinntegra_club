@@ -1865,15 +1865,15 @@ function AllocationSimulator({
         }
       });
 
-      // Investment details
-      const investmentDetails = {};
+      // Investment details for this year
+      const yearInvestmentDetails = {};
       let totalInvestments = 0;
       
       entityInvestments.forEach(inv => {
         const invAmount = parseFloat(inv.annual_investment) || parseFloat(inv.amount) || 0;
         if (invAmount > 0) {
           const invName = inv.scheme_name || inv.name || 'Investment';
-          investmentDetails[invName] = Math.round(invAmount);
+          yearInvestmentDetails[invName] = Math.round(invAmount);
           totalInvestments += invAmount;
         }
       });
