@@ -73,14 +73,16 @@ export default function RealEstateDetails() {
   
   // Payment Schedule View Details Modal
   const [showPaymentScheduleModal, setShowPaymentScheduleModal] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState('AED'); // AED, INR, USD, EUR
+  const [selectedCurrency, setSelectedCurrency] = useState('AED'); // AED, INR, USD, EUR, GBP, CNY
   
   // Currency conversion rates (can be fetched from API or use fixed rates)
   const currencyRates = {
     AED: 1,
     INR: 22.75,  // 1 AED = ~22.75 INR
     USD: 0.27,   // 1 AED = ~0.27 USD
-    EUR: 0.25    // 1 AED = ~0.25 EUR
+    EUR: 0.25,   // 1 AED = ~0.25 EUR
+    GBP: 0.21,   // 1 AED = ~0.21 GBP
+    CNY: 1.97    // 1 AED = ~1.97 CNY
   };
   
   // Dummy investors for demo when no real investors exist
