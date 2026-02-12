@@ -302,6 +302,19 @@ export default function CreateBondModal({ onClose, onSuccess }) {
           >
             Payment Schedule
           </button>
+          <button
+            onClick={() => setActiveTab("presentations")}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === "presentations" ? "border-b-2 border-etihad-gold-500 text-etihad-gold-600" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Presentations
+            {pendingPresentations.length > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded-full">
+                {pendingPresentations.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Content */}
