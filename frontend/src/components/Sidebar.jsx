@@ -95,7 +95,7 @@ export default function Sidebar({ user }) {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0" style={{ boxShadow: '0 4px 12px rgba(201, 162, 39, 0.3)' }}>
               <img 
-                src="/logo.png" 
+                src="/logo.svg" 
                 alt="Kinntegraa" 
                 className="w-full h-full object-cover"
                 onError={(e) => {
