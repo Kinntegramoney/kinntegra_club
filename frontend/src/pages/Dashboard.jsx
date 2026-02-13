@@ -354,6 +354,7 @@ export default function Dashboard() {
     setUser(parsedUser);
     fetchDashboardData();
     fetchForexRate();
+    fetchGoldRate();
     fetchAvailableBonds();
   }, [navigate]);
 
