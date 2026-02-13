@@ -673,7 +673,7 @@ export default function BondDetails() {
               {bondData.presentations.map((pres) => (
                 <a
                   key={pres.id}
-                  href={`${BACKEND_URL}${pres.url}`}
+                  href={`${BACKEND_URL}/api/bonds/${bondData.id}/presentations/${pres.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors group"
