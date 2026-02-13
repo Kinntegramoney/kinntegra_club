@@ -135,10 +135,9 @@ export default function Login() {
                    boxShadow: '0 8px 20px rgba(201, 162, 39, 0.3)'
                  }}>
               <img 
-                src="https://customer-assets.emergentagent.com/job_finance-portal-183/artifacts/4hi5o3av_ChatGPT%20Image%20Jan%2025%2C%202026%2C%2004_57_18%20PM.png" 
+                src="/logo.png" 
                 alt="Kinntegraa Logo" 
                 className="w-full h-full object-cover"
-                style={{ transform: 'scale(1.4)' }}
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextSibling.style.display = 'flex';
