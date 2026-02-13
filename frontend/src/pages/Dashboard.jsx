@@ -624,7 +624,10 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+          </div>
 
+          {/* Market Rates Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Market Rates - Currencies & Commodities */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="market-rates-card">
               <div className="flex items-center gap-2 mb-4">
