@@ -369,6 +369,26 @@ export default function Dashboard() {
     }
   };
 
+  const fetchGoldRate = async () => {
+    try {
+      // Use GoldPrice.org free API for INR gold prices
+      const response = await axios.get('https://data-asg.goldprice.org/dbXRates/INR', {
+        timeout: 5000
+      });
+      if (response.data?.items?.[0]?.xauPrice) {
+        // Price is per troy oz, convert to per 10g
+        // 1 troy oz = 31.1035 grams
+        const pricePerOz = response.data.items[0].xauPrice;
+        const pricePerGram = pricePerOz / 31.1035;
+        const pricePer10g = Math.round(pricePerGram * 10);
+        setGoldRate(pricePer10g);
+      }
+    } catch (error) {
+      console.error("Error fetching gold rate:", error);
+      // Keep default rate
+    }
+  };
+
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
