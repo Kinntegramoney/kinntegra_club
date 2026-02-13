@@ -571,7 +571,15 @@ export default function Dashboard() {
                   <Landmark className="h-5 w-5 text-etihad-gold-500" />
                 </div>
                 <h3 className="font-semibold text-gray-800">Bond AUM</h3>
-                <span className="text-xs bg-etihad-gold-100 text-etihad-gold-700 px-2 py-0.5 rounded ml-auto">INR</span>
+                <span className="text-xs bg-etihad-gold-100 text-etihad-gold-700 px-2 py-0.5 rounded">INR</span>
+                <button 
+                  onClick={() => { setShowFixDataModal(true); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg transition-colors ml-auto"
+                  data-testid="fix-data-btn"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Fix Data
+                </button>
               </div>
               
               <div className="grid grid-cols-2 gap-3">
