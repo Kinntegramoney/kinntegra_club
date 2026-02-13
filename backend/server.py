@@ -17787,6 +17787,40 @@ async def delete_bond_presentation(
     return {"message": "Presentation deleted"}
 
 
+@api_router.get("/bonds/{bond_id}/presentations/{presentation_id}")
+async def download_bond_presentation_file(
+    bond_id: str,
+    presentation_id: str
+):
+    """Download a bond presentation file - No auth required for public access"""
+    from fastapi.responses import FileResponse
+    import os
+    
+    bond = await db.bonds.find_one({"id": bond_id})
+    
+    if not bond:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    
+    presentations = bond.get('presentations', [])
+    presentation = next((p for p in presentations if p['id'] == presentation_id), None)
+    
+    if not presentation:
+        raise HTTPException(status_code=404, detail="Presentation not found")
+    
+    # Get filename from URL or saved_filename
+    saved_filename = presentation.get('saved_filename') or presentation.get('url', '').split('/')[-1]
+    file_path = f"/app/uploads/bond_presentations/{saved_filename}"
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found on server")
+    
+    return FileResponse(
+        path=file_path,
+        filename=presentation.get('original_filename', saved_filename),
+        media_type=presentation.get('content_type', 'application/octet-stream')
+    )
+
+
 @api_router.post("/bonds/{bond_id}/download-cashflow", response_model=CashflowDownload)
 async def download_cashflow(bond_id: str, calculation: SecondaryMarketCalculation):
     """Generate month-wise cashflow with TDS calculation - using record date logic"""
