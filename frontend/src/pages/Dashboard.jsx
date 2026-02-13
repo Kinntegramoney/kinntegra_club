@@ -654,7 +654,7 @@ export default function Dashboard() {
                   <p className="text-xs text-amber-700 font-medium mb-2">Gold (24K)</p>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Per 10g</span>
-                    <span className="text-lg font-bold text-amber-700">₹78,500</span>
+                    <span className="text-lg font-bold text-amber-700">₹{goldRate.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               </div>
