@@ -697,10 +697,14 @@ export default function Dashboard() {
                 
                 {/* Commodities */}
                 <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg p-3 border border-amber-100">
-                  <p className="text-xs text-amber-700 font-medium mb-2">Gold (24K)</p>
+                  <p className="text-xs text-amber-700 font-medium mb-2">Commodities</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Per 10g</span>
+                    <span className="text-sm text-gray-600">Gold (24K) /10g</span>
                     <span className="text-lg font-bold text-amber-700">₹{goldRate.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-sm text-gray-600">Silver /10g</span>
+                    <span className="text-lg font-bold text-gray-600">₹{silverRate.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               </div>
