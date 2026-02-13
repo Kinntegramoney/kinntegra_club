@@ -391,6 +391,26 @@ export default function Dashboard() {
     }
   };
 
+  const fetchSilverRate = async () => {
+    try {
+      // Use GoldPrice.org free API for INR silver prices (XAG)
+      const response = await axios.get('https://data-asg.goldprice.org/dbXRates/INR', {
+        timeout: 5000
+      });
+      if (response.data?.items?.[0]?.xagPrice) {
+        // Price is per troy oz, convert to per 10g
+        // 1 troy oz = 31.1035 grams
+        const pricePerOz = response.data.items[0].xagPrice;
+        const pricePerGram = pricePerOz / 31.1035;
+        const pricePer10g = Math.round(pricePerGram * 10);
+        setSilverRate(pricePer10g);
+      }
+    } catch (error) {
+      console.error("Error fetching silver rate:", error);
+      // Keep default rate
+    }
+  };
+
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
