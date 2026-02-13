@@ -137,7 +137,7 @@ export default function ForgotPassword() {
               style={{ boxShadow: '0 8px 20px rgba(201, 162, 39, 0.3)' }}
             >
               <img 
-                src="/logo.png" 
+                src="/logo.svg" 
                 alt="Kinntegraa Logo" 
                 className="w-full h-full object-cover"
                 onError={(e) => {
