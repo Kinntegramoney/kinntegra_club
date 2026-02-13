@@ -471,8 +471,9 @@ export default function RealEstateDetails() {
     const grossSaleValue = parseFloat(saleRatePerSqft) * opp.total_area;
     const sellingFee = grossSaleValue * (opp.unit_selling_fee_percentage || 0) / 100;
     
-    // Outstanding amount = Unit price not yet paid (remaining %)
-    const outstandingAmount = unitPrice * (100 - saleStagePercent) / 100;
+    // Outstanding amount = Unit price not yet paid
+    // This is the total unit price minus what was actually paid (totalPaidTowardsUnit)
+    const outstandingAmount = unitPrice - totalPaidTowardsUnit;
     
     // Net proceeds = Gross Sale - Selling Fee - Outstanding Amount to Developer
     const netSaleProceeds = grossSaleValue - sellingFee - outstandingAmount;
