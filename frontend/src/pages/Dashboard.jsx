@@ -623,6 +623,41 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Market Rates - Currencies & Commodities */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all" data-testid="market-rates-card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg bg-cyan-500/10">
+                  <ArrowRightLeft className="h-5 w-5 text-cyan-600" />
+                </div>
+                <h3 className="font-semibold text-gray-800">Market Rates</h3>
+                <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded ml-auto">Live</span>
+              </div>
+              
+              <div className="space-y-3">
+                {/* Forex Rates */}
+                <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg p-3 border border-cyan-100">
+                  <p className="text-xs text-cyan-700 font-medium mb-2">Forex</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">AED/INR</span>
+                    <span className="text-lg font-bold text-cyan-700">₹{forexRate.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-sm text-gray-600">USD/INR</span>
+                    <span className="text-lg font-bold text-cyan-700">₹{(forexRate * 3.67).toFixed(2)}</span>
+                  </div>
+                </div>
+                
+                {/* Commodities */}
+                <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg p-3 border border-amber-100">
+                  <p className="text-xs text-amber-700 font-medium mb-2">Gold (24K)</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Per 10g</span>
+                    <span className="text-lg font-bold text-amber-700">₹78,500</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Quick Actions - Clean card style */}
