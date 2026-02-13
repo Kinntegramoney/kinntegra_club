@@ -99,7 +99,7 @@ export default function CustomerSignup() {
               }}
             >
               <img 
-                src="/logo.png" 
+                src="/logo.svg" 
                 alt="Kinntegraa Logo" 
                 className="w-full h-full object-cover"
                 onError={(e) => {
