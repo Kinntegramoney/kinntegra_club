@@ -133,10 +133,19 @@ export default function ForgotPassword() {
           {/* Logo */}
           <div className="flex justify-center mb-6">
             <div 
-              className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold"
-              style={{ background: '#D4A853' }}
+              className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden"
+              style={{ boxShadow: '0 8px 20px rgba(201, 162, 39, 0.3)' }}
             >
-              K
+              <img 
+                src="/logo.png" 
+                alt="Kinntegraa Logo" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <span className="text-white text-2xl font-bold hidden items-center justify-center w-full h-full rounded-full" style={{ background: '#D4A853' }}>K</span>
             </div>
           </div>
 
