@@ -445,7 +445,7 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => { fetchDashboardData(); fetchForexRate(); setCurrentTime(formatDateTime()); }}
+                onClick={() => { fetchDashboardData(); fetchForexRate(); fetchGoldRate(); setCurrentTime(formatDateTime()); }}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 data-testid="refresh-dashboard-btn"
               >
