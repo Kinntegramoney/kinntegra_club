@@ -227,8 +227,46 @@ presentations: Optional[List[dict]] = []  # Presentation files (PDFs, PPTs, DOCs
 - No visual dependencies removed - `recharts` library still available if needed
 - Component still receives `result` object with `success`, `finalCorpus`, `lastYear`, `yearsShort` properties
 
+## Features Added (2026-02-13) - Dashboard Enhancements
+
+### Silver Price in Market Rates Card
+**File:** `/app/frontend/src/pages/Dashboard.jsx`
+
+**User Request:** "also show rates for silver" - Add silver price to the Market Rates card alongside gold.
+
+**Implementation:**
+1. Added `silverRate` state variable with default value of ₹950/10g
+2. Created `fetchSilverRate()` function using GoldPrice.org API (`xagPrice` field)
+3. Integrated silver rate fetch into initial load (`useEffect`) and refresh button
+4. Updated "Commodities" section in Market Rates card to display:
+   - Gold (24K) /10g: Live price from API
+   - Silver /10g: Live price from API (new)
+
+**Technical Details:**
+- API: `https://data-asg.goldprice.org/dbXRates/INR`
+- Response fields: `xauPrice` (gold), `xagPrice` (silver) - prices per troy oz
+- Conversion: Price per oz / 31.1035 (grams per troy oz) × 10 = Price per 10g
+- Same API call can fetch both gold and silver prices efficiently
+
+**Testing:** ✅ Verified via screenshot - Silver price displays correctly (₹2,242/10g)
+
+## Pending Issues (Awaiting User Input)
+
+### Issue 1: Expected Sale Date Bug (P1)
+**Reported:** User said "expected sale date has automatically changed for all properties"
+**Status:** BLOCKED - Need user to provide:
+- What was the date before vs. now?
+- Is this in production environment?
+**Potential Cause:** Code in `Properties.jsx` falls back to `handover_date` if `estimated_sell_date` is null
+
+### Issue 2: Logo Circle Size (P2)
+**Status:** BLOCKED - User asked about logo size but no change requested
+**Current Sizes:** Login: `w-16 h-16`, Sidebar: `w-10 h-10`
+
 ## Backlog / Future Tasks
 1. Centralize currency options into shared utility file
 2. Improve automated testing to handle two-step authentication
 3. Refactor `SurplusSection.jsx` (~2900 lines) - extract calculation logic to custom hook, move export functions to utility module
 4. Remove unused `html2pdf.js` dependency (PDF export was removed but module still in package.json)
+5. Refactor `server.py` - very large monolithic file, should split into routes/models/services
+6. Refactor `Dashboard.jsx` - extract data-fetching logic into custom hooks
