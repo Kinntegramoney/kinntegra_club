@@ -18665,10 +18665,9 @@ async def delete_real_estate_presentation(
 @api_router.get("/real-estate-opportunities/{opportunity_id}/presentations/{presentation_id}")
 async def download_presentation(
     opportunity_id: str,
-    presentation_id: str,
-    current_user: dict = Depends(get_current_user)
+    presentation_id: str
 ):
-    """Download a presentation file"""
+    """Download a presentation file - No auth required for public access"""
     from fastapi.responses import FileResponse
     import os
     
