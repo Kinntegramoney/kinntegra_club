@@ -93,8 +93,15 @@ export default function Sidebar({ user }) {
       <div className={`p-4 border-b border-gray-200 ${isCollapsed ? 'px-2' : ''}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-etihad-gold-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xl font-bold">K</span>
+            <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0" style={{ boxShadow: '0 4px 12px rgba(201, 162, 39, 0.3)' }}>
+              <img 
+                src="/logo.png" 
+                alt="Kinntegraa" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.parentElement.innerHTML = '<span class="text-white text-xl font-bold flex items-center justify-center w-full h-full bg-gradient-to-br from-orange-500 to-etihad-gold-600 rounded-full">K</span>';
+                }}
+              />
             </div>
             {!isCollapsed && (
               <div className="min-w-0">
