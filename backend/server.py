@@ -17731,6 +17731,7 @@ async def upload_bond_presentations(
         presentation_data = {
             "id": str(uuid.uuid4()),
             "original_filename": file.filename,
+            "saved_filename": saved_filename,
             "content_type": file.content_type,
             "size": len(content),
             "url": f"/api/uploads/bond_presentations/{saved_filename}",
