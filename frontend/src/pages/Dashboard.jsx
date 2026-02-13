@@ -144,6 +144,7 @@ export default function Dashboard() {
   const [emailSummary, setEmailSummary] = useState(null);
   const [aumDistribution, setAumDistribution] = useState({ by_asset_class: [], by_subbroker: [] });
   const [forexRate, setForexRate] = useState(22.5); // Default AED to INR rate
+  const [goldRate, setGoldRate] = useState(78500); // Default Gold rate per 10g in INR
   const [currentTime, setCurrentTime] = useState(formatDateTime());
   
   // Reset database state
