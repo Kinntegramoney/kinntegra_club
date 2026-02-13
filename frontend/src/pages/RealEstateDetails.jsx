@@ -396,6 +396,7 @@ export default function RealEstateDetails() {
   // XIRR Calculation Function - CORRECTED VERSION
   // DLD + Admin are upfront costs paid with first payment
   // Outstanding amount (unpaid portion) is deducted from sale proceeds
+  // IMPORTANT: Payments due on or after sale date are NOT included (you sell before paying them)
   const calculateXIRRWithParams = (opp, saleStagePercent, saleDateStr, saleRatePerSqft, returnDetails = false) => {
     if (!opp || !opp.unit_price || !opp.payment_schedule || opp.payment_schedule.length === 0) {
       return returnDetails ? { xirr: null, cashFlows: [] } : null;
@@ -416,6 +417,7 @@ export default function RealEstateDetails() {
     const dldFee = opp.dld_fee || 0;
     const adminFee = opp.admin_fee || 0;
     const upfrontFees = dldFee + adminFee;
+    const saleDate = new Date(saleDateStr);
     
     // Track total paid towards unit price
     let totalPaidTowardsUnit = 0;
@@ -425,6 +427,15 @@ export default function RealEstateDetails() {
     sortedSchedule.forEach(milestone => {
       const pct = parseFloat(milestone.percentage) || 0;
       const prevCumulative = cumulativePercent;
+      const milestoneDate = new Date(milestone.date);
+      
+      // Skip payments due on or after sale date (you sell before paying them)
+      // These are counted as "outstanding" and deducted from sale proceeds instead
+      if (milestoneDate >= saleDate) {
+        cumulativePercent += pct;
+        return; // Skip this milestone
+      }
+      
       cumulativePercent += pct;
       
       // Only include payments up to the sale stage
@@ -442,7 +453,7 @@ export default function RealEstateDetails() {
         const totalOutflow = isFirstPayment ? paymentAmount + upfrontFees : paymentAmount;
         
         cashFlows.push({ 
-          date: new Date(milestone.date), 
+          date: milestoneDate, 
           amount: -totalOutflow,
           description: isFirstPayment ? `${milestone.description || 'Booking'} + DLD + Admin` : (milestone.description || `Payment`),
           percentage: effectivePct,
