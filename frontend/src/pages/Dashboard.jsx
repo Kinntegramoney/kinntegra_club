@@ -356,6 +356,7 @@ export default function Dashboard() {
     fetchDashboardData();
     fetchForexRate();
     fetchGoldRate();
+    fetchSilverRate();
     fetchAvailableBonds();
   }, [navigate]);
 
