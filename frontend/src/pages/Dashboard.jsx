@@ -536,7 +536,7 @@ export default function Dashboard() {
           </div>
 
           {/* Dashboard Cards - Row 2: Opportunities and AUM */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Opportunities - Bonds & Real Estate (Available Only) */}
             <div 
               className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all cursor-pointer" 
