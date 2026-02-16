@@ -128,6 +128,9 @@ export default function ReinvestmentTagging() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedEntryForAction, setSelectedEntryForAction] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+  
+  // Search state for filtering clients
+  const [clientSearch, setClientSearch] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [processingAction, setProcessingAction] = useState(false);
 
