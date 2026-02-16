@@ -27326,14 +27326,14 @@ async def get_historical_currency_rate(
         # First get EUR to base, then EUR to target
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(
-                f"https://api.frankfurter.dev/{date}",
+                f"https://api.frankfurter.app/{date}",
                 params={"base": "EUR", "symbols": f"{base},{target}"}
             )
             
             if response.status_code != 200:
                 # Try fallback to live rates if historical not available
                 response = await client.get(
-                    "https://api.frankfurter.dev/latest",
+                    "https://api.frankfurter.app/latest",
                     params={"base": "EUR", "symbols": f"{base},{target}"}
                 )
             
@@ -27357,7 +27357,7 @@ async def get_historical_currency_rate(
                     "base": base,
                     "target": target,
                     "rate": round(calculated_rate, 4),
-                    "source": "frankfurter.dev"
+                    "source": "frankfurter.app"
                 }
             else:
                 # Fallback to default rates
@@ -27411,7 +27411,7 @@ async def get_historical_currency_rates_batch(
         for date in dates:
             try:
                 response = await client.get(
-                    f"https://api.frankfurter.dev/{date}",
+                    f"https://api.frankfurter.app/{date}",
                     params={"base": "EUR", "symbols": f"{base},{target}"}
                 )
                 
@@ -27460,7 +27460,7 @@ async def get_live_currency_rates(
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(
-                "https://api.frankfurter.dev/latest",
+                "https://api.frankfurter.app/latest",
                 params={"base": "EUR", "symbols": f"{base},{','.join(targets)}"}
             )
             
@@ -27482,7 +27482,7 @@ async def get_live_currency_rates(
                     "date": data.get("date"),
                     "base": base,
                     "rates": result_rates,
-                    "source": "frankfurter.dev"
+                    "source": "frankfurter.app"
                 }
             else:
                 raise HTTPException(status_code=500, detail="Failed to fetch live rates")
