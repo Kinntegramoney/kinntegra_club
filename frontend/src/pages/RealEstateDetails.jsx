@@ -152,7 +152,7 @@ export default function RealEstateDetails() {
     }
   }, [opportunity]);
 
-  // Check if currency projections exist
+  // Check if currency projections exist and save them
   useEffect(() => {
     const checkCurrencyProjections = async () => {
       try {
@@ -163,6 +163,8 @@ export default function RealEstateDetails() {
         const projections = response.data?.projections || [];
         // Mark as missing if no projections or less than 3 years
         setCurrencyProjectionsMissing(projections.length < 3);
+        // Save projections for use in currency conversion
+        setSavedCurrencyProjections(projections);
       } catch (error) {
         setCurrencyProjectionsMissing(true);
       }
