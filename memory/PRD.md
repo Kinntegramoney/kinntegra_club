@@ -250,16 +250,48 @@ presentations: Optional[List[dict]] = []  # Presentation files (PDFs, PPTs, DOCs
 
 **Testing:** ✅ Verified via screenshot - Silver price displays correctly (₹2,242/10g)
 
+### XIRR Calculation Fix for Real Estate
+**File:** `/app/frontend/src/pages/RealEstateDetails.jsx`
+
+**User Request:** "the last amount due on completion is not to be considered while calculating xirr"
+
+**Implementation:**
+- Modified `calculateXIRRWithParams` function to skip payment milestones with date >= sale date
+- These payments are counted as "outstanding" and deducted from sale proceeds instead
+- This only affects real estate XIRR - bond XIRR remains unchanged
+
+### Co-owner Privacy Controls (Real Estate)
+**File:** `/app/frontend/src/pages/RealEstateDetails.jsx`
+
+**User Request:** Client should only see their own details (passport, XIRR), not other co-owners'. Sub-brokers should only see their linked clients.
+
+**Implementation:**
+1. Added `canViewInvestorDetails(investorClientId)` helper function:
+   - Broker: can view all investors
+   - Sub-broker: can only view their linked clients
+   - Client: can only view their OWN details
+
+2. Added `isCurrentUserInvestor(investorClientId)` to mark own profile with "(You)"
+
+3. Updated "XIRR Comparison Report" section:
+   - Passport details shown only for investors user can view
+   - XIRR button shown only for permitted investors
+   - Other co-owners show "Details restricted" with lock icon
+   - Own profile marked with "(You)" badge
+
+4. Updated Payment Schedule table:
+   - Table headers only show columns for investors user can view
+   - Per-investor document status cells filtered by permission
+   - DLD + Admin row also respects same permissions
+
+**Visual Changes:**
+- Restricted investors show: Lock icon + "Details restricted"
+- Clients see message: "You can only view your own details"
+- Sub-brokers see message: "Not your linked client"
+
 ## Pending Issues (Awaiting User Input)
 
-### Issue 1: Expected Sale Date Bug (P1)
-**Reported:** User said "expected sale date has automatically changed for all properties"
-**Status:** BLOCKED - Need user to provide:
-- What was the date before vs. now?
-- Is this in production environment?
-**Potential Cause:** Code in `Properties.jsx` falls back to `handover_date` if `estimated_sell_date` is null
-
-### Issue 2: Logo Circle Size (P2)
+### Issue 1: Logo Circle Size (P2)
 **Status:** BLOCKED - User asked about logo size but no change requested
 **Current Sizes:** Login: `w-16 h-16`, Sidebar: `w-10 h-10`
 
