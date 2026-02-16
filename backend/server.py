@@ -23289,11 +23289,17 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     ).to_list(10000)
     
     # Use gross_amount for pending (this already includes principal + interest)
-    bond_total_pending = sum(cf.get('gross_amount', 0) or 0 for cf in upcoming_cashflows)
+    bond_total_pending_raw = sum(cf.get('gross_amount', 0) or 0 for cf in upcoming_cashflows)
     
-    # Profits = (Total Repaid + Total Pending) - Total Invested
-    # This represents: Total money received/to be received - Total money invested
-    bond_profits = (bond_total_repaid + bond_total_pending) - bond_total_invested
+    # Gross Expected = Total Repaid + Total Pending (upcoming)
+    # This is the total amount expected from all cashflows
+    bond_gross_expected = bond_total_repaid + bond_total_pending_raw
+    
+    # Pending = Gross Expected - Repaid (what's still to come)
+    bond_total_pending = bond_gross_expected - bond_total_repaid
+    
+    # Profits = Gross Expected - Invested (total profit across all investments)
+    bond_profits = bond_gross_expected - bond_total_invested
     
     # Legacy bond AUM calculation (for backward compatibility)
     bond_aum = sum(
