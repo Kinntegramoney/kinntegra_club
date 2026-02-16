@@ -1626,9 +1626,6 @@ export default function ReinvestmentTagging() {
                   const currentTag = splitValues?.tag || changes.reinvestment_tag || entry.reinvestment_tag || '';
                   const isTagged = currentTag && currentTag !== 'not_tagged';
                   
-                  // Get available UCCs for this client
-                  const availableUccs = clientGroup.ucc_list || [];
-                  
                   return (
                     <tr key={entry.id} className={`hover:bg-gray-50 ${isSplit ? 'bg-green-50' : isTagged ? 'bg-green-50/30' : ''}`}>
                       {canTag && (
