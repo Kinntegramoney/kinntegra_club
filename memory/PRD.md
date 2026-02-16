@@ -364,6 +364,31 @@ balance_principal -= rep_principal  # Only subtract principal, not interest
 
 **Testing:** ✅ Verified via screenshot - Dropdown visible with all three options
 
+### Payment Schedule Currency Settings Integration
+**File:** `/app/frontend/src/pages/RealEstateDetails.jsx`
+**Date:** 2026-02-16
+
+**User Request:** "currency settings under XIRR comparison report should be uniform across all funded opportunities. when clicked on view payment schedule for funded real estate opportunities, it should follow currency rates basis the currency settings and not basis the current currency value api"
+
+**Implementation:**
+1. Added `savedCurrencyProjections` state to store broker's saved currency settings
+2. Modified `currencyRates` to be a `useMemo` that:
+   - Uses default rates for available/open opportunities
+   - Uses broker's saved currency settings from `/api/settings/currency-projections` for funded opportunities
+3. Updated currency info section in Payment Schedule modal to show "Using broker's currency settings" when applicable
+4. Currency settings are stored globally per broker, so they're uniform across all opportunities
+
+**Technical Details:**
+- Currency projections are fetched on component mount via existing `checkCurrencyProjections` effect
+- For funded opportunities (`status === 'fully_invested'`), the saved INR rate is applied
+- Default rates remain as fallback for currencies not configured in settings
+
+### "Interested" Section Already Hidden for Funded
+**Status:** Already implemented at line 2107 with condition `!isFullyAllocated`
+- The "Interested in this Property?" section only shows for clients when `!isFullyAllocated`
+- Funded opportunities (status = "fully_invested" or invested_percentage >= 99.99) will have `isFullyAllocated = true`
+- This means the section is correctly hidden for funded opportunities
+
 ## Pending Issues (Awaiting User Input)
 
 ### Issue 1: Logo Circle Size (P2)
