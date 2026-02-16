@@ -2622,7 +2622,11 @@ export default function RealEstateDetails() {
               <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 text-center">
                 Exchange rates: 1 AED = ₹{currencyRates.INR} INR | ${currencyRates.USD} USD | €{currencyRates.EUR} EUR | £{currencyRates.GBP} GBP | ¥{currencyRates.CNY} CNY
                 <br />
-                <span className="text-gray-400">Rates are indicative and may vary</span>
+                {savedCurrencyProjections.length > 0 && (opportunity?.status === 'fully_invested' || opportunity?.invested_percentage >= 99.99) ? (
+                  <span className="text-green-600 font-medium">Using broker's currency settings</span>
+                ) : (
+                  <span className="text-gray-400">Rates are indicative and may vary</span>
+                )}
               </div>
             </div>
             
