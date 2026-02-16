@@ -1278,6 +1278,41 @@ export default function Holdings() {
     return isNegative ? `-${formatted}` : formatted;
   };
 
+  // Format AED amounts
+  const formatAED = (amount) => {
+    if (!amount || amount === 0) return 'AED 0';
+    const isNegative = amount < 0;
+    const absAmount = Math.abs(amount);
+    let formatted;
+    if (absAmount >= 1000000) {
+      formatted = `AED ${(absAmount / 1000000).toFixed(2)}M`;
+    } else if (absAmount >= 1000) {
+      formatted = `AED ${(absAmount / 1000).toFixed(2)}K`;
+    } else {
+      formatted = `AED ${absAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    return isNegative ? `-${formatted}` : formatted;
+  };
+
+  // Get client display value based on filter type
+  // AED to INR conversion rate (approximate - will be updated to use live rate)
+  const AED_TO_INR_RATE = 22.75;
+  
+  const getClientDisplayValue = (client) => {
+    if (clientTypeFilter === 'bonds') {
+      // Show only bond investment in INR
+      return formatINR(client.bond_investment || 0);
+    } else if (clientTypeFilter === 'real_estate') {
+      // Show only real estate investment in AED
+      return formatAED(client.real_estate_investment || 0);
+    } else {
+      // 'all' - show combined value in INR (convert AED to INR)
+      const bondINR = client.bond_investment || 0;
+      const realEstateINR = (client.real_estate_investment || 0) * AED_TO_INR_RATE;
+      return formatINR(bondINR + realEstateINR);
+    }
+  };
+
   // Format absolute amounts in Indian numbering (e.g., ₹12,34,567.00)
   const formatAbsoluteINR = (amount) => {
     if (!amount || amount === 0) return '₹0.00';
