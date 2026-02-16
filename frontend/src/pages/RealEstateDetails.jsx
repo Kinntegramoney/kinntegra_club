@@ -2438,22 +2438,30 @@ export default function RealEstateDetails() {
             {/* Content */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
               {/* Summary Cards */}
-              <div className="grid grid-cols-4 gap-4 mb-6">
-                <div className="bg-orange-50 rounded-lg p-4 text-center">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                <div className="bg-orange-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-orange-600 mb-1">Unit Price</p>
-                  <p className="text-lg font-bold text-orange-800">{convertCurrency(opp.unit_price)}</p>
+                  <p className="text-sm font-bold text-orange-800">{convertCurrency(opp.unit_price)}</p>
                 </div>
-                <div className="bg-teal-50 rounded-lg p-4 text-center">
+                <div className="bg-amber-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-amber-600 mb-1">DLD Fee ({opp.dld_fee_percentage || 4}%)</p>
+                  <p className="text-sm font-bold text-amber-800">{convertCurrency(opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100))}</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-green-600 mb-1">Admin Fee</p>
+                  <p className="text-sm font-bold text-green-800">{convertCurrency(opp.admin_fee || 0)}</p>
+                </div>
+                <div className="bg-teal-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-teal-600 mb-1">Total Cost</p>
-                  <p className="text-lg font-bold text-teal-800">{convertCurrency(opp.total_cost)}</p>
+                  <p className="text-sm font-bold text-teal-800">{convertCurrency(opp.total_cost)}</p>
                 </div>
-                <div className="bg-purple-50 rounded-lg p-4 text-center">
+                <div className="bg-purple-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-purple-600 mb-1">Milestones</p>
-                  <p className="text-lg font-bold text-purple-800">{opp.payment_schedule.length}</p>
+                  <p className="text-sm font-bold text-purple-800">{opp.payment_schedule.length}</p>
                 </div>
-                <div className="bg-blue-50 rounded-lg p-4 text-center">
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-blue-600 mb-1">Co-owners</p>
-                  <p className="text-lg font-bold text-blue-800">{opp.investors?.length || 4} users</p>
+                  <p className="text-sm font-bold text-blue-800">{opp.investors?.length || 4} users</p>
                 </div>
               </div>
               
