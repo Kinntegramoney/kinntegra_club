@@ -2225,8 +2225,18 @@ export default function Holdings() {
                 {filteredHoldings.length > 0 && (
                 <div className="pt-3 border-t border-gray-100">
                   {(() => {
-                    const totalReceived = filteredHoldings.reduce((sum, h) => sum + (h.net_repaid || 0), 0);
-                    const totalOutstanding = filteredHoldings.reduce((sum, h) => sum + (h.upcoming_expected || 0), 0);
+                    // Use GROSS values for consistency (principal + interest, before TDS)
+                    // gross_repaid = repaid_principal + repaid_interest (what was actually received gross)
+                    // gross_upcoming = upcoming future principal + interest (what's still due gross)
+                    const totalReceived = filteredHoldings.reduce((sum, h) => {
+                      // Use gross_repaid if available, otherwise calculate from components
+                      const grossRepaid = h.gross_repaid || ((h.repaid_principal || 0) + (h.repaid_interest || 0));
+                      return sum + grossRepaid;
+                    }, 0);
+                    const totalOutstanding = filteredHoldings.reduce((sum, h) => {
+                      // Use gross_upcoming if available, otherwise use upcoming_expected
+                      return sum + (h.gross_upcoming || h.upcoming_expected || 0);
+                    }, 0);
                     const grandTotal = totalReceived + totalOutstanding;
                     const receivedPercent = grandTotal > 0 ? (totalReceived / grandTotal) * 100 : 0;
                     
