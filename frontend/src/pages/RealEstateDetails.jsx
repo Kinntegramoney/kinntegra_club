@@ -1178,9 +1178,12 @@ export default function RealEstateDetails() {
                       <th className="text-right py-3 px-3 text-gray-600 font-semibold">Amount</th>
                       <th className="text-center py-3 px-3 text-gray-600 font-semibold">Progress</th>
                       <th className="text-center py-3 px-3 text-gray-600 font-semibold">Status</th>
-                      {isFullyAllocated && opp.investors?.map((inv, i) => (
+                      {isFullyAllocated && opp.investors?.filter(inv => canViewInvestorDetails(inv.client_id)).map((inv, i) => (
                         <th key={i} className="text-center py-2 px-2 text-gray-600 font-medium min-w-[100px]">
-                          <div className="text-xs">{inv.client_name?.split(' ')[0]}</div>
+                          <div className="text-xs">
+                            {inv.client_name?.split(' ')[0]}
+                            {isCurrentUserInvestor(inv.client_id) && <span className="text-indigo-600 ml-1">(You)</span>}
+                          </div>
                           <div className="text-[10px] text-gray-400">{inv.share_percentage || (100 / opp.investors.length).toFixed(0)}%</div>
                         </th>
                       ))}
