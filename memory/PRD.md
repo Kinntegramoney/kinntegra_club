@@ -341,6 +341,29 @@ balance_principal -= rep_principal  # Only subtract principal, not interest
 
 **Testing:** ✅ Verified via screenshot - Eye button visible next to passport number (AD349184)
 
+### Holdings Client Type Filter
+**Files:** `/app/frontend/src/pages/Holdings.jsx`, `/app/backend/server.py`
+**Date:** 2026-02-16
+
+**User Request:** "under holdings below search option, allow to select bonds clients or real estate clients or both"
+
+**Implementation:**
+
+**Backend (`/api/holdings/clients`):**
+1. Added batch lookup for real estate investors from `real_estate_opportunities` collection
+2. Added `has_bonds` field - true if client has approved trades in `trades` collection
+3. Added `has_real_estate` field - true if client is an investor in any real estate opportunity
+
+**Frontend:**
+1. Added `clientTypeFilter` state with values: "all", "bonds", "real_estate"
+2. Added Select dropdown below search input with options:
+   - All Clients
+   - Bond Clients
+   - Real Estate Clients
+3. Updated `filteredClients` logic to filter based on selected type
+
+**Testing:** ✅ Verified via screenshot - Dropdown visible with all three options
+
 ## Pending Issues (Awaiting User Input)
 
 ### Issue 1: Logo Circle Size (P2)
