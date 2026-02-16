@@ -27300,6 +27300,207 @@ async def get_sub_brokers_for_data_gathering(current_user: dict = Depends(get_cu
     return {"sub_brokers": sub_brokers}
 
 
+# ============= Historical Currency Rates API =============
+
+@api_router.get("/currency/historical/{date}")
+async def get_historical_currency_rate(
+    date: str,  # Format: YYYY-MM-DD
+    base: str = "AED",
+    target: str = "INR",
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Fetch historical currency exchange rate for a specific date.
+    Uses Frankfurter.app API (free, no key required).
+    
+    Returns: { "date": "2024-10-01", "base": "AED", "target": "INR", "rate": 22.75 }
+    """
+    import httpx
+    
+    try:
+        # Validate date format
+        from datetime import datetime
+        parsed_date = datetime.strptime(date, "%Y-%m-%d")
+        
+        # Frankfurter uses EUR as the base, so we need to convert
+        # First get EUR to base, then EUR to target
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"https://api.frankfurter.dev/{date}",
+                params={"base": "EUR", "symbols": f"{base},{target}"}
+            )
+            
+            if response.status_code != 200:
+                # Try fallback to live rates if historical not available
+                response = await client.get(
+                    "https://api.frankfurter.dev/latest",
+                    params={"base": "EUR", "symbols": f"{base},{target}"}
+                )
+            
+            if response.status_code == 200:
+                data = response.json()
+                rates = data.get("rates", {})
+                
+                base_rate = rates.get(base, 1)
+                target_rate = rates.get(target, 1)
+                
+                # Calculate base to target rate
+                # If base is EUR, rate = target_rate
+                # Otherwise, rate = target_rate / base_rate
+                if base == "EUR":
+                    calculated_rate = target_rate
+                else:
+                    calculated_rate = target_rate / base_rate if base_rate else 0
+                
+                return {
+                    "date": data.get("date", date),
+                    "base": base,
+                    "target": target,
+                    "rate": round(calculated_rate, 4),
+                    "source": "frankfurter.dev"
+                }
+            else:
+                # Fallback to default rates
+                default_rates = {
+                    "INR": 22.75,
+                    "USD": 0.27,
+                    "EUR": 0.25,
+                    "GBP": 0.21
+                }
+                return {
+                    "date": date,
+                    "base": base,
+                    "target": target,
+                    "rate": default_rates.get(target, 1),
+                    "source": "fallback"
+                }
+                
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format. Use YYYY-MM-DD: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error fetching historical currency rate: {str(e)}")
+        # Return default rate on error
+        default_rates = {"INR": 22.75, "USD": 0.27, "EUR": 0.25, "GBP": 0.21}
+        return {
+            "date": date,
+            "base": base,
+            "target": target,
+            "rate": default_rates.get(target, 1),
+            "source": "fallback",
+            "error": str(e)
+        }
+
+
+@api_router.post("/currency/historical/batch")
+async def get_historical_currency_rates_batch(
+    dates: List[str] = Body(..., description="List of dates in YYYY-MM-DD format"),
+    base: str = Body("AED"),
+    target: str = Body("INR"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Fetch historical currency exchange rates for multiple dates.
+    Returns: [{ "date": "2024-10-01", "rate": 22.75 }, ...]
+    """
+    import httpx
+    
+    results = []
+    default_rate = {"INR": 22.75, "USD": 0.27, "EUR": 0.25, "GBP": 0.21}.get(target, 1)
+    
+    async with httpx.AsyncClient(timeout=30) as client:
+        for date in dates:
+            try:
+                response = await client.get(
+                    f"https://api.frankfurter.dev/{date}",
+                    params={"base": "EUR", "symbols": f"{base},{target}"}
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    rates = data.get("rates", {})
+                    
+                    base_rate = rates.get(base, 1)
+                    target_rate = rates.get(target, 1)
+                    
+                    if base == "EUR":
+                        calculated_rate = target_rate
+                    else:
+                        calculated_rate = target_rate / base_rate if base_rate else default_rate
+                    
+                    results.append({
+                        "date": data.get("date", date),
+                        "rate": round(calculated_rate, 4)
+                    })
+                else:
+                    results.append({"date": date, "rate": default_rate, "error": "API error"})
+                    
+            except Exception as e:
+                results.append({"date": date, "rate": default_rate, "error": str(e)})
+    
+    return {
+        "base": base,
+        "target": target,
+        "rates": results
+    }
+
+
+@api_router.get("/currency/live")
+async def get_live_currency_rates(
+    base: str = "AED",
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Fetch live/latest currency exchange rates.
+    Returns rates for multiple target currencies.
+    """
+    import httpx
+    
+    targets = ["INR", "USD", "EUR", "GBP", "CNY", "JPY", "CHF", "CAD", "AUD", "SGD"]
+    
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                "https://api.frankfurter.dev/latest",
+                params={"base": "EUR", "symbols": f"{base},{','.join(targets)}"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                rates = data.get("rates", {})
+                
+                base_rate = rates.get(base, 1)
+                
+                result_rates = {"AED": 1}  # Base is always 1
+                for target in targets:
+                    if target in rates:
+                        if base == "EUR":
+                            result_rates[target] = round(rates[target], 4)
+                        else:
+                            result_rates[target] = round(rates[target] / base_rate, 4) if base_rate else 1
+                
+                return {
+                    "date": data.get("date"),
+                    "base": base,
+                    "rates": result_rates,
+                    "source": "frankfurter.dev"
+                }
+            else:
+                raise HTTPException(status_code=500, detail="Failed to fetch live rates")
+                
+    except Exception as e:
+        logger.error(f"Error fetching live currency rates: {str(e)}")
+        # Return default rates
+        return {
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "base": base,
+            "rates": {
+                "AED": 1, "INR": 22.75, "USD": 0.27, "EUR": 0.25, "GBP": 0.21,
+                "CNY": 1.97, "JPY": 40.5, "CHF": 0.24, "CAD": 0.37, "AUD": 0.42, "SGD": 0.36
+            },
+            "source": "fallback"
+        }
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
