@@ -103,6 +103,27 @@ export default function RealEstateDetails() {
     OMR: 0.10    // 1 AED = ~0.10 OMR
   };
   
+  // Compute effective currency rates - use broker's saved settings if available for funded opportunities
+  const currencyRates = useMemo(() => {
+    // Start with default rates
+    const rates = { ...defaultCurrencyRates };
+    
+    // If we have saved projections and this is a funded opportunity, use saved rates
+    if (savedCurrencyProjections.length > 0 && isFullyAllocated) {
+      // Get current year
+      const currentYear = new Date().getFullYear();
+      // Find projections for current year (or closest year)
+      savedCurrencyProjections.forEach(proj => {
+        if (proj.year === currentYear && proj.currency && proj.projected_rate) {
+          // Convert from "X currency per AED" to our format
+          rates[proj.currency] = proj.projected_rate;
+        }
+      });
+    }
+    
+    return rates;
+  }, [defaultCurrencyRates, savedCurrencyProjections, isFullyAllocated]);
+  
   // Currency symbols for display
   const currencySymbols = {
     AED: 'د.إ', INR: '₹', USD: '$', EUR: '€', GBP: '£', CNY: '¥',
