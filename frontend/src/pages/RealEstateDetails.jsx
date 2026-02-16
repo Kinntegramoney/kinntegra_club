@@ -108,8 +108,13 @@ export default function RealEstateDetails() {
     // Start with default rates
     const rates = { ...defaultCurrencyRates };
     
+    // Check if this is a funded opportunity
+    const isFunded = opportunity?.status === 'fully_invested' || 
+           (opportunity?.invested_percentage && opportunity?.invested_percentage >= 99.99) ||
+           (opportunity?.remaining_percentage !== undefined && opportunity?.remaining_percentage <= 0.01);
+    
     // If we have saved projections and this is a funded opportunity, use saved rates
-    if (savedCurrencyProjections.length > 0 && isFullyAllocated) {
+    if (savedCurrencyProjections.length > 0 && isFunded) {
       // Get current year
       const currentYear = new Date().getFullYear();
       // Find projections for current year (or closest year)
@@ -122,7 +127,7 @@ export default function RealEstateDetails() {
     }
     
     return rates;
-  }, [defaultCurrencyRates, savedCurrencyProjections, isFullyAllocated]);
+  }, [defaultCurrencyRates, savedCurrencyProjections, opportunity]);
   
   // Currency symbols for display
   const currencySymbols = {
