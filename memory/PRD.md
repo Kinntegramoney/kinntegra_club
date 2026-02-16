@@ -318,11 +318,38 @@ balance_principal -= rep_principal  # Only subtract principal, not interest
 - Clients see message: "You can only view your own details"
 - Sub-brokers see message: "Not your linked client"
 
+### View Passport Feature (Real Estate)
+**File:** `/app/frontend/src/pages/RealEstateDetails.jsx`
+**Date:** 2026-02-16
+
+**User Request:** "passport viewing option doesnt exist...Give an eye button" - Add ability to view uploaded passport documents in the XIRR Comparison Report section.
+
+**Implementation:**
+1. Added Eye icon button next to passport number in "XIRR Comparison Report" section
+2. Button only appears when `investor.passport_document` exists (passport file uploaded)
+3. Click triggers API call to `/api/real-estate-opportunities/{opp_id}/investor/{investor_id}/passport-download`
+4. Opens passport PDF in new browser tab using `window.open()`
+5. Proper error handling with toast notification on failure
+6. Respects permission controls (only visible to users who can view that investor's details)
+
+**Technical Details:**
+- Eye icon from lucide-react (already imported)
+- Uses existing passport-download API endpoint
+- Response converted to Blob and opened via `URL.createObjectURL()`
+- Added `data-testid="view-passport-btn-{idx}"` for testing
+- Button has hover effect and tooltip "View Passport"
+
+**Testing:** ✅ Verified via screenshot - Eye button visible next to passport number (AD349184)
+
 ## Pending Issues (Awaiting User Input)
 
 ### Issue 1: Logo Circle Size (P2)
 **Status:** BLOCKED - User asked about logo size but no change requested
 **Current Sizes:** Login: `w-16 h-16`, Sidebar: `w-10 h-10`
+
+### Issue 2: Expected Sale Date Bug (P1)
+**Status:** NEEDS INVESTIGATION - User mentioned "expected sale date is the same as on completion date"
+**Suspected Cause:** May be intentional defaulting or unintentional overwrite when dates align
 
 ## Backlog / Future Tasks
 1. Centralize currency options into shared utility file
