@@ -1784,9 +1784,37 @@ export default function RealEstateDetails() {
                     {canViewDetails ? (
                       <div className="mb-3">
                         {investor.passport_details?.passport_number ? (
-                          <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                            <CheckCircle2 className="h-3 w-3" />
-                            <span>Passport: {investor.passport_details.passport_number}</span>
+                          <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded justify-between">
+                            <div className="flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              <span>Passport: {investor.passport_details.passport_number}</span>
+                            </div>
+                            {investor.passport_document && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    const token = localStorage.getItem("token");
+                                    const response = await axios.get(
+                                      `${API}/real-estate-opportunities/${opp.id}/investor/${investor.id}/passport-download`,
+                                      { 
+                                        headers: { Authorization: `Bearer ${token}` },
+                                        responseType: 'blob'
+                                      }
+                                    );
+                                    const fileURL = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+                                    window.open(fileURL, '_blank');
+                                  } catch (error) {
+                                    toast.error("Failed to view passport document");
+                                  }
+                                }}
+                                className="p-1 hover:bg-green-100 rounded transition-colors"
+                                title="View Passport"
+                                data-testid={`view-passport-btn-${idx}`}
+                              >
+                                <Eye className="h-3.5 w-3.5 text-green-700" />
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 text-xs text-etihad-gold-600 bg-etihad-gold-50 px-2 py-1 rounded">
