@@ -14180,9 +14180,15 @@ async def get_reinvestment_logs(
     current_user: dict = Depends(get_current_user)
 ):
     """Get reinvestment tagging logs for the Logs > Reinvestment Approvals tab"""
-    query = {}
+    query = {
+        # Exclude cancelled and auto-cancelled logs - these should not appear in trade logs
+        "approval_status": {"$nin": ["cancelled", "auto_cancelled", "rejected"]},
+        # Only include logs that have a valid reinvestment tag (not untagged)
+        "reinvestment_tag": {"$nin": ["not_tagged", None, ""]}
+    }
     
     if status:
+        # Override the approval_status filter if specific status requested
         query["approval_status"] = status
     if client_id:
         query["client_id"] = client_id
