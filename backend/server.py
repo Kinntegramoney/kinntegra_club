@@ -27458,32 +27458,33 @@ async def get_live_currency_rates(
 ):
     """
     Fetch live/latest currency exchange rates.
-    Returns rates for multiple target currencies.
+    Returns rates for multiple target currencies with AED as base.
+    AED is calculated via USD (AED is pegged to USD at ~3.6725).
     """
     import httpx
     
-    targets = ["INR", "USD", "EUR", "GBP", "CNY", "JPY", "CHF", "CAD", "AUD", "SGD"]
+    targets = ["INR", "EUR", "GBP", "CNY", "JPY", "CHF", "CAD", "AUD", "SGD"]
     
     try:
         async with httpx.AsyncClient(timeout=10) as client:
+            # Get USD-based rates for all targets
             response = await client.get(
                 "https://api.frankfurter.app/latest",
-                params={"base": "EUR", "symbols": f"{base},{','.join(targets)}"}
+                params={"base": "USD", "symbols": ",".join(targets)}
             )
             
             if response.status_code == 200:
                 data = response.json()
                 rates = data.get("rates", {})
                 
-                base_rate = rates.get(base, 1)
+                # Convert all rates from USD base to AED base
+                # 1 AED = 1/3.6725 USD ≈ 0.2723 USD
+                result_rates = {"AED": 1, "USD": round(1/AED_USD_RATE, 4)}  # AED base
                 
-                result_rates = {"AED": 1}  # Base is always 1
                 for target in targets:
                     if target in rates:
-                        if base == "EUR":
-                            result_rates[target] = round(rates[target], 4)
-                        else:
-                            result_rates[target] = round(rates[target] / base_rate, 4) if base_rate else 1
+                        # rate_per_aed = rate_per_usd / AED_USD_RATE
+                        result_rates[target] = round(rates[target] / AED_USD_RATE, 4)
                 
                 return {
                     "date": data.get("date"),
