@@ -183,6 +183,40 @@ export default function RealEstateDetails() {
     checkCurrencyProjections();
   }, [API]);
 
+  // Fetch live currency rates for available (non-funded) opportunities
+  useEffect(() => {
+    const fetchLiveCurrencyRates = async () => {
+      try {
+        // Use a free currency API - exchangerate-api or similar
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/AED');
+        if (response.ok) {
+          const data = await response.json();
+          // Convert rates (API gives "1 AED = X currency")
+          setLiveCurrencyRates({
+            AED: 1,
+            INR: data.rates?.INR || 22.75,
+            USD: data.rates?.USD || 0.27,
+            EUR: data.rates?.EUR || 0.25,
+            GBP: data.rates?.GBP || 0.21,
+            CAD: data.rates?.CAD || 0.37,
+            AUD: data.rates?.AUD || 0.42,
+            SGD: data.rates?.SGD || 0.36,
+            HKD: data.rates?.HKD || 2.12,
+            SAR: data.rates?.SAR || 1.02,
+            KWD: data.rates?.KWD || 0.083,
+            QAR: data.rates?.QAR || 0.99,
+            BHD: data.rates?.BHD || 0.10,
+            OMR: data.rates?.OMR || 0.10,
+            CNY: data.rates?.CNY || 1.97
+          });
+        }
+      } catch (error) {
+        console.log("Using default currency rates");
+      }
+    };
+    fetchLiveCurrencyRates();
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
