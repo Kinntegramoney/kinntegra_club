@@ -36,6 +36,13 @@ A comprehensive financial planning tool for brokers and advisors that includes:
   - Real Estate Clients filter: Shows real estate investment in AED
   - All Clients filter: Shows combined value in INR with breakdown (B: ₹X | RE: AED Y)
 
+#### Repaid Column in Holdings Report (Completed)
+**File:** `/app/frontend/src/pages/Holdings.jsx`
+- Added new "Repaid" column to the Bonds > Holding Report table
+- Shows total repaid amount (Principal + Interest) in blue, bold text
+- Below the total, shows bifurcation: "P: [principal] | I: [interest]"
+- Column placed between "Investment" and "Gross Expected"
+
 #### Historical Currency Rate API (Completed)
 **File:** `/app/backend/server.py`
 - New endpoint: `GET /api/currency/historical/{date}` - Fetches historical exchange rate for specific date
