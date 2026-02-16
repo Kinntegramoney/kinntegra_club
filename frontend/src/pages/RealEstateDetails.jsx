@@ -823,12 +823,12 @@ export default function RealEstateDetails() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar user={user} />
+      <SidebarComponent user={user} />
       
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-8 py-6">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/broker/opportunities")} className="mb-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate(getBackPath())} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Opportunities
           </Button>
