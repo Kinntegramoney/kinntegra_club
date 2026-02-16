@@ -1864,7 +1864,8 @@ export default function RealEstateDetails() {
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
