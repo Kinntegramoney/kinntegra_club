@@ -2627,12 +2627,12 @@ export default function RealEstateDetails() {
               
               {/* Currency Conversion Info */}
               <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 text-center">
-                Exchange rates: 1 AED = ₹{currencyRates.INR} INR | ${currencyRates.USD} USD | €{currencyRates.EUR} EUR | £{currencyRates.GBP} GBP | ¥{currencyRates.CNY} CNY
+                Exchange rates: 1 AED = ₹{currencyRates.INR?.toFixed(2)} INR | ${currencyRates.USD?.toFixed(4)} USD | €{currencyRates.EUR?.toFixed(4)} EUR | £{currencyRates.GBP?.toFixed(4)} GBP | ¥{currencyRates.CNY?.toFixed(2)} CNY
                 <br />
-                {savedCurrencyProjections.length > 0 && (opportunity?.status === 'fully_invested' || opportunity?.invested_percentage >= 99.99) ? (
-                  <span className="text-green-600 font-medium">Using broker's currency settings</span>
+                {liveCurrencyRates ? (
+                  <span className="text-green-600 font-medium">Live rates as of {new Date().toLocaleDateString()}</span>
                 ) : (
-                  <span className="text-gray-400">Rates are indicative and may vary</span>
+                  <span className="text-gray-400">Using default rates (live rates unavailable)</span>
                 )}
               </div>
             </div>
