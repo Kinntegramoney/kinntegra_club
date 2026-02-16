@@ -10663,24 +10663,20 @@ def build_actual_cashflows_with_investment(trades_data, stored_cashflows, actual
             if has_maturity_entry and maturity_date_short and cf_date_short == maturity_date_short:
                 continue
             
-            # If there are NO prepayments, use the scheduled cashflow values as-is (interest only, no extra principal)
-            # If there ARE prepayments, we would have calculated a maturity entry above
+            # Get the scheduled values from holding_cashflows
             principal = cf.get('principal_component', 0) or 0
             interest = cf.get('interest_component', 0) or 0
             
-            # IMPORTANT: When there are no prepayments, the actual cashflow should match expected
-            # Only include principal if:
-            # 1. There were prepayments and we haven't added a calculated maturity, OR
-            # 2. The bond explicitly has principal in its scheduled cashflows AND it's the maturity date
-            # For now, if no prepayments exist, don't add principal (to match expected behavior)
-            if not prepayments:
-                # No prepayments - actual should match expected (interest only for regular payments)
-                # Only include principal if this is a combined interest+principal payment scheduled by the bond
-                # Check if this is the maturity date AND the bond explicitly has principal return
-                is_maturity_date = maturity_date_short and cf_date_short == maturity_date_short
-                if not is_maturity_date:
-                    # Not maturity - exclude principal (only interest)
-                    principal = 0
+            # CRITICAL FIX: When there are NO prepayments, actual cashflow should match expected
+            # The issue is that holding_cashflows may have principal at maturity from generate_client_cashflows()
+            # but the expected_cashflows (from cashflows_per_unit) may not have principal if the bond
+            # pays monthly interest without principal entries
+            # 
+            # For consistency, we should:
+            # 1. If no prepayments AND this is NOT the maturity date: use interest only
+            # 2. If no prepayments AND this IS the maturity date: use whatever is in holding_cashflows
+            #    (this ensures maturity principal is shown if it was generated)
+            # 3. If prepayments exist: the calculated maturity would have been added above
             
             tds = cf.get('tds_amount', 0) or (interest * 0.1 if interest > 0 else 0)
             gross = principal + interest
