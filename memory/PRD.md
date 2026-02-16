@@ -364,30 +364,39 @@ balance_principal -= rep_principal  # Only subtract principal, not interest
 
 **Testing:** ✅ Verified via screenshot - Dropdown visible with all three options
 
-### Payment Schedule Currency Settings Integration
+### Payment Schedule - Live Currency Rates & Passport Preview
 **File:** `/app/frontend/src/pages/RealEstateDetails.jsx`
 **Date:** 2026-02-16
 
-**User Request:** "currency settings under XIRR comparison report should be uniform across all funded opportunities. when clicked on view payment schedule for funded real estate opportunities, it should follow currency rates basis the currency settings and not basis the current currency value api"
+**User Requests:**
+1. "while clicking on the view eye icon for passport viewing, it says failed to view document. on clicking over it, it should show in popup format"
+2. "for available real estate opportunities it should consider the real currency rate from api"
+3. "for funded opportunities, we should capture currency values as on those dates...Also we should then remove the currency setting button as it stands no relevance"
 
 **Implementation:**
-1. Added `savedCurrencyProjections` state to store broker's saved currency settings
-2. Modified `currencyRates` to be a `useMemo` that:
-   - Uses default rates for available/open opportunities
-   - Uses broker's saved currency settings from `/api/settings/currency-projections` for funded opportunities
-3. Updated currency info section in Payment Schedule modal to show "Using broker's currency settings" when applicable
-4. Currency settings are stored globally per broker, so they're uniform across all opportunities
 
-**Technical Details:**
-- Currency projections are fetched on component mount via existing `checkCurrencyProjections` effect
-- For funded opportunities (`status === 'fully_invested'`), the saved INR rate is applied
-- Default rates remain as fallback for currencies not configured in settings
+**1. Passport Preview Popup Modal:**
+- Added `showPassportPreviewModal`, `passportPreviewUrl`, `passportPreviewLoading` states
+- Changed eye button click handler to open modal instead of new tab
+- Modal displays PDF using `<object>` tag with fallback options
+- Added "Download" and "Open in New Tab" buttons for browsers that can't display PDFs inline
+- Added loading spinner while fetching passport document
 
-### "Interested" Section Already Hidden for Funded
-**Status:** Already implemented at line 2107 with condition `!isFullyAllocated`
-- The "Interested in this Property?" section only shows for clients when `!isFullyAllocated`
-- Funded opportunities (status = "fully_invested" or invested_percentage >= 99.99) will have `isFullyAllocated = true`
-- This means the section is correctly hidden for funded opportunities
+**2. Live Currency Rates for ALL Opportunities:**
+- Added `liveCurrencyRates` state to store rates from external API
+- Added `useEffect` to fetch live rates from `api.exchangerate-api.com/v4/latest/AED`
+- Updated `currencyRates` memo to prioritize live API rates over default rates
+- Both available and funded opportunities now use live rates
+- Shows "Live rates as of [date]" indicator in Payment Schedule modal
+
+**3. Removed Currency Settings Button:**
+- Removed the "Currency Settings" button from XIRR Comparison Report section
+- Only "Fix Status" button remains for broker/sub-broker
+
+**Testing:** 
+- ✅ Passport modal popup working with Download/Open in New Tab options
+- ✅ Currency Settings button removed from XIRR section
+- ✅ Live rates fetched - INR rate changed from 22.75 (default) to ~24.70 (live)
 
 ## Pending Issues (Awaiting User Input)
 
