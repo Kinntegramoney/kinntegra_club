@@ -1271,8 +1271,8 @@ export default function RealEstateDetails() {
                             )}
                           </td>
                           
-                          {/* Investor Document Status Cells */}
-                          {isFullyAllocated && opp.investors?.map((investor, invIdx) => {
+                          {/* Investor Document Status Cells - Only show investors user can view */}
+                          {isFullyAllocated && opp.investors?.filter(inv => canViewInvestorDetails(inv.client_id)).map((investor, invIdx) => {
                             const invoice = opp.investor_invoices?.find(inv => inv.milestone_index === idx && inv.investor_id === investor.client_id);
                             const payment = milestonePayments.find(p => p.investor_id === investor.client_id || p.investor_index === invIdx);
                             const hasInvoice = !!invoice;
