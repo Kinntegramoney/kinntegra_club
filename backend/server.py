@@ -22142,13 +22142,22 @@ async def recalculate_maturity_for_trade(trade: dict, bond: dict, db_instance) -
             rep_date = datetime.strptime(rep_date_str[:10], '%Y-%m-%d')
         except:
             continue
-        rep_amount = rep.get('gross_amount', 0)
+        
+        # Get principal component - this is what reduces the balance
+        # gross_amount includes both principal + interest, so we need to extract just principal
+        rep_principal = rep.get('principal', 0) or 0
+        rep_gross = rep.get('gross_amount', 0) or 0
+        
+        # If principal is not specified, assume gross is all principal (prepayment scenario)
+        # This handles legacy data where only gross_amount was recorded
+        if rep_principal == 0 and rep_gross > 0:
+            rep_principal = rep_gross
         
         # Include BOTH start and end dates (+1)
         days = (rep_date - prev_date).days + 1
         period_interest = balance_principal * coupon_rate * days / 365
         total_interest += period_interest
-        total_prepaid += rep_amount
+        total_prepaid += rep_principal  # Track principal prepaid, not gross
         
         interest_breakdown.append({
             'from': prev_date.strftime('%Y-%m-%d'),
@@ -22156,10 +22165,13 @@ async def recalculate_maturity_for_trade(trade: dict, bond: dict, db_instance) -
             'days': days,
             'balance': round(balance_principal, 2),
             'interest': round(period_interest, 2),
-            'prepayment': rep_amount
+            'prepayment': rep_principal,  # Principal prepaid
+            'gross_received': rep_gross
         })
         
-        balance_principal -= rep_amount
+        balance_principal -= rep_principal  # Only subtract principal, not interest
+        if balance_principal < 0:
+            balance_principal = 0
         prev_date = rep_date
     
     # Final period to maturity
