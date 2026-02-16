@@ -804,7 +804,7 @@ export default function RealEstateDetails() {
                   View Payment Schedule
                 </Button>
               )}
-              {(opp.status === 'available' || opp.status === 'partially_invested') && remainingPercentage > 0 && (
+              {(opp.status === 'available' || opp.status === 'partially_invested') && remainingPercentage > 0 && user?.role === 'broker' && (
                 <Button onClick={() => setShowAllocateModal(true)} className="bg-teal-600 hover:bg-teal-700">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Investor
