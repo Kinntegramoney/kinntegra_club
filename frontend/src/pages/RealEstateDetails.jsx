@@ -657,6 +657,24 @@ export default function RealEstateDetails() {
     return false;
   };
 
+  // Check if user can view sensitive details (passport, XIRR) for a specific investor
+  // Broker: can view all investors
+  // Sub-broker: can only view their linked clients
+  // Client: can only view their OWN details
+  const canViewInvestorDetails = (investorClientId) => {
+    if (!user) return false;
+    if (user.role === 'broker') return true;
+    if (user.role === 'sub_broker') return isSubBrokerLinkedClient(investorClientId);
+    if (user.role === 'client') return user.client_id === investorClientId || user.id === investorClientId;
+    return false;
+  };
+
+  // Check if current user is this specific investor (for clients)
+  const isCurrentUserInvestor = (investorClientId) => {
+    if (!user) return false;
+    return user.client_id === investorClientId || user.id === investorClientId;
+  };
+
   // Check if opportunity is fully allocated (100% invested or status is fully_invested)
   const isFullyAllocated = useMemo(() => {
     if (!opportunity) return false;
