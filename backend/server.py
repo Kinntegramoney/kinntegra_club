@@ -11181,6 +11181,69 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
             bond_info=bond
         )
         
+        # CRITICAL FIX: When there are NO prepayments, actual cashflows should MATCH expected cashflows
+        # This ensures XIRR consistency - both should be the same when nothing has changed
+        # Prepayments are identified as cashflows of type 'prepayment' in actual_cashflows_data
+        has_prepayments = any(
+            cf.get('type') == 'prepayment' or 
+            (cf.get('principal_component', 0) > 0 and cf.get('interest_component', 0) == 0 and cf.get('type') != 'investment' and cf.get('type') != 'maturity')
+            for cf in actual_cashflows_data
+        ) if actual_cashflows_data else False
+        
+        # Also check matched_actual_repayments for prepayments
+        if not has_prepayments and matched_actual_repayments:
+            for ar in matched_actual_repayments:
+                # Prepayment = has principal but no interest
+                if (ar.get('principal', 0) or 0) > 0 and (ar.get('interest', 0) or 0) == 0:
+                    has_prepayments = True
+                    break
+        
+        # If NO prepayments exist, use expected_cashflows as the basis for actual_cashflows
+        # This ensures both Expected and Actual XIRR match when there are no changes
+        if not has_prepayments and original_cashflows:
+            # Rebuild actual_cashflows using expected (original) cashflows
+            actual_cashflows_data = []
+            
+            # Add investment entries (outflows - negative)
+            for ti in trades_data:
+                t_inv_date = ti.get('investment_date', '')
+                t_inv_amount = ti.get('calculated_investment', 0) or ti.get('invested_amount', 0)
+                if t_inv_amount > 0:
+                    actual_cashflows_data.append({
+                        'date': t_inv_date,
+                        'type': 'investment',
+                        'amount': -t_inv_amount,
+                        'principal_component': 0,
+                        'interest_component': 0,
+                        'gross_amount': -t_inv_amount,
+                        'tds_amount': 0,
+                        'net_amount': -t_inv_amount,
+                        'is_repaid': True,
+                        'source': 'investment'
+                    })
+            
+            # Add expected cashflows as actual (since no prepayments = no changes)
+            for cf in original_cashflows:
+                cf_date = cf.get('date', '')
+                cf_date_short = cf_date[:10] if cf_date else ''
+                is_past = cf_date_short <= today_str if cf_date_short else False
+                
+                actual_cashflows_data.append({
+                    'date': cf_date,
+                    'type': 'scheduled_payment',
+                    'amount': cf.get('gross_amount', 0),
+                    'principal_component': cf.get('principal_component', 0),
+                    'interest_component': cf.get('interest_component', 0),
+                    'gross_amount': cf.get('gross_amount', 0),
+                    'tds_amount': cf.get('tds_amount', 0),
+                    'net_amount': cf.get('net_amount', 0),
+                    'is_repaid': is_past,
+                    'source': 'expected_cashflow_match'
+                })
+            
+            # Sort by date
+            actual_cashflows_data.sort(key=lambda x: x.get('date', ''))
+        
         # RECALCULATE repaid_gross and upcoming_gross from actual_cashflows_data
         # This ensures the summary uses the ACTUAL cashflows (with prepayment interest adjustments)
         # instead of the original expected cashflows
