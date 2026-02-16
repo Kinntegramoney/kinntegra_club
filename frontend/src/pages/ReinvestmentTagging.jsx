@@ -1197,6 +1197,73 @@ export default function ReinvestmentTagging() {
     setShowMultiRetagModal(true);
   };
 
+  // Open modal for single entry tagging (same flow as multi-retag)
+  const openSingleEntryTagModal = (entry, clientGroup, tagType) => {
+    if (!tagType) {
+      toast.error("Please select a tag type");
+      return;
+    }
+    
+    setSelectedTagType(tagType);
+    
+    // Get the amount based on tag type selection
+    let splitAmount = 0;
+    if (tagType === 'principal') {
+      splitAmount = entry.principal_net || entry.principal_amount || 0;
+    } else if (tagType === 'interest') {
+      splitAmount = entry.interest_net || entry.interest_amount || 0;
+    } else if (tagType === 'both') {
+      splitAmount = entry.net_amount || 0;
+    }
+    
+    // Round down (floor) to avoid decimal amounts
+    splitAmount = Math.floor(splitAmount);
+    
+    // Store all amounts for display
+    const amounts = {
+      principal: Math.floor(entry.principal_net || entry.principal_amount || 0),
+      interest: Math.floor(entry.interest_net || entry.interest_amount || 0),
+      both: Math.floor(entry.net_amount || 0)
+    };
+    
+    // Determine initial portfolio - auto-set to 'none' if amount < 1000
+    let initialPortfolio = '';
+    if (splitAmount < 1000) {
+      initialPortfolio = 'none';
+    }
+    
+    // Default investment date is T+1 of repayment date
+    const repaymentDate = entry.expected_date || entry.date;
+    const defaultInvestmentDate = repaymentDate 
+      ? format(addDays(new Date(repaymentDate), 1), 'yyyy-MM-dd')
+      : format(addDays(new Date(), 1), 'yyyy-MM-dd');
+    
+    // Auto-set UCC if there's only one
+    const uccList = clientGroup.ucc_list || [];
+    const defaultUcc = (uccList.length === 1) ? uccList[0] : '';
+    
+    // Create modal data for single entry
+    const modalData = {
+      [entry.id]: {
+        entry: { ...entry, ucc_list: uccList },
+        amounts: amounts,
+        totalAmount: splitAmount,
+        allocations: [
+          {
+            id: `${entry.id}-alloc-0`,
+            ucc: defaultUcc,
+            amount: splitAmount,
+            portfolio: initialPortfolio,
+            investment_date: defaultInvestmentDate
+          }
+        ]
+      }
+    };
+    
+    setMultiRetagData(modalData);
+    setShowMultiRetagModal(true);
+  };
+
   const getSidebar = () => {
     if (user?.role === "broker") return <Sidebar user={user} />;
     return <SubBrokerSidebar user={user} />;
