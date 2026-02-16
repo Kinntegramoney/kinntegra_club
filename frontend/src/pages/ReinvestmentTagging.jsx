@@ -1660,77 +1660,34 @@ export default function ReinvestmentTagging() {
                         ₹{(entry.net_amount || 0).toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2">
-                        {isSplit ? (
+                        {/* UCC - Display only, edit via modal */}
+                        {currentUcc ? (
                           <Badge variant={currentUcc === 'Multi' ? 'secondary' : 'outline'} className="text-xs">
                             {currentUcc}
                           </Badge>
-                        ) : canTag ? (
-                          <Select
-                            value={currentUcc}
-                            onValueChange={(value) => handleLocalChange(entry.id, 'target_ucc', value)}
-                          >
-                            <SelectTrigger className="h-7 text-xs w-24">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {availableUccs.map(ucc => (
-                                <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                         ) : (
-                          <span className="text-sm text-gray-600">{currentUcc || '-'}</span>
+                          <span className="text-xs text-gray-400">-</span>
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        {isSplit ? (
+                        {/* Portfolio - Display only, edit via modal */}
+                        {currentPortfolio ? (
                           <Badge variant="outline" className="text-xs capitalize">
-                            {currentPortfolio}
+                            {PORTFOLIO_OPTIONS.find(p => p.value === currentPortfolio)?.label || currentPortfolio}
                           </Badge>
-                        ) : canTag ? (
-                          <Select
-                            value={currentPortfolio}
-                            onValueChange={(value) => handleLocalChange(entry.id, 'portfolio_category', value)}
-                          >
-                            <SelectTrigger className="h-7 text-xs w-24">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getFilteredPortfolioOptions(entry.net_amount).map(opt => (
-                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                         ) : (
-                          <span className="text-sm text-gray-600 capitalize">{currentPortfolio || '-'}</span>
+                          <span className="text-xs text-gray-400">-</span>
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        {isSplit ? (
+                        {/* Tag - Display only, edit via modal */}
+                        {isTagged ? (
                           <Badge className="bg-green-100 text-green-700 text-xs capitalize">
                             {currentTag}
                           </Badge>
-                        ) : canTag ? (
-                          <Select
-                            value={currentTag}
-                            onValueChange={(value) => handleLocalChange(entry.id, 'reinvestment_tag', value)}
-                          >
-                            <SelectTrigger className={`h-7 text-xs w-24 ${
-                              currentTag === 'not_tagged' || !currentTag ? 'border-amber-300 bg-amber-50' : 'border-green-300 bg-green-50'
-                            }`}>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="not_tagged">Not Tagged</SelectItem>
-                              <SelectItem value="principal">Principal</SelectItem>
-                              <SelectItem value="interest">Interest</SelectItem>
-                              <SelectItem value="both">Both</SelectItem>
-                              <SelectItem value="none">None</SelectItem>
-                            </SelectContent>
-                          </Select>
                         ) : (
-                          <Badge className={`text-xs capitalize ${isTagged ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                            {currentTag || 'Not Tagged'}
+                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                            Not Tagged
                           </Badge>
                         )}
                       </td>
