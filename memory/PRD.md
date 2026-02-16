@@ -260,6 +260,35 @@ presentations: Optional[List[dict]] = []  # Presentation files (PDFs, PPTs, DOCs
 - These payments are counted as "outstanding" and deducted from sale proceeds instead
 - This only affects real estate XIRR - bond XIRR remains unchanged
 
+### XIRR Maturity Calculation Fix for Bonds
+**File:** `/app/backend/server.py`
+
+**User Request:** "the maturity value is not matching with the expected leading to incorrect XIRR"
+
+**Root Cause:**
+In `recalculate_maturity_for_trade` function (line 22145), the code was using `gross_amount` (which includes both principal AND interest) to reduce the balance principal:
+```python
+# BEFORE (WRONG):
+rep_amount = rep.get('gross_amount', 0)
+balance_principal -= rep_amount  # This incorrectly subtracts interest too!
+```
+
+**Fix Applied:**
+The code now correctly extracts the **principal component** and only reduces the balance by that:
+```python
+# AFTER (CORRECT):
+rep_principal = rep.get('principal', 0) or 0
+# If principal not specified, assume gross is all principal (legacy prepayment data)
+if rep_principal == 0 and rep_gross > 0:
+    rep_principal = rep_gross
+balance_principal -= rep_principal  # Only subtract principal, not interest
+```
+
+**Impact:**
+- Maturity amounts will now be calculated correctly based on actual outstanding principal
+- XIRR calculations will match expected values
+- Applies only to bonds (real estate XIRR unaffected)
+
 ### Co-owner Privacy Controls (Real Estate)
 **File:** `/app/frontend/src/pages/RealEstateDetails.jsx`
 
