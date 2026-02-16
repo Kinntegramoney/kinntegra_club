@@ -1238,10 +1238,22 @@ export default function Holdings() {
     return Object.values(consolidated);
   };
 
-  const filteredClients = clients.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.pan_number.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredClients = clients.filter(c => {
+    // Search filter
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.pan_number.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Client type filter
+    let matchesType = true;
+    if (clientTypeFilter === 'bonds') {
+      matchesType = c.has_bonds === true;
+    } else if (clientTypeFilter === 'real_estate') {
+      matchesType = c.has_real_estate === true;
+    }
+    // 'all' shows everyone
+    
+    return matchesSearch && matchesType;
+  });
 
   const consolidatedHoldings = getConsolidatedHoldings();
   const filteredHoldings = consolidatedHoldings.filter(h => 
