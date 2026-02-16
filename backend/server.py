@@ -10352,16 +10352,29 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
     # Get all client IDs for batch real estate lookup
     client_ids = [c['id'] for c in clients]
     
-    # Get real estate investments for all clients at once
+    # Get real estate investments for all clients at once - store both client set and totals
     real_estate_clients = set()
+    real_estate_totals = {}  # client_id -> total_payment (paid + payable)
     real_estate_cursor = db.real_estate_opportunities.find(
         {"investors.client_id": {"$in": client_ids}},
-        {"investors.client_id": 1}
+        {"_id": 0, "investors": 1, "total_cost": 1, "unit_price": 1, "dld_fee": 1, "admin_fee": 1, "milestones": 1, "payment_schedule": 1}
     )
     async for re_opp in real_estate_cursor:
+        # Calculate total cost for this property
+        total_cost = re_opp.get('total_cost') or (
+            re_opp.get('unit_price', 0) + 
+            re_opp.get('dld_fee', 0) + 
+            re_opp.get('admin_fee', 0)
+        )
+        
         for inv in re_opp.get('investors', []):
-            if inv.get('client_id') in client_ids:
-                real_estate_clients.add(inv['client_id'])
+            client_id = inv.get('client_id')
+            if client_id in client_ids:
+                real_estate_clients.add(client_id)
+                share_pct = inv.get('share_percentage', 0) / 100
+                # Client's share of total cost (paid + future payable)
+                client_total = total_cost * share_pct
+                real_estate_totals[client_id] = real_estate_totals.get(client_id, 0) + client_total
     
     # Get approved trades for each client
     client_summaries = []
@@ -10371,15 +10384,21 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
             "status": "approved"
         }, {"_id": 0}).to_list(100)
         
-        total_investment = sum(t.get('total_amount', 0) for t in trades)
+        bond_investment = sum(t.get('total_amount', 0) for t in trades)
         has_bonds = len(trades) > 0
         has_real_estate = client['id'] in real_estate_clients
+        real_estate_investment = real_estate_totals.get(client['id'], 0)
+        
+        # Total investment = bonds + real estate (in their respective currencies, will be converted on frontend)
+        total_investment = bond_investment + real_estate_investment
         
         client_summaries.append({
             "id": client['id'],
             "name": client['name'],
             "pan_number": client['pan_number'],
             "total_investment": round(total_investment, 2),
+            "bond_investment": round(bond_investment, 2),  # INR
+            "real_estate_investment": round(real_estate_investment, 2),  # AED
             "trade_count": len(trades),
             "is_active": client.get('is_active', True),
             "has_bonds": has_bonds,
