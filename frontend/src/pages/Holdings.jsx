@@ -1603,7 +1603,7 @@ export default function Holdings() {
       <div className="flex-1 flex overflow-hidden">
         {/* Client List Panel - Wider for better display */}
         <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-3 border-b border-gray-200">
+          <div className="p-3 border-b border-gray-200 space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -1614,6 +1614,16 @@ export default function Holdings() {
                 className="pl-9 h-9 text-sm"
               />
             </div>
+            <Select value={clientTypeFilter} onValueChange={setClientTypeFilter}>
+              <SelectTrigger className="h-9 text-sm" data-testid="client-type-filter">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Clients</SelectItem>
+                <SelectItem value="bonds">Bond Clients</SelectItem>
+                <SelectItem value="real_estate">Real Estate Clients</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="flex-1 overflow-y-auto">
