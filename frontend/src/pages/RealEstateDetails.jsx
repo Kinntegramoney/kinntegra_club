@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import * as XLSX from 'xlsx';
 import Sidebar from "@/components/Sidebar";
+import SubBrokerSidebar from "@/components/SubBrokerSidebar";
+import ClientSidebar from "@/components/ClientSidebar";
 import { 
   Building2, MapPin, ArrowLeft, Calendar, Users, Check, User,
   DollarSign, Ruler, Car, CheckCircle2, Clock, Plus, Upload, FileText, X, CreditCard, TrendingUp,
