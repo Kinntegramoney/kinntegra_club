@@ -1174,7 +1174,9 @@ export default function Holdings() {
           repaid_principal: 0,
           repaid_interest: 0,
           repaid_tds: 0,
+          gross_repaid: 0,
           net_repaid: 0,
+          gross_upcoming: 0,
           upcoming_expected: 0,
           prepaid_count: 0,
           prepaid_amount: 0,
@@ -1193,7 +1195,9 @@ export default function Holdings() {
       consolidated[bondId].repaid_principal += holding.repaid_principal;
       consolidated[bondId].repaid_interest += holding.repaid_interest;
       consolidated[bondId].repaid_tds += holding.repaid_tds;
+      consolidated[bondId].gross_repaid += holding.gross_repaid || ((holding.repaid_principal || 0) + (holding.repaid_interest || 0));
       consolidated[bondId].net_repaid += holding.net_repaid;
+      consolidated[bondId].gross_upcoming += holding.gross_upcoming || holding.upcoming_expected || 0;
       consolidated[bondId].upcoming_expected += holding.upcoming_expected;
       consolidated[bondId].prepaid_count += holding.prepaid_count || 0;
       consolidated[bondId].prepaid_amount += holding.prepaid_amount || 0;
