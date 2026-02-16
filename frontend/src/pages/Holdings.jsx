@@ -2179,7 +2179,12 @@ export default function Holdings() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => navigate(`/broker/real-estate/${property.id}`)}
+                                onClick={() => {
+                                  // Navigate to correct route based on user role
+                                  const basePath = user?.role === 'sub_broker' ? '/sub-broker' : 
+                                                   user?.role === 'client' ? '/client' : '/broker';
+                                  navigate(`${basePath}/real-estate/${property.id}`);
+                                }}
                                 className="ml-4"
                               >
                                 <Eye className="h-4 w-4 mr-1" /> View
