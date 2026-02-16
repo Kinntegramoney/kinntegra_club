@@ -1359,8 +1359,24 @@ export default function ReinvestmentTagging() {
       taggedByClient[entry.client_id].entries.push(entry);
     });
     
-    const untaggedClientGroups = Object.values(untaggedByClient);
-    const taggedClientGroups = Object.values(taggedByClient);
+    const untaggedClientGroups = Object.values(untaggedByClient).filter(group => {
+      if (!clientSearch.trim()) return true;
+      const searchLower = clientSearch.toLowerCase().trim();
+      return (
+        group.client_name?.toLowerCase().includes(searchLower) ||
+        group.client_pan?.toLowerCase().includes(searchLower) ||
+        group.client_email?.toLowerCase().includes(searchLower)
+      );
+    });
+    const taggedClientGroups = Object.values(taggedByClient).filter(group => {
+      if (!clientSearch.trim()) return true;
+      const searchLower = clientSearch.toLowerCase().trim();
+      return (
+        group.client_name?.toLowerCase().includes(searchLower) ||
+        group.client_pan?.toLowerCase().includes(searchLower) ||
+        group.client_email?.toLowerCase().includes(searchLower)
+      );
+    });
     const canTag = monthConfig?.canTag !== false;
     
     // Check if any entries are selected for this month
