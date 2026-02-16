@@ -12546,6 +12546,7 @@ class UccAllocation(BaseModel):
     amount: float
     portfolio: str
     tag: Optional[str] = None
+    investment_date: Optional[str] = None  # MF investment date selected by broker/sub-broker
 
 
 class ReinvestmentTagUpdate(BaseModel):
