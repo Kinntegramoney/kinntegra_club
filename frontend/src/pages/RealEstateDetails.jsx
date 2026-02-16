@@ -2826,6 +2826,20 @@ export default function RealEstateDetails() {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = passportPreviewUrl;
+                    link.download = 'passport.pdf';
+                    link.click();
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => window.open(passportPreviewUrl, '_blank')}
                   className="flex items-center gap-1"
                 >
@@ -2845,12 +2859,34 @@ export default function RealEstateDetails() {
                 </Button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto p-2 bg-gray-100">
-              <iframe
-                src={passportPreviewUrl}
-                className="w-full h-full min-h-[70vh] rounded border border-gray-300"
-                title="Passport Preview"
-              />
+            <div className="flex-1 overflow-auto p-4 bg-gray-100 flex items-center justify-center">
+              <object
+                data={passportPreviewUrl}
+                type="application/pdf"
+                className="w-full h-full min-h-[70vh]"
+              >
+                <div className="text-center py-8">
+                  <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">Unable to display PDF in browser.</p>
+                  <div className="flex gap-2 justify-center">
+                    <Button
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = passportPreviewUrl;
+                        link.download = 'passport.pdf';
+                        link.click();
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download PDF
+                    </Button>
+                    <Button variant="outline" onClick={() => window.open(passportPreviewUrl, '_blank')}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open in New Tab
+                    </Button>
+                  </div>
+                </div>
+              </object>
             </div>
           </div>
         </div>
