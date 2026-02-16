@@ -13068,11 +13068,21 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                     )
             
             total_allocated += alloc.amount
+            # Calculate default investment date as T+1 from cashflow date if not provided
+            default_investment_date = None
+            if cashflow.get('date'):
+                try:
+                    cf_date = datetime.strptime(cashflow['date'][:10], '%Y-%m-%d')
+                    default_investment_date = (cf_date + timedelta(days=1)).strftime('%Y-%m-%d')
+                except:
+                    default_investment_date = None
+            
             validated_allocations.append({
                 "ucc": alloc_ucc.upper() if alloc_ucc else '',
                 "amount": alloc.amount,
                 "portfolio": alloc.portfolio if alloc.portfolio else 'none',
-                "tag": alloc.tag or update.reinvestment_tag
+                "tag": alloc.tag or update.reinvestment_tag,
+                "investment_date": alloc.investment_date or default_investment_date  # Broker-selected MF investment date
             })
         
         # Store split allocations on the cashflow
