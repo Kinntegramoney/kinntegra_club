@@ -109,31 +109,15 @@ export default function RealEstateDetails() {
     OMR: 0.10    // 1 AED = ~0.10 OMR
   };
   
-  // Compute effective currency rates - use broker's saved settings if available for funded opportunities
+  // Compute effective currency rates - use live API rates when available
   const currencyRates = useMemo(() => {
-    // Start with default rates
-    const rates = { ...defaultCurrencyRates };
-    
-    // Check if this is a funded opportunity
-    const isFunded = opportunity?.status === 'fully_invested' || 
-           (opportunity?.invested_percentage && opportunity?.invested_percentage >= 99.99) ||
-           (opportunity?.remaining_percentage !== undefined && opportunity?.remaining_percentage <= 0.01);
-    
-    // If we have saved projections and this is a funded opportunity, use saved rates
-    if (savedCurrencyProjections.length > 0 && isFunded) {
-      // Get current year
-      const currentYear = new Date().getFullYear();
-      // Find projections for current year (or closest year)
-      savedCurrencyProjections.forEach(proj => {
-        if (proj.year === currentYear && proj.currency && proj.projected_rate) {
-          // Convert from "X currency per AED" to our format
-          rates[proj.currency] = proj.projected_rate;
-        }
-      });
+    // If we have live rates from API, use those
+    if (liveCurrencyRates) {
+      return liveCurrencyRates;
     }
-    
-    return rates;
-  }, [defaultCurrencyRates, savedCurrencyProjections, opportunity]);
+    // Otherwise use default rates as fallback
+    return defaultCurrencyRates;
+  }, [defaultCurrencyRates, liveCurrencyRates]);
   
   // Currency symbols for display
   const currencySymbols = {
