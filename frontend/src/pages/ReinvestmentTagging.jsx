@@ -1149,10 +1149,13 @@ export default function ReinvestmentTagging() {
     }
     
     const allocations = changes.ucc_allocations;
-    const uniqueUccs = [...new Set(allocations.map(a => a.ucc))];
-    const uniquePortfolios = [...new Set(allocations.map(a => a.portfolio))];
+    // Filter out empty/null/undefined values before counting unique ones
+    const uniqueUccs = [...new Set(allocations.map(a => a.ucc).filter(u => u && u.trim()))];
+    const uniquePortfolios = [...new Set(allocations.map(a => a.portfolio).filter(p => p && p.trim() && p !== 'none'))];
     const tag = allocations[0]?.tag || changes?.reinvestment_tag || '';
     
+    // Show "Multi" only if there are actually multiple DIFFERENT UCCs or portfolios
+    // Not just because there are multiple allocation entries
     return {
       ucc: uniqueUccs.length > 1 ? 'Multi' : uniqueUccs[0] || '',
       portfolio: uniquePortfolios.length > 1 ? 'Multi' : uniquePortfolios[0] || '',
