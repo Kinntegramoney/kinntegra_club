@@ -1764,19 +1764,19 @@ export default function RealEstateDetails() {
                 Compare expected XIRR (based on projected currency rates) vs actual XIRR (based on actual transaction rates) for each investor.
               </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
                 {opp.investors.map((investor, idx) => {
                   const canViewDetails = canViewInvestorDetails(investor.client_id);
                   const isOwnProfile = isCurrentUserInvestor(investor.client_id);
                   
                   return (
-                  <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-800">
+                  <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 hover:shadow-sm transition-all flex flex-col">
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="font-medium text-gray-800 break-words flex-1 mr-2">
                         {investor.client_name || `Investor ${idx + 1}`}
                         {isOwnProfile && <span className="ml-1 text-xs text-indigo-600">(You)</span>}
                       </span>
-                      <Badge variant="outline">{investor.share_percentage || 25}%</Badge>
+                      <Badge variant="outline" className="shrink-0">{investor.share_percentage || 25}%</Badge>
                     </div>
                     <p className="text-xs text-gray-500 mb-2">Share: AED {formatCurrency(opp.total_cost * (investor.share_percentage || 25) / 100)}</p>
                     
