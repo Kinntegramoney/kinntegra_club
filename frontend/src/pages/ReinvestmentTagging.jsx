@@ -1438,6 +1438,30 @@ export default function ReinvestmentTagging() {
           </div>
         </div>
         
+        {/* Client Search Bar */}
+        <div className="bg-white rounded-lg border p-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search by client name, PAN, or email..."
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              className="pl-10 h-9"
+            />
+            {clientSearch && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                onClick={() => setClientSearch("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+        
         {/* Sub-tabs for Untagged / Tagged */}
         <div className="bg-white rounded-lg border">
           <div className="border-b">
