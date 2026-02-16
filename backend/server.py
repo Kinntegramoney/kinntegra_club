@@ -13378,7 +13378,7 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
     elif is_past_date:
         message = "Tag updated successfully (auto-approved for past date)"
     else:
-        message = "Tag updated successfully (pending client approval)"
+        message = "Tag updated successfully (pending client approval - use 'Send Approval Email' to notify client)"
     
     return {
         "message": message, 
@@ -13388,7 +13388,7 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         "target_ucc": update.target_ucc,
         "is_past_date": is_past_date,
         "approval_status": update_data.get('approval_status'),
-        "email_sent": email_sent,
+        "email_sent": False,  # Individual auto-emails disabled to prevent spam
         "notification_created": notification_created
     }
 
