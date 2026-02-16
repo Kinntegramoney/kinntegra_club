@@ -23370,8 +23370,9 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         "bond_aum": {
             "total_invested": bond_total_invested or bond_aum,
             "total_repaid": bond_total_repaid,
-            "total_pending": bond_total_pending or bond_aum,
-            "profits": bond_profits
+            "gross_expected": bond_gross_expected,  # Total expected (repaid + pending)
+            "total_pending": bond_total_pending,    # Gross Expected - Repaid
+            "profits": bond_profits                  # Gross Expected - Invested
         },
         "real_estate_aum": {
             "total_deal_size": re_total_deal_size,
