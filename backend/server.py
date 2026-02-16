@@ -14325,17 +14325,23 @@ async def send_reinvestment_approval_email(
         }}
     )
     
-    # Send email (using the configured SMTP)
+    # Send email (using the configured SMTP) - Use the "New MF Purchase Order" email template
+    # This directs clients to login and approve through the portal
     try:
-        from email_service import send_reinvestment_approval_email as send_approval_email
+        from email_service import send_reinvestment_client_approval_email
+        
+        # Get broker name
+        broker = await db.users.find_one({"id": current_user['id']}, {"_id": 0, "name": 1})
+        broker_name = broker.get('name', 'Your Broker') if broker else 'Your Broker'
+        
         background_tasks.add_task(
-            send_approval_email,
-            client_email,
-            client['name'],
-            entries_html,
-            total_amount,
-            approval_token,
-            len(valid_cashflows)
+            send_reinvestment_client_approval_email,
+            client_name=client['name'],
+            client_email=client_email,
+            total_amount=total_amount,
+            cashflows_count=len(valid_cashflows),
+            approval_token=approval_token,
+            broker_name=broker_name
         )
     except Exception as e:
         logger.error(f"Error sending approval email: {e}")
