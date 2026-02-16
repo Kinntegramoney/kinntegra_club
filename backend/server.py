@@ -14589,12 +14589,17 @@ async def submit_to_kinntegraa(
 
 
 @api_router.get("/reinvestment-logs")
-async def get_reinvestment_logs(
+async def get_reinvestment_logs_v2(
     client_id: str = None,
     current_user: dict = Depends(get_current_user)
 ):
     """Get reinvestment logs, optionally filtered by client_id"""
-    query = {}
+    query = {
+        # Exclude cancelled and auto-cancelled logs - these should not appear in trade logs
+        "approval_status": {"$nin": ["cancelled", "auto_cancelled", "rejected"]},
+        # Only include logs that have a valid reinvestment tag (not untagged)
+        "reinvestment_tag": {"$nin": ["not_tagged", None, ""]}
+    }
     
     if current_user['role'] == 'broker':
         # Broker can see all logs
