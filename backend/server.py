@@ -13662,10 +13662,17 @@ async def get_client_pending_approvals_count(current_user: dict = Depends(get_cu
     if not client:
         return {"count": 0}
     
-    # Count pending reinvestment logs for this client
+    # Count pending reinvestment logs for this client - include ALL pending statuses
+    # Must match the statuses used in /client/pending-approvals endpoint
     count = await db.reinvestment_logs.count_documents({
         "client_id": client['id'],
-        "approval_status": "pending"
+        "approval_status": {"$in": ["pending", "cancellation_pending", "edit_pending", "pending_reapproval"]},
+        # Only count entries with valid UCC and portfolio (actual investment entries, not residuals)
+        "$or": [
+            {"ucc": {"$exists": True, "$ne": None, "$ne": ""}},
+            {"target_ucc": {"$exists": True, "$ne": None, "$ne": ""}}
+        ],
+        "portfolio": {"$exists": True, "$ne": None, "$ne": "", "$ne": "none"}
     })
     
     return {"count": count}
