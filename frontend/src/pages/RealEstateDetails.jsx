@@ -72,12 +72,18 @@ export default function RealEstateDetails() {
   const [showSellModal, setShowSellModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
+  // Passport Preview Modal state
+  const [showPassportPreviewModal, setShowPassportPreviewModal] = useState(false);
+  const [passportPreviewUrl, setPassportPreviewUrl] = useState(null);
+  const [passportPreviewLoading, setPassportPreviewLoading] = useState(false);
+  
   // Payment Schedule View Details Modal
   const [showPaymentScheduleModal, setShowPaymentScheduleModal] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState('AED'); // Multiple currencies supported
   const [viewingSharePercentage, setViewingSharePercentage] = useState(25); // Default 25% for preview
   const [customShareInput, setCustomShareInput] = useState(''); // For custom percentage input
   const [savedCurrencyProjections, setSavedCurrencyProjections] = useState([]); // Broker's saved currency settings
+  const [liveCurrencyRates, setLiveCurrencyRates] = useState(null); // Live rates from API for available opportunities
   
   // Preset percentage options for available opportunities
   const presetPercentages = [12.5, 25, 37.5, 50];
