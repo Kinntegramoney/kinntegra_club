@@ -77,12 +77,13 @@ export default function RealEstateDetails() {
   const [selectedCurrency, setSelectedCurrency] = useState('AED'); // Multiple currencies supported
   const [viewingSharePercentage, setViewingSharePercentage] = useState(25); // Default 25% for preview
   const [customShareInput, setCustomShareInput] = useState(''); // For custom percentage input
+  const [savedCurrencyProjections, setSavedCurrencyProjections] = useState([]); // Broker's saved currency settings
   
   // Preset percentage options for available opportunities
   const presetPercentages = [12.5, 25, 37.5, 50];
   
-  // Currency conversion rates (can be fetched from API or use fixed rates)
-  const currencyRates = {
+  // Default currency conversion rates (will be overridden by broker's settings for funded opportunities)
+  const defaultCurrencyRates = {
     AED: 1,
     INR: 22.75,  // 1 AED = ~22.75 INR
     USD: 0.27,   // 1 AED = ~0.27 USD
