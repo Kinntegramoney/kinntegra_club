@@ -498,6 +498,7 @@ export default function Holdings() {
   const [loadingHoldings, setLoadingHoldings] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [clientTypeFilter, setClientTypeFilter] = useState("all"); // "all", "bonds", "real_estate"
   const [openMenu, setOpenMenu] = useState(null);
   const [openTradeMenu, setOpenTradeMenu] = useState(null); // For trades tab three-dot menu
   const [tradeDetailsModal, setTradeDetailsModal] = useState(null); // For trade details modal
