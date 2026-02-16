@@ -7,7 +7,7 @@ import {
   Building2, MapPin, ArrowLeft, Calendar, Users, Check, User,
   DollarSign, Ruler, Car, CheckCircle2, Clock, Plus, Upload, FileText, X, CreditCard, TrendingUp,
   Calculator, Heart, UserPlus, Info, Download, Send, Bell, Eye, Settings, BarChart3, Edit2, Trash2, RefreshCw,
-  Search, Mail, Image, ChevronLeft, ChevronRight
+  Search, Mail, Image, ChevronLeft, ChevronRight, Lock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
